@@ -1,0 +1,51 @@
+{
+  "name": "jobcard-client",
+  "version": "1.0.0",
+  "description": "Job Card System - Electron Client",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "concurrently \"npm run dev\" \"npm run electron\"",
+    "start:web": "vite",
+    "dev": "vite",
+    "electron": "wait-on http://localhost:5173 && electron .",
+    "build": "vite build",
+    "build:electron": "vite build && electron-builder",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "dexie": "^4.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@vitejs/plugin-react": "^4.2.0",
+    "concurrently": "^8.2.2",
+    "electron": "^27.1.0",
+    "electron-builder": "^24.9.1",
+    "vite": "^5.0.0",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.jobcard.system",
+    "productName": "Job Card System",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "mac": {
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
