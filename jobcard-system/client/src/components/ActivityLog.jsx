@@ -28,7 +28,9 @@ export default function ActivityLog() {
       delete: '#dc2626',
       login: '#8b5cf6',
       deactivate: '#f59e0b',
-      activate: '#10b981'
+      activate: '#10b981',
+      'add_photo': '#10b981',
+      'remove_photo': '#dc2626'
     };
     return (
       <span style={{
@@ -36,7 +38,7 @@ export default function ActivityLog() {
         fontWeight: 500,
         textTransform: 'capitalize'
       }}>
-        {action}
+        {action.replace('_', ' ')}
       </span>
     );
   };
@@ -45,9 +47,9 @@ export default function ActivityLog() {
     if (!changes) return null;
     return Object.entries(changes).map(([field, change]) => (
       <div key={field} style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-        <strong>{field}:</strong>{' '}
+        <strong>{field.replace('_', ' ')}:</strong>{' '}
         {change.changed ? (
-          <span>changed</span>
+          <span style={{ color: '#2563eb', fontStyle: 'italic' }}>modified</span>
         ) : (
           <>
             <span style={{ textDecoration: 'line-through', color: '#dc2626' }}>

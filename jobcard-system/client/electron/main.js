@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, globalShortcut } = require('electron');
 const path = require('path');
 
 // Hardware integration modules
@@ -29,11 +29,70 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
 
+  // Add keyboard shortcut to toggle DevTools
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    // Cmd+Alt+I on Mac, Ctrl+Shift+I on Windows/Linux
+    if ((input.meta && input.alt && input.key.toLowerCase() === 'i') ||
+        (input.control && input.shift && input.key.toLowerCase() === 'i') ||
+        input.key === 'F12') {
+      mainWindow.webContents.toggleDevTools();
+    }
+  });
+
   return mainWindow;
+}
+
+// Create application menu
+function createMenu() {
+  const template = [
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { type: 'separator' },
+        {
+          label: 'Toggle Developer Tools',
+          accelerator: process.platform === 'darwin' ? 'Cmd+Alt+I' : 'Ctrl+Shift+I',
+          click: (item, focusedWindow) => {
+            if (focusedWindow) focusedWindow.webContents.toggleDevTools();
+          }
+        },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    }
+  ];
+
+  // Add standard menus on macOS
+  if (process.platform === 'darwin') {
+    template.unshift({
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    });
+  }
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
 }
 
 // App lifecycle
 app.whenReady().then(() => {
+  createMenu();
   createWindow();
 
   app.on('activate', () => {

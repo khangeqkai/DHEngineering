@@ -6,6 +6,9 @@ import { db } from '../services/db';
 export default function Layout() {
   const { user, logout } = useAuth();
   const [syncStatus, setSyncStatus] = useState('offline');
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('darkMode') === 'true';
+  });
 
   useEffect(() => {
     // Start database sync
@@ -24,6 +27,20 @@ export default function Layout() {
     };
   }, []);
 
+  useEffect(() => {
+    // Apply dark mode
+    if (darkMode) {
+      document.documentElement.classList.add('dark-mode');
+    } else {
+      document.documentElement.classList.remove('dark-mode');
+    }
+    localStorage.setItem('darkMode', darkMode);
+  }, [darkMode]);
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
+
   const getInitials = (name) => {
     return name
       ?.split(' ')
@@ -38,6 +55,25 @@ export default function Layout() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <h1>Job Card System</h1>
+        </div>
+
+        <div className="sidebar-user-section">
+          <div className="user-info">
+            <div className="user-avatar">{getInitials(user?.name)}</div>
+            <div className="user-details">
+              <div className="user-name">{user?.name}</div>
+              <div className="user-role">{user?.role}</div>
+            </div>
+          </div>
+
+          <div className="connection-status">
+            <span className={`status-dot ${syncStatus}`}></span>
+            <span>
+              {syncStatus === 'online' && 'Connected'}
+              {syncStatus === 'offline' && 'Offline'}
+              {syncStatus === 'syncing' && 'Syncing...'}
+            </span>
+          </div>
         </div>
 
         <nav className="sidebar-nav">
@@ -67,23 +103,6 @@ export default function Layout() {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="connection-status">
-            <span className={`status-dot ${syncStatus}`}></span>
-            <span>
-              {syncStatus === 'online' && 'Connected'}
-              {syncStatus === 'offline' && 'Offline'}
-              {syncStatus === 'syncing' && 'Syncing...'}
-            </span>
-          </div>
-
-          <div className="user-info">
-            <div className="user-avatar">{getInitials(user?.name)}</div>
-            <div className="user-details">
-              <div className="user-name">{user?.name}</div>
-              <div className="user-role">{user?.role}</div>
-            </div>
-          </div>
-
           <button className="btn btn-secondary" onClick={logout} style={{ width: '100%' }}>
             Sign Out
           </button>

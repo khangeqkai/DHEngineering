@@ -21,9 +21,13 @@ export default function JobCardForm() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraDebug, setCameraDebug] = useState('');
   const [photos, setPhotos] = useState([]);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const checkIntervalRef = useRef(null);
 
   useEffect(() => {
     if (isEdit) {
@@ -34,6 +38,52 @@ export default function JobCardForm() {
       stopCamera();
     };
   }, [id]);
+
+  // Handle camera stream when video element becomes available
+  useEffect(() => {
+    if (cameraActive && streamRef.current && videoRef.current) {
+      setCameraDebug('Assigning stream to video element...');
+
+      videoRef.current.srcObject = streamRef.current;
+
+      // Wait for video to be ready
+      const waitForVideo = () => {
+        let attempts = 0;
+        const maxAttempts = 50;
+
+        if (checkIntervalRef.current) {
+          clearInterval(checkIntervalRef.current);
+        }
+
+        checkIntervalRef.current = setInterval(() => {
+          attempts++;
+
+          if (!videoRef.current) {
+            setCameraDebug(`ERROR: Video ref lost (attempt ${attempts})`);
+            clearInterval(checkIntervalRef.current);
+            return;
+          }
+
+          const width = videoRef.current.videoWidth;
+          const height = videoRef.current.videoHeight;
+
+          setCameraDebug(`Checking video... ${width}x${height} (attempt ${attempts}/${maxAttempts})`);
+
+          if (width > 0 && height > 0) {
+            setCameraDebug(`Camera ready! ${width}x${height}`);
+            setCameraReady(true);
+            clearInterval(checkIntervalRef.current);
+          } else if (attempts >= maxAttempts) {
+            setCameraDebug(`ERROR: Timeout - video dimensions still 0x0 after ${maxAttempts} attempts`);
+            clearInterval(checkIntervalRef.current);
+            alert('Camera failed to initialize. The video has no dimensions. Try using a different camera or reloading.');
+          }
+        }, 100);
+      };
+
+      waitForVideo();
+    }
+  }, [cameraActive, videoRef.current]);
 
   const loadJobCard = async () => {
     try {
@@ -92,42 +142,86 @@ export default function JobCardForm() {
 
   // Camera functions
   const startCamera = async () => {
+    setCameraDebug('Requesting camera access...');
+
     try {
+      // Get camera stream
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: true
       });
+
+      setCameraDebug('Camera stream obtained, waiting for video element...');
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setCameraActive(true);
+      setCameraActive(true); // This will trigger the video element to render and the useEffect to run
+
     } catch (err) {
+      setCameraDebug(`ERROR: ${err.message}`);
       console.error('Failed to access camera:', err);
-      alert('Could not access camera');
+      alert('Could not access camera: ' + err.message);
+      setCameraActive(false);
     }
   };
 
   const stopCamera = () => {
+    if (checkIntervalRef.current) {
+      clearInterval(checkIntervalRef.current);
+      checkIntervalRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setCameraActive(false);
+    setCameraReady(false);
+    setCameraDebug('');
   };
 
   const capturePhoto = () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || !cameraReady) {
+      console.warn('Camera not ready for capture');
+      return;
+    }
+
+    // Check if video has valid dimensions (safety check)
+    if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
+      alert('Camera is not ready yet. Please wait a moment and try again.');
+      setCameraReady(false); // Reset ready state
+      return;
+    }
 
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
-    canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoRef.current, 0, 0);
     const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
     setPhotos((prev) => [...prev, { id: Date.now(), data: dataUrl }]);
   };
 
-  const removePhoto = (photoId) => {
-    setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+  const removePhoto = async (photoId) => {
+    // Update local state
+    const updatedPhotos = photos.filter((p) => p.id !== photoId);
+    setPhotos(updatedPhotos);
+
+    // Auto-save to database if editing existing job card
+    if (isEdit && id) {
+      try {
+        await db.updateJobCard({
+          _id: id,
+          ...formData,
+          photos: updatedPhotos
+        });
+        console.log('Photo deleted and saved to database');
+      } catch (err) {
+        console.error('Failed to save photo deletion:', err);
+        alert('Failed to save photo deletion. Please try saving the job card manually.');
+        // Revert the deletion on error
+        setPhotos(photos);
+      }
+    }
   };
 
   // Print function
@@ -273,9 +367,32 @@ export default function JobCardForm() {
             <div className="card-body">
               {cameraActive && (
                 <div className="camera-container">
-                  <video ref={videoRef} autoPlay playsInline />
-                  <button type="button" className="btn btn-primary" onClick={capturePhoto}>
-                    Capture Photo
+                  <div className="video-wrapper">
+                    <video ref={videoRef} autoPlay playsInline muted />
+                    {!cameraReady && (
+                      <div className="camera-loading">
+                        <div className="spinner"></div>
+                        <p>Initializing camera...</p>
+                        {cameraDebug && (
+                          <p style={{ fontSize: '0.75rem', marginTop: '0.5rem', opacity: 0.8 }}>
+                            {cameraDebug}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {cameraReady && (
+                      <div className="camera-ready-indicator">
+                        <span className="ready-dot"></span> Camera Ready
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={capturePhoto}
+                    disabled={!cameraReady}
+                  >
+                    {cameraReady ? 'Capture Photo' : 'Waiting for camera...'}
                   </button>
                 </div>
               )}
@@ -284,7 +401,12 @@ export default function JobCardForm() {
                 <div className="photos-grid">
                   {photos.map((photo) => (
                     <div key={photo.id} className="photo-item">
-                      <img src={photo.data} alt="Captured" />
+                      <img
+                        src={photo.data}
+                        alt="Captured"
+                        onClick={() => setSelectedPhoto(photo)}
+                        style={{ cursor: 'pointer' }}
+                      />
                       <button
                         type="button"
                         className="photo-remove"
@@ -312,6 +434,18 @@ export default function JobCardForm() {
           </button>
         </div>
       </form>
+
+      {/* Photo Quick View Modal */}
+      {selectedPhoto && (
+        <div className="photo-modal" onClick={() => setSelectedPhoto(null)}>
+          <div className="photo-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="photo-modal-close" onClick={() => setSelectedPhoto(null)}>
+              ×
+            </button>
+            <img src={selectedPhoto.data} alt="Full size preview" />
+          </div>
+        </div>
+      )}
 
       <style>{`
         .page-header {
@@ -350,11 +484,73 @@ export default function JobCardForm() {
           margin-bottom: 1rem;
         }
 
-        .camera-container video {
+        .video-wrapper {
+          position: relative;
           width: 100%;
           max-width: 640px;
+        }
+
+        .camera-container video {
+          width: 100%;
           border-radius: 0.5rem;
           background: black;
+          display: block;
+        }
+
+        .camera-loading {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: rgba(0, 0, 0, 0.7);
+          border-radius: 0.5rem;
+          color: white;
+          gap: 1rem;
+        }
+
+        .spinner {
+          width: 40px;
+          height: 40px;
+          border: 4px solid rgba(255, 255, 255, 0.3);
+          border-top-color: white;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        .camera-ready-indicator {
+          position: absolute;
+          top: 0.5rem;
+          left: 0.5rem;
+          background: rgba(0, 128, 0, 0.9);
+          color: white;
+          padding: 0.25rem 0.75rem;
+          border-radius: 1rem;
+          font-size: 0.875rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .ready-dot {
+          width: 8px;
+          height: 8px;
+          background: white;
+          border-radius: 50%;
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
 
         .photos-grid {
@@ -393,9 +589,66 @@ export default function JobCardForm() {
           justify-content: center;
         }
 
+        .photo-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.9);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+          padding: 2rem;
+        }
+
+        .photo-modal-content {
+          position: relative;
+          max-width: 90vw;
+          max-height: 90vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .photo-modal-content img {
+          max-width: 100%;
+          max-height: 90vh;
+          object-fit: contain;
+          border-radius: 0.5rem;
+        }
+
+        .photo-modal-close {
+          position: absolute;
+          top: -2.5rem;
+          right: -2.5rem;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          border: 2px solid white;
+          background: rgba(0, 0, 0, 0.7);
+          color: white;
+          font-size: 1.5rem;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.2s;
+        }
+
+        .photo-modal-close:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+
         @media (max-width: 768px) {
           .form-grid {
             grid-template-columns: 1fr;
+          }
+
+          .photo-modal-close {
+            top: 0.5rem;
+            right: 0.5rem;
           }
         }
       `}</style>

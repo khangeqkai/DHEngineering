@@ -185,6 +185,34 @@ router.post('/update', authenticate, (req, res) => {
       if (data.status !== existing.status) changes.status = { from: existing.status, to: data.status };
       if (data.description !== existing.description) changes.description = { from: existing.description, to: data.description };
 
+      // Track photo changes
+      if (data.photos !== undefined) {
+        const existingPhotos = existing.photos ? JSON.parse(existing.photos) : [];
+        const newPhotos = data.photos || [];
+
+        if (JSON.stringify(existingPhotos) !== JSON.stringify(newPhotos)) {
+          const existingCount = existingPhotos.length;
+          const newCount = newPhotos.length;
+
+          if (newCount > existingCount) {
+            const addedCount = newCount - existingCount;
+            changes.photos = {
+              from: `${existingCount} photo${existingCount !== 1 ? 's' : ''}`,
+              to: `${newCount} photo${newCount !== 1 ? 's' : ''} (+${addedCount} added)`
+            };
+          } else if (newCount < existingCount) {
+            const removedCount = existingCount - newCount;
+            changes.photos = {
+              from: `${existingCount} photo${existingCount !== 1 ? 's' : ''}`,
+              to: `${newCount} photo${newCount !== 1 ? 's' : ''} (-${removedCount} removed)`
+            };
+          } else {
+            // Same count but different photos
+            changes.photos = { changed: true };
+          }
+        }
+      }
+
       jobcardQueries.update.run(
         data.title,
         data.description || null,
@@ -261,6 +289,35 @@ router.put('/:id', authenticate, (req, res) => {
     }
     if (notes !== undefined && notes !== existing.notes) {
       changes.notes = { from: existing.notes, to: notes };
+    }
+
+    // Track photo changes
+    if (photos !== undefined) {
+      const existingPhotos = existing.photos ? JSON.parse(existing.photos) : [];
+      const newPhotos = photos || [];
+
+      // Check if photos changed
+      if (JSON.stringify(existingPhotos) !== JSON.stringify(newPhotos)) {
+        const existingCount = existingPhotos.length;
+        const newCount = newPhotos.length;
+
+        if (newCount > existingCount) {
+          const addedCount = newCount - existingCount;
+          changes.photos = {
+            from: `${existingCount} photo${existingCount !== 1 ? 's' : ''}`,
+            to: `${newCount} photo${newCount !== 1 ? 's' : ''} (+${addedCount} added)`
+          };
+        } else if (newCount < existingCount) {
+          const removedCount = existingCount - newCount;
+          changes.photos = {
+            from: `${existingCount} photo${existingCount !== 1 ? 's' : ''}`,
+            to: `${newCount} photo${newCount !== 1 ? 's' : ''} (-${removedCount} removed)`
+          };
+        } else {
+          // Same count but different photos
+          changes.photos = { changed: true };
+        }
+      }
     }
 
     jobcardQueries.update.run(

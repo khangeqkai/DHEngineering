@@ -6,11 +6,28 @@ export default function Settings() {
   const [appInfo, setAppInfo] = useState(null);
   const [printers, setPrinters] = useState([]);
   const [loadingPrinters, setLoadingPrinters] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('darkMode') === 'true';
+  });
 
   useEffect(() => {
     loadAppInfo();
     loadPrinters();
   }, []);
+
+  useEffect(() => {
+    // Apply dark mode
+    if (darkMode) {
+      document.documentElement.classList.add('dark-mode');
+    } else {
+      document.documentElement.classList.remove('dark-mode');
+    }
+    localStorage.setItem('darkMode', darkMode);
+  }, [darkMode]);
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
 
   const loadAppInfo = async () => {
     if (window.electronAPI) {
@@ -39,6 +56,30 @@ export default function Settings() {
       </div>
 
       <div className="settings-grid">
+        <div className="card">
+          <div className="card-header">
+            <h2>Appearance</h2>
+          </div>
+          <div className="card-body">
+            <div className="setting-item">
+              <div className="setting-info">
+                <div className="setting-label">Dark Mode</div>
+                <div className="setting-description">
+                  Switch between light and dark theme
+                </div>
+              </div>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={darkMode}
+                  onChange={toggleDarkMode}
+                />
+                <span className="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
         <div className="card">
           <div className="card-header">
             <h2>Application Info</h2>
@@ -198,6 +239,73 @@ export default function Settings() {
 
         .info-item dd {
           font-weight: 500;
+        }
+
+        .setting-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .setting-info {
+          flex: 1;
+        }
+
+        .setting-label {
+          font-weight: 500;
+          margin-bottom: 0.25rem;
+        }
+
+        .setting-description {
+          font-size: 0.875rem;
+          color: var(--text-secondary);
+        }
+
+        .toggle-switch {
+          position: relative;
+          display: inline-block;
+          width: 52px;
+          height: 28px;
+          flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .toggle-slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: var(--border-color);
+          transition: 0.3s;
+          border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+          position: absolute;
+          content: "";
+          height: 20px;
+          width: 20px;
+          left: 4px;
+          bottom: 4px;
+          background-color: white;
+          transition: 0.3s;
+          border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+          background-color: var(--primary-color);
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+          transform: translateX(24px);
         }
 
         @media (max-width: 768px) {
