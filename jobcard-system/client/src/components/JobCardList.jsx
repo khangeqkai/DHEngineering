@@ -1,29 +1,53 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { db } from '../services/db';
+import { api } from '../services/api';
+import PageHeader from './common/PageHeader';
+import JobCardModal from './JobCardModal';
+
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'QUOTE', label: 'Quotes' },
+  { value: 'OPEN', label: 'Open' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'ON_HOLD', label: 'On Hold' },
+  { value: 'DONE', label: 'Done' },
+  { value: 'INVOICED', label: 'Invoiced' }
+];
+
+const STATUS_LABELS = {
+  QUOTE: 'Quote',
+  OPEN: 'Open',
+  IN_PROGRESS: 'In Progress',
+  ON_HOLD: 'On Hold',
+  DONE: 'Done',
+  INVOICED: 'Invoiced'
+};
+
+const PRIORITY_COLORS = {
+  NONE: 'var(--text-secondary)',
+  LOW: 'var(--success-color)',
+  MEDIUM: 'var(--warning-color)',
+  HIGH: 'var(--danger-color)'
+};
 
 export default function JobCardList() {
   const [jobCards, setJobCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCardId, setEditingCardId] = useState(null);
 
   useEffect(() => {
     loadJobCards();
-
-    const unsubscribe = db.onSyncEvent((type) => {
-      if (type === 'change') {
-        loadJobCards();
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
+  }, [showArchived]);
 
   const loadJobCards = async () => {
     try {
-      const cards = await db.getAllJobCards();
-      setJobCards(cards.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+      const cards = showArchived
+        ? await api.getArchivedJobcards()
+        : await api.getJobcards();
+      setJobCards(cards.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
     } catch (err) {
       console.error('Failed to load job cards:', err);
     } finally {
@@ -35,11 +59,37 @@ export default function JobCardList() {
     if (!confirm('Are you sure you want to delete this job card?')) return;
 
     try {
-      await db.deleteJobCard(id);
+      await api.deleteJobcard(id);
       await loadJobCards();
     } catch (err) {
       console.error('Failed to delete job card:', err);
-      alert('Failed to delete job card');
+      alert(err.message || 'Failed to delete job card');
+    }
+  };
+
+  const handleArchive = async (id) => {
+    const invoiceDate = prompt('Enter invoice date (YYYY-MM-DD):',
+      new Date().toISOString().split('T')[0]);
+    if (!invoiceDate) return;
+
+    try {
+      await api.archiveJobcard(id, invoiceDate);
+      await loadJobCards();
+    } catch (err) {
+      console.error('Failed to archive job card:', err);
+      alert(err.message || 'Failed to archive job card');
+    }
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'QUOTE': return 'badge-pending';
+      case 'OPEN': return 'badge-pending';
+      case 'IN_PROGRESS': return 'badge-in-progress';
+      case 'ON_HOLD': return 'badge-cancelled';
+      case 'DONE': return 'badge-completed';
+      case 'INVOICED': return 'badge-completed';
+      default: return '';
     }
   };
 
@@ -47,10 +97,25 @@ export default function JobCardList() {
     const matchesFilter = filter === 'all' || card.status === filter;
     const matchesSearch =
       !search ||
-      card.title?.toLowerCase().includes(search.toLowerCase()) ||
-      card.customer?.name?.toLowerCase().includes(search.toLowerCase());
+      card.job_number?.toLowerCase().includes(search.toLowerCase()) ||
+      card.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+      card.description?.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  const openCreateModal = () => {
+    setEditingCardId(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (cardId) => {
+    setEditingCardId(cardId);
+    setIsModalOpen(true);
+  };
+
+  const handleModalSuccess = () => {
+    loadJobCards();
+  };
 
   if (loading) {
     return <div className="loading">Loading job cards...</div>;
@@ -58,32 +123,43 @@ export default function JobCardList() {
 
   return (
     <div className="jobcard-list">
-      <div className="page-header">
-        <h1>Job Cards</h1>
-        <Link to="/jobcards/new" className="btn btn-primary">
-          + New Job Card
-        </Link>
-      </div>
+      <PageHeader title={showArchived ? 'Archived Job Cards' : 'Job Cards'}>
+        <label className="archive-toggle">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+          />
+          Show Archived
+        </label>
+        {!showArchived && (
+          <button className="btn btn-primary" onClick={openCreateModal}>
+            + New Job Card
+          </button>
+        )}
+      </PageHeader>
 
       <div className="filters">
         <input
           type="text"
-          placeholder="Search by title or customer..."
+          placeholder="Search by job #, customer, or description..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="search-input"
         />
-        <div className="filter-buttons">
-          {['all', 'pending', 'in-progress', 'completed', 'cancelled'].map((status) => (
-            <button
-              key={status}
-              className={`btn btn-sm ${filter === status ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setFilter(status)}
-            >
-              {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
-            </button>
-          ))}
-        </div>
+        {!showArchived && (
+          <div className="filter-buttons">
+            {STATUS_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                className={`btn btn-sm ${filter === opt.value ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setFilter(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="card">
@@ -96,49 +172,88 @@ export default function JobCardList() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Title</th>
+                  <th>Job #</th>
                   <th>Customer</th>
+                  <th>Type</th>
                   <th>Status</th>
-                  <th>Created</th>
-                  <th>Updated</th>
+                  <th>Priority</th>
+                  <th>Due Date</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredCards.map((card) => (
-                  <tr key={card._id}>
-                    <td>
-                      <Link to={`/jobcards/${card._id}`}>
-                        <strong>{card.title}</strong>
-                      </Link>
-                      {card.description && (
-                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                          {card.description.substring(0, 100)}
-                          {card.description.length > 100 ? '...' : ''}
-                        </p>
-                      )}
-                    </td>
-                    <td>{card.customer?.name || '-'}</td>
-                    <td>
-                      <span className={`badge badge-${card.status}`}>{card.status}</span>
-                    </td>
-                    <td>{new Date(card.createdAt).toLocaleDateString()}</td>
-                    <td>{new Date(card.updatedAt).toLocaleDateString()}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Link to={`/jobcards/${card._id}`} className="btn btn-secondary btn-sm">
-                          Edit
-                        </Link>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => handleDelete(card._id)}
+                {filteredCards.map((card) => {
+                  const isOverdue = card.due_date &&
+                    new Date(card.due_date) < new Date() &&
+                    !['DONE', 'INVOICED'].includes(card.status);
+
+                  return (
+                    <tr key={card.id} className={isOverdue ? 'overdue-row' : ''}>
+                      <td>
+                        <a
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            openEditModal(card.id);
+                          }}
                         >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <strong>{card.job_number}</strong>
+                        </a>
+                        {card.description && (
+                          <p className="description-preview">
+                            {card.description.substring(0, 60)}
+                            {card.description.length > 60 ? '...' : ''}
+                          </p>
+                        )}
+                      </td>
+                      <td>
+                        {card.customer_name || '-'}
+                        {card.customer_is_critical && (
+                          <span className="critical-badge">Critical</span>
+                        )}
+                      </td>
+                      <td>{card.job_type || '-'}</td>
+                      <td>
+                        <span className={`badge ${getStatusBadgeClass(card.status)}`}>
+                          {STATUS_LABELS[card.status] || card.status}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ color: PRIORITY_COLORS[card.priority] || PRIORITY_COLORS.NONE, fontWeight: 500 }}>
+                          {card.priority || 'NONE'}
+                        </span>
+                      </td>
+                      <td className={isOverdue ? 'overdue-date' : ''}>
+                        {card.due_date ? new Date(card.due_date).toLocaleDateString() : '-'}
+                        {isOverdue && <span className="overdue-label">OVERDUE</span>}
+                      </td>
+                      <td>
+                        <div className="action-buttons">
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => openEditModal(card.id)}
+                          >
+                            Edit
+                          </button>
+                          {card.status === 'INVOICED' && !card.archived && (
+                            <button
+                              className="btn btn-success btn-sm"
+                              onClick={() => handleArchive(card.id)}
+                            >
+                              Archive
+                            </button>
+                          )}
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleDelete(card.id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -146,18 +261,6 @@ export default function JobCardList() {
       </div>
 
       <style>{`
-        .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-        }
-
-        .page-header h1 {
-          font-size: 1.5rem;
-          font-weight: 600;
-        }
-
         .filters {
           display: flex;
           gap: 1rem;
@@ -172,6 +275,8 @@ export default function JobCardList() {
           border: 1px solid var(--border-color);
           border-radius: 0.5rem;
           font-size: 0.875rem;
+          background: var(--surface);
+          color: var(--text-primary);
         }
 
         .search-input:focus {
@@ -184,7 +289,70 @@ export default function JobCardList() {
           gap: 0.5rem;
           flex-wrap: wrap;
         }
+
+        .archive-toggle {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.875rem;
+          cursor: pointer;
+        }
+
+        .description-preview {
+          font-size: 0.75rem;
+          color: var(--text-secondary);
+          margin-top: 0.25rem;
+          margin-bottom: 0;
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .critical-badge {
+          background: var(--danger-color);
+          color: white;
+          font-size: 0.625rem;
+          padding: 0.125rem 0.375rem;
+          border-radius: 0.25rem;
+          margin-left: 0.5rem;
+          text-transform: uppercase;
+          font-weight: 600;
+        }
+
+        .overdue-row {
+          background: rgba(239, 68, 68, 0.05);
+        }
+
+        .overdue-date {
+          color: var(--danger-color);
+          font-weight: 600;
+        }
+
+        .overdue-label {
+          display: block;
+          font-size: 0.625rem;
+          text-transform: uppercase;
+          margin-top: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+          .filter-buttons {
+            width: 100%;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+          }
+        }
       `}</style>
+
+      <JobCardModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        jobCardId={editingCardId}
+        onSuccess={handleModalSuccess}
+      />
     </div>
   );
 }

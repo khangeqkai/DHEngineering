@@ -17,6 +17,16 @@
   --border-color: #e2e8f0;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+  /* Badge colors - Light mode */
+  --badge-pending-bg: #fef3c7;
+  --badge-pending-text: #92400e;
+  --badge-progress-bg: #dbeafe;
+  --badge-progress-text: #1e40af;
+  --badge-completed-bg: #dcfce7;
+  --badge-completed-text: #166534;
+  --badge-cancelled-bg: #fee2e2;
+  --badge-cancelled-text: #991b1b;
 }
 
 .dark-mode {
@@ -32,6 +42,16 @@
   --border-color: #334155;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.3);
+
+  /* Badge colors - Dark mode */
+  --badge-pending-bg: #78350f;
+  --badge-pending-text: #fef3c7;
+  --badge-progress-bg: #1e3a5f;
+  --badge-progress-text: #93c5fd;
+  --badge-completed-bg: #14532d;
+  --badge-completed-text: #bbf7d0;
+  --badge-cancelled-bg: #7f1d1d;
+  --badge-cancelled-text: #fecaca;
 }
 
 body {

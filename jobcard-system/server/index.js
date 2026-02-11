@@ -8,7 +8,11 @@ const authRoutes = require('./src/routes/auth');
 const hardwareRoutes = require('./src/routes/hardware');
 const jobcardsRoutes = require('./src/routes/jobcards');
 const historyRoutes = require('./src/routes/history');
-const { initializeDatabase } = require('./src/db/init');
+const customersRoutes = require('./src/routes/customers');
+const suppliersRoutes = require('./src/routes/suppliers');
+const machinesRoutes = require('./src/routes/machines');
+const settingsRoutes = require('./src/routes/settings');
+const { initializeDatabase, seedMockData } = require('./src/db/init');
 
 const app = express();
 
@@ -33,6 +37,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/hardware', hardwareRoutes);
 app.use('/api/jobcards', jobcardsRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/customers', customersRoutes);
+app.use('/api/suppliers', suppliersRoutes);
+app.use('/api/machines', machinesRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/scanner', settingsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -48,6 +57,9 @@ async function start() {
   try {
     // Initialize the database with default data
     await initializeDatabase();
+
+    // Seed mock data for testing (only runs if no data exists)
+    await seedMockData();
 
     // Start the server
     app.listen(config.port, config.host, () => {

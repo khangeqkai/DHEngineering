@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // App info
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),
 
+  // File dialogs
+  selectFolder: () => ipcRenderer.invoke('select-folder'),
+
   // Platform detection
   platform: process.platform
 });

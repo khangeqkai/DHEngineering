@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
+import PageHeader from './common/PageHeader';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -115,22 +116,19 @@ export default function UserManagement() {
 
   return (
     <div className="user-management">
-      <div className="page-header">
-        <h1>User Management</h1>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
-            <input
-              type="checkbox"
-              checked={showInactive}
-              onChange={(e) => setShowInactive(e.target.checked)}
-            />
-            Show inactive
-          </label>
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-            + Add User
-          </button>
-        </div>
-      </div>
+      <PageHeader title="User Management">
+        <label className="show-inactive-label">
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+          />
+          Show inactive
+        </label>
+        <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+          + Add User
+        </button>
+      </PageHeader>
 
       {showForm && (
         <div className="card" style={{ marginBottom: '1.5rem' }}>
@@ -252,16 +250,14 @@ export default function UserManagement() {
                       </button>
                       {user.active ? (
                         <button
-                          className="btn btn-sm"
-                          style={{ background: '#f59e0b', color: 'white' }}
+                          className="btn btn-warning btn-sm"
                           onClick={() => handleDeactivate(user)}
                         >
                           Deactivate
                         </button>
                       ) : (
                         <button
-                          className="btn btn-sm"
-                          style={{ background: '#10b981', color: 'white' }}
+                          className="btn btn-success btn-sm"
                           onClick={() => handleActivate(user)}
                         >
                           Activate
@@ -283,16 +279,12 @@ export default function UserManagement() {
       </div>
 
       <style>{`
-        .page-header {
+        .show-inactive-label {
           display: flex;
-          justify-content: space-between;
           align-items: center;
-          margin-bottom: 1.5rem;
-        }
-
-        .page-header h1 {
-          font-size: 1.5rem;
-          font-weight: 600;
+          gap: 0.5rem;
+          font-size: 0.875rem;
+          cursor: pointer;
         }
 
         .form-row {

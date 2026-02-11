@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
+import PageHeader from './common/PageHeader';
 
 export default function Settings() {
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [appInfo, setAppInfo] = useState(null);
   const [printers, setPrinters] = useState([]);
   const [loadingPrinters, setLoadingPrinters] = useState(true);
@@ -10,10 +13,54 @@ export default function Settings() {
     return localStorage.getItem('darkMode') === 'true';
   });
 
+  // Scanner folder settings (admin only)
+  const [scannerFolder, setScannerFolder] = useState('');
+  const [savingSettings, setSavingSettings] = useState(false);
+
   useEffect(() => {
     loadAppInfo();
     loadPrinters();
-  }, []);
+    if (isAdmin) {
+      loadSettings();
+    }
+  }, [isAdmin]);
+
+  const loadSettings = async () => {
+    try {
+      const settings = await api.getSettings();
+      setScannerFolder(settings.scanner_folder || '');
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    }
+  };
+
+  const handleSelectScannerFolder = async () => {
+    if (window.electronAPI?.selectFolder) {
+      const folder = await window.electronAPI.selectFolder();
+      if (folder) {
+        setScannerFolder(folder);
+      }
+    } else {
+      // Fallback for browser - just use text input
+      const folder = prompt('Enter scanner folder path:', scannerFolder);
+      if (folder !== null) {
+        setScannerFolder(folder);
+      }
+    }
+  };
+
+  const handleSaveScannerFolder = async () => {
+    setSavingSettings(true);
+    try {
+      await api.updateSettings({ scanner_folder: scannerFolder });
+      alert('Settings saved successfully');
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+      alert(err.message || 'Failed to save settings');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   useEffect(() => {
     // Apply dark mode
@@ -51,9 +98,7 @@ export default function Settings() {
 
   return (
     <div className="settings">
-      <div className="page-header">
-        <h1>Settings</h1>
-      </div>
+      <PageHeader title="Settings" />
 
       <div className="settings-grid">
         <div className="card">
@@ -167,6 +212,49 @@ export default function Settings() {
           </div>
         </div>
 
+        {isAdmin && (
+          <div className="card full-width">
+            <div className="card-header">
+              <h2>Scanner Folder</h2>
+            </div>
+            <div className="card-body">
+              <div className="setting-item">
+                <div className="setting-info">
+                  <div className="setting-label">Scanned Documents Folder</div>
+                  <div className="setting-description">
+                    Set the folder where scanned customer drawings are saved. Recent files from this folder will be available when creating job cards.
+                  </div>
+                </div>
+              </div>
+              <div className="folder-input-group">
+                <input
+                  type="text"
+                  className="form-control"
+                  value={scannerFolder}
+                  onChange={(e) => setScannerFolder(e.target.value)}
+                  placeholder="Select or enter scanner folder path..."
+                  readOnly={!!window.electronAPI?.selectFolder}
+                />
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleSelectScannerFolder}
+                >
+                  Browse...
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSaveScannerFolder}
+                  disabled={savingSettings}
+                >
+                  {savingSettings ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="card full-width">
           <div className="card-header">
             <h2>Server Connection</h2>
@@ -195,15 +283,6 @@ export default function Settings() {
       </div>
 
       <style>{`
-        .page-header {
-          margin-bottom: 1.5rem;
-        }
-
-        .page-header h1 {
-          font-size: 1.5rem;
-          font-weight: 600;
-        }
-
         .settings-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
@@ -308,9 +387,23 @@ export default function Settings() {
           transform: translateX(24px);
         }
 
+        .folder-input-group {
+          display: flex;
+          gap: 0.5rem;
+          margin-top: 1rem;
+        }
+
+        .folder-input-group .form-control {
+          flex: 1;
+        }
+
         @media (max-width: 768px) {
           .settings-grid {
             grid-template-columns: 1fr;
+          }
+
+          .folder-input-group {
+            flex-direction: column;
           }
         }
       `}</style>

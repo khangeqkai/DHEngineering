@@ -152,7 +152,9 @@ router.post('/users', authenticate, requireRole('admin'), async (req, res) => {
       hashedPassword,
       role || 'user',
       name || username,
-      email || null
+      email || null,
+      null,  // phone
+      null   // employee_id
     );
 
     // Record in history
@@ -212,6 +214,8 @@ router.put('/users/:id', authenticate, async (req, res) => {
     userQueries.update.run(
       name || user.name,
       email !== undefined ? email : user.email,
+      user.phone,       // preserve existing phone
+      user.employee_id, // preserve existing employee_id
       role || user.role,
       id
     );

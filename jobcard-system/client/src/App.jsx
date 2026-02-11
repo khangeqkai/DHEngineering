@@ -5,6 +5,8 @@ import Dashboard from './components/Dashboard';
 import JobCardList from './components/JobCardList';
 import JobCardForm from './components/JobCardForm';
 import UserManagement from './components/UserManagement';
+import CustomerManagement from './components/CustomerManagement';
+import SupplierManagement from './components/SupplierManagement';
 import ActivityLog from './components/ActivityLog';
 import Settings from './components/Settings';
 import Layout from './components/Layout';
@@ -54,6 +56,15 @@ function App() {
         <Route path="jobcards" element={<JobCardList />} />
         <Route path="jobcards/new" element={<JobCardForm />} />
         <Route path="jobcards/:id" element={<JobCardForm />} />
+        <Route path="customers" element={<CustomerManagement />} />
+        <Route
+          path="suppliers"
+          element={
+            <AdminRoute>
+              <SupplierManagement />
+            </AdminRoute>
+          }
+        />
         <Route
           path="users"
           element={

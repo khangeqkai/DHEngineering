@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, globalShortcut, dialog } = require('electron');
 const path = require('path');
 
 // Hardware integration modules
@@ -187,4 +187,19 @@ ipcMain.handle('get-app-info', () => {
     arch: process.arch,
     isDev
   };
+});
+
+// Select folder dialog
+ipcMain.handle('select-folder', async () => {
+  const window = BrowserWindow.getAllWindows()[0];
+  const result = await dialog.showOpenDialog(window, {
+    properties: ['openDirectory'],
+    title: 'Select Scanner Folder'
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+
+  return result.filePaths[0];
 });

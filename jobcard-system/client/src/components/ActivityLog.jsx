@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
+import PageHeader from './common/PageHeader';
 
 export default function ActivityLog() {
   const [activities, setActivities] = useState([]);
@@ -74,19 +75,18 @@ export default function ActivityLog() {
 
   return (
     <div className="activity-log">
-      <div className="page-header">
-        <h1>Activity Log</h1>
+      <PageHeader title="Activity Log">
         <select
           value={limit}
           onChange={(e) => setLimit(Number(e.target.value))}
-          style={{ padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid var(--border-color)' }}
+          className="limit-select"
         >
           <option value={25}>Last 25</option>
           <option value={50}>Last 50</option>
           <option value={100}>Last 100</option>
           <option value={200}>Last 200</option>
         </select>
-      </div>
+      </PageHeader>
 
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
@@ -140,16 +140,13 @@ export default function ActivityLog() {
       </div>
 
       <style>{`
-        .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-        }
-
-        .page-header h1 {
-          font-size: 1.5rem;
-          font-weight: 600;
+        .limit-select {
+          padding: 0.5rem 0.75rem;
+          border-radius: 0.375rem;
+          border: 1px solid var(--border-color);
+          background: var(--surface);
+          color: var(--text-primary);
+          font-size: 0.875rem;
         }
       `}</style>
     </div>

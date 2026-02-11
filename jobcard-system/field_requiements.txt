@@ -1,0 +1,219 @@
+﻿CREATE NEW[a]                Job Card/Quote:        12345                        CREATED ON:  11/02/2026  
+
+
+*CUSTOMER                        *CUSTOMER NAME[b]:                 Text Entry
+                                        Contact Name:        Text Entry not to be printed
+                                        Contact Phone:        Text Entry not to be printed
+                                        Contact Email:                Text Entry not to be printed
+
+
+
+
+*QUALITY MANAGEMENT[c]        Standard/Critical
+
+
+
+
+JOB TYPE[d]:        QUOTE / MANUFACTURE / REPAIR/ MODIFY / FABRICATE / SUPPLY / REVERSE ENGINEER / INSPECTION / CAD DRAWINGS / CONSULTATION / ON-SITE
+
+
+
+
+PRIORITY[e]:        NONE / LOW / MEDIUM / HIGH        
+
+
+PURCHASE ORDER NUMBER:  Text Entry
+
+
+
+
+DRAWINGS[f]:        CUSTOMER CAD / CUSTOMER SKETCH / DH CAD / DH SKETCH / PREPARE SKETCH / PREPARE CAD
+
+
+
+
+CUSTOMER PROPERTY:[g]        MATERIAL SUPPLIED / DAMAGED OR WORN SAMPLE / GOOD  SAMPLE / PART FOR REPAIR / PART FOR MODIFICATION
+
+
+ASSIGNEES[h]:                EMPLOYEE LIST
+
+
+DESCRIPTION[i]:                
+*Item #: Auto                *Qty: Text Entry        *Description of Job: Text Entry
+
+
+* DUE DATE:         date – show on dashboard as red if beyond due date
+
+
+*REPEAT JOB:        Yes/No – if Yes = Text Entry
+
+
+TREATMENT REQUIRED[j]:        None / Heat Treatment / Precision Grinding / Anodise / Electroplate/                 Blasting / Powdercoat / Spraypaint / Galvanise / Specialised Coating/
+                        Other = Text Entry 
+
+
+
+
+SUB[k] CONTRACT:        Approved Supplier List        Date Sent: Date        Date Expected: Date
+
+
+  
+
+CREATE[l]        Automatically set to Open or Quote on Dashboard
+
+
+(* = can only be edited once created by Admin)
+
+
+
+
+
+
+ON DASHBOARD 
+
+
+TO BE ABLE TO CHANGE QUOTE TO JOB CARD [m]
+
+
+ON DASHBOARD STATUS:        QUOTE / OPEN / IN PROGRESS / ON HOLD / DONE
+
+
+ADD DOCUMENTS TO FILE:        Click to add photo, scan documents, add file etc..
+
+
+
+
+When click on job in list, extra fields to apply:
+
+
+TIME TRACKING:[n]        Employee[o] / Date / machine[p] #/ Qty / item[q] # / text description / start time / Finish Time
+
+
+
+
+SPECIAL[r] OPS:
+Machine #:                 Drop down Box
+Equipment Checks:        Done
+Measuring Equipment Verification:        Done
+First of Inspection:        OK - results recorded on job card / Error - prompt for text / Not Applicable
+In-process Validation:  OK - results recorded on job card / Error - prompt for text / Not Applicable
+
+
+SCRAP RATE ANALYSIS:        All Good
+                        Item # / Qty / Recycle in House Qty / Recycle Bin Qty        
+                
+
+
+At the end of each employee entry, drop down box for special ops and scrap rate analysis, can 
+not move forward without being filled out.
+
+
+
+
+
+
+
+
+
+
+
+
+COSTINGS – only accessible by admin
+
+
+Labour
+	hours
+	hourly rate
+	$
+	Labour Special
+	hours
+	hourly rate
+	$
+	Materials
+	cost
+	profit +100%
+	$
+	Subcontractor
+	cost
+	profit +%
+	$
+	 
+	 
+	Total
+	$
+	
+
+Add anything I can’t think of.
+
+
+BUTTON FOR DASHBOARD AVAILABLE TO ADMIN ONLY
+
+
+INVOICED:        Date
+
+
+Once invoice recorded, remove from main dash board and archive
+________________________________________________________________________________
+Have a button to look through recorded jobs by customer         – admin full view with costing
+        - User view no costing
+
+
+Have a button on dashboard to scan or save photo to file
+
+
+QA – Check list and link to forms
+
+
+DHE-P06
+	PROCEDURE
+	VIEW
+	
+
+	
+
+	DHE-F39
+	CRITICAL PARTS INSPECTION & TEST PLAN
+	PRINT
+	SCANNED
+	start yellow/when used green
+	DHE-F15
+	INWARDS GOODS INSPECTION STICKER
+	
+
+	SCANNED
+	start yellow/when used green
+	DHE-F09
+	INSPECTION REPORT
+	PRINT
+	SCANNED
+	start yellow/when used green
+	DHE-F43
+	HARZARD, INCIDENT, NON-CONFORMANCE & CUSTOMER COMPLAINT
+	PRINT
+	SCANNED
+	start yellow/when used green
+	
+
+If Critical QA Customer, cannot be invoiced if these forms are outstanding.
+[a]Can this be a choice of jobcard or quote?
+Automatic: number – cannot be edited
+Automatic: date – cannot be edited
+[b]MUST HAVE – CANNOT GO FURTHER WITHOUT
+Start typing, drop down list, if customer name not there choose to create new customer (same as maintain x)
+[c]Automatic setup with customer if CRITICAL, QA Checklist pop up with links to print forms see page 3
+[d]MUST - HAVE CANNOT GO FURTHER WITHOUT
+Multiple choice drop down, can only be changed from quote to rest of selections
+[e](same as maintain x)
+[f]Drop down, multiple Choice
+[g]Drop down, multiple choice
+[h]Drop down, multiple choice
+[i]MUST HAVE 1 ENTRY CANNOT GO FUTHER WITHOUT
+[j]Drop down, multiple choice
+[k]Multiple entries allowed, some go to laser cut, then back for fabrication, then out for blast and coating etc.
+[l]At this point a new file is created for scanning, photos, correspondence, purchase orders, cad drawings etc.  And job card to be printed for shop floor.
+[m]On change, job card automatically pops up to add purchase order number or to modify quantities etc. once changed prompt to print new job card.
+[n]Time Tracking - New Window & table to be printed on job card, multiple entries - ask for new entry?
+[o]Employee automatically set from sign in
+[p]Machine Drop Down List
+[q]Item # Drop down box to link from description to choose from
+[r]If errors recorded job on dashboard show as red background white writing?

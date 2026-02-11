@@ -87,8 +87,12 @@ class ApiService {
   }
 
   // Jobcard endpoints
-  getJobcards() {
-    return this.request('/jobcards');
+  getJobcards(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.status) params.append('status', filters.status);
+    if (filters.archived) params.append('archived', 'true');
+    const query = params.toString();
+    return this.request(`/jobcards${query ? `?${query}` : ''}`);
   }
 
   getJobcard(id) {
@@ -99,6 +103,284 @@ class ApiService {
     return this.request(`/jobcards/${id}/history`);
   }
 
+  createJobcard(jobcardData) {
+    return this.request('/jobcards', {
+      method: 'POST',
+      body: JSON.stringify(jobcardData)
+    });
+  }
+
+  updateJobcard(id, jobcardData) {
+    return this.request(`/jobcards/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(jobcardData)
+    });
+  }
+
+  updateJobcardStatus(id, status) {
+    return this.request(`/jobcards/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status })
+    });
+  }
+
+  convertToJobcard(id) {
+    return this.request(`/jobcards/${id}/convert-to-jobcard`, {
+      method: 'POST'
+    });
+  }
+
+  archiveJobcard(id, invoicedDate) {
+    return this.request(`/jobcards/${id}/archive`, {
+      method: 'POST',
+      body: JSON.stringify({ invoiced_date: invoicedDate })
+    });
+  }
+
+  deleteJobcard(id) {
+    return this.request(`/jobcards/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  getOverdueJobcards() {
+    return this.request('/jobcards/overdue');
+  }
+
+  getArchivedJobcards() {
+    return this.request('/jobcards/archived');
+  }
+
+  // Job Items
+  addJobItem(jobcardId, itemData) {
+    return this.request(`/jobcards/${jobcardId}/items`, {
+      method: 'POST',
+      body: JSON.stringify(itemData)
+    });
+  }
+
+  updateJobItem(jobcardId, itemId, itemData) {
+    return this.request(`/jobcards/${jobcardId}/items/${itemId}`, {
+      method: 'PUT',
+      body: JSON.stringify(itemData)
+    });
+  }
+
+  deleteJobItem(jobcardId, itemId) {
+    return this.request(`/jobcards/${jobcardId}/items/${itemId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // Job Assignees
+  addAssignee(jobcardId, userId) {
+    return this.request(`/jobcards/${jobcardId}/assignees`, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId })
+    });
+  }
+
+  removeAssignee(jobcardId, userId) {
+    return this.request(`/jobcards/${jobcardId}/assignees/${userId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // Subcontracts
+  getSubcontracts(jobcardId) {
+    return this.request(`/jobcards/${jobcardId}/subcontracts`);
+  }
+
+  addSubcontract(jobcardId, subcontractData) {
+    return this.request(`/jobcards/${jobcardId}/subcontracts`, {
+      method: 'POST',
+      body: JSON.stringify(subcontractData)
+    });
+  }
+
+  updateSubcontract(jobcardId, subcontractId, subcontractData) {
+    return this.request(`/jobcards/${jobcardId}/subcontracts/${subcontractId}`, {
+      method: 'PUT',
+      body: JSON.stringify(subcontractData)
+    });
+  }
+
+  deleteSubcontract(jobcardId, subcontractId) {
+    return this.request(`/jobcards/${jobcardId}/subcontracts/${subcontractId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // Time Entries
+  getTimeEntries(jobcardId) {
+    return this.request(`/jobcards/${jobcardId}/time-entries`);
+  }
+
+  addTimeEntry(jobcardId, entryData) {
+    return this.request(`/jobcards/${jobcardId}/time-entries`, {
+      method: 'POST',
+      body: JSON.stringify(entryData)
+    });
+  }
+
+  updateTimeEntry(jobcardId, entryId, entryData) {
+    return this.request(`/jobcards/${jobcardId}/time-entries/${entryId}`, {
+      method: 'PUT',
+      body: JSON.stringify(entryData)
+    });
+  }
+
+  deleteTimeEntry(jobcardId, entryId) {
+    return this.request(`/jobcards/${jobcardId}/time-entries/${entryId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // Costing (admin only)
+  getCosting(jobcardId) {
+    return this.request(`/jobcards/${jobcardId}/costing`);
+  }
+
+  updateCosting(jobcardId, costingData) {
+    return this.request(`/jobcards/${jobcardId}/costing`, {
+      method: 'PUT',
+      body: JSON.stringify(costingData)
+    });
+  }
+
+  // Documents
+  getDocuments(jobcardId) {
+    return this.request(`/jobcards/${jobcardId}/documents`);
+  }
+
+  uploadDocument(jobcardId, documentData) {
+    return this.request(`/jobcards/${jobcardId}/documents`, {
+      method: 'POST',
+      body: JSON.stringify(documentData)
+    });
+  }
+
+  getDocument(jobcardId, documentId) {
+    return this.request(`/jobcards/${jobcardId}/documents/${documentId}`);
+  }
+
+  deleteDocument(jobcardId, documentId) {
+    return this.request(`/jobcards/${jobcardId}/documents/${documentId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // QA Forms
+  getQAForms(jobcardId) {
+    return this.request(`/jobcards/${jobcardId}/qa-forms`);
+  }
+
+  addQAForm(jobcardId, formData) {
+    return this.request(`/jobcards/${jobcardId}/qa-forms`, {
+      method: 'POST',
+      body: JSON.stringify(formData)
+    });
+  }
+
+  updateQAForm(jobcardId, formId, formData) {
+    return this.request(`/jobcards/${jobcardId}/qa-forms/${formId}`, {
+      method: 'PUT',
+      body: JSON.stringify(formData)
+    });
+  }
+
+  deleteQAForm(jobcardId, formId) {
+    return this.request(`/jobcards/${jobcardId}/qa-forms/${formId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // Customer endpoints
+  getCustomers(includeInactive = false) {
+    return this.request(`/customers${includeInactive ? '?includeInactive=true' : ''}`);
+  }
+
+  searchCustomers(query) {
+    return this.request(`/customers/search?q=${encodeURIComponent(query)}`);
+  }
+
+  getCustomer(id) {
+    return this.request(`/customers/${id}`);
+  }
+
+  createCustomer(customerData) {
+    return this.request('/customers', {
+      method: 'POST',
+      body: JSON.stringify(customerData)
+    });
+  }
+
+  updateCustomer(id, customerData) {
+    return this.request(`/customers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(customerData)
+    });
+  }
+
+  deactivateCustomer(id) {
+    return this.request(`/customers/${id}/deactivate`, {
+      method: 'POST'
+    });
+  }
+
+  activateCustomer(id) {
+    return this.request(`/customers/${id}/activate`, {
+      method: 'POST'
+    });
+  }
+
+  deleteCustomer(id) {
+    return this.request(`/customers/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // Supplier endpoints
+  getSuppliers(includeInactive = false) {
+    return this.request(`/suppliers${includeInactive ? '?includeInactive=true' : ''}`);
+  }
+
+  getSupplier(id) {
+    return this.request(`/suppliers/${id}`);
+  }
+
+  createSupplier(supplierData) {
+    return this.request('/suppliers', {
+      method: 'POST',
+      body: JSON.stringify(supplierData)
+    });
+  }
+
+  updateSupplier(id, supplierData) {
+    return this.request(`/suppliers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(supplierData)
+    });
+  }
+
+  deactivateSupplier(id) {
+    return this.request(`/suppliers/${id}/deactivate`, {
+      method: 'POST'
+    });
+  }
+
+  activateSupplier(id) {
+    return this.request(`/suppliers/${id}/activate`, {
+      method: 'POST'
+    });
+  }
+
+  deleteSupplier(id) {
+    return this.request(`/suppliers/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
   // Activity history (admin only)
   getActivityHistory(limit = 50) {
     return this.request(`/history?limit=${limit}`);
@@ -106,6 +388,31 @@ class ApiService {
 
   getUserActivity(userId, limit = 50) {
     return this.request(`/history/user/${userId}?limit=${limit}`);
+  }
+
+  // Machines
+  getMachines() {
+    return this.request('/machines');
+  }
+
+  createMachine(machineData) {
+    return this.request('/machines', {
+      method: 'POST',
+      body: JSON.stringify(machineData)
+    });
+  }
+
+  updateMachine(id, machineData) {
+    return this.request(`/machines/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(machineData)
+    });
+  }
+
+  deleteMachine(id) {
+    return this.request(`/machines/${id}`, {
+      method: 'DELETE'
+    });
   }
 
   // Hardware endpoints
@@ -119,6 +426,23 @@ class ApiService {
 
   getHardwareStatus() {
     return this.request('/hardware/status');
+  }
+
+  // Settings (admin only)
+  getSettings() {
+    return this.request('/settings');
+  }
+
+  updateSettings(settingsData) {
+    return this.request('/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settingsData)
+    });
+  }
+
+  // Scanner files
+  getScannerFiles(limit = 10) {
+    return this.request(`/scanner/files?limit=${limit}`);
   }
 }
 

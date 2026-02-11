@@ -6,6 +6,7 @@ import { db } from '../services/db';
 export default function Layout() {
   const { user, logout } = useAuth();
   const [syncStatus, setSyncStatus] = useState('offline');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('darkMode') === 'true';
   });
@@ -37,8 +38,11 @@ export default function Layout() {
     localStorage.setItem('darkMode', darkMode);
   }, [darkMode]);
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
+  // Close sidebar when clicking a nav link on mobile
+  const handleNavClick = () => {
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
   };
 
   const getInitials = (name) => {
@@ -52,7 +56,32 @@ export default function Layout() {
 
   return (
     <div className="app-layout">
-      <aside className="sidebar">
+      {/* Mobile Header */}
+      <header className="mobile-header">
+        <button
+          className="hamburger-btn"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          aria-label="Toggle menu"
+        >
+          <span className="hamburger-line"></span>
+          <span className="hamburger-line"></span>
+          <span className="hamburger-line"></span>
+        </button>
+        <h1 className="mobile-title">Job Card System</h1>
+        <div className="mobile-status">
+          <span className={`status-dot ${syncStatus}`}></span>
+        </div>
+      </header>
+
+      {/* Overlay for mobile */}
+      {sidebarOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        ></div>
+      )}
+
+      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-header">
           <h1>Job Card System</h1>
         </div>
@@ -68,7 +97,7 @@ export default function Layout() {
 
           <div className="connection-status">
             <span className={`status-dot ${syncStatus}`}></span>
-            <span>
+            <span className="status-text">
               {syncStatus === 'online' && 'Connected'}
               {syncStatus === 'offline' && 'Offline'}
               {syncStatus === 'syncing' && 'Syncing...'}
@@ -79,32 +108,58 @@ export default function Layout() {
         <nav className="sidebar-nav">
           <ul>
             <li>
-              <NavLink to="/" end>
-                Dashboard
+              <NavLink to="/" end onClick={handleNavClick}>
+                <span className="nav-icon">&#x1F4CA;</span>
+                <span className="nav-text">Dashboard</span>
               </NavLink>
             </li>
             <li>
-              <NavLink to="/jobcards">Job Cards</NavLink>
+              <NavLink to="/jobcards" onClick={handleNavClick}>
+                <span className="nav-icon">&#x1F4CB;</span>
+                <span className="nav-text">Job Cards</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/customers" onClick={handleNavClick}>
+                <span className="nav-icon">&#x1F464;</span>
+                <span className="nav-text">Customers</span>
+              </NavLink>
             </li>
             {user?.role === 'admin' && (
               <>
                 <li>
-                  <NavLink to="/users">Users</NavLink>
+                  <NavLink to="/suppliers" onClick={handleNavClick}>
+                    <span className="nav-icon">&#x1F3ED;</span>
+                    <span className="nav-text">Suppliers</span>
+                  </NavLink>
                 </li>
                 <li>
-                  <NavLink to="/activity">Activity Log</NavLink>
+                  <NavLink to="/users" onClick={handleNavClick}>
+                    <span className="nav-icon">&#x1F465;</span>
+                    <span className="nav-text">Users</span>
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/activity" onClick={handleNavClick}>
+                    <span className="nav-icon">&#x1F4DD;</span>
+                    <span className="nav-text">Activity Log</span>
+                  </NavLink>
                 </li>
               </>
             )}
             <li>
-              <NavLink to="/settings">Settings</NavLink>
+              <NavLink to="/settings" onClick={handleNavClick}>
+                <span className="nav-icon">&#x2699;</span>
+                <span className="nav-text">Settings</span>
+              </NavLink>
             </li>
           </ul>
         </nav>
 
         <div className="sidebar-footer">
-          <button className="btn btn-secondary" onClick={logout} style={{ width: '100%' }}>
-            Sign Out
+          <button className="btn btn-secondary signout-btn" onClick={logout}>
+            <span className="nav-icon">&#x1F6AA;</span>
+            <span className="nav-text">Sign Out</span>
           </button>
         </div>
       </aside>

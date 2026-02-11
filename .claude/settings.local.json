@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(chmod:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(cat:*)",
+      "Bash(git add:*)"
     ]
   }
 }

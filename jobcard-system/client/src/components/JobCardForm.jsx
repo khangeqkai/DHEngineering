@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../services/db';
+import PageHeader from './common/PageHeader';
 
 export default function JobCardForm() {
   const { id } = useParams();
@@ -244,19 +245,16 @@ export default function JobCardForm() {
 
   return (
     <div className="jobcard-form">
-      <div className="page-header">
-        <h1>{isEdit ? 'Edit Job Card' : 'New Job Card'}</h1>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {isEdit && (
-            <button className="btn btn-secondary" onClick={handlePrint}>
-              Print
-            </button>
-          )}
-          <button className="btn btn-secondary" onClick={() => navigate('/jobcards')}>
-            Cancel
+      <PageHeader title={isEdit ? 'Edit Job Card' : 'New Job Card'}>
+        {isEdit && (
+          <button className="btn btn-secondary" onClick={handlePrint}>
+            Print
           </button>
-        </div>
-      </div>
+        )}
+        <button className="btn btn-secondary" onClick={() => navigate('/jobcards')}>
+          Cancel
+        </button>
+      </PageHeader>
 
       <form onSubmit={handleSubmit}>
         <div className="form-grid">
@@ -448,18 +446,6 @@ export default function JobCardForm() {
       )}
 
       <style>{`
-        .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-        }
-
-        .page-header h1 {
-          font-size: 1.5rem;
-          font-weight: 600;
-        }
-
         .form-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
