@@ -1,27 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
-import { api } from '../../services/api';
 import { getDefaultCostingForm } from './mappers';
 
-export function useCosting(jobCardId) {
-  const [costing, setCosting] = useState(null);
+export function useCosting(jobCardId, { costing: offlineCosting, updateCosting } = {}) {
   const [costingForm, setCostingForm] = useState(getDefaultCostingForm());
   const [savingCosting, setSavingCosting] = useState(false);
 
-  // Sync costingForm from costing data
+  // Sync costingForm from costing data (from useOfflineJobcard)
   useEffect(() => {
-    if (costing) {
+    if (offlineCosting) {
       setCostingForm({
-        labour_hours: costing.labour_hours || 0,
-        labour_rate: costing.labour_rate || 0,
-        labour_special_hours: costing.labour_special_hours || 0,
-        labour_special_rate: costing.labour_special_rate || 0,
-        materials_cost: costing.materials_cost || 0,
-        materials_profit_percent: costing.materials_profit_percent || 100,
-        subcontractor_cost: costing.subcontractor_cost || 0,
-        subcontractor_profit_percent: costing.subcontractor_profit_percent || 0
+        labour_hours: offlineCosting.labour_hours || 0,
+        labour_rate: offlineCosting.labour_rate || 0,
+        labour_special_hours: offlineCosting.labour_special_hours || 0,
+        labour_special_rate: offlineCosting.labour_special_rate || 0,
+        materials_cost: offlineCosting.materials_cost || 0,
+        materials_profit_percent: offlineCosting.materials_profit_percent || 100,
+        subcontractor_cost: offlineCosting.subcontractor_cost || 0,
+        subcontractor_profit_percent: offlineCosting.subcontractor_profit_percent || 0
       });
     }
-  }, [costing]);
+  }, [offlineCosting]);
 
   const handleCostingChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -53,9 +51,12 @@ export function useCosting(jobCardId) {
         grand_total: totals.grandTotal
       };
 
-      await api.updateCosting(jobCardId, costingData);
-      const updatedCosting = await api.getCosting(jobCardId);
-      setCosting(updatedCosting);
+      // Use updateCosting operation from parent - data updates automatically via useLiveQuery
+      if (!updateCosting) {
+        throw new Error('updateCosting operation not provided');
+      }
+      await updateCosting(costingData);
+      // No need to manually reload - useLiveQuery updates automatically
       alert('Costing saved successfully');
     } catch (err) {
       console.error('Failed to save costing:', err);
@@ -63,46 +64,18 @@ export function useCosting(jobCardId) {
     } finally {
       setSavingCosting(false);
     }
-  }, [jobCardId, costingForm, calculateCostingTotals]);
-
-  const loadCosting = useCallback(async () => {
-    if (!jobCardId) return null;
-
-    try {
-      const costingData = await api.getCosting(jobCardId);
-      if (costingData) {
-        setCosting({
-          labour_hours: costingData.labourHours || 0,
-          labour_rate: costingData.labourRate || 0,
-          labour_special_hours: costingData.labourSpecialHours || 0,
-          labour_special_rate: costingData.labourSpecialRate || 0,
-          materials_cost: costingData.materialsCost || 0,
-          materials_profit_percent: costingData.materialsProfitPercent || 100,
-          subcontractor_cost: costingData.subcontractorCost || 0,
-          subcontractor_profit_percent: costingData.subcontractorProfitPercent || 0
-        });
-      }
-      return costingData;
-    } catch (err) {
-      console.error('Failed to load costing:', err);
-      return null;
-    }
-  }, [jobCardId]);
+  }, [jobCardId, costingForm, calculateCostingTotals, updateCosting]);
 
   const resetCosting = useCallback(() => {
-    setCosting(null);
     setCostingForm(getDefaultCostingForm());
   }, []);
 
   return {
-    costing,
-    setCosting,
     costingForm,
     savingCosting,
     handleCostingChange,
     calculateCostingTotals,
     handleSaveCosting,
-    loadCosting,
     resetCosting
   };
 }

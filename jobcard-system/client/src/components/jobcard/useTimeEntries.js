@@ -1,9 +1,7 @@
 import { useState, useCallback } from 'react';
-import { api } from '../../services/api';
-import { mapTimeEntryFromApi, getDefaultTimeEntryForm } from './mappers';
+import { getDefaultTimeEntryForm } from './mappers';
 
-export function useTimeEntries(jobCardId) {
-  const [timeEntries, setTimeEntries] = useState([]);
+export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry }) {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
   const [editingTimeEntryId, setEditingTimeEntryId] = useState(null);
   const [timeEntryForm, setTimeEntryForm] = useState(getDefaultTimeEntryForm());
@@ -82,59 +80,40 @@ export function useTimeEntries(jobCardId) {
       };
 
       if (editingTimeEntryId) {
-        await api.updateTimeEntry(jobCardId, editingTimeEntryId, entryData);
+        // Use operations passed from parent - data updates automatically via useLiveQuery
+        await updateTimeEntry(editingTimeEntryId, entryData);
       } else {
-        await api.addTimeEntry(jobCardId, entryData);
+        // Use operations passed from parent - data updates automatically via useLiveQuery
+        await addTimeEntry(entryData);
       }
 
-      // Reload time entries and map from camelCase
-      const entriesData = await api.getTimeEntries(jobCardId);
-      const mappedEntries = entriesData.map(mapTimeEntryFromApi);
-      setTimeEntries(mappedEntries);
+      // No need to manually reload - useLiveQuery updates automatically
       resetTimeEntryForm();
     } catch (err) {
       console.error('Failed to save time entry:', err);
       alert(err.message || 'Failed to save time entry');
     }
-  }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm]);
+  }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry]);
 
   const handleDeleteTimeEntry = useCallback(async (entryId) => {
     if (!confirm('Delete this time entry?')) return;
     if (!jobCardId) return;
 
     try {
-      await api.deleteTimeEntry(jobCardId, entryId);
-      const entriesData = await api.getTimeEntries(jobCardId);
-      const mappedEntries = entriesData.map(mapTimeEntryFromApi);
-      setTimeEntries(mappedEntries);
+      // Use operation passed from parent - data updates automatically via useLiveQuery
+      await deleteTimeEntry(entryId);
+      // No need to manually reload - useLiveQuery updates automatically
     } catch (err) {
       console.error('Failed to delete time entry:', err);
       alert(err.message || 'Failed to delete time entry');
     }
-  }, [jobCardId]);
-
-  const loadTimeEntries = useCallback(async () => {
-    if (!jobCardId) return [];
-
-    try {
-      const entriesData = await api.getTimeEntries(jobCardId);
-      const mappedEntries = entriesData.map(mapTimeEntryFromApi);
-      setTimeEntries(mappedEntries);
-      return mappedEntries;
-    } catch (err) {
-      console.error('Failed to load time entries:', err);
-      return [];
-    }
-  }, [jobCardId]);
+  }, [jobCardId, deleteTimeEntry]);
 
   const resetTimeEntries = useCallback(() => {
-    setTimeEntries([]);
     resetTimeEntryForm();
   }, [resetTimeEntryForm]);
 
   return {
-    timeEntries,
-    setTimeEntries,
     showTimeEntryForm,
     setShowTimeEntryForm,
     editingTimeEntryId,
@@ -145,7 +124,6 @@ export function useTimeEntries(jobCardId) {
     handleEditTimeEntry,
     handleSaveTimeEntry,
     handleDeleteTimeEntry,
-    loadTimeEntries,
     resetTimeEntries
   };
 }

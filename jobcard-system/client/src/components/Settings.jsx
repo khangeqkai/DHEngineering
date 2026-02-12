@@ -6,6 +6,9 @@ import PageHeader from './common/PageHeader';
 export default function Settings() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [appInfo, setAppInfo] = useState(null);
   const [printers, setPrinters] = useState([]);
   const [loadingPrinters, setLoadingPrinters] = useState(true);
@@ -13,26 +16,31 @@ export default function Settings() {
     return localStorage.getItem('darkMode') === 'true';
   });
 
-  // Scanner folder settings (admin only)
+  // Local state for scanner folder input (synced with settings)
   const [scannerFolder, setScannerFolder] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
-  useEffect(() => {
-    loadAppInfo();
-    loadPrinters();
-    if (isAdmin) {
-      loadSettings();
-    }
-  }, [isAdmin]);
-
+  // Load settings from API
   const loadSettings = async () => {
     try {
-      const settings = await api.getSettings();
-      setScannerFolder(settings.scanner_folder || '');
+      setLoading(true);
+      const data = await api.getSettings();
+      setSettings(data);
+      if (data && data.scanner_folder !== undefined) {
+        setScannerFolder(data.scanner_folder || '');
+      }
     } catch (err) {
       console.error('Failed to load settings:', err);
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadSettings();
+    loadAppInfo();
+    loadPrinters();
+  }, []);
 
   const handleSelectScannerFolder = async () => {
     if (window.electronAPI?.selectFolder) {
@@ -53,6 +61,7 @@ export default function Settings() {
     setSavingSettings(true);
     try {
       await api.updateSettings({ scanner_folder: scannerFolder });
+      await loadSettings();
       alert('Settings saved successfully');
     } catch (err) {
       console.error('Failed to save settings:', err);

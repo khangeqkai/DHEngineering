@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-DH Engineering Job Card System - A full-stack Electron/React/Express application for managing job cards, quotes, customers, suppliers, and manufacturing operations. Designed for offline-first desktop use with LAN sync capability.
+DH Engineering Job Card System - A full-stack Electron/React/Express application for managing job cards, quotes, customers, suppliers, and manufacturing operations. Designed for LAN-connected desktop use with a central server.
 
 ## Development Commands
 
@@ -39,7 +39,6 @@ cd server && npm run dev
 - **Frontend**: React 18 + React Router, Vite bundler, Electron 27
 - **Backend**: Express 4, better-sqlite3 (synchronous SQLite)
 - **Auth**: JWT (7-day expiry), bcryptjs password hashing
-- **Offline**: Dexie (IndexedDB wrapper) for client-side caching
 
 ### Directory Structure
 ```
@@ -52,7 +51,8 @@ jobcard-system/
 │   │   │   │   └── use*.js       # Custom hooks (useCosting, useTimeEntries, etc.)
 │   │   │   └── common/           # Reusable components
 │   │   ├── context/AuthContext.jsx  # JWT + user state
-│   │   └── services/api.js       # Centralized API client
+│   │   └── services/
+│   │       └── api.js            # Direct API client to Express server
 │   └── electron/                 # Electron main/preload
 ├── server/
 │   ├── src/
@@ -85,10 +85,10 @@ All changes logged to `history` table for audit trail.
 
 ## Key Patterns
 
+- **Direct API**: All components use `api.js` to communicate directly with the Express server. Components load data on mount and refresh after mutations.
 - **JobCardModal**: Modular tab-based UI with custom hooks for each tab's logic (`useCosting.js`, `useTimeEntries.js`, `useSubcontracts.js`, `useCamera.js`)
-- **API client**: All backend calls go through `client/src/services/api.js` which handles auth headers and base URL
 - **Prepared statements**: Database queries use better-sqlite3 prepared statements defined in `database.js`
-- **History tracking**: Use `recordHistory()` for all data mutations to maintain audit trail
+- **History tracking**: Use `recordHistory()` for server-side data mutations to maintain audit trail
 
 ## Architectural Guidelines
 
@@ -100,7 +100,6 @@ All changes logged to `history` table for audit trail.
 
 ### Separation of Concerns
 - **Custom hooks** (`use*.js`): Encapsulate domain logic (state, handlers, API calls)
-- **Mappers** (`mappers.js`): Transform data between API and internal formats
 - **Constants** (`constants.js`): Enum-like values, dropdown options, form templates
 - **Tab/Section components**: Presentational, receive all data via props, minimal logic
 - **Orchestrator components**: Coordinate child components, manage shared state
@@ -118,15 +117,26 @@ All changes logged to `history` table for audit trail.
 | Constants | UPPER_SNAKE_CASE | `JOB_TYPES` |
 
 ### Data Flow Convention
-Database (snake_case) → API response (camelCase) → Mapper → Internal state (snake_case)
 
-Use mapper functions in `mappers.js` to convert between formats explicitly.
+**Standard API flow:**
+```
+User Action → API Request → Express Server → SQLite Database
+     ↑                                              ↓
+Component ← JSON Response ← Express Response ←──────┘
+```
+
+- API requests/responses use camelCase (JavaScript convention)
+- Database uses snake_case (SQL convention)
+- Components manage local state with useState
+- Reload data after mutations to ensure UI is up-to-date
 
 ### Required Patterns
-- **Audit trail**: Call `recordHistory()` for all data mutations
+- **Direct API calls**: Use `api.js` methods for all server communication
+- **Audit trail**: Call `recordHistory()` for all server-side data mutations
 - **Prepared statements**: Use queries defined in `database.js`, never inline SQL
 - **Error handling**: Try-catch with `console.error()` and user-friendly alert
 - **Form state**: Single state object + unified `handleChange` handler
+- **Data refresh**: Call load function after each mutation to refresh UI
 
 ## Environment Variables
 

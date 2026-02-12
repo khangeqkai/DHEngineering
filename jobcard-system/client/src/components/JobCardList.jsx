@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
@@ -30,37 +30,37 @@ const PRIORITY_COLORS = {
 };
 
 export default function JobCardList() {
-  const [jobCards, setJobCards] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
+  const [jobcards, setJobcards] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadJobCards();
-  }, [showArchived]);
-
-  const loadJobCards = async () => {
+  const loadJobcards = async () => {
     try {
-      const cards = showArchived
-        ? await api.getArchivedJobcards()
-        : await api.getJobcards();
-      setJobCards(cards.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+      setLoading(true);
+      const data = await api.getJobcards(showArchived);
+      setJobcards(data);
     } catch (err) {
       console.error('Failed to load job cards:', err);
+      alert(err.message || 'Failed to load job cards');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadJobcards();
+  }, [showArchived]);
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this job card?')) return;
 
     try {
       await api.deleteJobcard(id);
-      await loadJobCards();
+      await loadJobcards();
     } catch (err) {
       console.error('Failed to delete job card:', err);
       alert(err.message || 'Failed to delete job card');
@@ -73,8 +73,8 @@ export default function JobCardList() {
     if (!invoiceDate) return;
 
     try {
-      await api.archiveJobcard(id, invoiceDate);
-      await loadJobCards();
+      await api.archiveJobcard(id);
+      await loadJobcards();
     } catch (err) {
       console.error('Failed to archive job card:', err);
       alert(err.message || 'Failed to archive job card');
@@ -93,15 +93,18 @@ export default function JobCardList() {
     }
   };
 
-  const filteredCards = jobCards.filter((card) => {
-    const matchesFilter = filter === 'all' || card.status === filter;
-    const matchesSearch =
-      !search ||
-      card.job_number?.toLowerCase().includes(search.toLowerCase()) ||
-      card.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
-      card.description?.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
+  // Filter job cards based on status filter and search
+  const filteredCards = useMemo(() => {
+    return jobcards.filter((card) => {
+      const matchesFilter = filter === 'all' || card.status === filter;
+      const matchesSearch =
+        !search ||
+        card.job_number?.toLowerCase().includes(search.toLowerCase()) ||
+        card.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+        card.description?.toLowerCase().includes(search.toLowerCase());
+      return matchesFilter && matchesSearch;
+    });
+  }, [jobcards, filter, search]);
 
   const openCreateModal = () => {
     setEditingCardId(null);
@@ -114,7 +117,7 @@ export default function JobCardList() {
   };
 
   const handleModalSuccess = () => {
-    loadJobCards();
+    loadJobcards();
   };
 
   if (loading) {

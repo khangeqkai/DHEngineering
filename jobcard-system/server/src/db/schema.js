@@ -296,6 +296,28 @@ const migrations = [
   { table: 'jobcards', column: 'contact_name', type: 'TEXT' },
   { table: 'jobcards', column: 'contact_phone', type: 'TEXT' },
   { table: 'jobcards', column: 'contact_email', type: 'TEXT' },
+  // Sync-related columns for offline-first support
+  { table: 'customers', column: '_version', type: 'INTEGER DEFAULT 1' },
+  { table: 'customers', column: '_device_id', type: 'TEXT' },
+  { table: 'suppliers', column: '_version', type: 'INTEGER DEFAULT 1' },
+  { table: 'suppliers', column: '_device_id', type: 'TEXT' },
+  { table: 'users', column: '_version', type: 'INTEGER DEFAULT 1' },
+  { table: 'users', column: '_device_id', type: 'TEXT' },
+  { table: 'machines', column: '_version', type: 'INTEGER DEFAULT 1' },
+  { table: 'machines', column: '_device_id', type: 'TEXT' },
+  { table: 'machines', column: 'updated_at', type: 'TEXT' },
+  { table: 'jobcards', column: '_version', type: 'INTEGER DEFAULT 1' },
+  { table: 'jobcards', column: '_device_id', type: 'TEXT' },
+  { table: 'job_items', column: '_version', type: 'INTEGER DEFAULT 1' },
+  { table: 'job_items', column: '_device_id', type: 'TEXT' },
+  { table: 'subcontracts', column: '_version', type: 'INTEGER DEFAULT 1' },
+  { table: 'subcontracts', column: '_device_id', type: 'TEXT' },
+  { table: 'time_entries', column: '_version', type: 'INTEGER DEFAULT 1' },
+  { table: 'time_entries', column: '_device_id', type: 'TEXT' },
+  { table: 'job_costings', column: '_version', type: 'INTEGER DEFAULT 1' },
+  { table: 'job_costings', column: '_device_id', type: 'TEXT' },
+  { table: 'qa_forms', column: '_version', type: 'INTEGER DEFAULT 1' },
+  { table: 'qa_forms', column: '_device_id', type: 'TEXT' },
 ];
 
 for (const migration of migrations) {

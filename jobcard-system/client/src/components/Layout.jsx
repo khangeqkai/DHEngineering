@@ -1,32 +1,13 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../services/db';
 
 export default function Layout() {
   const { user, logout } = useAuth();
-  const [syncStatus, setSyncStatus] = useState('offline');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('darkMode') === 'true';
   });
-
-  useEffect(() => {
-    // Start database sync
-    const stopSync = db.startSync();
-
-    // Listen for sync status changes
-    const unsubscribe = db.onSyncEvent((type, data) => {
-      if (type === 'status') {
-        setSyncStatus(data);
-      }
-    });
-
-    return () => {
-      stopSync();
-      unsubscribe();
-    };
-  }, []);
 
   useEffect(() => {
     // Apply dark mode
@@ -68,9 +49,6 @@ export default function Layout() {
           <span className="hamburger-line"></span>
         </button>
         <h1 className="mobile-title">Job Card System</h1>
-        <div className="mobile-status">
-          <span className={`status-dot ${syncStatus}`}></span>
-        </div>
       </header>
 
       {/* Overlay for mobile */}
@@ -93,15 +71,6 @@ export default function Layout() {
               <div className="user-name">{user?.name}</div>
               <div className="user-role">{user?.role}</div>
             </div>
-          </div>
-
-          <div className="connection-status">
-            <span className={`status-dot ${syncStatus}`}></span>
-            <span className="status-text">
-              {syncStatus === 'online' && 'Connected'}
-              {syncStatus === 'offline' && 'Offline'}
-              {syncStatus === 'syncing' && 'Syncing...'}
-            </span>
           </div>
         </div>
 

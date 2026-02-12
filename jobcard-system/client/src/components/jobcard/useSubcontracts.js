@@ -1,9 +1,7 @@
 import { useState, useCallback } from 'react';
-import { api } from '../../services/api';
-import { mapSubcontractFromApi, getDefaultSubcontractForm } from './mappers';
+import { getDefaultSubcontractForm } from './mappers';
 
-export function useSubcontracts(jobCardId) {
-  const [subcontracts, setSubcontracts] = useState([]);
+export function useSubcontracts(jobCardId, { addSubcontract, updateSubcontract, deleteSubcontract } = {}) {
   const [showSubcontractForm, setShowSubcontractForm] = useState(false);
   const [editingSubcontractId, setEditingSubcontractId] = useState(null);
   const [subcontractForm, setSubcontractForm] = useState(getDefaultSubcontractForm());
@@ -47,45 +45,46 @@ export function useSubcontracts(jobCardId) {
 
     try {
       if (editingSubcontractId) {
-        await api.updateSubcontract(jobCardId, editingSubcontractId, subcontractForm);
+        // Use operation passed from parent
+        if (updateSubcontract) {
+          await updateSubcontract(editingSubcontractId, subcontractForm);
+        }
       } else {
-        await api.addSubcontract(jobCardId, subcontractForm);
+        // Use operation passed from parent
+        if (addSubcontract) {
+          await addSubcontract(subcontractForm);
+        }
       }
 
-      // Reload and map subcontracts from API response
-      const subsData = await api.getSubcontracts(jobCardId);
-      const mappedSubs = subsData.map(mapSubcontractFromApi);
-      setSubcontracts(mappedSubs);
+      // No need to manually reload - useLiveQuery updates automatically
       resetSubcontractForm();
     } catch (err) {
       console.error('Failed to save subcontract:', err);
       alert(err.message || 'Failed to save subcontract');
     }
-  }, [jobCardId, subcontractForm, editingSubcontractId, resetSubcontractForm]);
+  }, [jobCardId, subcontractForm, editingSubcontractId, resetSubcontractForm, addSubcontract, updateSubcontract]);
 
   const handleDeleteSubcontract = useCallback(async (subId) => {
     if (!confirm('Delete this subcontract?')) return;
     if (!jobCardId) return;
 
     try {
-      await api.deleteSubcontract(jobCardId, subId);
-      const subsData = await api.getSubcontracts(jobCardId);
-      const mappedSubs = subsData.map(mapSubcontractFromApi);
-      setSubcontracts(mappedSubs);
+      // Use operation passed from parent
+      if (deleteSubcontract) {
+        await deleteSubcontract(subId);
+      }
+      // No need to manually reload - useLiveQuery updates automatically
     } catch (err) {
       console.error('Failed to delete subcontract:', err);
       alert(err.message || 'Failed to delete subcontract');
     }
-  }, [jobCardId]);
+  }, [jobCardId, deleteSubcontract]);
 
   const resetSubcontracts = useCallback(() => {
-    setSubcontracts([]);
     resetSubcontractForm();
   }, [resetSubcontractForm]);
 
   return {
-    subcontracts,
-    setSubcontracts,
     showSubcontractForm,
     setShowSubcontractForm,
     editingSubcontractId,

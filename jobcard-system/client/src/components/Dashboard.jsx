@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
@@ -21,59 +21,58 @@ const PRIORITY_COLORS = {
 };
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({
-    total: 0,
-    quotes: 0,
-    open: 0,
-    inProgress: 0,
-    onHold: 0,
-    done: 0,
-    overdue: 0
-  });
-  const [recentCards, setRecentCards] = useState([]);
-  const [overdueCards, setOverdueCards] = useState([]);
+  const [jobcards, setJobcards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  // Load job cards from API
+  const loadJobcards = async () => {
     try {
-      const allCards = await api.getJobcards();
-
-      // Calculate stats
-      const today = new Date().toISOString().split('T')[0];
-      const overdueList = allCards.filter(c =>
-        c.dueDate && c.dueDate < today &&
-        !['DONE', 'INVOICED'].includes(c.status)
-      );
-
-      setStats({
-        total: allCards.length,
-        quotes: allCards.filter(c => c.status === 'QUOTE').length,
-        open: allCards.filter(c => c.status === 'OPEN').length,
-        inProgress: allCards.filter(c => c.status === 'IN_PROGRESS').length,
-        onHold: allCards.filter(c => c.status === 'ON_HOLD').length,
-        done: allCards.filter(c => c.status === 'DONE').length,
-        overdue: overdueList.length
-      });
-
-      setOverdueCards(overdueList.slice(0, 5));
-
-      // Get recent cards (sorted by date, limit 5)
-      const sorted = [...allCards].sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      );
-      setRecentCards(sorted.slice(0, 5));
-    } catch (err) {
-      console.error('Failed to load dashboard data:', err);
+      setLoading(true);
+      const data = await api.getJobcards();
+      setJobcards(data);
+    } catch (error) {
+      console.error('Failed to load job cards:', error);
+      alert('Failed to load job cards. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadJobcards();
+  }, []);
+
+  // Calculate stats and derived data from live query results
+  const { stats, overdueCards, recentCards } = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Note: jobcards from hook use snake_case (due_date, not dueDate)
+    const overdueList = jobcards.filter(c =>
+      c.due_date && c.due_date < today &&
+      !['DONE', 'INVOICED'].includes(c.status)
+    );
+
+    const calculatedStats = {
+      total: jobcards.length,
+      quotes: jobcards.filter(c => c.status === 'QUOTE').length,
+      open: jobcards.filter(c => c.status === 'OPEN').length,
+      inProgress: jobcards.filter(c => c.status === 'IN_PROGRESS').length,
+      onHold: jobcards.filter(c => c.status === 'ON_HOLD').length,
+      done: jobcards.filter(c => c.status === 'DONE').length,
+      overdue: overdueList.length
+    };
+
+    // Get recent cards (already sorted by created_at desc in the hook)
+    const recent = jobcards.slice(0, 5);
+
+    return {
+      stats: calculatedStats,
+      overdueCards: overdueList.slice(0, 5),
+      recentCards: recent
+    };
+  }, [jobcards]);
 
   const openCreateModal = () => {
     setEditingCardId(null);
@@ -86,7 +85,8 @@ export default function Dashboard() {
   };
 
   const handleModalSuccess = () => {
-    loadData();
+    // Reload job cards when modal closes with success
+    loadJobcards();
   };
 
   const getStatusBadgeClass = (status) => {
@@ -169,17 +169,17 @@ export default function Dashboard() {
                           openEditModal(card.id);
                         }}
                       >
-                        {card.jobNumber}
+                        {card.job_number}
                       </a>
                     </td>
                     <td>
-                      {card.customerName || '-'}
-                      {card.customerIsCritical && (
+                      {card.customer_name || '-'}
+                      {card.customer_is_critical && (
                         <span className="critical-badge">Critical</span>
                       )}
                     </td>
                     <td className="overdue-date">
-                      {new Date(card.dueDate).toLocaleDateString()}
+                      {new Date(card.due_date).toLocaleDateString()}
                     </td>
                     <td>
                       <span style={{ color: PRIORITY_COLORS[card.priority] || PRIORITY_COLORS.NONE }}>
@@ -220,8 +220,8 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {recentCards.map((card) => {
-                  const isOverdue = card.dueDate &&
-                    new Date(card.dueDate) < new Date() &&
+                  const isOverdue = card.due_date &&
+                    new Date(card.due_date) < new Date() &&
                     !['DONE', 'INVOICED'].includes(card.status);
 
                   return (
@@ -234,16 +234,16 @@ export default function Dashboard() {
                             openEditModal(card.id);
                           }}
                         >
-                          {card.jobNumber}
+                          {card.job_number}
                         </a>
                       </td>
                       <td>
-                        {card.customerName || '-'}
-                        {card.customerIsCritical && (
+                        {card.customer_name || '-'}
+                        {card.customer_is_critical && (
                           <span className="critical-badge">Critical</span>
                         )}
                       </td>
-                      <td>{card.jobType || '-'}</td>
+                      <td>{card.job_type || '-'}</td>
                       <td>
                         <span className={`badge ${getStatusBadgeClass(card.status)}`}>
                           {STATUS_LABELS[card.status] || card.status}
@@ -255,7 +255,7 @@ export default function Dashboard() {
                         </span>
                       </td>
                       <td className={isOverdue ? 'overdue-date' : ''}>
-                        {card.dueDate ? new Date(card.dueDate).toLocaleDateString() : '-'}
+                        {card.due_date ? new Date(card.due_date).toLocaleDateString() : '-'}
                       </td>
                     </tr>
                   );

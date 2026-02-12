@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 
@@ -20,20 +20,28 @@ export default function SupplierManagement() {
   });
   const [saving, setSaving] = useState(false);
 
+  // Load suppliers on mount
   useEffect(() => {
     loadSuppliers();
-  }, [showInactive]);
+  }, []);
 
   const loadSuppliers = async () => {
     try {
-      const data = await api.getSuppliers(showInactive);
+      setLoading(true);
+      const data = await api.getSuppliers();
       setSuppliers(data);
     } catch (err) {
       console.error('Failed to load suppliers:', err);
+      alert(err.message || 'Failed to load suppliers');
     } finally {
       setLoading(false);
     }
   };
+
+  // Filter suppliers based on showInactive toggle
+  const filteredSuppliers = showInactive
+    ? suppliers
+    : suppliers.filter(s => s.active === 1 || s.active === true);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,7 +66,7 @@ export default function SupplierManagement() {
   const handleEdit = (supplier) => {
     setEditingSupplier(supplier);
     setFormData({
-      name: supplier.name,
+      name: supplier.name || '',
       contact_name: supplier.contact_name || '',
       contact_phone: supplier.contact_phone || '',
       contact_email: supplier.contact_email || '',
@@ -260,14 +268,14 @@ export default function SupplierManagement() {
               </tr>
             </thead>
             <tbody>
-              {suppliers.length === 0 ? (
+              {filteredSuppliers.length === 0 ? (
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No suppliers found
                   </td>
                 </tr>
               ) : (
-                suppliers.map((supplier) => (
+                filteredSuppliers.map((supplier) => (
                   <tr key={supplier.id} style={{ opacity: supplier.active ? 1 : 0.6 }}>
                     <td>
                       <strong>{supplier.name}</strong>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 
@@ -19,20 +19,28 @@ export default function CustomerManagement() {
   });
   const [saving, setSaving] = useState(false);
 
+  // Load customers on mount
   useEffect(() => {
     loadCustomers();
-  }, [showInactive]);
+  }, []);
 
   const loadCustomers = async () => {
+    setLoading(true);
     try {
-      const data = await api.getCustomers(showInactive);
+      const data = await api.getCustomers(true); // includeInactive = true
       setCustomers(data);
     } catch (err) {
       console.error('Failed to load customers:', err);
+      alert('Failed to load customers');
     } finally {
       setLoading(false);
     }
   };
+
+  // Filter customers based on showInactive toggle
+  const filteredCustomers = showInactive
+    ? customers
+    : customers.filter(c => c.active === 1 || c.active === true);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,7 +65,7 @@ export default function CustomerManagement() {
   const handleEdit = (customer) => {
     setEditingCustomer(customer);
     setFormData({
-      name: customer.name,
+      name: customer.name || customer.company_name || '',
       contact_name: customer.contact_name || '',
       contact_phone: customer.contact_phone || '',
       contact_email: customer.contact_email || '',
@@ -246,14 +254,14 @@ export default function CustomerManagement() {
               </tr>
             </thead>
             <tbody>
-              {customers.length === 0 ? (
+              {filteredCustomers.length === 0 ? (
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No customers found
                   </td>
                 </tr>
               ) : (
-                customers.map((customer) => (
+                filteredCustomers.map((customer) => (
                   <tr key={customer.id} style={{ opacity: customer.active ? 1 : 0.6 }}>
                     <td>
                       <strong>{customer.name}</strong>
