@@ -1,0 +1,127 @@
+const { db } = require('../connection');
+
+// Jobcard queries
+const jobcardQueries = {
+  getById: db.prepare('SELECT * FROM jobcards WHERE id = ?'),
+  getByJobNumber: db.prepare('SELECT * FROM jobcards WHERE job_number = ?'),
+
+  getAll: db.prepare(`
+    SELECT j.*, c.name as customer_name, c.is_critical_qa as customer_is_critical
+    FROM jobcards j
+    LEFT JOIN customers c ON j.customer_id = c.id
+    WHERE j.archived = 0
+    ORDER BY j.created_at DESC
+  `),
+
+  getByStatus: db.prepare(`
+    SELECT j.*, c.name as customer_name, c.is_critical_qa as customer_is_critical
+    FROM jobcards j
+    LEFT JOIN customers c ON j.customer_id = c.id
+    WHERE j.status = ? AND j.archived = 0
+    ORDER BY j.created_at DESC
+  `),
+
+  getArchived: db.prepare(`
+    SELECT j.*, c.name as customer_name
+    FROM jobcards j
+    LEFT JOIN customers c ON j.customer_id = c.id
+    WHERE j.archived = 1
+    ORDER BY j.invoiced_date DESC
+  `),
+
+  getByCustomer: db.prepare(`
+    SELECT j.*, c.name as customer_name
+    FROM jobcards j
+    LEFT JOIN customers c ON j.customer_id = c.id
+    WHERE j.customer_id = ?
+    ORDER BY j.created_at DESC
+  `),
+
+  getOverdue: db.prepare(`
+    SELECT j.*, c.name as customer_name
+    FROM jobcards j
+    LEFT JOIN customers c ON j.customer_id = c.id
+    WHERE j.due_date < date('now') AND j.status NOT IN ('DONE', 'INVOICED') AND j.archived = 0
+    ORDER BY j.due_date ASC
+  `),
+
+  create: db.prepare(`
+    INSERT INTO jobcards (
+      id, job_number, card_type, status, customer_id,
+      contact_name, contact_phone, contact_email,
+      quality_level, job_type, priority, po_number, quote_reference,
+      drawings_type, customer_property, description, due_date,
+      is_repeat_job, repeat_job_reference, treatment_required, treatment_other,
+      notes, photos, created_by, updated_by, created_at, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+  `),
+
+  update: db.prepare(`
+    UPDATE jobcards SET
+      card_type = ?, status = ?, customer_id = ?,
+      contact_name = ?, contact_phone = ?, contact_email = ?,
+      quality_level = ?, job_type = ?, priority = ?, po_number = ?, quote_reference = ?,
+      drawings_type = ?, customer_property = ?, description = ?, due_date = ?,
+      is_repeat_job = ?, repeat_job_reference = ?, treatment_required = ?, treatment_other = ?,
+      notes = ?, photos = ?, updated_by = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `),
+
+  updateStatus: db.prepare(`
+    UPDATE jobcards SET status = ?, updated_by = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `),
+
+  archive: db.prepare(`
+    UPDATE jobcards SET archived = 1, invoiced_date = ?, updated_by = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `),
+
+  delete: db.prepare('DELETE FROM jobcards WHERE id = ?')
+};
+
+// Job items queries
+const jobItemQueries = {
+  getByJobcard: db.prepare('SELECT * FROM job_items WHERE jobcard_id = ? ORDER BY item_number ASC'),
+  getNextItemNumber: db.prepare('SELECT COALESCE(MAX(item_number), 0) + 1 as next FROM job_items WHERE jobcard_id = ?'),
+
+  create: db.prepare(`
+    INSERT INTO job_items (id, jobcard_id, item_number, qty, description, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+  `),
+
+  update: db.prepare(`
+    UPDATE job_items SET qty = ?, description = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `),
+
+  delete: db.prepare('DELETE FROM job_items WHERE id = ?'),
+  deleteByJobcard: db.prepare('DELETE FROM job_items WHERE jobcard_id = ?')
+};
+
+// Job assignees queries
+const jobAssigneeQueries = {
+  getByJobcard: db.prepare(`
+    SELECT ja.*, u.name as user_name, u.username
+    FROM job_assignees ja
+    JOIN users u ON ja.user_id = u.id
+    WHERE ja.jobcard_id = ?
+    ORDER BY ja.assigned_at ASC
+  `),
+
+  create: db.prepare(`
+    INSERT INTO job_assignees (id, jobcard_id, user_id, assigned_at)
+    VALUES (?, ?, ?, datetime('now'))
+  `),
+
+  delete: db.prepare('DELETE FROM job_assignees WHERE id = ?'),
+  deleteByJobcard: db.prepare('DELETE FROM job_assignees WHERE jobcard_id = ?'),
+  deleteByJobcardAndUser: db.prepare('DELETE FROM job_assignees WHERE jobcard_id = ? AND user_id = ?')
+};
+
+module.exports = {
+  jobcardQueries,
+  jobItemQueries,
+  jobAssigneeQueries
+};
