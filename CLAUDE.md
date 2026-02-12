@@ -36,9 +36,9 @@ cd server && npm run dev
 ## Architecture
 
 ### Stack
-- **Frontend**: React 18 + React Router, Vite bundler, Electron 27
-- **Backend**: Express 4, better-sqlite3 (synchronous SQLite)
-- **Auth**: JWT (7-day expiry), bcryptjs password hashing
+- **Frontend**: React 18 + React Router, Vite bundler, Electron 27, react-hot-toast (notifications)
+- **Backend**: Express 4, better-sqlite3 (synchronous SQLite), pino (logging), express-validator, express-rate-limit
+- **Auth**: JWT (7-day expiry), bcryptjs password hashing, rate-limited login (5 attempts/15 min)
 
 ### Directory Structure
 ```
@@ -48,7 +48,7 @@ jobcard-system/
 │   │   ├── components/           # React components
 │   │   │   ├── jobcard/          # JobCardModal + tabs (modular)
 │   │   │   │   ├── tabs/         # 7 tab components
-│   │   │   │   └── use*.js       # Custom hooks (useCosting, useTimeEntries, etc.)
+│   │   │   │   └── use*.js       # Custom hooks (useCosting, useTimeEntries, useJobCardForm, useCustomerSearch, etc.)
 │   │   │   └── common/           # Reusable components
 │   │   ├── context/AuthContext.jsx  # JWT + user state
 │   │   └── services/
@@ -57,7 +57,11 @@ jobcard-system/
 ├── server/
 │   ├── src/
 │   │   ├── config.js             # Port, JWT, DB path settings
-│   │   ├── middleware/auth.js    # JWT verification + role checking
+│   │   ├── middleware/
+│   │   │   ├── auth.js           # JWT verification + role checking + rate limiting
+│   │   │   └── validation.js     # express-validator reusable validators
+│   │   ├── utils/
+│   │   │   └── logger.js         # Pino structured logging
 │   │   ├── db/
 │   │   │   ├── database.js       # SQLite schemas + prepared statements
 │   │   │   └── init.js           # Migrations + seeding
@@ -86,9 +90,12 @@ All changes logged to `history` table for audit trail.
 ## Key Patterns
 
 - **Direct API**: All components use `api.js` to communicate directly with the Express server. Components load data on mount and refresh after mutations.
-- **JobCardModal**: Modular tab-based UI with custom hooks for each tab's logic (`useCosting.js`, `useTimeEntries.js`, `useSubcontracts.js`, `useCamera.js`)
+- **JobCardModal**: Modular tab-based UI with custom hooks for each tab's logic (`useCosting.js`, `useTimeEntries.js`, `useSubcontracts.js`, `useCamera.js`, `useJobCardForm.js`, `useCustomerSearch.js`)
 - **Prepared statements**: Database queries use better-sqlite3 prepared statements defined in `database.js`
 - **History tracking**: Use `recordHistory()` for server-side data mutations to maintain audit trail
+- **Input validation**: Use `express-validator` middleware from `validation.js` for request validation
+- **Structured logging**: Use `logger` from `utils/logger.js` instead of `console.error()` for server-side logging
+- **Toast notifications**: Use `react-hot-toast` for user feedback instead of `alert()`
 
 ## Architectural Guidelines
 
@@ -134,9 +141,12 @@ Component ← JSON Response ← Express Response ←──────┘
 - **Direct API calls**: Use `api.js` methods for all server communication
 - **Audit trail**: Call `recordHistory()` for all server-side data mutations
 - **Prepared statements**: Use queries defined in `database.js`, never inline SQL
-- **Error handling**: Try-catch with `console.error()` and user-friendly alert
+- **Server error handling**: Try-catch with `logger.error()` from `utils/logger.js`
+- **Client error handling**: Use `toast.error()` from `react-hot-toast` (not `alert()`)
+- **Input validation**: Use validators from `middleware/validation.js` for new routes
 - **Form state**: Single state object + unified `handleChange` handler
 - **Data refresh**: Call load function after each mutation to refresh UI
+- **React hooks**: Use `useCallback` for functions passed to useEffect dependencies or child components
 
 ## Environment Variables
 
@@ -145,4 +155,15 @@ PORT=3000                    # Server port
 HOST=0.0.0.0                 # Server host (0.0.0.0 for LAN access)
 JWT_SECRET=your-secret       # Production JWT signing key
 JWT_EXPIRES_IN=7d            # Token expiration
+LOG_LEVEL=info               # Logging level (debug, info, warn, error)
+NODE_ENV=production          # Environment (development uses pretty logs)
 ```
+
+## Security Features
+
+- **Rate limiting**: Login (5 attempts/15 min) and user creation (10 attempts/15 min) per IP
+- **Password policy**: Minimum 8 characters required for new users
+- **Input validation**: All API inputs validated with express-validator
+- **JWT authentication**: 7-day token expiry with role-based access control
+- **Audit trail**: All data mutations logged to history table (including failed login attempts)
+- **Prepared statements**: All database queries use prepared statements (SQL injection protection)
