@@ -1086,7 +1086,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
                   {/* Status & Type Row */}
                   <div className="form-section">
-                    <h3 className="form-section-title">Classification</h3>
+                    <h3 className="form-section-title" data-section="01">Classification</h3>
                     <div className="form-row">
                       <div className="form-group">
                         <label>Card Type</label>
@@ -1116,7 +1116,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
                   {/* Customer Section - All fields shown, with autocomplete on company name */}
                   <div className="form-section">
-                    <h3 className="form-section-title">Customer <span className="required">*</span></h3>
+                    <h3 className="form-section-title" data-section="02">Customer <span className="required">*</span></h3>
 
                     {/* Selected customer indicator */}
                     {customer && (
@@ -1210,7 +1210,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
                   {/* Job Details Section */}
                   <div className="form-section">
-                    <h3 className="form-section-title">Job Details</h3>
+                    <h3 className="form-section-title" data-section="03">Job Details</h3>
                     <div className="form-row">
                       <div className="form-group">
                         <label>Quality Level</label>
@@ -1237,7 +1237,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
                   {/* References */}
                   <div className="form-section">
-                    <h3 className="form-section-title">References</h3>
+                    <h3 className="form-section-title" data-section="04">References</h3>
                     <div className="form-row">
                       <div className="form-group">
                         <label>PO Number</label>
@@ -1323,7 +1323,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
                   {/* Description */}
                   <div className="form-section">
-                    <h3 className="form-section-title">Description</h3>
+                    <h3 className="form-section-title" data-section="05">Description</h3>
                     <div className="form-group">
                       <textarea
                         name="description"
@@ -1364,7 +1364,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   {!isEdit && (
                     <div className="form-section">
                       <div className="form-section-header">
-                        <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
+                        <h3 className="form-section-title" data-section="06">Line Items <span className="required">*</span></h3>
                         <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}>+ Add</button>
                       </div>
                       {lineItems.map((item, idx) => (
@@ -1394,7 +1394,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
                   {/* Assignees */}
                   <div className="form-section">
-                    <h3 className="form-section-title">Assignees</h3>
+                    <h3 className="form-section-title" data-section="07">Assignees</h3>
                     <div className="assignees-grid">
                       {employees.map(emp => {
                         const isAssigned = assignees.some(a => a.user_id === emp.id);
@@ -1414,7 +1414,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
                   {/* Treatment & Repeat */}
                   <div className="form-section">
-                    <h3 className="form-section-title">Treatment & Repeat Job</h3>
+                    <h3 className="form-section-title" data-section="08">Treatment & Repeat Job</h3>
                     <div className="form-group">
                       <label>Treatment Required</label>
                       <div className="checkbox-grid">
@@ -1481,7 +1481,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   {/* Subcontracts */}
                   <div className="form-section">
                     <div className="form-section-header">
-                      <h3 className="form-section-title">Subcontracts</h3>
+                      <h3 className="form-section-title" data-section="09">Subcontracts</h3>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
@@ -1595,7 +1595,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
                   {/* Notes */}
                   <div className="form-section">
-                    <h3 className="form-section-title">Internal Notes</h3>
+                    <h3 className="form-section-title" data-section="10">Internal Notes</h3>
                     <div className="form-group">
                       <textarea
                         name="notes"
@@ -1614,7 +1614,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 <div className="modal-form-grid">
                   <div className="form-section">
                     <div className="form-section-header">
-                      <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
+                      <h3 className="form-section-title" data-section="06">Line Items <span className="required">*</span></h3>
                       <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}>+ Add Item</button>
                     </div>
                     <div className="items-table">
@@ -1712,7 +1712,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   {/* Subcontracts List */}
                   <div className="form-section">
                     <div className="form-section-header">
-                      <h3 className="form-section-title">Subcontracts</h3>
+                      <h3 className="form-section-title" data-section="09">Subcontracts</h3>
                       {!showSubcontractForm && (
                         <button type="button" className="btn btn-primary btn-sm" onClick={handleAddSubcontract}>
                           + Add Subcontract
@@ -1890,7 +1890,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   {/* Time Entries List */}
                   <div className="form-section">
                     <div className="form-section-header">
-                      <h3 className="form-section-title">Time Entries</h3>
+                      <h3 className="form-section-title" data-section="T1">Time Entries</h3>
                       {!showTimeEntryForm && (
                         <button type="button" className="btn btn-primary btn-sm" onClick={handleAddTimeEntry}>
                           + Add Entry
@@ -1958,7 +1958,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               {activeTab === 'costing' && isEdit && isAdmin && (
                 <div className="modal-form-grid">
                   <div className="form-section">
-                    <h3 className="form-section-title">Job Costing (Admin Only)</h3>
+                    <h3 className="form-section-title" data-section="$">Job Costing (Admin Only)</h3>
 
                     {/* Labour */}
                     <div className="costing-row">
@@ -2053,7 +2053,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               {activeTab === 'qa' && isEdit && (
                 <div className="modal-form-grid">
                   <div className="form-section">
-                    <h3 className="form-section-title">QA Forms & Documents</h3>
+                    <h3 className="form-section-title" data-section="QA">QA Forms & Documents</h3>
 
                     {formData.quality_level === 'CRITICAL' && (
                       <div className="critical-qa-notice">
@@ -2139,7 +2139,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 <div className="modal-form-grid">
                   <div className="form-section">
                     <div className="form-section-header">
-                      <h3 className="form-section-title">Photos</h3>
+                      <h3 className="form-section-title" data-section="PH">Photos</h3>
                       {!cameraActive ? (
                         <button type="button" className="btn btn-secondary btn-sm" onClick={startCamera}>Open Camera</button>
                       ) : (
@@ -2194,71 +2194,142 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       )}
 
       <style>{`
+        /* =============================================
+           INDUSTRIAL THEME - Job Card Modal Styles
+           ============================================= */
+
+        /* Tab Navigation - Machine Mode Selector */
         .modal-tabs {
           display: flex;
-          gap: 0.25rem;
-          padding: 0.5rem 0;
+          gap: 0;
+          padding: 0;
           margin-bottom: 1rem;
-          border-bottom: 1px solid var(--border-color);
+          background: var(--surface-inset);
+          border-bottom: 2px solid var(--border-strong);
           overflow-x: auto;
         }
 
         .tab {
-          padding: 0.5rem 1rem;
+          position: relative;
+          padding: 0.75rem 1.25rem;
           border: none;
-          background: none;
+          background: transparent;
           color: var(--text-secondary);
+          font-family: var(--font-mono);
+          font-size: var(--text-sm);
           font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wide);
           cursor: pointer;
-          border-radius: 0.375rem;
           white-space: nowrap;
+          transition: all var(--duration-fast) ease;
+          border-bottom: 2px solid transparent;
+          margin-bottom: -2px;
         }
 
         .tab:hover {
-          background: var(--background);
+          background: rgba(0, 0, 0, 0.03);
+          color: var(--text-primary);
         }
 
         .tab.active {
-          background: var(--primary-color);
-          color: white;
+          background: var(--surface);
+          color: var(--primary-accent);
+          border-bottom-color: var(--primary-accent);
         }
 
+        /* Form Grid Layout */
         .modal-form-grid {
           display: flex;
           flex-direction: column;
           gap: 1rem;
         }
 
+        /* Form Section - Industrial Panel */
         .form-section {
-          background: var(--background);
-          border-radius: 0.5rem;
-          padding: 1rem;
+          background: var(--surface);
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          padding: 0;
           position: relative;
           overflow: visible;
         }
 
-        .required {
-          color: var(--danger-color);
+        .form-section > *:not(.form-section-title):not(.form-section-header) {
+          padding-left: 1rem;
+          padding-right: 1rem;
+        }
+
+        .form-section > *:last-child {
+          padding-bottom: 1rem;
+        }
+
+        /* Section Title - Technical Drawing Style */
+        .form-section-title {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.625rem 1rem;
+          margin: 0 0 0.75rem 0;
+          background: var(--surface-inset);
+          border-bottom: 2px solid var(--border-strong);
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
           font-weight: 600;
+          color: var(--text-primary);
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wider);
         }
 
-        .field-required {
-          border-color: var(--warning-color) !important;
-        }
-
-        .field-required:focus {
-          border-color: var(--primary-color) !important;
-        }
-
-        .header-section {
+        /* Section Number Badge */
+        .form-section-title::before {
+          content: attr(data-section);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 1.75rem;
+          height: 1.75rem;
+          padding: 0 0.25rem;
           background: var(--primary-color);
-          color: white;
+          color: var(--text-inverse);
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
+          font-weight: 700;
+          border-radius: 2px;
+        }
+
+        .form-section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0;
+          padding: 0 !important;
+        }
+
+        .form-section-header .form-section-title {
+          flex: 1;
+        }
+
+        .form-section-header .btn {
+          margin-right: 1rem;
+        }
+
+        /* Header Section - Job Number Display */
+        .header-section {
+          background: linear-gradient(180deg, #4b5563 0%, #374151 100%);
+          color: var(--text-inverse);
+          border-color: var(--primary-color);
+        }
+
+        .header-section .form-section-title {
+          display: none;
         }
 
         .job-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
+          padding: 1rem !important;
         }
 
         .job-number-display {
@@ -2267,61 +2338,100 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         }
 
         .job-number-display .label {
-          font-size: 0.75rem;
-          opacity: 0.8;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wider);
+          opacity: 0.7;
         }
 
         .job-number-display .value {
-          font-size: 1.25rem;
+          font-family: var(--font-mono);
+          font-size: var(--text-2xl);
           font-weight: 700;
+          letter-spacing: var(--tracking-wide);
         }
 
-        .form-section-title {
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: var(--text-secondary);
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          margin: 0 0 0.75rem 0;
-        }
-
-        .form-section-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+        /* Form Row Layouts */
+        .form-row {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+          gap: 1rem;
           margin-bottom: 0.75rem;
         }
 
-        .form-section-header .form-section-title {
-          margin: 0;
-        }
-
-        .form-row {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-          gap: 0.75rem;
-        }
-
+        /* Form Group */
         .form-group {
           display: flex;
           flex-direction: column;
-          gap: 0.25rem;
+          gap: 0.375rem;
+          margin-bottom: 0;
         }
 
         .form-group label {
-          font-size: 0.75rem;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
           font-weight: 500;
           color: var(--text-secondary);
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wide);
         }
 
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+          padding: 0.625rem 0.875rem;
+          font-family: var(--font-sans);
+          font-size: var(--text-base);
+          background: var(--surface);
+          border: 1px solid var(--border-color);
+          border-radius: 2px;
+          box-shadow: var(--shadow-inset);
+          transition: all var(--duration-fast) ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+          outline: none;
+          border-color: var(--border-focus);
+          box-shadow: var(--shadow-inset), 0 0 0 3px rgba(14, 165, 233, 0.15);
+          transform: translateY(-1px);
+        }
+
+        /* Required Indicator */
+        .required {
+          color: var(--accent-caution);
+          font-weight: 700;
+        }
+
+        /* Field States */
+        .field-required {
+          border-color: var(--accent-safety) !important;
+          background: rgba(234, 179, 8, 0.05) !important;
+        }
+
+        .field-required:focus {
+          border-color: var(--border-focus) !important;
+        }
+
+        .field-selected {
+          border-color: var(--accent-ready) !important;
+          background: rgba(34, 197, 94, 0.05) !important;
+        }
+
+        /* Checkbox Group */
         .checkbox-group label {
           flex-direction: row;
           align-items: center;
           gap: 0.5rem;
-          font-size: 0.875rem;
+          font-size: var(--text-sm);
           cursor: pointer;
+          text-transform: none;
+          letter-spacing: normal;
         }
 
+        /* Checkbox Grid - Chip Style */
         .checkbox-grid {
           display: flex;
           flex-wrap: wrap;
@@ -2333,12 +2443,13 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           align-items: center;
           gap: 0.375rem;
           padding: 0.375rem 0.75rem;
-          background: var(--card-background);
+          background: var(--surface);
           border: 1px solid var(--border-color);
-          border-radius: 1rem;
-          font-size: 0.8125rem;
+          border-radius: 2px;
+          font-family: var(--font-sans);
+          font-size: var(--text-sm);
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all var(--duration-fast) ease;
         }
 
         .checkbox-chip input {
@@ -2346,46 +2457,47 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         }
 
         .checkbox-chip:hover {
-          border-color: var(--primary-color);
+          border-color: var(--primary-accent);
+          background: rgba(14, 165, 233, 0.05);
         }
 
         .checkbox-chip.selected {
-          background: var(--primary-color);
-          border-color: var(--primary-color);
+          background: var(--primary-accent);
+          border-color: var(--primary-accent);
           color: white;
         }
 
-        .customer-search-container {
-          position: relative;
-          z-index: 50;
+        .checkbox-chip:active {
+          transform: scale(0.97);
         }
 
-        .customer-search-container input {
-          width: 100%;
-          padding-right: 2.5rem;
-        }
-
-        .customer-search-container .clear-btn {
-          position: absolute;
-          right: 0.5rem;
-          top: 50%;
-          transform: translateY(-50%);
-          border: none;
-          background: var(--danger-color);
-          color: white;
-          font-size: 1rem;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          cursor: pointer;
+        /* Checkbox Inline */
+        .checkbox-inline {
           display: flex;
           align-items: center;
-          justify-content: center;
-          line-height: 1;
+          gap: 0.5rem;
+          cursor: pointer;
+          font-weight: normal;
+          height: 38px;
+          text-transform: none;
+          letter-spacing: normal;
         }
 
-        .customer-search-container .clear-btn:hover {
-          background: #dc2626;
+        .checkbox-inline input[type="checkbox"] {
+          width: 18px;
+          height: 18px;
+          cursor: pointer;
+          accent-color: var(--primary-accent);
+        }
+
+        .checkbox-inline input[type="checkbox"]:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        /* Customer Autocomplete */
+        .autocomplete-container {
+          position: relative;
         }
 
         .customer-dropdown {
@@ -2394,22 +2506,33 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           left: 0;
           right: 0;
           background: var(--surface);
-          border: 2px solid var(--primary-color);
-          border-radius: 0.5rem;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+          border: 2px solid var(--primary-accent);
+          border-radius: 2px;
+          box-shadow: var(--shadow-lg);
           z-index: 9999;
           max-height: 250px;
           overflow-y: auto;
         }
 
+        .dropdown-hint {
+          padding: 0.5rem 0.75rem;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
+          color: var(--text-secondary);
+          background: var(--surface-inset);
+          border-bottom: 1px solid var(--border-color);
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wide);
+        }
+
         .customer-option {
-          padding: 0.875rem 1rem;
+          padding: 0.75rem 1rem;
           cursor: pointer;
           display: flex;
           justify-content: space-between;
           align-items: center;
           border-bottom: 1px solid var(--border-color);
-          transition: background 0.15s;
+          transition: all var(--duration-fast) ease;
         }
 
         .customer-option:last-child {
@@ -2417,124 +2540,94 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         }
 
         .customer-option:hover {
-          background: var(--primary-color);
+          background: var(--primary-accent);
           color: white;
         }
 
         .customer-option:hover .badge-critical {
           background: white;
-          color: var(--danger-color);
+          color: var(--accent-caution);
         }
 
-        .customer-option.no-results {
-          color: var(--text-secondary);
-          font-style: italic;
-          cursor: default;
-        }
-
-        .customer-option.no-results:hover {
-          background: transparent;
-          color: var(--text-secondary);
-        }
-
-        .badge-critical {
-          background: var(--danger-color);
-          color: white;
-          font-size: 0.625rem;
-          padding: 0.125rem 0.5rem;
-          border-radius: 1rem;
-          font-weight: 600;
-          text-transform: uppercase;
-        }
-
-        .critical-warning {
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid var(--danger-color);
-          color: var(--danger-color);
-          padding: 0.5rem 0.75rem;
-          border-radius: 0.375rem;
-          font-size: 0.75rem;
-          margin-top: 0.5rem;
-        }
-
-        /* Autocomplete container */
-        .autocomplete-container {
-          position: relative;
-        }
-
-        .checkbox-inline {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          cursor: pointer;
-          font-weight: normal;
-          height: 38px;
-        }
-
-        .checkbox-inline input[type="checkbox"] {
-          width: 18px;
-          height: 18px;
-          cursor: pointer;
-        }
-
-        .checkbox-inline input[type="checkbox"]:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        /* Selected customer banner */
+        /* Selected Customer Banner */
         .selected-customer-banner {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 0.75rem;
-          background: rgba(59, 130, 246, 0.1);
-          border: 1px solid var(--primary-color);
-          border-radius: 0.375rem;
-          margin-bottom: 0.75rem;
-          font-size: 0.875rem;
+          gap: 0.75rem;
+          padding: 0.75rem 1rem;
+          margin: 0.75rem 1rem;
+          background: rgba(14, 165, 233, 0.08);
+          border: 1px solid var(--primary-accent);
+          border-left: 3px solid var(--primary-accent);
+          border-radius: 2px;
+          font-size: var(--text-sm);
         }
 
         .selected-customer-banner .btn-link {
           margin-left: auto;
           background: none;
           border: none;
-          color: var(--primary-color);
+          color: var(--primary-accent);
           cursor: pointer;
-          font-size: 0.875rem;
-          text-decoration: underline;
+          font-size: var(--text-sm);
+          font-weight: 500;
+          text-decoration: none;
         }
 
         .selected-customer-banner .btn-link:hover {
-          color: var(--primary-dark, #1d4ed8);
+          text-decoration: underline;
         }
 
-        /* Field states */
-        .field-selected {
-          border-color: var(--primary-color) !important;
-          background: rgba(59, 130, 246, 0.05);
+        /* Critical QA Warning - Hazard Stripes */
+        .critical-warning {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin: 0.5rem 1rem;
+          padding: 0.75rem 1rem;
+          background: repeating-linear-gradient(
+            -45deg,
+            transparent,
+            transparent 10px,
+            rgba(234, 179, 8, 0.1) 10px,
+            rgba(234, 179, 8, 0.1) 20px
+          );
+          border: 2px solid var(--accent-safety);
+          border-radius: 2px;
+          font-family: var(--font-mono);
+          font-size: var(--text-sm);
+          font-weight: 600;
+          color: var(--accent-safety);
         }
 
-        /* Dropdown hint */
-        .dropdown-hint {
-          padding: 0.5rem 0.75rem;
-          font-size: 0.75rem;
-          color: var(--text-secondary);
-          background: var(--background);
-          border-bottom: 1px solid var(--border-color);
-          font-style: italic;
+        .critical-warning::before {
+          content: '\\26A0';
+          font-size: 1rem;
         }
 
-        /* Contact fields inline */
+        /* Badge Critical */
+        .badge-critical {
+          background: var(--accent-safety);
+          color: #1f2937;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
+          font-weight: 700;
+          padding: 0.125rem 0.5rem;
+          border-radius: 2px;
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wide);
+        }
+
+        /* Contact Fields */
         .contact-fields-inline {
-          margin-top: 0.75rem;
+          margin: 0.75rem 1rem;
           padding-top: 0.75rem;
           border-top: 1px solid var(--border-color);
         }
 
         .field-note {
-          font-size: 0.75rem;
-          color: var(--text-secondary);
+          font-size: var(--text-xs);
+          color: var(--text-tertiary);
           margin-bottom: 0.5rem;
           font-style: italic;
         }
@@ -2543,17 +2636,187 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           margin-bottom: 0;
         }
 
-        /* Subcontracts in create mode */
+        /* Priority High */
+        .priority-high {
+          border-color: var(--accent-caution) !important;
+          color: var(--accent-caution);
+        }
+
+        /* Overdue */
+        .overdue {
+          border-color: var(--accent-caution) !important;
+        }
+
+        .overdue-text {
+          color: var(--accent-caution);
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wide);
+        }
+
+        /* Line Items */
+        .line-item-row {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .item-num {
+          font-family: var(--font-mono);
+          font-weight: 700;
+          color: var(--primary-accent);
+          min-width: 36px;
+        }
+
+        /* Button Icon Override for Modal */
+        .btn-icon {
+          width: 32px;
+          height: 32px;
+          padding: 0;
+          border-radius: 2px;
+          cursor: pointer;
+          font-size: 1rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--surface-inset);
+          border: 1px solid var(--border-color);
+          color: var(--text-primary);
+          transition: all var(--duration-fast) ease;
+        }
+
+        .btn-icon:hover {
+          background: var(--surface);
+          border-color: var(--border-strong);
+        }
+
+        .btn-icon.danger {
+          background: var(--accent-caution);
+          border-color: var(--accent-caution);
+          color: white;
+        }
+
+        .btn-icon.danger:hover {
+          background: #dc2626;
+        }
+
+        /* Assignees Grid */
+        .assignees-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          padding: 0 1rem 0.75rem 1rem;
+        }
+
+        .assignee-chip {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          padding: 0.375rem 0.75rem;
+          background: var(--surface);
+          border: 1px solid var(--border-color);
+          border-radius: 2px;
+          font-size: var(--text-sm);
+          cursor: pointer;
+          transition: all var(--duration-fast) ease;
+        }
+
+        .assignee-chip input {
+          display: none;
+        }
+
+        .assignee-chip:hover {
+          border-color: var(--primary-accent);
+        }
+
+        .assignee-chip.selected {
+          background: var(--primary-accent);
+          border-color: var(--primary-accent);
+          color: white;
+        }
+
+        /* Items Table - Engineering Spreadsheet */
+        .items-table {
+          border: 1px solid var(--border-strong);
+          border-radius: 2px;
+          overflow: hidden;
+          margin: 0 1rem 0.75rem 1rem;
+        }
+
+        .items-header {
+          display: grid;
+          grid-template-columns: 60px 80px 1fr 44px;
+          gap: 0;
+          background: var(--surface-inset);
+          border-bottom: 2px solid var(--border-strong);
+        }
+
+        .items-header span {
+          padding: 0.5rem 0.75rem;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wide);
+          color: var(--text-secondary);
+          border-right: 1px solid var(--border-color);
+        }
+
+        .items-header span:last-child {
+          border-right: none;
+        }
+
+        .items-row {
+          display: grid;
+          grid-template-columns: 60px 80px 1fr 44px;
+          gap: 0;
+          border-bottom: 1px solid var(--border-color);
+        }
+
+        .items-row:last-child {
+          border-bottom: none;
+        }
+
+        .items-row > * {
+          padding: 0.5rem 0.75rem;
+          border-right: 1px solid var(--border-color);
+          display: flex;
+          align-items: center;
+        }
+
+        .items-row > *:last-child {
+          border-right: none;
+          justify-content: center;
+        }
+
+        .items-row input {
+          border: none;
+          background: transparent;
+          padding: 0;
+          box-shadow: none;
+          width: 100%;
+        }
+
+        .items-row input:focus {
+          outline: none;
+          transform: none;
+        }
+
+        /* Subcontracts */
         .subcontracts-list {
           display: flex;
           flex-direction: column;
           gap: 0.75rem;
+          padding: 0 1rem 0.75rem 1rem;
         }
 
         .subcontract-card {
           background: var(--surface);
           border: 1px solid var(--border-color);
-          border-radius: 0.5rem;
+          border-radius: 2px;
           padding: 0.75rem;
         }
 
@@ -2578,153 +2841,59 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         .subcontract-display .subcontract-dates {
           display: flex;
           gap: 1rem;
-          font-size: 0.75rem;
+          font-size: var(--text-xs);
           color: var(--text-secondary);
+          font-family: var(--font-mono);
         }
 
         .empty-state {
           text-align: center;
-          padding: 1rem;
-          color: var(--text-secondary);
+          padding: 1.5rem 1rem;
+          color: var(--text-tertiary);
           font-style: italic;
-          font-size: 0.875rem;
+          font-size: var(--text-sm);
         }
 
+        /* Status Badges */
         .badge-pending {
-          background: var(--warning-color, #f59e0b);
-          color: white;
+          background: var(--accent-safety);
+          color: #1f2937;
         }
 
         .badge-sent {
-          background: var(--info-color, #3b82f6);
+          background: var(--primary-accent);
           color: white;
         }
 
         .badge-received {
-          background: var(--success-color);
+          background: var(--accent-ready);
           color: white;
         }
 
-        .priority-high {
-          border-color: var(--danger-color) !important;
-          color: var(--danger-color);
-        }
-
-        .overdue {
-          border-color: var(--danger-color) !important;
-        }
-
-        .overdue-text {
-          color: var(--danger-color);
-          font-size: 0.75rem;
-          font-weight: 600;
-        }
-
-        .line-item-row {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          margin-bottom: 0.5rem;
-        }
-
-        .item-num {
-          font-weight: 600;
-          color: var(--text-secondary);
-          min-width: 30px;
-        }
-
-        .btn-icon {
-          width: 28px;
-          height: 28px;
-          padding: 0;
-          border: none;
-          border-radius: 50%;
-          cursor: pointer;
-          font-size: 1rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .btn-icon.danger {
-          background: var(--danger-color);
-          color: white;
-        }
-
-        .assignees-grid {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-        }
-
-        .assignee-chip {
-          display: flex;
-          align-items: center;
-          gap: 0.375rem;
-          padding: 0.375rem 0.75rem;
-          background: var(--card-background);
-          border: 1px solid var(--border-color);
-          border-radius: 1rem;
-          font-size: 0.875rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .assignee-chip input {
-          display: none;
-        }
-
-        .assignee-chip.selected {
-          background: var(--primary-color);
-          border-color: var(--primary-color);
-          color: white;
-        }
-
-        .items-table {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .items-header {
-          display: grid;
-          grid-template-columns: 60px 80px 1fr 40px;
-          gap: 0.5rem;
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: var(--text-secondary);
-          padding: 0.5rem 0;
-          border-bottom: 1px solid var(--border-color);
-        }
-
-        .items-row {
-          display: grid;
-          grid-template-columns: 60px 80px 1fr 40px;
-          gap: 0.5rem;
-          align-items: center;
-        }
-
+        /* Time Entries List */
         .time-entries-list {
           display: flex;
           flex-direction: column;
           gap: 0.75rem;
+          padding: 0 1rem 0.75rem 1rem;
         }
 
         .time-entry-form {
-          border: 2px solid var(--primary-color);
+          border: 2px solid var(--primary-accent);
           background: var(--surface);
+          border-radius: 2px;
         }
 
         .time-entry-card {
-          background: var(--card-background);
+          background: var(--surface);
           padding: 1rem;
-          border-radius: 0.5rem;
+          border-radius: 2px;
           border: 1px solid var(--border-color);
         }
 
         .time-entry-card.has-error {
-          background: rgba(239, 68, 68, 0.1);
-          border-color: var(--danger-color);
+          background: rgba(239, 68, 68, 0.08);
+          border-color: var(--accent-caution);
         }
 
         .time-entry-card .entry-header {
@@ -2741,21 +2910,27 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           gap: 0.5rem;
         }
 
-        .user-name {
+        .time-entry-card .user-name {
+          font-family: var(--font-sans);
           font-weight: 600;
         }
 
         .entry-date {
-          font-size: 0.75rem;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
           color: var(--text-secondary);
         }
 
         .machine-badge, .item-badge {
-          font-size: 0.6875rem;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
+          font-weight: 600;
           padding: 0.125rem 0.5rem;
-          border-radius: 1rem;
-          background: var(--primary-color);
+          border-radius: 2px;
+          background: var(--primary-accent);
           color: white;
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wide);
         }
 
         .entry-actions {
@@ -2770,79 +2945,81 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         }
 
         .entry-description {
-          font-size: 0.875rem;
+          font-size: var(--text-sm);
         }
 
         .entry-time {
-          font-size: 0.75rem;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
           color: var(--text-secondary);
         }
 
         .entry-time .duration {
           margin-left: 0.5rem;
-          font-weight: 500;
-          color: var(--primary-color);
+          font-weight: 600;
+          color: var(--primary-accent);
         }
 
         .entry-special-ops {
           display: flex;
           flex-wrap: wrap;
           gap: 0.5rem;
-          font-size: 0.6875rem;
         }
 
         .entry-special-ops span {
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
           padding: 0.125rem 0.5rem;
-          border-radius: 0.25rem;
+          border-radius: 2px;
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wide);
         }
 
         .status-ok {
-          background: rgba(34, 197, 94, 0.1);
-          color: var(--success-color);
+          background: rgba(34, 197, 94, 0.15);
+          color: var(--accent-ready);
         }
 
         .status-pending {
-          background: rgba(234, 179, 8, 0.1);
-          color: var(--warning-color);
+          background: rgba(234, 179, 8, 0.15);
+          color: #a16207;
         }
 
         .status-error {
-          background: rgba(239, 68, 68, 0.2);
-          color: var(--danger-color);
-          font-weight: 600;
+          background: rgba(239, 68, 68, 0.15);
+          color: var(--accent-caution);
+          font-weight: 700;
         }
 
         .special-ops-section, .scrap-rate-section {
           margin-top: 1rem;
           padding: 1rem;
-          background: var(--card-background);
-          border-radius: 0.5rem;
+          background: var(--surface-inset);
+          border-radius: 2px;
           border: 1px solid var(--border-color);
         }
 
         .special-ops-section h4, .scrap-rate-section h4 {
-          font-size: 0.8125rem;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
           font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wide);
           margin: 0 0 0.75rem 0;
           color: var(--text-primary);
         }
 
-        /* Subcontract styles */
+        /* Subcontract styles (Edit Mode) */
         .subcontract-form {
-          border: 2px solid var(--primary-color);
+          border: 2px solid var(--primary-accent);
           background: var(--surface);
-        }
-
-        .subcontracts-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
+          border-radius: 2px;
         }
 
         .subcontract-card {
-          background: var(--card-background);
+          background: var(--surface);
           padding: 1rem;
-          border-radius: 0.5rem;
+          border-radius: 2px;
           border: 1px solid var(--border-color);
         }
 
@@ -2860,17 +3037,18 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         .subcontract-dates {
           display: flex;
           gap: 1rem;
-          font-size: 0.75rem;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
           color: var(--text-secondary);
           margin-bottom: 0.5rem;
         }
 
         .subcontract-notes {
-          font-size: 0.8125rem;
+          font-size: var(--text-sm);
           color: var(--text-secondary);
-          background: var(--background);
+          background: var(--surface-inset);
           padding: 0.5rem;
-          border-radius: 0.25rem;
+          border-radius: 2px;
           margin-bottom: 0.5rem;
         }
 
@@ -2880,25 +3058,45 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           justify-content: flex-end;
         }
 
-        .badge-pending { background: var(--warning-color); color: white; }
-        .badge-sent { background: var(--primary-color); color: white; }
-        .badge-in_progress { background: #8b5cf6; color: white; }
-        .badge-received { background: var(--success-color); color: white; }
-        .badge-complete { background: #22c55e; color: white; }
+        /* Subcontract Status Badges */
+        .badge-in_progress {
+          background: #8b5cf6;
+          color: white;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
+          font-weight: 600;
+          padding: 0.125rem 0.5rem;
+          border-radius: 2px;
+          text-transform: uppercase;
+        }
+
+        .badge-complete {
+          background: var(--accent-ready);
+          color: white;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
+          font-weight: 600;
+          padding: 0.125rem 0.5rem;
+          border-radius: 2px;
+          text-transform: uppercase;
+        }
 
         /* Costing styles */
         .costing-row {
           display: flex;
           align-items: center;
           gap: 1rem;
-          padding: 0.75rem 0;
+          padding: 0.75rem 1rem;
           border-bottom: 1px solid var(--border-color);
         }
 
         .costing-label {
-          min-width: 120px;
+          min-width: 140px;
+          font-family: var(--font-mono);
           font-weight: 600;
-          font-size: 0.875rem;
+          font-size: var(--text-sm);
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wide);
         }
 
         .costing-inputs {
@@ -2914,16 +3112,21 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         }
 
         .costing-field label {
-          font-size: 0.6875rem;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
           color: var(--text-secondary);
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wide);
         }
 
         .costing-field input {
           width: 100px;
           padding: 0.5rem;
           border: 1px solid var(--border-color);
-          border-radius: 0.25rem;
-          font-size: 0.875rem;
+          border-radius: 2px;
+          font-family: var(--font-mono);
+          font-size: var(--text-sm);
+          box-shadow: var(--shadow-inset);
         }
 
         .costing-field.total {
@@ -2931,9 +3134,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         }
 
         .costing-total {
-          font-weight: 600;
-          color: var(--primary-color);
-          font-size: 0.9375rem;
+          font-family: var(--font-mono);
+          font-weight: 700;
+          color: var(--primary-accent);
+          font-size: var(--text-base);
           padding: 0.5rem 0;
         }
 
@@ -2941,38 +3145,50 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-top: 1rem;
+          margin: 1rem;
           padding: 1rem;
-          background: var(--primary-color);
-          border-radius: 0.5rem;
+          background: linear-gradient(180deg, #4b5563 0%, #374151 100%);
+          border-radius: 2px;
           color: white;
+          border-bottom: 3px solid #1f2937;
         }
 
         .costing-grand-total .costing-label {
           color: white;
-          font-size: 1rem;
+          font-size: var(--text-base);
         }
 
         .grand-total-value {
-          font-size: 1.5rem;
+          font-family: var(--font-mono);
+          font-size: var(--text-2xl);
           font-weight: 700;
         }
 
         /* QA Forms styles */
         .critical-qa-notice {
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid var(--danger-color);
-          color: var(--danger-color);
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin: 0 1rem 1rem 1rem;
           padding: 0.75rem 1rem;
-          border-radius: 0.5rem;
-          font-size: 0.875rem;
-          margin-bottom: 1rem;
+          background: repeating-linear-gradient(
+            -45deg,
+            transparent,
+            transparent 10px,
+            rgba(239, 68, 68, 0.08) 10px,
+            rgba(239, 68, 68, 0.08) 20px
+          );
+          border: 2px solid var(--accent-caution);
+          border-radius: 2px;
+          font-size: var(--text-sm);
+          color: var(--accent-caution);
         }
 
         .qa-forms-list {
           display: flex;
           flex-direction: column;
           gap: 0.5rem;
+          padding: 0 1rem 0.75rem 1rem;
         }
 
         .qa-form-row {
@@ -2980,8 +3196,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           justify-content: space-between;
           align-items: center;
           padding: 0.75rem 1rem;
-          background: var(--card-background);
-          border-radius: 0.5rem;
+          background: var(--surface);
+          border-radius: 2px;
           border: 1px solid var(--border-color);
         }
 
@@ -2992,13 +3208,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         }
 
         .qa-form-code {
+          font-family: var(--font-mono);
           font-weight: 700;
-          font-size: 0.875rem;
-          color: var(--primary-color);
+          font-size: var(--text-sm);
+          color: var(--primary-accent);
         }
 
         .qa-form-name {
-          font-size: 0.75rem;
+          font-size: var(--text-xs);
           color: var(--text-secondary);
         }
 
@@ -3009,72 +3226,88 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         }
 
         .qa-status {
+          font-family: var(--font-mono);
           padding: 0.25rem 0.75rem;
-          border-radius: 1rem;
-          font-size: 0.75rem;
-          font-weight: 500;
+          border-radius: 2px;
+          font-size: var(--text-xs);
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wide);
         }
 
         .qa-status.status-pending {
-          background: var(--warning-color);
-          color: white;
+          background: var(--accent-safety);
+          color: #1f2937;
         }
 
         .qa-status.status-complete {
-          background: var(--success-color);
+          background: var(--accent-ready);
           color: white;
         }
 
         .qa-procedure-section {
-          margin-top: 1.5rem;
+          margin: 1.5rem 1rem 0 1rem;
           padding-top: 1rem;
-          border-top: 1px solid var(--border-color);
+          border-top: 2px solid var(--border-strong);
         }
 
         .qa-procedure-section h4 {
-          font-size: 0.875rem;
+          font-family: var(--font-mono);
+          font-size: var(--text-sm);
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: var(--tracking-wide);
           margin: 0 0 0.75rem 0;
         }
 
         .empty-message {
-          color: var(--text-secondary);
+          color: var(--text-tertiary);
           text-align: center;
-          padding: 1rem;
+          padding: 1.5rem 1rem;
+          font-style: italic;
         }
 
         .coming-soon {
-          color: var(--text-secondary);
+          color: var(--text-tertiary);
           text-align: center;
           padding: 2rem;
           font-style: italic;
         }
 
+        /* Camera & Photos */
         .camera-container {
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 1rem;
-          margin-bottom: 1rem;
+          margin: 0 1rem 1rem 1rem;
+          padding: 1rem;
+          background: var(--surface-inset);
+          border: 1px solid var(--border-color);
+          border-radius: 2px;
         }
 
         .camera-container video {
           width: 100%;
           max-width: 400px;
-          border-radius: 0.5rem;
-          background: black;
+          border-radius: 2px;
+          background: #0f172a;
+          border: 2px solid var(--border-strong);
         }
 
         .photos-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
           gap: 0.75rem;
+          padding: 0 1rem 0.75rem 1rem;
         }
 
         .photo-item {
           position: relative;
           aspect-ratio: 4/3;
-          border-radius: 0.5rem;
+          border-radius: 2px;
           overflow: hidden;
+          border: 1px solid var(--border-color);
         }
 
         .photo-item img {
@@ -3082,19 +3315,32 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           height: 100%;
           object-fit: cover;
           cursor: pointer;
+          transition: transform var(--duration-fast) ease;
+        }
+
+        .photo-item img:hover {
+          transform: scale(1.05);
         }
 
         .photo-remove {
           position: absolute;
           top: 0.25rem;
           right: 0.25rem;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
+          width: 22px;
+          height: 22px;
+          border-radius: 2px;
           border: none;
-          background: var(--danger-color);
+          background: var(--accent-caution);
           color: white;
           cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.875rem;
+        }
+
+        .photo-remove:hover {
+          background: #dc2626;
         }
 
         .photo-modal {
@@ -3119,41 +3365,51 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         .photo-modal-content img {
           max-width: 100%;
           max-height: 90vh;
-          border-radius: 0.5rem;
+          border-radius: 4px;
+          border: 2px solid var(--border-strong);
         }
 
         .photo-modal-close {
           position: absolute;
-          top: -2rem;
-          right: -2rem;
+          top: -2.5rem;
+          right: -0.5rem;
           width: 36px;
           height: 36px;
-          border-radius: 50%;
-          border: 2px solid white;
-          background: rgba(0, 0, 0, 0.7);
+          border-radius: 2px;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          background: rgba(0, 0, 0, 0.8);
           color: white;
           font-size: 1.25rem;
           cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .photo-modal-close:hover {
+          background: var(--accent-caution);
+          border-color: var(--accent-caution);
         }
 
         /* Scanner Files Styles */
         .scanner-files-container {
-          margin-top: 0.75rem;
+          margin: 0.75rem 1rem;
           border: 1px solid var(--border-color);
-          border-radius: 0.5rem;
+          border-radius: 2px;
           padding: 0.75rem;
-          background: var(--bg-secondary);
+          background: var(--surface-inset);
           max-height: 250px;
           overflow-y: auto;
         }
 
         .scanner-files-loading,
         .scanner-files-empty {
-          color: var(--text-secondary);
-          font-size: 0.875rem;
+          color: var(--text-tertiary);
+          font-size: var(--text-sm);
           margin: 0;
-          padding: 0.5rem;
+          padding: 0.75rem;
           text-align: center;
+          font-style: italic;
         }
 
         .scanner-files-list {
@@ -3166,31 +3422,33 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           display: flex;
           align-items: center;
           gap: 0.75rem;
-          padding: 0.5rem;
-          border-radius: 0.375rem;
-          background: var(--bg-primary);
+          padding: 0.5rem 0.75rem;
+          border-radius: 2px;
+          background: var(--surface);
           border: 1px solid var(--border-color);
           cursor: pointer;
-          transition: all 0.15s ease;
+          transition: all var(--duration-fast) ease;
         }
 
         .scanner-file-item:hover {
-          border-color: var(--primary-color);
-          background: var(--bg-hover);
+          border-color: var(--primary-accent);
+          background: rgba(14, 165, 233, 0.05);
         }
 
         .scanner-file-icon {
           width: 36px;
           height: 36px;
-          border-radius: 0.375rem;
-          background: var(--primary-color);
+          border-radius: 2px;
+          background: var(--primary-accent);
           color: white;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 0.625rem;
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
           font-weight: 700;
           flex-shrink: 0;
+          text-transform: uppercase;
         }
 
         .scanner-file-info {
@@ -3200,15 +3458,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
         .scanner-file-name {
           font-weight: 500;
-          font-size: 0.875rem;
+          font-size: var(--text-sm);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
 
         .scanner-file-meta {
-          font-size: 0.75rem;
-          color: var(--text-secondary);
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
+          color: var(--text-tertiary);
         }
       `}</style>
     </>
