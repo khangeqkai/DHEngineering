@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import { getDefaultTimeEntryForm } from './mappers';
 
 export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry }) {
@@ -57,15 +58,15 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   const handleSaveTimeEntry = useCallback(async () => {
     // Validation: Special Ops and Scrap Rate must be filled
     if (!timeEntryForm.equipment_checks_done || !timeEntryForm.measuring_verification_done) {
-      alert('Equipment Checks and Measuring Equipment Verification must be completed');
+      toast.error('Equipment Checks and Measuring Equipment Verification must be completed');
       return;
     }
     if (timeEntryForm.first_off_inspection === 'ERROR' && !timeEntryForm.first_off_inspection_notes) {
-      alert('Please provide notes for First Off Inspection error');
+      toast.error('Please provide notes for First Off Inspection error');
       return;
     }
     if (timeEntryForm.in_process_validation === 'ERROR' && !timeEntryForm.in_process_validation_notes) {
-      alert('Please provide notes for In-process Validation error');
+      toast.error('Please provide notes for In-process Validation error');
       return;
     }
 
@@ -88,7 +89,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       resetTimeEntryForm();
     } catch (err) {
       console.error('Failed to save time entry:', err);
-      alert(err.message || 'Failed to save time entry');
+      toast.error(err.message || 'Failed to save time entry');
     }
   }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry]);
 
@@ -100,7 +101,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       await deleteTimeEntry(entryId);
     } catch (err) {
       console.error('Failed to delete time entry:', err);
-      alert(err.message || 'Failed to delete time entry');
+      toast.error(err.message || 'Failed to delete time entry');
     }
   }, [jobCardId, deleteTimeEntry]);
 

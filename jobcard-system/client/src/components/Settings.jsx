@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
@@ -62,10 +63,10 @@ export default function Settings() {
     try {
       await api.updateSettings({ scanner_folder: scannerFolder });
       await loadSettings();
-      alert('Settings saved successfully');
+      toast.success('Settings saved successfully');
     } catch (err) {
       console.error('Failed to save settings:', err);
-      alert(err.message || 'Failed to save settings');
+      toast.error(err.message || 'Failed to save settings');
     } finally {
       setSavingSettings(false);
     }
@@ -100,6 +101,7 @@ export default function Settings() {
       }
     } catch (err) {
       console.error('Failed to load printers:', err);
+      toast.error('Failed to load printers');
     } finally {
       setLoadingPrinters(false);
     }

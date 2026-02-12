@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 
@@ -32,7 +33,7 @@ export default function SupplierManagement() {
       setSuppliers(data);
     } catch (err) {
       console.error('Failed to load suppliers:', err);
-      alert(err.message || 'Failed to load suppliers');
+      toast.error(err.message || 'Failed to load suppliers');
     } finally {
       setLoading(false);
     }
@@ -57,7 +58,7 @@ export default function SupplierManagement() {
       resetForm();
     } catch (err) {
       console.error('Failed to save supplier:', err);
-      alert(err.message || 'Failed to save supplier');
+      toast.error(err.message || 'Failed to save supplier');
     } finally {
       setSaving(false);
     }
@@ -86,7 +87,7 @@ export default function SupplierManagement() {
       await loadSuppliers();
     } catch (err) {
       console.error('Failed to deactivate supplier:', err);
-      alert(err.message || 'Failed to deactivate supplier');
+      toast.error(err.message || 'Failed to deactivate supplier');
     }
   };
 
@@ -96,7 +97,7 @@ export default function SupplierManagement() {
       await loadSuppliers();
     } catch (err) {
       console.error('Failed to activate supplier:', err);
-      alert(err.message || 'Failed to activate supplier');
+      toast.error(err.message || 'Failed to activate supplier');
     }
   };
 
@@ -108,7 +109,7 @@ export default function SupplierManagement() {
       await loadSuppliers();
     } catch (err) {
       console.error('Failed to delete supplier:', err);
-      alert(err.message || 'Failed to delete supplier');
+      toast.error(err.message || 'Failed to delete supplier');
     }
   };
 

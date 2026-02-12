@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
@@ -45,7 +46,7 @@ export default function JobCardList() {
       setJobcards(data);
     } catch (err) {
       console.error('Failed to load job cards:', err);
-      alert(err.message || 'Failed to load job cards');
+      toast.error(err.message || 'Failed to load job cards');
     } finally {
       setLoading(false);
     }
@@ -63,7 +64,7 @@ export default function JobCardList() {
       await loadJobcards();
     } catch (err) {
       console.error('Failed to delete job card:', err);
-      alert(err.message || 'Failed to delete job card');
+      toast.error(err.message || 'Failed to delete job card');
     }
   };
 
@@ -77,7 +78,7 @@ export default function JobCardList() {
       await loadJobcards();
     } catch (err) {
       console.error('Failed to archive job card:', err);
-      alert(err.message || 'Failed to archive job card');
+      toast.error(err.message || 'Failed to archive job card');
     }
   };
 

@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import { getDefaultSubcontractForm } from './mappers';
 
 export function useSubcontracts(jobCardId, { addSubcontract, updateSubcontract, deleteSubcontract } = {}) {
@@ -37,7 +38,7 @@ export function useSubcontracts(jobCardId, { addSubcontract, updateSubcontract, 
 
   const handleSaveSubcontract = useCallback(async () => {
     if (!subcontractForm.supplier_id) {
-      alert('Please select a supplier');
+      toast.error('Please select a supplier');
       return;
     }
 
@@ -59,7 +60,7 @@ export function useSubcontracts(jobCardId, { addSubcontract, updateSubcontract, 
       resetSubcontractForm();
     } catch (err) {
       console.error('Failed to save subcontract:', err);
-      alert(err.message || 'Failed to save subcontract');
+      toast.error(err.message || 'Failed to save subcontract');
     }
   }, [jobCardId, subcontractForm, editingSubcontractId, resetSubcontractForm, addSubcontract, updateSubcontract]);
 
@@ -74,7 +75,7 @@ export function useSubcontracts(jobCardId, { addSubcontract, updateSubcontract, 
       }
     } catch (err) {
       console.error('Failed to delete subcontract:', err);
-      alert(err.message || 'Failed to delete subcontract');
+      toast.error(err.message || 'Failed to delete subcontract');
     }
   }, [jobCardId, deleteSubcontract]);
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 
@@ -17,6 +18,7 @@ export default function ActivityLog() {
       setActivities(data);
     } catch (err) {
       console.error('Failed to load activities:', err);
+      toast.error('Failed to load activities');
     } finally {
       setLoading(false);
     }

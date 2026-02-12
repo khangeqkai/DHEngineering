@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
 
 export function useCamera() {
   const [cameraActive, setCameraActive] = useState(false);
@@ -29,7 +30,7 @@ export function useCamera() {
       setCameraActive(true);
     } catch (err) {
       console.error('Failed to access camera:', err);
-      alert('Could not access camera: ' + err.message);
+      toast.error('Could not access camera: ' + err.message);
     }
   }, []);
 

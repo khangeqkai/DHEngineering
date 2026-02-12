@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import { getDefaultCostingForm } from './mappers';
 
 export function useCosting(jobCardId, { costing: offlineCosting, updateCosting } = {}) {
@@ -55,10 +56,10 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
         throw new Error('updateCosting operation not provided');
       }
       await updateCosting(costingData);
-      alert('Costing saved successfully');
+      toast.success('Costing saved successfully');
     } catch (err) {
       console.error('Failed to save costing:', err);
-      alert(err.message || 'Failed to save costing');
+      toast.error(err.message || 'Failed to save costing');
     } finally {
       setSavingCosting(false);
     }

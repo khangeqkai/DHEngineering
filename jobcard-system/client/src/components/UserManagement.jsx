@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 
@@ -27,6 +28,7 @@ export default function UserManagement() {
       setUsers(data);
     } catch (err) {
       console.error('Failed to load users:', err);
+      toast.error('Failed to load users');
     } finally {
       setLoading(false);
     }
@@ -46,7 +48,7 @@ export default function UserManagement() {
       resetForm();
     } catch (err) {
       console.error('Failed to save user:', err);
-      alert(err.message || 'Failed to save user');
+      toast.error(err.message || 'Failed to save user');
     } finally {
       setSaving(false);
     }
@@ -72,7 +74,7 @@ export default function UserManagement() {
       await loadUsers();
     } catch (err) {
       console.error('Failed to deactivate user:', err);
-      alert(err.message || 'Failed to deactivate user');
+      toast.error(err.message || 'Failed to deactivate user');
     }
   };
 
@@ -82,7 +84,7 @@ export default function UserManagement() {
       await loadUsers();
     } catch (err) {
       console.error('Failed to activate user:', err);
-      alert(err.message || 'Failed to activate user');
+      toast.error(err.message || 'Failed to activate user');
     }
   };
 
@@ -94,7 +96,7 @@ export default function UserManagement() {
       await loadUsers();
     } catch (err) {
       console.error('Failed to delete user:', err);
-      alert(err.message || 'Failed to delete user');
+      toast.error(err.message || 'Failed to delete user');
     }
   };
 

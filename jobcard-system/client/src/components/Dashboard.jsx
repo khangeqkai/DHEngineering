@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
@@ -34,7 +35,7 @@ export default function Dashboard() {
       setJobcards(data);
     } catch (error) {
       console.error('Failed to load job cards:', error);
-      alert('Failed to load job cards. Please try again.');
+      toast.error('Failed to load job cards. Please try again.');
     } finally {
       setLoading(false);
     }

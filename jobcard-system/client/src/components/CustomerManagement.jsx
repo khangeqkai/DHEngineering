@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 
@@ -31,7 +32,7 @@ export default function CustomerManagement() {
       setCustomers(data);
     } catch (err) {
       console.error('Failed to load customers:', err);
-      alert('Failed to load customers');
+      toast.error('Failed to load customers');
     } finally {
       setLoading(false);
     }
@@ -56,7 +57,7 @@ export default function CustomerManagement() {
       resetForm();
     } catch (err) {
       console.error('Failed to save customer:', err);
-      alert(err.message || 'Failed to save customer');
+      toast.error(err.message || 'Failed to save customer');
     } finally {
       setSaving(false);
     }
@@ -84,7 +85,7 @@ export default function CustomerManagement() {
       await loadCustomers();
     } catch (err) {
       console.error('Failed to deactivate customer:', err);
-      alert(err.message || 'Failed to deactivate customer');
+      toast.error(err.message || 'Failed to deactivate customer');
     }
   };
 
@@ -94,7 +95,7 @@ export default function CustomerManagement() {
       await loadCustomers();
     } catch (err) {
       console.error('Failed to activate customer:', err);
-      alert(err.message || 'Failed to activate customer');
+      toast.error(err.message || 'Failed to activate customer');
     }
   };
 
@@ -106,7 +107,7 @@ export default function CustomerManagement() {
       await loadCustomers();
     } catch (err) {
       console.error('Failed to delete customer:', err);
-      alert(err.message || 'Failed to delete customer');
+      toast.error(err.message || 'Failed to delete customer');
     }
   };
 
