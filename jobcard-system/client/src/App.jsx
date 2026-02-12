@@ -3,7 +3,6 @@ import { useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import JobCardList from './components/JobCardList';
-import JobCardForm from './components/jobcard-form/JobCardForm';
 import UserManagement from './components/UserManagement';
 import CustomerManagement from './components/CustomerManagement';
 import SupplierManagement from './components/SupplierManagement';
@@ -54,8 +53,6 @@ function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="jobcards" element={<JobCardList />} />
-        <Route path="jobcards/new" element={<JobCardForm />} />
-        <Route path="jobcards/:id" element={<JobCardForm />} />
         <Route path="customers" element={<CustomerManagement />} />
         <Route
           path="suppliers"

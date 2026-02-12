@@ -51,12 +51,10 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
         grand_total: totals.grandTotal
       };
 
-      // Use updateCosting operation from parent - data updates automatically via useLiveQuery
       if (!updateCosting) {
         throw new Error('updateCosting operation not provided');
       }
       await updateCosting(costingData);
-      // No need to manually reload - useLiveQuery updates automatically
       alert('Costing saved successfully');
     } catch (err) {
       console.error('Failed to save costing:', err);

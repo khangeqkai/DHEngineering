@@ -80,14 +80,11 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       };
 
       if (editingTimeEntryId) {
-        // Use operations passed from parent - data updates automatically via useLiveQuery
         await updateTimeEntry(editingTimeEntryId, entryData);
       } else {
-        // Use operations passed from parent - data updates automatically via useLiveQuery
         await addTimeEntry(entryData);
       }
 
-      // No need to manually reload - useLiveQuery updates automatically
       resetTimeEntryForm();
     } catch (err) {
       console.error('Failed to save time entry:', err);
@@ -100,9 +97,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     if (!jobCardId) return;
 
     try {
-      // Use operation passed from parent - data updates automatically via useLiveQuery
       await deleteTimeEntry(entryId);
-      // No need to manually reload - useLiveQuery updates automatically
     } catch (err) {
       console.error('Failed to delete time entry:', err);
       alert(err.message || 'Failed to delete time entry');

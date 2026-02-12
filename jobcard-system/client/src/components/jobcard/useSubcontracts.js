@@ -56,7 +56,6 @@ export function useSubcontracts(jobCardId, { addSubcontract, updateSubcontract, 
         }
       }
 
-      // No need to manually reload - useLiveQuery updates automatically
       resetSubcontractForm();
     } catch (err) {
       console.error('Failed to save subcontract:', err);
@@ -73,7 +72,6 @@ export function useSubcontracts(jobCardId, { addSubcontract, updateSubcontract, 
       if (deleteSubcontract) {
         await deleteSubcontract(subId);
       }
-      // No need to manually reload - useLiveQuery updates automatically
     } catch (err) {
       console.error('Failed to delete subcontract:', err);
       alert(err.message || 'Failed to delete subcontract');
