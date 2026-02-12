@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
-import JobCardModal from './JobCardModal';
+import JobCardModal from './jobcard/JobCardModal';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
