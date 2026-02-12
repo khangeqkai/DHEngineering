@@ -1,6 +1,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
+const logger = require('../utils/logger');
 const { authenticate } = require('../middleware/auth');
 const { documentQueries, recordHistory } = require('../db/database');
 
@@ -19,7 +20,7 @@ router.get('/:id/documents', authenticate, (req, res) => {
       uploadedAt: d.uploaded_at
     })));
   } catch (err) {
-    console.error('Get documents error:', err);
+    logger.error({ err }, 'Get documents error');
     res.status(500).json({ error: 'Failed to get documents' });
   }
 });
@@ -46,7 +47,7 @@ router.post('/:id/documents', authenticate, (req, res) => {
 
     res.status(201).json({ id: docId, filename });
   } catch (err) {
-    console.error('Add document error:', err);
+    logger.error({ err }, 'Add document error');
     res.status(500).json({ error: 'Failed to add document' });
   }
 });

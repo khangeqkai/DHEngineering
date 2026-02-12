@@ -1,6 +1,8 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
+const { validateCreateCustomer, validateUpdateCustomer } = require('../middleware/validation');
 const { customerQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
@@ -17,7 +19,7 @@ router.get('/', (req, res) => {
       : customerQueries.getAll.all();
     res.json(customers);
   } catch (err) {
-    console.error('Failed to get customers:', err);
+    logger.error({ err }, 'Failed to get customers');
     res.status(500).json({ error: 'Failed to get customers' });
   }
 });
@@ -32,7 +34,7 @@ router.get('/search', (req, res) => {
     const customers = customerQueries.search.all(`%${q}%`);
     res.json(customers);
   } catch (err) {
-    console.error('Failed to search customers:', err);
+    logger.error({ err }, 'Failed to search customers');
     res.status(500).json({ error: 'Failed to search customers' });
   }
 });
@@ -46,19 +48,15 @@ router.get('/:id', (req, res) => {
     }
     res.json(customer);
   } catch (err) {
-    console.error('Failed to get customer:', err);
+    logger.error({ err }, 'Failed to get customer');
     res.status(500).json({ error: 'Failed to get customer' });
   }
 });
 
 // POST /api/customers - Create new customer
-router.post('/', (req, res) => {
+router.post('/', validateCreateCustomer, (req, res) => {
   try {
     const { name, contact_name, contact_phone, contact_email, address, is_critical_qa, notes } = req.body;
-
-    if (!name) {
-      return res.status(400).json({ error: 'Customer name is required' });
-    }
 
     const id = uuidv4();
 
@@ -80,13 +78,13 @@ router.post('/', (req, res) => {
 
     res.status(201).json(customer);
   } catch (err) {
-    console.error('Failed to create customer:', err);
+    logger.error({ err }, 'Failed to create customer');
     res.status(500).json({ error: 'Failed to create customer' });
   }
 });
 
 // PUT /api/customers/:id - Update customer
-router.put('/:id', (req, res) => {
+router.put('/:id', validateUpdateCustomer, (req, res) => {
   try {
     const { id } = req.params;
     const { name, contact_name, contact_phone, contact_email, address, is_critical_qa, notes } = req.body;
@@ -94,10 +92,6 @@ router.put('/:id', (req, res) => {
     const existing = customerQueries.getById.get(id);
     if (!existing) {
       return res.status(404).json({ error: 'Customer not found' });
-    }
-
-    if (!name) {
-      return res.status(400).json({ error: 'Customer name is required' });
     }
 
     customerQueries.update.run(
@@ -118,7 +112,7 @@ router.put('/:id', (req, res) => {
 
     res.json(customer);
   } catch (err) {
-    console.error('Failed to update customer:', err);
+    logger.error({ err }, 'Failed to update customer');
     res.status(500).json({ error: 'Failed to update customer' });
   }
 });
@@ -140,7 +134,7 @@ router.post('/:id/deactivate', (req, res) => {
 
     res.json(customer);
   } catch (err) {
-    console.error('Failed to deactivate customer:', err);
+    logger.error({ err }, 'Failed to deactivate customer');
     res.status(500).json({ error: 'Failed to deactivate customer' });
   }
 });
@@ -162,7 +156,7 @@ router.post('/:id/activate', (req, res) => {
 
     res.json(customer);
   } catch (err) {
-    console.error('Failed to activate customer:', err);
+    logger.error({ err }, 'Failed to activate customer');
     res.status(500).json({ error: 'Failed to activate customer' });
   }
 });
@@ -183,7 +177,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
 
     res.json({ message: 'Customer deleted successfully' });
   } catch (err) {
-    console.error('Failed to delete customer:', err);
+    logger.error({ err }, 'Failed to delete customer');
     res.status(500).json({ error: 'Failed to delete customer' });
   }
 });

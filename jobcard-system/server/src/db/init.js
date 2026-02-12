@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
+const logger = require('../utils/logger');
 const {
   db,
   userQueries,
@@ -18,7 +19,7 @@ const {
 
 // Run database migrations for existing databases
 function runMigrations() {
-  console.log('Running migrations...');
+  logger.info('Running migrations...');
 
   // Get existing columns in jobcards table
   const tableInfo = db.prepare("PRAGMA table_info(jobcards)").all();
@@ -28,16 +29,16 @@ function runMigrations() {
   const contactColumns = ['contact_name', 'contact_phone', 'contact_email'];
   for (const col of contactColumns) {
     if (!existingColumns.includes(col)) {
-      console.log(`  Adding column: jobcards.${col}`);
+      logger.info({ column: col }, 'Adding column to jobcards');
       db.exec(`ALTER TABLE jobcards ADD COLUMN ${col} TEXT`);
     }
   }
 
-  console.log('Migrations complete');
+  logger.info('Migrations complete');
 }
 
 async function initializeDatabase() {
-  console.log('Initializing database...');
+  logger.info('Initializing database...');
 
   // Run migrations for existing databases
   runMigrations();
@@ -66,9 +67,9 @@ async function initializeDatabase() {
       name: 'Administrator'
     });
 
-    console.log('  Created default admin user (username: admin, password: admin123)');
+    logger.info('Created default admin user (username: admin, password: admin123)');
   } else {
-    console.log('  Admin user already exists');
+    logger.info('Admin user already exists');
   }
 
   // Initialize default settings
@@ -76,16 +77,16 @@ async function initializeDatabase() {
   settingsStmt.run('company_name', 'DH Engineering');
   settingsStmt.run('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
 
-  console.log('Database initialization complete');
+  logger.info('Database initialization complete');
 }
 
 async function seedMockData() {
-  console.log('\nSeeding mock data...');
+  logger.info('Seeding mock data...');
 
   // Check if mock data already exists
   const existingCustomers = customerQueries.getAll.all();
   if (existingCustomers.length > 0) {
-    console.log('  Mock data already exists, skipping...');
+    logger.info('Mock data already exists, skipping...');
     return;
   }
 
@@ -94,7 +95,7 @@ async function seedMockData() {
   // ============================================
   // EMPLOYEES
   // ============================================
-  console.log('  Creating employees...');
+  logger.info('Creating employees...');
   const employees = [
     { id: `user:${uuidv4()}`, username: 'jsmith', name: 'John Smith', role: 'user', empId: 'EMP002', email: 'jsmith@dhengineering.com' },
     { id: `user:${uuidv4()}`, username: 'mwilson', name: 'Mike Wilson', role: 'user', empId: 'EMP003', email: 'mwilson@dhengineering.com' },
@@ -106,12 +107,12 @@ async function seedMockData() {
   for (const emp of employees) {
     userQueries.create.run(emp.id, emp.username, hashedPassword, emp.role, emp.name, emp.email, null, emp.empId);
   }
-  console.log(`    Created ${employees.length} employees`);
+  logger.info({ count: employees.length }, 'Created employees');
 
   // ============================================
   // CUSTOMERS
   // ============================================
-  console.log('  Creating customers...');
+  logger.info('Creating customers...');
   const customers = [
     { id: `customer:${uuidv4()}`, name: 'BHP Mining Services', contact: 'Peter Thompson', phone: '08 9234 5678', email: 'peter.t@bhp.com.au', address: '125 St Georges Terrace, Perth WA 6000', critical: true },
     { id: `customer:${uuidv4()}`, name: 'Rio Tinto Operations', contact: 'Susan Clarke', phone: '08 9327 2000', email: 'susan.clarke@riotinto.com', address: '152 St Georges Terrace, Perth WA 6000', critical: true },
@@ -126,12 +127,12 @@ async function seedMockData() {
   for (const cust of customers) {
     customerQueries.create.run(cust.id, cust.name, cust.contact, cust.phone, cust.email, cust.address, cust.critical ? 1 : 0, null);
   }
-  console.log(`    Created ${customers.length} customers`);
+  logger.info({ count: customers.length }, 'Created customers');
 
   // ============================================
   // SUPPLIERS (Approved Supplier List)
   // ============================================
-  console.log('  Creating suppliers...');
+  logger.info('Creating suppliers...');
   const suppliers = [
     { id: `supplier:${uuidv4()}`, name: 'Heat Treatment Australia', contact: 'Gary White', phone: '08 9478 1234', email: 'gary@hta.com.au', services: 'Heat Treatment, Annealing, Hardening' },
     { id: `supplier:${uuidv4()}`, name: 'Perth Precision Grinding', contact: 'Neil Brown', phone: '08 9350 6789', email: 'neil@perthgrinding.com.au', services: 'Precision Grinding, Surface Grinding, Cylindrical Grinding' },
@@ -145,12 +146,12 @@ async function seedMockData() {
   for (const sup of suppliers) {
     supplierQueries.create.run(sup.id, sup.name, sup.contact, sup.phone, sup.email, null, sup.services, 1, null);
   }
-  console.log(`    Created ${suppliers.length} suppliers`);
+  logger.info({ count: suppliers.length }, 'Created suppliers');
 
   // ============================================
   // MACHINES
   // ============================================
-  console.log('  Creating machines...');
+  logger.info('Creating machines...');
   const machines = [
     { id: `machine:${uuidv4()}`, number: 'CNC-01', name: 'Haas VF-2 CNC Mill', desc: 'Vertical Machining Center' },
     { id: `machine:${uuidv4()}`, number: 'CNC-02', name: 'Haas ST-20 CNC Lathe', desc: 'CNC Turning Center' },
@@ -167,12 +168,12 @@ async function seedMockData() {
   for (const m of machines) {
     machineQueries.create.run(m.id, m.number, m.name, m.desc);
   }
-  console.log(`    Created ${machines.length} machines`);
+  logger.info({ count: machines.length }, 'Created machines');
 
   // ============================================
   // JOB CARDS
   // ============================================
-  console.log('  Creating job cards...');
+  logger.info('Creating job cards...');
 
   const adminUser = userQueries.getByUsername.get('admin');
   const adminId = adminUser.id;
@@ -395,15 +396,16 @@ async function seedMockData() {
     recordHistory('jobcard', id, 'create', adminId, 'Administrator', null, { jobNumber, status: jc.status });
   }
 
-  console.log(`    Created ${jobCards.length} job cards`);
-  console.log('\nMock data seeding complete!');
-  console.log('\n========================================');
-  console.log('  Test Accounts:');
-  console.log('  - admin / admin123 (Administrator)');
-  console.log('  - jsmith / password123 (User)');
-  console.log('  - mwilson / password123 (User)');
-  console.log('  - abrown / password123 (Admin)');
-  console.log('========================================\n');
+  logger.info({ count: jobCards.length }, 'Created job cards');
+  logger.info('Mock data seeding complete!');
+  logger.info({
+    accounts: [
+      'admin / admin123 (Administrator)',
+      'jsmith / password123 (User)',
+      'mwilson / password123 (User)',
+      'abrown / password123 (Admin)'
+    ]
+  }, 'Test accounts available');
 }
 
 module.exports = { initializeDatabase, seedMockData };

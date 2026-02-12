@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
+const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const db = require('../db/database');
 
@@ -14,7 +15,7 @@ router.get('/', requireAdmin, (req, res) => {
     const settings = db.getSettings();
     res.json(settings);
   } catch (err) {
-    console.error('Error getting settings:', err);
+    logger.error({ err }, 'Error getting settings');
     res.status(500).json({ error: 'Failed to get settings' });
   }
 });
@@ -41,7 +42,7 @@ router.put('/', requireAdmin, (req, res) => {
     db.updateSettings({ scanner_folder: scanner_folder || '' });
     res.json({ success: true });
   } catch (err) {
-    console.error('Error updating settings:', err);
+    logger.error({ err }, 'Error updating settings');
     res.status(500).json({ error: 'Failed to update settings' });
   }
 });
@@ -89,7 +90,7 @@ router.get('/files', authenticate, (req, res) => {
 
     res.json({ files, folder: settings.scanner_folder });
   } catch (err) {
-    console.error('Error getting scanner files:', err);
+    logger.error({ err }, 'Error getting scanner files');
     res.status(500).json({ error: 'Failed to get scanner files' });
   }
 });

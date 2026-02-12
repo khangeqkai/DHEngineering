@@ -1,6 +1,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
+const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { jobCostingQueries, recordHistory } = require('../db/database');
 
@@ -31,7 +32,7 @@ router.get('/:id/costing', authenticate, requireAdmin, (req, res) => {
       grandTotal: costing.grand_total
     });
   } catch (err) {
-    console.error('Get costing error:', err);
+    logger.error({ err }, 'Get costing error');
     res.status(500).json({ error: 'Failed to get costing' });
   }
 });
@@ -73,7 +74,7 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
 
     res.json({ success: true, grandTotal });
   } catch (err) {
-    console.error('Update costing error:', err);
+    logger.error({ err }, 'Update costing error');
     res.status(500).json({ error: 'Failed to update costing' });
   }
 });

@@ -1,5 +1,6 @@
 const express = require('express');
 
+const logger = require('../utils/logger');
 const { authenticate } = require('../middleware/auth');
 const { qaFormQueries, recordHistory } = require('../db/database');
 
@@ -19,7 +20,7 @@ router.get('/:id/qa-forms', authenticate, (req, res) => {
       notes: f.notes
     })));
   } catch (err) {
-    console.error('Get QA forms error:', err);
+    logger.error({ err }, 'Get QA forms error');
     res.status(500).json({ error: 'Failed to get QA forms' });
   }
 });
@@ -57,7 +58,7 @@ router.patch('/:id/qa-forms/:formId', authenticate, (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error('Update QA form error:', err);
+    logger.error({ err }, 'Update QA form error');
     res.status(500).json({ error: 'Failed to update QA form' });
   }
 });

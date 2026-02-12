@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
@@ -17,7 +18,7 @@ router.get('/printers', authenticate, async (req, res) => {
       message: 'Printer list available from Electron client'
     });
   } catch (err) {
-    console.error('Get printers error:', err);
+    logger.error({ err }, 'Get printers error');
     res.status(500).json({ error: 'Failed to get printers' });
   }
 });
@@ -30,7 +31,7 @@ router.get('/scanners', authenticate, async (req, res) => {
       message: 'Scanner list available from Electron client'
     });
   } catch (err) {
-    console.error('Get scanners error:', err);
+    logger.error({ err }, 'Get scanners error');
     res.status(500).json({ error: 'Failed to get scanners' });
   }
 });
@@ -43,7 +44,7 @@ router.get('/cameras', authenticate, async (req, res) => {
       message: 'Camera list available from Electron client'
     });
   } catch (err) {
-    console.error('Get cameras error:', err);
+    logger.error({ err }, 'Get cameras error');
     res.status(500).json({ error: 'Failed to get cameras' });
   }
 });

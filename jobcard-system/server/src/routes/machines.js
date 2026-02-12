@@ -1,5 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const logger = require('../utils/logger');
 const { machineQueries, recordHistory } = require('../db/database');
 const { authenticate } = require('../middleware/auth');
 
@@ -14,7 +15,7 @@ router.get('/', (req, res) => {
     const machines = machineQueries.getAll.all();
     res.json(machines);
   } catch (err) {
-    console.error('Failed to get machines:', err);
+    logger.error({ err }, 'Failed to get machines');
     res.status(500).json({ error: 'Failed to get machines' });
   }
 });
@@ -47,7 +48,7 @@ router.post('/', (req, res) => {
 
     res.status(201).json(machine);
   } catch (err) {
-    console.error('Failed to create machine:', err);
+    logger.error({ err }, 'Failed to create machine');
     res.status(500).json({ error: 'Failed to create machine' });
   }
 });
@@ -84,7 +85,7 @@ router.put('/:id', (req, res) => {
 
     res.json(machine);
   } catch (err) {
-    console.error('Failed to update machine:', err);
+    logger.error({ err }, 'Failed to update machine');
     res.status(500).json({ error: 'Failed to update machine' });
   }
 });
@@ -109,7 +110,7 @@ router.delete('/:id', (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error('Failed to delete machine:', err);
+    logger.error({ err }, 'Failed to delete machine');
     res.status(500).json({ error: 'Failed to delete machine' });
   }
 });

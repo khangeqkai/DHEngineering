@@ -1,6 +1,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
+const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const {
   jobcardQueries,
@@ -94,7 +95,7 @@ router.get('/', authenticate, (req, res) => {
 
     res.json(jobcards.map(jc => formatJobcard(jc)));
   } catch (err) {
-    console.error('Get jobcards error:', err);
+    logger.error({ err }, 'Get jobcards error');
     res.status(500).json({ error: 'Failed to get job cards' });
   }
 });
@@ -105,7 +106,7 @@ router.get('/overdue', authenticate, (req, res) => {
     const jobcards = jobcardQueries.getOverdue.all();
     res.json(jobcards.map(jc => formatJobcard(jc)));
   } catch (err) {
-    console.error('Get overdue jobcards error:', err);
+    logger.error({ err }, 'Get overdue jobcards error');
     res.status(500).json({ error: 'Failed to get overdue job cards' });
   }
 });
@@ -125,7 +126,7 @@ router.get('/:id', authenticate, (req, res) => {
 
     res.json(formatJobcard(jobcard, items, assignees, subcontracts));
   } catch (err) {
-    console.error('Get jobcard error:', err);
+    logger.error({ err }, 'Get jobcard error');
     res.status(500).json({ error: 'Failed to get job card' });
   }
 });
@@ -145,7 +146,7 @@ router.get('/:id/history', authenticate, (req, res) => {
       createdAt: h.created_at
     })));
   } catch (err) {
-    console.error('Get jobcard history error:', err);
+    logger.error({ err }, 'Get jobcard history error');
     res.status(500).json({ error: 'Failed to get job card history' });
   }
 });
@@ -262,7 +263,7 @@ router.post('/', authenticate, (req, res) => {
 
     res.status(201).json(formatJobcard(jobcard, items, assignees, subcontracts));
   } catch (err) {
-    console.error('Create jobcard error:', err);
+    logger.error({ err }, 'Create jobcard error');
     res.status(500).json({ error: 'Failed to create job card' });
   }
 });
@@ -362,7 +363,7 @@ router.put('/:id', authenticate, (req, res) => {
 
     res.json(formatJobcard(updated, items, assignees, subcontracts));
   } catch (err) {
-    console.error('Update jobcard error:', err);
+    logger.error({ err }, 'Update jobcard error');
     res.status(500).json({ error: 'Failed to update job card' });
   }
 });
@@ -386,7 +387,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
     const updated = jobcardQueries.getById.get(id);
     res.json(formatJobcard(updated));
   } catch (err) {
-    console.error('Update status error:', err);
+    logger.error({ err }, 'Update status error');
     res.status(500).json({ error: 'Failed to update status' });
   }
 });
@@ -426,7 +427,7 @@ router.post('/:id/convert-to-jobcard', authenticate, (req, res) => {
     const updated = jobcardQueries.getById.get(id);
     res.json(formatJobcard(updated));
   } catch (err) {
-    console.error('Convert to jobcard error:', err);
+    logger.error({ err }, 'Convert to jobcard error');
     res.status(500).json({ error: 'Failed to convert quote to job card' });
   }
 });
@@ -458,7 +459,7 @@ router.post('/:id/archive', authenticate, requireAdmin, (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error('Archive error:', err);
+    logger.error({ err }, 'Archive error');
     res.status(500).json({ error: 'Failed to archive job card' });
   }
 });
@@ -482,7 +483,7 @@ router.delete('/:id', authenticate, (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error('Delete jobcard error:', err);
+    logger.error({ err }, 'Delete jobcard error');
     res.status(500).json({ error: 'Failed to delete job card' });
   }
 });
@@ -508,7 +509,7 @@ router.post('/sync/update', authenticate, (req, res) => {
     req.params = { id: data._id };
     return router.handle(req, res);
   } catch (err) {
-    console.error('Sync update error:', err);
+    logger.error({ err }, 'Sync update error');
     res.status(500).json({ error: 'Failed to sync update' });
   }
 });

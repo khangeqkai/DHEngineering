@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { historyQueries } = require('../db/database');
 
@@ -22,7 +23,7 @@ router.get('/', authenticate, requireRole('admin'), (req, res) => {
       createdAt: h.created_at
     })));
   } catch (err) {
-    console.error('Get history error:', err);
+    logger.error({ err }, 'Get history error');
     res.status(500).json({ error: 'Failed to get activity history' });
   }
 });
@@ -45,7 +46,7 @@ router.get('/user/:userId', authenticate, requireRole('admin'), (req, res) => {
       createdAt: h.created_at
     })));
   } catch (err) {
-    console.error('Get user history error:', err);
+    logger.error({ err }, 'Get user history error');
     res.status(500).json({ error: 'Failed to get user activity' });
   }
 });

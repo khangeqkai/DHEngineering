@@ -1,5 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { supplierQueries, recordHistory } = require('../db/database');
 
@@ -17,7 +18,7 @@ router.get('/', (req, res) => {
       : supplierQueries.getAll.all();
     res.json(suppliers);
   } catch (err) {
-    console.error('Failed to get suppliers:', err);
+    logger.error({ err }, 'Failed to get suppliers');
     res.status(500).json({ error: 'Failed to get suppliers' });
   }
 });
@@ -31,7 +32,7 @@ router.get('/:id', (req, res) => {
     }
     res.json(supplier);
   } catch (err) {
-    console.error('Failed to get supplier:', err);
+    logger.error({ err }, 'Failed to get supplier');
     res.status(500).json({ error: 'Failed to get supplier' });
   }
 });
@@ -65,7 +66,7 @@ router.post('/', requireAdmin, (req, res) => {
 
     res.status(201).json(supplier);
   } catch (err) {
-    console.error('Failed to create supplier:', err);
+    logger.error({ err }, 'Failed to create supplier');
     res.status(500).json({ error: 'Failed to create supplier' });
   }
 });
@@ -103,7 +104,7 @@ router.put('/:id', requireAdmin, (req, res) => {
 
     res.json(supplier);
   } catch (err) {
-    console.error('Failed to update supplier:', err);
+    logger.error({ err }, 'Failed to update supplier');
     res.status(500).json({ error: 'Failed to update supplier' });
   }
 });
@@ -125,7 +126,7 @@ router.post('/:id/deactivate', requireAdmin, (req, res) => {
 
     res.json(supplier);
   } catch (err) {
-    console.error('Failed to deactivate supplier:', err);
+    logger.error({ err }, 'Failed to deactivate supplier');
     res.status(500).json({ error: 'Failed to deactivate supplier' });
   }
 });
@@ -147,7 +148,7 @@ router.post('/:id/activate', requireAdmin, (req, res) => {
 
     res.json(supplier);
   } catch (err) {
-    console.error('Failed to activate supplier:', err);
+    logger.error({ err }, 'Failed to activate supplier');
     res.status(500).json({ error: 'Failed to activate supplier' });
   }
 });
@@ -168,7 +169,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
 
     res.json({ message: 'Supplier deleted successfully' });
   } catch (err) {
-    console.error('Failed to delete supplier:', err);
+    logger.error({ err }, 'Failed to delete supplier');
     res.status(500).json({ error: 'Failed to delete supplier' });
   }
 });

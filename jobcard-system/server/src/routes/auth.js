@@ -2,31 +2,53 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const rateLimit = require('express-rate-limit');
 
 const config = require('../config');
+const logger = require('../utils/logger');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { validateLogin, validateCreateUser } = require('../middleware/validation');
 const { userQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
+// Rate limiter for login endpoint - 5 attempts per 15 minutes per IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per window
+  message: { error: 'Too many login attempts. Please try again after 15 minutes.' },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skipSuccessfulRequests: false // Count all requests, not just failed ones
+});
+
+// Rate limiter for user creation - 10 attempts per 15 minutes per IP
+const userCreationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per window
+  message: { error: 'Too many user creation attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, validateLogin, async (req, res) => {
   try {
     const { username, password } = req.body;
-
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
-    }
 
     // Find user
     const user = userQueries.getByUsername.get(username);
     if (!user || !user.active) {
+      logger.warn({ username, reason: 'user_not_found_or_inactive' }, 'Failed login attempt');
+      recordHistory('auth', null, 'login_failed', null, username, { reason: 'user_not_found_or_inactive' }, null);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Verify password
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
+      logger.warn({ username, userId: user.id, reason: 'invalid_password' }, 'Failed login attempt');
+      recordHistory('auth', null, 'login_failed', null, username, { reason: 'invalid_password', userId: user.id }, null);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -55,7 +77,7 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('Login error:', err);
+    logger.error({ err }, 'Login error');
     res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -98,7 +120,7 @@ router.get('/users', authenticate, requireRole('admin'), (req, res) => {
       updatedAt: user.updated_at
     })));
   } catch (err) {
-    console.error('List users error:', err);
+    logger.error({ err }, 'List users error');
     res.status(500).json({ error: 'Failed to list users' });
   }
 });
@@ -122,19 +144,15 @@ router.get('/users/:id', authenticate, requireRole('admin'), (req, res) => {
       updatedAt: user.updated_at
     });
   } catch (err) {
-    console.error('Get user error:', err);
+    logger.error({ err }, 'Get user error');
     res.status(500).json({ error: 'Failed to get user' });
   }
 });
 
 // Create user (admin only)
-router.post('/users', authenticate, requireRole('admin'), async (req, res) => {
+router.post('/users', authenticate, requireRole('admin'), userCreationLimiter, validateCreateUser, async (req, res) => {
   try {
     const { username, password, role, name, email } = req.body;
-
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
-    }
 
     // Check if username exists
     const existing = userQueries.getByUsername.get(username);
@@ -174,7 +192,7 @@ router.post('/users', authenticate, requireRole('admin'), async (req, res) => {
       active: true
     });
   } catch (err) {
-    console.error('Create user error:', err);
+    logger.error({ err }, 'Create user error');
     res.status(500).json({ error: 'Failed to create user' });
   }
 });
@@ -242,7 +260,7 @@ router.put('/users/:id', authenticate, async (req, res) => {
       active: Boolean(updatedUser.active)
     });
   } catch (err) {
-    console.error('Update user error:', err);
+    logger.error({ err }, 'Update user error');
     res.status(500).json({ error: 'Failed to update user' });
   }
 });
@@ -267,7 +285,7 @@ router.post('/users/:id/deactivate', authenticate, requireRole('admin'), (req, r
 
     res.json({ success: true, message: 'User deactivated' });
   } catch (err) {
-    console.error('Deactivate user error:', err);
+    logger.error({ err }, 'Deactivate user error');
     res.status(500).json({ error: 'Failed to deactivate user' });
   }
 });
@@ -288,7 +306,7 @@ router.post('/users/:id/activate', authenticate, requireRole('admin'), (req, res
 
     res.json({ success: true, message: 'User activated' });
   } catch (err) {
-    console.error('Activate user error:', err);
+    logger.error({ err }, 'Activate user error');
     res.status(500).json({ error: 'Failed to activate user' });
   }
 });
@@ -318,7 +336,7 @@ router.delete('/users/:id', authenticate, requireRole('admin'), (req, res) => {
 
     res.json({ success: true, message: 'User deleted permanently' });
   } catch (err) {
-    console.error('Delete user error:', err);
+    logger.error({ err }, 'Delete user error');
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });

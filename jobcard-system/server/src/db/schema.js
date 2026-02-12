@@ -1,4 +1,5 @@
 const { db } = require('./connection');
+const logger = require('../utils/logger');
 
 // Create tables
 db.exec(`
@@ -326,7 +327,7 @@ for (const migration of migrations) {
     const columnExists = columns.some(col => col.name === migration.column);
     if (!columnExists) {
       db.exec(`ALTER TABLE ${migration.table} ADD COLUMN ${migration.column} ${migration.type}`);
-      console.log(`Migration: Added column ${migration.column} to ${migration.table}`);
+      logger.info({ table: migration.table, column: migration.column }, 'Migration: Added column');
     }
   } catch (err) {
     // Column might already exist, ignore error

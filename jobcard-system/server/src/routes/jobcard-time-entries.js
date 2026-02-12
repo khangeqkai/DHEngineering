@@ -1,6 +1,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
+const logger = require('../utils/logger');
 const { authenticate } = require('../middleware/auth');
 const { timeEntryQueries, recordHistory } = require('../db/database');
 
@@ -32,7 +33,7 @@ router.get('/:id/time-entries', authenticate, (req, res) => {
       createdAt: e.created_at
     })));
   } catch (err) {
-    console.error('Get time entries error:', err);
+    logger.error({ err }, 'Get time entries error');
     res.status(500).json({ error: 'Failed to get time entries' });
   }
 });
@@ -76,7 +77,7 @@ router.post('/:id/time-entries', authenticate, (req, res) => {
     const entry = timeEntryQueries.getById.get(entryId);
     res.status(201).json(entry);
   } catch (err) {
-    console.error('Add time entry error:', err);
+    logger.error({ err }, 'Add time entry error');
     res.status(500).json({ error: 'Failed to add time entry' });
   }
 });
@@ -120,7 +121,7 @@ router.put('/:id/time-entries/:entryId', authenticate, (req, res) => {
     const entry = timeEntryQueries.getById.get(entryId);
     res.json(entry);
   } catch (err) {
-    console.error('Update time entry error:', err);
+    logger.error({ err }, 'Update time entry error');
     res.status(500).json({ error: 'Failed to update time entry' });
   }
 });
@@ -145,7 +146,7 @@ router.delete('/:id/time-entries/:entryId', authenticate, (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error('Delete time entry error:', err);
+    logger.error({ err }, 'Delete time entry error');
     res.status(500).json({ error: 'Failed to delete time entry' });
   }
 });

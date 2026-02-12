@@ -1,6 +1,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
+const logger = require('../utils/logger');
 const { authenticate } = require('../middleware/auth');
 const { subcontractQueries, recordHistory } = require('../db/database');
 
@@ -21,7 +22,7 @@ router.get('/:id/subcontracts', authenticate, (req, res) => {
       notes: s.notes
     })));
   } catch (err) {
-    console.error('Get subcontracts error:', err);
+    logger.error({ err }, 'Get subcontracts error');
     res.status(500).json({ error: 'Failed to get subcontracts' });
   }
 });
@@ -53,7 +54,7 @@ router.post('/:id/subcontracts', authenticate, (req, res) => {
     const sub = subcontractQueries.getById.get(subId);
     res.status(201).json(sub);
   } catch (err) {
-    console.error('Add subcontract error:', err);
+    logger.error({ err }, 'Add subcontract error');
     res.status(500).json({ error: 'Failed to add subcontract' });
   }
 });
@@ -88,7 +89,7 @@ router.put('/:id/subcontracts/:subId', authenticate, (req, res) => {
     const sub = subcontractQueries.getById.get(subId);
     res.json(sub);
   } catch (err) {
-    console.error('Update subcontract error:', err);
+    logger.error({ err }, 'Update subcontract error');
     res.status(500).json({ error: 'Failed to update subcontract' });
   }
 });
@@ -112,7 +113,7 @@ router.delete('/:id/subcontracts/:subId', authenticate, (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error('Delete subcontract error:', err);
+    logger.error({ err }, 'Delete subcontract error');
     res.status(500).json({ error: 'Failed to delete subcontract' });
   }
 });

@@ -4,6 +4,8 @@ const path = require('path');
 const fs = require('fs');
 
 const config = require('./src/config');
+const logger = require('./src/utils/logger');
+const { requestLogger } = require('./src/utils/logger');
 const authRoutes = require('./src/routes/auth');
 const hardwareRoutes = require('./src/routes/hardware');
 const jobcardsRoutes = require('./src/routes/jobcards');
@@ -27,6 +29,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json({ limit: '50mb' })); // Large limit for photos
+app.use(requestLogger); // Request logging
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -56,7 +59,7 @@ app.use('/api/scanner', settingsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Server error:', err);
+  logger.error({ err, url: req.url, method: req.method }, 'Server error');
   res.status(500).json({
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -74,16 +77,14 @@ async function start() {
 
     // Start the server
     app.listen(config.port, config.host, () => {
-      console.log('');
-      console.log('========================================');
-      console.log('  Job Card Server Started');
-      console.log('========================================');
-      console.log(`  API Server:  http://${config.host}:${config.port}`);
-      console.log('========================================');
-      console.log('');
+      logger.info({
+        host: config.host,
+        port: config.port,
+        url: `http://${config.host}:${config.port}`
+      }, 'Job Card Server started');
     });
   } catch (err) {
-    console.error('Failed to start server:', err);
+    logger.fatal({ err }, 'Failed to start server');
     process.exit(1);
   }
 }
