@@ -3,7 +3,7 @@ import { useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import JobCardList from './components/JobCardList';
-import JobCardForm from './components/JobCardForm';
+import JobCardForm from './components/jobcard-form/JobCardForm';
 import UserManagement from './components/UserManagement';
 import CustomerManagement from './components/CustomerManagement';
 import SupplierManagement from './components/SupplierManagement';
