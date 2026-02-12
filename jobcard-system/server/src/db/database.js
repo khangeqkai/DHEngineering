@@ -306,6 +306,27 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name);
 `);
 
+// Migration: Add missing columns to existing tables
+// This handles the case where the database was created with an older schema
+const migrations = [
+  { table: 'jobcards', column: 'contact_name', type: 'TEXT' },
+  { table: 'jobcards', column: 'contact_phone', type: 'TEXT' },
+  { table: 'jobcards', column: 'contact_email', type: 'TEXT' },
+];
+
+for (const migration of migrations) {
+  try {
+    const columns = db.prepare(`PRAGMA table_info(${migration.table})`).all();
+    const columnExists = columns.some(col => col.name === migration.column);
+    if (!columnExists) {
+      db.exec(`ALTER TABLE ${migration.table} ADD COLUMN ${migration.column} ${migration.type}`);
+      console.log(`Migration: Added column ${migration.column} to ${migration.table}`);
+    }
+  } catch (err) {
+    // Column might already exist, ignore error
+  }
+}
+
 // Helper to record history
 function recordHistory(entityType, entityId, action, userId, userName, changes, snapshot) {
   const stmt = db.prepare(`
