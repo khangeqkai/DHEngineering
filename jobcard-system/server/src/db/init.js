@@ -4,7 +4,7 @@ const logger = require('../utils/logger');
 const {
   db,
   userQueries,
-  customerQueries,
+  contactQueries,
   supplierQueries,
   machineQueries,
   jobcardQueries,
@@ -84,8 +84,8 @@ async function seedMockData() {
   logger.info('Seeding mock data...');
 
   // Check if mock data already exists
-  const existingCustomers = customerQueries.getAll.all();
-  if (existingCustomers.length > 0) {
+  const existingContacts = contactQueries.getAll.all();
+  if (existingContacts.length > 0) {
     logger.info('Mock data already exists, skipping...');
     return;
   }
@@ -110,24 +110,24 @@ async function seedMockData() {
   logger.info({ count: employees.length }, 'Created employees');
 
   // ============================================
-  // CUSTOMERS
+  // CONTACTS (phone contacts style - each contact is standalone)
   // ============================================
-  logger.info('Creating customers...');
-  const customers = [
-    { id: `customer:${uuidv4()}`, name: 'BHP Mining Services', contact: 'Peter Thompson', phone: '08 9234 5678', email: 'peter.t@bhp.com.au', address: '125 St Georges Terrace, Perth WA 6000', critical: true },
-    { id: `customer:${uuidv4()}`, name: 'Rio Tinto Operations', contact: 'Susan Clarke', phone: '08 9327 2000', email: 'susan.clarke@riotinto.com', address: '152 St Georges Terrace, Perth WA 6000', critical: true },
-    { id: `customer:${uuidv4()}`, name: 'Woodside Energy', contact: 'Mark Davidson', phone: '08 9348 4000', email: 'mark.davidson@woodside.com.au', address: 'Mia Yellagonga, Perth WA 6000', critical: true },
-    { id: `customer:${uuidv4()}`, name: 'Austral Engineering', contact: 'James Wilson', phone: '08 9456 7890', email: 'james@australeng.com.au', address: '45 Industrial Drive, Welshpool WA 6106', critical: false },
-    { id: `customer:${uuidv4()}`, name: 'Perth Mechanical Services', contact: 'Linda Chen', phone: '08 9321 4567', email: 'linda@perthmech.com.au', address: '78 Railway Parade, Bassendean WA 6054', critical: false },
-    { id: `customer:${uuidv4()}`, name: 'Fortescue Metals Group', contact: 'Robert Hughes', phone: '08 6218 8888', email: 'robert.hughes@fmgl.com.au', address: '87 Adelaide Terrace, Perth WA 6000', critical: true },
-    { id: `customer:${uuidv4()}`, name: 'Komatsu Australia', contact: 'Steve Martin', phone: '08 9340 5555', email: 'steve.martin@komatsu.com.au', address: '12 Freight Road, Welshpool WA 6106', critical: false },
-    { id: `customer:${uuidv4()}`, name: 'Caterpillar WA', contact: 'Michelle Taylor', phone: '08 9413 7000', email: 'mtaylor@cat.com', address: '95 Hardey Road, Belmont WA 6104', critical: false },
+  logger.info('Creating contacts...');
+  const contacts = [
+    { id: `contact:${uuidv4()}`, contact_name: 'Peter Thompson', company_name: 'BHP Mining Services', phone: '08 9234 5678', email: 'peter.t@bhp.com.au', address: '125 St Georges Terrace, Perth WA 6000', critical: true },
+    { id: `contact:${uuidv4()}`, contact_name: 'Susan Clarke', company_name: 'Rio Tinto Operations', phone: '08 9327 2000', email: 'susan.clarke@riotinto.com', address: '152 St Georges Terrace, Perth WA 6000', critical: true },
+    { id: `contact:${uuidv4()}`, contact_name: 'Mark Davidson', company_name: 'Woodside Energy', phone: '08 9348 4000', email: 'mark.davidson@woodside.com.au', address: 'Mia Yellagonga, Perth WA 6000', critical: true },
+    { id: `contact:${uuidv4()}`, contact_name: 'James Wilson', company_name: 'Austral Engineering', phone: '08 9456 7890', email: 'james@australeng.com.au', address: '45 Industrial Drive, Welshpool WA 6106', critical: false },
+    { id: `contact:${uuidv4()}`, contact_name: 'Linda Chen', company_name: 'Perth Mechanical Services', phone: '08 9321 4567', email: 'linda@perthmech.com.au', address: '78 Railway Parade, Bassendean WA 6054', critical: false },
+    { id: `contact:${uuidv4()}`, contact_name: 'Robert Hughes', company_name: 'Fortescue Metals Group', phone: '08 6218 8888', email: 'robert.hughes@fmgl.com.au', address: '87 Adelaide Terrace, Perth WA 6000', critical: true },
+    { id: `contact:${uuidv4()}`, contact_name: 'Steve Martin', company_name: 'Komatsu Australia', phone: '08 9340 5555', email: 'steve.martin@komatsu.com.au', address: '12 Freight Road, Welshpool WA 6106', critical: false },
+    { id: `contact:${uuidv4()}`, contact_name: 'Michelle Taylor', company_name: 'Caterpillar WA', phone: '08 9413 7000', email: 'mtaylor@cat.com', address: '95 Hardey Road, Belmont WA 6104', critical: false },
   ];
 
-  for (const cust of customers) {
-    customerQueries.create.run(cust.id, cust.name, cust.contact, cust.phone, cust.email, cust.address, cust.critical ? 1 : 0, null);
+  for (const c of contacts) {
+    contactQueries.create.run(c.id, c.contact_name, c.company_name, c.phone, c.email, c.address, c.critical ? 1 : 0, null);
   }
-  logger.info({ count: customers.length }, 'Created customers');
+  logger.info({ count: contacts.length }, 'Created contacts');
 
   // ============================================
   // SUPPLIERS (Approved Supplier List)
@@ -194,21 +194,21 @@ async function seedMockData() {
   const jobCards = [
     // Active Jobs - IN PROGRESS
     {
-      type: 'JOB_CARD', status: 'IN_PROGRESS', customer: customers[0], quality: 'CRITICAL',
+      type: 'JOB_CARD', status: 'IN_PROGRESS', contact: contacts[0], quality: 'CRITICAL',
       jobType: 'MANUFACTURE', priority: 'HIGH', po: 'PO-BHP-2024-001', drawings: 'CUSTOMER_CAD',
       property: 'MATERIAL_SUPPLIED', desc: 'Manufacture 10x custom hydraulic cylinder shafts to drawing',
       due: daysFromNow(5), treatment: 'HEAT_TREATMENT,PRECISION_GRINDING',
       items: [{ qty: '10', desc: 'Hydraulic Cylinder Shaft - 316 Stainless Steel, 50mm OD x 400mm' }]
     },
     {
-      type: 'JOB_CARD', status: 'IN_PROGRESS', customer: customers[1], quality: 'CRITICAL',
+      type: 'JOB_CARD', status: 'IN_PROGRESS', contact: contacts[1], quality: 'CRITICAL',
       jobType: 'REPAIR', priority: 'HIGH', po: 'PO-RIO-2024-089', drawings: 'DH_SKETCH',
       property: 'PART_FOR_REPAIR', desc: 'Repair worn drive shaft - build up and machine to original dimensions',
       due: daysFromNow(3), treatment: 'HEAT_TREATMENT',
       items: [{ qty: '1', desc: 'Drive Shaft Repair - Build up worn journal, machine to spec' }]
     },
     {
-      type: 'JOB_CARD', status: 'IN_PROGRESS', customer: customers[3], quality: 'STANDARD',
+      type: 'JOB_CARD', status: 'IN_PROGRESS', contact: contacts[3], quality: 'STANDARD',
       jobType: 'FABRICATE', priority: 'MEDIUM', po: 'AE-2024-156', drawings: 'CUSTOMER_SKETCH',
       property: 'NONE', desc: 'Fabricate mounting brackets for conveyor system',
       due: daysFromNow(7), treatment: 'GALVANISE',
@@ -220,14 +220,14 @@ async function seedMockData() {
 
     // Active Jobs - OPEN
     {
-      type: 'JOB_CARD', status: 'OPEN', customer: customers[2], quality: 'CRITICAL',
+      type: 'JOB_CARD', status: 'OPEN', contact: contacts[2], quality: 'CRITICAL',
       jobType: 'REVERSE ENGINEER', priority: 'MEDIUM', po: 'WS-PO-45678', drawings: 'DH_CAD',
       property: 'GOOD_SAMPLE', desc: 'Reverse engineer obsolete valve body - create CAD and manufacture',
       due: daysFromNow(14), treatment: 'NONE',
       items: [{ qty: '5', desc: 'Valve Body - Reverse engineered from sample, Brass' }]
     },
     {
-      type: 'JOB_CARD', status: 'OPEN', customer: customers[4], quality: 'STANDARD',
+      type: 'JOB_CARD', status: 'OPEN', contact: contacts[4], quality: 'STANDARD',
       jobType: 'MODIFY', priority: 'LOW', po: 'PMS-2024-234', drawings: 'CUSTOMER_CAD',
       property: 'PART_FOR_MODIFICATION', desc: 'Modify existing flange - add extra bolt holes',
       due: daysFromNow(10), treatment: 'NONE',
@@ -236,7 +236,7 @@ async function seedMockData() {
 
     // ON HOLD
     {
-      type: 'JOB_CARD', status: 'ON_HOLD', customer: customers[5], quality: 'CRITICAL',
+      type: 'JOB_CARD', status: 'ON_HOLD', contact: contacts[5], quality: 'CRITICAL',
       jobType: 'MANUFACTURE', priority: 'HIGH', po: 'FMG-2024-777', drawings: 'CUSTOMER_CAD',
       property: 'MATERIAL_SUPPLIED', desc: 'Manufacture wear liners - ON HOLD waiting for material delivery',
       due: daysFromNow(21), treatment: 'HEAT_TREATMENT',
@@ -248,7 +248,7 @@ async function seedMockData() {
 
     // DONE (ready for invoicing)
     {
-      type: 'JOB_CARD', status: 'DONE', customer: customers[6], quality: 'STANDARD',
+      type: 'JOB_CARD', status: 'DONE', contact: contacts[6], quality: 'STANDARD',
       jobType: 'SUPPLY', priority: 'NONE', po: 'KOM-2024-123', drawings: 'NONE',
       property: 'NONE', desc: 'Supply standard bolts and fasteners',
       due: daysAgo(2), treatment: 'NONE',
@@ -259,7 +259,7 @@ async function seedMockData() {
       ]
     },
     {
-      type: 'JOB_CARD', status: 'DONE', customer: customers[7], quality: 'STANDARD',
+      type: 'JOB_CARD', status: 'DONE', contact: contacts[7], quality: 'STANDARD',
       jobType: 'INSPECTION', priority: 'NONE', po: 'CAT-INS-2024-05', drawings: 'CUSTOMER_CAD',
       property: 'GOOD_SAMPLE', desc: 'Dimensional inspection of machined components',
       due: daysAgo(1), treatment: 'NONE',
@@ -268,7 +268,7 @@ async function seedMockData() {
 
     // QUOTES
     {
-      type: 'QUOTE', status: 'QUOTE', customer: customers[0], quality: 'CRITICAL',
+      type: 'QUOTE', status: 'QUOTE', contact: contacts[0], quality: 'CRITICAL',
       jobType: 'MANUFACTURE', priority: 'NONE', po: '', drawings: 'CUSTOMER_CAD',
       property: 'NONE', desc: 'Quote for batch of precision machined components',
       due: null, treatment: 'ANODISE',
@@ -278,7 +278,7 @@ async function seedMockData() {
       ]
     },
     {
-      type: 'QUOTE', status: 'QUOTE', customer: customers[3], quality: 'STANDARD',
+      type: 'QUOTE', status: 'QUOTE', contact: contacts[3], quality: 'STANDARD',
       jobType: 'FABRICATE', priority: 'NONE', po: '', drawings: 'PREPARE_CAD',
       property: 'NONE', desc: 'Quote for custom steel frame fabrication',
       due: null, treatment: 'POWDERCOAT',
@@ -287,7 +287,7 @@ async function seedMockData() {
 
     // OVERDUE job
     {
-      type: 'JOB_CARD', status: 'IN_PROGRESS', customer: customers[4], quality: 'STANDARD',
+      type: 'JOB_CARD', status: 'IN_PROGRESS', contact: contacts[4], quality: 'STANDARD',
       jobType: 'REPAIR', priority: 'HIGH', po: 'PMS-URG-001', drawings: 'DH_SKETCH',
       property: 'DAMAGED_WORN_SAMPLE', desc: 'URGENT: Repair broken pump shaft',
       due: daysAgo(2), treatment: 'NONE',
@@ -301,7 +301,8 @@ async function seedMockData() {
     const id = `jobcard:${Date.now()}:${uuidv4().slice(0, 8)}`;
 
     jobcardQueries.create.run(
-      id, jobNumber, jc.type, jc.status, jc.customer.id,
+      id, jobNumber, jc.type, jc.status, jc.contact.id,
+      jc.contact.contact_name, jc.contact.company_name, jc.contact.phone, jc.contact.email,
       jc.quality, jc.jobType, jc.priority, jc.po || null, null,
       jc.drawings, jc.property, jc.desc, jc.due,
       0, null, jc.treatment, null, null, null,

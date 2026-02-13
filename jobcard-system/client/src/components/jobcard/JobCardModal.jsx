@@ -4,16 +4,12 @@ import BottomSheet from '../common/BottomSheet';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import './JobCardModal.css';
-
-// Custom hooks
 import { useCamera } from './useCamera';
 import { useCosting } from './useCosting';
 import { useSubcontracts } from './useSubcontracts';
 import { useTimeEntries } from './useTimeEntries';
-import { useCustomerSearch } from './useCustomerSearch';
+import { useContactSearch } from './useContactSearch';
 import { useJobCardForm } from './useJobCardForm';
-
-// Tab components
 import DetailsTab from './tabs/DetailsTab';
 import ItemsTab from './tabs/ItemsTab';
 import SubcontractsTab from './tabs/SubcontractsTab';
@@ -26,25 +22,18 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const { user } = useAuth();
   const isEdit = Boolean(jobCardId);
   const isAdmin = user?.role === 'admin';
-
   const [activeTab, setActiveTab] = useState('details');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  // Reference data loaded from API
   const [suppliers, setSuppliers] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [machines, setMachines] = useState([]);
-
-  // Job card related data from API (for edit mode)
   const [timeEntries, setTimeEntries] = useState([]);
   const [subcontracts, setSubcontracts] = useState([]);
   const [qaForms, setQaForms] = useState([]);
   const [costing, setCostingData] = useState(null);
-
-  // Custom hooks
   const camera = useCamera();
-  const customerHook = useCustomerSearch();
+  const contactHook = useContactSearch();
   const formHook = useJobCardForm();
 
   // Load reference data on mount
@@ -69,8 +58,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     };
     loadReferenceData();
   }, []);
-
-  // Load job card data when editing
+  const { setFormDataFromJobCard, resetForm: resetFormHook } = formHook;
+  const { setContactFromJobCard, resetContact } = contactHook;
+  const { setPhotos, stopCamera } = camera;
   const loadJobCard = useCallback(async () => {
     if (!isEdit || !jobCardId) return;
 
@@ -85,17 +75,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       ]);
 
       const jobcardData = jobcardRes;
-
-      // Set form data using hook
-      formHook.setFormDataFromJobCard(jobcardData);
-
-      // Set customer data using hook
-      customerHook.setCustomerFromJobCard(jobcardData);
-
-      // Photos from API data
-      camera.setPhotos(Array.isArray(jobcardData.photos) ? jobcardData.photos : []);
-
-      // Set related data
+      setFormDataFromJobCard(jobcardData);
+      setContactFromJobCard(jobcardData);
+      setPhotos(Array.isArray(jobcardData.photos) ? jobcardData.photos : []);
       setSubcontracts((subcontractsRes || []).map(s => ({
         id: s.id,
         supplier_id: s.supplierId || s.supplier_id,
@@ -146,16 +128,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     } finally {
       setLoading(false);
     }
-  }, [isEdit, jobCardId, isAdmin, formHook, customerHook, camera]);
-
-  // Load job card data when jobCardId changes
+  }, [isEdit, jobCardId, isAdmin, setFormDataFromJobCard, setContactFromJobCard, setPhotos]);
   useEffect(() => {
     if (isOpen && isEdit) {
       loadJobCard();
     }
   }, [isOpen, isEdit, loadJobCard]);
-
-  // Create API operation wrappers that reload data after mutation
   const apiCostingOperations = {
     costing: costing,
     updateCosting: async (data) => {
@@ -245,32 +223,30 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const costingHook = useCosting(jobCardId, apiCostingOperations);
   const subcontract = useSubcontracts(jobCardId, apiSubcontractOperations);
   const timeEntry = useTimeEntries(jobCardId, apiTimeEntryOperations);
-
-  // Memoized reset function to satisfy React hooks rules
+  const { resetSubcontracts } = subcontract;
+  const { resetTimeEntries } = timeEntry;
+  const { resetCosting } = costingHook;
   const resetForm = useCallback(() => {
-    formHook.resetForm();
-    customerHook.resetCustomer();
+    resetFormHook();
+    resetContact();
     setSubcontracts([]);
     setTimeEntries([]);
     setQaForms([]);
     setCostingData(null);
-    subcontract.resetSubcontracts();
-    timeEntry.resetTimeEntries();
-    costingHook.resetCosting();
-    camera.setPhotos([]);
+    resetSubcontracts();
+    resetTimeEntries();
+    resetCosting();
+    setPhotos([]);
     setActiveTab('details');
-  }, [formHook, customerHook, subcontract, timeEntry, costingHook, camera]);
-
-  // Reset form when modal opens for create mode
+  }, [resetFormHook, resetContact, resetSubcontracts, resetTimeEntries, resetCosting, setPhotos]);
   useEffect(() => {
     if (isOpen && !isEdit) {
       resetForm();
     }
     if (!isOpen) {
-      camera.stopCamera();
+      stopCamera();
     }
-  }, [isOpen, isEdit, resetForm, camera]);
-
+  }, [isOpen, isEdit, resetForm, stopCamera]);
   const loadScannerFiles = async () => {
     formHook.setLoadingScannerFiles(true);
     try {
@@ -291,19 +267,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
     formHook.setShowScannerFiles(!formHook.showScannerFiles);
   };
-
-  // Wrapper functions that pass setFormData to customer hook
-  const selectCustomer = (cust) => customerHook.selectCustomer(cust, formHook.setFormData);
-  const clearCustomer = () => customerHook.clearCustomer(formHook.setFormData);
-  const handleCustomerFieldChange = (field, value) => customerHook.handleCustomerFieldChange(field, value, formHook.setFormData);
-
+  const selectContact = (cont) => contactHook.selectContact(cont, formHook.setFormData);
+  const clearContact = () => contactHook.clearContact(formHook.setFormData);
+  const handleContactFieldChange = (field, value) => contactHook.handleContactFieldChange(field, value, formHook.setFormData);
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validation
     const errors = [];
-    if (!formHook.formData.customer_id && !customerHook.customerFormData.company_name.trim()) {
-      errors.push('Customer/Company Name is required');
+    if (!formHook.formData.contact_id && !contactHook.contactFormData.contact_name.trim()) {
+      errors.push('Contact Name is required');
     }
     if (!formHook.formData.job_type) {
       errors.push('Job Type is required');
@@ -327,62 +300,74 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     setSaving(true);
 
     try {
-      let customerId = formHook.formData.customer_id;
+      let contactId = formHook.formData.contact_id;
 
-      // Create new customer if needed (using API)
-      if (!customerId && customerHook.customerFormData.company_name.trim()) {
-        const newCustomer = await api.createCustomer({
-          name: customerHook.customerFormData.company_name.trim(),
-          contact_name: customerHook.customerFormData.contact_name || null,
-          contact_phone: customerHook.customerFormData.contact_phone || null,
-          contact_email: customerHook.customerFormData.contact_email || null,
-          is_critical_qa: customerHook.customerFormData.is_critical_qa || false
-        });
-        customerId = newCustomer.id;
+      // Smart detection: Check if user edited a selected contact and changed the name
+      if (contactHook.hasContactNameChanged()) {
+        const saveNew = window.confirm(
+          `Save "${contactHook.contactFormData.contact_name}" as a new contact?`
+        );
+        if (saveNew) {
+          // Create new contact
+          const newContact = await api.createContact({
+            contact_name: contactHook.contactFormData.contact_name.trim(),
+            company_name: contactHook.contactFormData.company_name || null,
+            phone: contactHook.contactFormData.phone || null,
+            email: contactHook.contactFormData.email || null,
+            is_critical_qa: contactHook.contactFormData.is_critical_qa || false
+          });
+          contactId = newContact.id;
+          toast.success('New contact saved');
+        }
+        // If not saving as new, keep the original contact_id but use override fields
       }
 
-      // Prepare job card data
+      // Create new contact if no contact selected and contact name provided
+      if (!contactId && contactHook.contactFormData.contact_name.trim()) {
+        const newContact = await api.createContact({
+          contact_name: contactHook.contactFormData.contact_name.trim(),
+          company_name: contactHook.contactFormData.company_name || null,
+          phone: contactHook.contactFormData.phone || null,
+          email: contactHook.contactFormData.email || null,
+          is_critical_qa: contactHook.contactFormData.is_critical_qa || false
+        });
+        contactId = newContact.id;
+      }
       const jobcardData = {
-        card_type: formHook.formData.card_type,
+        cardType: formHook.formData.card_type,
         status: formHook.formData.status,
-        customer_id: customerId,
-        customer_name: customerHook.customerFormData.company_name || customerHook.customer?.name,
-        contact_name: customerHook.customerFormData.contact_name,
-        contact_phone: customerHook.customerFormData.contact_phone,
-        contact_email: customerHook.customerFormData.contact_email,
-        quality_level: customerHook.customerFormData.is_critical_qa ? 'CRITICAL' : formHook.formData.quality_level,
-        job_type: formHook.formData.job_type,
+        contactId: contactId,
+        contactName: contactHook.contactFormData.contact_name,
+        companyName: contactHook.contactFormData.company_name,
+        contactPhone: contactHook.contactFormData.phone,
+        contactEmail: contactHook.contactFormData.email,
+        qualityLevel: contactHook.contactFormData.is_critical_qa ? 'CRITICAL' : formHook.formData.quality_level,
+        jobType: formHook.formData.job_type,
         priority: formHook.formData.priority,
-        po_number: formHook.formData.po_number,
-        quote_reference: formHook.formData.quote_reference,
-        drawings_type: formHook.formData.drawings_type,
-        customer_property: formHook.formData.customer_property,
+        poNumber: formHook.formData.po_number,
+        quoteReference: formHook.formData.quote_reference,
+        drawingsType: formHook.formData.drawings_type,
+        customerProperty: formHook.formData.customer_property,
         description: formHook.formData.description,
-        due_date: formHook.formData.due_date,
-        is_repeat_job: formHook.formData.is_repeat_job,
-        repeat_job_reference: formHook.formData.repeat_job_reference,
-        treatment_required: formHook.formData.treatment_required,
-        treatment_other: formHook.formData.treatment_other,
+        dueDate: formHook.formData.due_date,
+        isRepeatJob: formHook.formData.is_repeat_job,
+        repeatJobReference: formHook.formData.repeat_job_reference,
+        treatmentRequired: formHook.formData.treatment_required,
+        treatmentOther: formHook.formData.treatment_other,
         notes: formHook.formData.notes,
         photos: camera.photos,
-        assignees: formHook.assignees
+        assigneeIds: formHook.assignees.map(a => a.user_id),
+        items: validItems.map((item, idx) => ({
+          itemNumber: item.item_number || idx + 1,
+          qty: item.qty,
+          description: item.description
+        }))
       };
-
       if (isEdit) {
         await api.updateJobcard(jobCardId, jobcardData);
-        const existingItemIds = formHook.lineItems.filter(i => typeof i.id === 'number' && !String(i.id).startsWith('local_')).map(i => i.id);
-        for (const item of validItems) {
-          if (typeof item.id === 'number' && existingItemIds.includes(item.id)) {
-            await api.updateJobItem(jobCardId, item.id, item);
-          } else {
-            await api.addJobItem(jobCardId, item);
-          }
-        }
       } else {
         const newJobcard = await api.createJobcard(jobcardData);
-        for (const item of validItems) {
-          await api.addJobItem(newJobcard.id, item);
-        }
+        // Add subcontracts for new job cards
         for (const sub of formHook.localSubcontracts.filter(s => s.supplier_id)) {
           await api.addSubcontract(newJobcard.id, {
             supplier_id: sub.supplier_id,
@@ -404,7 +389,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       setSaving(false);
     }
   };
-
   const handleConvertToJobCard = async () => {
     if (!confirm('Convert this quote to a job card?')) return;
 
@@ -417,14 +401,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       toast.error(err.message || 'Failed to convert to job card');
     }
   };
-
   if (!isOpen) return null;
-
   const isOverdue = formHook.formData.due_date && new Date(formHook.formData.due_date) < new Date() &&
     !['DONE', 'INVOICED'].includes(formHook.formData.status);
-
   const buildTitle = () => isEdit ? `Edit: ${formHook.jobNumber}` : 'New Job Card';
-
   return (
     <>
       <BottomSheet isOpen={isOpen} onClose={onClose} title={buildTitle()} size="large">
@@ -452,15 +432,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   formData={formHook.formData}
                   setFormData={formHook.setFormData}
                   handleChange={formHook.handleChange}
-                  customer={customerHook.customer}
-                  customerFormData={customerHook.customerFormData}
-                  handleCustomerFieldChange={handleCustomerFieldChange}
-                  selectCustomer={selectCustomer}
-                  clearCustomer={clearCustomer}
-                  customers={customerHook.customers}
-                  showCustomerDropdown={customerHook.showCustomerDropdown}
-                  setShowCustomerDropdown={customerHook.setShowCustomerDropdown}
-                  customerSearchRef={customerHook.customerSearchRef}
+                  contact={contactHook.contact}
+                  contactFormData={contactHook.contactFormData}
+                  handleContactFieldChange={handleContactFieldChange}
+                  selectContact={selectContact}
+                  clearContact={clearContact}
+                  contacts={contactHook.contacts}
+                  showContactDropdown={contactHook.showContactDropdown}
+                  setShowContactDropdown={contactHook.setShowContactDropdown}
+                  contactSearchRef={contactHook.contactSearchRef}
+                  contactSearch={contactHook.contactSearch}
                   employees={employees || []}
                   assignees={formHook.assignees}
                   toggleAssignee={formHook.toggleAssignee}

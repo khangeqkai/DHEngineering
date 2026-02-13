@@ -3,122 +3,128 @@ import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 
-export default function CustomerManagement() {
-  const [customers, setCustomers] = useState([]);
+export default function ContactManagement() {
+  const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [editingContact, setEditingContact] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
     contact_name: '',
-    contact_phone: '',
-    contact_email: '',
+    company_name: '',
+    phone: '',
+    email: '',
     address: '',
     is_critical_qa: false,
     notes: ''
   });
   const [saving, setSaving] = useState(false);
 
-  // Load customers on mount
+  // Load contacts on mount
   useEffect(() => {
-    loadCustomers();
+    loadContacts();
   }, []);
 
-  const loadCustomers = async () => {
+  const loadContacts = async () => {
     setLoading(true);
     try {
-      const data = await api.getCustomers(true); // includeInactive = true
-      setCustomers(data);
+      const data = await api.getContacts(true); // includeInactive = true
+      setContacts(data);
     } catch (err) {
-      console.error('Failed to load customers:', err);
-      toast.error('Failed to load customers');
+      console.error('Failed to load contacts:', err);
+      toast.error('Failed to load contacts');
     } finally {
       setLoading(false);
     }
   };
 
-  // Filter customers based on showInactive toggle
-  const filteredCustomers = showInactive
-    ? customers
-    : customers.filter(c => c.active === 1 || c.active === true);
+  // Filter contacts based on showInactive toggle
+  const filteredContacts = showInactive
+    ? contacts
+    : contacts.filter(c => c.active === 1 || c.active === true);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
 
     try {
-      if (editingCustomer) {
-        await api.updateCustomer(editingCustomer.id, formData);
+      if (editingContact) {
+        await api.updateContact(editingContact.id, formData);
       } else {
-        await api.createCustomer(formData);
+        await api.createContact(formData);
       }
-      await loadCustomers();
+      await loadContacts();
       resetForm();
     } catch (err) {
-      console.error('Failed to save customer:', err);
-      toast.error(err.message || 'Failed to save customer');
+      console.error('Failed to save contact:', err);
+      toast.error(err.message || 'Failed to save contact');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleEdit = (customer) => {
-    setEditingCustomer(customer);
+  const handleEdit = (contact) => {
+    setEditingContact(contact);
     setFormData({
-      name: customer.name || customer.company_name || '',
-      contact_name: customer.contact_name || '',
-      contact_phone: customer.contact_phone || '',
-      contact_email: customer.contact_email || '',
-      address: customer.address || '',
-      is_critical_qa: customer.is_critical_qa || false,
-      notes: customer.notes || ''
+      contact_name: contact.contact_name || '',
+      company_name: contact.company_name || '',
+      phone: contact.phone || '',
+      email: contact.email || '',
+      address: contact.address || '',
+      is_critical_qa: contact.is_critical_qa || false,
+      notes: contact.notes || ''
     });
     setShowForm(true);
   };
 
-  const handleDeactivate = async (customer) => {
-    if (!confirm(`Are you sure you want to deactivate "${customer.name}"?`)) return;
+  const handleDeactivate = async (contact) => {
+    const displayName = contact.company_name
+      ? `${contact.contact_name} (${contact.company_name})`
+      : contact.contact_name;
+    if (!confirm(`Are you sure you want to deactivate "${displayName}"?`)) return;
 
     try {
-      await api.deactivateCustomer(customer.id);
-      await loadCustomers();
+      await api.deactivateContact(contact.id);
+      await loadContacts();
     } catch (err) {
-      console.error('Failed to deactivate customer:', err);
-      toast.error(err.message || 'Failed to deactivate customer');
+      console.error('Failed to deactivate contact:', err);
+      toast.error(err.message || 'Failed to deactivate contact');
     }
   };
 
-  const handleActivate = async (customer) => {
+  const handleActivate = async (contact) => {
     try {
-      await api.activateCustomer(customer.id);
-      await loadCustomers();
+      await api.activateContact(contact.id);
+      await loadContacts();
     } catch (err) {
-      console.error('Failed to activate customer:', err);
-      toast.error(err.message || 'Failed to activate customer');
+      console.error('Failed to activate contact:', err);
+      toast.error(err.message || 'Failed to activate contact');
     }
   };
 
-  const handleDelete = async (customer) => {
-    if (!confirm(`Are you sure you want to PERMANENTLY delete "${customer.name}"? This cannot be undone.`)) return;
+  const handleDelete = async (contact) => {
+    const displayName = contact.company_name
+      ? `${contact.contact_name} (${contact.company_name})`
+      : contact.contact_name;
+    if (!confirm(`Are you sure you want to PERMANENTLY delete "${displayName}"? This cannot be undone.`)) return;
 
     try {
-      await api.deleteCustomer(customer.id);
-      await loadCustomers();
+      await api.deleteContact(contact.id);
+      await loadContacts();
     } catch (err) {
-      console.error('Failed to delete customer:', err);
-      toast.error(err.message || 'Failed to delete customer');
+      console.error('Failed to delete contact:', err);
+      toast.error(err.message || 'Failed to delete contact');
     }
   };
 
   const resetForm = () => {
     setShowForm(false);
-    setEditingCustomer(null);
+    setEditingContact(null);
     setFormData({
-      name: '',
       contact_name: '',
-      contact_phone: '',
-      contact_email: '',
+      company_name: '',
+      phone: '',
+      email: '',
       address: '',
       is_critical_qa: false,
       notes: ''
@@ -126,12 +132,12 @@ export default function CustomerManagement() {
   };
 
   if (loading) {
-    return <div className="loading">Loading customers...</div>;
+    return <div className="loading">Loading contacts...</div>;
   }
 
   return (
-    <div className="customer-management">
-      <PageHeader title="Customers">
+    <div className="contact-management">
+      <PageHeader title="Contacts">
         <label className="show-inactive-label">
           <input
             type="checkbox"
@@ -141,14 +147,14 @@ export default function CustomerManagement() {
           Show inactive
         </label>
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-          + Add Customer
+          + Add Contact
         </button>
       </PageHeader>
 
       {showForm && (
         <div className="card" style={{ marginBottom: '1.5rem' }}>
           <div className="card-header">
-            <h2>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</h2>
+            <h2>{editingContact ? 'Edit Contact' : 'Add New Contact'}</h2>
             <button className="btn btn-secondary btn-sm" onClick={resetForm}>
               Cancel
             </button>
@@ -157,45 +163,47 @@ export default function CustomerManagement() {
             <form onSubmit={handleSubmit}>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="name">Company Name *</label>
-                  <input
-                    type="text"
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="contact_name">Contact Name</label>
+                  <label htmlFor="contact_name">Contact Name *</label>
                   <input
                     type="text"
                     id="contact_name"
                     value={formData.contact_name}
                     onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
+                    placeholder="Person's name..."
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="company_name">Company</label>
+                  <input
+                    type="text"
+                    id="company_name"
+                    value={formData.company_name}
+                    onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                    placeholder="Company name..."
                   />
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="contact_phone">Phone</label>
+                  <label htmlFor="phone">Phone</label>
                   <input
                     type="tel"
-                    id="contact_phone"
-                    value={formData.contact_phone}
-                    onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="contact_email">Email</label>
+                  <label htmlFor="email">Email</label>
                   <input
                     type="email"
-                    id="contact_email"
-                    value={formData.contact_email}
-                    onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                    id="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
               </div>
@@ -217,7 +225,7 @@ export default function CustomerManagement() {
                     checked={formData.is_critical_qa}
                     onChange={(e) => setFormData({ ...formData, is_critical_qa: e.target.checked })}
                   />
-                  Critical QA Customer
+                  Critical QA Contact
                   <span className="help-text">Requires enhanced documentation and QA forms</span>
                 </label>
               </div>
@@ -233,7 +241,7 @@ export default function CustomerManagement() {
               </div>
 
               <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving ? 'Saving...' : editingCustomer ? 'Update Customer' : 'Create Customer'}
+                {saving ? 'Saving...' : editingContact ? 'Update Contact' : 'Create Contact'}
               </button>
             </form>
           </div>
@@ -245,8 +253,8 @@ export default function CustomerManagement() {
           <table className="table">
             <thead>
               <tr>
-                <th>Company Name</th>
-                <th>Contact</th>
+                <th>Contact Name</th>
+                <th>Company</th>
                 <th>Phone</th>
                 <th>Email</th>
                 <th>QA Level</th>
@@ -255,59 +263,59 @@ export default function CustomerManagement() {
               </tr>
             </thead>
             <tbody>
-              {filteredCustomers.length === 0 ? (
+              {filteredContacts.length === 0 ? (
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    No customers found
+                    No contacts found
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map((customer) => (
-                  <tr key={customer.id} style={{ opacity: customer.active ? 1 : 0.6 }}>
+                filteredContacts.map((contact) => (
+                  <tr key={contact.id} style={{ opacity: contact.active ? 1 : 0.6 }}>
                     <td>
-                      <strong>{customer.name}</strong>
+                      <strong>{contact.contact_name}</strong>
                     </td>
-                    <td>{customer.contact_name || '-'}</td>
-                    <td>{customer.contact_phone || '-'}</td>
-                    <td>{customer.contact_email || '-'}</td>
+                    <td>{contact.company_name || '-'}</td>
+                    <td>{contact.phone || '-'}</td>
+                    <td>{contact.email || '-'}</td>
                     <td>
-                      {customer.is_critical_qa ? (
+                      {contact.is_critical_qa ? (
                         <span className="badge badge-critical">Critical QA</span>
                       ) : (
                         <span className="badge badge-standard">Standard</span>
                       )}
                     </td>
                     <td>
-                      <span className={`badge ${customer.active ? 'badge-completed' : 'badge-cancelled'}`}>
-                        {customer.active ? 'Active' : 'Inactive'}
+                      <span className={`badge ${contact.active ? 'badge-completed' : 'badge-cancelled'}`}>
+                        {contact.active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td>
                       <div className="action-buttons">
                         <button
                           className="btn btn-secondary btn-sm"
-                          onClick={() => handleEdit(customer)}
+                          onClick={() => handleEdit(contact)}
                         >
                           Edit
                         </button>
-                        {customer.active ? (
+                        {contact.active ? (
                           <button
                             className="btn btn-warning btn-sm"
-                            onClick={() => handleDeactivate(customer)}
+                            onClick={() => handleDeactivate(contact)}
                           >
                             Deactivate
                           </button>
                         ) : (
                           <button
                             className="btn btn-success btn-sm"
-                            onClick={() => handleActivate(customer)}
+                            onClick={() => handleActivate(contact)}
                           >
                             Activate
                           </button>
                         )}
                         <button
                           className="btn btn-danger btn-sm"
-                          onClick={() => handleDelete(customer)}
+                          onClick={() => handleDelete(contact)}
                         >
                           Delete
                         </button>

@@ -70,8 +70,9 @@ export function useJobCardForm() {
     setFormData({
       card_type: jobcardData.cardType || jobcardData.card_type || 'JOB_CARD',
       status: jobcardData.status || 'OPEN',
-      customer_id: jobcardData.customerId || jobcardData.customer_id || '',
+      contact_id: jobcardData.contactId || jobcardData.contact_id || '',
       contact_name: jobcardData.contactName || jobcardData.contact_name || '',
+      company_name: jobcardData.companyName || jobcardData.company_name || '',
       contact_phone: jobcardData.contactPhone || jobcardData.contact_phone || '',
       contact_email: jobcardData.contactEmail || jobcardData.contact_email || '',
       quality_level: jobcardData.qualityLevel || jobcardData.quality_level || 'STANDARD',

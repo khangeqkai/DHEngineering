@@ -5,7 +5,7 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import JobCardList from './components/JobCardList';
 import UserManagement from './components/UserManagement';
-import CustomerManagement from './components/CustomerManagement';
+import ContactManagement from './components/ContactManagement';
 import SupplierManagement from './components/SupplierManagement';
 import ActivityLog from './components/ActivityLog';
 import Settings from './components/Settings';
@@ -79,7 +79,7 @@ function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="jobcards" element={<JobCardList />} />
-        <Route path="customers" element={<CustomerManagement />} />
+        <Route path="contacts" element={<ContactManagement />} />
         <Route
           path="suppliers"
           element={

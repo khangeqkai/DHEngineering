@@ -35,27 +35,35 @@ const userQueries = {
   delete: db.prepare('DELETE FROM users WHERE id = ?')
 };
 
-// Customer queries
-const customerQueries = {
-  getById: db.prepare('SELECT * FROM customers WHERE id = ?'),
-  getByName: db.prepare('SELECT * FROM customers WHERE name = ?'),
-  getAll: db.prepare('SELECT * FROM customers WHERE active = 1 ORDER BY name ASC'),
-  getAllIncludeInactive: db.prepare('SELECT * FROM customers ORDER BY name ASC'),
-  search: db.prepare('SELECT * FROM customers WHERE active = 1 AND name LIKE ? ORDER BY name ASC LIMIT 20'),
+// Contact queries (phone contacts style - each contact is standalone)
+const contactQueries = {
+  getById: db.prepare('SELECT * FROM contacts WHERE id = ?'),
+  getByName: db.prepare('SELECT * FROM contacts WHERE contact_name = ?'),
+  getAll: db.prepare('SELECT * FROM contacts WHERE active = 1 ORDER BY contact_name ASC'),
+  getAllIncludeInactive: db.prepare('SELECT * FROM contacts ORDER BY contact_name ASC'),
+
+  // Search by contact name OR company name
+  search: db.prepare(`
+    SELECT * FROM contacts
+    WHERE active = 1 AND (contact_name LIKE ? OR company_name LIKE ?)
+    ORDER BY contact_name ASC
+    LIMIT 20
+  `),
 
   create: db.prepare(`
-    INSERT INTO customers (id, name, contact_name, contact_phone, contact_email, address, is_critical_qa, notes, created_at, updated_at)
+    INSERT INTO contacts (id, contact_name, company_name, phone, email, address, is_critical_qa, notes, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `),
 
   update: db.prepare(`
-    UPDATE customers SET name = ?, contact_name = ?, contact_phone = ?, contact_email = ?, address = ?, is_critical_qa = ?, notes = ?, updated_at = datetime('now')
+    UPDATE contacts
+    SET contact_name = ?, company_name = ?, phone = ?, email = ?, address = ?, is_critical_qa = ?, notes = ?, updated_at = datetime('now')
     WHERE id = ?
   `),
 
-  deactivate: db.prepare(`UPDATE customers SET active = 0, updated_at = datetime('now') WHERE id = ?`),
-  activate: db.prepare(`UPDATE customers SET active = 1, updated_at = datetime('now') WHERE id = ?`),
-  delete: db.prepare('DELETE FROM customers WHERE id = ?')
+  deactivate: db.prepare(`UPDATE contacts SET active = 0, updated_at = datetime('now') WHERE id = ?`),
+  activate: db.prepare(`UPDATE contacts SET active = 1, updated_at = datetime('now') WHERE id = ?`),
+  delete: db.prepare('DELETE FROM contacts WHERE id = ?')
 };
 
 // Supplier queries
@@ -101,7 +109,7 @@ const machineQueries = {
 
 module.exports = {
   userQueries,
-  customerQueries,
+  contactQueries,
   supplierQueries,
   machineQueries
 };

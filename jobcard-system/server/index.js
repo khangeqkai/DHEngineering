@@ -15,7 +15,7 @@ const jobcardCostingRoutes = require('./src/routes/jobcard-costing');
 const jobcardDocumentsRoutes = require('./src/routes/jobcard-documents');
 const jobcardQaFormsRoutes = require('./src/routes/jobcard-qa-forms');
 const historyRoutes = require('./src/routes/history');
-const customersRoutes = require('./src/routes/customers');
+const contactsRoutes = require('./src/routes/contacts');
 const suppliersRoutes = require('./src/routes/suppliers');
 const machinesRoutes = require('./src/routes/machines');
 const settingsRoutes = require('./src/routes/settings');
@@ -51,11 +51,10 @@ app.use('/api/jobcards', jobcardDocumentsRoutes);
 app.use('/api/jobcards', jobcardQaFormsRoutes);
 app.use('/api/jobcards', jobcardsRoutes);
 app.use('/api/history', historyRoutes);
-app.use('/api/customers', customersRoutes);
+app.use('/api/contacts', contactsRoutes);
 app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/machines', machinesRoutes);
 app.use('/api/settings', settingsRoutes);
-app.use('/api/scanner', settingsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

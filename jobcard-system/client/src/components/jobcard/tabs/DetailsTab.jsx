@@ -14,15 +14,16 @@ export default function DetailsTab({
   formData,
   setFormData,
   handleChange,
-  customer,
-  customerFormData,
-  handleCustomerFieldChange,
-  selectCustomer,
-  clearCustomer,
-  customers,
-  showCustomerDropdown,
-  setShowCustomerDropdown,
-  customerSearchRef,
+  contact,
+  contactFormData,
+  handleContactFieldChange,
+  selectContact,
+  clearContact,
+  contacts,
+  showContactDropdown,
+  setShowContactDropdown,
+  contactSearchRef,
+  contactSearch,
   employees,
   assignees,
   toggleAssignee,
@@ -89,36 +90,40 @@ export default function DetailsTab({
         </div>
       </div>
 
-      {/* Customer Section */}
+      {/* Contact Section - Phone Contacts Style */}
       <div className="form-section">
-        <h3 className="form-section-title" data-section="02">Customer <span className="required">*</span></h3>
+        <h3 className="form-section-title" data-section="02">Contact <span className="required">*</span></h3>
 
-        {customer && (
+        {contact && (
           <div className="selected-customer-banner">
-            <span>Existing customer selected: <strong>{customer.name}</strong></span>
-            {customer.is_critical_qa && <span className="badge badge-critical">Critical QA</span>}
-            <button type="button" className="btn-link" onClick={clearCustomer}>Clear</button>
+            <span>Contact selected: <strong>{contact.contact_name || contact.contactName}</strong></span>
+            {(contact.company_name || contact.companyName) && (
+              <span> at {contact.company_name || contact.companyName}</span>
+            )}
+            {contact.is_critical_qa && <span className="badge badge-critical">Critical QA</span>}
+            <button type="button" className="btn-link" onClick={clearContact}>Clear</button>
           </div>
         )}
 
         <div className="form-row">
-          <div className="form-group" style={{ flex: 2 }} ref={customerSearchRef}>
-            <label>Company Name <span className="required">*</span></label>
+          <div className="form-group" style={{ flex: 2 }} ref={contactSearchRef}>
+            <label>Search Contact <span className="required">*</span></label>
             <div className="autocomplete-container">
               <input
                 type="text"
-                value={customerFormData.company_name}
-                onChange={(e) => handleCustomerFieldChange('company_name', e.target.value)}
-                onFocus={() => customerFormData.company_name.length >= 2 && setShowCustomerDropdown(true)}
-                placeholder="Start typing company name..."
-                className={!customerFormData.company_name.trim() ? 'field-required' : customer ? 'field-selected' : ''}
+                value={contactSearch}
+                onChange={(e) => handleContactFieldChange('contact_name', e.target.value)}
+                onFocus={() => contactFormData.contact_name.length >= 2 && setShowContactDropdown(true)}
+                placeholder="Search by name or company..."
+                className={!contactFormData.contact_name.trim() ? 'field-required' : contact ? 'field-selected' : ''}
               />
-              {showCustomerDropdown && customers.length > 0 && (
+              {showContactDropdown && contacts.length > 0 && (
                 <div className="customer-dropdown">
-                  <div className="dropdown-hint">Select existing customer or continue typing to create new</div>
-                  {customers.map(c => (
-                    <div key={c.id} className="customer-option" onClick={() => selectCustomer(c)}>
-                      <span>{c.name}</span>
+                  <div className="dropdown-hint">Select existing contact or continue typing to create new</div>
+                  {contacts.map(c => (
+                    <div key={c.id} className="customer-option" onClick={() => selectContact(c)}>
+                      <strong>{c.contact_name}</strong>
+                      {c.company_name && <span className="company-name"> ({c.company_name})</span>}
                       {c.is_critical_qa && <span className="badge badge-critical">Critical QA</span>}
                     </div>
                   ))}
@@ -131,48 +136,60 @@ export default function DetailsTab({
             <label className="checkbox-inline">
               <input
                 type="checkbox"
-                checked={customerFormData.is_critical_qa}
-                onChange={(e) => handleCustomerFieldChange('is_critical_qa', e.target.checked)}
-                disabled={customer?.is_critical_qa}
+                checked={contactFormData.is_critical_qa}
+                onChange={(e) => handleContactFieldChange('is_critical_qa', e.target.checked)}
+                disabled={contact?.is_critical_qa}
               />
               Critical QA
             </label>
           </div>
         </div>
 
-        {customerFormData.is_critical_qa && (
+        {contactFormData.is_critical_qa && (
           <div className="critical-warning">
-            Critical QA customer - enhanced documentation and QA forms required
+            Critical QA contact - enhanced documentation and QA forms required
           </div>
         )}
 
         <div className="contact-fields-inline">
-          <p className="field-note">Contact details for this job (internal use, not printed):</p>
+          <p className="field-note">Contact details for this job (editable):</p>
           <div className="form-row">
             <div className="form-group">
-              <label>Contact Name</label>
+              <label>Contact Name <span className="required">*</span></label>
               <input
                 type="text"
-                value={customerFormData.contact_name}
-                onChange={(e) => handleCustomerFieldChange('contact_name', e.target.value)}
+                value={contactFormData.contact_name}
+                onChange={(e) => handleContactFieldChange('contact_name', e.target.value)}
                 placeholder="Contact person..."
+                className={!contactFormData.contact_name.trim() ? 'field-required' : ''}
               />
             </div>
             <div className="form-group">
-              <label>Contact Phone</label>
+              <label>Company</label>
               <input
                 type="text"
-                value={customerFormData.contact_phone}
-                onChange={(e) => handleCustomerFieldChange('contact_phone', e.target.value)}
+                value={contactFormData.company_name}
+                onChange={(e) => handleContactFieldChange('company_name', e.target.value)}
+                placeholder="Company name..."
+              />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Phone</label>
+              <input
+                type="text"
+                value={contactFormData.phone}
+                onChange={(e) => handleContactFieldChange('phone', e.target.value)}
                 placeholder="Phone number..."
               />
             </div>
             <div className="form-group">
-              <label>Contact Email</label>
+              <label>Email</label>
               <input
                 type="email"
-                value={customerFormData.contact_email}
-                onChange={(e) => handleCustomerFieldChange('contact_email', e.target.value)}
+                value={contactFormData.email}
+                onChange={(e) => handleContactFieldChange('email', e.target.value)}
                 placeholder="Email address..."
               />
             </div>

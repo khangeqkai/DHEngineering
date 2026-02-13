@@ -119,9 +119,9 @@ export default function Layout() {
               </NavLink>
             </li>
             <li>
-              <NavLink to="/customers" onClick={handleNavClick}>
+              <NavLink to="/contacts" onClick={handleNavClick}>
                 <span className="nav-icon">&#x1F464;</span>
-                <span className="nav-text">Customers</span>
+                <span className="nav-text">Contacts</span>
               </NavLink>
             </li>
             {user?.role === 'admin' && (

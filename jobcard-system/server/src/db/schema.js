@@ -18,13 +18,13 @@ db.exec(`
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
-  -- Customers table
-  CREATE TABLE IF NOT EXISTS customers (
+  -- Contacts table (phone contacts style - each contact is standalone)
+  CREATE TABLE IF NOT EXISTS contacts (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    contact_name TEXT,
-    contact_phone TEXT,
-    contact_email TEXT,
+    contact_name TEXT NOT NULL,
+    company_name TEXT,
+    phone TEXT,
+    email TEXT,
     address TEXT,
     is_critical_qa INTEGER DEFAULT 0,
     notes TEXT,
@@ -56,11 +56,12 @@ db.exec(`
     card_type TEXT DEFAULT 'JOB_CARD',
     status TEXT DEFAULT 'OPEN',
 
-    -- Customer reference
-    customer_id TEXT,
+    -- Contact reference (phone contacts style)
+    contact_id TEXT,
 
-    -- Contact override (per job - not printed, for internal use)
+    -- Contact override (per job - editable copy of contact info)
     contact_name TEXT,
+    company_name TEXT,
     contact_phone TEXT,
     contact_email TEXT,
 
@@ -107,7 +108,7 @@ db.exec(`
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (customer_id) REFERENCES customers(id),
+    FOREIGN KEY (contact_id) REFERENCES contacts(id),
     FOREIGN KEY (created_by) REFERENCES users(id),
     FOREIGN KEY (updated_by) REFERENCES users(id)
   );
@@ -275,7 +276,7 @@ db.exec(`
   -- Create indexes for faster queries
   CREATE INDEX IF NOT EXISTS idx_jobcards_status ON jobcards(status);
   CREATE INDEX IF NOT EXISTS idx_jobcards_job_number ON jobcards(job_number);
-  CREATE INDEX IF NOT EXISTS idx_jobcards_customer ON jobcards(customer_id);
+  CREATE INDEX IF NOT EXISTS idx_jobcards_contact ON jobcards(contact_id);
   CREATE INDEX IF NOT EXISTS idx_jobcards_due_date ON jobcards(due_date);
   CREATE INDEX IF NOT EXISTS idx_jobcards_created_by ON jobcards(created_by);
   CREATE INDEX IF NOT EXISTS idx_jobcards_archived ON jobcards(archived);
@@ -287,7 +288,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_qa_forms_jobcard ON qa_forms(jobcard_id);
   CREATE INDEX IF NOT EXISTS idx_history_entity ON history(entity_type, entity_id);
   CREATE INDEX IF NOT EXISTS idx_history_user ON history(user_id);
-  CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
+  CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(contact_name);
+  CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company_name);
   CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name);
 `);
 
@@ -295,11 +297,13 @@ db.exec(`
 // This handles the case where the database was created with an older schema
 const migrations = [
   { table: 'jobcards', column: 'contact_name', type: 'TEXT' },
+  { table: 'jobcards', column: 'company_name', type: 'TEXT' },
   { table: 'jobcards', column: 'contact_phone', type: 'TEXT' },
   { table: 'jobcards', column: 'contact_email', type: 'TEXT' },
+  { table: 'jobcards', column: 'contact_id', type: 'TEXT' },
   // Sync-related columns for offline-first support
-  { table: 'customers', column: '_version', type: 'INTEGER DEFAULT 1' },
-  { table: 'customers', column: '_device_id', type: 'TEXT' },
+  { table: 'contacts', column: '_version', type: 'INTEGER DEFAULT 1' },
+  { table: 'contacts', column: '_device_id', type: 'TEXT' },
   { table: 'suppliers', column: '_version', type: 'INTEGER DEFAULT 1' },
   { table: 'suppliers', column: '_device_id', type: 'TEXT' },
   { table: 'users', column: '_version', type: 'INTEGER DEFAULT 1' },

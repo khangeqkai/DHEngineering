@@ -15,7 +15,7 @@ const {
 // Import all queries
 const {
   userQueries,
-  customerQueries,
+  contactQueries,
   supplierQueries,
   machineQueries,
   jobcardQueries,
@@ -39,7 +39,7 @@ module.exports = {
   getSettings,
   updateSettings,
   userQueries,
-  customerQueries,
+  contactQueries,
   supplierQueries,
   machineQueries,
   jobcardQueries,

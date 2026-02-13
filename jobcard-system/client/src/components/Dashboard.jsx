@@ -174,8 +174,8 @@ export default function Dashboard() {
                       </a>
                     </td>
                     <td>
-                      {card.customer_name || '-'}
-                      {card.customer_is_critical && (
+                      {card.contactName || '-'}
+                      {card.contactIsCritical && (
                         <span className="critical-badge">Critical</span>
                       )}
                     </td>
@@ -239,8 +239,8 @@ export default function Dashboard() {
                         </a>
                       </td>
                       <td>
-                        {card.customer_name || '-'}
-                        {card.customer_is_critical && (
+                        {card.contactName || '-'}
+                        {card.contactIsCritical && (
                           <span className="critical-badge">Critical</span>
                         )}
                       </td>

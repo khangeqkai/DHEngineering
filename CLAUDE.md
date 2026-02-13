@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-DH Engineering Job Card System - A full-stack Electron/React/Express application for managing job cards, quotes, customers, suppliers, and manufacturing operations. Designed for LAN-connected desktop use with a central server.
+DH Engineering Job Card System - A full-stack Electron/React/Express application for managing job cards, quotes, contacts, suppliers, and manufacturing operations. Designed for LAN-connected desktop use with a central server.
 
 ## Development Commands
 
@@ -48,7 +48,7 @@ jobcard-system/
 │   │   ├── components/           # React components
 │   │   │   ├── jobcard/          # JobCardModal + tabs (modular)
 │   │   │   │   ├── tabs/         # 7 tab components
-│   │   │   │   └── use*.js       # Custom hooks (useCosting, useTimeEntries, useJobCardForm, useCustomerSearch, etc.)
+│   │   │   │   └── use*.js       # Custom hooks (useCosting, useTimeEntries, useJobCardForm, useContactSearch, etc.)
 │   │   │   └── common/           # Reusable components
 │   │   ├── context/AuthContext.jsx  # JWT + user state + inactivity timer
 │   │   ├── hooks/                   # Shared custom hooks
@@ -75,14 +75,16 @@ jobcard-system/
 ### API Structure
 Base URL: `http://localhost:3000/api`
 
-Main routes: `/auth`, `/jobcards`, `/customers`, `/suppliers`, `/machines`, `/settings`, `/history`
+Main routes: `/auth`, `/jobcards`, `/contacts`, `/suppliers`, `/machines`, `/settings`, `/history`
 
 Settings endpoints: `GET /settings` (admin), `PUT /settings` (admin), `GET /settings/inactivity-timeout` (all users)
 
 Job card sub-routes: `/jobcards/:id/items`, `/assignees`, `/subcontracts`, `/time-entries`, `/costing`, `/documents`, `/qa-forms`, `/history`
 
 ### Database Schema (SQLite)
-Core tables: `users`, `customers`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `subcontracts`, `time_entries`, `job_costings`, `documents`, `qa_forms`, `history`, `settings`, `machines`
+Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `subcontracts`, `time_entries`, `job_costings`, `documents`, `qa_forms`, `history`, `settings`, `machines`
+
+**Contacts model** (phone contacts style): Each contact is a standalone person with an optional company field. Search works on both `contact_name` and `company_name`. Job cards link to contacts via `contact_id` with override fields for per-job customization.
 
 All changes logged to `history` table for audit trail.
 
@@ -96,7 +98,7 @@ All changes logged to `history` table for audit trail.
 ## Key Patterns
 
 - **Direct API**: All components use `api.js` to communicate directly with the Express server. Components load data on mount and refresh after mutations.
-- **JobCardModal**: Modular tab-based UI with custom hooks for each tab's logic (`useCosting.js`, `useTimeEntries.js`, `useSubcontracts.js`, `useCamera.js`, `useJobCardForm.js`, `useCustomerSearch.js`)
+- **JobCardModal**: Modular tab-based UI with custom hooks for each tab's logic (`useCosting.js`, `useTimeEntries.js`, `useSubcontracts.js`, `useCamera.js`, `useJobCardForm.js`, `useContactSearch.js`)
 - **Prepared statements**: Database queries use better-sqlite3 prepared statements defined in `database.js`
 - **History tracking**: Use `recordHistory()` for server-side data mutations to maintain audit trail
 - **Input validation**: Use `express-validator` middleware from `validation.js` for request validation
@@ -125,9 +127,9 @@ All changes logged to `history` table for audit trail.
 | Hooks | use*.js | `useTimeEntries.js` |
 | Utilities | camelCase.js | `mappers.js` |
 | Route files | kebab-case.js | `jobcard-time-entries.js` |
-| DB fields | snake_case | `customer_id` |
-| API responses | camelCase | `customerId` |
-| Internal state | snake_case | `form_data.customer_id` |
+| DB fields | snake_case | `contact_id` |
+| API responses | camelCase | `contactId` |
+| Internal state | snake_case | `form_data.contact_id` |
 | Constants | UPPER_SNAKE_CASE | `JOB_TYPES` |
 
 ### Data Flow Convention

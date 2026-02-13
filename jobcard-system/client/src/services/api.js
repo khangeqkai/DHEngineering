@@ -295,47 +295,47 @@ class ApiService {
     });
   }
 
-  // Customer endpoints
-  getCustomers(includeInactive = false) {
-    return this.request(`/customers${includeInactive ? '?includeInactive=true' : ''}`);
+  // Contact endpoints (phone contacts style)
+  getContacts(includeInactive = false) {
+    return this.request(`/contacts${includeInactive ? '?includeInactive=true' : ''}`);
   }
 
-  searchCustomers(query) {
-    return this.request(`/customers/search?q=${encodeURIComponent(query)}`);
+  searchContacts(query) {
+    return this.request(`/contacts/search?q=${encodeURIComponent(query)}`);
   }
 
-  getCustomer(id) {
-    return this.request(`/customers/${id}`);
+  getContact(id) {
+    return this.request(`/contacts/${id}`);
   }
 
-  createCustomer(customerData) {
-    return this.request('/customers', {
+  createContact(contactData) {
+    return this.request('/contacts', {
       method: 'POST',
-      body: JSON.stringify(customerData)
+      body: JSON.stringify(contactData)
     });
   }
 
-  updateCustomer(id, customerData) {
-    return this.request(`/customers/${id}`, {
+  updateContact(id, contactData) {
+    return this.request(`/contacts/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(customerData)
+      body: JSON.stringify(contactData)
     });
   }
 
-  deactivateCustomer(id) {
-    return this.request(`/customers/${id}/deactivate`, {
+  deactivateContact(id) {
+    return this.request(`/contacts/${id}/deactivate`, {
       method: 'POST'
     });
   }
 
-  activateCustomer(id) {
-    return this.request(`/customers/${id}/activate`, {
+  activateContact(id) {
+    return this.request(`/contacts/${id}/activate`, {
       method: 'POST'
     });
   }
 
-  deleteCustomer(id) {
-    return this.request(`/customers/${id}`, {
+  deleteContact(id) {
+    return this.request(`/contacts/${id}`, {
       method: 'DELETE'
     });
   }
@@ -445,9 +445,9 @@ class ApiService {
     return this.request('/settings/inactivity-timeout');
   }
 
-  // Scanner files
+  // Scanner files (part of settings)
   getScannerFiles(limit = 10) {
-    return this.request(`/scanner/files?limit=${limit}`);
+    return this.request(`/settings/files?limit=${limit}`);
   }
 }
 

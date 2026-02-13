@@ -21,7 +21,7 @@ const qaFormQueries = {
   getOutstandingForCritical: db.prepare(`
     SELECT qf.* FROM qa_forms qf
     JOIN jobcards j ON qf.jobcard_id = j.id
-    JOIN customers c ON j.customer_id = c.id
+    JOIN contacts c ON j.contact_id = c.id
     WHERE qf.jobcard_id = ? AND c.is_critical_qa = 1 AND qf.status != 'SCANNED'
   `),
 

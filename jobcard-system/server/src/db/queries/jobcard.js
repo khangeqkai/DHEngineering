@@ -6,61 +6,61 @@ const jobcardQueries = {
   getByJobNumber: db.prepare('SELECT * FROM jobcards WHERE job_number = ?'),
 
   getAll: db.prepare(`
-    SELECT j.*, c.name as customer_name, c.is_critical_qa as customer_is_critical
+    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name, c.is_critical_qa as contact_is_critical
     FROM jobcards j
-    LEFT JOIN customers c ON j.customer_id = c.id
+    LEFT JOIN contacts c ON j.contact_id = c.id
     WHERE j.archived = 0
     ORDER BY j.created_at DESC
   `),
 
   getByStatus: db.prepare(`
-    SELECT j.*, c.name as customer_name, c.is_critical_qa as customer_is_critical
+    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name, c.is_critical_qa as contact_is_critical
     FROM jobcards j
-    LEFT JOIN customers c ON j.customer_id = c.id
+    LEFT JOIN contacts c ON j.contact_id = c.id
     WHERE j.status = ? AND j.archived = 0
     ORDER BY j.created_at DESC
   `),
 
   getArchived: db.prepare(`
-    SELECT j.*, c.name as customer_name
+    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
     FROM jobcards j
-    LEFT JOIN customers c ON j.customer_id = c.id
+    LEFT JOIN contacts c ON j.contact_id = c.id
     WHERE j.archived = 1
     ORDER BY j.invoiced_date DESC
   `),
 
-  getByCustomer: db.prepare(`
-    SELECT j.*, c.name as customer_name
+  getByContact: db.prepare(`
+    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
     FROM jobcards j
-    LEFT JOIN customers c ON j.customer_id = c.id
-    WHERE j.customer_id = ?
+    LEFT JOIN contacts c ON j.contact_id = c.id
+    WHERE j.contact_id = ?
     ORDER BY j.created_at DESC
   `),
 
   getOverdue: db.prepare(`
-    SELECT j.*, c.name as customer_name
+    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
     FROM jobcards j
-    LEFT JOIN customers c ON j.customer_id = c.id
+    LEFT JOIN contacts c ON j.contact_id = c.id
     WHERE j.due_date < date('now') AND j.status NOT IN ('DONE', 'INVOICED') AND j.archived = 0
     ORDER BY j.due_date ASC
   `),
 
   create: db.prepare(`
     INSERT INTO jobcards (
-      id, job_number, card_type, status, customer_id,
-      contact_name, contact_phone, contact_email,
+      id, job_number, card_type, status, contact_id,
+      contact_name, company_name, contact_phone, contact_email,
       quality_level, job_type, priority, po_number, quote_reference,
       drawings_type, customer_property, description, due_date,
       is_repeat_job, repeat_job_reference, treatment_required, treatment_other,
       notes, photos, created_by, updated_by, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `),
 
   update: db.prepare(`
     UPDATE jobcards SET
-      card_type = ?, status = ?, customer_id = ?,
-      contact_name = ?, contact_phone = ?, contact_email = ?,
+      card_type = ?, status = ?, contact_id = ?,
+      contact_name = ?, company_name = ?, contact_phone = ?, contact_email = ?,
       quality_level = ?, job_type = ?, priority = ?, po_number = ?, quote_reference = ?,
       drawings_type = ?, customer_property = ?, description = ?, due_date = ?,
       is_repeat_job = ?, repeat_job_reference = ?, treatment_required = ?, treatment_other = ?,

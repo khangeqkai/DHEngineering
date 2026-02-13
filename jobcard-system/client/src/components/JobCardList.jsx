@@ -101,7 +101,7 @@ export default function JobCardList() {
       const matchesSearch =
         !search ||
         card.job_number?.toLowerCase().includes(search.toLowerCase()) ||
-        card.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+        card.contactName?.toLowerCase().includes(search.toLowerCase()) ||
         card.description?.toLowerCase().includes(search.toLowerCase());
       return matchesFilter && matchesSearch;
     });
@@ -211,8 +211,8 @@ export default function JobCardList() {
                         )}
                       </td>
                       <td>
-                        {card.customer_name || '-'}
-                        {card.customer_is_critical && (
+                        {card.contactName || '-'}
+                        {card.contactIsCritical && (
                           <span className="critical-badge">Critical</span>
                         )}
                       </td>

@@ -139,14 +139,14 @@ const validateCreateUser = [
 ];
 
 /**
- * Create customer validation
- * POST /customers
+ * Create contact validation
+ * POST /contacts
  */
-const validateCreateCustomer = [
-  requiredString('name', 'Customer name'),
-  optionalEmail('contact_email'),
-  optionalPhone('contact_phone'),
-  optionalString('contact_name', 'Contact name', 100),
+const validateCreateContact = [
+  requiredString('contact_name', 'Contact name'),
+  optionalString('company_name', 'Company name', 200),
+  optionalEmail('email'),
+  optionalPhone('phone'),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
   optionalBoolean('is_critical_qa', 'Critical QA flag'),
@@ -154,14 +154,14 @@ const validateCreateCustomer = [
 ];
 
 /**
- * Update customer validation
- * PUT /customers/:id
+ * Update contact validation
+ * PUT /contacts/:id
  */
-const validateUpdateCustomer = [
-  requiredString('name', 'Customer name'),
-  optionalEmail('contact_email'),
-  optionalPhone('contact_phone'),
-  optionalString('contact_name', 'Contact name', 100),
+const validateUpdateContact = [
+  requiredString('contact_name', 'Contact name'),
+  optionalString('company_name', 'Company name', 200),
+  optionalEmail('email'),
+  optionalPhone('phone'),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
   optionalBoolean('is_critical_qa', 'Critical QA flag'),
@@ -183,6 +183,6 @@ module.exports = {
   // Pre-built validation arrays
   validateLogin,
   validateCreateUser,
-  validateCreateCustomer,
-  validateUpdateCustomer
+  validateCreateContact,
+  validateUpdateContact
 };

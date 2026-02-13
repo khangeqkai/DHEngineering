@@ -80,8 +80,9 @@ export function getDefaultFormData() {
   return {
     card_type: 'JOB_CARD',
     status: 'OPEN',
-    customer_id: '',
+    contact_id: '',
     contact_name: '',
+    company_name: '',
     contact_phone: '',
     contact_email: '',
     quality_level: 'STANDARD',

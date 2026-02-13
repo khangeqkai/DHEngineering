@@ -24,12 +24,16 @@ function formatJobcard(row, items = [], assignees = [], subcontracts = []) {
     jobNumber: row.job_number,
     cardType: row.card_type,
     status: row.status,
-    customerId: row.customer_id,
-    customerName: row.customer_name,
-    customerIsCritical: row.customer_is_critical === 1,
+    contactId: row.contact_id,
+    // Contact info from job card (override values)
     contactName: row.contact_name,
+    companyName: row.company_name,
     contactPhone: row.contact_phone,
     contactEmail: row.contact_email,
+    // Contact info from linked contact (for display)
+    storedContactName: row.stored_contact_name,
+    storedCompanyName: row.stored_company_name,
+    contactIsCritical: row.contact_is_critical === 1,
     qualityLevel: row.quality_level,
     jobType: row.job_type,
     priority: row.priority,
@@ -80,15 +84,15 @@ function formatJobcard(row, items = [], assignees = [], subcontracts = []) {
 // Get all job cards
 router.get('/', authenticate, (req, res) => {
   try {
-    const { status, customerId, archived } = req.query;
+    const { status, contactId, archived } = req.query;
 
     let jobcards;
     if (archived === 'true') {
       jobcards = jobcardQueries.getArchived.all();
     } else if (status) {
       jobcards = jobcardQueries.getByStatus.all(status);
-    } else if (customerId) {
-      jobcards = jobcardQueries.getByCustomer.all(customerId);
+    } else if (contactId) {
+      jobcards = jobcardQueries.getByContact.all(contactId);
     } else {
       jobcards = jobcardQueries.getAll.all();
     }
@@ -169,8 +173,9 @@ router.post('/', authenticate, (req, res) => {
       jobNumber,
       data.cardType || 'JOB_CARD',
       status,
-      data.customerId || null,
+      data.contactId || null,
       data.contactName || null,
+      data.companyName || null,
       data.contactPhone || null,
       data.contactEmail || null,
       data.qualityLevel || 'STANDARD',
@@ -299,8 +304,9 @@ router.put('/:id', authenticate, (req, res) => {
     jobcardQueries.update.run(
       data.cardType !== undefined ? data.cardType : existing.card_type,
       data.status !== undefined ? data.status : existing.status,
-      data.customerId !== undefined ? data.customerId : existing.customer_id,
+      data.contactId !== undefined ? data.contactId : existing.contact_id,
       data.contactName !== undefined ? data.contactName : existing.contact_name,
+      data.companyName !== undefined ? data.companyName : existing.company_name,
       data.contactPhone !== undefined ? data.contactPhone : existing.contact_phone,
       data.contactEmail !== undefined ? data.contactEmail : existing.contact_email,
       data.qualityLevel !== undefined ? data.qualityLevel : existing.quality_level,
@@ -443,8 +449,8 @@ router.post('/:id/archive', authenticate, requireAdmin, (req, res) => {
       return res.status(404).json({ error: 'Job card not found' });
     }
 
-    // Check for outstanding QA forms if critical customer
-    if (existing.customer_is_critical) {
+    // Check for outstanding QA forms if critical contact
+    if (existing.contact_is_critical) {
       const outstanding = qaFormQueries.getOutstandingForCritical.all(id);
       if (outstanding.length > 0) {
         return res.status(400).json({
