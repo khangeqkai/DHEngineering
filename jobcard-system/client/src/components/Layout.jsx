@@ -1,9 +1,17 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import InactivityWarningModal from './common/InactivityWarningModal';
 
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const {
+    user,
+    logout,
+    isWarningActive,
+    secondsRemaining,
+    resetInactivityTimer,
+    handleActivity
+  } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('darkMode') === 'true';
@@ -18,6 +26,21 @@ export default function Layout() {
     }
     localStorage.setItem('darkMode', darkMode);
   }, [darkMode]);
+
+  // Attach activity listeners for inactivity timeout
+  useEffect(() => {
+    const events = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll', 'wheel'];
+
+    events.forEach(event => {
+      document.addEventListener(event, handleActivity, { passive: true });
+    });
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, handleActivity);
+      });
+    };
+  }, [handleActivity]);
 
   // Close sidebar when clicking a nav link on mobile
   const handleNavClick = () => {
@@ -37,6 +60,13 @@ export default function Layout() {
 
   return (
     <div className="app-layout">
+      {/* Inactivity Warning Modal */}
+      <InactivityWarningModal
+        isOpen={isWarningActive}
+        secondsRemaining={secondsRemaining}
+        onStayLoggedIn={resetInactivityTimer}
+      />
+
       {/* Mobile Header */}
       <header className="mobile-header">
         <button

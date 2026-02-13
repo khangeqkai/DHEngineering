@@ -23,27 +23,54 @@ router.get('/', requireAdmin, (req, res) => {
 // Update settings (admin only)
 router.put('/', requireAdmin, (req, res) => {
   try {
-    const { scanner_folder } = req.body;
+    const { scanner_folder, inactivity_timeout_minutes } = req.body;
+    const updates = {};
 
     // Validate scanner folder if provided
-    if (scanner_folder && scanner_folder.trim()) {
-      // Check if the folder exists
-      if (!fs.existsSync(scanner_folder)) {
-        return res.status(400).json({ error: 'Scanner folder does not exist' });
-      }
+    if (scanner_folder !== undefined) {
+      if (scanner_folder && scanner_folder.trim()) {
+        // Check if the folder exists
+        if (!fs.existsSync(scanner_folder)) {
+          return res.status(400).json({ error: 'Scanner folder does not exist' });
+        }
 
-      // Check if it's a directory
-      const stats = fs.statSync(scanner_folder);
-      if (!stats.isDirectory()) {
-        return res.status(400).json({ error: 'Path is not a directory' });
+        // Check if it's a directory
+        const stats = fs.statSync(scanner_folder);
+        if (!stats.isDirectory()) {
+          return res.status(400).json({ error: 'Path is not a directory' });
+        }
       }
+      updates.scanner_folder = scanner_folder || '';
     }
 
-    db.updateSettings({ scanner_folder: scanner_folder || '' });
+    // Validate inactivity timeout if provided
+    if (inactivity_timeout_minutes !== undefined) {
+      const timeout = parseInt(inactivity_timeout_minutes, 10);
+      if (isNaN(timeout) || timeout < 1 || timeout > 60) {
+        return res.status(400).json({ error: 'Inactivity timeout must be between 1 and 60 minutes' });
+      }
+      updates.inactivity_timeout_minutes = String(timeout);
+    }
+
+    if (Object.keys(updates).length > 0) {
+      db.updateSettings(updates);
+    }
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, 'Error updating settings');
     res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+// Get inactivity timeout (all authenticated users)
+router.get('/inactivity-timeout', (req, res) => {
+  try {
+    const settings = db.getSettings();
+    const timeoutMinutes = parseInt(settings.inactivity_timeout_minutes, 10) || 5;
+    res.json({ inactivity_timeout_minutes: timeoutMinutes });
+  } catch (err) {
+    logger.error({ err }, 'Error getting inactivity timeout');
+    res.status(500).json({ error: 'Failed to get inactivity timeout' });
   }
 });
 

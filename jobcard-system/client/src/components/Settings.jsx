@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, refreshInactivityTimeout } = useAuth();
   const isAdmin = user?.role === 'admin';
 
   const [settings, setSettings] = useState(null);
@@ -17,9 +17,11 @@ export default function Settings() {
     return localStorage.getItem('darkMode') === 'true';
   });
 
-  // Local state for scanner folder input (synced with settings)
+  // Local state for settings inputs (synced with settings)
   const [scannerFolder, setScannerFolder] = useState('');
+  const [inactivityTimeout, setInactivityTimeout] = useState(5);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [savingTimeout, setSavingTimeout] = useState(false);
 
   // Load settings from API
   const loadSettings = async () => {
@@ -30,8 +32,11 @@ export default function Settings() {
       if (data && data.scanner_folder !== undefined) {
         setScannerFolder(data.scanner_folder || '');
       }
+      if (data && data.inactivity_timeout_minutes !== undefined) {
+        setInactivityTimeout(parseInt(data.inactivity_timeout_minutes, 10) || 5);
+      }
     } catch (err) {
-      console.error('Failed to load settings:', err);
+      toast.error('Failed to load settings');
     } finally {
       setLoading(false);
     }
@@ -65,10 +70,26 @@ export default function Settings() {
       await loadSettings();
       toast.success('Settings saved successfully');
     } catch (err) {
-      console.error('Failed to save settings:', err);
       toast.error(err.message || 'Failed to save settings');
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const handleSaveInactivityTimeout = async () => {
+    setSavingTimeout(true);
+    try {
+      await api.updateSettings({ inactivity_timeout_minutes: inactivityTimeout });
+      await loadSettings();
+      // Refresh the inactivity timeout in AuthContext so it takes effect immediately
+      if (refreshInactivityTimeout) {
+        await refreshInactivityTimeout();
+      }
+      toast.success('Inactivity timeout saved successfully');
+    } catch (err) {
+      toast.error(err.message || 'Failed to save inactivity timeout');
+    } finally {
+      setSavingTimeout(false);
     }
   };
 
@@ -100,7 +121,6 @@ export default function Settings() {
         setPrinters(printerList);
       }
     } catch (err) {
-      console.error('Failed to load printers:', err);
       toast.error('Failed to load printers');
     } finally {
       setLoadingPrinters(false);
@@ -224,46 +244,84 @@ export default function Settings() {
         </div>
 
         {isAdmin && (
-          <div className="card full-width">
-            <div className="card-header">
-              <h2>Scanner Folder</h2>
-            </div>
-            <div className="card-body">
-              <div className="setting-item">
-                <div className="setting-info">
-                  <div className="setting-label">Scanned Documents Folder</div>
-                  <div className="setting-description">
-                    Set the folder where scanned customer drawings are saved. Recent files from this folder will be available when creating job cards.
+          <>
+            <div className="card full-width">
+              <div className="card-header">
+                <h2>Security Settings</h2>
+              </div>
+              <div className="card-body">
+                <div className="setting-item">
+                  <div className="setting-info">
+                    <div className="setting-label">Inactivity Timeout</div>
+                    <div className="setting-description">
+                      Automatically log out users after this many minutes of inactivity.
+                      A warning will appear 30 seconds before logout. (1-60 minutes)
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="folder-input-group">
-                <input
-                  type="text"
-                  className="form-control"
-                  value={scannerFolder}
-                  onChange={(e) => setScannerFolder(e.target.value)}
-                  placeholder="Select or enter scanner folder path..."
-                  readOnly={!!window.electronAPI?.selectFolder}
-                />
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={handleSelectScannerFolder}
-                >
-                  Browse...
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={handleSaveScannerFolder}
-                  disabled={savingSettings}
-                >
-                  {savingSettings ? 'Saving...' : 'Save'}
-                </button>
+                <div className="timeout-input-group">
+                  <input
+                    type="number"
+                    className="form-control timeout-input"
+                    value={inactivityTimeout}
+                    onChange={(e) => setInactivityTimeout(Math.max(1, Math.min(60, parseInt(e.target.value, 10) || 1)))}
+                    min="1"
+                    max="60"
+                  />
+                  <span className="timeout-label">minutes</span>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSaveInactivityTimeout}
+                    disabled={savingTimeout}
+                  >
+                    {savingTimeout ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+
+            <div className="card full-width">
+              <div className="card-header">
+                <h2>Scanner Folder</h2>
+              </div>
+              <div className="card-body">
+                <div className="setting-item">
+                  <div className="setting-info">
+                    <div className="setting-label">Scanned Documents Folder</div>
+                    <div className="setting-description">
+                      Set the folder where scanned customer drawings are saved. Recent files from this folder will be available when creating job cards.
+                    </div>
+                  </div>
+                </div>
+                <div className="folder-input-group">
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={scannerFolder}
+                    onChange={(e) => setScannerFolder(e.target.value)}
+                    placeholder="Select or enter scanner folder path..."
+                    readOnly={!!window.electronAPI?.selectFolder}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleSelectScannerFolder}
+                  >
+                    Browse...
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSaveScannerFolder}
+                    disabled={savingSettings}
+                  >
+                    {savingSettings ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         <div className="card full-width">
@@ -406,6 +464,23 @@ export default function Settings() {
 
         .folder-input-group .form-control {
           flex: 1;
+        }
+
+        .timeout-input-group {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-top: 1rem;
+        }
+
+        .timeout-input {
+          width: 80px;
+          text-align: center;
+        }
+
+        .timeout-label {
+          color: var(--text-secondary);
+          font-size: 0.875rem;
         }
 
         @media (max-width: 768px) {

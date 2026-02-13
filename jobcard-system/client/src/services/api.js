@@ -440,6 +440,11 @@ class ApiService {
     });
   }
 
+  // Get inactivity timeout (all authenticated users)
+  getInactivityTimeout() {
+    return this.request('/settings/inactivity-timeout');
+  }
+
   // Scanner files
   getScannerFiles(limit = 10) {
     return this.request(`/scanner/files?limit=${limit}`);

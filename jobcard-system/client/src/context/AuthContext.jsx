@@ -1,49 +1,64 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback } from 'react';
 import { api } from '../services/api';
+import { useInactivityTimer } from '../hooks/useInactivityTimer';
 
 const AuthContext = createContext(null);
 
+const DEFAULT_TIMEOUT_MINUTES = 5;
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // No token check needed on mount
+  const [inactivityTimeoutMs, setInactivityTimeoutMs] = useState(DEFAULT_TIMEOUT_MINUTES * 60 * 1000);
 
-  useEffect(() => {
-    // Check for existing token on mount
-    const token = localStorage.getItem('token');
-    if (token) {
-      api.setToken(token);
-      api.getMe()
-        .then(userData => {
-          setUser(userData);
-        })
-        .catch(() => {
-          localStorage.removeItem('token');
-          api.setToken(null);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      setLoading(false);
+  const logout = useCallback(() => {
+    api.setToken(null);
+    setUser(null);
+  }, []);
+
+  // Load inactivity timeout from server
+  const loadInactivityTimeout = useCallback(async () => {
+    try {
+      const { inactivity_timeout_minutes } = await api.getInactivityTimeout();
+      setInactivityTimeoutMs((inactivity_timeout_minutes || DEFAULT_TIMEOUT_MINUTES) * 60 * 1000);
+    } catch (err) {
+      // Use default if fetch fails
+      setInactivityTimeoutMs(DEFAULT_TIMEOUT_MINUTES * 60 * 1000);
     }
   }, []);
 
+  // Inactivity timer - only active when user is logged in
+  const {
+    isWarningActive,
+    secondsRemaining,
+    resetTimer,
+    handleActivity
+  } = useInactivityTimer({
+    onTimeout: logout,
+    enabled: !!user,
+    timeoutMs: inactivityTimeoutMs
+  });
+
   const login = async (username, password) => {
     const response = await api.login(username, password);
-    localStorage.setItem('token', response.token);
     api.setToken(response.token);
     setUser(response.user);
+    await loadInactivityTimeout();
     return response.user;
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    api.setToken(null);
-    setUser(null);
-  };
-
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      logout,
+      isWarningActive,
+      secondsRemaining,
+      resetInactivityTimer: resetTimer,
+      handleActivity,
+      refreshInactivityTimeout: loadInactivityTimeout
+    }}>
       {children}
     </AuthContext.Provider>
   );

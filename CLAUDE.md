@@ -38,7 +38,7 @@ cd server && npm run dev
 ### Stack
 - **Frontend**: React 18 + React Router, Vite bundler, Electron 27, react-hot-toast (notifications)
 - **Backend**: Express 4, better-sqlite3 (synchronous SQLite), pino (logging), express-validator, express-rate-limit
-- **Auth**: JWT (7-day expiry), bcryptjs password hashing, rate-limited login (5 attempts/15 min)
+- **Auth**: JWT (memory-only, no localStorage), bcryptjs password hashing, rate-limited login (5 attempts/15 min)
 
 ### Directory Structure
 ```
@@ -50,7 +50,9 @@ jobcard-system/
 │   │   │   │   ├── tabs/         # 7 tab components
 │   │   │   │   └── use*.js       # Custom hooks (useCosting, useTimeEntries, useJobCardForm, useCustomerSearch, etc.)
 │   │   │   └── common/           # Reusable components
-│   │   ├── context/AuthContext.jsx  # JWT + user state
+│   │   ├── context/AuthContext.jsx  # JWT + user state + inactivity timer
+│   │   ├── hooks/                   # Shared custom hooks
+│   │   │   └── useInactivityTimer.js  # Auto-logout timer logic
 │   │   └── services/
 │   │       └── api.js            # Direct API client to Express server
 │   └── electron/                 # Electron main/preload
@@ -75,6 +77,8 @@ Base URL: `http://localhost:3000/api`
 
 Main routes: `/auth`, `/jobcards`, `/customers`, `/suppliers`, `/machines`, `/settings`, `/history`
 
+Settings endpoints: `GET /settings` (admin), `PUT /settings` (admin), `GET /settings/inactivity-timeout` (all users)
+
 Job card sub-routes: `/jobcards/:id/items`, `/assignees`, `/subcontracts`, `/time-entries`, `/costing`, `/documents`, `/qa-forms`, `/history`
 
 ### Database Schema (SQLite)
@@ -86,6 +90,8 @@ All changes logged to `history` table for audit trail.
 - Two roles: `admin` (full access) and `user` (limited)
 - Admin-only: user management, supplier management, costing, settings, activity log
 - Default credentials: `admin` / `admin123`
+- **No token persistence**: JWT stored in memory only (not localStorage). Users must log in every time they open/refresh the app. Designed for shared workstation security.
+- **Inactivity timeout**: Users auto-logout after configurable period of inactivity (default 5 min). Warning modal appears 30 seconds before logout. Activity = mouse, keyboard, touch, scroll. Timer continues when tab is hidden (security for shared workstations).
 
 ## Key Patterns
 
@@ -96,6 +102,7 @@ All changes logged to `history` table for audit trail.
 - **Input validation**: Use `express-validator` middleware from `validation.js` for request validation
 - **Structured logging**: Use `logger` from `utils/logger.js` instead of `console.error()` for server-side logging
 - **Toast notifications**: Use `react-hot-toast` for user feedback instead of `alert()`
+- **Modal accessibility**: Use `role="alertdialog"`, `aria-modal="true"`, `aria-labelledby`/`aria-describedby`, focus trap (prevent Tab from leaving), and Escape key handler
 
 ## Architectural Guidelines
 
@@ -154,7 +161,7 @@ Component ← JSON Response ← Express Response ←──────┘
 PORT=3000                    # Server port
 HOST=0.0.0.0                 # Server host (0.0.0.0 for LAN access)
 JWT_SECRET=your-secret       # Production JWT signing key
-JWT_EXPIRES_IN=7d            # Token expiration
+JWT_EXPIRES_IN=7d            # Token expiration (server-side, but session ends on app close anyway)
 LOG_LEVEL=info               # Logging level (debug, info, warn, error)
 NODE_ENV=production          # Environment (development uses pretty logs)
 ```
@@ -164,6 +171,7 @@ NODE_ENV=production          # Environment (development uses pretty logs)
 - **Rate limiting**: Login (5 attempts/15 min) and user creation (10 attempts/15 min) per IP
 - **Password policy**: Minimum 8 characters required for new users
 - **Input validation**: All API inputs validated with express-validator
-- **JWT authentication**: 7-day token expiry with role-based access control
+- **JWT authentication**: Memory-only token storage (no localStorage), role-based access control. Session ends on app close/refresh.
+- **Inactivity auto-logout**: Configurable timeout (1-60 min, default 5 min) with 30-second warning modal. Admin configures in Settings. Handles system sleep/wake via visibility API.
 - **Audit trail**: All data mutations logged to history table (including failed login attempts)
 - **Prepared statements**: All database queries use prepared statements (SQL injection protection)
