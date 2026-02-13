@@ -168,7 +168,7 @@ NODE_ENV=production          # Environment (development uses pretty logs)
 
 ## Security Features
 
-- **Rate limiting**: Login (5 attempts/15 min) and user creation (10 attempts/15 min) per IP
+- **Rate limiting**: Login (first 5 attempts normal, then 30-second cooldown between attempts; resets after 15 min inactivity) and user creation (10 attempts/15 min) per IP
 - **Password policy**: Minimum 8 characters required for new users
 - **Input validation**: All API inputs validated with express-validator
 - **JWT authentication**: Memory-only token storage (no localStorage), role-based access control. Session ends on app close/refresh.

@@ -12,15 +12,53 @@ const { userQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
-// Rate limiter for login endpoint - 5 attempts per 15 minutes per IP
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per window
-  message: { error: 'Too many login attempts. Please try again after 15 minutes.' },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  skipSuccessfulRequests: false // Count all requests, not just failed ones
-});
+// Custom login rate limiter: first 5 attempts normal, then 30 second cooldown between attempts
+// Designed for workshop environments where a hard lockout would block all workers
+const loginAttempts = new Map(); // IP -> { count, lastAttempt, windowStart }
+const LOGIN_FREE_ATTEMPTS = 5;
+const LOGIN_COOLDOWN_MS = 30 * 1000; // 30 seconds
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes - resets attempt count after inactivity
+
+const loginLimiter = (req, res, next) => {
+  const ip = req.ip;
+  const now = Date.now();
+
+  let record = loginAttempts.get(ip);
+
+  // Reset if window expired (15 min of no attempts)
+  if (record && (now - record.lastAttempt) > LOGIN_WINDOW_MS) {
+    loginAttempts.delete(ip);
+    record = null;
+  }
+
+  if (!record) {
+    // First attempt from this IP
+    loginAttempts.set(ip, { count: 1, lastAttempt: now, windowStart: now });
+    return next();
+  }
+
+  // Within free attempts (1-5)
+  if (record.count < LOGIN_FREE_ATTEMPTS) {
+    record.count++;
+    record.lastAttempt = now;
+    return next();
+  }
+
+  // Beyond free attempts - enforce 30 second cooldown
+  const timeSinceLastAttempt = now - record.lastAttempt;
+  if (timeSinceLastAttempt < LOGIN_COOLDOWN_MS) {
+    const waitSeconds = Math.ceil((LOGIN_COOLDOWN_MS - timeSinceLastAttempt) / 1000);
+    logger.warn({ ip, attempts: record.count, waitSeconds }, 'Login rate limited');
+    return res.status(429).json({
+      error: `Too many attempts. Please wait ${waitSeconds} seconds before trying again.`
+    });
+  }
+
+  // Cooldown passed, allow attempt
+  record.count++;
+  record.lastAttempt = now;
+  next();
+};
 
 // Rate limiter for user creation - 10 attempts per 15 minutes per IP
 const userCreationLimiter = rateLimit({
