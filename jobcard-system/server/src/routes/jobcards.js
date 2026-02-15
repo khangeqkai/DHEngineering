@@ -164,6 +164,13 @@ router.post('/', authenticate, (req, res) => {
     if (!jobNumber || !jobNumber.trim()) {
       return res.status(400).json({ error: 'Job number is required' });
     }
+
+    // Check for duplicate job number
+    const existing = jobcardQueries.getByJobNumber.get(jobNumber.trim());
+    if (existing) {
+      return res.status(400).json({ error: 'Job number already exists' });
+    }
+
     const id = `jobcard:${Date.now()}:${uuidv4().slice(0, 8)}`;
 
     // Status from request or default to OPEN
@@ -287,7 +294,6 @@ router.put('/:id', authenticate, (req, res) => {
     // Track changes
     const changes = {};
     const fieldsToTrack = [
-      ['card_type', 'cardType'],
       ['status', 'status'],
       ['quality_level', 'qualityLevel'],
       ['job_type', 'jobType'],
@@ -302,7 +308,7 @@ router.put('/:id', authenticate, (req, res) => {
     }
 
     jobcardQueries.update.run(
-      data.cardType !== undefined ? data.cardType : existing.card_type,
+      existing.card_type, // card_type is immutable
       data.status !== undefined ? data.status : existing.status,
       data.contactId !== undefined ? data.contactId : existing.contact_id,
       data.contactName !== undefined ? data.contactName : existing.contact_name,
