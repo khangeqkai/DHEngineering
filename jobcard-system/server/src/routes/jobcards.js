@@ -10,8 +10,7 @@ const {
   subcontractQueries,
   qaFormQueries,
   historyQueries,
-  recordHistory,
-  generateJobNumber
+  recordHistory
 } = require('../db/database');
 
 const router = express.Router();
@@ -160,18 +159,20 @@ router.post('/', authenticate, (req, res) => {
   try {
     const data = req.body;
 
-    // Generate job number
-    const isQuote = data.cardType === 'QUOTE';
-    const jobNumber = generateJobNumber(isQuote);
+    // Job number from user input (required)
+    const jobNumber = data.jobNumber;
+    if (!jobNumber || !jobNumber.trim()) {
+      return res.status(400).json({ error: 'Job number is required' });
+    }
     const id = `jobcard:${Date.now()}:${uuidv4().slice(0, 8)}`;
 
-    // Determine initial status
-    const status = isQuote ? 'QUOTE' : 'OPEN';
+    // Status from request or default to OPEN
+    const status = data.status || 'OPEN';
 
     jobcardQueries.create.run(
       id,
-      jobNumber,
-      data.cardType || 'JOB_CARD',
+      jobNumber.trim(),
+      'JOB_CARD', // card_type always JOB_CARD now
       status,
       data.contactId || null,
       data.contactName || null,
@@ -262,7 +263,6 @@ router.post('/', authenticate, (req, res) => {
     // Record creation in history
     recordHistory('jobcard', id, 'create', req.user.userId, req.user.name, null, {
       jobNumber,
-      cardType: data.cardType,
       status
     });
 
@@ -395,46 +395,6 @@ router.patch('/:id/status', authenticate, (req, res) => {
   } catch (err) {
     logger.error({ err }, 'Update status error');
     res.status(500).json({ error: 'Failed to update status' });
-  }
-});
-
-// Convert quote to job card
-router.post('/:id/convert-to-jobcard', authenticate, (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const existing = jobcardQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
-
-    if (existing.card_type !== 'QUOTE') {
-      return res.status(400).json({ error: 'Only quotes can be converted to job cards' });
-    }
-
-    // Generate new job number for job card
-    const newJobNumber = generateJobNumber(false);
-
-    // Update the card
-    const changes = {
-      card_type: { from: 'QUOTE', to: 'JOB_CARD' },
-      status: { from: existing.status, to: 'OPEN' },
-      job_number: { from: existing.job_number, to: newJobNumber }
-    };
-
-    const stmt = require('../db/database').db.prepare(`
-      UPDATE jobcards SET card_type = 'JOB_CARD', status = 'OPEN', job_number = ?, quote_reference = ?, updated_by = ?, updated_at = datetime('now')
-      WHERE id = ?
-    `);
-    stmt.run(newJobNumber, existing.job_number, req.user.userId, id);
-
-    recordHistory('jobcard', id, 'convert', req.user.userId, req.user.name, changes, null);
-
-    const updated = jobcardQueries.getById.get(id);
-    res.json(formatJobcard(updated));
-  } catch (err) {
-    logger.error({ err }, 'Convert to jobcard error');
-    res.status(500).json({ error: 'Failed to convert quote to job card' });
   }
 });
 

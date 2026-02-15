@@ -275,6 +275,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
     // Validation
     const errors = [];
+    if (!isEdit && !formHook.formData.job_number?.trim()) {
+      errors.push('Job Card / Quote number is required');
+    }
     if (!formHook.formData.contact_id && !contactHook.contactFormData.contact_name.trim()) {
       errors.push('Contact Name is required');
     }
@@ -334,7 +337,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         contactId = newContact.id;
       }
       const jobcardData = {
-        cardType: formHook.formData.card_type,
+        jobNumber: formHook.formData.job_number,
         status: formHook.formData.status,
         contactId: contactId,
         contactName: contactHook.contactFormData.contact_name,
@@ -387,18 +390,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       toast.error(err.message || 'Failed to save job card');
     } finally {
       setSaving(false);
-    }
-  };
-  const handleConvertToJobCard = async () => {
-    if (!confirm('Convert this quote to a job card?')) return;
-
-    try {
-      await api.convertToJobcard(jobCardId);
-      await loadJobCard();
-      onSuccess?.();
-    } catch (err) {
-      console.error('Failed to convert:', err);
-      toast.error(err.message || 'Failed to convert to job card');
     }
   };
   if (!isOpen) return null;
@@ -456,7 +447,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   toggleScannerFiles={toggleScannerFiles}
                   scannerFiles={formHook.scannerFiles}
                   loadingScannerFiles={formHook.loadingScannerFiles}
-                  handleConvertToJobCard={handleConvertToJobCard}
                   isOverdue={isOverdue}
                 />
               )}

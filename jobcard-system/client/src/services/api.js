@@ -124,12 +124,6 @@ class ApiService {
     });
   }
 
-  convertToJobcard(id) {
-    return this.request(`/jobcards/${id}/convert-to-jobcard`, {
-      method: 'POST'
-    });
-  }
-
   archiveJobcard(id, invoicedDate) {
     return this.request(`/jobcards/${id}/archive`, {
       method: 'POST',

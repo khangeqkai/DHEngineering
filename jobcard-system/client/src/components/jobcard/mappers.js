@@ -78,7 +78,7 @@ export function formatFileDate(dateStr) {
 
 export function getDefaultFormData() {
   return {
-    card_type: 'JOB_CARD',
+    job_number: '',
     status: 'OPEN',
     contact_id: '',
     contact_name: '',

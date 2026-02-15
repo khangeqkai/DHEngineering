@@ -66,9 +66,10 @@ export function useJobCardForm() {
 
   // Set form data from loaded job card
   const setFormDataFromJobCard = useCallback((jobcardData) => {
-    setJobNumber(jobcardData.jobNumber || jobcardData.job_number || '');
+    const loadedJobNumber = jobcardData.jobNumber || jobcardData.job_number || '';
+    setJobNumber(loadedJobNumber);
     setFormData({
-      card_type: jobcardData.cardType || jobcardData.card_type || 'JOB_CARD',
+      job_number: loadedJobNumber,
       status: jobcardData.status || 'OPEN',
       contact_id: jobcardData.contactId || jobcardData.contact_id || '',
       contact_name: jobcardData.contactName || jobcardData.contact_name || '',
