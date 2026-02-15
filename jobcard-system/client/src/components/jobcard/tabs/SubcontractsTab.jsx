@@ -36,8 +36,8 @@ export default function SubcontractsTab({
     }
 
     return [...suppliers].sort((a, b) => {
-      const aHasService = (a.service_tags || []).some(t => t.name === treatmentServiceName);
-      const bHasService = (b.service_tags || []).some(t => t.name === treatmentServiceName);
+      const aHasService = (a.serviceTags || []).some(t => t.name === treatmentServiceName);
+      const bHasService = (b.serviceTags || []).some(t => t.name === treatmentServiceName);
 
       if (aHasService && !bHasService) return -1;
       if (!aHasService && bHasService) return 1;
@@ -68,12 +68,12 @@ export default function SubcontractsTab({
                 <span className="treatment-hint"> (showing {treatmentServiceName} suppliers first)</span>
               )}
             </label>
-            <select name="supplier_id" value={subcontractForm.supplier_id} onChange={handleSubcontractChange}>
+            <select name="supplierId" value={subcontractForm.supplierId} onChange={handleSubcontractChange}>
               <option value="">Select supplier...</option>
               {sortedSuppliers.map(s => {
                 const hasMatchingService = treatmentServiceName &&
-                  (s.service_tags || []).some(t => t.name === treatmentServiceName);
-                const serviceNames = (s.service_tags || []).map(t => t.name).join(', ');
+                  (s.serviceTags || []).some(t => t.name === treatmentServiceName);
+                const serviceNames = (s.serviceTags || []).map(t => t.name).join(', ');
                 return (
                   <option key={s.id} value={s.id}>
                     {hasMatchingService ? '★ ' : ''}{s.name}{serviceNames ? ` (${serviceNames})` : ''}
@@ -86,15 +86,15 @@ export default function SubcontractsTab({
           <div className="form-row">
             <div className="form-group">
               <label>Date Sent</label>
-              <input type="date" name="date_sent" value={subcontractForm.date_sent} onChange={handleSubcontractChange} />
+              <input type="date" name="dateSent" value={subcontractForm.dateSent} onChange={handleSubcontractChange} />
             </div>
             <div className="form-group">
               <label>Date Expected</label>
-              <input type="date" name="date_expected" value={subcontractForm.date_expected} onChange={handleSubcontractChange} />
+              <input type="date" name="dateExpected" value={subcontractForm.dateExpected} onChange={handleSubcontractChange} />
             </div>
             <div className="form-group">
               <label>Date Received</label>
-              <input type="date" name="date_received" value={subcontractForm.date_received} onChange={handleSubcontractChange} />
+              <input type="date" name="dateReceived" value={subcontractForm.dateReceived} onChange={handleSubcontractChange} />
             </div>
           </div>
 
@@ -138,13 +138,13 @@ export default function SubcontractsTab({
             {subcontracts.map(sub => (
               <div key={sub.id} className="subcontract-card">
                 <div className="subcontract-header">
-                  <span className="supplier-name">{sub.supplier_name}</span>
+                  <span className="supplier-name">{sub.supplierName}</span>
                   <span className={`badge badge-${sub.status?.toLowerCase()}`}>{sub.status}</span>
                 </div>
                 <div className="subcontract-dates">
-                  <span>Sent: {sub.date_sent || '-'}</span>
-                  <span>Expected: {sub.date_expected || '-'}</span>
-                  <span>Received: {sub.date_received || '-'}</span>
+                  <span>Sent: {sub.dateSent || '-'}</span>
+                  <span>Expected: {sub.dateExpected || '-'}</span>
+                  <span>Received: {sub.dateReceived || '-'}</span>
                 </div>
                 {sub.notes && <div className="subcontract-notes">{sub.notes}</div>}
                 <div className="subcontract-actions">

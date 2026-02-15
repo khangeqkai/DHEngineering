@@ -100,7 +100,7 @@ export default function JobCardList() {
       const matchesFilter = filter === 'all' || card.status === filter;
       const matchesSearch =
         !search ||
-        card.job_number?.toLowerCase().includes(search.toLowerCase()) ||
+        card.jobNumber?.toLowerCase().includes(search.toLowerCase()) ||
         card.contactName?.toLowerCase().includes(search.toLowerCase()) ||
         card.description?.toLowerCase().includes(search.toLowerCase());
       return matchesFilter && matchesSearch;
@@ -187,8 +187,8 @@ export default function JobCardList() {
               </thead>
               <tbody>
                 {filteredCards.map((card) => {
-                  const isOverdue = card.due_date &&
-                    new Date(card.due_date) < new Date() &&
+                  const isOverdue = card.dueDate &&
+                    new Date(card.dueDate) < new Date() &&
                     !['DONE', 'INVOICED'].includes(card.status);
 
                   return (
@@ -201,7 +201,7 @@ export default function JobCardList() {
                             openEditModal(card.id);
                           }}
                         >
-                          <strong>{card.job_number}</strong>
+                          <strong>{card.jobNumber}</strong>
                         </a>
                         {card.description && (
                           <p className="description-preview">
@@ -216,7 +216,7 @@ export default function JobCardList() {
                           <span className="critical-badge">Critical</span>
                         )}
                       </td>
-                      <td>{card.job_type || '-'}</td>
+                      <td>{card.jobType || '-'}</td>
                       <td>
                         <span className={`badge ${getStatusBadgeClass(card.status)}`}>
                           {STATUS_LABELS[card.status] || card.status}
@@ -228,7 +228,7 @@ export default function JobCardList() {
                         </span>
                       </td>
                       <td className={isOverdue ? 'overdue-date' : ''}>
-                        {card.due_date ? new Date(card.due_date).toLocaleDateString() : '-'}
+                        {card.dueDate ? new Date(card.dueDate).toLocaleDateString() : '-'}
                         {isOverdue && <span className="overdue-label">OVERDUE</span>}
                       </td>
                       <td>

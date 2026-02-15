@@ -7,31 +7,36 @@ const { timeEntryQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
+// Convert database row (snake_case) to API response (camelCase)
+function toCamelCase(e) {
+  return {
+    id: e.id,
+    userId: e.user_id,
+    userName: e.user_name,
+    itemNumber: e.item_number,
+    machineNumber: e.machine_number,
+    qty: e.qty,
+    description: e.description,
+    startTime: e.start_time,
+    endTime: e.end_time,
+    equipmentChecksDone: e.equipment_checks_done === 1,
+    measuringVerificationDone: e.measuring_verification_done === 1,
+    firstOffInspection: e.first_off_inspection,
+    firstOffInspectionNotes: e.first_off_inspection_notes,
+    inProcessValidation: e.in_process_validation,
+    inProcessValidationNotes: e.in_process_validation_notes,
+    scrapAllGood: e.scrap_all_good === 1,
+    scrapRecycleInhouseQty: e.scrap_recycle_inhouse_qty,
+    scrapRecycleBinQty: e.scrap_recycle_bin_qty,
+    createdAt: e.created_at
+  };
+}
+
 // Get job card time entries
 router.get('/:id/time-entries', authenticate, (req, res) => {
   try {
     const entries = timeEntryQueries.getByJobcard.all(req.params.id);
-    res.json(entries.map(e => ({
-      id: e.id,
-      userId: e.user_id,
-      userName: e.user_name,
-      itemNumber: e.item_number,
-      machineNumber: e.machine_number,
-      qty: e.qty,
-      description: e.description,
-      startTime: e.start_time,
-      endTime: e.end_time,
-      equipmentChecksDone: e.equipment_checks_done === 1,
-      measuringVerificationDone: e.measuring_verification_done === 1,
-      firstOffInspection: e.first_off_inspection,
-      firstOffInspectionNotes: e.first_off_inspection_notes,
-      inProcessValidation: e.in_process_validation,
-      inProcessValidationNotes: e.in_process_validation_notes,
-      scrapAllGood: e.scrap_all_good === 1,
-      scrapRecycleInhouseQty: e.scrap_recycle_inhouse_qty,
-      scrapRecycleBinQty: e.scrap_recycle_bin_qty,
-      createdAt: e.created_at
-    })));
+    res.json(entries.map(toCamelCase));
   } catch (err) {
     logger.error({ err }, 'Get time entries error');
     res.status(500).json({ error: 'Failed to get time entries' });
@@ -75,7 +80,7 @@ router.post('/:id/time-entries', authenticate, (req, res) => {
     }, null);
 
     const entry = timeEntryQueries.getById.get(entryId);
-    res.status(201).json(entry);
+    res.status(201).json(toCamelCase(entry));
   } catch (err) {
     logger.error({ err }, 'Add time entry error');
     res.status(500).json({ error: 'Failed to add time entry' });
@@ -119,7 +124,7 @@ router.put('/:id/time-entries/:entryId', authenticate, (req, res) => {
     }, null);
 
     const entry = timeEntryQueries.getById.get(entryId);
-    res.json(entry);
+    res.json(toCamelCase(entry));
   } catch (err) {
     logger.error({ err }, 'Update time entry error');
     res.status(500).json({ error: 'Failed to update time entry' });

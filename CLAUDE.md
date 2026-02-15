@@ -127,9 +127,8 @@ All changes logged to `history` table for audit trail.
 | Hooks | use*.js | `useTimeEntries.js` |
 | Utilities | camelCase.js | `mappers.js` |
 | Route files | kebab-case.js | `jobcard-time-entries.js` |
-| DB fields | snake_case | `contact_id` |
-| API responses | camelCase | `contactId` |
-| Internal state | snake_case | `form_data.contact_id` |
+| DB fields | snake_case | `contact_id`, `due_date` |
+| All JavaScript code | camelCase | `contactId`, `dueDate` |
 | Constants | UPPER_SNAKE_CASE | `JOB_TYPES` |
 
 ### Data Flow Convention
@@ -141,10 +140,47 @@ User Action → API Request → Express Server → SQLite Database
 Component ← JSON Response ← Express Response ←──────┘
 ```
 
-- API requests/responses use camelCase (JavaScript convention)
-- Database uses snake_case (SQL convention)
-- Components manage local state with useState
-- Reload data after mutations to ensure UI is up-to-date
+- **Database**: snake_case (SQL convention) - `contact_id`, `due_date`
+- **All JavaScript** (API, frontend, form state): camelCase - `contactId`, `dueDate`
+- Convert at API boundary (server routes) only
+
+### CRITICAL: Unified camelCase in JavaScript
+
+**ALL JavaScript code uses camelCase - no exceptions:**
+```javascript
+// API responses
+card.jobNumber
+card.dueDate
+card.contactName
+
+// Form state
+formData.jobNumber
+formData.dueDate
+formData.contactName
+
+// Form field names in JSX
+<input name="dueDate" value={formData.dueDate} />
+<input name="contactName" value={formData.contactName} />
+```
+
+**Server-side: Convert at API boundaries only:**
+```javascript
+// In route handlers - convert DB snake_case to API camelCase
+return {
+  jobNumber: row.job_number,    // DB → API
+  dueDate: row.due_date,
+  contactId: row.contact_id
+};
+
+// When saving - API camelCase to DB snake_case
+db.run(data.jobNumber, data.dueDate, data.contactId);
+```
+
+**Summary:**
+| Location | Convention | Example |
+|----------|------------|---------|
+| Database columns | snake_case | `contact_id`, `due_date` |
+| Everything else (JS) | camelCase | `contactId`, `dueDate` |
 
 ### Required Patterns
 - **Direct API calls**: Use `api.js` methods for all server communication

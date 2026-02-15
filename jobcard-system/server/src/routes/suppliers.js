@@ -9,23 +9,42 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticate);
 
-// Helper to get supplier with its service tags
+// Convert supplier from snake_case (DB) to camelCase (API)
+function toApiFormat(supplier) {
+  if (!supplier) return null;
+  const tags = serviceTagQueries.getForSupplier.all(supplier.id);
+  return {
+    id: supplier.id,
+    name: supplier.name,
+    contactName: supplier.contact_name,
+    contactPhone: supplier.contact_phone,
+    contactEmail: supplier.contact_email,
+    address: supplier.address,
+    services: supplier.services,
+    approved: supplier.approved,
+    notes: supplier.notes,
+    active: supplier.active,
+    serviceTags: (tags || []).map(t => ({
+      id: t.id,
+      name: t.name,
+      isSystem: t.is_system
+    }))
+  };
+}
+
+// Helper to get supplier with its service tags (in API format)
 function getSupplierWithTags(supplierId) {
   const supplier = supplierQueries.getById.get(supplierId);
-  if (!supplier) return null;
-  supplier.service_tags = serviceTagQueries.getForSupplier.all(supplierId);
-  return supplier;
+  return toApiFormat(supplier);
 }
 
 // GET /api/suppliers - Get all suppliers
 router.get('/', (req, res) => {
   try {
     const suppliers = supplierQueries.getAll.all();
-    // Add service tags to each supplier
-    for (const supplier of suppliers) {
-      supplier.service_tags = serviceTagQueries.getForSupplier.all(supplier.id);
-    }
-    res.json(suppliers);
+    // Convert each supplier to API format with service tags
+    const result = suppliers.map(s => toApiFormat(s));
+    res.json(result);
   } catch (err) {
     logger.error({ err }, 'Failed to get suppliers');
     res.status(500).json({ error: 'Failed to get suppliers' });
@@ -49,7 +68,7 @@ router.get('/:id', (req, res) => {
 // POST /api/suppliers - Create new supplier (admin only)
 router.post('/', requireAdmin, (req, res) => {
   try {
-    const { name, contact_name, contact_phone, contact_email, address, notes, service_tag_ids } = req.body;
+    const { name, contactName, contactPhone, contactEmail, address, notes, serviceTagIds } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Supplier name is required' });
@@ -60,17 +79,17 @@ router.post('/', requireAdmin, (req, res) => {
     supplierQueries.create.run(
       id,
       name,
-      contact_name || null,
-      contact_phone || null,
-      contact_email || null,
+      contactName || null,
+      contactPhone || null,
+      contactEmail || null,
       address || null,
       null, // services field deprecated
       notes || null
     );
 
     // Add service tags
-    if (Array.isArray(service_tag_ids)) {
-      for (const tagId of service_tag_ids) {
+    if (Array.isArray(serviceTagIds)) {
+      for (const tagId of serviceTagIds) {
         serviceTagQueries.addToSupplier.run(id, tagId);
       }
     }
@@ -90,7 +109,7 @@ router.post('/', requireAdmin, (req, res) => {
 router.put('/:id', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
-    const { name, contact_name, contact_phone, contact_email, address, notes, service_tag_ids } = req.body;
+    const { name, contactName, contactPhone, contactEmail, address, notes, serviceTagIds } = req.body;
 
     const existing = supplierQueries.getById.get(id);
     if (!existing) {
@@ -103,9 +122,9 @@ router.put('/:id', requireAdmin, (req, res) => {
 
     supplierQueries.update.run(
       name,
-      contact_name || null,
-      contact_phone || null,
-      contact_email || null,
+      contactName || null,
+      contactPhone || null,
+      contactEmail || null,
       address || null,
       null, // services field deprecated
       notes || null,
@@ -113,9 +132,9 @@ router.put('/:id', requireAdmin, (req, res) => {
     );
 
     // Update service tags (clear and re-add)
-    if (Array.isArray(service_tag_ids)) {
+    if (Array.isArray(serviceTagIds)) {
       serviceTagQueries.clearSupplierTags.run(id);
-      for (const tagId of service_tag_ids) {
+      for (const tagId of serviceTagIds) {
         serviceTagQueries.addToSupplier.run(id, tagId);
       }
     }

@@ -49,9 +49,9 @@ export default function Dashboard() {
   const { stats, overdueCards, recentCards } = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
 
-    // Note: jobcards from hook use snake_case (due_date, not dueDate)
+    // Note: jobcards from API use camelCase (dueDate)
     const overdueList = jobcards.filter(c =>
-      c.due_date && c.due_date < today &&
+      c.dueDate && c.dueDate < today &&
       !['DONE', 'INVOICED'].includes(c.status)
     );
 
@@ -170,7 +170,7 @@ export default function Dashboard() {
                           openEditModal(card.id);
                         }}
                       >
-                        {card.job_number}
+                        {card.jobNumber}
                       </a>
                     </td>
                     <td>
@@ -180,7 +180,7 @@ export default function Dashboard() {
                       )}
                     </td>
                     <td className="overdue-date">
-                      {new Date(card.due_date).toLocaleDateString()}
+                      {new Date(card.dueDate).toLocaleDateString()}
                     </td>
                     <td>
                       <span style={{ color: PRIORITY_COLORS[card.priority] || PRIORITY_COLORS.NONE }}>
@@ -221,8 +221,8 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {recentCards.map((card) => {
-                  const isOverdue = card.due_date &&
-                    new Date(card.due_date) < new Date() &&
+                  const isOverdue = card.dueDate &&
+                    new Date(card.dueDate) < new Date() &&
                     !['DONE', 'INVOICED'].includes(card.status);
 
                   return (
@@ -235,7 +235,7 @@ export default function Dashboard() {
                             openEditModal(card.id);
                           }}
                         >
-                          {card.job_number}
+                          {card.jobNumber}
                         </a>
                       </td>
                       <td>
@@ -244,7 +244,7 @@ export default function Dashboard() {
                           <span className="critical-badge">Critical</span>
                         )}
                       </td>
-                      <td>{card.job_type || '-'}</td>
+                      <td>{card.jobType || '-'}</td>
                       <td>
                         <span className={`badge ${getStatusBadgeClass(card.status)}`}>
                           {STATUS_LABELS[card.status] || card.status}
@@ -256,7 +256,7 @@ export default function Dashboard() {
                         </span>
                       </td>
                       <td className={isOverdue ? 'overdue-date' : ''}>
-                        {card.due_date ? new Date(card.due_date).toLocaleDateString() : '-'}
+                        {card.dueDate ? new Date(card.dueDate).toLocaleDateString() : '-'}
                       </td>
                     </tr>
                   );

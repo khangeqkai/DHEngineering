@@ -16,15 +16,15 @@ export default function CostingTab({
           <div className="costing-inputs">
             <div className="costing-field">
               <label>Hours</label>
-              <input type="number" name="labour_hours" value={costingForm.labour_hours} onChange={handleCostingChange} min="0" step="0.5" />
+              <input type="number" name="labourHours" value={costingForm.labourHours} onChange={handleCostingChange} min="0" step="0.5" />
             </div>
             <div className="costing-field">
               <label>Rate ($/hr)</label>
-              <input type="number" name="labour_rate" value={costingForm.labour_rate} onChange={handleCostingChange} min="0" step="0.01" />
+              <input type="number" name="labourRate" value={costingForm.labourRate} onChange={handleCostingChange} min="0" step="0.01" />
             </div>
             <div className="costing-field total">
               <label>Total</label>
-              <span className="costing-total">${(costingForm.labour_hours * costingForm.labour_rate).toFixed(2)}</span>
+              <span className="costing-total">${(costingForm.labourHours * costingForm.labourRate).toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -35,15 +35,15 @@ export default function CostingTab({
           <div className="costing-inputs">
             <div className="costing-field">
               <label>Hours</label>
-              <input type="number" name="labour_special_hours" value={costingForm.labour_special_hours} onChange={handleCostingChange} min="0" step="0.5" />
+              <input type="number" name="labourSpecialHours" value={costingForm.labourSpecialHours} onChange={handleCostingChange} min="0" step="0.5" />
             </div>
             <div className="costing-field">
               <label>Rate ($/hr)</label>
-              <input type="number" name="labour_special_rate" value={costingForm.labour_special_rate} onChange={handleCostingChange} min="0" step="0.01" />
+              <input type="number" name="labourSpecialRate" value={costingForm.labourSpecialRate} onChange={handleCostingChange} min="0" step="0.01" />
             </div>
             <div className="costing-field total">
               <label>Total</label>
-              <span className="costing-total">${(costingForm.labour_special_hours * costingForm.labour_special_rate).toFixed(2)}</span>
+              <span className="costing-total">${(costingForm.labourSpecialHours * costingForm.labourSpecialRate).toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -54,15 +54,15 @@ export default function CostingTab({
           <div className="costing-inputs">
             <div className="costing-field">
               <label>Cost</label>
-              <input type="number" name="materials_cost" value={costingForm.materials_cost} onChange={handleCostingChange} min="0" step="0.01" />
+              <input type="number" name="materialsCost" value={costingForm.materialsCost} onChange={handleCostingChange} min="0" step="0.01" />
             </div>
             <div className="costing-field">
               <label>Profit %</label>
-              <input type="number" name="materials_profit_percent" value={costingForm.materials_profit_percent} onChange={handleCostingChange} min="0" />
+              <input type="number" name="materialsProfitPercent" value={costingForm.materialsProfitPercent} onChange={handleCostingChange} min="0" />
             </div>
             <div className="costing-field total">
               <label>Total</label>
-              <span className="costing-total">${(costingForm.materials_cost * (1 + costingForm.materials_profit_percent / 100)).toFixed(2)}</span>
+              <span className="costing-total">${(costingForm.materialsCost * (1 + costingForm.materialsProfitPercent / 100)).toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -73,15 +73,15 @@ export default function CostingTab({
           <div className="costing-inputs">
             <div className="costing-field">
               <label>Cost</label>
-              <input type="number" name="subcontractor_cost" value={costingForm.subcontractor_cost} onChange={handleCostingChange} min="0" step="0.01" />
+              <input type="number" name="subcontractorCost" value={costingForm.subcontractorCost} onChange={handleCostingChange} min="0" step="0.01" />
             </div>
             <div className="costing-field">
               <label>Profit %</label>
-              <input type="number" name="subcontractor_profit_percent" value={costingForm.subcontractor_profit_percent} onChange={handleCostingChange} min="0" />
+              <input type="number" name="subcontractorProfitPercent" value={costingForm.subcontractorProfitPercent} onChange={handleCostingChange} min="0" />
             </div>
             <div className="costing-field total">
               <label>Total</label>
-              <span className="costing-total">${(costingForm.subcontractor_cost * (1 + costingForm.subcontractor_profit_percent / 100)).toFixed(2)}</span>
+              <span className="costing-total">${(costingForm.subcontractorCost * (1 + costingForm.subcontractorProfitPercent / 100)).toFixed(2)}</span>
             </div>
           </div>
         </div>

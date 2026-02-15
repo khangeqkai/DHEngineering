@@ -7,6 +7,21 @@ const { contactQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
+// Helper to convert snake_case database row to camelCase API response
+const toApiFormat = (c) => ({
+  id: c.id,
+  contactName: c.contact_name,
+  companyName: c.company_name,
+  phone: c.phone,
+  email: c.email,
+  address: c.address,
+  isCriticalQa: c.is_critical_qa,
+  notes: c.notes,
+  active: c.active,
+  createdAt: c.created_at,
+  updatedAt: c.updated_at
+});
+
 // All routes require authentication
 router.use(authenticate);
 
@@ -17,7 +32,7 @@ router.get('/', (req, res) => {
     const contacts = includeInactive
       ? contactQueries.getAllIncludeInactive.all()
       : contactQueries.getAll.all();
-    res.json(contacts);
+    res.json(contacts.map(toApiFormat));
   } catch (err) {
     logger.error({ err }, 'Failed to get contacts');
     res.status(500).json({ error: 'Failed to get contacts' });
@@ -33,7 +48,7 @@ router.get('/search', (req, res) => {
     }
     const searchTerm = `%${q}%`;
     const contacts = contactQueries.search.all(searchTerm, searchTerm);
-    res.json(contacts);
+    res.json(contacts.map(toApiFormat));
   } catch (err) {
     logger.error({ err }, 'Failed to search contacts');
     res.status(500).json({ error: 'Failed to search contacts' });
@@ -47,7 +62,7 @@ router.get('/:id', (req, res) => {
     if (!contact) {
       return res.status(404).json({ error: 'Contact not found' });
     }
-    res.json(contact);
+    res.json(toApiFormat(contact));
   } catch (err) {
     logger.error({ err }, 'Failed to get contact');
     res.status(500).json({ error: 'Failed to get contact' });
@@ -57,27 +72,27 @@ router.get('/:id', (req, res) => {
 // POST /api/contacts - Create new contact
 router.post('/', validateCreateContact, (req, res) => {
   try {
-    const { contact_name, company_name, phone, email, address, is_critical_qa, notes } = req.body;
+    const { contactName, companyName, phone, email, address, isCriticalQa, notes } = req.body;
 
     const id = uuidv4();
 
     contactQueries.create.run(
       id,
-      contact_name,
-      company_name || null,
+      contactName,
+      companyName || null,
       phone || null,
       email || null,
       address || null,
-      is_critical_qa ? 1 : 0,
+      isCriticalQa ? 1 : 0,
       notes || null
     );
 
     const contact = contactQueries.getById.get(id);
 
     // Record history
-    recordHistory('contact', id, 'created', req.user.id, req.user.name || req.user.username, null, contact);
+    recordHistory('contact', id, 'created', req.user.id, req.user.name || req.user.username, null, toApiFormat(contact));
 
-    res.status(201).json(contact);
+    res.status(201).json(toApiFormat(contact));
   } catch (err) {
     logger.error({ err }, 'Failed to create contact');
     res.status(500).json({ error: 'Failed to create contact' });
@@ -88,7 +103,7 @@ router.post('/', validateCreateContact, (req, res) => {
 router.put('/:id', validateUpdateContact, (req, res) => {
   try {
     const { id } = req.params;
-    const { contact_name, company_name, phone, email, address, is_critical_qa, notes } = req.body;
+    const { contactName, companyName, phone, email, address, isCriticalQa, notes } = req.body;
 
     const existing = contactQueries.getById.get(id);
     if (!existing) {
@@ -96,12 +111,12 @@ router.put('/:id', validateUpdateContact, (req, res) => {
     }
 
     contactQueries.update.run(
-      contact_name,
-      company_name || null,
+      contactName,
+      companyName || null,
       phone || null,
       email || null,
       address || null,
-      is_critical_qa ? 1 : 0,
+      isCriticalQa ? 1 : 0,
       notes || null,
       id
     );
@@ -109,9 +124,9 @@ router.put('/:id', validateUpdateContact, (req, res) => {
     const contact = contactQueries.getById.get(id);
 
     // Record history
-    recordHistory('contact', id, 'updated', req.user.id, req.user.name || req.user.username, req.body, contact);
+    recordHistory('contact', id, 'updated', req.user.id, req.user.name || req.user.username, req.body, toApiFormat(contact));
 
-    res.json(contact);
+    res.json(toApiFormat(contact));
   } catch (err) {
     logger.error({ err }, 'Failed to update contact');
     res.status(500).json({ error: 'Failed to update contact' });
@@ -131,9 +146,9 @@ router.post('/:id/deactivate', (req, res) => {
     contactQueries.deactivate.run(id);
     const contact = contactQueries.getById.get(id);
 
-    recordHistory('contact', id, 'deactivated', req.user.id, req.user.name || req.user.username, null, contact);
+    recordHistory('contact', id, 'deactivated', req.user.id, req.user.name || req.user.username, null, toApiFormat(contact));
 
-    res.json(contact);
+    res.json(toApiFormat(contact));
   } catch (err) {
     logger.error({ err }, 'Failed to deactivate contact');
     res.status(500).json({ error: 'Failed to deactivate contact' });
@@ -153,9 +168,9 @@ router.post('/:id/activate', (req, res) => {
     contactQueries.activate.run(id);
     const contact = contactQueries.getById.get(id);
 
-    recordHistory('contact', id, 'activated', req.user.id, req.user.name || req.user.username, null, contact);
+    recordHistory('contact', id, 'activated', req.user.id, req.user.name || req.user.username, null, toApiFormat(contact));
 
-    res.json(contact);
+    res.json(toApiFormat(contact));
   } catch (err) {
     logger.error({ err }, 'Failed to activate contact');
     res.status(500).json({ error: 'Failed to activate contact' });
@@ -174,7 +189,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
 
     contactQueries.delete.run(id);
 
-    recordHistory('contact', id, 'deleted', req.user.id, req.user.name || req.user.username, null, existing);
+    recordHistory('contact', id, 'deleted', req.user.id, req.user.name || req.user.username, null, toApiFormat(existing));
 
     res.json({ message: 'Contact deleted successfully' });
   } catch (err) {

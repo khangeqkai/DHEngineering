@@ -30,21 +30,21 @@ export default function TimeEntryTab({
           <div className="form-row">
             <div className="form-group">
               <label>Item #</label>
-              <select name="item_number" value={timeEntryForm.item_number} onChange={handleTimeEntryChange}>
+              <select name="itemNumber" value={timeEntryForm.itemNumber} onChange={handleTimeEntryChange}>
                 <option value="">Select item...</option>
                 {lineItems.map(item => (
-                  <option key={item.item_number} value={item.item_number}>
-                    #{item.item_number} - {item.description?.substring(0, 30)}
+                  <option key={item.itemNumber} value={item.itemNumber}>
+                    #{item.itemNumber} - {item.description?.substring(0, 30)}
                   </option>
                 ))}
               </select>
             </div>
             <div className="form-group">
               <label>Machine #</label>
-              <select name="machine_number" value={timeEntryForm.machine_number} onChange={handleTimeEntryChange}>
+              <select name="machineNumber" value={timeEntryForm.machineNumber} onChange={handleTimeEntryChange}>
                 <option value="">Select machine...</option>
                 {machines.map(m => (
-                  <option key={m.id} value={m.machine_number}>{m.machine_number} {m.name && `- ${m.name}`}</option>
+                  <option key={m.id} value={m.machineNumber}>{m.machineNumber} {m.name && `- ${m.name}`}</option>
                 ))}
               </select>
             </div>
@@ -62,11 +62,11 @@ export default function TimeEntryTab({
           <div className="form-row">
             <div className="form-group">
               <label>Start Time</label>
-              <input type="datetime-local" name="start_time" value={timeEntryForm.start_time} onChange={handleTimeEntryChange} />
+              <input type="datetime-local" name="startTime" value={timeEntryForm.startTime} onChange={handleTimeEntryChange} />
             </div>
             <div className="form-group">
               <label>End Time</label>
-              <input type="datetime-local" name="end_time" value={timeEntryForm.end_time} onChange={handleTimeEntryChange} />
+              <input type="datetime-local" name="endTime" value={timeEntryForm.endTime} onChange={handleTimeEntryChange} />
             </div>
           </div>
 
@@ -76,13 +76,13 @@ export default function TimeEntryTab({
             <div className="form-row">
               <div className="form-group checkbox-group">
                 <label>
-                  <input type="checkbox" name="equipment_checks_done" checked={timeEntryForm.equipment_checks_done} onChange={handleTimeEntryChange} />
+                  <input type="checkbox" name="equipmentChecksDone" checked={timeEntryForm.equipmentChecksDone} onChange={handleTimeEntryChange} />
                   Equipment Checks Done
                 </label>
               </div>
               <div className="form-group checkbox-group">
                 <label>
-                  <input type="checkbox" name="measuring_verification_done" checked={timeEntryForm.measuring_verification_done} onChange={handleTimeEntryChange} />
+                  <input type="checkbox" name="measuringVerificationDone" checked={timeEntryForm.measuringVerificationDone} onChange={handleTimeEntryChange} />
                   Measuring Equipment Verification Done
                 </label>
               </div>
@@ -91,7 +91,7 @@ export default function TimeEntryTab({
             <div className="form-row">
               <div className="form-group">
                 <label>First Off Inspection</label>
-                <select name="first_off_inspection" value={timeEntryForm.first_off_inspection} onChange={handleTimeEntryChange}>
+                <select name="firstOffInspection" value={timeEntryForm.firstOffInspection} onChange={handleTimeEntryChange}>
                   <option value="NOT_APPLICABLE">Not Applicable</option>
                   <option value="OK">OK - Results recorded</option>
                   <option value="ERROR">Error</option>
@@ -99,7 +99,7 @@ export default function TimeEntryTab({
               </div>
               <div className="form-group">
                 <label>In-process Validation</label>
-                <select name="in_process_validation" value={timeEntryForm.in_process_validation} onChange={handleTimeEntryChange}>
+                <select name="inProcessValidation" value={timeEntryForm.inProcessValidation} onChange={handleTimeEntryChange}>
                   <option value="NOT_APPLICABLE">Not Applicable</option>
                   <option value="OK">OK - Results recorded</option>
                   <option value="ERROR">Error</option>
@@ -107,16 +107,16 @@ export default function TimeEntryTab({
               </div>
             </div>
 
-            {timeEntryForm.first_off_inspection === 'ERROR' && (
+            {timeEntryForm.firstOffInspection === 'ERROR' && (
               <div className="form-group">
                 <label>First Off Inspection Notes <span className="required">*</span></label>
-                <input type="text" name="first_off_inspection_notes" value={timeEntryForm.first_off_inspection_notes} onChange={handleTimeEntryChange} placeholder="Describe the error..." />
+                <input type="text" name="firstOffInspectionNotes" value={timeEntryForm.firstOffInspectionNotes} onChange={handleTimeEntryChange} placeholder="Describe the error..." />
               </div>
             )}
-            {timeEntryForm.in_process_validation === 'ERROR' && (
+            {timeEntryForm.inProcessValidation === 'ERROR' && (
               <div className="form-group">
                 <label>In-process Validation Notes <span className="required">*</span></label>
-                <input type="text" name="in_process_validation_notes" value={timeEntryForm.in_process_validation_notes} onChange={handleTimeEntryChange} placeholder="Describe the error..." />
+                <input type="text" name="inProcessValidationNotes" value={timeEntryForm.inProcessValidationNotes} onChange={handleTimeEntryChange} placeholder="Describe the error..." />
               </div>
             )}
           </div>
@@ -126,19 +126,19 @@ export default function TimeEntryTab({
             <h4>Scrap Rate Analysis</h4>
             <div className="form-group checkbox-group">
               <label>
-                <input type="checkbox" name="scrap_all_good" checked={timeEntryForm.scrap_all_good} onChange={handleTimeEntryChange} />
+                <input type="checkbox" name="scrapAllGood" checked={timeEntryForm.scrapAllGood} onChange={handleTimeEntryChange} />
                 All Good (No Scrap)
               </label>
             </div>
-            {!timeEntryForm.scrap_all_good && (
+            {!timeEntryForm.scrapAllGood && (
               <div className="form-row">
                 <div className="form-group">
                   <label>Recycle In-House Qty</label>
-                  <input type="number" name="scrap_recycle_inhouse_qty" value={timeEntryForm.scrap_recycle_inhouse_qty} onChange={handleTimeEntryChange} min="0" />
+                  <input type="number" name="scrapRecycleInhouseQty" value={timeEntryForm.scrapRecycleInhouseQty} onChange={handleTimeEntryChange} min="0" />
                 </div>
                 <div className="form-group">
                   <label>Recycle Bin Qty</label>
-                  <input type="number" name="scrap_recycle_bin_qty" value={timeEntryForm.scrap_recycle_bin_qty} onChange={handleTimeEntryChange} min="0" />
+                  <input type="number" name="scrapRecycleBinQty" value={timeEntryForm.scrapRecycleBinQty} onChange={handleTimeEntryChange} min="0" />
                 </div>
               </div>
             )}
@@ -166,15 +166,15 @@ export default function TimeEntryTab({
         ) : (
           <div className="time-entries-list">
             {timeEntries.map(entry => {
-              const hasError = entry.first_off_inspection === 'ERROR' || entry.in_process_validation === 'ERROR';
+              const hasError = entry.firstOffInspection === 'ERROR' || entry.inProcessValidation === 'ERROR';
               return (
                 <div key={entry.id} className={`time-entry-card ${hasError ? 'has-error' : ''}`}>
                   <div className="entry-header">
                     <div className="entry-info">
-                      <span className="user-name">{entry.user_name}</span>
-                      <span className="entry-date">{new Date(entry.start_time).toLocaleDateString()}</span>
-                      {entry.machine_number && <span className="machine-badge">M#{entry.machine_number}</span>}
-                      {entry.item_number && <span className="item-badge">Item #{entry.item_number}</span>}
+                      <span className="user-name">{entry.userName}</span>
+                      <span className="entry-date">{new Date(entry.startTime).toLocaleDateString()}</span>
+                      {entry.machineNumber && <span className="machine-badge">M#{entry.machineNumber}</span>}
+                      {entry.itemNumber && <span className="item-badge">Item #{entry.itemNumber}</span>}
                     </div>
                     <div className="entry-actions">
                       <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleEditTimeEntry(entry)}>Edit</button>
@@ -184,27 +184,27 @@ export default function TimeEntryTab({
                   <div className="entry-body">
                     <div className="entry-description">{entry.description || 'No description'}</div>
                     <div className="entry-time">
-                      <span>{new Date(entry.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span>{new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       <span> - </span>
-                      <span>{entry.end_time ? new Date(entry.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'In progress'}</span>
-                      {entry.end_time && (
+                      <span>{entry.endTime ? new Date(entry.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'In progress'}</span>
+                      {entry.endTime && (
                         <span className="duration">
-                          ({Math.round((new Date(entry.end_time) - new Date(entry.start_time)) / 60000)} min)
+                          ({Math.round((new Date(entry.endTime) - new Date(entry.startTime)) / 60000)} min)
                         </span>
                       )}
                     </div>
                     <div className="entry-special-ops">
-                      <span className={entry.equipment_checks_done ? 'status-ok' : 'status-pending'}>
-                        Equip: {entry.equipment_checks_done ? 'Done' : 'Pending'}
+                      <span className={entry.equipmentChecksDone ? 'status-ok' : 'status-pending'}>
+                        Equip: {entry.equipmentChecksDone ? 'Done' : 'Pending'}
                       </span>
-                      <span className={entry.measuring_verification_done ? 'status-ok' : 'status-pending'}>
-                        Measure: {entry.measuring_verification_done ? 'Done' : 'Pending'}
+                      <span className={entry.measuringVerificationDone ? 'status-ok' : 'status-pending'}>
+                        Measure: {entry.measuringVerificationDone ? 'Done' : 'Pending'}
                       </span>
-                      <span className={entry.first_off_inspection === 'ERROR' ? 'status-error' : 'status-ok'}>
-                        1st Off: {entry.first_off_inspection || 'N/A'}
+                      <span className={entry.firstOffInspection === 'ERROR' ? 'status-error' : 'status-ok'}>
+                        1st Off: {entry.firstOffInspection || 'N/A'}
                       </span>
-                      <span className={entry.in_process_validation === 'ERROR' ? 'status-error' : 'status-ok'}>
-                        In-proc: {entry.in_process_validation || 'N/A'}
+                      <span className={entry.inProcessValidation === 'ERROR' ? 'status-error' : 'status-ok'}>
+                        In-proc: {entry.inProcessValidation || 'N/A'}
                       </span>
                     </div>
                   </div>

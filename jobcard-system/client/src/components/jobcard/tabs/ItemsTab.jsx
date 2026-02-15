@@ -20,7 +20,7 @@ export default function ItemsTab({
           </div>
           {lineItems.map(item => (
             <div key={item.id} className="items-row">
-              <span className="item-num">#{item.item_number}</span>
+              <span className="item-num">#{item.itemNumber}</span>
               <input
                 type="text"
                 value={item.qty}

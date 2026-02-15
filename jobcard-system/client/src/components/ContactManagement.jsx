@@ -10,12 +10,12 @@ export default function ContactManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [formData, setFormData] = useState({
-    contact_name: '',
-    company_name: '',
+    contactName: '',
+    companyName: '',
     phone: '',
     email: '',
     address: '',
-    is_critical_qa: false,
+    isCriticalQa: false,
     notes: ''
   });
   const [saving, setSaving] = useState(false);
@@ -66,21 +66,21 @@ export default function ContactManagement() {
   const handleEdit = (contact) => {
     setEditingContact(contact);
     setFormData({
-      contact_name: contact.contact_name || '',
-      company_name: contact.company_name || '',
+      contactName: contact.contactName || '',
+      companyName: contact.companyName || '',
       phone: contact.phone || '',
       email: contact.email || '',
       address: contact.address || '',
-      is_critical_qa: contact.is_critical_qa || false,
+      isCriticalQa: contact.isCriticalQa || false,
       notes: contact.notes || ''
     });
     setShowForm(true);
   };
 
   const handleDeactivate = async (contact) => {
-    const displayName = contact.company_name
-      ? `${contact.contact_name} (${contact.company_name})`
-      : contact.contact_name;
+    const displayName = contact.companyName
+      ? `${contact.contactName} (${contact.companyName})`
+      : contact.contactName;
     if (!confirm(`Are you sure you want to deactivate "${displayName}"?`)) return;
 
     try {
@@ -103,9 +103,9 @@ export default function ContactManagement() {
   };
 
   const handleDelete = async (contact) => {
-    const displayName = contact.company_name
-      ? `${contact.contact_name} (${contact.company_name})`
-      : contact.contact_name;
+    const displayName = contact.companyName
+      ? `${contact.contactName} (${contact.companyName})`
+      : contact.contactName;
     if (!confirm(`Are you sure you want to PERMANENTLY delete "${displayName}"? This cannot be undone.`)) return;
 
     try {
@@ -121,12 +121,12 @@ export default function ContactManagement() {
     setShowForm(false);
     setEditingContact(null);
     setFormData({
-      contact_name: '',
-      company_name: '',
+      contactName: '',
+      companyName: '',
       phone: '',
       email: '',
       address: '',
-      is_critical_qa: false,
+      isCriticalQa: false,
       notes: ''
     });
   };
@@ -163,24 +163,24 @@ export default function ContactManagement() {
             <form onSubmit={handleSubmit}>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="contact_name">Contact Name *</label>
+                  <label htmlFor="contactName">Contact Name *</label>
                   <input
                     type="text"
-                    id="contact_name"
-                    value={formData.contact_name}
-                    onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
+                    id="contactName"
+                    value={formData.contactName}
+                    onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
                     placeholder="Person's name..."
                     required
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="company_name">Company</label>
+                  <label htmlFor="companyName">Company</label>
                   <input
                     type="text"
-                    id="company_name"
-                    value={formData.company_name}
-                    onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                    id="companyName"
+                    value={formData.companyName}
+                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                     placeholder="Company name..."
                   />
                 </div>
@@ -222,8 +222,8 @@ export default function ContactManagement() {
                 <label>
                   <input
                     type="checkbox"
-                    checked={formData.is_critical_qa}
-                    onChange={(e) => setFormData({ ...formData, is_critical_qa: e.target.checked })}
+                    checked={formData.isCriticalQa}
+                    onChange={(e) => setFormData({ ...formData, isCriticalQa: e.target.checked })}
                   />
                   Critical QA Contact
                   <span className="help-text">Requires enhanced documentation and QA forms</span>
@@ -273,13 +273,13 @@ export default function ContactManagement() {
                 filteredContacts.map((contact) => (
                   <tr key={contact.id} style={{ opacity: contact.active ? 1 : 0.6 }}>
                     <td>
-                      <strong>{contact.contact_name}</strong>
+                      <strong>{contact.contactName}</strong>
                     </td>
-                    <td>{contact.company_name || '-'}</td>
+                    <td>{contact.companyName || '-'}</td>
                     <td>{contact.phone || '-'}</td>
                     <td>{contact.email || '-'}</td>
                     <td>
-                      {contact.is_critical_qa ? (
+                      {contact.isCriticalQa ? (
                         <span className="badge badge-critical">Critical QA</span>
                       ) : (
                         <span className="badge badge-standard">Standard</span>

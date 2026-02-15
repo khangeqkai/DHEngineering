@@ -9,11 +9,24 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticate);
 
+// Helper to convert DB row to camelCase response
+function toResponseFormat(m) {
+  return {
+    id: m.id,
+    machineNumber: m.machine_number,
+    name: m.name,
+    description: m.description,
+    active: m.active,
+    createdAt: m.created_at,
+    updatedAt: m.updated_at
+  };
+}
+
 // Get all machines
 router.get('/', (req, res) => {
   try {
     const machines = machineQueries.getAll.all();
-    res.json(machines);
+    res.json(machines.map(toResponseFormat));
   } catch (err) {
     logger.error({ err }, 'Failed to get machines');
     res.status(500).json({ error: 'Failed to get machines' });
@@ -26,27 +39,27 @@ router.post('/', (req, res) => {
     return res.status(403).json({ error: 'Admin access required' });
   }
 
-  const { machine_number, name, description } = req.body;
+  const { machineNumber, name, description } = req.body;
 
-  if (!machine_number) {
+  if (!machineNumber) {
     return res.status(400).json({ error: 'Machine number is required' });
   }
 
   try {
     // Check if machine number already exists
-    const existing = machineQueries.getByNumber.get(machine_number);
+    const existing = machineQueries.getByNumber.get(machineNumber);
     if (existing) {
       return res.status(400).json({ error: 'Machine number already exists' });
     }
 
     const id = uuidv4();
-    machineQueries.create.run(id, machine_number, name || '', description || '');
+    machineQueries.create.run(id, machineNumber, name || '', description || '');
 
     const machine = machineQueries.getById.get(id);
 
     recordHistory('machine', id, 'created', req.user.id, req.user.name || req.user.username, {}, machine);
 
-    res.status(201).json(machine);
+    res.status(201).json(toResponseFormat(machine));
   } catch (err) {
     logger.error({ err }, 'Failed to create machine');
     res.status(500).json({ error: 'Failed to create machine' });
@@ -60,7 +73,7 @@ router.put('/:id', (req, res) => {
   }
 
   const { id } = req.params;
-  const { machine_number, name, description } = req.body;
+  const { machineNumber, name, description } = req.body;
 
   try {
     const existing = machineQueries.getById.get(id);
@@ -69,21 +82,21 @@ router.put('/:id', (req, res) => {
     }
 
     // Check for duplicate machine number
-    if (machine_number !== existing.machine_number) {
-      const duplicate = machineQueries.getByNumber.get(machine_number);
+    if (machineNumber !== existing.machine_number) {
+      const duplicate = machineQueries.getByNumber.get(machineNumber);
       if (duplicate) {
         return res.status(400).json({ error: 'Machine number already exists' });
       }
     }
 
-    machineQueries.update.run(machine_number, name || '', description || '', id);
+    machineQueries.update.run(machineNumber, name || '', description || '', id);
 
     const machine = machineQueries.getById.get(id);
 
     recordHistory('machine', id, 'updated', req.user.id, req.user.name || req.user.username,
-      { machine_number, name, description }, machine);
+      { machineNumber, name, description }, machine);
 
-    res.json(machine);
+    res.json(toResponseFormat(machine));
   } catch (err) {
     logger.error({ err }, 'Failed to update machine');
     res.status(500).json({ error: 'Failed to update machine' });

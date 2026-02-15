@@ -10,7 +10,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   const resetTimeEntryForm = useCallback(() => {
     setTimeEntryForm({
       ...getDefaultTimeEntryForm(),
-      start_time: new Date().toISOString().slice(0, 16)
+      startTime: new Date().toISOString().slice(0, 16)
     });
     setEditingTimeEntryId(null);
     setShowTimeEntryForm(false);
@@ -28,7 +28,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     resetTimeEntryForm();
     setTimeEntryForm(prev => ({
       ...prev,
-      start_time: new Date().toISOString().slice(0, 16)
+      startTime: new Date().toISOString().slice(0, 16)
     }));
     setShowTimeEntryForm(true);
   }, [resetTimeEntryForm]);
@@ -36,36 +36,36 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   const handleEditTimeEntry = useCallback((entry) => {
     setEditingTimeEntryId(entry.id);
     setTimeEntryForm({
-      item_number: entry.item_number || '',
-      machine_number: entry.machine_number || '',
+      itemNumber: entry.itemNumber || '',
+      machineNumber: entry.machineNumber || '',
       qty: entry.qty || '',
       description: entry.description || '',
-      start_time: entry.start_time ? entry.start_time.slice(0, 16) : '',
-      end_time: entry.end_time ? entry.end_time.slice(0, 16) : '',
-      equipment_checks_done: entry.equipment_checks_done || false,
-      measuring_verification_done: entry.measuring_verification_done || false,
-      first_off_inspection: entry.first_off_inspection || 'NOT_APPLICABLE',
-      first_off_inspection_notes: entry.first_off_inspection_notes || '',
-      in_process_validation: entry.in_process_validation || 'NOT_APPLICABLE',
-      in_process_validation_notes: entry.in_process_validation_notes || '',
-      scrap_all_good: entry.scrap_all_good !== false,
-      scrap_recycle_inhouse_qty: entry.scrap_recycle_inhouse_qty || 0,
-      scrap_recycle_bin_qty: entry.scrap_recycle_bin_qty || 0
+      startTime: entry.startTime ? entry.startTime.slice(0, 16) : '',
+      endTime: entry.endTime ? entry.endTime.slice(0, 16) : '',
+      equipmentChecksDone: entry.equipmentChecksDone || false,
+      measuringVerificationDone: entry.measuringVerificationDone || false,
+      firstOffInspection: entry.firstOffInspection || 'NOT_APPLICABLE',
+      firstOffInspectionNotes: entry.firstOffInspectionNotes || '',
+      inProcessValidation: entry.inProcessValidation || 'NOT_APPLICABLE',
+      inProcessValidationNotes: entry.inProcessValidationNotes || '',
+      scrapAllGood: entry.scrapAllGood !== false,
+      scrapRecycleInhouseQty: entry.scrapRecycleInhouseQty || 0,
+      scrapRecycleBinQty: entry.scrapRecycleBinQty || 0
     });
     setShowTimeEntryForm(true);
   }, []);
 
   const handleSaveTimeEntry = useCallback(async () => {
     // Validation: Special Ops and Scrap Rate must be filled
-    if (!timeEntryForm.equipment_checks_done || !timeEntryForm.measuring_verification_done) {
+    if (!timeEntryForm.equipmentChecksDone || !timeEntryForm.measuringVerificationDone) {
       toast.error('Equipment Checks and Measuring Equipment Verification must be completed');
       return;
     }
-    if (timeEntryForm.first_off_inspection === 'ERROR' && !timeEntryForm.first_off_inspection_notes) {
+    if (timeEntryForm.firstOffInspection === 'ERROR' && !timeEntryForm.firstOffInspectionNotes) {
       toast.error('Please provide notes for First Off Inspection error');
       return;
     }
-    if (timeEntryForm.in_process_validation === 'ERROR' && !timeEntryForm.in_process_validation_notes) {
+    if (timeEntryForm.inProcessValidation === 'ERROR' && !timeEntryForm.inProcessValidationNotes) {
       toast.error('Please provide notes for In-process Validation error');
       return;
     }
@@ -75,9 +75,9 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     try {
       const entryData = {
         ...timeEntryForm,
-        item_number: timeEntryForm.item_number ? parseInt(timeEntryForm.item_number) : null,
-        scrap_recycle_inhouse_qty: parseInt(timeEntryForm.scrap_recycle_inhouse_qty) || 0,
-        scrap_recycle_bin_qty: parseInt(timeEntryForm.scrap_recycle_bin_qty) || 0
+        itemNumber: timeEntryForm.itemNumber ? parseInt(timeEntryForm.itemNumber) : null,
+        scrapRecycleInhouseQty: parseInt(timeEntryForm.scrapRecycleInhouseQty) || 0,
+        scrapRecycleBinQty: parseInt(timeEntryForm.scrapRecycleBinQty) || 0
       };
 
       if (editingTimeEntryId) {

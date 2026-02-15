@@ -6,11 +6,11 @@ import { api } from '../../services/api';
  */
 function getDefaultContactFormData() {
   return {
-    contact_name: '',
-    company_name: '',
+    contactName: '',
+    companyName: '',
     phone: '',
     email: '',
-    is_critical_qa: false
+    isCriticalQa: false
   };
 }
 
@@ -64,37 +64,37 @@ export function useContactSearch() {
   // Select an existing contact from the dropdown
   const selectContact = useCallback((selectedContact, setFormData) => {
     setContact(selectedContact);
-    setOriginalContactName(selectedContact.contact_name || selectedContact.contactName || '');
+    setOriginalContactName(selectedContact.contactName || '');
 
     // Update form data with contact info
     setFormData(prev => ({
       ...prev,
-      contact_id: selectedContact.id,
-      contact_name: selectedContact.contact_name || selectedContact.contactName || '',
-      company_name: selectedContact.company_name || selectedContact.companyName || '',
-      contact_phone: selectedContact.phone || '',
-      contact_email: selectedContact.email || ''
+      contactId: selectedContact.id,
+      contactName: selectedContact.contactName || '',
+      companyName: selectedContact.companyName || '',
+      contactPhone: selectedContact.phone || '',
+      contactEmail: selectedContact.email || ''
     }));
 
     // Update contact form data
     setContactFormData({
-      contact_name: selectedContact.contact_name || selectedContact.contactName || '',
-      company_name: selectedContact.company_name || selectedContact.companyName || '',
+      contactName: selectedContact.contactName || '',
+      companyName: selectedContact.companyName || '',
       phone: selectedContact.phone || '',
       email: selectedContact.email || '',
-      is_critical_qa: selectedContact.is_critical_qa || selectedContact.isCriticalQa || false
+      isCriticalQa: selectedContact.isCriticalQa || false
     });
 
     // Display format: "John (ABC Pty Ltd)"
-    const displayName = selectedContact.company_name || selectedContact.companyName
-      ? `${selectedContact.contact_name || selectedContact.contactName} (${selectedContact.company_name || selectedContact.companyName})`
-      : selectedContact.contact_name || selectedContact.contactName;
+    const displayName = selectedContact.companyName
+      ? `${selectedContact.contactName} (${selectedContact.companyName})`
+      : selectedContact.contactName;
     setContactSearch(displayName);
     setShowContactDropdown(false);
 
     // Auto-set critical QA quality level
-    if (selectedContact.is_critical_qa || selectedContact.isCriticalQa) {
-      setFormData(prev => ({ ...prev, quality_level: 'CRITICAL' }));
+    if (selectedContact.isCriticalQa) {
+      setFormData(prev => ({ ...prev, qualityLevel: 'CRITICAL' }));
     }
   }, []);
 
@@ -104,11 +104,11 @@ export function useContactSearch() {
     setOriginalContactName('');
     setFormData(prev => ({
       ...prev,
-      contact_id: '',
-      contact_name: '',
-      company_name: '',
-      contact_phone: '',
-      contact_email: ''
+      contactId: '',
+      contactName: '',
+      companyName: '',
+      contactPhone: '',
+      contactEmail: ''
     }));
     setContactFormData(getDefaultContactFormData());
     setContactSearch('');
@@ -120,18 +120,18 @@ export function useContactSearch() {
 
     // Map field names from form to jobcard form data
     const fieldMap = {
-      contact_name: 'contact_name',
-      company_name: 'company_name',
-      phone: 'contact_phone',
-      email: 'contact_email',
-      is_critical_qa: 'is_critical_qa'
+      contactName: 'contactName',
+      companyName: 'companyName',
+      phone: 'contactPhone',
+      email: 'contactEmail',
+      isCriticalQa: 'isCriticalQa'
     };
 
     // Update search display when contact name or company changes
-    if (field === 'contact_name' || field === 'company_name') {
+    if (field === 'contactName' || field === 'companyName') {
       setContactFormData(prev => {
-        const name = field === 'contact_name' ? value : prev.contact_name;
-        const company = field === 'company_name' ? value : prev.company_name;
+        const name = field === 'contactName' ? value : prev.contactName;
+        const company = field === 'companyName' ? value : prev.companyName;
         // Only update search if we haven't selected a contact yet
         if (!contact) {
           const displayName = company ? `${name} (${company})` : name;
@@ -143,36 +143,36 @@ export function useContactSearch() {
       // Clear contact selection if user starts typing something different
       if (contact) {
         setContact(null);
-        setFormData(prev => ({ ...prev, contact_id: '' }));
+        setFormData(prev => ({ ...prev, contactId: '' }));
       }
     }
 
     // Update jobcard form data
     if (fieldMap[field]) {
       const formField = fieldMap[field];
-      if (formField === 'contact_phone' || formField === 'contact_email' || formField === 'contact_name' || formField === 'company_name') {
+      if (formField === 'contactPhone' || formField === 'contactEmail' || formField === 'contactName' || formField === 'companyName') {
         setFormData(prev => ({ ...prev, [formField]: value }));
       }
     }
 
     // Auto-set critical QA if flagged
-    if (field === 'is_critical_qa' && value) {
-      setFormData(prev => ({ ...prev, quality_level: 'CRITICAL' }));
+    if (field === 'isCriticalQa' && value) {
+      setFormData(prev => ({ ...prev, qualityLevel: 'CRITICAL' }));
     }
   }, [contact]);
 
   // Set contact data from loaded job card
   const setContactFromJobCard = useCallback((jobcardData) => {
-    const contactId = jobcardData.contactId || jobcardData.contact_id;
-    const contactName = jobcardData.contactName || jobcardData.contact_name;
-    const companyName = jobcardData.companyName || jobcardData.company_name;
+    const contactId = jobcardData.contactId;
+    const contactName = jobcardData.contactName;
+    const companyName = jobcardData.companyName;
 
     if (contactId || contactName) {
       setContact({
         id: contactId,
-        contact_name: contactName,
-        company_name: companyName,
-        is_critical_qa: jobcardData.contactIsCritical || jobcardData.contact_is_critical
+        contactName: contactName,
+        companyName: companyName,
+        isCriticalQa: jobcardData.contactIsCritical
       });
       setOriginalContactName(contactName || '');
 
@@ -181,11 +181,11 @@ export function useContactSearch() {
       setContactSearch(displayName || '');
 
       setContactFormData({
-        contact_name: contactName || '',
-        company_name: companyName || '',
-        phone: jobcardData.contactPhone || jobcardData.contact_phone || '',
-        email: jobcardData.contactEmail || jobcardData.contact_email || '',
-        is_critical_qa: jobcardData.contactIsCritical || jobcardData.contact_is_critical || false
+        contactName: contactName || '',
+        companyName: companyName || '',
+        phone: jobcardData.contactPhone || '',
+        email: jobcardData.contactEmail || '',
+        isCriticalQa: jobcardData.contactIsCritical || false
       });
     }
   }, []);
@@ -203,8 +203,8 @@ export function useContactSearch() {
   // Check if contact name changed (for smart detection)
   const hasContactNameChanged = useCallback(() => {
     if (!contact || !originalContactName) return false;
-    return contactFormData.contact_name.trim() !== originalContactName.trim();
-  }, [contact, originalContactName, contactFormData.contact_name]);
+    return contactFormData.contactName.trim() !== originalContactName.trim();
+  }, [contact, originalContactName, contactFormData.contactName]);
 
   return {
     // State

@@ -10,14 +10,14 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
   useEffect(() => {
     if (offlineCosting) {
       setCostingForm({
-        labour_hours: offlineCosting.labour_hours || 0,
-        labour_rate: offlineCosting.labour_rate || 0,
-        labour_special_hours: offlineCosting.labour_special_hours || 0,
-        labour_special_rate: offlineCosting.labour_special_rate || 0,
-        materials_cost: offlineCosting.materials_cost || 0,
-        materials_profit_percent: offlineCosting.materials_profit_percent || 100,
-        subcontractor_cost: offlineCosting.subcontractor_cost || 0,
-        subcontractor_profit_percent: offlineCosting.subcontractor_profit_percent || 0
+        labourHours: offlineCosting.labourHours || 0,
+        labourRate: offlineCosting.labourRate || 0,
+        labourSpecialHours: offlineCosting.labourSpecialHours || 0,
+        labourSpecialRate: offlineCosting.labourSpecialRate || 0,
+        materialsCost: offlineCosting.materialsCost || 0,
+        materialsProfitPercent: offlineCosting.materialsProfitPercent || 100,
+        subcontractorCost: offlineCosting.subcontractorCost || 0,
+        subcontractorProfitPercent: offlineCosting.subcontractorProfitPercent || 0
       });
     }
   }, [offlineCosting]);
@@ -28,10 +28,10 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
   }, []);
 
   const calculateCostingTotals = useCallback(() => {
-    const labourTotal = costingForm.labour_hours * costingForm.labour_rate;
-    const labourSpecialTotal = costingForm.labour_special_hours * costingForm.labour_special_rate;
-    const materialsTotal = costingForm.materials_cost * (1 + costingForm.materials_profit_percent / 100);
-    const subcontractorTotal = costingForm.subcontractor_cost * (1 + costingForm.subcontractor_profit_percent / 100);
+    const labourTotal = costingForm.labourHours * costingForm.labourRate;
+    const labourSpecialTotal = costingForm.labourSpecialHours * costingForm.labourSpecialRate;
+    const materialsTotal = costingForm.materialsCost * (1 + costingForm.materialsProfitPercent / 100);
+    const subcontractorTotal = costingForm.subcontractorCost * (1 + costingForm.subcontractorProfitPercent / 100);
     const grandTotal = labourTotal + labourSpecialTotal + materialsTotal + subcontractorTotal;
 
     return { labourTotal, labourSpecialTotal, materialsTotal, subcontractorTotal, grandTotal };
@@ -45,11 +45,11 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
       const totals = calculateCostingTotals();
       const costingData = {
         ...costingForm,
-        labour_total: totals.labourTotal,
-        labour_special_total: totals.labourSpecialTotal,
-        materials_total: totals.materialsTotal,
-        subcontractor_total: totals.subcontractorTotal,
-        grand_total: totals.grandTotal
+        labourTotal: totals.labourTotal,
+        labourSpecialTotal: totals.labourSpecialTotal,
+        materialsTotal: totals.materialsTotal,
+        subcontractorTotal: totals.subcontractorTotal,
+        grandTotal: totals.grandTotal
       };
 
       if (!updateCosting) {

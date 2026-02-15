@@ -7,20 +7,25 @@ const { subcontractQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
+// Helper to convert DB row to camelCase response
+const toResponse = (s) => ({
+  id: s.id,
+  supplierId: s.supplier_id,
+  supplierName: s.supplier_name,
+  dateSent: s.date_sent,
+  dateExpected: s.date_expected,
+  dateReceived: s.date_received,
+  status: s.status,
+  notes: s.notes,
+  createdAt: s.created_at,
+  updatedAt: s.updated_at
+});
+
 // Get subcontracts
 router.get('/:id/subcontracts', authenticate, (req, res) => {
   try {
     const subcontracts = subcontractQueries.getByJobcard.all(req.params.id);
-    res.json(subcontracts.map(s => ({
-      id: s.id,
-      supplier_id: s.supplier_id,
-      supplier_name: s.supplier_name,
-      date_sent: s.date_sent,
-      date_expected: s.date_expected,
-      date_received: s.date_received,
-      status: s.status,
-      notes: s.notes
-    })));
+    res.json(subcontracts.map(toResponse));
   } catch (err) {
     logger.error({ err }, 'Get subcontracts error');
     res.status(500).json({ error: 'Failed to get subcontracts' });
@@ -38,21 +43,21 @@ router.post('/:id/subcontracts', authenticate, (req, res) => {
     subcontractQueries.create.run(
       subId,
       id,
-      data.supplier_id,
-      data.date_sent || null,
-      data.date_expected || null,
+      data.supplierId,
+      data.dateSent || null,
+      data.dateExpected || null,
       data.notes || null,
       data.status || 'PENDING'
     );
 
     recordHistory('jobcard', id, 'add_subcontract', req.user.userId, req.user.name, {
       subcontractId: subId,
-      supplierId: data.supplier_id,
+      supplierId: data.supplierId,
       status: data.status || 'PENDING'
     }, null);
 
     const sub = subcontractQueries.getById.get(subId);
-    res.status(201).json(sub);
+    res.status(201).json(toResponse(sub));
   } catch (err) {
     logger.error({ err }, 'Add subcontract error');
     res.status(500).json({ error: 'Failed to add subcontract' });
@@ -71,10 +76,10 @@ router.put('/:id/subcontracts/:subId', authenticate, (req, res) => {
     }
 
     subcontractQueries.update.run(
-      data.supplier_id || existing.supplier_id,
-      data.date_sent !== undefined ? data.date_sent : existing.date_sent,
-      data.date_expected !== undefined ? data.date_expected : existing.date_expected,
-      data.date_received !== undefined ? data.date_received : existing.date_received,
+      data.supplierId || existing.supplier_id,
+      data.dateSent !== undefined ? data.dateSent : existing.date_sent,
+      data.dateExpected !== undefined ? data.dateExpected : existing.date_expected,
+      data.dateReceived !== undefined ? data.dateReceived : existing.date_received,
       data.notes !== undefined ? data.notes : existing.notes,
       data.status || existing.status,
       subId
@@ -83,11 +88,11 @@ router.put('/:id/subcontracts/:subId', authenticate, (req, res) => {
     recordHistory('jobcard', id, 'update_subcontract', req.user.userId, req.user.name, {
       subcontractId: subId,
       status: data.status,
-      dateReceived: data.date_received
+      dateReceived: data.dateReceived
     }, null);
 
     const sub = subcontractQueries.getById.get(subId);
-    res.json(sub);
+    res.json(toResponse(sub));
   } catch (err) {
     logger.error({ err }, 'Update subcontract error');
     res.status(500).json({ error: 'Failed to update subcontract' });

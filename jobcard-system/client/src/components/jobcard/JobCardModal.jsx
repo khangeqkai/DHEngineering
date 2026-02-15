@@ -80,46 +80,48 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       setPhotos(Array.isArray(jobcardData.photos) ? jobcardData.photos : []);
       setSubcontracts((subcontractsRes || []).map(s => ({
         id: s.id,
-        supplier_id: s.supplierId || s.supplier_id,
-        supplier_name: s.supplierName || s.supplier_name,
-        date_sent: s.dateSent || s.date_sent,
-        date_expected: s.dateExpected || s.date_expected,
-        date_received: s.dateReceived || s.date_received,
+        supplierId: s.supplierId,
+        supplierName: s.supplierName,
+        dateSent: s.dateSent,
+        dateExpected: s.dateExpected,
+        dateReceived: s.dateReceived,
         notes: s.notes,
         status: s.status
       })));
 
       setTimeEntries((timeEntriesRes || []).map(t => ({
         id: t.id,
-        item_number: t.itemNumber || t.item_number,
-        machine_number: t.machineNumber || t.machine_number,
+        userId: t.userId,
+        userName: t.userName,
+        itemNumber: t.itemNumber,
+        machineNumber: t.machineNumber,
         qty: t.qty,
         description: t.description,
-        start_time: t.startTime || t.start_time,
-        end_time: t.endTime || t.end_time,
-        equipment_checks_done: t.equipmentChecksDone || t.equipment_checks_done,
-        measuring_verification_done: t.measuringVerificationDone || t.measuring_verification_done,
-        first_off_inspection: t.firstOffInspection || t.first_off_inspection,
-        first_off_inspection_notes: t.firstOffInspectionNotes || t.first_off_inspection_notes,
-        in_process_validation: t.inProcessValidation || t.in_process_validation,
-        in_process_validation_notes: t.inProcessValidationNotes || t.in_process_validation_notes,
-        scrap_all_good: t.scrapAllGood !== undefined ? t.scrapAllGood : t.scrap_all_good,
-        scrap_recycle_inhouse_qty: t.scrapRecycleInhouseQty || t.scrap_recycle_inhouse_qty,
-        scrap_recycle_bin_qty: t.scrapRecycleBinQty || t.scrap_recycle_bin_qty
+        startTime: t.startTime,
+        endTime: t.endTime,
+        equipmentChecksDone: t.equipmentChecksDone,
+        measuringVerificationDone: t.measuringVerificationDone,
+        firstOffInspection: t.firstOffInspection,
+        firstOffInspectionNotes: t.firstOffInspectionNotes,
+        inProcessValidation: t.inProcessValidation,
+        inProcessValidationNotes: t.inProcessValidationNotes,
+        scrapAllGood: t.scrapAllGood,
+        scrapRecycleInhouseQty: t.scrapRecycleInhouseQty,
+        scrapRecycleBinQty: t.scrapRecycleBinQty
       })));
 
       setQaForms(qaFormsRes || []);
 
       if (costingRes) {
         setCostingData({
-          labour_hours: costingRes.labourHours || costingRes.labour_hours || 0,
-          labour_rate: costingRes.labourRate || costingRes.labour_rate || 0,
-          labour_special_hours: costingRes.labourSpecialHours || costingRes.labour_special_hours || 0,
-          labour_special_rate: costingRes.labourSpecialRate || costingRes.labour_special_rate || 0,
-          materials_cost: costingRes.materialsCost || costingRes.materials_cost || 0,
-          materials_profit_percent: costingRes.materialsProfitPercent || costingRes.materials_profit_percent || 100,
-          subcontractor_cost: costingRes.subcontractorCost || costingRes.subcontractor_cost || 0,
-          subcontractor_profit_percent: costingRes.subcontractorProfitPercent || costingRes.subcontractor_profit_percent || 0
+          labourHours: costingRes.labourHours || 0,
+          labourRate: costingRes.labourRate || 0,
+          labourSpecialHours: costingRes.labourSpecialHours || 0,
+          labourSpecialRate: costingRes.labourSpecialRate || 0,
+          materialsCost: costingRes.materialsCost || 0,
+          materialsProfitPercent: costingRes.materialsProfitPercent || 100,
+          subcontractorCost: costingRes.subcontractorCost || 0,
+          subcontractorProfitPercent: costingRes.subcontractorProfitPercent || 0
         });
       }
     } catch (err) {
@@ -141,14 +143,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       const costingRes = await api.getCosting(jobCardId);
       if (costingRes) {
         setCostingData({
-          labour_hours: costingRes.labourHours || costingRes.labour_hours || 0,
-          labour_rate: costingRes.labourRate || costingRes.labour_rate || 0,
-          labour_special_hours: costingRes.labourSpecialHours || costingRes.labour_special_hours || 0,
-          labour_special_rate: costingRes.labourSpecialRate || costingRes.labour_special_rate || 0,
-          materials_cost: costingRes.materialsCost || costingRes.materials_cost || 0,
-          materials_profit_percent: costingRes.materialsProfitPercent || costingRes.materials_profit_percent || 100,
-          subcontractor_cost: costingRes.subcontractorCost || costingRes.subcontractor_cost || 0,
-          subcontractor_profit_percent: costingRes.subcontractorProfitPercent || costingRes.subcontractor_profit_percent || 0
+          labourHours: costingRes.labourHours || 0,
+          labourRate: costingRes.labourRate || 0,
+          labourSpecialHours: costingRes.labourSpecialHours || 0,
+          labourSpecialRate: costingRes.labourSpecialRate || 0,
+          materialsCost: costingRes.materialsCost || 0,
+          materialsProfitPercent: costingRes.materialsProfitPercent || 100,
+          subcontractorCost: costingRes.subcontractorCost || 0,
+          subcontractorProfitPercent: costingRes.subcontractorProfitPercent || 0
         });
       }
     }
@@ -158,11 +160,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     const res = await api.getSubcontracts(jobCardId);
     setSubcontracts((res || []).map(s => ({
       id: s.id,
-      supplier_id: s.supplierId || s.supplier_id,
-      supplier_name: s.supplierName || s.supplier_name,
-      date_sent: s.dateSent || s.date_sent,
-      date_expected: s.dateExpected || s.date_expected,
-      date_received: s.dateReceived || s.date_received,
+      supplierId: s.supplierId,
+      supplierName: s.supplierName,
+      dateSent: s.dateSent,
+      dateExpected: s.dateExpected,
+      dateReceived: s.dateReceived,
       notes: s.notes,
       status: s.status
     })));
@@ -187,21 +189,23 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     const res = await api.getTimeEntries(jobCardId);
     setTimeEntries((res || []).map(t => ({
       id: t.id,
-      item_number: t.itemNumber || t.item_number,
-      machine_number: t.machineNumber || t.machine_number,
+      userId: t.userId,
+      userName: t.userName,
+      itemNumber: t.itemNumber,
+      machineNumber: t.machineNumber,
       qty: t.qty,
       description: t.description,
-      start_time: t.startTime || t.start_time,
-      end_time: t.endTime || t.end_time,
-      equipment_checks_done: t.equipmentChecksDone || t.equipment_checks_done,
-      measuring_verification_done: t.measuringVerificationDone || t.measuring_verification_done,
-      first_off_inspection: t.firstOffInspection || t.first_off_inspection,
-      first_off_inspection_notes: t.firstOffInspectionNotes || t.first_off_inspection_notes,
-      in_process_validation: t.inProcessValidation || t.in_process_validation,
-      in_process_validation_notes: t.inProcessValidationNotes || t.in_process_validation_notes,
-      scrap_all_good: t.scrapAllGood !== undefined ? t.scrapAllGood : t.scrap_all_good,
-      scrap_recycle_inhouse_qty: t.scrapRecycleInhouseQty || t.scrap_recycle_inhouse_qty,
-      scrap_recycle_bin_qty: t.scrapRecycleBinQty || t.scrap_recycle_bin_qty
+      startTime: t.startTime,
+      endTime: t.endTime,
+      equipmentChecksDone: t.equipmentChecksDone,
+      measuringVerificationDone: t.measuringVerificationDone,
+      firstOffInspection: t.firstOffInspection,
+      firstOffInspectionNotes: t.firstOffInspectionNotes,
+      inProcessValidation: t.inProcessValidation,
+      inProcessValidationNotes: t.inProcessValidationNotes,
+      scrapAllGood: t.scrapAllGood,
+      scrapRecycleInhouseQty: t.scrapRecycleInhouseQty,
+      scrapRecycleBinQty: t.scrapRecycleBinQty
     })));
   };
 
@@ -275,23 +279,23 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
     // Validation
     const errors = [];
-    if (!isEdit && !formHook.formData.job_number?.trim()) {
+    if (!isEdit && !formHook.formData.jobNumber?.trim()) {
       errors.push('Job Card / Quote number is required');
     }
-    if (!formHook.formData.contact_id && !contactHook.contactFormData.contact_name.trim()) {
+    if (!formHook.formData.contactId && !contactHook.contactFormData.contactName.trim()) {
       errors.push('Contact Name is required');
     }
-    if (!formHook.formData.job_type) {
+    if (!formHook.formData.jobType) {
       errors.push('Job Type is required');
     }
-    if (!formHook.formData.due_date) {
+    if (!formHook.formData.dueDate) {
       errors.push('Due Date is required');
     }
     const validItems = formHook.lineItems.filter(item => item.description.trim());
     if (validItems.length === 0) {
       errors.push('At least one line item with description is required');
     }
-    if (formHook.formData.is_repeat_job && !formHook.formData.repeat_job_reference) {
+    if (formHook.formData.isRepeatJob && !formHook.formData.repeatJobReference) {
       errors.push('Previous Job Reference is required for repeat jobs');
     }
 
@@ -303,65 +307,65 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     setSaving(true);
 
     try {
-      let contactId = formHook.formData.contact_id;
+      let contactId = formHook.formData.contactId;
 
       // Smart detection: Check if user edited a selected contact and changed the name
       if (contactHook.hasContactNameChanged()) {
         const saveNew = window.confirm(
-          `Save "${contactHook.contactFormData.contact_name}" as a new contact?`
+          `Save "${contactHook.contactFormData.contactName}" as a new contact?`
         );
         if (saveNew) {
           // Create new contact
           const newContact = await api.createContact({
-            contact_name: contactHook.contactFormData.contact_name.trim(),
-            company_name: contactHook.contactFormData.company_name || null,
+            contactName: contactHook.contactFormData.contactName.trim(),
+            companyName: contactHook.contactFormData.companyName || null,
             phone: contactHook.contactFormData.phone || null,
             email: contactHook.contactFormData.email || null,
-            is_critical_qa: contactHook.contactFormData.is_critical_qa || false
+            isCriticalQa: contactHook.contactFormData.isCriticalQa || false
           });
           contactId = newContact.id;
           toast.success('New contact saved');
         }
-        // If not saving as new, keep the original contact_id but use override fields
+        // If not saving as new, keep the original contactId but use override fields
       }
 
       // Create new contact if no contact selected and contact name provided
-      if (!contactId && contactHook.contactFormData.contact_name.trim()) {
+      if (!contactId && contactHook.contactFormData.contactName.trim()) {
         const newContact = await api.createContact({
-          contact_name: contactHook.contactFormData.contact_name.trim(),
-          company_name: contactHook.contactFormData.company_name || null,
+          contactName: contactHook.contactFormData.contactName.trim(),
+          companyName: contactHook.contactFormData.companyName || null,
           phone: contactHook.contactFormData.phone || null,
           email: contactHook.contactFormData.email || null,
-          is_critical_qa: contactHook.contactFormData.is_critical_qa || false
+          isCriticalQa: contactHook.contactFormData.isCriticalQa || false
         });
         contactId = newContact.id;
       }
       const jobcardData = {
-        jobNumber: formHook.formData.job_number,
+        jobNumber: formHook.formData.jobNumber,
         status: formHook.formData.status,
         contactId: contactId,
-        contactName: contactHook.contactFormData.contact_name,
-        companyName: contactHook.contactFormData.company_name,
+        contactName: contactHook.contactFormData.contactName,
+        companyName: contactHook.contactFormData.companyName,
         contactPhone: contactHook.contactFormData.phone,
         contactEmail: contactHook.contactFormData.email,
-        qualityLevel: contactHook.contactFormData.is_critical_qa ? 'CRITICAL' : formHook.formData.quality_level,
-        jobType: formHook.formData.job_type,
+        qualityLevel: contactHook.contactFormData.isCriticalQa ? 'CRITICAL' : formHook.formData.qualityLevel,
+        jobType: formHook.formData.jobType,
         priority: formHook.formData.priority,
-        poNumber: formHook.formData.po_number,
-        quoteReference: formHook.formData.quote_reference,
-        drawingsType: formHook.formData.drawings_type,
-        customerProperty: formHook.formData.customer_property,
+        poNumber: formHook.formData.poNumber,
+        quoteReference: formHook.formData.quoteReference,
+        drawingsType: formHook.formData.drawingsType,
+        customerProperty: formHook.formData.customerProperty,
         description: formHook.formData.description,
-        dueDate: formHook.formData.due_date,
-        isRepeatJob: formHook.formData.is_repeat_job,
-        repeatJobReference: formHook.formData.repeat_job_reference,
-        treatmentRequired: formHook.formData.treatment_required,
-        treatmentOther: formHook.formData.treatment_other,
+        dueDate: formHook.formData.dueDate,
+        isRepeatJob: formHook.formData.isRepeatJob,
+        repeatJobReference: formHook.formData.repeatJobReference,
+        treatmentRequired: formHook.formData.treatmentRequired,
+        treatmentOther: formHook.formData.treatmentOther,
         notes: formHook.formData.notes,
         photos: camera.photos,
-        assigneeIds: formHook.assignees.map(a => a.user_id),
+        assigneeIds: formHook.assignees.map(a => a.userId),
         items: validItems.map((item, idx) => ({
-          itemNumber: item.item_number || idx + 1,
+          itemNumber: item.itemNumber || idx + 1,
           qty: item.qty,
           description: item.description
         }))
@@ -371,12 +375,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       } else {
         const newJobcard = await api.createJobcard(jobcardData);
         // Add subcontracts for new job cards
-        for (const sub of formHook.localSubcontracts.filter(s => s.supplier_id)) {
+        for (const sub of formHook.localSubcontracts.filter(s => s.supplierId)) {
           await api.addSubcontract(newJobcard.id, {
-            supplier_id: sub.supplier_id,
-            supplier_name: sub.supplier_name,
-            date_sent: sub.date_sent || null,
-            date_expected: sub.date_expected || null,
+            supplierId: sub.supplierId,
+            supplierName: sub.supplierName,
+            dateSent: sub.dateSent || null,
+            dateExpected: sub.dateExpected || null,
             notes: sub.notes || null,
             status: sub.status || 'PENDING'
           });
@@ -393,7 +397,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   };
   if (!isOpen) return null;
-  const isOverdue = formHook.formData.due_date && new Date(formHook.formData.due_date) < new Date() &&
+  const isOverdue = formHook.formData.dueDate && new Date(formHook.formData.dueDate) < new Date() &&
     !['DONE', 'INVOICED'].includes(formHook.formData.status);
   const buildTitle = () => isEdit ? `Edit: ${formHook.jobNumber}` : 'New Job Card';
   return (
@@ -473,7 +477,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   handleDeleteSubcontract={subcontract.handleDeleteSubcontract}
                   resetSubcontractForm={subcontract.resetSubcontractForm}
                   suppliers={suppliers || []}
-                  treatmentRequired={formHook.formData.treatment_required}
+                  treatmentRequired={formHook.formData.treatmentRequired}
                 />
               )}
 

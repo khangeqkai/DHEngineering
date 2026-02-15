@@ -9,11 +9,32 @@ const db = require('../db/database');
 // All settings routes require authentication
 router.use(authenticate);
 
+// Helper: Convert snake_case to camelCase
+function snakeToCamel(str) {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+// Helper: Convert camelCase to snake_case
+function camelToSnake(str) {
+  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+}
+
+// Helper: Convert object keys from snake_case to camelCase
+function convertKeysToCamel(obj) {
+  const result = {};
+  for (const [key, value] of Object.entries(obj)) {
+    result[snakeToCamel(key)] = value;
+  }
+  return result;
+}
+
 // Get settings (admin only)
 router.get('/', requireAdmin, (req, res) => {
   try {
     const settings = db.getSettings();
-    res.json(settings);
+    // Convert snake_case keys to camelCase
+    const camelCaseSettings = convertKeysToCamel(settings);
+    res.json(camelCaseSettings);
   } catch (err) {
     logger.error({ err }, 'Error getting settings');
     res.status(500).json({ error: 'Failed to get settings' });
@@ -23,29 +44,31 @@ router.get('/', requireAdmin, (req, res) => {
 // Update settings (admin only)
 router.put('/', requireAdmin, (req, res) => {
   try {
-    const { scanner_folder, inactivity_timeout_minutes } = req.body;
+    // Accept both camelCase and snake_case for backwards compatibility
+    const scannerFolder = req.body.scannerFolder ?? req.body.scanner_folder;
+    const inactivityTimeoutMinutes = req.body.inactivityTimeoutMinutes ?? req.body.inactivity_timeout_minutes;
     const updates = {};
 
     // Validate scanner folder if provided
-    if (scanner_folder !== undefined) {
-      if (scanner_folder && scanner_folder.trim()) {
+    if (scannerFolder !== undefined) {
+      if (scannerFolder && scannerFolder.trim()) {
         // Check if the folder exists
-        if (!fs.existsSync(scanner_folder)) {
+        if (!fs.existsSync(scannerFolder)) {
           return res.status(400).json({ error: 'Scanner folder does not exist' });
         }
 
         // Check if it's a directory
-        const stats = fs.statSync(scanner_folder);
+        const stats = fs.statSync(scannerFolder);
         if (!stats.isDirectory()) {
           return res.status(400).json({ error: 'Path is not a directory' });
         }
       }
-      updates.scanner_folder = scanner_folder || '';
+      updates.scanner_folder = scannerFolder || '';
     }
 
     // Validate inactivity timeout if provided
-    if (inactivity_timeout_minutes !== undefined) {
-      const timeout = parseInt(inactivity_timeout_minutes, 10);
+    if (inactivityTimeoutMinutes !== undefined) {
+      const timeout = parseInt(inactivityTimeoutMinutes, 10);
       if (isNaN(timeout) || timeout < 1 || timeout > 60) {
         return res.status(400).json({ error: 'Inactivity timeout must be between 1 and 60 minutes' });
       }
@@ -67,7 +90,7 @@ router.get('/inactivity-timeout', (req, res) => {
   try {
     const settings = db.getSettings();
     const timeoutMinutes = parseInt(settings.inactivity_timeout_minutes, 10) || 5;
-    res.json({ inactivity_timeout_minutes: timeoutMinutes });
+    res.json({ inactivityTimeoutMinutes: timeoutMinutes });
   } catch (err) {
     logger.error({ err }, 'Error getting inactivity timeout');
     res.status(500).json({ error: 'Failed to get inactivity timeout' });

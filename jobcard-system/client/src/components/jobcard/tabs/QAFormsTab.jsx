@@ -4,7 +4,7 @@ export default function QAFormsTab({ formData, qaForms }) {
       <div className="form-section">
         <h3 className="form-section-title" data-section="QA">QA Forms & Documents</h3>
 
-        {formData.quality_level === 'CRITICAL' && (
+        {formData.qualityLevel === 'CRITICAL' && (
           <div className="critical-qa-notice">
             This is a Critical QA job - all forms must be completed before invoicing
           </div>
@@ -19,8 +19,8 @@ export default function QAFormsTab({ formData, qaForms }) {
             </div>
             <div className="qa-form-actions">
               <button type="button" className="btn btn-secondary btn-sm">Print</button>
-              <span className={`qa-status ${qaForms.find(f => f.form_code === 'DHE-F39')?.status === 'SCANNED' ? 'status-complete' : 'status-pending'}`}>
-                {qaForms.find(f => f.form_code === 'DHE-F39')?.status === 'SCANNED' ? 'Scanned' : 'Pending'}
+              <span className={`qa-status ${qaForms.find(f => f.formCode === 'DHE-F39')?.status === 'SCANNED' ? 'status-complete' : 'status-pending'}`}>
+                {qaForms.find(f => f.formCode === 'DHE-F39')?.status === 'SCANNED' ? 'Scanned' : 'Pending'}
               </span>
             </div>
           </div>
@@ -32,8 +32,8 @@ export default function QAFormsTab({ formData, qaForms }) {
               <span className="qa-form-name">Inwards Goods Inspection Sticker</span>
             </div>
             <div className="qa-form-actions">
-              <span className={`qa-status ${qaForms.find(f => f.form_code === 'DHE-F15')?.status === 'SCANNED' ? 'status-complete' : 'status-pending'}`}>
-                {qaForms.find(f => f.form_code === 'DHE-F15')?.status === 'SCANNED' ? 'Scanned' : 'Pending'}
+              <span className={`qa-status ${qaForms.find(f => f.formCode === 'DHE-F15')?.status === 'SCANNED' ? 'status-complete' : 'status-pending'}`}>
+                {qaForms.find(f => f.formCode === 'DHE-F15')?.status === 'SCANNED' ? 'Scanned' : 'Pending'}
               </span>
             </div>
           </div>
@@ -46,8 +46,8 @@ export default function QAFormsTab({ formData, qaForms }) {
             </div>
             <div className="qa-form-actions">
               <button type="button" className="btn btn-secondary btn-sm">Print</button>
-              <span className={`qa-status ${qaForms.find(f => f.form_code === 'DHE-F09')?.status === 'SCANNED' ? 'status-complete' : 'status-pending'}`}>
-                {qaForms.find(f => f.form_code === 'DHE-F09')?.status === 'SCANNED' ? 'Scanned' : 'Pending'}
+              <span className={`qa-status ${qaForms.find(f => f.formCode === 'DHE-F09')?.status === 'SCANNED' ? 'status-complete' : 'status-pending'}`}>
+                {qaForms.find(f => f.formCode === 'DHE-F09')?.status === 'SCANNED' ? 'Scanned' : 'Pending'}
               </span>
             </div>
           </div>
@@ -60,8 +60,8 @@ export default function QAFormsTab({ formData, qaForms }) {
             </div>
             <div className="qa-form-actions">
               <button type="button" className="btn btn-secondary btn-sm">Print</button>
-              <span className={`qa-status ${qaForms.find(f => f.form_code === 'DHE-F43')?.status === 'SCANNED' ? 'status-complete' : 'status-pending'}`}>
-                {qaForms.find(f => f.form_code === 'DHE-F43')?.status === 'SCANNED' ? 'Scanned' : 'Pending'}
+              <span className={`qa-status ${qaForms.find(f => f.formCode === 'DHE-F43')?.status === 'SCANNED' ? 'status-complete' : 'status-pending'}`}>
+                {qaForms.find(f => f.formCode === 'DHE-F43')?.status === 'SCANNED' ? 'Scanned' : 'Pending'}
               </span>
             </div>
           </div>

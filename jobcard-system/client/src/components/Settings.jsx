@@ -23,17 +23,14 @@ export default function Settings() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [savingTimeout, setSavingTimeout] = useState(false);
 
-  // Load settings from API
   const loadSettings = async () => {
     try {
       setLoading(true);
       const data = await api.getSettings();
       setSettings(data);
-      if (data && data.scanner_folder !== undefined) {
-        setScannerFolder(data.scanner_folder || '');
-      }
-      if (data && data.inactivity_timeout_minutes !== undefined) {
-        setInactivityTimeout(parseInt(data.inactivity_timeout_minutes, 10) || 5);
+      if (data) {
+        setScannerFolder(data.scannerFolder || '');
+        setInactivityTimeout(parseInt(data.inactivityTimeoutMinutes, 10) || 5);
       }
     } catch (err) {
       toast.error('Failed to load settings');
@@ -66,7 +63,7 @@ export default function Settings() {
   const handleSaveScannerFolder = async () => {
     setSavingSettings(true);
     try {
-      await api.updateSettings({ scanner_folder: scannerFolder });
+      await api.updateSettings({ scannerFolder });
       await loadSettings();
       toast.success('Settings saved successfully');
     } catch (err) {
@@ -79,7 +76,7 @@ export default function Settings() {
   const handleSaveInactivityTimeout = async () => {
     setSavingTimeout(true);
     try {
-      await api.updateSettings({ inactivity_timeout_minutes: inactivityTimeout });
+      await api.updateSettings({ inactivityTimeoutMinutes: inactivityTimeout });
       await loadSettings();
       // Refresh the inactivity timeout in AuthContext so it takes effect immediately
       if (refreshInactivityTimeout) {

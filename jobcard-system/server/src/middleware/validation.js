@@ -143,13 +143,13 @@ const validateCreateUser = [
  * POST /contacts
  */
 const validateCreateContact = [
-  requiredString('contact_name', 'Contact name'),
-  optionalString('company_name', 'Company name', 200),
+  requiredString('contactName', 'Contact name'),
+  optionalString('companyName', 'Company name', 200),
   optionalEmail('email'),
   optionalPhone('phone'),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
-  optionalBoolean('is_critical_qa', 'Critical QA flag'),
+  optionalBoolean('isCriticalQa', 'Critical QA flag'),
   handleValidationErrors
 ];
 
@@ -158,13 +158,13 @@ const validateCreateContact = [
  * PUT /contacts/:id
  */
 const validateUpdateContact = [
-  requiredString('contact_name', 'Contact name'),
-  optionalString('company_name', 'Company name', 200),
+  requiredString('contactName', 'Contact name'),
+  optionalString('companyName', 'Company name', 200),
   optionalEmail('email'),
   optionalPhone('phone'),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
-  optionalBoolean('is_critical_qa', 'Critical QA flag'),
+  optionalBoolean('isCriticalQa', 'Critical QA flag'),
   handleValidationErrors
 ];
 

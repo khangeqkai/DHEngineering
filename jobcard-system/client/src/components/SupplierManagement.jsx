@@ -11,12 +11,12 @@ export default function SupplierManagement() {
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
-    contact_name: '',
-    contact_phone: '',
-    contact_email: '',
+    contactName: '',
+    contactPhone: '',
+    contactEmail: '',
     address: '',
     notes: '',
-    service_tag_ids: []
+    serviceTagIds: []
   });
   const [saving, setSaving] = useState(false);
   const [showCustomTagInput, setShowCustomTagInput] = useState(false);
@@ -69,12 +69,12 @@ export default function SupplierManagement() {
     setEditingSupplier(supplier);
     setFormData({
       name: supplier.name || '',
-      contact_name: supplier.contact_name || '',
-      contact_phone: supplier.contact_phone || '',
-      contact_email: supplier.contact_email || '',
+      contactName: supplier.contactName || '',
+      contactPhone: supplier.contactPhone || '',
+      contactEmail: supplier.contactEmail || '',
       address: supplier.address || '',
       notes: supplier.notes || '',
-      service_tag_ids: (supplier.service_tags || []).map(t => t.id)
+      serviceTagIds: (supplier.serviceTags || []).map(t => t.id)
     });
     setShowForm(true);
   };
@@ -95,9 +95,9 @@ export default function SupplierManagement() {
   const handleTagToggle = (tagId) => {
     setFormData(prev => ({
       ...prev,
-      service_tag_ids: prev.service_tag_ids.includes(tagId)
-        ? prev.service_tag_ids.filter(id => id !== tagId)
-        : [...prev.service_tag_ids, tagId]
+      serviceTagIds: prev.serviceTagIds.includes(tagId)
+        ? prev.serviceTagIds.filter(id => id !== tagId)
+        : [...prev.serviceTagIds, tagId]
     }));
   };
 
@@ -109,7 +109,7 @@ export default function SupplierManagement() {
       setServiceTags(prev => [...prev, newTag]);
       setFormData(prev => ({
         ...prev,
-        service_tag_ids: [...prev.service_tag_ids, newTag.id]
+        serviceTagIds: [...prev.serviceTagIds, newTag.id]
       }));
       setCustomTagName('');
       setShowCustomTagInput(false);
@@ -125,12 +125,12 @@ export default function SupplierManagement() {
     setEditingSupplier(null);
     setFormData({
       name: '',
-      contact_name: '',
-      contact_phone: '',
-      contact_email: '',
+      contactName: '',
+      contactPhone: '',
+      contactEmail: '',
       address: '',
       notes: '',
-      service_tag_ids: []
+      serviceTagIds: []
     });
     setShowCustomTagInput(false);
     setCustomTagName('');
@@ -171,34 +171,34 @@ export default function SupplierManagement() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="contact_name">Contact Name</label>
+                  <label htmlFor="contactName">Contact Name</label>
                   <input
                     type="text"
-                    id="contact_name"
-                    value={formData.contact_name}
-                    onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
+                    id="contactName"
+                    value={formData.contactName}
+                    onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
                   />
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="contact_phone">Phone</label>
+                  <label htmlFor="contactPhone">Phone</label>
                   <input
                     type="tel"
-                    id="contact_phone"
-                    value={formData.contact_phone}
-                    onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                    id="contactPhone"
+                    value={formData.contactPhone}
+                    onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="contact_email">Email</label>
+                  <label htmlFor="contactEmail">Email</label>
                   <input
                     type="email"
-                    id="contact_email"
-                    value={formData.contact_email}
-                    onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                    id="contactEmail"
+                    value={formData.contactEmail}
+                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
                   />
                 </div>
               </div>
@@ -220,11 +220,11 @@ export default function SupplierManagement() {
                     <button
                       key={tag.id}
                       type="button"
-                      className={`tag-chip ${formData.service_tag_ids.includes(tag.id) ? 'selected' : ''}`}
+                      className={`tag-chip ${formData.serviceTagIds.includes(tag.id) ? 'selected' : ''}`}
                       onClick={() => handleTagToggle(tag.id)}
                     >
                       {tag.name}
-                      {formData.service_tag_ids.includes(tag.id) && <span className="check-mark">&#10003;</span>}
+                      {formData.serviceTagIds.includes(tag.id) && <span className="check-mark">&#10003;</span>}
                     </button>
                   ))}
                   {!showCustomTagInput ? (
@@ -314,12 +314,12 @@ export default function SupplierManagement() {
                     <td>
                       <strong>{supplier.name}</strong>
                     </td>
-                    <td>{supplier.contact_name || '-'}</td>
-                    <td>{supplier.contact_phone || '-'}</td>
+                    <td>{supplier.contactName || '-'}</td>
+                    <td>{supplier.contactPhone || '-'}</td>
                     <td className="services-cell">
-                      {supplier.service_tags && supplier.service_tags.length > 0 ? (
+                      {supplier.serviceTags && supplier.serviceTags.length > 0 ? (
                         <div className="service-tags-display">
-                          {supplier.service_tags.map(tag => (
+                          {supplier.serviceTags.map(tag => (
                             <span key={tag.id} className="service-tag-badge">{tag.name}</span>
                           ))}
                         </div>

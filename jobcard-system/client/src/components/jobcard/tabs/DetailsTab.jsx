@@ -64,11 +64,11 @@ export default function DetailsTab({
               <label>Job Card / Quote <span className="required">*</span></label>
               <input
                 type="text"
-                name="job_number"
-                value={formData.job_number}
+                name="jobNumber"
+                value={formData.jobNumber}
                 onChange={handleChange}
                 placeholder="Enter job number..."
-                className={!formData.job_number?.trim() ? 'field-required' : ''}
+                className={!formData.jobNumber?.trim() ? 'field-required' : ''}
               />
             </div>
           )}
@@ -94,23 +94,23 @@ export default function DetailsTab({
             <label className="checkbox-inline">
               <input
                 type="checkbox"
-                name="is_repeat_job"
-                checked={formData.is_repeat_job}
+                name="isRepeatJob"
+                checked={formData.isRepeatJob}
                 onChange={handleChange}
               />
               Repeat Job
             </label>
           </div>
-          {formData.is_repeat_job && (
+          {formData.isRepeatJob && (
             <div className="form-group" style={{ flex: 2 }}>
               <label>Previous Job Reference <span className="required">*</span></label>
               <input
                 type="text"
-                name="repeat_job_reference"
-                value={formData.repeat_job_reference}
+                name="repeatJobReference"
+                value={formData.repeatJobReference}
                 onChange={handleChange}
                 placeholder="JC-XXXXXXXX-XXX"
-                className={formData.is_repeat_job && !formData.repeat_job_reference ? 'field-required' : ''}
+                className={formData.isRepeatJob && !formData.repeatJobReference ? 'field-required' : ''}
               />
             </div>
           )}
@@ -123,11 +123,11 @@ export default function DetailsTab({
 
         {contact && (
           <div className="selected-customer-banner">
-            <span>Contact selected: <strong>{contact.contact_name || contact.contactName}</strong></span>
-            {(contact.company_name || contact.companyName) && (
-              <span> at {contact.company_name || contact.companyName}</span>
+            <span>Contact selected: <strong>{contact.contactName}</strong></span>
+            {contact.companyName && (
+              <span> at {contact.companyName}</span>
             )}
-            {contact.is_critical_qa && <span className="badge badge-critical">Critical QA</span>}
+            {contact.isCriticalQa && <span className="badge badge-critical">Critical QA</span>}
             <button type="button" className="btn-link" onClick={clearContact}>Clear</button>
           </div>
         )}
@@ -139,19 +139,19 @@ export default function DetailsTab({
               <input
                 type="text"
                 value={contactSearch}
-                onChange={(e) => handleContactFieldChange('contact_name', e.target.value)}
-                onFocus={() => contactFormData.contact_name.length >= 2 && setShowContactDropdown(true)}
+                onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
+                onFocus={() => contactFormData.contactName.length >= 2 && setShowContactDropdown(true)}
                 placeholder="Search by name or company..."
-                className={!contactFormData.contact_name.trim() ? 'field-required' : contact ? 'field-selected' : ''}
+                className={!contactFormData.contactName.trim() ? 'field-required' : contact ? 'field-selected' : ''}
               />
               {showContactDropdown && contacts.length > 0 && (
                 <div className="customer-dropdown">
                   <div className="dropdown-hint">Select existing contact or continue typing to create new</div>
                   {contacts.map(c => (
                     <div key={c.id} className="customer-option" onClick={() => selectContact(c)}>
-                      <strong>{c.contact_name}</strong>
-                      {c.company_name && <span className="company-name"> ({c.company_name})</span>}
-                      {c.is_critical_qa && <span className="badge badge-critical">Critical QA</span>}
+                      <strong>{c.contactName}</strong>
+                      {c.companyName && <span className="company-name"> ({c.companyName})</span>}
+                      {c.isCriticalQa && <span className="badge badge-critical">Critical QA</span>}
                     </div>
                   ))}
                 </div>
@@ -163,16 +163,16 @@ export default function DetailsTab({
             <label className="checkbox-inline">
               <input
                 type="checkbox"
-                checked={contactFormData.is_critical_qa}
-                onChange={(e) => handleContactFieldChange('is_critical_qa', e.target.checked)}
-                disabled={contact?.is_critical_qa}
+                checked={contactFormData.isCriticalQa}
+                onChange={(e) => handleContactFieldChange('isCriticalQa', e.target.checked)}
+                disabled={contact?.isCriticalQa}
               />
               Critical QA
             </label>
           </div>
         </div>
 
-        {contactFormData.is_critical_qa && (
+        {contactFormData.isCriticalQa && (
           <div className="critical-warning">
             Critical QA contact - enhanced documentation and QA forms required
           </div>
@@ -185,18 +185,18 @@ export default function DetailsTab({
               <label>Contact Name <span className="required">*</span></label>
               <input
                 type="text"
-                value={contactFormData.contact_name}
-                onChange={(e) => handleContactFieldChange('contact_name', e.target.value)}
+                value={contactFormData.contactName}
+                onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
                 placeholder="Contact person..."
-                className={!contactFormData.contact_name.trim() ? 'field-required' : ''}
+                className={!contactFormData.contactName.trim() ? 'field-required' : ''}
               />
             </div>
             <div className="form-group">
               <label>Company</label>
               <input
                 type="text"
-                value={contactFormData.company_name}
-                onChange={(e) => handleContactFieldChange('company_name', e.target.value)}
+                value={contactFormData.companyName}
+                onChange={(e) => handleContactFieldChange('companyName', e.target.value)}
                 placeholder="Company name..."
               />
             </div>
@@ -230,14 +230,14 @@ export default function DetailsTab({
         <div className="form-row">
           <div className="form-group">
             <label>Quality Level</label>
-            <select name="quality_level" value={formData.quality_level} onChange={handleChange}>
+            <select name="qualityLevel" value={formData.qualityLevel} onChange={handleChange}>
               <option value="STANDARD">Standard</option>
               <option value="CRITICAL">Critical</option>
             </select>
           </div>
           <div className="form-group">
             <label>Job Type <span className="required">*</span></label>
-            <select name="job_type" value={formData.job_type} onChange={handleChange} className={!formData.job_type ? 'field-required' : ''}>
+            <select name="jobType" value={formData.jobType} onChange={handleChange} className={!formData.jobType ? 'field-required' : ''}>
               <option value="">Select job type...</option>
               {JOB_TYPES.map(t => (
                 <option key={t} value={t}>{t}</option>
@@ -253,18 +253,18 @@ export default function DetailsTab({
         <div className="form-row">
           <div className="form-group">
             <label>PO Number</label>
-            <input type="text" name="po_number" value={formData.po_number} onChange={handleChange} />
+            <input type="text" name="poNumber" value={formData.poNumber} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label>Quote Reference</label>
-            <input type="text" name="quote_reference" value={formData.quote_reference} onChange={handleChange} placeholder="QT-XXXXXXXX-XXX" />
+            <input type="text" name="quoteReference" value={formData.quoteReference} onChange={handleChange} placeholder="QT-XXXXXXXX-XXX" />
           </div>
         </div>
         <div className="form-group">
           <label>Drawings</label>
           <div className="checkbox-grid">
             {DRAWINGS_TYPES.filter(d => d.value !== 'NONE').map(opt => {
-              const values = formData.drawings_type ? formData.drawings_type.split(',') : [];
+              const values = formData.drawingsType ? formData.drawingsType.split(',') : [];
               const isChecked = values.includes(opt.value);
               return (
                 <label key={opt.value} className={`checkbox-chip ${isChecked ? 'selected' : ''}`}>
@@ -272,11 +272,11 @@ export default function DetailsTab({
                     type="checkbox"
                     checked={isChecked}
                     onChange={(e) => {
-                      const current = formData.drawings_type ? formData.drawings_type.split(',').filter(v => v && v !== 'NONE') : [];
+                      const current = formData.drawingsType ? formData.drawingsType.split(',').filter(v => v && v !== 'NONE') : [];
                       const updated = e.target.checked
                         ? [...current, opt.value]
                         : current.filter(v => v !== opt.value);
-                      setFormData(prev => ({ ...prev, drawings_type: updated.length ? updated.join(',') : 'NONE' }));
+                      setFormData(prev => ({ ...prev, drawingsType: updated.length ? updated.join(',') : 'NONE' }));
                     }}
                   />
                   {opt.label}
@@ -323,10 +323,10 @@ export default function DetailsTab({
             <label>Due Date <span className="required">*</span></label>
             <input
               type="date"
-              name="due_date"
-              value={formData.due_date}
+              name="dueDate"
+              value={formData.dueDate}
               onChange={handleChange}
-              className={`${isOverdue ? 'overdue' : ''} ${!formData.due_date ? 'field-required' : ''}`}
+              className={`${isOverdue ? 'overdue' : ''} ${!formData.dueDate ? 'field-required' : ''}`}
             />
             {isOverdue && <span className="overdue-text">OVERDUE</span>}
           </div>
@@ -349,7 +349,7 @@ export default function DetailsTab({
           <label>Customer Property</label>
           <div className="checkbox-grid">
             {CUSTOMER_PROPERTY_OPTIONS.filter(o => o.value !== 'NONE').map(opt => {
-              const values = formData.customer_property ? formData.customer_property.split(',') : [];
+              const values = formData.customerProperty ? formData.customerProperty.split(',') : [];
               const isChecked = values.includes(opt.value);
               return (
                 <label key={opt.value} className={`checkbox-chip ${isChecked ? 'selected' : ''}`}>
@@ -357,11 +357,11 @@ export default function DetailsTab({
                     type="checkbox"
                     checked={isChecked}
                     onChange={(e) => {
-                      const current = formData.customer_property ? formData.customer_property.split(',').filter(v => v) : [];
+                      const current = formData.customerProperty ? formData.customerProperty.split(',').filter(v => v) : [];
                       const updated = e.target.checked
                         ? [...current, opt.value]
                         : current.filter(v => v !== opt.value);
-                      setFormData(prev => ({ ...prev, customer_property: updated.join(',') }));
+                      setFormData(prev => ({ ...prev, customerProperty: updated.join(',') }));
                     }}
                   />
                   {opt.label}
@@ -381,7 +381,7 @@ export default function DetailsTab({
           </div>
           {lineItems.map((item) => (
             <div key={item.id} className="line-item-row">
-              <span className="item-num">#{item.item_number}</span>
+              <span className="item-num">#{item.itemNumber}</span>
               <input
                 type="text"
                 placeholder="Qty"
@@ -409,7 +409,7 @@ export default function DetailsTab({
         <h3 className="form-section-title" data-section="07">Assignees</h3>
         <div className="assignees-grid">
           {employees.map(emp => {
-            const isAssigned = assignees.some(a => a.user_id === emp.id);
+            const isAssigned = assignees.some(a => a.userId === emp.id);
             return (
               <label key={emp.id} className={`assignee-chip ${isAssigned ? 'selected' : ''}`}>
                 <input
@@ -431,7 +431,7 @@ export default function DetailsTab({
           <label>Treatment Required</label>
           <div className="checkbox-grid">
             {TREATMENT_OPTIONS.filter(o => o.value !== 'NONE').map(opt => {
-              const values = formData.treatment_required ? formData.treatment_required.split(',') : [];
+              const values = formData.treatmentRequired ? formData.treatmentRequired.split(',') : [];
               const isChecked = values.includes(opt.value);
               return (
                 <label key={opt.value} className={`checkbox-chip ${isChecked ? 'selected' : ''}`}>
@@ -439,11 +439,11 @@ export default function DetailsTab({
                     type="checkbox"
                     checked={isChecked}
                     onChange={(e) => {
-                      const current = formData.treatment_required ? formData.treatment_required.split(',').filter(v => v && v !== 'NONE') : [];
+                      const current = formData.treatmentRequired ? formData.treatmentRequired.split(',').filter(v => v && v !== 'NONE') : [];
                       const updated = e.target.checked
                         ? [...current, opt.value]
                         : current.filter(v => v !== opt.value);
-                      setFormData(prev => ({ ...prev, treatment_required: updated.length ? updated.join(',') : 'NONE' }));
+                      setFormData(prev => ({ ...prev, treatmentRequired: updated.length ? updated.join(',') : 'NONE' }));
                     }}
                   />
                   {opt.label}
@@ -451,11 +451,11 @@ export default function DetailsTab({
               );
             })}
           </div>
-          {formData.treatment_required?.includes('OTHER') && (
+          {formData.treatmentRequired?.includes('OTHER') && (
             <input
               type="text"
-              name="treatment_other"
-              value={formData.treatment_other}
+              name="treatmentOther"
+              value={formData.treatmentOther}
               onChange={handleChange}
               placeholder="Specify other treatment..."
               style={{ marginTop: '0.5rem' }}
@@ -475,10 +475,10 @@ export default function DetailsTab({
             onClick={() => {
               setSubcontracts([...subcontracts, {
                 id: Date.now(),
-                supplier_id: '',
-                supplier_name: '',
-                date_sent: '',
-                date_expected: '',
+                supplierId: '',
+                supplierName: '',
+                dateSent: '',
+                dateExpected: '',
                 status: 'PENDING',
                 notes: '',
                 isNew: true
@@ -500,14 +500,14 @@ export default function DetailsTab({
                       <div className="form-group">
                         <label>Supplier <span className="required">*</span></label>
                         <select
-                          value={sub.supplier_id}
+                          value={sub.supplierId}
                           onChange={(e) => {
                             const supplier = suppliers.find(s => s.id === e.target.value);
                             const updated = [...subcontracts];
                             updated[idx] = {
                               ...sub,
-                              supplier_id: e.target.value,
-                              supplier_name: supplier?.name || ''
+                              supplierId: e.target.value,
+                              supplierName: supplier?.name || ''
                             };
                             setSubcontracts(updated);
                           }}
@@ -522,10 +522,10 @@ export default function DetailsTab({
                         <label>Date Sent</label>
                         <input
                           type="date"
-                          value={sub.date_sent}
+                          value={sub.dateSent}
                           onChange={(e) => {
                             const updated = [...subcontracts];
-                            updated[idx] = { ...sub, date_sent: e.target.value };
+                            updated[idx] = { ...sub, dateSent: e.target.value };
                             setSubcontracts(updated);
                           }}
                         />
@@ -534,10 +534,10 @@ export default function DetailsTab({
                         <label>Date Expected</label>
                         <input
                           type="date"
-                          value={sub.date_expected}
+                          value={sub.dateExpected}
                           onChange={(e) => {
                             const updated = [...subcontracts];
-                            updated[idx] = { ...sub, date_expected: e.target.value };
+                            updated[idx] = { ...sub, dateExpected: e.target.value };
                             setSubcontracts(updated);
                           }}
                         />
@@ -555,14 +555,14 @@ export default function DetailsTab({
                 ) : (
                   <div className="subcontract-display">
                     <div className="subcontract-header">
-                      <strong>{sub.supplier_name}</strong>
+                      <strong>{sub.supplierName}</strong>
                       <span className={`badge badge-${sub.status?.toLowerCase() || 'pending'}`}>
                         {sub.status || 'PENDING'}
                       </span>
                     </div>
                     <div className="subcontract-dates">
-                      {sub.date_sent && <span>Sent: {new Date(sub.date_sent).toLocaleDateString()}</span>}
-                      {sub.date_expected && <span>Expected: {new Date(sub.date_expected).toLocaleDateString()}</span>}
+                      {sub.dateSent && <span>Sent: {new Date(sub.dateSent).toLocaleDateString()}</span>}
+                      {sub.dateExpected && <span>Expected: {new Date(sub.dateExpected).toLocaleDateString()}</span>}
                     </div>
                   </div>
                 )}

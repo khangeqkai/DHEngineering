@@ -26,10 +26,10 @@ export function useSubcontracts(jobCardId, { addSubcontract, updateSubcontract, 
   const handleEditSubcontract = useCallback((sub) => {
     setEditingSubcontractId(sub.id);
     setSubcontractForm({
-      supplier_id: sub.supplier_id || '',
-      date_sent: sub.date_sent || '',
-      date_expected: sub.date_expected || '',
-      date_received: sub.date_received || '',
+      supplierId: sub.supplierId || '',
+      dateSent: sub.dateSent || '',
+      dateExpected: sub.dateExpected || '',
+      dateReceived: sub.dateReceived || '',
       notes: sub.notes || '',
       status: sub.status || 'PENDING'
     });
@@ -37,7 +37,7 @@ export function useSubcontracts(jobCardId, { addSubcontract, updateSubcontract, 
   }, []);
 
   const handleSaveSubcontract = useCallback(async () => {
-    if (!subcontractForm.supplier_id) {
+    if (!subcontractForm.supplierId) {
       toast.error('Please select a supplier');
       return;
     }
