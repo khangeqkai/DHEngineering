@@ -1,3 +1,18 @@
+import { useMemo } from 'react';
+
+// Map treatment values to service tag names
+const TREATMENT_TO_SERVICE_MAP = {
+  'HEAT_TREATMENT': 'Heat Treatment',
+  'PRECISION_GRINDING': 'Precision Grinding',
+  'ANODISE': 'Anodise',
+  'ELECTROPLATE': 'Electroplate',
+  'BLASTING': 'Blasting',
+  'POWDERCOAT': 'Powdercoat',
+  'SPRAYPAINT': 'Spraypaint',
+  'GALVANISE': 'Galvanise',
+  'SPECIALISED_COATING': 'Specialised Coating'
+};
+
 export default function SubcontractsTab({
   subcontracts,
   showSubcontractForm,
@@ -9,8 +24,29 @@ export default function SubcontractsTab({
   handleSaveSubcontract,
   handleDeleteSubcontract,
   resetSubcontractForm,
-  suppliers
+  suppliers,
+  treatmentRequired
 }) {
+  // Sort suppliers: matching service first, then alphabetically
+  const sortedSuppliers = useMemo(() => {
+    const treatmentServiceName = TREATMENT_TO_SERVICE_MAP[treatmentRequired];
+
+    if (!treatmentServiceName) {
+      return suppliers;
+    }
+
+    return [...suppliers].sort((a, b) => {
+      const aHasService = (a.service_tags || []).some(t => t.name === treatmentServiceName);
+      const bHasService = (b.service_tags || []).some(t => t.name === treatmentServiceName);
+
+      if (aHasService && !bHasService) return -1;
+      if (!aHasService && bHasService) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [suppliers, treatmentRequired]);
+
+  const treatmentServiceName = TREATMENT_TO_SERVICE_MAP[treatmentRequired];
+
   return (
     <div className="modal-form-grid">
       {/* Add/Edit Subcontract Form */}
@@ -26,12 +62,24 @@ export default function SubcontractsTab({
           </div>
 
           <div className="form-group">
-            <label>Supplier <span className="required">*</span></label>
+            <label>
+              Supplier <span className="required">*</span>
+              {treatmentServiceName && (
+                <span className="treatment-hint"> (showing {treatmentServiceName} suppliers first)</span>
+              )}
+            </label>
             <select name="supplier_id" value={subcontractForm.supplier_id} onChange={handleSubcontractChange}>
-              <option value="">Select approved supplier...</option>
-              {suppliers.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
+              <option value="">Select supplier...</option>
+              {sortedSuppliers.map(s => {
+                const hasMatchingService = treatmentServiceName &&
+                  (s.service_tags || []).some(t => t.name === treatmentServiceName);
+                const serviceNames = (s.service_tags || []).map(t => t.name).join(', ');
+                return (
+                  <option key={s.id} value={s.id}>
+                    {hasMatchingService ? '★ ' : ''}{s.name}{serviceNames ? ` (${serviceNames})` : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

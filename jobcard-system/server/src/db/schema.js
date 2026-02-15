@@ -49,6 +49,24 @@ db.exec(`
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
+  -- Service tags for suppliers (predefined + custom)
+  CREATE TABLE IF NOT EXISTS service_tags (
+    id TEXT PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    is_system INTEGER DEFAULT 0,
+    active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
+  -- Supplier service tags junction table
+  CREATE TABLE IF NOT EXISTS supplier_service_tags (
+    supplier_id TEXT NOT NULL,
+    service_tag_id TEXT NOT NULL,
+    PRIMARY KEY (supplier_id, service_tag_id),
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE,
+    FOREIGN KEY (service_tag_id) REFERENCES service_tags(id) ON DELETE CASCADE
+  );
+
   -- Job cards table (comprehensive)
   CREATE TABLE IF NOT EXISTS jobcards (
     id TEXT PRIMARY KEY,
@@ -291,6 +309,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(contact_name);
   CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company_name);
   CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name);
+  CREATE INDEX IF NOT EXISTS idx_supplier_service_tags_supplier ON supplier_service_tags(supplier_id);
+  CREATE INDEX IF NOT EXISTS idx_supplier_service_tags_tag ON supplier_service_tags(service_tag_id);
 `);
 
 // Migration: Add missing columns to existing tables
@@ -335,5 +355,32 @@ for (const migration of migrations) {
     }
   } catch (err) {
     // Column might already exist, ignore error
+  }
+}
+
+// Seed default service tags (based on TREATMENT_OPTIONS)
+const defaultServiceTags = [
+  'Heat Treatment',
+  'Precision Grinding',
+  'Anodise',
+  'Electroplate',
+  'Blasting',
+  'Powdercoat',
+  'Spraypaint',
+  'Galvanise',
+  'Specialised Coating'
+];
+
+const insertServiceTag = db.prepare(`
+  INSERT OR IGNORE INTO service_tags (id, name, is_system, active)
+  VALUES (?, ?, 1, 1)
+`);
+
+for (const tagName of defaultServiceTags) {
+  try {
+    const tagId = tagName.toLowerCase().replace(/\s+/g, '-');
+    insertServiceTag.run(tagId, tagName);
+  } catch (err) {
+    // Tag might already exist, ignore
   }
 }

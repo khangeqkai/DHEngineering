@@ -483,6 +483,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   handleDeleteSubcontract={subcontract.handleDeleteSubcontract}
                   resetSubcontractForm={subcontract.resetSubcontractForm}
                   suppliers={suppliers || []}
+                  treatmentRequired={formHook.formData.treatment_required}
                 />
               )}
 

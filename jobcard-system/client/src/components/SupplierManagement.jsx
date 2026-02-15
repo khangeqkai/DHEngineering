@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 
 export default function SupplierManagement() {
   const [suppliers, setSuppliers] = useState([]);
+  const [serviceTags, setServiceTags] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showInactive, setShowInactive] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [formData, setFormData] = useState({
@@ -15,34 +15,33 @@ export default function SupplierManagement() {
     contact_phone: '',
     contact_email: '',
     address: '',
-    services: '',
-    approved: true,
-    notes: ''
+    notes: '',
+    service_tag_ids: []
   });
   const [saving, setSaving] = useState(false);
+  const [showCustomTagInput, setShowCustomTagInput] = useState(false);
+  const [customTagName, setCustomTagName] = useState('');
 
-  // Load suppliers on mount
-  useEffect(() => {
-    loadSuppliers();
-  }, []);
-
-  const loadSuppliers = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await api.getSuppliers();
-      setSuppliers(data);
+      const [suppliersData, tagsData] = await Promise.all([
+        api.getSuppliers(),
+        api.getServiceTags()
+      ]);
+      setSuppliers(suppliersData);
+      setServiceTags(tagsData);
     } catch (err) {
-      console.error('Failed to load suppliers:', err);
-      toast.error(err.message || 'Failed to load suppliers');
+      console.error('Failed to load data:', err);
+      toast.error(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Filter suppliers based on showInactive toggle
-  const filteredSuppliers = showInactive
-    ? suppliers
-    : suppliers.filter(s => s.active === 1 || s.active === true);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,10 +50,12 @@ export default function SupplierManagement() {
     try {
       if (editingSupplier) {
         await api.updateSupplier(editingSupplier.id, formData);
+        toast.success('Supplier updated');
       } else {
         await api.createSupplier(formData);
+        toast.success('Supplier created');
       }
-      await loadSuppliers();
+      await loadData();
       resetForm();
     } catch (err) {
       console.error('Failed to save supplier:', err);
@@ -72,33 +73,10 @@ export default function SupplierManagement() {
       contact_phone: supplier.contact_phone || '',
       contact_email: supplier.contact_email || '',
       address: supplier.address || '',
-      services: supplier.services || '',
-      approved: supplier.approved || false,
-      notes: supplier.notes || ''
+      notes: supplier.notes || '',
+      service_tag_ids: (supplier.service_tags || []).map(t => t.id)
     });
     setShowForm(true);
-  };
-
-  const handleDeactivate = async (supplier) => {
-    if (!confirm(`Are you sure you want to deactivate "${supplier.name}"?`)) return;
-
-    try {
-      await api.deactivateSupplier(supplier.id);
-      await loadSuppliers();
-    } catch (err) {
-      console.error('Failed to deactivate supplier:', err);
-      toast.error(err.message || 'Failed to deactivate supplier');
-    }
-  };
-
-  const handleActivate = async (supplier) => {
-    try {
-      await api.activateSupplier(supplier.id);
-      await loadSuppliers();
-    } catch (err) {
-      console.error('Failed to activate supplier:', err);
-      toast.error(err.message || 'Failed to activate supplier');
-    }
   };
 
   const handleDelete = async (supplier) => {
@@ -106,10 +84,39 @@ export default function SupplierManagement() {
 
     try {
       await api.deleteSupplier(supplier.id);
-      await loadSuppliers();
+      toast.success('Supplier deleted');
+      await loadData();
     } catch (err) {
       console.error('Failed to delete supplier:', err);
       toast.error(err.message || 'Failed to delete supplier');
+    }
+  };
+
+  const handleTagToggle = (tagId) => {
+    setFormData(prev => ({
+      ...prev,
+      service_tag_ids: prev.service_tag_ids.includes(tagId)
+        ? prev.service_tag_ids.filter(id => id !== tagId)
+        : [...prev.service_tag_ids, tagId]
+    }));
+  };
+
+  const handleAddCustomTag = async () => {
+    if (!customTagName.trim()) return;
+
+    try {
+      const newTag = await api.createServiceTag(customTagName.trim());
+      setServiceTags(prev => [...prev, newTag]);
+      setFormData(prev => ({
+        ...prev,
+        service_tag_ids: [...prev.service_tag_ids, newTag.id]
+      }));
+      setCustomTagName('');
+      setShowCustomTagInput(false);
+      toast.success('Service tag created');
+    } catch (err) {
+      console.error('Failed to create tag:', err);
+      toast.error(err.message || 'Failed to create tag');
     }
   };
 
@@ -122,10 +129,11 @@ export default function SupplierManagement() {
       contact_phone: '',
       contact_email: '',
       address: '',
-      services: '',
-      approved: true,
-      notes: ''
+      notes: '',
+      service_tag_ids: []
     });
+    setShowCustomTagInput(false);
+    setCustomTagName('');
   };
 
   if (loading) {
@@ -134,15 +142,7 @@ export default function SupplierManagement() {
 
   return (
     <div className="supplier-management">
-      <PageHeader title="Approved Suppliers">
-        <label className="show-inactive-label">
-          <input
-            type="checkbox"
-            checked={showInactive}
-            onChange={(e) => setShowInactive(e.target.checked)}
-          />
-          Show inactive
-        </label>
+      <PageHeader title="Suppliers">
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
           + Add Supplier
         </button>
@@ -214,26 +214,61 @@ export default function SupplierManagement() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="services">Services Provided</label>
-                <textarea
-                  id="services"
-                  value={formData.services}
-                  onChange={(e) => setFormData({ ...formData, services: e.target.value })}
-                  rows={2}
-                  placeholder="e.g., Heat treatment, Anodizing, Plating, Surface coating..."
-                />
-              </div>
-
-              <div className="form-group checkbox-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={formData.approved}
-                    onChange={(e) => setFormData({ ...formData, approved: e.target.checked })}
-                  />
-                  Approved Supplier
-                  <span className="help-text">Only approved suppliers can be used for subcontracts</span>
-                </label>
+                <label>Services Provided</label>
+                <div className="service-tags-selector">
+                  {serviceTags.map(tag => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      className={`tag-chip ${formData.service_tag_ids.includes(tag.id) ? 'selected' : ''}`}
+                      onClick={() => handleTagToggle(tag.id)}
+                    >
+                      {tag.name}
+                      {formData.service_tag_ids.includes(tag.id) && <span className="check-mark">&#10003;</span>}
+                    </button>
+                  ))}
+                  {!showCustomTagInput ? (
+                    <button
+                      type="button"
+                      className="tag-chip add-custom"
+                      onClick={() => setShowCustomTagInput(true)}
+                    >
+                      + Other
+                    </button>
+                  ) : (
+                    <div className="custom-tag-input">
+                      <input
+                        type="text"
+                        value={customTagName}
+                        onChange={(e) => setCustomTagName(e.target.value)}
+                        placeholder="New service name..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCustomTag();
+                          } else if (e.key === 'Escape') {
+                            setShowCustomTagInput(false);
+                            setCustomTagName('');
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <button type="button" className="btn btn-sm btn-primary" onClick={handleAddCustomTag}>
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => {
+                          setShowCustomTagInput(false);
+                          setCustomTagName('');
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="form-group">
@@ -263,42 +298,32 @@ export default function SupplierManagement() {
                 <th>Contact</th>
                 <th>Phone</th>
                 <th>Services</th>
-                <th>Approved</th>
-                <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredSuppliers.length === 0 ? (
+              {suppliers.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No suppliers found
                   </td>
                 </tr>
               ) : (
-                filteredSuppliers.map((supplier) => (
-                  <tr key={supplier.id} style={{ opacity: supplier.active ? 1 : 0.6 }}>
+                suppliers.map((supplier) => (
+                  <tr key={supplier.id}>
                     <td>
                       <strong>{supplier.name}</strong>
                     </td>
                     <td>{supplier.contact_name || '-'}</td>
                     <td>{supplier.contact_phone || '-'}</td>
                     <td className="services-cell">
-                      {supplier.services ? (
-                        <span className="services-text">{supplier.services}</span>
+                      {supplier.service_tags && supplier.service_tags.length > 0 ? (
+                        <div className="service-tags-display">
+                          {supplier.service_tags.map(tag => (
+                            <span key={tag.id} className="service-tag-badge">{tag.name}</span>
+                          ))}
+                        </div>
                       ) : '-'}
-                    </td>
-                    <td>
-                      {supplier.approved ? (
-                        <span className="badge badge-completed">Approved</span>
-                      ) : (
-                        <span className="badge badge-pending">Pending</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`badge ${supplier.active ? 'badge-completed' : 'badge-cancelled'}`}>
-                        {supplier.active ? 'Active' : 'Inactive'}
-                      </span>
                     </td>
                     <td>
                       <div className="action-buttons">
@@ -308,21 +333,6 @@ export default function SupplierManagement() {
                         >
                           Edit
                         </button>
-                        {supplier.active ? (
-                          <button
-                            className="btn btn-warning btn-sm"
-                            onClick={() => handleDeactivate(supplier)}
-                          >
-                            Deactivate
-                          </button>
-                        ) : (
-                          <button
-                            className="btn btn-success btn-sm"
-                            onClick={() => handleActivate(supplier)}
-                          >
-                            Activate
-                          </button>
-                        )}
                         <button
                           className="btn btn-danger btn-sm"
                           onClick={() => handleDelete(supplier)}
@@ -340,36 +350,10 @@ export default function SupplierManagement() {
       </div>
 
       <style>{`
-        .show-inactive-label {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.875rem;
-          cursor: pointer;
-        }
-
         .form-row {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 1rem;
-        }
-
-        .checkbox-group label {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.5rem;
-          cursor: pointer;
-        }
-
-        .checkbox-group input {
-          margin-top: 0.25rem;
-        }
-
-        .help-text {
-          display: block;
-          font-size: 0.75rem;
-          color: var(--text-secondary);
-          margin-left: 1.5rem;
         }
 
         .action-buttons {
@@ -379,14 +363,86 @@ export default function SupplierManagement() {
         }
 
         .services-cell {
-          max-width: 200px;
+          max-width: 300px;
         }
 
-        .services-text {
-          display: block;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+        .service-tags-selector {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          padding: 0.5rem;
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          background: var(--bg-secondary);
+        }
+
+        .tag-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+          padding: 0.375rem 0.75rem;
+          border: 1px solid var(--border-color);
+          border-radius: 16px;
+          background: var(--bg-primary);
+          color: var(--text-primary);
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+
+        .tag-chip:hover {
+          border-color: var(--primary-color);
+        }
+
+        .tag-chip.selected {
+          background: var(--primary-color);
+          border-color: var(--primary-color);
+          color: white;
+        }
+
+        .tag-chip .check-mark {
+          font-size: 0.75rem;
+          margin-left: 0.25rem;
+        }
+
+        .tag-chip.add-custom {
+          border-style: dashed;
+          color: var(--text-secondary);
+        }
+
+        .tag-chip.add-custom:hover {
+          color: var(--primary-color);
+        }
+
+        .custom-tag-input {
+          display: flex;
+          gap: 0.5rem;
+          align-items: center;
+          width: 100%;
+        }
+
+        .custom-tag-input input {
+          flex: 1;
+          min-width: 150px;
+          padding: 0.375rem 0.5rem;
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          font-size: 0.875rem;
+        }
+
+        .service-tags-display {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.25rem;
+        }
+
+        .service-tag-badge {
+          display: inline-block;
+          padding: 0.125rem 0.5rem;
+          background: var(--primary-color);
+          color: white;
+          border-radius: 12px;
+          font-size: 0.75rem;
         }
 
         @media (max-width: 768px) {

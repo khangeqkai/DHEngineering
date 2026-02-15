@@ -862,6 +862,12 @@
   justify-content: flex-end;
 }
 
+.treatment-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: normal;
+}
+
 /* Subcontract Status Badges */
 .badge-in_progress {
   background: #8b5cf6;

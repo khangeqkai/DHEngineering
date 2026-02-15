@@ -2,20 +2,29 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { supplierQueries, recordHistory } = require('../db/database');
+const { supplierQueries, serviceTagQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticate);
 
-// GET /api/suppliers - Get all approved suppliers
+// Helper to get supplier with its service tags
+function getSupplierWithTags(supplierId) {
+  const supplier = supplierQueries.getById.get(supplierId);
+  if (!supplier) return null;
+  supplier.service_tags = serviceTagQueries.getForSupplier.all(supplierId);
+  return supplier;
+}
+
+// GET /api/suppliers - Get all suppliers
 router.get('/', (req, res) => {
   try {
-    const includeInactive = req.query.includeInactive === 'true';
-    const suppliers = includeInactive
-      ? supplierQueries.getAllIncludeInactive.all()
-      : supplierQueries.getAll.all();
+    const suppliers = supplierQueries.getAll.all();
+    // Add service tags to each supplier
+    for (const supplier of suppliers) {
+      supplier.service_tags = serviceTagQueries.getForSupplier.all(supplier.id);
+    }
     res.json(suppliers);
   } catch (err) {
     logger.error({ err }, 'Failed to get suppliers');
@@ -26,7 +35,7 @@ router.get('/', (req, res) => {
 // GET /api/suppliers/:id - Get single supplier
 router.get('/:id', (req, res) => {
   try {
-    const supplier = supplierQueries.getById.get(req.params.id);
+    const supplier = getSupplierWithTags(req.params.id);
     if (!supplier) {
       return res.status(404).json({ error: 'Supplier not found' });
     }
@@ -40,7 +49,7 @@ router.get('/:id', (req, res) => {
 // POST /api/suppliers - Create new supplier (admin only)
 router.post('/', requireAdmin, (req, res) => {
   try {
-    const { name, contact_name, contact_phone, contact_email, address, services, approved, notes } = req.body;
+    const { name, contact_name, contact_phone, contact_email, address, notes, service_tag_ids } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Supplier name is required' });
@@ -55,12 +64,18 @@ router.post('/', requireAdmin, (req, res) => {
       contact_phone || null,
       contact_email || null,
       address || null,
-      services || null,
-      approved !== false ? 1 : 0,
+      null, // services field deprecated
       notes || null
     );
 
-    const supplier = supplierQueries.getById.get(id);
+    // Add service tags
+    if (Array.isArray(service_tag_ids)) {
+      for (const tagId of service_tag_ids) {
+        serviceTagQueries.addToSupplier.run(id, tagId);
+      }
+    }
+
+    const supplier = getSupplierWithTags(id);
 
     recordHistory('supplier', id, 'created', req.user.id, req.user.name || req.user.username, null, supplier);
 
@@ -75,7 +90,7 @@ router.post('/', requireAdmin, (req, res) => {
 router.put('/:id', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
-    const { name, contact_name, contact_phone, contact_email, address, services, approved, notes } = req.body;
+    const { name, contact_name, contact_phone, contact_email, address, notes, service_tag_ids } = req.body;
 
     const existing = supplierQueries.getById.get(id);
     if (!existing) {
@@ -92,13 +107,20 @@ router.put('/:id', requireAdmin, (req, res) => {
       contact_phone || null,
       contact_email || null,
       address || null,
-      services || null,
-      approved !== false ? 1 : 0,
+      null, // services field deprecated
       notes || null,
       id
     );
 
-    const supplier = supplierQueries.getById.get(id);
+    // Update service tags (clear and re-add)
+    if (Array.isArray(service_tag_ids)) {
+      serviceTagQueries.clearSupplierTags.run(id);
+      for (const tagId of service_tag_ids) {
+        serviceTagQueries.addToSupplier.run(id, tagId);
+      }
+    }
+
+    const supplier = getSupplierWithTags(id);
 
     recordHistory('supplier', id, 'updated', req.user.id, req.user.name || req.user.username, req.body, supplier);
 
@@ -109,60 +131,18 @@ router.put('/:id', requireAdmin, (req, res) => {
   }
 });
 
-// POST /api/suppliers/:id/deactivate - Deactivate supplier (admin only)
-router.post('/:id/deactivate', requireAdmin, (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const existing = supplierQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Supplier not found' });
-    }
-
-    supplierQueries.deactivate.run(id);
-    const supplier = supplierQueries.getById.get(id);
-
-    recordHistory('supplier', id, 'deactivated', req.user.id, req.user.name || req.user.username, null, supplier);
-
-    res.json(supplier);
-  } catch (err) {
-    logger.error({ err }, 'Failed to deactivate supplier');
-    res.status(500).json({ error: 'Failed to deactivate supplier' });
-  }
-});
-
-// POST /api/suppliers/:id/activate - Activate supplier (admin only)
-router.post('/:id/activate', requireAdmin, (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const existing = supplierQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Supplier not found' });
-    }
-
-    supplierQueries.activate.run(id);
-    const supplier = supplierQueries.getById.get(id);
-
-    recordHistory('supplier', id, 'activated', req.user.id, req.user.name || req.user.username, null, supplier);
-
-    res.json(supplier);
-  } catch (err) {
-    logger.error({ err }, 'Failed to activate supplier');
-    res.status(500).json({ error: 'Failed to activate supplier' });
-  }
-});
-
 // DELETE /api/suppliers/:id - Delete supplier (admin only)
 router.delete('/:id', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = supplierQueries.getById.get(id);
+    const existing = getSupplierWithTags(id);
     if (!existing) {
       return res.status(404).json({ error: 'Supplier not found' });
     }
 
+    // Clear service tags first (cascade should handle this, but be explicit)
+    serviceTagQueries.clearSupplierTags.run(id);
     supplierQueries.delete.run(id);
 
     recordHistory('supplier', id, 'deleted', req.user.id, req.user.name || req.user.username, null, existing);

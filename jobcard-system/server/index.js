@@ -17,6 +17,7 @@ const jobcardQaFormsRoutes = require('./src/routes/jobcard-qa-forms');
 const historyRoutes = require('./src/routes/history');
 const contactsRoutes = require('./src/routes/contacts');
 const suppliersRoutes = require('./src/routes/suppliers');
+const serviceTagsRoutes = require('./src/routes/service-tags');
 const machinesRoutes = require('./src/routes/machines');
 const settingsRoutes = require('./src/routes/settings');
 const { initializeDatabase, seedMockData } = require('./src/db/init');
@@ -53,6 +54,7 @@ app.use('/api/jobcards', jobcardsRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/contacts', contactsRoutes);
 app.use('/api/suppliers', suppliersRoutes);
+app.use('/api/service-tags', serviceTagsRoutes);
 app.use('/api/machines', machinesRoutes);
 app.use('/api/settings', settingsRoutes);
 

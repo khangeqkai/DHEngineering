@@ -341,8 +341,8 @@ class ApiService {
   }
 
   // Supplier endpoints
-  getSuppliers(includeInactive = false) {
-    return this.request(`/suppliers${includeInactive ? '?includeInactive=true' : ''}`);
+  getSuppliers() {
+    return this.request('/suppliers');
   }
 
   getSupplier(id) {
@@ -363,20 +363,26 @@ class ApiService {
     });
   }
 
-  deactivateSupplier(id) {
-    return this.request(`/suppliers/${id}/deactivate`, {
-      method: 'POST'
-    });
-  }
-
-  activateSupplier(id) {
-    return this.request(`/suppliers/${id}/activate`, {
-      method: 'POST'
-    });
-  }
-
   deleteSupplier(id) {
     return this.request(`/suppliers/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // Service tag endpoints
+  getServiceTags() {
+    return this.request('/service-tags');
+  }
+
+  createServiceTag(name) {
+    return this.request('/service-tags', {
+      method: 'POST',
+      body: JSON.stringify({ name })
+    });
+  }
+
+  deleteServiceTag(id) {
+    return this.request(`/service-tags/${id}`, {
       method: 'DELETE'
     });
   }

@@ -88,6 +88,32 @@ export default function DetailsTab({
             </select>
           </div>
         </div>
+        <div className="form-row" style={{ marginTop: '0.75rem' }}>
+          <div className="form-group checkbox-group">
+            <label className="checkbox-inline">
+              <input
+                type="checkbox"
+                name="is_repeat_job"
+                checked={formData.is_repeat_job}
+                onChange={handleChange}
+              />
+              Repeat Job
+            </label>
+          </div>
+          {formData.is_repeat_job && (
+            <div className="form-group" style={{ flex: 2 }}>
+              <label>Previous Job Reference <span className="required">*</span></label>
+              <input
+                type="text"
+                name="repeat_job_reference"
+                value={formData.repeat_job_reference}
+                onChange={handleChange}
+                placeholder="JC-XXXXXXXX-XXX"
+                className={formData.is_repeat_job && !formData.repeat_job_reference ? 'field-required' : ''}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Contact Section - Phone Contacts Style */}
@@ -400,9 +426,9 @@ export default function DetailsTab({
         </div>
       </div>
 
-      {/* Treatment & Repeat */}
+      {/* Treatment */}
       <div className="form-section">
-        <h3 className="form-section-title" data-section="08">Treatment & Repeat Job</h3>
+        <h3 className="form-section-title" data-section="08">Treatment</h3>
         <div className="form-group">
           <label>Treatment Required</label>
           <div className="checkbox-grid">
@@ -438,35 +464,10 @@ export default function DetailsTab({
             />
           )}
         </div>
-        <div className="form-row" style={{ marginTop: '1rem' }}>
-          <div className="form-group checkbox-group">
-            <label className="checkbox-inline">
-              <input
-                type="checkbox"
-                name="is_repeat_job"
-                checked={formData.is_repeat_job}
-                onChange={handleChange}
-              />
-              Repeat Job
-            </label>
-          </div>
-          {formData.is_repeat_job && (
-            <div className="form-group" style={{ flex: 2 }}>
-              <label>Previous Job Reference <span className="required">*</span></label>
-              <input
-                type="text"
-                name="repeat_job_reference"
-                value={formData.repeat_job_reference}
-                onChange={handleChange}
-                placeholder="JC-XXXXXXXX-XXX"
-                className={formData.is_repeat_job && !formData.repeat_job_reference ? 'field-required' : ''}
-              />
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Subcontracts */}
+      {/* Subcontracts - only editable in create mode; edit mode uses SubcontractsTab */}
+      {!isEdit && (
       <div className="form-section">
         <div className="form-section-header">
           <h3 className="form-section-title" data-section="09">Subcontracts</h3>
@@ -572,6 +573,7 @@ export default function DetailsTab({
           </div>
         )}
       </div>
+      )}
 
       {/* Notes */}
       <div className="form-section">
