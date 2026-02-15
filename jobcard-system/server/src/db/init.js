@@ -266,9 +266,9 @@ async function seedMockData() {
       items: [{ qty: '25', desc: 'Dimensional Inspection - CMM measurement and report' }]
     },
 
-    // QUOTES
+    // QUOTES (card_type is JOB_CARD, status is QUOTE)
     {
-      type: 'QUOTE', status: 'QUOTE', contact: contacts[0], quality: 'CRITICAL',
+      type: 'JOB_CARD', status: 'QUOTE', contact: contacts[0], quality: 'CRITICAL',
       jobType: 'MANUFACTURE', priority: 'NONE', po: '', drawings: 'CUSTOMER_CAD',
       property: 'NONE', desc: 'Quote for batch of precision machined components',
       due: null, treatment: 'ANODISE',
@@ -278,7 +278,7 @@ async function seedMockData() {
       ]
     },
     {
-      type: 'QUOTE', status: 'QUOTE', contact: contacts[3], quality: 'STANDARD',
+      type: 'JOB_CARD', status: 'QUOTE', contact: contacts[3], quality: 'STANDARD',
       jobType: 'FABRICATE', priority: 'NONE', po: '', drawings: 'PREPARE_CAD',
       property: 'NONE', desc: 'Quote for custom steel frame fabrication',
       due: null, treatment: 'POWDERCOAT',
@@ -296,8 +296,8 @@ async function seedMockData() {
   ];
 
   for (const jc of jobCards) {
-    const isQuote = jc.type === 'QUOTE';
-    const jobNumber = generateJobNumber(isQuote);
+    const isQuoteStatus = jc.status === 'QUOTE';
+    const jobNumber = generateJobNumber(isQuoteStatus);
     const id = `jobcard:${Date.now()}:${uuidv4().slice(0, 8)}`;
 
     jobcardQueries.create.run(
@@ -317,7 +317,7 @@ async function seedMockData() {
     }
 
     // Add assignees for non-quote jobs
-    if (!isQuote && jc.status !== 'DONE') {
+    if (!isQuoteStatus && jc.status !== 'DONE') {
       const assigneeIds = employees.slice(0, Math.floor(Math.random() * 3) + 1).map(e => e.id);
       for (const empId of assigneeIds) {
         const assigneeId = `assignee:${Date.now()}:${uuidv4().slice(0, 8)}`;
@@ -342,7 +342,7 @@ async function seedMockData() {
     }
 
     // Add some subcontracts for jobs with treatment
-    if (jc.treatment && jc.treatment !== 'NONE' && !isQuote) {
+    if (jc.treatment && jc.treatment !== 'NONE' && !isQuoteStatus) {
       const treatments = jc.treatment.split(',');
       for (const t of treatments) {
         let supplier = null;

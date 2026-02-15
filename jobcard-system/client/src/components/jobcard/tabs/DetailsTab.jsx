@@ -38,24 +38,18 @@ export default function DetailsTab({
   toggleScannerFiles,
   scannerFiles,
   loadingScannerFiles,
-  handleConvertToJobCard,
   isOverdue
 }) {
   return (
     <div className="modal-form-grid">
-      {/* Header Info */}
+      {/* Header Info - Edit mode shows job number */}
       {isEdit && (
         <div className="form-section header-section">
           <div className="job-header">
             <div className="job-number-display">
-              <span className="label">Job #</span>
+              <span className="label">Job Card / Quote</span>
               <span className="value">{jobNumber}</span>
             </div>
-            {formData.card_type === 'QUOTE' && (
-              <button type="button" className="btn btn-success btn-sm" onClick={handleConvertToJobCard}>
-                Convert to Job Card
-              </button>
-            )}
           </div>
         </div>
       )}
@@ -64,13 +58,20 @@ export default function DetailsTab({
       <div className="form-section">
         <h3 className="form-section-title" data-section="01">Classification</h3>
         <div className="form-row">
-          <div className="form-group">
-            <label>Card Type</label>
-            <select name="card_type" value={formData.card_type} onChange={handleChange}>
-              <option value="JOB_CARD">Job Card</option>
-              <option value="QUOTE">Quote</option>
-            </select>
-          </div>
+          {/* Job number input - only in create mode (edit mode shows in header) */}
+          {!isEdit && (
+            <div className="form-group">
+              <label>Job Card / Quote <span className="required">*</span></label>
+              <input
+                type="text"
+                name="job_number"
+                value={formData.job_number}
+                onChange={handleChange}
+                placeholder="Enter job number..."
+                className={!formData.job_number?.trim() ? 'field-required' : ''}
+              />
+            </div>
+          )}
           <div className="form-group">
             <label>Status</label>
             <select name="status" value={formData.status} onChange={handleChange}>
@@ -238,10 +239,7 @@ export default function DetailsTab({
             <label>Job Type <span className="required">*</span></label>
             <select name="job_type" value={formData.job_type} onChange={handleChange} className={!formData.job_type ? 'field-required' : ''}>
               <option value="">Select job type...</option>
-              {JOB_TYPES.filter(t => {
-                if (t === 'QUOTE' && formData.card_type !== 'QUOTE') return false;
-                return true;
-              }).map(t => (
+              {JOB_TYPES.map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
