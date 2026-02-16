@@ -257,19 +257,21 @@ export default function ContactManagement() {
                 contacts.map((contact) => (
                   <tr key={contact.id}>
                     <td>
-                      <strong>{contact.contactName}</strong>
+                      <a
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleEdit(contact);
+                        }}
+                      >
+                        <strong>{contact.contactName}</strong>
+                      </a>
                     </td>
                     <td>{contact.companyName || '-'}</td>
                     <td>{contact.phone || '-'}</td>
                     <td>{contact.email || '-'}</td>
                     <td>
                       <div className="action-buttons">
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => handleEdit(contact)}
-                        >
-                          Edit
-                        </button>
                         <button
                           className="btn btn-danger btn-sm"
                           onClick={() => handleDelete(contact)}

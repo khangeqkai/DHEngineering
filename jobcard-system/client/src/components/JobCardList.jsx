@@ -328,12 +328,6 @@ export default function JobCardList() {
                       </td>
                       <td>
                         <div className="action-buttons">
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => openEditModal(card.id)}
-                          >
-                            Edit
-                          </button>
                           {card.status === 'INVOICED' && !card.archived && (
                             <button
                               className="btn btn-success btn-sm"

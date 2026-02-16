@@ -263,7 +263,17 @@ export default function UserManagement() {
             <tbody>
               {users.map((user) => (
                 <tr key={user.id} style={{ opacity: user.active ? 1 : 0.6 }}>
-                  <td>{user.username}</td>
+                  <td>
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleEdit(user);
+                      }}
+                    >
+                      <strong>{user.username}</strong>
+                    </a>
+                  </td>
                   <td>{user.name}</td>
                   <td>{user.email || '-'}</td>
                   <td>
@@ -279,12 +289,6 @@ export default function UserManagement() {
                   <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => handleEdit(user)}
-                      >
-                        Edit
-                      </button>
                       {user.active ? (
                         <button
                           className="btn btn-warning btn-sm"

@@ -394,7 +394,15 @@ export default function SupplierManagement() {
                 suppliers.map((supplier) => (
                   <tr key={supplier.id}>
                     <td>
-                      <strong>{supplier.name}</strong>
+                      <a
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleEdit(supplier);
+                        }}
+                      >
+                        <strong>{supplier.name}</strong>
+                      </a>
                     </td>
                     <td>{supplier.contactName || '-'}</td>
                     <td>{supplier.contactPhone || '-'}</td>
@@ -409,12 +417,6 @@ export default function SupplierManagement() {
                     </td>
                     <td>
                       <div className="action-buttons">
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => handleEdit(supplier)}
-                        >
-                          Edit
-                        </button>
                         <button
                           className="btn btn-danger btn-sm"
                           onClick={() => handleDelete(supplier)}
