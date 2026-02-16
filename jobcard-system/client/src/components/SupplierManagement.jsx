@@ -131,6 +131,28 @@ export default function SupplierManagement() {
     }
   };
 
+  const handleDeleteTag = async (tag) => {
+    const confirmed = await showConfirm({
+      title: 'Delete Service Tag',
+      message: `Are you sure you want to delete "${tag.name}"? It will be removed from all suppliers that use it.`,
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger'
+    });
+    if (!confirmed) return;
+
+    try {
+      await api.deleteServiceTag(tag.id);
+      setServiceTags(prev => prev.filter(t => t.id !== tag.id));
+      setFormData(prev => ({
+        ...prev,
+        serviceTagIds: prev.serviceTagIds.filter(id => id !== tag.id)
+      }));
+      toast.success('Service tag deleted');
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete service tag');
+    }
+  };
+
   const resetForm = () => {
     setShowForm(false);
     setEditingSupplier(null);
@@ -245,15 +267,29 @@ export default function SupplierManagement() {
               <label>Services Provided</label>
               <div className="service-tags-selector">
                 {serviceTags.map(tag => (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    className={`tag-chip ${formData.serviceTagIds.includes(tag.id) ? 'selected' : ''}`}
-                    onClick={() => handleTagToggle(tag.id)}
-                  >
-                    {tag.name}
-                    {formData.serviceTagIds.includes(tag.id) && <span className="check-mark">&#10003;</span>}
-                  </button>
+                  <span key={tag.id} className={`tag-chip-wrapper ${!tag.isSystem ? 'deletable' : ''}`}>
+                    <button
+                      type="button"
+                      className={`tag-chip ${formData.serviceTagIds.includes(tag.id) ? 'selected' : ''}`}
+                      onClick={() => handleTagToggle(tag.id)}
+                    >
+                      {tag.name}
+                      {formData.serviceTagIds.includes(tag.id) && <span className="check-mark">&#10003;</span>}
+                    </button>
+                    {!tag.isSystem && (
+                      <button
+                        type="button"
+                        className="tag-delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteTag(tag);
+                        }}
+                        title={`Delete "${tag.name}" tag`}
+                      >
+                        &times;
+                      </button>
+                    )}
+                  </span>
                 ))}
                 {!showCustomTagInput ? (
                   <button
@@ -437,6 +473,49 @@ export default function SupplierManagement() {
         .tag-chip .check-mark {
           font-size: 0.75rem;
           margin-left: 0.25rem;
+        }
+
+        .tag-chip-wrapper {
+          position: relative;
+          display: inline-flex;
+        }
+
+        .tag-chip-wrapper .tag-chip {
+          border-radius: 16px;
+        }
+
+        .tag-chip-wrapper.deletable .tag-chip {
+          padding-right: 0.75rem;
+        }
+
+        .tag-delete-btn {
+          display: none;
+          position: absolute;
+          top: -6px;
+          right: -6px;
+          width: 18px;
+          height: 18px;
+          padding: 0;
+          border: 1px solid var(--border-color);
+          border-radius: 50%;
+          background: var(--surface);
+          color: var(--text-secondary);
+          font-size: 14px;
+          line-height: 1;
+          cursor: pointer;
+          align-items: center;
+          justify-content: center;
+          z-index: 1;
+        }
+
+        .tag-delete-btn:hover {
+          background: var(--danger-color, #e53e3e);
+          border-color: var(--danger-color, #e53e3e);
+          color: white;
+        }
+
+        .tag-chip-wrapper.deletable:hover .tag-delete-btn {
+          display: inline-flex;
         }
 
         .tag-chip.add-custom {
