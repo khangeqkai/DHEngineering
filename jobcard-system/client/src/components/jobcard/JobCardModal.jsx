@@ -327,8 +327,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
             contactName: contactHook.contactFormData.contactName.trim(),
             companyName: contactHook.contactFormData.companyName || null,
             phone: contactHook.contactFormData.phone || null,
-            email: contactHook.contactFormData.email || null,
-            isCriticalQa: contactHook.contactFormData.isCriticalQa || false
+            email: contactHook.contactFormData.email || null
           });
           contactId = newContact.id;
           toast.success('New contact saved');
@@ -342,8 +341,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           contactName: contactHook.contactFormData.contactName.trim(),
           companyName: contactHook.contactFormData.companyName || null,
           phone: contactHook.contactFormData.phone || null,
-          email: contactHook.contactFormData.email || null,
-          isCriticalQa: contactHook.contactFormData.isCriticalQa || false
+          email: contactHook.contactFormData.email || null
         });
         contactId = newContact.id;
       }
@@ -355,7 +353,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         companyName: contactHook.contactFormData.companyName,
         contactPhone: contactHook.contactFormData.phone,
         contactEmail: contactHook.contactFormData.email,
-        qualityLevel: contactHook.contactFormData.isCriticalQa ? 'CRITICAL' : formHook.formData.qualityLevel,
+        qualityLevel: formHook.formData.qualityLevel,
         jobType: formHook.formData.jobType,
         priority: formHook.formData.priority,
         poNumber: formHook.formData.poNumber,

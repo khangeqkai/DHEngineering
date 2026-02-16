@@ -114,18 +114,18 @@ async function seedMockData() {
   // ============================================
   logger.info('Creating contacts...');
   const contacts = [
-    { id: `contact:${uuidv4()}`, contact_name: 'Peter Thompson', company_name: 'BHP Mining Services', phone: '08 9234 5678', email: 'peter.t@bhp.com.au', address: '125 St Georges Terrace, Perth WA 6000', critical: true },
-    { id: `contact:${uuidv4()}`, contact_name: 'Susan Clarke', company_name: 'Rio Tinto Operations', phone: '08 9327 2000', email: 'susan.clarke@riotinto.com', address: '152 St Georges Terrace, Perth WA 6000', critical: true },
-    { id: `contact:${uuidv4()}`, contact_name: 'Mark Davidson', company_name: 'Woodside Energy', phone: '08 9348 4000', email: 'mark.davidson@woodside.com.au', address: 'Mia Yellagonga, Perth WA 6000', critical: true },
-    { id: `contact:${uuidv4()}`, contact_name: 'James Wilson', company_name: 'Austral Engineering', phone: '08 9456 7890', email: 'james@australeng.com.au', address: '45 Industrial Drive, Welshpool WA 6106', critical: false },
-    { id: `contact:${uuidv4()}`, contact_name: 'Linda Chen', company_name: 'Perth Mechanical Services', phone: '08 9321 4567', email: 'linda@perthmech.com.au', address: '78 Railway Parade, Bassendean WA 6054', critical: false },
-    { id: `contact:${uuidv4()}`, contact_name: 'Robert Hughes', company_name: 'Fortescue Metals Group', phone: '08 6218 8888', email: 'robert.hughes@fmgl.com.au', address: '87 Adelaide Terrace, Perth WA 6000', critical: true },
-    { id: `contact:${uuidv4()}`, contact_name: 'Steve Martin', company_name: 'Komatsu Australia', phone: '08 9340 5555', email: 'steve.martin@komatsu.com.au', address: '12 Freight Road, Welshpool WA 6106', critical: false },
-    { id: `contact:${uuidv4()}`, contact_name: 'Michelle Taylor', company_name: 'Caterpillar WA', phone: '08 9413 7000', email: 'mtaylor@cat.com', address: '95 Hardey Road, Belmont WA 6104', critical: false },
+    { id: `contact:${uuidv4()}`, contact_name: 'Peter Thompson', company_name: 'BHP Mining Services', phone: '08 9234 5678', email: 'peter.t@bhp.com.au', address: '125 St Georges Terrace, Perth WA 6000' },
+    { id: `contact:${uuidv4()}`, contact_name: 'Susan Clarke', company_name: 'Rio Tinto Operations', phone: '08 9327 2000', email: 'susan.clarke@riotinto.com', address: '152 St Georges Terrace, Perth WA 6000' },
+    { id: `contact:${uuidv4()}`, contact_name: 'Mark Davidson', company_name: 'Woodside Energy', phone: '08 9348 4000', email: 'mark.davidson@woodside.com.au', address: 'Mia Yellagonga, Perth WA 6000' },
+    { id: `contact:${uuidv4()}`, contact_name: 'James Wilson', company_name: 'Austral Engineering', phone: '08 9456 7890', email: 'james@australeng.com.au', address: '45 Industrial Drive, Welshpool WA 6106' },
+    { id: `contact:${uuidv4()}`, contact_name: 'Linda Chen', company_name: 'Perth Mechanical Services', phone: '08 9321 4567', email: 'linda@perthmech.com.au', address: '78 Railway Parade, Bassendean WA 6054' },
+    { id: `contact:${uuidv4()}`, contact_name: 'Robert Hughes', company_name: 'Fortescue Metals Group', phone: '08 6218 8888', email: 'robert.hughes@fmgl.com.au', address: '87 Adelaide Terrace, Perth WA 6000' },
+    { id: `contact:${uuidv4()}`, contact_name: 'Steve Martin', company_name: 'Komatsu Australia', phone: '08 9340 5555', email: 'steve.martin@komatsu.com.au', address: '12 Freight Road, Welshpool WA 6106' },
+    { id: `contact:${uuidv4()}`, contact_name: 'Michelle Taylor', company_name: 'Caterpillar WA', phone: '08 9413 7000', email: 'mtaylor@cat.com', address: '95 Hardey Road, Belmont WA 6104' },
   ];
 
   for (const c of contacts) {
-    contactQueries.create.run(c.id, c.contact_name, c.company_name, c.phone, c.email, c.address, c.critical ? 1 : 0, null);
+    contactQueries.create.run(c.id, c.contact_name, c.company_name, c.phone, c.email, c.address, null);
   }
   logger.info({ count: contacts.length }, 'Created contacts');
 

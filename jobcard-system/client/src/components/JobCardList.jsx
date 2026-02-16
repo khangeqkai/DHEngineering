@@ -221,8 +221,8 @@ export default function JobCardList() {
                       </td>
                       <td>
                         {card.contactName || '-'}
-                        {card.contactIsCritical && (
-                          <span className="critical-badge">Critical</span>
+                        {card.qualityLevel === 'CRITICAL' && (
+                          <span className="critical-badge">Critical QA</span>
                         )}
                       </td>
                       <td>{card.jobType || '-'}</td>

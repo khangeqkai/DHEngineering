@@ -127,7 +127,6 @@ export default function DetailsTab({
             {contact.companyName && (
               <span> at {contact.companyName}</span>
             )}
-            {contact.isCriticalQa && <span className="badge badge-critical">Critical QA</span>}
             <button type="button" className="btn-link" onClick={clearContact}>Clear</button>
           </div>
         )}
@@ -151,37 +150,13 @@ export default function DetailsTab({
                     <div key={c.id} className="customer-option" onClick={() => selectContact(c)}>
                       <strong>{c.contactName}</strong>
                       {c.companyName && <span className="company-name"> ({c.companyName})</span>}
-                      {c.isCriticalQa && <span className="badge badge-critical">Critical QA</span>}
                     </div>
                   ))}
                 </div>
               )}
             </div>
           </div>
-          <div className="form-group">
-            <label>Quality Management</label>
-            <label className={`toggle-label${contact?.isCriticalQa ? ' toggle-disabled' : ''}`}>
-              <input
-                type="checkbox"
-                className="toggle-input"
-                checked={contactFormData.isCriticalQa}
-                onChange={(e) => handleContactFieldChange('isCriticalQa', e.target.checked)}
-                disabled={contact?.isCriticalQa}
-              />
-              <span className="toggle-switch" />
-              <span className="toggle-content">
-                <span className="toggle-title">Critical QA</span>
-                <span className="toggle-desc">Enhanced documentation and QA forms required</span>
-              </span>
-            </label>
-          </div>
         </div>
-
-        {contactFormData.isCriticalQa && (
-          <div className="critical-warning">
-            Critical QA contact - enhanced documentation and QA forms required
-          </div>
-        )}
 
         <div className="contact-fields-inline">
           <p className="field-note">Contact details for this job (editable):</p>

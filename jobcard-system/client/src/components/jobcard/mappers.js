@@ -145,13 +145,3 @@ export function getDefaultCostingForm() {
     subcontractorProfitPercent: 0
   };
 }
-
-export function getDefaultCustomerFormData() {
-  return {
-    companyName: '',
-    contactName: '',
-    contactPhone: '',
-    contactEmail: '',
-    isCriticalQa: false
-  };
-}

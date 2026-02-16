@@ -32,7 +32,6 @@ function formatJobcard(row, items = [], assignees = [], subcontracts = []) {
     // Contact info from linked contact (for display)
     storedContactName: row.stored_contact_name,
     storedCompanyName: row.stored_company_name,
-    contactIsCritical: row.contact_is_critical === 1,
     qualityLevel: row.quality_level,
     jobType: row.job_type,
     priority: row.priority,
@@ -415,12 +414,12 @@ router.post('/:id/archive', authenticate, requireAdmin, (req, res) => {
       return res.status(404).json({ error: 'Job card not found' });
     }
 
-    // Check for outstanding QA forms if critical contact
-    if (existing.contact_is_critical) {
+    // Check for outstanding QA forms if critical quality level
+    if (existing.quality_level === 'CRITICAL') {
       const outstanding = qaFormQueries.getOutstandingForCritical.all(id);
       if (outstanding.length > 0) {
         return res.status(400).json({
-          error: 'Cannot archive: Outstanding QA forms for critical customer',
+          error: 'Cannot archive: Outstanding QA forms for critical QA job',
           outstandingForms: outstanding.map(f => f.form_code)
         });
       }

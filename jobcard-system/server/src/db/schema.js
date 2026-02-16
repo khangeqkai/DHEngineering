@@ -26,7 +26,6 @@ db.exec(`
     phone TEXT,
     email TEXT,
     address TEXT,
-    is_critical_qa INTEGER DEFAULT 0,
     notes TEXT,
     active INTEGER DEFAULT 1,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -344,6 +343,40 @@ const migrations = [
   { table: 'qa_forms', column: '_version', type: 'INTEGER DEFAULT 1' },
   { table: 'qa_forms', column: '_device_id', type: 'TEXT' },
 ];
+
+// Drop is_critical_qa column from contacts (QA level now lives on job cards only)
+try {
+  const contactCols = db.prepare('PRAGMA table_info(contacts)').all();
+  const colNames = contactCols.map(col => col.name);
+  if (colNames.includes('is_critical_qa')) {
+    // Build column list preserving _version/_device_id if they exist
+    const keepCols = ['id', 'contact_name', 'company_name', 'phone', 'email', 'address', 'notes', 'active', 'created_at', 'updated_at'];
+    if (colNames.includes('_version')) keepCols.push('_version');
+    if (colNames.includes('_device_id')) keepCols.push('_device_id');
+    const colList = keepCols.join(', ');
+    const colDefs = keepCols.map(c => {
+      const info = contactCols.find(col => col.name === c);
+      const dflt = info.dflt_value ? ` DEFAULT ${info.dflt_value}` : '';
+      const notNull = info.notnull ? ' NOT NULL' : '';
+      const pk = info.pk ? ' PRIMARY KEY' : '';
+      return `${c} ${info.type || 'TEXT'}${pk}${notNull}${dflt}`;
+    }).join(',\n        ');
+
+    db.exec(`
+      CREATE TABLE contacts_new (
+        ${colDefs}
+      );
+      INSERT INTO contacts_new (${colList}) SELECT ${colList} FROM contacts;
+      DROP TABLE contacts;
+      ALTER TABLE contacts_new RENAME TO contacts;
+      CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(contact_name);
+      CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company_name);
+    `);
+    logger.info('Migration: Removed is_critical_qa column from contacts');
+  }
+} catch (err) {
+  logger.error({ err }, 'Migration: Failed to remove is_critical_qa from contacts');
+}
 
 for (const migration of migrations) {
   try {

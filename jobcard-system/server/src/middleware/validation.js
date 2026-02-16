@@ -149,7 +149,6 @@ const validateCreateContact = [
   optionalPhone('phone'),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
-  optionalBoolean('isCriticalQa', 'Critical QA flag'),
   handleValidationErrors
 ];
 
@@ -164,7 +163,6 @@ const validateUpdateContact = [
   optionalPhone('phone'),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
-  optionalBoolean('isCriticalQa', 'Critical QA flag'),
   handleValidationErrors
 ];
 

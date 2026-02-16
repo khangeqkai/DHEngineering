@@ -175,8 +175,8 @@ export default function Dashboard() {
                     </td>
                     <td>
                       {card.contactName || '-'}
-                      {card.contactIsCritical && (
-                        <span className="critical-badge">Critical</span>
+                      {card.qualityLevel === 'CRITICAL' && (
+                        <span className="critical-badge">Critical QA</span>
                       )}
                     </td>
                     <td className="overdue-date">
@@ -240,8 +240,8 @@ export default function Dashboard() {
                       </td>
                       <td>
                         {card.contactName || '-'}
-                        {card.contactIsCritical && (
-                          <span className="critical-badge">Critical</span>
+                        {card.qualityLevel === 'CRITICAL' && (
+                          <span className="critical-badge">Critical QA</span>
                         )}
                       </td>
                       <td>{card.jobType || '-'}</td>

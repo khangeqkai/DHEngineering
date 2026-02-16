@@ -15,7 +15,6 @@ const toApiFormat = (c) => ({
   phone: c.phone,
   email: c.email,
   address: c.address,
-  isCriticalQa: c.is_critical_qa,
   notes: c.notes,
   active: c.active,
   createdAt: c.created_at,
@@ -72,7 +71,7 @@ router.get('/:id', (req, res) => {
 // POST /api/contacts - Create new contact
 router.post('/', validateCreateContact, (req, res) => {
   try {
-    const { contactName, companyName, phone, email, address, isCriticalQa, notes } = req.body;
+    const { contactName, companyName, phone, email, address, notes } = req.body;
 
     const id = uuidv4();
 
@@ -83,7 +82,6 @@ router.post('/', validateCreateContact, (req, res) => {
       phone || null,
       email || null,
       address || null,
-      isCriticalQa ? 1 : 0,
       notes || null
     );
 
@@ -103,7 +101,7 @@ router.post('/', validateCreateContact, (req, res) => {
 router.put('/:id', validateUpdateContact, (req, res) => {
   try {
     const { id } = req.params;
-    const { contactName, companyName, phone, email, address, isCriticalQa, notes } = req.body;
+    const { contactName, companyName, phone, email, address, notes } = req.body;
 
     const existing = contactQueries.getById.get(id);
     if (!existing) {
@@ -116,7 +114,6 @@ router.put('/:id', validateUpdateContact, (req, res) => {
       phone || null,
       email || null,
       address || null,
-      isCriticalQa ? 1 : 0,
       notes || null,
       id
     );

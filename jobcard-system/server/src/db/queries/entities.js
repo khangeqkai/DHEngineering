@@ -51,13 +51,13 @@ const contactQueries = {
   `),
 
   create: db.prepare(`
-    INSERT INTO contacts (id, contact_name, company_name, phone, email, address, is_critical_qa, notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    INSERT INTO contacts (id, contact_name, company_name, phone, email, address, notes, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `),
 
   update: db.prepare(`
     UPDATE contacts
-    SET contact_name = ?, company_name = ?, phone = ?, email = ?, address = ?, is_critical_qa = ?, notes = ?, updated_at = datetime('now')
+    SET contact_name = ?, company_name = ?, phone = ?, email = ?, address = ?, notes = ?, updated_at = datetime('now')
     WHERE id = ?
   `),
 

@@ -18,7 +18,6 @@ export default function ContactManagement() {
     phone: '',
     email: '',
     address: '',
-    isCriticalQa: false,
     notes: ''
   });
   const [saving, setSaving] = useState(false);
@@ -75,7 +74,6 @@ export default function ContactManagement() {
       phone: contact.phone || '',
       email: contact.email || '',
       address: contact.address || '',
-      isCriticalQa: contact.isCriticalQa || false,
       notes: contact.notes || ''
     });
     setShowForm(true);
@@ -142,7 +140,6 @@ export default function ContactManagement() {
       phone: '',
       email: '',
       address: '',
-      isCriticalQa: false,
       notes: ''
     });
   };
@@ -234,22 +231,6 @@ export default function ContactManagement() {
             </div>
 
             <div className="form-group">
-              <label className="toggle-label">
-                <input
-                  type="checkbox"
-                  className="toggle-input"
-                  checked={formData.isCriticalQa}
-                  onChange={(e) => setFormData({ ...formData, isCriticalQa: e.target.checked })}
-                />
-                <span className="toggle-switch" />
-                <span className="toggle-content">
-                  <span className="toggle-title">Critical QA Contact</span>
-                  <span className="toggle-desc">Requires enhanced documentation and QA forms</span>
-                </span>
-              </label>
-            </div>
-
-            <div className="form-group">
               <label htmlFor="notes">Notes</label>
               <textarea
                 id="notes"
@@ -282,7 +263,6 @@ export default function ContactManagement() {
                 <th>Company</th>
                 <th>Phone</th>
                 <th>Email</th>
-                <th>QA Level</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -290,7 +270,7 @@ export default function ContactManagement() {
             <tbody>
               {filteredContacts.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No contacts found
                   </td>
                 </tr>
@@ -303,13 +283,6 @@ export default function ContactManagement() {
                     <td>{contact.companyName || '-'}</td>
                     <td>{contact.phone || '-'}</td>
                     <td>{contact.email || '-'}</td>
-                    <td>
-                      {contact.isCriticalQa ? (
-                        <span className="badge badge-critical">Critical QA</span>
-                      ) : (
-                        <span className="badge badge-standard">Standard</span>
-                      )}
-                    </td>
                     <td>
                       <span className={`badge ${contact.active ? 'badge-completed' : 'badge-cancelled'}`}>
                         {contact.active ? 'Active' : 'Inactive'}
@@ -373,16 +346,6 @@ export default function ContactManagement() {
           display: flex;
           gap: 0.5rem;
           flex-wrap: wrap;
-        }
-
-        .badge-critical {
-          background: var(--danger-color);
-          color: white;
-        }
-
-        .badge-standard {
-          background: var(--text-secondary);
-          color: white;
         }
 
         @media (max-width: 768px) {

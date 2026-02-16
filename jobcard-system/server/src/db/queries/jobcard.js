@@ -6,7 +6,7 @@ const jobcardQueries = {
   getByJobNumber: db.prepare('SELECT * FROM jobcards WHERE job_number = ?'),
 
   getAll: db.prepare(`
-    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name, c.is_critical_qa as contact_is_critical
+    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
     FROM jobcards j
     LEFT JOIN contacts c ON j.contact_id = c.id
     WHERE j.archived = 0
@@ -14,7 +14,7 @@ const jobcardQueries = {
   `),
 
   getByStatus: db.prepare(`
-    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name, c.is_critical_qa as contact_is_critical
+    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
     FROM jobcards j
     LEFT JOIN contacts c ON j.contact_id = c.id
     WHERE j.status = ? AND j.archived = 0

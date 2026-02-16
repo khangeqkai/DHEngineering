@@ -9,8 +9,7 @@ function getDefaultContactFormData() {
     contactName: '',
     companyName: '',
     phone: '',
-    email: '',
-    isCriticalQa: false
+    email: ''
   };
 }
 
@@ -81,8 +80,7 @@ export function useContactSearch() {
       contactName: selectedContact.contactName || '',
       companyName: selectedContact.companyName || '',
       phone: selectedContact.phone || '',
-      email: selectedContact.email || '',
-      isCriticalQa: selectedContact.isCriticalQa || false
+      email: selectedContact.email || ''
     });
 
     // Display format: "John (ABC Pty Ltd)"
@@ -91,11 +89,6 @@ export function useContactSearch() {
       : selectedContact.contactName;
     setContactSearch(displayName);
     setShowContactDropdown(false);
-
-    // Auto-set critical QA quality level
-    if (selectedContact.isCriticalQa) {
-      setFormData(prev => ({ ...prev, qualityLevel: 'CRITICAL' }));
-    }
   }, []);
 
   // Clear contact selection
@@ -123,8 +116,7 @@ export function useContactSearch() {
       contactName: 'contactName',
       companyName: 'companyName',
       phone: 'contactPhone',
-      email: 'contactEmail',
-      isCriticalQa: 'isCriticalQa'
+      email: 'contactEmail'
     };
 
     // Update search display when contact name or company changes
@@ -155,10 +147,6 @@ export function useContactSearch() {
       }
     }
 
-    // Auto-set critical QA if flagged
-    if (field === 'isCriticalQa' && value) {
-      setFormData(prev => ({ ...prev, qualityLevel: 'CRITICAL' }));
-    }
   }, [contact]);
 
   // Set contact data from loaded job card
@@ -171,8 +159,7 @@ export function useContactSearch() {
       setContact({
         id: contactId,
         contactName: contactName,
-        companyName: companyName,
-        isCriticalQa: jobcardData.contactIsCritical
+        companyName: companyName
       });
       setOriginalContactName(contactName || '');
 
@@ -184,8 +171,7 @@ export function useContactSearch() {
         contactName: contactName || '',
         companyName: companyName || '',
         phone: jobcardData.contactPhone || '',
-        email: jobcardData.contactEmail || '',
-        isCriticalQa: jobcardData.contactIsCritical || false
+        email: jobcardData.contactEmail || ''
       });
     }
   }, []);
