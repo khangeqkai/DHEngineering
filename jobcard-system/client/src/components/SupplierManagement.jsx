@@ -460,7 +460,7 @@ export default function SupplierManagement() {
         .tag-chip.selected {
           background: var(--primary-color);
           border-color: var(--primary-color);
-          color: white;
+          color: var(--text-inverse);
         }
 
         .tag-chip .check-mark {
@@ -502,9 +502,9 @@ export default function SupplierManagement() {
         }
 
         .tag-delete-btn:hover {
-          background: var(--danger-color, #e53e3e);
-          border-color: var(--danger-color, #e53e3e);
-          color: white;
+          background: var(--danger-color);
+          border-color: var(--danger-color);
+          color: var(--text-inverse);
         }
 
         .tag-chip-wrapper.deletable:hover .tag-delete-btn {
@@ -546,7 +546,7 @@ export default function SupplierManagement() {
           display: inline-block;
           padding: 0.125rem 0.5rem;
           background: var(--primary-color);
-          color: white;
+          color: var(--text-inverse);
           border-radius: 12px;
           font-size: 0.75rem;
         }

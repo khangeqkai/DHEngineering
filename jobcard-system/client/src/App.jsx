@@ -40,6 +40,9 @@ function AdminRoute({ children }) {
   return children;
 }
 
+const getCssVar = (name) =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
 function App() {
   return (
     <>
@@ -52,16 +55,16 @@ function App() {
             duration: 3000,
             className: 'custom-toast custom-toast-success',
             iconTheme: {
-              primary: '#22c55e',
-              secondary: '#fff',
+              primary: getCssVar('--success-color') || '#22c55e',
+              secondary: getCssVar('--text-inverse') || '#fff',
             },
           },
           error: {
             duration: 5000,
             className: 'custom-toast custom-toast-error',
             iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
+              primary: getCssVar('--danger-color') || '#ef4444',
+              secondary: getCssVar('--text-inverse') || '#fff',
             },
           },
         }}
