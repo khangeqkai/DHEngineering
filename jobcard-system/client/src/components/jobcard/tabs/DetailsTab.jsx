@@ -24,6 +24,7 @@ export default function DetailsTab({
   setShowContactDropdown,
   contactSearchRef,
   contactSearch,
+  setContactSearch,
   employees,
   assignees,
   toggleAssignee,
@@ -121,45 +122,51 @@ export default function DetailsTab({
       <div className="form-section">
         <h3 className="form-section-title" data-section="02">Contact <span className="required">*</span></h3>
 
-        {contact && (
-          <div className="selected-customer-banner">
-            <span>Contact selected: <strong>{contact.contactName}</strong></span>
-            {contact.companyName && (
-              <span> at {contact.companyName}</span>
-            )}
-            <button type="button" className="btn-link" onClick={clearContact}>Clear</button>
+        {contact ? (
+          <div className="contact-chip-container">
+            <div className="contact-chip">
+              <div className="contact-chip-info">
+                <span className="contact-chip-name">{contact.contactName}</span>
+                {contact.companyName && (
+                  <span className="contact-chip-company">{contact.companyName}</span>
+                )}
+              </div>
+              <button type="button" className="contact-chip-change" onClick={clearContact}>
+                Change
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="form-row">
+            <div className="form-group" style={{ flex: 2 }} ref={contactSearchRef}>
+              <label>Find Existing Contact</label>
+              <div className="autocomplete-container">
+                <input
+                  type="text"
+                  value={contactSearch}
+                  onChange={(e) => setContactSearch(e.target.value)}
+                  onFocus={() => contacts.length > 0 && setShowContactDropdown(true)}
+                  placeholder="Search by name or company..."
+                />
+                {showContactDropdown && contacts.length > 0 && (
+                  <div className="customer-dropdown">
+                    {contacts.map(c => (
+                      <div key={c.id} className="customer-option" onClick={() => selectContact(c)}>
+                        <strong>{c.contactName}</strong>
+                        {c.companyName && <span className="company-name"> ({c.companyName})</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
-        <div className="form-row">
-          <div className="form-group" style={{ flex: 2 }} ref={contactSearchRef}>
-            <label>Search Contact <span className="required">*</span></label>
-            <div className="autocomplete-container">
-              <input
-                type="text"
-                value={contactSearch}
-                onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
-                onFocus={() => contactFormData.contactName.length >= 2 && setShowContactDropdown(true)}
-                placeholder="Search by name or company..."
-                className={!contactFormData.contactName.trim() ? 'field-required' : contact ? 'field-selected' : ''}
-              />
-              {showContactDropdown && contacts.length > 0 && (
-                <div className="customer-dropdown">
-                  <div className="dropdown-hint">Select existing contact or continue typing to create new</div>
-                  {contacts.map(c => (
-                    <div key={c.id} className="customer-option" onClick={() => selectContact(c)}>
-                      <strong>{c.contactName}</strong>
-                      {c.companyName && <span className="company-name"> ({c.companyName})</span>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
         <div className="contact-fields-inline">
-          <p className="field-note">Contact details for this job (editable):</p>
+          <p className="field-note">
+            {contact ? 'Contact details for this job (editable):' : 'Or enter new contact details:'}
+          </p>
           <div className="form-row">
             <div className="form-group">
               <label>Contact Name <span className="required">*</span></label>

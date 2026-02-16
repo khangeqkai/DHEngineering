@@ -136,6 +136,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
       return res.status(404).json({ error: 'Contact not found' });
     }
 
+    contactQueries.unlinkJobcards.run(id);
     contactQueries.delete.run(id);
 
     recordHistory('contact', id, 'deleted', req.user.id, req.user.name || req.user.username, null, toApiFormat(existing));

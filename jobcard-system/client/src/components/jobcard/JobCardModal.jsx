@@ -442,6 +442,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   setShowContactDropdown={contactHook.setShowContactDropdown}
                   contactSearchRef={contactHook.contactSearchRef}
                   contactSearch={contactHook.contactSearch}
+                  setContactSearch={contactHook.setContactSearch}
                   employees={employees || []}
                   assignees={formHook.assignees}
                   toggleAssignee={formHook.toggleAssignee}

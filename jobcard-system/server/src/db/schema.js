@@ -361,7 +361,9 @@ try {
       return `${c} ${info.type || 'TEXT'}${pk}${notNull}${dflt}`;
     }).join(',\n        ');
 
+    db.exec('PRAGMA foreign_keys = OFF');
     db.exec(`
+      DROP TABLE IF EXISTS contacts_new;
       CREATE TABLE contacts_new (
         ${colDefs}
       );
@@ -371,9 +373,11 @@ try {
       CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(contact_name);
       CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company_name);
     `);
+    db.exec('PRAGMA foreign_keys = ON');
     logger.info('Migration: Removed is_critical_qa column from contacts');
   }
 } catch (err) {
+  db.exec('PRAGMA foreign_keys = ON');
   logger.error({ err }, 'Migration: Failed to remove is_critical_qa from contacts');
 }
 
@@ -394,7 +398,9 @@ try {
       return `${c} ${info.type || 'TEXT'}${pk}${notNull}${dflt}`;
     }).join(',\n        ');
 
+    db.exec('PRAGMA foreign_keys = OFF');
     db.exec(`
+      DROP TABLE IF EXISTS contacts_new;
       CREATE TABLE contacts_new (
         ${colDefs}
       );
@@ -404,9 +410,11 @@ try {
       CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(contact_name);
       CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company_name);
     `);
+    db.exec('PRAGMA foreign_keys = ON');
     logger.info('Migration: Removed active column from contacts');
   }
 } catch (err) {
+  db.exec('PRAGMA foreign_keys = ON');
   logger.error({ err }, 'Migration: Failed to remove active from contacts');
 }
 

@@ -60,7 +60,8 @@ const contactQueries = {
     WHERE id = ?
   `),
 
-  delete: db.prepare('DELETE FROM contacts WHERE id = ?')
+  delete: db.prepare('DELETE FROM contacts WHERE id = ?'),
+  unlinkJobcards: db.prepare('UPDATE jobcards SET contact_id = NULL WHERE contact_id = ?')
 };
 
 // Supplier queries (approved field deprecated - all suppliers are approved when added)

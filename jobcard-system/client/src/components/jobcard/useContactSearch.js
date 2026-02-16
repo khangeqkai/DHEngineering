@@ -83,11 +83,7 @@ export function useContactSearch() {
       email: selectedContact.email || ''
     });
 
-    // Display format: "John (ABC Pty Ltd)"
-    const displayName = selectedContact.companyName
-      ? `${selectedContact.contactName} (${selectedContact.companyName})`
-      : selectedContact.contactName;
-    setContactSearch(displayName);
+    setContactSearch('');
     setShowContactDropdown(false);
   }, []);
 
@@ -119,24 +115,10 @@ export function useContactSearch() {
       email: 'contactEmail'
     };
 
-    // Update search display when contact name or company changes
-    if (field === 'contactName' || field === 'companyName') {
-      setContactFormData(prev => {
-        const name = field === 'contactName' ? value : prev.contactName;
-        const company = field === 'companyName' ? value : prev.companyName;
-        // Only update search if we haven't selected a contact yet
-        if (!contact) {
-          const displayName = company ? `${name} (${company})` : name;
-          setContactSearch(name); // Search by name only for typing
-        }
-        return { ...prev, [field]: value };
-      });
-
-      // Clear contact selection if user starts typing something different
-      if (contact) {
-        setContact(null);
-        setFormData(prev => ({ ...prev, contactId: '' }));
-      }
+    // Clear contact selection if user edits name or company
+    if ((field === 'contactName' || field === 'companyName') && contact) {
+      setContact(null);
+      setFormData(prev => ({ ...prev, contactId: '' }));
     }
 
     // Update jobcard form data
@@ -163,9 +145,7 @@ export function useContactSearch() {
       });
       setOriginalContactName(contactName || '');
 
-      // Display format: "John (ABC Pty Ltd)"
-      const displayName = companyName ? `${contactName} (${companyName})` : contactName;
-      setContactSearch(displayName || '');
+      setContactSearch('');
 
       setContactFormData({
         contactName: contactName || '',
@@ -188,14 +168,15 @@ export function useContactSearch() {
 
   // Check if contact name changed (for smart detection)
   const hasContactNameChanged = useCallback(() => {
-    if (!contact || !originalContactName) return false;
+    if (!originalContactName) return false;
     return contactFormData.contactName.trim() !== originalContactName.trim();
-  }, [contact, originalContactName, contactFormData.contactName]);
+  }, [originalContactName, contactFormData.contactName]);
 
   return {
     // State
     contact,
     contactSearch,
+    setContactSearch,
     showContactDropdown,
     setShowContactDropdown,
     contactFormData,
