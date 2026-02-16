@@ -2,7 +2,7 @@ export default function QAFormsTab({ formData, qaForms }) {
   return (
     <div className="modal-form-grid">
       <div className="form-section">
-        <h3 className="form-section-title" data-section="QA">QA Forms & Documents</h3>
+        <h3 className="form-section-title">QA Forms & Documents</h3>
 
         {formData.qualityLevel === 'CRITICAL' && (
           <div className="critical-qa-notice">

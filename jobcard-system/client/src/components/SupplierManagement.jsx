@@ -151,7 +151,7 @@ export default function SupplierManagement() {
   }
 
   return (
-    <div className="supplier-management">
+    <div className="supplier-management page-scroll-layout">
       <PageHeader title="Suppliers">
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
           + Add Supplier

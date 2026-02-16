@@ -4,16 +4,15 @@
   justify-content: center;
   height: 100vh;
   font-size: var(--text-lg);
-  font-family: var(--font-mono);
   color: var(--text-secondary);
-  letter-spacing: var(--tracking-wide);
 }
 
 /* Layout */
 .app-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* Mobile Header */
@@ -23,7 +22,7 @@
   justify-content: space-between;
   padding: 0.75rem 1rem;
   background: var(--surface);
-  border-bottom: 2px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -48,12 +47,10 @@
 }
 
 .mobile-title {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-base);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
 }
 
 .mobile-status {
@@ -79,7 +76,7 @@
   width: 280px;
   height: 100vh;
   background: var(--surface);
-  border-right: 2px solid var(--border-strong);
+  border-right: 1px solid var(--border-color);
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
@@ -97,12 +94,10 @@
 }
 
 .sidebar-header h1 {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-lg);
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
 }
 
 .sidebar-user-section {
@@ -128,7 +123,7 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.625rem 0.875rem;
-  border-radius: 2px;
+  border-radius: var(--radius-md);
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
@@ -151,9 +146,23 @@
 }
 
 .nav-icon {
-  font-size: 1.125rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
   min-width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+  background: var(--surface-inset);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+}
+
+.sidebar-nav a.active .nav-icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text-inverse);
 }
 
 .nav-text {
@@ -183,13 +192,13 @@
 .user-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 2px;
+  border-radius: var(--radius-md);
   background: var(--primary-color);
   color: var(--text-inverse);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 700;
   font-size: var(--text-sm);
 }
@@ -206,19 +215,46 @@
 .user-role {
   font-size: var(--text-xs);
   color: var(--text-secondary);
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
+  font-family: var(--font-sans);
+  text-transform: capitalize;
 }
 
 .main-content {
   flex: 1;
   padding: 1.5rem;
   overflow-y: auto;
+  min-height: 0;
+}
+
+/* Pages that want sticky header + scrollable table body */
+.main-content:has(.page-scroll-layout) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.page-scroll-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.page-scroll-layout > .card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-scroll-layout > .card > .card-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 /* ========================================
-   BUTTONS - Industrial Controls
+   BUTTONS
    ======================================== */
 
 .btn {
@@ -230,12 +266,11 @@
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
   border: none;
-  border-radius: 2px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--duration-fast) ease;
+  transition: background-color var(--duration-fast) ease,
+              box-shadow var(--duration-fast) ease;
   box-shadow: var(--shadow-sm);
 }
 
@@ -250,81 +285,74 @@
   transform: none;
 }
 
-/* Primary - Steel */
+/* Primary */
 .btn-primary {
-  background: linear-gradient(180deg, #4b5563 0%, #374151 100%);
+  background: #374151;
   color: var(--text-inverse);
-  border-bottom: 2px solid #1f2937;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
+  background: #4b5563;
 }
 
-/* Secondary - Panel Control */
+/* Secondary */
 .btn-secondary {
-  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-inset) 100%);
+  background: var(--surface);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-bottom: 2px solid var(--border-strong);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: linear-gradient(180deg, var(--surface-elevated) 0%, var(--surface) 100%);
+  background: var(--surface-inset);
   border-color: var(--border-strong);
 }
 
-/* Danger - Warning Control */
+/* Danger */
 .btn-danger {
-  background: linear-gradient(180deg, #f87171 0%, #ef4444 100%);
+  background: #ef4444;
   color: white;
-  border-bottom: 2px solid #b91c1c;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  background: #dc2626;
 }
 
-/* Warning - Caution */
+/* Warning */
 .btn-warning {
-  background: linear-gradient(180deg, #fbbf24 0%, #eab308 100%);
+  background: #eab308;
   color: #1f2937;
-  border-bottom: 2px solid #a16207;
 }
 
 .btn-warning:hover:not(:disabled) {
-  background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+  background: #fbbf24;
 }
 
-/* Success - Confirmation */
+/* Success */
 .btn-success {
-  background: linear-gradient(180deg, #4ade80 0%, #22c55e 100%);
+  background: #22c55e;
   color: white;
-  border-bottom: 2px solid #15803d;
 }
 
 .btn-success:hover:not(:disabled) {
-  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+  background: #16a34a;
 }
 
-/* Action - High Visibility */
+/* Action */
 .btn-action {
-  background: linear-gradient(180deg, #fb923c 0%, #f97316 100%);
+  background: #f97316;
   color: white;
-  border-bottom: 2px solid #c2410c;
 }
 
 .btn-action:hover:not(:disabled) {
-  background: linear-gradient(180deg, #f97316 0%, #ea580c 100%);
+  background: #ea580c;
 }
 
-/* Ghost - Minimal */
+/* Ghost */
 .btn-ghost {
   background: transparent;
   color: var(--text-primary);
   border: none;
   box-shadow: none;
-  border-bottom: 2px solid transparent;
 }
 
 .btn-ghost:hover:not(:disabled) {
@@ -351,12 +379,11 @@
   background: var(--surface-inset);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-bottom: 2px solid var(--border-strong);
   font-size: 1rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 2px;
+  border-radius: var(--radius-md);
   transition: all var(--duration-fast) ease;
 }
 
@@ -375,7 +402,7 @@
 }
 
 /* ========================================
-   FORMS - Panel Controls
+   FORMS
    ======================================== */
 
 .form-group {
@@ -387,12 +414,10 @@
   align-items: center;
   gap: 0.375rem;
   margin-bottom: 0.375rem;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: 500;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
 }
 
 .form-group input,
@@ -405,11 +430,9 @@
   color: var(--text-primary);
   background: var(--surface);
   border: 1px solid var(--border-color);
-  border-radius: 2px;
-  box-shadow: var(--shadow-inset);
+  border-radius: var(--radius-md);
   transition: border-color var(--duration-fast) ease,
-              box-shadow var(--duration-fast) ease,
-              transform var(--duration-fast) ease;
+              box-shadow var(--duration-fast) ease;
 }
 
 .form-group input:focus,
@@ -417,8 +440,7 @@
 .form-group select:focus {
   outline: none;
   border-color: var(--border-focus);
-  box-shadow: var(--shadow-inset), 0 0 0 3px rgba(14, 165, 233, 0.15);
-  transform: translateY(-1px);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
 }
 
 .form-group input::placeholder,
@@ -437,7 +459,7 @@
   cursor: pointer;
   padding: 0.75rem 1rem;
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   background: var(--surface-inset);
   transition: border-color 0.15s ease, background 0.15s ease;
 }
@@ -537,32 +559,29 @@
 }
 
 /* ========================================
-   CARDS - Industrial Panels
+   CARDS
    ======================================== */
 
 .card {
   background: var(--surface);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
 .card-header {
   padding: 0.875rem 1rem;
-  background: var(--surface-inset);
-  border-bottom: 2px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .card-header h2 {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
   margin: 0;
 }
 
@@ -571,7 +590,7 @@
 }
 
 /* ========================================
-   TABLES - Data Grid
+   TABLES
    ======================================== */
 
 .table {
@@ -581,28 +600,35 @@
 
 .table th,
 .table td {
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1rem;
   text-align: left;
   border-bottom: 1px solid var(--border-color);
 }
 
 .table th {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 600;
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wider);
   color: var(--text-secondary);
   background: var(--surface-inset);
-  border-bottom: 2px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
-.table tr:hover {
+.table tbody tr:nth-child(even) {
   background: var(--surface-elevated);
 }
 
+.table tr:hover {
+  background: var(--surface-inset);
+}
+
 /* ========================================
-   STATUS BADGES - LED Indicators
+   STATUS BADGES
    ======================================== */
 
 .badge {
@@ -610,20 +636,18 @@
   align-items: center;
   gap: 0.375rem;
   padding: 0.25rem 0.625rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  border-radius: 2px;
+  border-radius: var(--radius-md);
   border: 1px solid transparent;
 }
 
 /* LED indicator dot */
 .badge::before {
   content: '';
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: currentColor;
   box-shadow: 0 0 4px currentColor;
@@ -644,7 +668,7 @@
 .badge-in-progress {
   background: var(--badge-progress-bg);
   color: var(--badge-progress-text);
-  border-color: rgba(14, 165, 233, 0.3);
+  border-color: rgba(2, 132, 199, 0.3);
 }
 
 .badge-in-progress::before {
@@ -708,11 +732,10 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-xs);
   padding: 0.5rem 0;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
+  color: var(--text-secondary);
 }
 
 .status-dot {
@@ -746,14 +769,14 @@
   background: var(--accent-primary);
   color: white;
   padding: 0.125rem 0.375rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: var(--text-xs);
   font-weight: 500;
   margin-left: 0.25rem;
 }
 
 /* ========================================
-   MODAL - Industrial Panel
+   MODAL
    ======================================== */
 
 .modal-overlay {
@@ -778,12 +801,12 @@
 
 .modal-popup {
   background: var(--surface);
-  border: 2px solid var(--border-strong);
-  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   animation: modalSlide var(--duration-slow) var(--ease-mechanical);
-  box-shadow: 0 0 0 1px var(--border-color), var(--shadow-lg);
+  box-shadow: var(--shadow-lg);
   width: 80vw;
   height: 80vh;
   max-width: 1200px;
@@ -827,8 +850,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.875rem 1.25rem;
-  background: linear-gradient(180deg, var(--surface-elevated) 0%, var(--surface) 100%);
-  border-bottom: 2px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
@@ -836,7 +858,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-xl);
   font-weight: 600;
   letter-spacing: var(--tracking-tight);
@@ -846,9 +868,8 @@
 .modal-close {
   width: 36px;
   height: 36px;
-  border-radius: 2px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
-  border-bottom: 2px solid var(--border-strong);
   background: var(--surface-inset);
   color: var(--text-primary);
   font-size: 1.25rem;
@@ -880,14 +901,13 @@
 
 .modal-footer {
   padding: 0.875rem 1.25rem;
-  border-top: 2px solid var(--border-strong);
+  border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 0.75rem;
-  background: var(--surface-inset);
   flex-shrink: 0;
-  border-radius: 0 0 2px 2px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 .modal-footer-left {
@@ -927,15 +947,14 @@
   align-items: center;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .page-header h1 {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-2xl);
   font-weight: 700;
   letter-spacing: var(--tracking-tight);
-  text-transform: uppercase;
 }
 
 .page-header-actions {
@@ -1022,7 +1041,7 @@
   }
 
   .nav-icon {
-    font-size: 1.25rem;
+    font-size: 0.8125rem;
   }
 
   .signout-btn {
@@ -1125,7 +1144,7 @@
 .inactivity-modal {
   background: var(--surface);
   border: 3px solid var(--accent-caution);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   padding: 2rem 3rem;
   text-align: center;
   max-width: 400px;
@@ -1140,11 +1159,9 @@
 }
 
 .inactivity-modal h2 {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-lg);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
   margin: 0 0 0.5rem 0;
   color: var(--text-primary);
 }
@@ -1165,9 +1182,7 @@
 
 .inactivity-subtext {
   color: var(--text-tertiary);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
   margin-bottom: 1.5rem !important;
 }

@@ -57,7 +57,7 @@ export default function DetailsTab({
 
       {/* Status & Type Row */}
       <div className="form-section">
-        <h3 className="form-section-title" data-section="01">Classification</h3>
+        <h3 className="form-section-title">Classification</h3>
         <div className="form-row">
           {/* Job number input - only in create mode (edit mode shows in header) */}
           {!isEdit && (
@@ -120,7 +120,7 @@ export default function DetailsTab({
 
       {/* Contact Section - Phone Contacts Style */}
       <div className="form-section">
-        <h3 className="form-section-title" data-section="02">Contact <span className="required">*</span></h3>
+        <h3 className="form-section-title">Contact <span className="required">*</span></h3>
 
         {contact ? (
           <div className="contact-chip-container">
@@ -213,7 +213,7 @@ export default function DetailsTab({
 
       {/* Job Details Section */}
       <div className="form-section">
-        <h3 className="form-section-title" data-section="03">Job Details</h3>
+        <h3 className="form-section-title">Job Details</h3>
         <div className="form-row">
           <div className="form-group">
             <label>Quality Level</label>
@@ -236,7 +236,7 @@ export default function DetailsTab({
 
       {/* References */}
       <div className="form-section">
-        <h3 className="form-section-title" data-section="04">References</h3>
+        <h3 className="form-section-title">References</h3>
         <div className="form-row">
           <div className="form-group">
             <label>PO Number</label>
@@ -322,7 +322,7 @@ export default function DetailsTab({
 
       {/* Description */}
       <div className="form-section">
-        <h3 className="form-section-title" data-section="05">Description</h3>
+        <h3 className="form-section-title">Description</h3>
         <div className="form-group">
           <textarea
             name="description"
@@ -363,7 +363,7 @@ export default function DetailsTab({
       {!isEdit && (
         <div className="form-section">
           <div className="form-section-header">
-            <h3 className="form-section-title" data-section="06">Line Items <span className="required">*</span></h3>
+            <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
             <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}>+ Add</button>
           </div>
           {lineItems.map((item) => (
@@ -393,7 +393,7 @@ export default function DetailsTab({
 
       {/* Assignees */}
       <div className="form-section">
-        <h3 className="form-section-title" data-section="07">Assignees</h3>
+        <h3 className="form-section-title">Assignees</h3>
         <div className="assignees-grid">
           {employees.map(emp => {
             const isAssigned = assignees.some(a => a.userId === emp.id);
@@ -413,7 +413,7 @@ export default function DetailsTab({
 
       {/* Treatment */}
       <div className="form-section">
-        <h3 className="form-section-title" data-section="08">Treatment</h3>
+        <h3 className="form-section-title">Treatment</h3>
         <div className="form-group">
           <label>Treatment Required</label>
           <div className="checkbox-grid">
@@ -455,7 +455,7 @@ export default function DetailsTab({
       {!isEdit && (
       <div className="form-section">
         <div className="form-section-header">
-          <h3 className="form-section-title" data-section="09">Subcontracts</h3>
+          <h3 className="form-section-title">Subcontracts</h3>
           <button
             type="button"
             className="btn btn-secondary btn-sm"
@@ -562,7 +562,7 @@ export default function DetailsTab({
 
       {/* Notes */}
       <div className="form-section">
-        <h3 className="form-section-title" data-section="10">Internal Notes</h3>
+        <h3 className="form-section-title">Internal Notes</h3>
         <div className="form-group">
           <textarea
             name="notes"

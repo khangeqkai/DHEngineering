@@ -153,7 +153,7 @@ export default function TimeEntryTab({
       {/* Time Entries List */}
       <div className="form-section">
         <div className="form-section-header">
-          <h3 className="form-section-title" data-section="T1">Time Entries</h3>
+          <h3 className="form-section-title">Time Entries</h3>
           {!showTimeEntryForm && (
             <button type="button" className="btn btn-primary btn-sm" onClick={handleAddTimeEntry}>
               + Add Entry

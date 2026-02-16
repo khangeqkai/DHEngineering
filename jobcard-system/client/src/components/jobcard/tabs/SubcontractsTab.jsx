@@ -123,7 +123,7 @@ export default function SubcontractsTab({
       {/* Subcontracts List */}
       <div className="form-section">
         <div className="form-section-header">
-          <h3 className="form-section-title" data-section="09">Subcontracts</h3>
+          <h3 className="form-section-title">Subcontracts</h3>
           {!showSubcontractForm && (
             <button type="button" className="btn btn-primary btn-sm" onClick={handleAddSubcontract}>
               + Add Subcontract

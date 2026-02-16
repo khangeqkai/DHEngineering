@@ -5,30 +5,46 @@
 }
 
 :root {
-  /* Typography - Industrial */
+  /* Typography */
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;
-  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
-  /* Font Sizes */
-  --text-xs: 0.6875rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.9375rem;
-  --text-lg: 1.0625rem;
+  /* Font Sizes - Standard scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
 
-  /* Letter Spacing */
+  /* Letter Spacing - Reduced */
   --tracking-tight: -0.01em;
   --tracking-normal: 0;
-  --tracking-wide: 0.05em;
-  --tracking-wider: 0.1em;
+  --tracking-wide: 0.02em;
+  --tracking-wider: 0.04em;
 
-  /* Primary - Steel Gray */
+  /* Spacing Scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* Primary */
   --primary-color: #374151;
   --primary-hover: #1f2937;
-  --primary-accent: #0ea5e9;
+  --primary-accent: #0284c7;
 
-  /* Industrial Accents */
+  /* Accents */
   --accent-safety: #eab308;
   --accent-action: #f97316;
   --accent-caution: #ef4444;
@@ -40,41 +56,40 @@
   --warning-color: #eab308;
   --danger-color: #ef4444;
 
-  /* Surfaces - Machined Metal */
-  --background: #f1f5f9;
+  /* Surfaces - Warmer */
+  --background: #f8fafc;
   --surface: #ffffff;
   --surface-elevated: #f8fafc;
-  --surface-inset: #e2e8f0;
+  --surface-inset: #f1f5f9;
 
-  /* Text - High Contrast */
+  /* Text */
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-tertiary: #94a3b8;
   --text-inverse: #f8fafc;
 
-  /* Borders - Etched Metal */
-  --border-color: #cbd5e1;
-  --border-strong: #94a3b8;
-  --border-focus: #0ea5e9;
+  /* Borders - Lighter */
+  --border-color: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-focus: #0284c7;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.12);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.16);
-  --shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  /* Shadows - Softer */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
   --shadow: var(--shadow-sm);
 
   /* Animation */
   --ease-mechanical: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-snap: cubic-bezier(0.68, -0.6, 0.32, 1.6);
-  --duration-fast: 100ms;
-  --duration-normal: 150ms;
-  --duration-slow: 250ms;
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+  --duration-slow: 280ms;
 
   /* Badge colors - Light mode */
   --badge-pending-bg: rgba(234, 179, 8, 0.15);
   --badge-pending-text: #a16207;
-  --badge-progress-bg: rgba(14, 165, 233, 0.15);
+  --badge-progress-bg: rgba(2, 132, 199, 0.15);
   --badge-progress-text: #0369a1;
   --badge-completed-bg: rgba(34, 197, 94, 0.15);
   --badge-completed-text: #15803d;
@@ -118,10 +133,9 @@
   --border-focus: #38bdf8;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
-  --shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.35);
   --shadow: var(--shadow-sm);
 
   /* Badge colors - Dark mode */
@@ -143,12 +157,6 @@ body {
   font-size: var(--text-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-* {
-  transition: background-color var(--duration-normal) ease,
-              color var(--duration-normal) ease,
-              border-color var(--duration-normal) ease;
 }
 
 button {

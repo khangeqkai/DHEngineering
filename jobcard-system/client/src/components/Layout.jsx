@@ -108,19 +108,19 @@ export default function Layout() {
           <ul>
             <li>
               <NavLink to="/" end onClick={handleNavClick}>
-                <span className="nav-icon">&#x1F4CA;</span>
+                <span className="nav-icon">D</span>
                 <span className="nav-text">Dashboard</span>
               </NavLink>
             </li>
             <li>
               <NavLink to="/jobcards" onClick={handleNavClick}>
-                <span className="nav-icon">&#x1F4CB;</span>
+                <span className="nav-icon">J</span>
                 <span className="nav-text">Job Cards</span>
               </NavLink>
             </li>
             <li>
               <NavLink to="/contacts" onClick={handleNavClick}>
-                <span className="nav-icon">&#x1F464;</span>
+                <span className="nav-icon">C</span>
                 <span className="nav-text">Contacts</span>
               </NavLink>
             </li>
@@ -128,19 +128,19 @@ export default function Layout() {
               <>
                 <li>
                   <NavLink to="/suppliers" onClick={handleNavClick}>
-                    <span className="nav-icon">&#x1F3ED;</span>
+                    <span className="nav-icon">S</span>
                     <span className="nav-text">Suppliers</span>
                   </NavLink>
                 </li>
                 <li>
                   <NavLink to="/users" onClick={handleNavClick}>
-                    <span className="nav-icon">&#x1F465;</span>
+                    <span className="nav-icon">U</span>
                     <span className="nav-text">Users</span>
                   </NavLink>
                 </li>
                 <li>
                   <NavLink to="/activity" onClick={handleNavClick}>
-                    <span className="nav-icon">&#x1F4DD;</span>
+                    <span className="nav-icon">A</span>
                     <span className="nav-text">Activity Log</span>
                   </NavLink>
                 </li>
@@ -157,7 +157,7 @@ export default function Layout() {
 
         <div className="sidebar-footer">
           <button className="btn btn-secondary signout-btn" onClick={logout}>
-            <span className="nav-icon">&#x1F6AA;</span>
+            <span className="nav-icon">&larr;</span>
             <span className="nav-text">Sign Out</span>
           </button>
         </div>

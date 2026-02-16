@@ -8,7 +8,7 @@ export default function ItemsTab({
     <div className="modal-form-grid">
       <div className="form-section">
         <div className="form-section-header">
-          <h3 className="form-section-title" data-section="06">Line Items <span className="required">*</span></h3>
+          <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
           <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}>+ Add Item</button>
         </div>
         <div className="items-table">

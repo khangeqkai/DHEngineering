@@ -13,7 +13,7 @@ export default function PhotosTab({
     <div className="modal-form-grid">
       <div className="form-section">
         <div className="form-section-header">
-          <h3 className="form-section-title" data-section="PH">Photos</h3>
+          <h3 className="form-section-title">Photos</h3>
           {!cameraActive ? (
             <button type="button" className="btn btn-secondary btn-sm" onClick={startCamera}>Open Camera</button>
           ) : (

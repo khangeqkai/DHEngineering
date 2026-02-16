@@ -112,7 +112,7 @@ export default function ContactManagement() {
   }
 
   return (
-    <div className="contact-management">
+    <div className="contact-management page-scroll-layout">
       <PageHeader title="Contacts">
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
           + Add Contact

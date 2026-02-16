@@ -115,7 +115,7 @@ export default function Dashboard() {
       </PageHeader>
 
       <div className="stats-grid">
-        <div className="stat-card">
+        <div className="stat-card stat-hero">
           <div className="stat-value">{stats.total}</div>
           <div className="stat-label">Total Active</div>
         </div>
@@ -276,9 +276,26 @@ export default function Dashboard() {
 
         .stat-card {
           background: var(--surface);
-          border-radius: 0.75rem;
+          border-radius: var(--radius-lg);
           padding: 1.25rem;
           box-shadow: var(--shadow);
+          border: 1px solid var(--border-color);
+        }
+
+        .stat-hero {
+          grid-column: 1 / -1;
+          background: var(--primary-color);
+          color: var(--text-inverse);
+          border-color: var(--primary-color);
+        }
+
+        .stat-hero .stat-value {
+          color: var(--text-inverse);
+          font-size: 2.5rem;
+        }
+
+        .stat-hero .stat-label {
+          color: rgba(255, 255, 255, 0.7);
         }
 
         .stat-value {
@@ -288,11 +305,10 @@ export default function Dashboard() {
         }
 
         .stat-label {
-          font-size: 0.75rem;
+          font-size: var(--text-sm);
           color: var(--text-secondary);
           margin-top: 0.25rem;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
+          font-weight: 500;
         }
 
         .stat-quotes .stat-value {
@@ -304,7 +320,7 @@ export default function Dashboard() {
         }
 
         .stat-progress .stat-value {
-          color: var(--primary-color);
+          color: var(--primary-accent);
         }
 
         .stat-hold .stat-value {
@@ -346,15 +362,18 @@ export default function Dashboard() {
           color: white;
           font-size: 0.625rem;
           padding: 0.125rem 0.375rem;
-          border-radius: 0.25rem;
+          border-radius: var(--radius-sm);
           margin-left: 0.5rem;
-          text-transform: uppercase;
           font-weight: 600;
         }
 
         @media (max-width: 768px) {
           .stats-grid {
             grid-template-columns: repeat(2, 1fr);
+          }
+
+          .stat-hero {
+            grid-column: 1 / -1;
           }
         }
       `}</style>

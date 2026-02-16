@@ -32,6 +32,8 @@ const PRIORITY_COLORS = {
   HIGH: 'var(--danger-color)'
 };
 
+const PAGE_SIZE = 20;
+
 export default function JobCardList() {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -40,6 +42,7 @@ export default function JobCardList() {
   const [editingCardId, setEditingCardId] = useState(null);
   const [jobcards, setJobcards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   const loadJobcards = async () => {
@@ -116,6 +119,19 @@ export default function JobCardList() {
     });
   }, [jobcards, filter, search]);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, search, showArchived]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedCards = filteredCards.slice(
+    (safeCurrentPage - 1) * PAGE_SIZE,
+    safeCurrentPage * PAGE_SIZE
+  );
+
   const openCreateModal = () => {
     setEditingCardId(null);
     setIsModalOpen(true);
@@ -135,7 +151,7 @@ export default function JobCardList() {
   }
 
   return (
-    <div className="jobcard-list">
+    <div className="jobcard-list page-scroll-layout">
       <PageHeader title={showArchived ? 'Archived Job Cards' : 'Job Cards'}>
         <label className="archive-toggle">
           <input
@@ -195,7 +211,7 @@ export default function JobCardList() {
                 </tr>
               </thead>
               <tbody>
-                {filteredCards.map((card) => {
+                {paginatedCards.map((card) => {
                   const isOverdue = card.dueDate &&
                     new Date(card.dueDate) < new Date() &&
                     !['DONE', 'INVOICED'].includes(card.status);
@@ -271,6 +287,52 @@ export default function JobCardList() {
             </table>
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="pagination-bar">
+            <span className="pagination-info">
+              {(safeCurrentPage - 1) * PAGE_SIZE + 1}–{Math.min(safeCurrentPage * PAGE_SIZE, filteredCards.length)} of {filteredCards.length}
+            </span>
+            <div className="pagination-buttons">
+              <button
+                className="btn btn-secondary btn-sm"
+                disabled={safeCurrentPage <= 1}
+                onClick={() => setCurrentPage(safeCurrentPage - 1)}
+              >
+                Prev
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((page) => {
+                  if (totalPages <= 7) return true;
+                  if (page === 1 || page === totalPages) return true;
+                  if (Math.abs(page - safeCurrentPage) <= 1) return true;
+                  return false;
+                })
+                .map((page, idx, arr) => {
+                  const showEllipsis = idx > 0 && page - arr[idx - 1] > 1;
+                  return (
+                    <span key={page} style={{ display: 'contents' }}>
+                      {showEllipsis && <span className="pagination-ellipsis">&hellip;</span>}
+                      <button
+                        className={`btn btn-sm ${page === safeCurrentPage ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </button>
+                    </span>
+                  );
+                })}
+              <button
+                className="btn btn-secondary btn-sm"
+                disabled={safeCurrentPage >= totalPages}
+                onClick={() => setCurrentPage(safeCurrentPage + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <style>{`
@@ -286,15 +348,16 @@ export default function JobCardList() {
           min-width: 250px;
           padding: 0.625rem 0.875rem;
           border: 1px solid var(--border-color);
-          border-radius: 0.5rem;
-          font-size: 0.875rem;
+          border-radius: var(--radius-md);
+          font-size: var(--text-sm);
           background: var(--surface);
           color: var(--text-primary);
         }
 
         .search-input:focus {
           outline: none;
-          border-color: var(--primary-color);
+          border-color: var(--border-focus);
+          box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
         }
 
         .filter-buttons {
@@ -307,12 +370,12 @@ export default function JobCardList() {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          font-size: 0.875rem;
+          font-size: var(--text-sm);
           cursor: pointer;
         }
 
         .description-preview {
-          font-size: 0.75rem;
+          font-size: var(--text-xs);
           color: var(--text-secondary);
           margin-top: 0.25rem;
           margin-bottom: 0;
@@ -329,9 +392,8 @@ export default function JobCardList() {
           color: white;
           font-size: 0.625rem;
           padding: 0.125rem 0.375rem;
-          border-radius: 0.25rem;
+          border-radius: var(--radius-sm);
           margin-left: 0.5rem;
-          text-transform: uppercase;
           font-weight: 600;
         }
 
@@ -347,8 +409,35 @@ export default function JobCardList() {
         .overdue-label {
           display: block;
           font-size: 0.625rem;
-          text-transform: uppercase;
           margin-top: 0.25rem;
+        }
+
+        .pagination-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.75rem 1rem;
+          border-top: 1px solid var(--border-color);
+          background: var(--surface-inset);
+          flex-shrink: 0;
+        }
+
+        .pagination-info {
+          font-size: var(--text-sm);
+          color: var(--text-secondary);
+        }
+
+        .pagination-buttons {
+          display: flex;
+          gap: 0.25rem;
+          align-items: center;
+        }
+
+        .pagination-ellipsis {
+          padding: 0 0.25rem;
+          color: var(--text-tertiary);
+          font-size: var(--text-sm);
+          user-select: none;
         }
 
         @media (max-width: 768px) {
@@ -356,6 +445,16 @@ export default function JobCardList() {
             width: 100%;
             overflow-x: auto;
             padding-bottom: 0.5rem;
+          }
+
+          .pagination-bar {
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+
+          .pagination-buttons {
+            flex-wrap: wrap;
+            justify-content: center;
           }
         }
       `}</style>
