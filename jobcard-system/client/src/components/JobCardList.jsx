@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { Plus, Search, Trash2, Archive } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -198,7 +199,7 @@ export default function JobCardList() {
         </label>
         {!showArchived && (
           <button className="btn btn-primary" onClick={openCreateModal}>
-            + New Job Card
+            <Plus size={16} /> New Job Card
           </button>
         )}
       </PageHeader>
@@ -333,14 +334,14 @@ export default function JobCardList() {
                               className="btn btn-success btn-sm"
                               onClick={() => handleArchive(card.id)}
                             >
-                              Archive
+                              <Archive size={14} /> Archive
                             </button>
                           )}
                           <button
                             className="btn btn-danger btn-sm"
                             onClick={() => handleDelete(card.id)}
                           >
-                            Delete
+                            <Trash2 size={14} /> Delete
                           </button>
                         </div>
                       </td>

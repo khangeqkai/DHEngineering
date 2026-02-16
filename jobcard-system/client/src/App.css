@@ -276,6 +276,10 @@
   box-shadow: var(--shadow-sm);
 }
 
+.btn svg {
+  flex-shrink: 0;
+}
+
 .btn:active {
   transform: translateY(1px);
   box-shadow: none;
@@ -289,12 +293,12 @@
 
 /* Primary */
 .btn-primary {
-  background: #374151;
+  background: var(--primary-color);
   color: var(--text-inverse);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #4b5563;
+  background: var(--primary-light);
 }
 
 /* Secondary */
@@ -311,42 +315,42 @@
 
 /* Danger */
 .btn-danger {
-  background: #ef4444;
+  background: var(--danger-color);
   color: white;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #dc2626;
+  background: var(--danger-hover);
 }
 
 /* Warning */
 .btn-warning {
-  background: #eab308;
-  color: #1f2937;
+  background: var(--warning-color);
+  color: var(--text-primary);
 }
 
 .btn-warning:hover:not(:disabled) {
-  background: #fbbf24;
+  background: var(--warning-hover);
 }
 
 /* Success */
 .btn-success {
-  background: #22c55e;
+  background: var(--success-color);
   color: white;
 }
 
 .btn-success:hover:not(:disabled) {
-  background: #16a34a;
+  background: var(--success-hover);
 }
 
 /* Action */
 .btn-action {
-  background: #f97316;
+  background: var(--accent-action);
   color: white;
 }
 
 .btn-action:hover:not(:disabled) {
-  background: #ea580c;
+  background: var(--action-hover);
 }
 
 /* Ghost */
@@ -401,8 +405,8 @@
 }
 
 .btn-icon.danger:hover:not(:disabled) {
-  background: #dc2626;
-  border-color: #dc2626;
+  background: var(--danger-hover);
+  border-color: var(--danger-hover);
 }
 
 /* ========================================
@@ -662,7 +666,7 @@
   letter-spacing: var(--tracking-wider);
   color: var(--text-secondary);
   background: var(--surface-inset);
-  border-bottom: 1px solid var(--border-strong);
+  border-bottom: 2px solid var(--border-strong);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -672,8 +676,57 @@
   background: var(--surface-elevated);
 }
 
-.table tr:hover {
-  background: var(--surface-inset);
+.table tbody tr {
+  transition: background var(--duration-fast) ease;
+}
+
+.table tbody tr:hover {
+  background: rgba(var(--accent-rgb), 0.05);
+}
+
+.table tbody tr.clickable {
+  cursor: pointer;
+}
+
+/* Sortable headers */
+.table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--duration-fast) ease;
+}
+
+.table th.sortable:hover {
+  background: var(--surface-elevated);
+}
+
+.table th .sort-indicator {
+  display: inline-flex;
+  margin-left: 0.25rem;
+  vertical-align: middle;
+  opacity: 0.4;
+}
+
+.table th.sorted-asc .sort-indicator,
+.table th.sorted-desc .sort-indicator {
+  opacity: 1;
+  color: var(--primary-accent);
+}
+
+/* Column resize handle */
+.table th .resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background var(--duration-fast) ease;
+}
+
+.table th .resize-handle:hover,
+.table th .resize-handle.resizing {
+  background: var(--primary-accent);
 }
 
 /* ========================================
@@ -1277,4 +1330,47 @@
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   margin-bottom: 1.5rem !important;
+}
+
+/* ========================================
+   TOAST NOTIFICATIONS
+   ======================================== */
+
+.custom-toast {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border-left: 4px solid var(--primary-accent) !important;
+  cursor: pointer;
+}
+
+.custom-toast-success {
+  border-left-color: var(--success-color) !important;
+}
+
+.custom-toast-error {
+  border-left-color: var(--danger-color) !important;
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  width: 100%;
+}
+
+.toast-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 0 0 8px;
+  transition: color var(--duration-fast) ease;
+}
+
+.toast-dismiss:hover {
+  color: var(--text-primary);
 }

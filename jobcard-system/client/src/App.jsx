@@ -47,20 +47,18 @@ function App() {
         position="top-center"
         toastOptions={{
           duration: 4000,
-          style: {
-            background: '#333',
-            color: '#fff',
-            cursor: 'pointer',
-          },
+          className: 'custom-toast',
           success: {
             duration: 3000,
+            className: 'custom-toast custom-toast-success',
             iconTheme: {
-              primary: '#10b981',
+              primary: '#22c55e',
               secondary: '#fff',
             },
           },
           error: {
             duration: 5000,
+            className: 'custom-toast custom-toast-error',
             iconTheme: {
               primary: '#ef4444',
               secondary: '#fff',
@@ -73,21 +71,13 @@ function App() {
             {({ icon, message }) => (
               <div
                 onClick={() => toast.dismiss(t.id)}
-                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', width: '100%' }}
+                className="toast-content"
               >
                 {icon}
                 <div style={{ flex: 1 }}>{message}</div>
                 <button
                   onClick={(e) => { e.stopPropagation(); toast.dismiss(t.id); }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'inherit',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    padding: '0 0 0 8px',
-                    opacity: 0.7,
-                  }}
+                  className="toast-dismiss"
                   aria-label="Dismiss"
                 >
                   ✕

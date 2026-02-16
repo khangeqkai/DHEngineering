@@ -104,7 +104,7 @@
 
 /* Header Section - Job Number Display */
 .header-section {
-  background: #374151;
+  background: var(--primary-color);
   color: var(--text-inverse);
   border-color: var(--primary-color);
 }
@@ -897,8 +897,8 @@
 }
 
 .status-pending {
-  background: rgba(234, 179, 8, 0.15);
-  color: #a16207;
+  background: rgba(var(--warning-rgb), 0.15);
+  color: var(--badge-pending-text);
 }
 
 .status-error {
@@ -980,7 +980,7 @@
 
 /* Subcontract Status Badges */
 .badge-in_progress {
-  background: #8b5cf6;
+  background: var(--accent-purple);
   color: white;
   font-family: var(--font-sans);
   font-size: var(--text-xs);
@@ -1060,7 +1060,7 @@
   align-items: center;
   margin: 1rem;
   padding: 1rem;
-  background: #374151;
+  background: var(--primary-color);
   border-radius: var(--radius-md);
   color: white;
 }
@@ -1147,7 +1147,7 @@
 
 .qa-status.status-pending {
   background: var(--accent-safety);
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 .qa-status.status-complete {
@@ -1199,7 +1199,7 @@
   width: 100%;
   max-width: 400px;
   border-radius: var(--radius-md);
-  background: #0f172a;
+  background: var(--text-primary);
   border: 1px solid var(--border-strong);
 }
 
@@ -1248,7 +1248,7 @@
 }
 
 .photo-remove:hover {
-  background: #dc2626;
+  background: var(--danger-hover);
 }
 
 .photo-modal {

@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase, capitalizeFirst } from '../utils/formatters';
+import { Plus, Trash2, Save } from 'lucide-react';
 import PageHeader from './common/PageHeader';
+import DataTable from './common/DataTable';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
@@ -177,7 +179,7 @@ export default function SupplierManagement() {
     <div className="supplier-management page-scroll-layout">
       <PageHeader title="Suppliers">
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-          + Add Supplier
+          <Plus size={16} /> Add Supplier
         </button>
       </PageHeader>
 
@@ -366,70 +368,59 @@ export default function SupplierManagement() {
             className="btn btn-primary"
             disabled={saving}
           >
-            {saving ? 'Saving...' : editingSupplier ? 'Update Supplier' : 'Create Supplier'}
+            <Save size={14} /> {saving ? 'Saving...' : editingSupplier ? 'Update Supplier' : 'Create Supplier'}
           </button>
         </BottomSheet.Footer>
       </BottomSheet>
 
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Company Name</th>
-                <th>Contact</th>
-                <th>Phone</th>
-                <th>Services</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {suppliers.length === 0 ? (
-                <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    No suppliers found
-                  </td>
-                </tr>
-              ) : (
-                suppliers.map((supplier) => (
-                  <tr key={supplier.id}>
-                    <td>
-                      <a
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleEdit(supplier);
-                        }}
-                      >
-                        <strong>{supplier.name}</strong>
-                      </a>
-                    </td>
-                    <td>{supplier.contactName || '-'}</td>
-                    <td>{supplier.contactPhone || '-'}</td>
-                    <td className="services-cell">
-                      {supplier.serviceTags && supplier.serviceTags.length > 0 ? (
-                        <div className="service-tags-display">
-                          {supplier.serviceTags.map(tag => (
-                            <span key={tag.id} className="service-tag-badge">{tag.name}</span>
-                          ))}
-                        </div>
-                      ) : '-'}
-                    </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => handleDelete(supplier)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <DataTable
+            columns={[
+              {
+                key: 'name',
+                label: 'Company Name',
+                sortable: true,
+                render: (val, row) => (
+                  <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(row); }}>
+                    <strong>{val}</strong>
+                  </a>
+                )
+              },
+              { key: 'contactName', label: 'Contact', sortable: true },
+              { key: 'contactPhone', label: 'Phone' },
+              {
+                key: 'serviceTags',
+                label: 'Services',
+                render: (val) => (
+                  val && val.length > 0 ? (
+                    <div className="service-tags-display">
+                      {val.map(tag => (
+                        <span key={tag.id} className="service-tag-badge">{tag.name}</span>
+                      ))}
+                    </div>
+                  ) : '-'
+                )
+              },
+              {
+                key: 'actions',
+                label: 'Actions',
+                render: (_, row) => (
+                  <div className="action-buttons">
+                    <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
+                      <Trash2 size={14} /> Delete
+                    </button>
+                  </div>
+                )
+              }
+            ]}
+            data={suppliers}
+            searchable
+            searchKeys={['name', 'contactName', 'contactPhone']}
+            searchPlaceholder="Search suppliers..."
+            emptyMessage="No suppliers found"
+            defaultSortKey="name"
+          />
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
+import DataTable from './common/DataTable';
 
 export default function ActivityLog() {
   const [activities, setActivities] = useState([]);
@@ -92,52 +93,62 @@ export default function ActivityLog() {
 
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
-          {activities.length === 0 ? (
-            <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              No activity recorded yet.
-            </p>
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>User</th>
-                  <th>Action</th>
-                  <th>Type</th>
-                  <th>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {activities.map((activity) => (
-                  <tr key={activity.id}>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      {formatDate(activity.createdAt)}
-                    </td>
-                    <td>{activity.userName || 'System'}</td>
-                    <td>{formatAction(activity.action)}</td>
-                    <td>
-                      <span style={{ textTransform: 'capitalize' }}>
-                        {activity.entityType}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: '0.875rem' }}>
-                        <code style={{
-                          fontSize: '0.7rem',
-                          background: 'var(--background)',
-                          padding: '0.125rem 0.375rem',
-                          borderRadius: '0.25rem'
-                        }}>
-                          {activity.entityId}
-                        </code>
-                      </div>
-                      {formatChanges(activity.changes)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <DataTable
+            columns={[
+              {
+                key: 'createdAt',
+                label: 'Time',
+                sortable: true,
+                render: (val) => (
+                  <span style={{ whiteSpace: 'nowrap' }}>{formatDate(val)}</span>
+                )
+              },
+              {
+                key: 'userName',
+                label: 'User',
+                sortable: true,
+                render: (val) => val || 'System'
+              },
+              {
+                key: 'action',
+                label: 'Action',
+                sortable: true,
+                render: (val) => formatAction(val)
+              },
+              {
+                key: 'entityType',
+                label: 'Type',
+                sortable: true,
+                render: (val) => (
+                  <span style={{ textTransform: 'capitalize' }}>{val}</span>
+                )
+              },
+              {
+                key: 'entityId',
+                label: 'Details',
+                render: (val, row) => (
+                  <>
+                    <div style={{ fontSize: '0.875rem' }}>
+                      <code style={{
+                        fontSize: '0.7rem',
+                        background: 'var(--background)',
+                        padding: '0.125rem 0.375rem',
+                        borderRadius: '0.25rem'
+                      }}>
+                        {val}
+                      </code>
+                    </div>
+                    {formatChanges(row.changes)}
+                  </>
+                )
+              }
+            ]}
+            data={activities}
+            searchable
+            searchKeys={['userName', 'action', 'entityType', 'entityId']}
+            searchPlaceholder="Search activity..."
+            emptyMessage="No activity recorded yet."
+          />
         </div>
       </div>
 

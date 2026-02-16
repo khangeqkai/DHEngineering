@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase } from '../utils/formatters';
+import { Plus, Trash2, Save, UserMinus, UserCheck } from 'lucide-react';
 import PageHeader from './common/PageHeader';
+import DataTable from './common/DataTable';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
@@ -152,7 +154,7 @@ export default function UserManagement() {
           Show inactive
         </label>
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-          + Add User
+          <Plus size={16} /> Add User
         </button>
       </PageHeader>
 
@@ -241,81 +243,82 @@ export default function UserManagement() {
             className="btn btn-primary"
             disabled={saving}
           >
-            {saving ? 'Saving...' : editingUser ? 'Update User' : 'Create User'}
+            <Save size={14} /> {saving ? 'Saving...' : editingUser ? 'Update User' : 'Create User'}
           </button>
         </BottomSheet.Footer>
       </BottomSheet>
 
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Username</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} style={{ opacity: user.active ? 1 : 0.6 }}>
-                  <td>
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleEdit(user);
-                      }}
-                    >
-                      <strong>{user.username}</strong>
-                    </a>
-                  </td>
-                  <td>{user.name}</td>
-                  <td>{user.email || '-'}</td>
-                  <td>
-                    <span className={`badge ${user.role === 'admin' ? 'badge-in-progress' : 'badge-pending'}`}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`badge ${user.active ? 'badge-completed' : 'badge-cancelled'}`}>
-                      {user.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td>{new Date(user.createdAt).toLocaleDateString()}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {user.active ? (
-                        <button
-                          className="btn btn-warning btn-sm"
-                          onClick={() => handleDeactivate(user)}
-                        >
-                          Deactivate
-                        </button>
-                      ) : (
-                        <button
-                          className="btn btn-success btn-sm"
-                          onClick={() => handleActivate(user)}
-                        >
-                          Activate
-                        </button>
-                      )}
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => handleDelete(user)}
-                      >
-                        Delete
+          <DataTable
+            columns={[
+              {
+                key: 'username',
+                label: 'Username',
+                sortable: true,
+                render: (val, row) => (
+                  <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(row); }}>
+                    <strong>{val}</strong>
+                  </a>
+                )
+              },
+              { key: 'name', label: 'Name', sortable: true },
+              { key: 'email', label: 'Email', sortable: true },
+              {
+                key: 'role',
+                label: 'Role',
+                sortable: true,
+                render: (val) => (
+                  <span className={`badge ${val === 'admin' ? 'badge-in-progress' : 'badge-pending'}`}>
+                    {val}
+                  </span>
+                )
+              },
+              {
+                key: 'active',
+                label: 'Status',
+                sortable: true,
+                render: (val) => (
+                  <span className={`badge ${val ? 'badge-completed' : 'badge-cancelled'}`}>
+                    {val ? 'Active' : 'Inactive'}
+                  </span>
+                )
+              },
+              {
+                key: 'createdAt',
+                label: 'Created',
+                sortable: true,
+                render: (val) => new Date(val).toLocaleDateString()
+              },
+              {
+                key: 'actions',
+                label: 'Actions',
+                render: (_, row) => (
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {row.active ? (
+                      <button className="btn btn-warning btn-sm" onClick={(e) => { e.stopPropagation(); handleDeactivate(row); }}>
+                        <UserMinus size={14} /> Deactivate
                       </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    ) : (
+                      <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleActivate(row); }}>
+                        <UserCheck size={14} /> Activate
+                      </button>
+                    )}
+                    <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
+                      <Trash2 size={14} /> Delete
+                    </button>
+                  </div>
+                )
+              }
+            ]}
+            data={users}
+            searchable
+            searchKeys={['username', 'name', 'email']}
+            searchPlaceholder="Search users..."
+            emptyMessage="No users found"
+            defaultSortKey="username"
+            rowClassName={(row) => row.active ? '' : 'inactive-row'}
+          />
         </div>
       </div>
 

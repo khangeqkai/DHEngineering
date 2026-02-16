@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase, capitalizeFirst } from '../utils/formatters';
+import { Plus, Trash2, Save } from 'lucide-react';
 import PageHeader from './common/PageHeader';
+import DataTable from './common/DataTable';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
@@ -116,7 +118,7 @@ export default function ContactManagement() {
     <div className="contact-management page-scroll-layout">
       <PageHeader title="Contacts">
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-          + Add Contact
+          <Plus size={16} /> Add Contact
         </button>
       </PageHeader>
 
@@ -229,62 +231,47 @@ export default function ContactManagement() {
             className="btn btn-primary"
             disabled={saving}
           >
-            {saving ? 'Saving...' : editingContact ? 'Update Contact' : 'Create Contact'}
+            <Save size={14} /> {saving ? 'Saving...' : editingContact ? 'Update Contact' : 'Create Contact'}
           </button>
         </BottomSheet.Footer>
       </BottomSheet>
 
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Contact Name</th>
-                <th>Company</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contacts.length === 0 ? (
-                <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    No contacts found
-                  </td>
-                </tr>
-              ) : (
-                contacts.map((contact) => (
-                  <tr key={contact.id}>
-                    <td>
-                      <a
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleEdit(contact);
-                        }}
-                      >
-                        <strong>{contact.contactName}</strong>
-                      </a>
-                    </td>
-                    <td>{contact.companyName || '-'}</td>
-                    <td>{contact.phone || '-'}</td>
-                    <td>{contact.email || '-'}</td>
-                    <td>
-                      <div className="action-buttons">
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => handleDelete(contact)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <DataTable
+            columns={[
+              {
+                key: 'contactName',
+                label: 'Contact Name',
+                sortable: true,
+                render: (val, row) => (
+                  <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(row); }}>
+                    <strong>{val}</strong>
+                  </a>
+                )
+              },
+              { key: 'companyName', label: 'Company', sortable: true },
+              { key: 'phone', label: 'Phone' },
+              { key: 'email', label: 'Email', sortable: true },
+              {
+                key: 'actions',
+                label: 'Actions',
+                render: (_, row) => (
+                  <div className="action-buttons">
+                    <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
+                      <Trash2 size={14} /> Delete
+                    </button>
+                  </div>
+                )
+              }
+            ]}
+            data={contacts}
+            searchable
+            searchKeys={['contactName', 'companyName', 'email', 'phone']}
+            searchPlaceholder="Search contacts..."
+            emptyMessage="No contacts found"
+            defaultSortKey="contactName"
+          />
         </div>
       </div>
 

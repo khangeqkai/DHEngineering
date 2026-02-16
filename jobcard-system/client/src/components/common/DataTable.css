@@ -1,0 +1,120 @@
+/* DataTable Component */
+.data-table-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.data-table-search {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.data-table-search-input {
+  position: relative;
+}
+
+.data-table-search-input input {
+  width: 100%;
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.data-table-search-input input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+}
+
+.data-table-search-icon {
+  position: absolute;
+  left: 0.625rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+/* Table container */
+.data-table-container {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+/* Sort header styling */
+.data-table th {
+  position: relative;
+}
+
+.data-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.data-table th.sortable:hover {
+  background: var(--surface-elevated);
+}
+
+.data-table-header-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.data-table-sort-icon {
+  opacity: 0.3;
+  flex-shrink: 0;
+}
+
+.data-table th.sorted-asc .data-table-sort-icon,
+.data-table th.sorted-desc .data-table-sort-icon {
+  opacity: 1;
+  color: var(--primary-accent);
+}
+
+/* Resize handle */
+.data-table-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+}
+
+.data-table-resize-handle:hover {
+  background: var(--primary-accent);
+}
+
+/* Empty state */
+.data-table-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.data-table-empty-icon {
+  margin-bottom: 0.75rem;
+  opacity: 0.5;
+}
+
+.data-table-empty-text {
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+/* Row variants */
+.data-table tbody tr.inactive-row {
+  opacity: 0.6;
+}

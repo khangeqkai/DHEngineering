@@ -3,8 +3,11 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { Plus, Activity, FileText, FolderOpen, Loader, Pause, AlertTriangle } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
+import './Dashboard.css';
 
 const STATUS_LABELS = {
   QUOTE: 'Quote',
@@ -20,6 +23,15 @@ const PRIORITY_COLORS = {
   LOW: 'var(--success-color)',
   MEDIUM: 'var(--warning-color)',
   HIGH: 'var(--danger-color)'
+};
+
+const CHART_COLORS = {
+  QUOTE: '#94a3b8',
+  OPEN: '#eab308',
+  IN_PROGRESS: '#0284c7',
+  ON_HOLD: '#64748b',
+  DONE: '#22c55e',
+  INVOICED: '#16a34a'
 };
 
 export default function Dashboard() {
@@ -78,6 +90,26 @@ export default function Dashboard() {
     };
   }, [jobcards]);
 
+  // Chart data derived from stats
+  const chartData = useMemo(() => {
+    const statusData = [
+      { name: 'Quotes', value: stats.quotes, key: 'QUOTE' },
+      { name: 'Open', value: stats.open, key: 'OPEN' },
+      { name: 'In Progress', value: stats.inProgress, key: 'IN_PROGRESS' },
+      { name: 'On Hold', value: stats.onHold, key: 'ON_HOLD' },
+      { name: 'Done', value: stats.done, key: 'DONE' },
+    ].filter(d => d.value > 0);
+
+    const barData = [
+      { name: 'Quotes', count: stats.quotes, fill: CHART_COLORS.QUOTE },
+      { name: 'Open', count: stats.open, fill: CHART_COLORS.OPEN },
+      { name: 'In Progress', count: stats.inProgress, fill: CHART_COLORS.IN_PROGRESS },
+      { name: 'On Hold', count: stats.onHold, fill: CHART_COLORS.ON_HOLD },
+    ];
+
+    return { statusData, barData };
+  }, [stats]);
+
   const openCreateModal = () => {
     setEditingCardId(null);
     setIsModalOpen(true);
@@ -113,38 +145,148 @@ export default function Dashboard() {
     <div className="dashboard">
       <PageHeader title="Dashboard">
         <button className="btn btn-primary" onClick={openCreateModal}>
-          + New Job Card
+          <Plus size={16} /> New Job Card
         </button>
       </PageHeader>
 
       <div className="stats-grid">
         <div className="stat-card stat-hero">
-          <div className="stat-value">{stats.total}</div>
-          <div className="stat-label">Total Active</div>
+          <div className="stat-card-row">
+            <div className="stat-icon-wrapper stat-icon-hero">
+              <Activity size={24} />
+            </div>
+            <div className="stat-content">
+              <div className="stat-value">{stats.total}</div>
+              <div className="stat-label">Total Active</div>
+            </div>
+          </div>
         </div>
         <div className="stat-card stat-quotes">
-          <div className="stat-value">{stats.quotes}</div>
-          <div className="stat-label">Quotes</div>
+          <div className="stat-card-row">
+            <div className="stat-icon-wrapper stat-icon-quotes">
+              <FileText size={24} />
+            </div>
+            <div className="stat-content">
+              <div className="stat-value">{stats.quotes}</div>
+              <div className="stat-label">Quotes</div>
+            </div>
+          </div>
         </div>
         <div className="stat-card stat-open">
-          <div className="stat-value">{stats.open}</div>
-          <div className="stat-label">Open</div>
+          <div className="stat-card-row">
+            <div className="stat-icon-wrapper stat-icon-open">
+              <FolderOpen size={24} />
+            </div>
+            <div className="stat-content">
+              <div className="stat-value">{stats.open}</div>
+              <div className="stat-label">Open</div>
+            </div>
+          </div>
         </div>
         <div className="stat-card stat-progress">
-          <div className="stat-value">{stats.inProgress}</div>
-          <div className="stat-label">In Progress</div>
+          <div className="stat-card-row">
+            <div className="stat-icon-wrapper stat-icon-progress">
+              <Loader size={24} />
+            </div>
+            <div className="stat-content">
+              <div className="stat-value">{stats.inProgress}</div>
+              <div className="stat-label">In Progress</div>
+            </div>
+          </div>
         </div>
         <div className="stat-card stat-hold">
-          <div className="stat-value">{stats.onHold}</div>
-          <div className="stat-label">On Hold</div>
+          <div className="stat-card-row">
+            <div className="stat-icon-wrapper stat-icon-hold">
+              <Pause size={24} />
+            </div>
+            <div className="stat-content">
+              <div className="stat-value">{stats.onHold}</div>
+              <div className="stat-label">On Hold</div>
+            </div>
+          </div>
         </div>
         {stats.overdue > 0 && (
           <div className="stat-card stat-overdue">
-            <div className="stat-value">{stats.overdue}</div>
-            <div className="stat-label">Overdue</div>
+            <div className="stat-card-row">
+              <div className="stat-icon-wrapper stat-icon-overdue">
+                <AlertTriangle size={24} />
+              </div>
+              <div className="stat-content">
+                <div className="stat-value">{stats.overdue}</div>
+                <div className="stat-label">Overdue</div>
+              </div>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Charts */}
+      {stats.total > 0 && (
+        <div className="charts-section">
+          <div className="chart-card">
+            <h3>Job Status Distribution</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={chartData.statusData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {chartData.statusData.map((entry) => (
+                    <Cell key={entry.key} fill={CHART_COLORS[entry.key]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem'
+                  }}
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="chart-card">
+            <h3>Active Jobs by Status</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData.barData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 12, fill: 'var(--text-secondary)' }}
+                  axisLine={{ stroke: 'var(--border-color)' }}
+                  tickLine={{ stroke: 'var(--border-color)' }}
+                />
+                <YAxis
+                  tick={{ fontSize: 12, fill: 'var(--text-secondary)' }}
+                  axisLine={{ stroke: 'var(--border-color)' }}
+                  tickLine={{ stroke: 'var(--border-color)' }}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem'
+                  }}
+                />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  {chartData.barData.map((entry, index) => (
+                    <Cell key={index} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Overdue Alert */}
       {overdueCards.length > 0 && (
@@ -269,98 +411,6 @@ export default function Dashboard() {
           )}
         </div>
       </div>
-
-      <style>{`
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-          gap: 1rem;
-        }
-
-        .stat-card {
-          background: var(--surface);
-          border-radius: var(--radius-lg);
-          padding: 1.25rem;
-          box-shadow: var(--shadow);
-          border: 1px solid var(--border-color);
-        }
-
-        .stat-hero {
-          grid-column: 1 / -1;
-          background: var(--primary-color);
-          color: var(--text-inverse);
-          border-color: var(--primary-color);
-        }
-
-        .stat-hero .stat-value {
-          color: var(--text-inverse);
-          font-size: 2.5rem;
-        }
-
-        .stat-hero .stat-label {
-          color: rgba(255, 255, 255, 0.7);
-        }
-
-        .stat-value {
-          font-size: 2rem;
-          font-weight: 700;
-          color: var(--text-primary);
-        }
-
-        .stat-label {
-          font-size: var(--text-sm);
-          color: var(--text-secondary);
-          margin-top: 0.25rem;
-          font-weight: 500;
-        }
-
-        .stat-quotes .stat-value {
-          color: var(--text-secondary);
-        }
-
-        .stat-open .stat-value {
-          color: var(--warning-color);
-        }
-
-        .stat-progress .stat-value {
-          color: var(--primary-accent);
-        }
-
-        .stat-hold .stat-value {
-          color: var(--text-secondary);
-        }
-
-        .stat-overdue {
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid var(--danger-color);
-        }
-
-        .stat-overdue .stat-value {
-          color: var(--danger-color);
-        }
-
-        .overdue-card {
-          border: 1px solid var(--danger-color);
-        }
-
-        .overdue-header {
-          background: rgba(239, 68, 68, 0.1) !important;
-        }
-
-        .overdue-header h2 {
-          color: var(--danger-color) !important;
-        }
-
-        @media (max-width: 768px) {
-          .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .stat-hero {
-            grid-column: 1 / -1;
-          }
-        }
-      `}</style>
 
       <JobCardModal
         isOpen={isModalOpen}
