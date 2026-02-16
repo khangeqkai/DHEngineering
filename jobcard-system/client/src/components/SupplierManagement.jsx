@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
+import ConfirmDialog from './common/ConfirmDialog';
+import { useConfirmDialog } from '../hooks/useConfirmDialog';
 
 export default function SupplierManagement() {
   const [suppliers, setSuppliers] = useState([]);
@@ -21,6 +23,7 @@ export default function SupplierManagement() {
   const [saving, setSaving] = useState(false);
   const [showCustomTagInput, setShowCustomTagInput] = useState(false);
   const [customTagName, setCustomTagName] = useState('');
+  const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   const loadData = useCallback(async () => {
     try {
@@ -80,7 +83,13 @@ export default function SupplierManagement() {
   };
 
   const handleDelete = async (supplier) => {
-    if (!confirm(`Are you sure you want to PERMANENTLY delete "${supplier.name}"? This cannot be undone.`)) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Supplier Permanently',
+      message: `Are you sure you want to PERMANENTLY delete "${supplier.name}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger'
+    });
+    if (!confirmed) return;
 
     try {
       await api.deleteSupplier(supplier.id);
@@ -451,6 +460,17 @@ export default function SupplierManagement() {
           }
         }
       `}</style>
+
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmLabel={dialogState.confirmLabel}
+        cancelLabel={dialogState.cancelLabel}
+        confirmVariant={dialogState.confirmVariant}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }

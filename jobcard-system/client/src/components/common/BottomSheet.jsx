@@ -6,6 +6,7 @@ export default function BottomSheet({
   onClose,
   title,
   size = 'compact',
+  closeOnOverlayClick = true,
   children
 }) {
   const handleEscape = useCallback((e) => {
@@ -28,14 +29,19 @@ export default function BottomSheet({
 
   if (!isOpen) return null;
 
+  const handleOverlayClick = closeOnOverlayClick ? onClose : undefined;
+
   return createPortal(
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleOverlayClick}>
       <div
         className={`modal-popup modal-${size}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
-          <h2>{title}</h2>
+          <h2 id="modal-title">{title}</h2>
           <button
             className="modal-close"
             onClick={onClose}

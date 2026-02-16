@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
+import ConfirmDialog from './common/ConfirmDialog';
+import { useConfirmDialog } from '../hooks/useConfirmDialog';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -17,6 +19,7 @@ export default function UserManagement() {
     role: 'user'
   });
   const [saving, setSaving] = useState(false);
+  const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   useEffect(() => {
     loadUsers();
@@ -36,6 +39,13 @@ export default function UserManagement() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Client-side validation
+    if (!editingUser && formData.password.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -67,7 +77,13 @@ export default function UserManagement() {
   };
 
   const handleDeactivate = async (user) => {
-    if (!confirm(`Are you sure you want to deactivate user "${user.username}"?`)) return;
+    const confirmed = await showConfirm({
+      title: 'Deactivate User',
+      message: `Are you sure you want to deactivate user "${user.username}"?`,
+      confirmLabel: 'Deactivate',
+      confirmVariant: 'warning'
+    });
+    if (!confirmed) return;
 
     try {
       await api.deactivateUser(user.id);
@@ -89,7 +105,13 @@ export default function UserManagement() {
   };
 
   const handleDelete = async (user) => {
-    if (!confirm(`Are you sure you want to PERMANENTLY delete user "${user.username}"? This cannot be undone.`)) return;
+    const confirmed = await showConfirm({
+      title: 'Delete User Permanently',
+      message: `Are you sure you want to PERMANENTLY delete user "${user.username}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger'
+    });
+    if (!confirmed) return;
 
     try {
       await api.deleteUser(user.id);
@@ -301,6 +323,17 @@ export default function UserManagement() {
           }
         }
       `}</style>
+
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmLabel={dialogState.confirmLabel}
+        cancelLabel={dialogState.cancelLabel}
+        confirmVariant={dialogState.confirmVariant}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }

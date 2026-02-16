@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import BottomSheet from '../common/BottomSheet';
+import ConfirmDialog from '../common/ConfirmDialog';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import './JobCardModal.css';
 import { useCamera } from './useCamera';
 import { useCosting } from './useCosting';
@@ -35,6 +37,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const camera = useCamera();
   const contactHook = useContactSearch();
   const formHook = useJobCardForm();
+  const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   // Load reference data on mount
   useEffect(() => {
@@ -225,8 +228,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   };
 
   const costingHook = useCosting(jobCardId, apiCostingOperations);
-  const subcontract = useSubcontracts(jobCardId, apiSubcontractOperations);
-  const timeEntry = useTimeEntries(jobCardId, apiTimeEntryOperations);
+  const subcontract = useSubcontracts(jobCardId, { ...apiSubcontractOperations, showConfirm });
+  const timeEntry = useTimeEntries(jobCardId, { ...apiTimeEntryOperations, showConfirm });
   const { resetSubcontracts } = subcontract;
   const { resetTimeEntries } = timeEntry;
   const { resetCosting } = costingHook;
@@ -311,9 +314,13 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
       // Smart detection: Check if user edited a selected contact and changed the name
       if (contactHook.hasContactNameChanged()) {
-        const saveNew = window.confirm(
-          `Save "${contactHook.contactFormData.contactName}" as a new contact?`
-        );
+        const saveNew = await showConfirm({
+          title: 'Save New Contact',
+          message: `Save "${contactHook.contactFormData.contactName}" as a new contact?`,
+          confirmLabel: 'Save',
+          cancelLabel: 'No',
+          confirmVariant: 'primary'
+        });
         if (saveNew) {
           // Create new contact
           const newContact = await api.createContact({
@@ -402,7 +409,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const buildTitle = () => isEdit ? `Edit: ${formHook.jobNumber}` : 'New Job Card';
   return (
     <>
-      <BottomSheet isOpen={isOpen} onClose={onClose} title={buildTitle()} size="large">
+      <BottomSheet isOpen={isOpen} onClose={onClose} title={buildTitle()} size="large" closeOnOverlayClick={false}>
         {loading ? (
           <div className="loading" style={{ padding: '2rem' }}>Loading...</div>
         ) : (
@@ -545,6 +552,17 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmLabel={dialogState.confirmLabel}
+        cancelLabel={dialogState.cancelLabel}
+        confirmVariant={dialogState.confirmVariant}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </>
   );
 }

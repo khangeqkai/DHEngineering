@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
+import ConfirmDialog from './common/ConfirmDialog';
+import { useConfirmDialog } from '../hooks/useConfirmDialog';
 
 export default function ContactManagement() {
   const [contacts, setContacts] = useState([]);
@@ -19,6 +21,7 @@ export default function ContactManagement() {
     notes: ''
   });
   const [saving, setSaving] = useState(false);
+  const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   // Load contacts on mount
   useEffect(() => {
@@ -81,7 +84,13 @@ export default function ContactManagement() {
     const displayName = contact.companyName
       ? `${contact.contactName} (${contact.companyName})`
       : contact.contactName;
-    if (!confirm(`Are you sure you want to deactivate "${displayName}"?`)) return;
+    const confirmed = await showConfirm({
+      title: 'Deactivate Contact',
+      message: `Are you sure you want to deactivate "${displayName}"?`,
+      confirmLabel: 'Deactivate',
+      confirmVariant: 'warning'
+    });
+    if (!confirmed) return;
 
     try {
       await api.deactivateContact(contact.id);
@@ -106,7 +115,13 @@ export default function ContactManagement() {
     const displayName = contact.companyName
       ? `${contact.contactName} (${contact.companyName})`
       : contact.contactName;
-    if (!confirm(`Are you sure you want to PERMANENTLY delete "${displayName}"? This cannot be undone.`)) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Contact Permanently',
+      message: `Are you sure you want to PERMANENTLY delete "${displayName}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger'
+    });
+    if (!confirmed) return;
 
     try {
       await api.deleteContact(contact.id);
@@ -384,6 +399,17 @@ export default function ContactManagement() {
           }
         }
       `}</style>
+
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmLabel={dialogState.confirmLabel}
+        cancelLabel={dialogState.cancelLabel}
+        confirmVariant={dialogState.confirmVariant}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }

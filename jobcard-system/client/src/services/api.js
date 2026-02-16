@@ -26,8 +26,10 @@ class ApiService {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || 'Request failed');
+      const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
+      const details = errorData.details?.join('. ') || '';
+      const message = details || errorData.error || 'Request failed';
+      throw new Error(message);
     }
 
     return response.json();

@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { getDefaultTimeEntryForm } from './mappers';
 
-export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry }) {
+export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, showConfirm }) {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
   const [editingTimeEntryId, setEditingTimeEntryId] = useState(null);
   const [timeEntryForm, setTimeEntryForm] = useState(getDefaultTimeEntryForm());
@@ -94,8 +94,18 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry]);
 
   const handleDeleteTimeEntry = useCallback(async (entryId) => {
-    if (!confirm('Delete this time entry?')) return;
     if (!jobCardId) return;
+
+    // Use custom confirm dialog if available, otherwise fall back to native confirm
+    const confirmed = showConfirm
+      ? await showConfirm({
+          title: 'Delete Time Entry',
+          message: 'Delete this time entry?',
+          confirmLabel: 'Delete',
+          confirmVariant: 'danger'
+        })
+      : window.confirm('Delete this time entry?');
+    if (!confirmed) return;
 
     try {
       await deleteTimeEntry(entryId);
@@ -103,7 +113,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       console.error('Failed to delete time entry:', err);
       toast.error(err.message || 'Failed to delete time entry');
     }
-  }, [jobCardId, deleteTimeEntry]);
+  }, [jobCardId, deleteTimeEntry, showConfirm]);
 
   const resetTimeEntries = useCallback(() => {
     resetTimeEntryForm();

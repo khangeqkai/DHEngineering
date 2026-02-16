@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { getDefaultSubcontractForm } from './mappers';
 
-export function useSubcontracts(jobCardId, { addSubcontract, updateSubcontract, deleteSubcontract } = {}) {
+export function useSubcontracts(jobCardId, { addSubcontract, updateSubcontract, deleteSubcontract, showConfirm } = {}) {
   const [showSubcontractForm, setShowSubcontractForm] = useState(false);
   const [editingSubcontractId, setEditingSubcontractId] = useState(null);
   const [subcontractForm, setSubcontractForm] = useState(getDefaultSubcontractForm());
@@ -65,8 +65,18 @@ export function useSubcontracts(jobCardId, { addSubcontract, updateSubcontract, 
   }, [jobCardId, subcontractForm, editingSubcontractId, resetSubcontractForm, addSubcontract, updateSubcontract]);
 
   const handleDeleteSubcontract = useCallback(async (subId) => {
-    if (!confirm('Delete this subcontract?')) return;
     if (!jobCardId) return;
+
+    // Use custom confirm dialog if available, otherwise fall back to native confirm
+    const confirmed = showConfirm
+      ? await showConfirm({
+          title: 'Delete Subcontract',
+          message: 'Delete this subcontract?',
+          confirmLabel: 'Delete',
+          confirmVariant: 'danger'
+        })
+      : window.confirm('Delete this subcontract?');
+    if (!confirmed) return;
 
     try {
       // Use operation passed from parent
@@ -77,7 +87,7 @@ export function useSubcontracts(jobCardId, { addSubcontract, updateSubcontract, 
       console.error('Failed to delete subcontract:', err);
       toast.error(err.message || 'Failed to delete subcontract');
     }
-  }, [jobCardId, deleteSubcontract]);
+  }, [jobCardId, deleteSubcontract, showConfirm]);
 
   const resetSubcontracts = useCallback(() => {
     resetSubcontractForm();

@@ -3,6 +3,8 @@ import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
+import ConfirmDialog from './common/ConfirmDialog';
+import { useConfirmDialog } from '../hooks/useConfirmDialog';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
@@ -38,6 +40,7 @@ export default function JobCardList() {
   const [editingCardId, setEditingCardId] = useState(null);
   const [jobcards, setJobcards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   const loadJobcards = async () => {
     try {
@@ -57,7 +60,13 @@ export default function JobCardList() {
   }, [showArchived]);
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this job card?')) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Job Card',
+      message: 'Are you sure you want to delete this job card?',
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger'
+    });
+    if (!confirmed) return;
 
     try {
       await api.deleteJobcard(id);
@@ -356,6 +365,17 @@ export default function JobCardList() {
         onClose={() => setIsModalOpen(false)}
         jobCardId={editingCardId}
         onSuccess={handleModalSuccess}
+      />
+
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmLabel={dialogState.confirmLabel}
+        cancelLabel={dialogState.cancelLabel}
+        confirmVariant={dialogState.confirmVariant}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
       />
     </div>
   );
