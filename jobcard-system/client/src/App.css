@@ -1005,22 +1005,16 @@
   padding: 0.875rem 1.25rem;
   border-top: 1px solid var(--border-color);
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
-.modal-footer-left {
-  display: flex;
-  gap: 0.5rem;
+.modal-footer > .btn {
+  flex: 1;
 }
 
-.modal-footer-right {
-  display: flex;
-  gap: 0.75rem;
-}
 
 /* Mobile Modal */
 @media (max-width: 768px) {

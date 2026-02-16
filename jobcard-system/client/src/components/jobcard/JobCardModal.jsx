@@ -544,7 +544,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
             </BottomSheet.Body>
 
             <BottomSheet.Footer>
-              <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
               <button type="submit" className="btn btn-primary" disabled={saving}>
                 {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
               </button>

@@ -361,7 +361,6 @@ export default function SupplierManagement() {
           </form>
         </BottomSheet.Body>
         <BottomSheet.Footer>
-          <button className="btn btn-secondary" onClick={resetForm}>Cancel</button>
           <button
             type="submit"
             form="supplier-form"

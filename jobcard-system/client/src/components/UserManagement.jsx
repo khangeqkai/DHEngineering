@@ -236,7 +236,6 @@ export default function UserManagement() {
           </form>
         </BottomSheet.Body>
         <BottomSheet.Footer>
-          <button className="btn btn-secondary" onClick={resetForm}>Cancel</button>
           <button
             type="submit"
             form="user-form"

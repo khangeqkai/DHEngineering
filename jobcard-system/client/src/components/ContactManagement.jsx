@@ -224,7 +224,6 @@ export default function ContactManagement() {
           </form>
         </BottomSheet.Body>
         <BottomSheet.Footer>
-          <button className="btn btn-secondary" onClick={resetForm}>Cancel</button>
           <button
             type="submit"
             form="contact-form"
