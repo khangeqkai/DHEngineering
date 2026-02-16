@@ -9,7 +9,6 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog';
 export default function ContactManagement() {
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showInactive, setShowInactive] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [formData, setFormData] = useState({
@@ -31,7 +30,7 @@ export default function ContactManagement() {
   const loadContacts = async () => {
     setLoading(true);
     try {
-      const data = await api.getContacts(true); // includeInactive = true
+      const data = await api.getContacts();
       setContacts(data);
     } catch (err) {
       console.error('Failed to load contacts:', err);
@@ -40,11 +39,6 @@ export default function ContactManagement() {
       setLoading(false);
     }
   };
-
-  // Filter contacts based on showInactive toggle
-  const filteredContacts = showInactive
-    ? contacts
-    : contacts.filter(c => c.active === 1 || c.active === true);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -79,44 +73,13 @@ export default function ContactManagement() {
     setShowForm(true);
   };
 
-  const handleDeactivate = async (contact) => {
-    const displayName = contact.companyName
-      ? `${contact.contactName} (${contact.companyName})`
-      : contact.contactName;
-    const confirmed = await showConfirm({
-      title: 'Deactivate Contact',
-      message: `Are you sure you want to deactivate "${displayName}"?`,
-      confirmLabel: 'Deactivate',
-      confirmVariant: 'warning'
-    });
-    if (!confirmed) return;
-
-    try {
-      await api.deactivateContact(contact.id);
-      await loadContacts();
-    } catch (err) {
-      console.error('Failed to deactivate contact:', err);
-      toast.error(err.message || 'Failed to deactivate contact');
-    }
-  };
-
-  const handleActivate = async (contact) => {
-    try {
-      await api.activateContact(contact.id);
-      await loadContacts();
-    } catch (err) {
-      console.error('Failed to activate contact:', err);
-      toast.error(err.message || 'Failed to activate contact');
-    }
-  };
-
   const handleDelete = async (contact) => {
     const displayName = contact.companyName
       ? `${contact.contactName} (${contact.companyName})`
       : contact.contactName;
     const confirmed = await showConfirm({
-      title: 'Delete Contact Permanently',
-      message: `Are you sure you want to PERMANENTLY delete "${displayName}"? This cannot be undone.`,
+      title: 'Delete Contact',
+      message: `Are you sure you want to delete "${displayName}"? This cannot be undone.`,
       confirmLabel: 'Delete',
       confirmVariant: 'danger'
     });
@@ -151,14 +114,6 @@ export default function ContactManagement() {
   return (
     <div className="contact-management">
       <PageHeader title="Contacts">
-        <label className="show-inactive-label">
-          <input
-            type="checkbox"
-            checked={showInactive}
-            onChange={(e) => setShowInactive(e.target.checked)}
-          />
-          Show inactive
-        </label>
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
           + Add Contact
         </button>
@@ -263,31 +218,25 @@ export default function ContactManagement() {
                 <th>Company</th>
                 <th>Phone</th>
                 <th>Email</th>
-                <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredContacts.length === 0 ? (
+              {contacts.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No contacts found
                   </td>
                 </tr>
               ) : (
-                filteredContacts.map((contact) => (
-                  <tr key={contact.id} style={{ opacity: contact.active ? 1 : 0.6 }}>
+                contacts.map((contact) => (
+                  <tr key={contact.id}>
                     <td>
                       <strong>{contact.contactName}</strong>
                     </td>
                     <td>{contact.companyName || '-'}</td>
                     <td>{contact.phone || '-'}</td>
                     <td>{contact.email || '-'}</td>
-                    <td>
-                      <span className={`badge ${contact.active ? 'badge-completed' : 'badge-cancelled'}`}>
-                        {contact.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
                     <td>
                       <div className="action-buttons">
                         <button
@@ -296,21 +245,6 @@ export default function ContactManagement() {
                         >
                           Edit
                         </button>
-                        {contact.active ? (
-                          <button
-                            className="btn btn-warning btn-sm"
-                            onClick={() => handleDeactivate(contact)}
-                          >
-                            Deactivate
-                          </button>
-                        ) : (
-                          <button
-                            className="btn btn-success btn-sm"
-                            onClick={() => handleActivate(contact)}
-                          >
-                            Activate
-                          </button>
-                        )}
                         <button
                           className="btn btn-danger btn-sm"
                           onClick={() => handleDelete(contact)}
@@ -328,14 +262,6 @@ export default function ContactManagement() {
       </div>
 
       <style>{`
-        .show-inactive-label {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.875rem;
-          cursor: pointer;
-        }
-
         .form-row {
           display: grid;
           grid-template-columns: 1fr 1fr;

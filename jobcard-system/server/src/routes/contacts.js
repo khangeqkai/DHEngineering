@@ -16,7 +16,6 @@ const toApiFormat = (c) => ({
   email: c.email,
   address: c.address,
   notes: c.notes,
-  active: c.active,
   createdAt: c.created_at,
   updatedAt: c.updated_at
 });
@@ -27,10 +26,7 @@ router.use(authenticate);
 // GET /api/contacts - Get all contacts
 router.get('/', (req, res) => {
   try {
-    const includeInactive = req.query.includeInactive === 'true';
-    const contacts = includeInactive
-      ? contactQueries.getAllIncludeInactive.all()
-      : contactQueries.getAll.all();
+    const contacts = contactQueries.getAll.all();
     res.json(contacts.map(toApiFormat));
   } catch (err) {
     logger.error({ err }, 'Failed to get contacts');
@@ -127,50 +123,6 @@ router.put('/:id', validateUpdateContact, (req, res) => {
   } catch (err) {
     logger.error({ err }, 'Failed to update contact');
     res.status(500).json({ error: 'Failed to update contact' });
-  }
-});
-
-// POST /api/contacts/:id/deactivate - Deactivate contact
-router.post('/:id/deactivate', (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const existing = contactQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Contact not found' });
-    }
-
-    contactQueries.deactivate.run(id);
-    const contact = contactQueries.getById.get(id);
-
-    recordHistory('contact', id, 'deactivated', req.user.id, req.user.name || req.user.username, null, toApiFormat(contact));
-
-    res.json(toApiFormat(contact));
-  } catch (err) {
-    logger.error({ err }, 'Failed to deactivate contact');
-    res.status(500).json({ error: 'Failed to deactivate contact' });
-  }
-});
-
-// POST /api/contacts/:id/activate - Activate contact
-router.post('/:id/activate', (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const existing = contactQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Contact not found' });
-    }
-
-    contactQueries.activate.run(id);
-    const contact = contactQueries.getById.get(id);
-
-    recordHistory('contact', id, 'activated', req.user.id, req.user.name || req.user.username, null, toApiFormat(contact));
-
-    res.json(toApiFormat(contact));
-  } catch (err) {
-    logger.error({ err }, 'Failed to activate contact');
-    res.status(500).json({ error: 'Failed to activate contact' });
   }
 });
 

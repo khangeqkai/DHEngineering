@@ -39,13 +39,12 @@ const userQueries = {
 const contactQueries = {
   getById: db.prepare('SELECT * FROM contacts WHERE id = ?'),
   getByName: db.prepare('SELECT * FROM contacts WHERE contact_name = ?'),
-  getAll: db.prepare('SELECT * FROM contacts WHERE active = 1 ORDER BY contact_name ASC'),
-  getAllIncludeInactive: db.prepare('SELECT * FROM contacts ORDER BY contact_name ASC'),
+  getAll: db.prepare('SELECT * FROM contacts ORDER BY contact_name ASC'),
 
   // Search by contact name OR company name
   search: db.prepare(`
     SELECT * FROM contacts
-    WHERE active = 1 AND (contact_name LIKE ? OR company_name LIKE ?)
+    WHERE contact_name LIKE ? OR company_name LIKE ?
     ORDER BY contact_name ASC
     LIMIT 20
   `),
@@ -61,8 +60,6 @@ const contactQueries = {
     WHERE id = ?
   `),
 
-  deactivate: db.prepare(`UPDATE contacts SET active = 0, updated_at = datetime('now') WHERE id = ?`),
-  activate: db.prepare(`UPDATE contacts SET active = 1, updated_at = datetime('now') WHERE id = ?`),
   delete: db.prepare('DELETE FROM contacts WHERE id = ?')
 };
 

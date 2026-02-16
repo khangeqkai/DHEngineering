@@ -292,8 +292,8 @@ class ApiService {
   }
 
   // Contact endpoints (phone contacts style)
-  getContacts(includeInactive = false) {
-    return this.request(`/contacts${includeInactive ? '?includeInactive=true' : ''}`);
+  getContacts() {
+    return this.request('/contacts');
   }
 
   searchContacts(query) {
@@ -315,18 +315,6 @@ class ApiService {
     return this.request(`/contacts/${id}`, {
       method: 'PUT',
       body: JSON.stringify(contactData)
-    });
-  }
-
-  deactivateContact(id) {
-    return this.request(`/contacts/${id}/deactivate`, {
-      method: 'POST'
-    });
-  }
-
-  activateContact(id) {
-    return this.request(`/contacts/${id}/activate`, {
-      method: 'POST'
     });
   }
 
