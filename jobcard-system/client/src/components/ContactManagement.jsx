@@ -261,26 +261,6 @@ export default function ContactManagement() {
         </div>
       </div>
 
-      <style>{`
-        .form-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1rem;
-        }
-
-        .action-buttons {
-          display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-        }
-
-        @media (max-width: 768px) {
-          .form-row {
-            grid-template-columns: 1fr;
-          }
-        }
-      `}</style>
-
       <ConfirmDialog
         isOpen={dialogState.isOpen}
         title={dialogState.title}

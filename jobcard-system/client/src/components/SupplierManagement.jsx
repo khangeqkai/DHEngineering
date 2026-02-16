@@ -365,18 +365,6 @@ export default function SupplierManagement() {
       </div>
 
       <style>{`
-        .form-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1rem;
-        }
-
-        .action-buttons {
-          display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-        }
-
         .services-cell {
           max-width: 300px;
         }
@@ -388,7 +376,7 @@ export default function SupplierManagement() {
           padding: 0.5rem;
           border: 1px solid var(--border-color);
           border-radius: 4px;
-          background: var(--bg-secondary);
+          background: var(--surface-inset);
         }
 
         .tag-chip {
@@ -398,7 +386,7 @@ export default function SupplierManagement() {
           padding: 0.375rem 0.75rem;
           border: 1px solid var(--border-color);
           border-radius: 16px;
-          background: var(--bg-primary);
+          background: var(--surface);
           color: var(--text-primary);
           font-size: 0.875rem;
           cursor: pointer;
@@ -460,11 +448,6 @@ export default function SupplierManagement() {
           font-size: 0.75rem;
         }
 
-        @media (max-width: 768px) {
-          .form-row {
-            grid-template-columns: 1fr;
-          }
-        }
       `}</style>
 
       <ConfirmDialog

@@ -348,25 +348,6 @@ export default function Dashboard() {
           color: var(--danger-color) !important;
         }
 
-        .overdue-row {
-          background: rgba(239, 68, 68, 0.05);
-        }
-
-        .overdue-date {
-          color: var(--danger-color);
-          font-weight: 600;
-        }
-
-        .critical-badge {
-          background: var(--danger-color);
-          color: white;
-          font-size: 0.625rem;
-          padding: 0.125rem 0.375rem;
-          border-radius: var(--radius-sm);
-          margin-left: 0.5rem;
-          font-weight: 600;
-        }
-
         @media (max-width: 768px) {
           .stats-grid {
             grid-template-columns: repeat(2, 1fr);

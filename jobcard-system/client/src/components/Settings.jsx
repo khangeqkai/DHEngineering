@@ -141,13 +141,14 @@ export default function Settings() {
                   Switch between light and dark theme
                 </div>
               </div>
-              <label className="toggle-switch">
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                 <input
+                  className="toggle-input"
                   type="checkbox"
                   checked={darkMode}
                   onChange={toggleDarkMode}
                 />
-                <span className="toggle-slider"></span>
+                <span className="toggle-switch"></span>
               </label>
             </div>
           </div>
@@ -405,52 +406,6 @@ export default function Settings() {
         .setting-description {
           font-size: 0.875rem;
           color: var(--text-secondary);
-        }
-
-        .toggle-switch {
-          position: relative;
-          display: inline-block;
-          width: 52px;
-          height: 28px;
-          flex-shrink: 0;
-        }
-
-        .toggle-switch input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-
-        .toggle-slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: var(--border-color);
-          transition: 0.3s;
-          border-radius: 34px;
-        }
-
-        .toggle-slider:before {
-          position: absolute;
-          content: "";
-          height: 20px;
-          width: 20px;
-          left: 4px;
-          bottom: 4px;
-          background-color: white;
-          transition: 0.3s;
-          border-radius: 50%;
-        }
-
-        .toggle-switch input:checked + .toggle-slider {
-          background-color: var(--primary-color);
-        }
-
-        .toggle-switch input:checked + .toggle-slider:before {
-          transform: translateX(24px);
         }
 
         .folder-input-group {

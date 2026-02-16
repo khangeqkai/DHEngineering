@@ -84,43 +84,6 @@ export default function ConfirmDialog({
           </button>
         </div>
       </div>
-
-      <style>{`
-        .confirm-dialog-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1100;
-        }
-
-        .confirm-dialog {
-          background: var(--card-background, #fff);
-          border-radius: 8px;
-          padding: 1.5rem;
-          max-width: 400px;
-          width: 90%;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        }
-
-        .confirm-dialog h2 {
-          margin: 0 0 0.75rem;
-          font-size: 1.25rem;
-        }
-
-        .confirm-dialog p {
-          margin: 0 0 1.5rem;
-          color: var(--text-secondary, #666);
-        }
-
-        .confirm-dialog-buttons {
-          display: flex;
-          gap: 0.75rem;
-          justify-content: flex-end;
-        }
-      `}</style>
     </div>,
     document.body
   );

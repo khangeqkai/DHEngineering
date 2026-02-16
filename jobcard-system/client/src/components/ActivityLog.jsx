@@ -26,18 +26,18 @@ export default function ActivityLog() {
 
   const formatAction = (action) => {
     const colors = {
-      create: '#16a34a',
-      update: '#2563eb',
-      delete: '#dc2626',
-      login: '#8b5cf6',
-      deactivate: '#f59e0b',
-      activate: '#10b981',
-      'add_photo': '#10b981',
-      'remove_photo': '#dc2626'
+      create: 'var(--accent-ready)',
+      update: 'var(--primary-accent)',
+      delete: 'var(--accent-caution)',
+      login: 'var(--accent-info)',
+      deactivate: 'var(--accent-safety)',
+      activate: 'var(--accent-ready)',
+      'add_photo': 'var(--accent-ready)',
+      'remove_photo': 'var(--accent-caution)'
     };
     return (
       <span style={{
-        color: colors[action] || '#64748b',
+        color: colors[action] || 'var(--text-secondary)',
         fontWeight: 500,
         textTransform: 'capitalize'
       }}>
@@ -52,14 +52,14 @@ export default function ActivityLog() {
       <div key={field} style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
         <strong>{field.replace('_', ' ')}:</strong>{' '}
         {change.changed ? (
-          <span style={{ color: '#2563eb', fontStyle: 'italic' }}>modified</span>
+          <span style={{ color: 'var(--primary-accent)', fontStyle: 'italic' }}>modified</span>
         ) : (
           <>
-            <span style={{ textDecoration: 'line-through', color: '#dc2626' }}>
+            <span style={{ textDecoration: 'line-through', color: 'var(--accent-caution)' }}>
               {change.from || '(empty)'}
             </span>
             {' → '}
-            <span style={{ color: '#16a34a' }}>{change.to || '(empty)'}</span>
+            <span style={{ color: 'var(--accent-ready)' }}>{change.to || '(empty)'}</span>
           </>
         )}
       </div>

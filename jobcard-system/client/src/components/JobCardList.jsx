@@ -381,31 +381,6 @@ export default function JobCardList() {
           margin-bottom: 0;
         }
 
-        .action-buttons {
-          display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-        }
-
-        .critical-badge {
-          background: var(--danger-color);
-          color: white;
-          font-size: 0.625rem;
-          padding: 0.125rem 0.375rem;
-          border-radius: var(--radius-sm);
-          margin-left: 0.5rem;
-          font-weight: 600;
-        }
-
-        .overdue-row {
-          background: rgba(239, 68, 68, 0.05);
-        }
-
-        .overdue-date {
-          color: var(--danger-color);
-          font-weight: 600;
-        }
-
         .overdue-label {
           display: block;
           font-size: 0.625rem;
