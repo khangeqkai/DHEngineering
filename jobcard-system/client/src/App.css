@@ -146,18 +146,20 @@
 }
 
 .nav-icon {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  min-width: 1.5rem;
-  height: 1.5rem;
+  min-width: 2rem;
+  height: 2rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  background: var(--surface-inset);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--text-secondary);
-  font-family: var(--font-sans);
+  background: var(--surface-inset);
+  transition: color var(--duration-fast) ease,
+              background-color var(--duration-fast) ease;
+}
+
+.nav-icon svg {
+  flex-shrink: 0;
 }
 
 .sidebar-nav a.active .nav-icon {
@@ -1041,7 +1043,8 @@
   }
 
   .nav-icon {
-    font-size: 0.8125rem;
+    min-width: 2.25rem;
+    height: 2.25rem;
   }
 
   .signout-btn {
