@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
 
@@ -22,6 +23,8 @@ const PRIORITY_COLORS = {
 };
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [jobcards, setJobcards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -154,7 +157,7 @@ export default function Dashboard() {
               <thead>
                 <tr>
                   <th>Job #</th>
-                  <th>Customer</th>
+                  {isAdmin && <th>Customer</th>}
                   <th>Due Date</th>
                   <th>Priority</th>
                 </tr>
@@ -172,13 +175,13 @@ export default function Dashboard() {
                       >
                         {card.jobNumber}
                       </a>
-                    </td>
-                    <td>
-                      {card.contactName || '-'}
                       {card.qualityLevel === 'CRITICAL' && (
                         <span className="critical-badge">Critical QA</span>
                       )}
                     </td>
+                    {isAdmin && (
+                      <td>{card.contactName || '-'}</td>
+                    )}
                     <td className="overdue-date">
                       {new Date(card.dueDate).toLocaleDateString()}
                     </td>
@@ -212,7 +215,7 @@ export default function Dashboard() {
               <thead>
                 <tr>
                   <th>Job #</th>
-                  <th>Customer</th>
+                  {isAdmin && <th>Customer</th>}
                   <th>Type</th>
                   <th>Status</th>
                   <th>Priority</th>
@@ -237,13 +240,13 @@ export default function Dashboard() {
                         >
                           {card.jobNumber}
                         </a>
-                      </td>
-                      <td>
-                        {card.contactName || '-'}
                         {card.qualityLevel === 'CRITICAL' && (
                           <span className="critical-badge">Critical QA</span>
                         )}
                       </td>
+                      {isAdmin && (
+                        <td>{card.contactName || '-'}</td>
+                      )}
                       <td>{card.jobType || '-'}</td>
                       <td>
                         <span className={`badge ${getStatusBadgeClass(card.status)}`}>

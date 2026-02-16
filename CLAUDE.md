@@ -90,10 +90,11 @@ All changes logged to `history` table for audit trail.
 
 ### Authentication
 - Two roles: `admin` (full access) and `user` (limited)
-- Admin-only: user management, supplier management, costing, settings, activity log
+- Admin-only: user management, supplier management, costing, settings, activity log, **contact/customer info**
 - Default credentials: `admin` / `admin123`
 - **No token persistence**: JWT stored in memory only (not localStorage). Users must log in every time they open/refresh the app. Designed for shared workstation security.
 - **Inactivity timeout**: Users auto-logout after configurable period of inactivity (default 5 min). Warning modal appears 30 seconds before logout. Activity = mouse, keyboard, touch, scroll. Timer continues when tab is hidden (security for shared workstations).
+- **Contact info hidden from non-admin**: All customer/contact data (name, company, phone, email) is stripped from API responses for non-admin users. Server nulls out contact fields in `formatJobcard()`, deletes contact fields from POST/PUT request bodies, and all `/contacts` endpoints require admin. Client hides Customer column in tables, hides Contact section in DetailsTab, and skips contact creation logic in JobCardModal submit.
 
 ## Key Patterns
 

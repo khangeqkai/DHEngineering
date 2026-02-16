@@ -45,7 +45,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       try {
         const [suppliersRes, usersRes, machinesRes] = await Promise.all([
           api.getSuppliers(),
-          api.getUsers(),
+          api.getEmployees(),
           api.getMachines()
         ]);
         setSuppliers(suppliersRes || []);
@@ -285,7 +285,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (!isEdit && !formHook.formData.jobNumber?.trim()) {
       errors.push('Job Card / Quote number is required');
     }
-    if (!formHook.formData.contactId && !contactHook.contactFormData.contactName.trim()) {
+    if (isAdmin && !formHook.formData.contactId && !contactHook.contactFormData.contactName.trim()) {
       errors.push('Contact Name is required');
     }
     if (!formHook.formData.jobType) {
@@ -312,17 +312,32 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     try {
       let contactId = formHook.formData.contactId;
 
-      // Smart detection: Check if user edited a selected contact and changed the name
-      if (contactHook.hasContactNameChanged()) {
-        const saveNew = await showConfirm({
-          title: 'Save New Contact',
-          message: `Save "${contactHook.contactFormData.contactName}" as a new contact?`,
-          confirmLabel: 'Save',
-          cancelLabel: 'No',
-          confirmVariant: 'primary'
-        });
-        if (saveNew) {
-          // Create new contact
+      if (isAdmin) {
+        // Smart detection: Check if user edited a selected contact and changed the name
+        if (contactHook.hasContactNameChanged()) {
+          const saveNew = await showConfirm({
+            title: 'Save New Contact',
+            message: `Save "${contactHook.contactFormData.contactName}" as a new contact?`,
+            confirmLabel: 'Save',
+            cancelLabel: 'No',
+            confirmVariant: 'primary'
+          });
+          if (saveNew) {
+            // Create new contact
+            const newContact = await api.createContact({
+              contactName: contactHook.contactFormData.contactName.trim(),
+              companyName: contactHook.contactFormData.companyName || null,
+              phone: contactHook.contactFormData.phone || null,
+              email: contactHook.contactFormData.email || null
+            });
+            contactId = newContact.id;
+            toast.success('New contact saved');
+          }
+          // If not saving as new, keep the original contactId but use override fields
+        }
+
+        // Create new contact if no contact selected and contact name provided
+        if (!contactId && contactHook.contactFormData.contactName.trim()) {
           const newContact = await api.createContact({
             contactName: contactHook.contactFormData.contactName.trim(),
             companyName: contactHook.contactFormData.companyName || null,
@@ -330,29 +345,19 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
             email: contactHook.contactFormData.email || null
           });
           contactId = newContact.id;
-          toast.success('New contact saved');
         }
-        // If not saving as new, keep the original contactId but use override fields
       }
 
-      // Create new contact if no contact selected and contact name provided
-      if (!contactId && contactHook.contactFormData.contactName.trim()) {
-        const newContact = await api.createContact({
-          contactName: contactHook.contactFormData.contactName.trim(),
-          companyName: contactHook.contactFormData.companyName || null,
-          phone: contactHook.contactFormData.phone || null,
-          email: contactHook.contactFormData.email || null
-        });
-        contactId = newContact.id;
-      }
       const jobcardData = {
         jobNumber: formHook.formData.jobNumber,
         status: formHook.formData.status,
-        contactId: contactId,
-        contactName: contactHook.contactFormData.contactName,
-        companyName: contactHook.contactFormData.companyName,
-        contactPhone: contactHook.contactFormData.phone,
-        contactEmail: contactHook.contactFormData.email,
+        ...(isAdmin && {
+          contactId: contactId,
+          contactName: contactHook.contactFormData.contactName,
+          companyName: contactHook.contactFormData.companyName,
+          contactPhone: contactHook.contactFormData.phone,
+          contactEmail: contactHook.contactFormData.email,
+        }),
         qualityLevel: formHook.formData.qualityLevel,
         jobType: formHook.formData.jobType,
         priority: formHook.formData.priority,
@@ -428,6 +433,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               {(activeTab === 'details' || !isEdit) && (
                 <DetailsTab
                   isEdit={isEdit}
+                  isAdmin={isAdmin}
                   jobNumber={formHook.jobNumber}
                   formData={formHook.formData}
                   setFormData={formHook.setFormData}

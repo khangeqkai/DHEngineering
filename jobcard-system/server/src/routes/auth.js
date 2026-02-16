@@ -139,6 +139,22 @@ router.get('/me', authenticate, (req, res) => {
   }
 });
 
+// List active employees (all authenticated users) - lightweight for dropdowns
+router.get('/employees', authenticate, (req, res) => {
+  try {
+    const users = userQueries.getAllActive.all();
+    res.json(users.map(user => ({
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      active: true
+    })));
+  } catch (err) {
+    logger.error({ err }, 'List employees error');
+    res.status(500).json({ error: 'Failed to list employees' });
+  }
+});
+
 // List all users (admin only)
 router.get('/users', authenticate, requireRole('admin'), (req, res) => {
   try {

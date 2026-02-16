@@ -52,6 +52,11 @@ class ApiService {
     return this.request(`/auth/users${includeInactive ? '?includeInactive=true' : ''}`);
   }
 
+  // Active employees list (available to all authenticated users)
+  getEmployees() {
+    return this.request('/auth/employees');
+  }
+
   getUser(id) {
     return this.request(`/auth/users/${id}`);
   }
@@ -121,7 +126,7 @@ class ApiService {
 
   updateJobcardStatus(id, status) {
     return this.request(`/jobcards/${id}/status`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify({ status })
     });
   }

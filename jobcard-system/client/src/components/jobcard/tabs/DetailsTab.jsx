@@ -11,6 +11,7 @@ import { toTitleCase, capitalizeFirst } from '../../../utils/formatters';
 
 export default function DetailsTab({
   isEdit,
+  isAdmin,
   jobNumber,
   formData,
   setFormData,
@@ -129,7 +130,8 @@ export default function DetailsTab({
         </div>
       </div>
 
-      {/* Contact Section - Phone Contacts Style */}
+      {/* Contact Section - Phone Contacts Style (admin only) */}
+      {isAdmin && (
       <div className="form-section">
         <h3 className="form-section-title">Contact <span className="required">*</span></h3>
 
@@ -223,6 +225,7 @@ export default function DetailsTab({
           </div>
         </div>
       </div>
+      )}
 
       {/* Job Details Section */}
       <div className="form-section">

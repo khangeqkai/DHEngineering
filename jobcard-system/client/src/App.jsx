@@ -79,7 +79,14 @@ function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="jobcards" element={<JobCardList />} />
-        <Route path="contacts" element={<ContactManagement />} />
+        <Route
+          path="contacts"
+          element={
+            <AdminRoute>
+              <ContactManagement />
+            </AdminRoute>
+          }
+        />
         <Route
           path="suppliers"
           element={

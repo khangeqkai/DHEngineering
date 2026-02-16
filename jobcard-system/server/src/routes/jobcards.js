@@ -16,22 +16,23 @@ const {
 const router = express.Router();
 
 // Helper to format jobcard response
-function formatJobcard(row, items = [], assignees = [], subcontracts = []) {
+function formatJobcard(row, items = [], assignees = [], subcontracts = [], userRole = 'user') {
+  const isAdmin = userRole === 'admin';
   return {
     _id: row.id,
     id: row.id,
     jobNumber: row.job_number,
     cardType: row.card_type,
     status: row.status,
-    contactId: row.contact_id,
+    contactId: isAdmin ? row.contact_id : null,
     // Contact info from job card (override values)
-    contactName: row.contact_name,
-    companyName: row.company_name,
-    contactPhone: row.contact_phone,
-    contactEmail: row.contact_email,
+    contactName: isAdmin ? row.contact_name : null,
+    companyName: isAdmin ? row.company_name : null,
+    contactPhone: isAdmin ? row.contact_phone : null,
+    contactEmail: isAdmin ? row.contact_email : null,
     // Contact info from linked contact (for display)
-    storedContactName: row.stored_contact_name,
-    storedCompanyName: row.stored_company_name,
+    storedContactName: isAdmin ? row.stored_contact_name : null,
+    storedCompanyName: isAdmin ? row.stored_company_name : null,
     qualityLevel: row.quality_level,
     jobType: row.job_type,
     priority: row.priority,
@@ -95,7 +96,7 @@ router.get('/', authenticate, (req, res) => {
       jobcards = jobcardQueries.getAll.all();
     }
 
-    res.json(jobcards.map(jc => formatJobcard(jc)));
+    res.json(jobcards.map(jc => formatJobcard(jc, [], [], [], req.user.role)));
   } catch (err) {
     logger.error({ err }, 'Get jobcards error');
     res.status(500).json({ error: 'Failed to get job cards' });
@@ -106,7 +107,7 @@ router.get('/', authenticate, (req, res) => {
 router.get('/overdue', authenticate, (req, res) => {
   try {
     const jobcards = jobcardQueries.getOverdue.all();
-    res.json(jobcards.map(jc => formatJobcard(jc)));
+    res.json(jobcards.map(jc => formatJobcard(jc, [], [], [], req.user.role)));
   } catch (err) {
     logger.error({ err }, 'Get overdue jobcards error');
     res.status(500).json({ error: 'Failed to get overdue job cards' });
@@ -126,7 +127,7 @@ router.get('/:id', authenticate, (req, res) => {
     const assignees = jobAssigneeQueries.getByJobcard.all(req.params.id);
     const subcontracts = subcontractQueries.getByJobcard.all(req.params.id);
 
-    res.json(formatJobcard(jobcard, items, assignees, subcontracts));
+    res.json(formatJobcard(jobcard, items, assignees, subcontracts, req.user.role));
   } catch (err) {
     logger.error({ err }, 'Get jobcard error');
     res.status(500).json({ error: 'Failed to get job card' });
@@ -157,6 +158,15 @@ router.get('/:id/history', authenticate, (req, res) => {
 router.post('/', authenticate, (req, res) => {
   try {
     const data = req.body;
+
+    // Non-admin users cannot set contact fields
+    if (req.user.role !== 'admin') {
+      delete data.contactId;
+      delete data.contactName;
+      delete data.companyName;
+      delete data.contactPhone;
+      delete data.contactEmail;
+    }
 
     // Job number from user input (required)
     const jobNumber = data.jobNumber;
@@ -272,7 +282,7 @@ router.post('/', authenticate, (req, res) => {
       status
     });
 
-    res.status(201).json(formatJobcard(jobcard, items, assignees, subcontracts));
+    res.status(201).json(formatJobcard(jobcard, items, assignees, subcontracts, req.user.role));
   } catch (err) {
     logger.error({ err }, 'Create jobcard error');
     res.status(500).json({ error: 'Failed to create job card' });
@@ -285,9 +295,23 @@ router.put('/:id', authenticate, (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
+    // Non-admin users cannot set contact fields
+    if (req.user.role !== 'admin') {
+      delete data.contactId;
+      delete data.contactName;
+      delete data.companyName;
+      delete data.contactPhone;
+      delete data.contactEmail;
+    }
+
     const existing = jobcardQueries.getById.get(id);
     if (!existing) {
       return res.status(404).json({ error: 'Job card not found' });
+    }
+
+    // Non-admin users cannot change status
+    if (data.status !== undefined && data.status !== existing.status && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can change job card status' });
     }
 
     // Track changes
@@ -372,7 +396,7 @@ router.put('/:id', authenticate, (req, res) => {
     const assignees = jobAssigneeQueries.getByJobcard.all(id);
     const subcontracts = subcontractQueries.getByJobcard.all(id);
 
-    res.json(formatJobcard(updated, items, assignees, subcontracts));
+    res.json(formatJobcard(updated, items, assignees, subcontracts, req.user.role));
   } catch (err) {
     logger.error({ err }, 'Update jobcard error');
     res.status(500).json({ error: 'Failed to update job card' });
@@ -380,7 +404,7 @@ router.put('/:id', authenticate, (req, res) => {
 });
 
 // Update job card status only
-router.patch('/:id/status', authenticate, (req, res) => {
+router.patch('/:id/status', authenticate, requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -396,7 +420,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
     recordHistory('jobcard', id, 'update', req.user.userId, req.user.name, changes, null);
 
     const updated = jobcardQueries.getById.get(id);
-    res.json(formatJobcard(updated));
+    res.json(formatJobcard(updated, [], [], [], req.user.role));
   } catch (err) {
     logger.error({ err }, 'Update status error');
     res.status(500).json({ error: 'Failed to update status' });

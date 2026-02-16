@@ -23,8 +23,8 @@ const toApiFormat = (c) => ({
 // All routes require authentication
 router.use(authenticate);
 
-// GET /api/contacts - Get all contacts
-router.get('/', (req, res) => {
+// GET /api/contacts - Get all contacts (admin only)
+router.get('/', requireAdmin, (req, res) => {
   try {
     const contacts = contactQueries.getAll.all();
     res.json(contacts.map(toApiFormat));
@@ -34,8 +34,8 @@ router.get('/', (req, res) => {
   }
 });
 
-// GET /api/contacts/search - Search contacts by name or company
-router.get('/search', (req, res) => {
+// GET /api/contacts/search - Search contacts by name or company (admin only)
+router.get('/search', requireAdmin, (req, res) => {
   try {
     const { q } = req.query;
     if (!q) {
@@ -50,8 +50,8 @@ router.get('/search', (req, res) => {
   }
 });
 
-// GET /api/contacts/:id - Get single contact
-router.get('/:id', (req, res) => {
+// GET /api/contacts/:id - Get single contact (admin only)
+router.get('/:id', requireAdmin, (req, res) => {
   try {
     const contact = contactQueries.getById.get(req.params.id);
     if (!contact) {
@@ -65,7 +65,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/contacts - Create new contact
-router.post('/', validateCreateContact, (req, res) => {
+router.post('/', requireAdmin, validateCreateContact, (req, res) => {
   try {
     const { contactName, companyName, phone, email, address, notes } = req.body;
 
@@ -94,7 +94,7 @@ router.post('/', validateCreateContact, (req, res) => {
 });
 
 // PUT /api/contacts/:id - Update contact
-router.put('/:id', validateUpdateContact, (req, res) => {
+router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
   try {
     const { id } = req.params;
     const { contactName, companyName, phone, email, address, notes } = req.body;

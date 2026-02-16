@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -35,6 +36,8 @@ const PRIORITY_COLORS = {
 const PAGE_SIZE = 20;
 
 export default function JobCardList() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
@@ -43,9 +46,11 @@ export default function JobCardList() {
   const [jobcards, setJobcards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [statusPopoverId, setStatusPopoverId] = useState(null);
+  const popoverRef = useRef(null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
-  const loadJobcards = async () => {
+  const loadJobcards = useCallback(async () => {
     try {
       setLoading(true);
       const data = await api.getJobcards(showArchived);
@@ -56,11 +61,11 @@ export default function JobCardList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showArchived]);
 
   useEffect(() => {
     loadJobcards();
-  }, [showArchived]);
+  }, [loadJobcards]);
 
   const handleDelete = async (id) => {
     const confirmed = await showConfirm({
@@ -106,6 +111,36 @@ export default function JobCardList() {
     }
   };
 
+  const handleQuickStatusChange = useCallback(async (cardId, newStatus) => {
+    setStatusPopoverId(null);
+    try {
+      await api.updateJobcardStatus(cardId, newStatus);
+      toast.success(`Status updated to ${STATUS_LABELS[newStatus]}`);
+      await loadJobcards();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update status');
+    }
+  }, [loadJobcards]);
+
+  // Close status popover on click-outside or Escape
+  useEffect(() => {
+    if (!statusPopoverId) return;
+    const handleClickOutside = (e) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+        setStatusPopoverId(null);
+      }
+    };
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setStatusPopoverId(null);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [statusPopoverId]);
+
   // Filter job cards based on status filter and search
   const filteredCards = useMemo(() => {
     return jobcards.filter((card) => {
@@ -113,11 +148,11 @@ export default function JobCardList() {
       const matchesSearch =
         !search ||
         card.jobNumber?.toLowerCase().includes(search.toLowerCase()) ||
-        card.contactName?.toLowerCase().includes(search.toLowerCase()) ||
+        (isAdmin && card.contactName?.toLowerCase().includes(search.toLowerCase())) ||
         card.description?.toLowerCase().includes(search.toLowerCase());
       return matchesFilter && matchesSearch;
     });
-  }, [jobcards, filter, search]);
+  }, [jobcards, filter, search, isAdmin]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -171,7 +206,7 @@ export default function JobCardList() {
       <div className="filters">
         <input
           type="text"
-          placeholder="Search by job #, customer, or description..."
+          placeholder={isAdmin ? "Search by job #, customer, or description..." : "Search by job # or description..."}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="search-input"
@@ -202,7 +237,7 @@ export default function JobCardList() {
               <thead>
                 <tr>
                   <th>Job #</th>
-                  <th>Customer</th>
+                  {isAdmin && <th>Customer</th>}
                   <th>Type</th>
                   <th>Status</th>
                   <th>Priority</th>
@@ -228,6 +263,9 @@ export default function JobCardList() {
                         >
                           <strong>{card.jobNumber}</strong>
                         </a>
+                        {card.qualityLevel === 'CRITICAL' && (
+                          <span className="critical-badge">Critical QA</span>
+                        )}
                         {card.description && (
                           <p className="description-preview">
                             {card.description.substring(0, 60)}
@@ -235,17 +273,49 @@ export default function JobCardList() {
                           </p>
                         )}
                       </td>
-                      <td>
-                        {card.contactName || '-'}
-                        {card.qualityLevel === 'CRITICAL' && (
-                          <span className="critical-badge">Critical QA</span>
-                        )}
-                      </td>
+                      {isAdmin && (
+                        <td>{card.contactName || '-'}</td>
+                      )}
                       <td>{card.jobType || '-'}</td>
                       <td>
-                        <span className={`badge ${getStatusBadgeClass(card.status)}`}>
-                          {STATUS_LABELS[card.status] || card.status}
-                        </span>
+                        {isAdmin && !showArchived ? (
+                          <div className="status-popover-wrapper" ref={statusPopoverId === card.id ? popoverRef : null}>
+                            <span
+                              className={`badge ${getStatusBadgeClass(card.status)} badge-clickable`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setStatusPopoverId(statusPopoverId === card.id ? null : card.id);
+                              }}
+                            >
+                              {STATUS_LABELS[card.status] || card.status}
+                            </span>
+                            {statusPopoverId === card.id && (
+                              <div className="status-popover">
+                                {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                                  <button
+                                    key={value}
+                                    className={`status-popover-item ${card.status === value ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (card.status !== value) {
+                                        handleQuickStatusChange(card.id, value);
+                                      } else {
+                                        setStatusPopoverId(null);
+                                      }
+                                    }}
+                                  >
+                                    <span className={`badge ${getStatusBadgeClass(value)}`}>{label}</span>
+                                    {card.status === value && <span className="status-check">&#10003;</span>}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className={`badge ${getStatusBadgeClass(card.status)}`}>
+                            {STATUS_LABELS[card.status] || card.status}
+                          </span>
+                        )}
                       </td>
                       <td>
                         <span style={{ color: PRIORITY_COLORS[card.priority] || PRIORITY_COLORS.NONE, fontWeight: 500 }}>
@@ -413,6 +483,62 @@ export default function JobCardList() {
           color: var(--text-tertiary);
           font-size: var(--text-sm);
           user-select: none;
+        }
+
+        .status-popover-wrapper {
+          position: relative;
+          display: inline-block;
+        }
+
+        .badge-clickable {
+          cursor: pointer;
+          transition: opacity 0.15s, box-shadow 0.15s;
+        }
+
+        .badge-clickable:hover {
+          opacity: 0.85;
+          box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.3);
+        }
+
+        .status-popover {
+          position: absolute;
+          top: calc(100% + 4px);
+          left: 50%;
+          transform: translateX(-50%);
+          background: var(--surface);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-md);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          z-index: 100;
+          min-width: 150px;
+          padding: 0.25rem 0;
+        }
+
+        .status-popover-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          padding: 0.375rem 0.75rem;
+          border: none;
+          background: none;
+          cursor: pointer;
+          font-size: var(--text-sm);
+          white-space: nowrap;
+        }
+
+        .status-popover-item:hover {
+          background: var(--surface-hover);
+        }
+
+        .status-popover-item.active {
+          background: var(--surface-inset);
+        }
+
+        .status-check {
+          margin-left: 0.5rem;
+          color: var(--success-color);
+          font-weight: 600;
         }
 
         @media (max-width: 768px) {
