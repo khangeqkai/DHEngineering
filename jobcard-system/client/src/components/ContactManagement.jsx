@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
+import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 
@@ -166,102 +167,111 @@ export default function ContactManagement() {
         </button>
       </PageHeader>
 
-      {showForm && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <div className="card-header">
-            <h2>{editingContact ? 'Edit Contact' : 'Add New Contact'}</h2>
-            <button className="btn btn-secondary btn-sm" onClick={resetForm}>
-              Cancel
-            </button>
-          </div>
-          <div className="card-body">
-            <form onSubmit={handleSubmit}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="contactName">Contact Name *</label>
-                  <input
-                    type="text"
-                    id="contactName"
-                    value={formData.contactName}
-                    onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                    placeholder="Person's name..."
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="companyName">Company</label>
-                  <input
-                    type="text"
-                    id="companyName"
-                    value={formData.companyName}
-                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                    placeholder="Company name..."
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="phone">Phone</label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="email">Email</label>
-                  <input
-                    type="email"
-                    id="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </div>
-              </div>
-
+      <BottomSheet
+        isOpen={showForm}
+        onClose={resetForm}
+        title={editingContact ? 'Edit Contact' : 'Add New Contact'}
+        size="small"
+        closeOnOverlayClick={false}
+      >
+        <BottomSheet.Body>
+          <form id="contact-form" onSubmit={handleSubmit}>
+            <div className="form-row">
               <div className="form-group">
-                <label htmlFor="address">Address</label>
-                <textarea
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  rows={2}
+                <label htmlFor="contactName">Contact Name *</label>
+                <input
+                  type="text"
+                  id="contactName"
+                  value={formData.contactName}
+                  onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                  placeholder="Person's name..."
+                  required
                 />
               </div>
 
-              <div className="form-group checkbox-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={formData.isCriticalQa}
-                    onChange={(e) => setFormData({ ...formData, isCriticalQa: e.target.checked })}
-                  />
-                  Critical QA Contact
-                  <span className="help-text">Requires enhanced documentation and QA forms</span>
-                </label>
-              </div>
-
               <div className="form-group">
-                <label htmlFor="notes">Notes</label>
-                <textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={2}
+                <label htmlFor="companyName">Company</label>
+                <input
+                  type="text"
+                  id="companyName"
+                  value={formData.companyName}
+                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                  placeholder="Company name..."
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="phone">Phone</label>
+                <input
+                  type="tel"
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 />
               </div>
 
-              <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving ? 'Saving...' : editingContact ? 'Update Contact' : 'Create Contact'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+              <div className="form-group">
+                <label htmlFor="email">Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="address">Address</label>
+              <textarea
+                id="address"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                rows={2}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="toggle-label">
+                <input
+                  type="checkbox"
+                  className="toggle-input"
+                  checked={formData.isCriticalQa}
+                  onChange={(e) => setFormData({ ...formData, isCriticalQa: e.target.checked })}
+                />
+                <span className="toggle-switch" />
+                <span className="toggle-content">
+                  <span className="toggle-title">Critical QA Contact</span>
+                  <span className="toggle-desc">Requires enhanced documentation and QA forms</span>
+                </span>
+              </label>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="notes">Notes</label>
+              <textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={2}
+              />
+            </div>
+          </form>
+        </BottomSheet.Body>
+        <BottomSheet.Footer>
+          <button className="btn btn-secondary" onClick={resetForm}>Cancel</button>
+          <button
+            type="submit"
+            form="contact-form"
+            className="btn btn-primary"
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : editingContact ? 'Update Contact' : 'Create Contact'}
+          </button>
+        </BottomSheet.Footer>
+      </BottomSheet>
 
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
@@ -357,24 +367,6 @@ export default function ContactManagement() {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 1rem;
-        }
-
-        .checkbox-group label {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.5rem;
-          cursor: pointer;
-        }
-
-        .checkbox-group input {
-          margin-top: 0.25rem;
-        }
-
-        .help-text {
-          display: block;
-          font-size: 0.75rem;
-          color: var(--text-secondary);
-          margin-left: 1.5rem;
         }
 
         .action-buttons {

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
+import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 
@@ -157,146 +158,151 @@ export default function SupplierManagement() {
         </button>
       </PageHeader>
 
-      {showForm && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <div className="card-header">
-            <h2>{editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}</h2>
-            <button className="btn btn-secondary btn-sm" onClick={resetForm}>
-              Cancel
-            </button>
-          </div>
-          <div className="card-body">
-            <form onSubmit={handleSubmit}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="name">Company Name *</label>
-                  <input
-                    type="text"
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="contactName">Contact Name</label>
-                  <input
-                    type="text"
-                    id="contactName"
-                    value={formData.contactName}
-                    onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="contactPhone">Phone</label>
-                  <input
-                    type="tel"
-                    id="contactPhone"
-                    value={formData.contactPhone}
-                    onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="contactEmail">Email</label>
-                  <input
-                    type="email"
-                    id="contactEmail"
-                    value={formData.contactEmail}
-                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                  />
-                </div>
-              </div>
-
+      <BottomSheet
+        isOpen={showForm}
+        onClose={resetForm}
+        title={editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}
+        size="small"
+        closeOnOverlayClick={false}
+      >
+        <BottomSheet.Body>
+          <form id="supplier-form" onSubmit={handleSubmit}>
+            <div className="form-row">
               <div className="form-group">
-                <label htmlFor="address">Address</label>
-                <textarea
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  rows={2}
+                <label htmlFor="name">Company Name *</label>
+                <input
+                  type="text"
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
                 />
               </div>
 
               <div className="form-group">
-                <label>Services Provided</label>
-                <div className="service-tags-selector">
-                  {serviceTags.map(tag => (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      className={`tag-chip ${formData.serviceTagIds.includes(tag.id) ? 'selected' : ''}`}
-                      onClick={() => handleTagToggle(tag.id)}
-                    >
-                      {tag.name}
-                      {formData.serviceTagIds.includes(tag.id) && <span className="check-mark">&#10003;</span>}
-                    </button>
-                  ))}
-                  {!showCustomTagInput ? (
-                    <button
-                      type="button"
-                      className="tag-chip add-custom"
-                      onClick={() => setShowCustomTagInput(true)}
-                    >
-                      + Other
-                    </button>
-                  ) : (
-                    <div className="custom-tag-input">
-                      <input
-                        type="text"
-                        value={customTagName}
-                        onChange={(e) => setCustomTagName(e.target.value)}
-                        placeholder="New service name..."
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddCustomTag();
-                          } else if (e.key === 'Escape') {
-                            setShowCustomTagInput(false);
-                            setCustomTagName('');
-                          }
-                        }}
-                        autoFocus
-                      />
-                      <button type="button" className="btn btn-sm btn-primary" onClick={handleAddCustomTag}>
-                        Add
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-secondary"
-                        onClick={() => {
+                <label htmlFor="contactName">Contact Name</label>
+                <input
+                  type="text"
+                  id="contactName"
+                  value={formData.contactName}
+                  onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="contactPhone">Phone</label>
+                <input
+                  type="tel"
+                  id="contactPhone"
+                  value={formData.contactPhone}
+                  onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="contactEmail">Email</label>
+                <input
+                  type="email"
+                  id="contactEmail"
+                  value={formData.contactEmail}
+                  onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="address">Address</label>
+              <textarea
+                id="address"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                rows={2}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Services Provided</label>
+              <div className="service-tags-selector">
+                {serviceTags.map(tag => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    className={`tag-chip ${formData.serviceTagIds.includes(tag.id) ? 'selected' : ''}`}
+                    onClick={() => handleTagToggle(tag.id)}
+                  >
+                    {tag.name}
+                    {formData.serviceTagIds.includes(tag.id) && <span className="check-mark">&#10003;</span>}
+                  </button>
+                ))}
+                {!showCustomTagInput ? (
+                  <button
+                    type="button"
+                    className="tag-chip add-custom"
+                    onClick={() => setShowCustomTagInput(true)}
+                  >
+                    + Other
+                  </button>
+                ) : (
+                  <div className="custom-tag-input">
+                    <input
+                      type="text"
+                      value={customTagName}
+                      onChange={(e) => setCustomTagName(e.target.value)}
+                      placeholder="New service name..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCustomTag();
+                        } else if (e.key === 'Escape') {
                           setShowCustomTagInput(false);
                           setCustomTagName('');
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-                </div>
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <button type="button" className="btn btn-sm btn-primary" onClick={handleAddCustomTag}>
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => {
+                        setShowCustomTagInput(false);
+                        setCustomTagName('');
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
+            </div>
 
-              <div className="form-group">
-                <label htmlFor="notes">Notes</label>
-                <textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={2}
-                />
-              </div>
-
-              <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving ? 'Saving...' : editingSupplier ? 'Update Supplier' : 'Create Supplier'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+            <div className="form-group">
+              <label htmlFor="notes">Notes</label>
+              <textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={2}
+              />
+            </div>
+          </form>
+        </BottomSheet.Body>
+        <BottomSheet.Footer>
+          <button className="btn btn-secondary" onClick={resetForm}>Cancel</button>
+          <button
+            type="submit"
+            form="supplier-form"
+            className="btn btn-primary"
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : editingSupplier ? 'Update Supplier' : 'Create Supplier'}
+          </button>
+        </BottomSheet.Footer>
+      </BottomSheet>
 
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>

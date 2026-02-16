@@ -160,14 +160,19 @@ export default function DetailsTab({
           </div>
           <div className="form-group">
             <label>Quality Management</label>
-            <label className="checkbox-inline">
+            <label className={`toggle-label${contact?.isCriticalQa ? ' toggle-disabled' : ''}`}>
               <input
                 type="checkbox"
+                className="toggle-input"
                 checked={contactFormData.isCriticalQa}
                 onChange={(e) => handleContactFieldChange('isCriticalQa', e.target.checked)}
                 disabled={contact?.isCriticalQa}
               />
-              Critical QA
+              <span className="toggle-switch" />
+              <span className="toggle-content">
+                <span className="toggle-title">Critical QA</span>
+                <span className="toggle-desc">Enhanced documentation and QA forms required</span>
+              </span>
             </label>
           </div>
         </div>

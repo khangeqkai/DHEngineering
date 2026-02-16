@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
+import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 
@@ -154,84 +155,89 @@ export default function UserManagement() {
         </button>
       </PageHeader>
 
-      {showForm && (
-        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <div className="card-header">
-            <h2>{editingUser ? 'Edit User' : 'Add New User'}</h2>
-            <button className="btn btn-secondary btn-sm" onClick={resetForm}>
-              Cancel
-            </button>
-          </div>
-          <div className="card-body">
-            <form onSubmit={handleSubmit}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="username">Username *</label>
-                  <input
-                    type="text"
-                    id="username"
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    required
-                    disabled={editingUser}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="password">
-                    Password {editingUser ? '(leave blank to keep current)' : '*'}
-                  </label>
-                  <input
-                    type="password"
-                    id="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required={!editingUser}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="name">Display Name</label>
-                  <input
-                    type="text"
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="email">Email</label>
-                  <input
-                    type="email"
-                    id="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </div>
+      <BottomSheet
+        isOpen={showForm}
+        onClose={resetForm}
+        title={editingUser ? 'Edit User' : 'Add New User'}
+        size="small"
+        closeOnOverlayClick={false}
+      >
+        <BottomSheet.Body>
+          <form id="user-form" onSubmit={handleSubmit}>
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="username">Username *</label>
+                <input
+                  type="text"
+                  id="username"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  required
+                  disabled={editingUser}
+                />
               </div>
 
               <div className="form-group">
-                <label htmlFor="role">Role</label>
-                <select
-                  id="role"
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                </select>
+                <label htmlFor="password">
+                  Password {editingUser ? '(leave blank to keep current)' : '*'}
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required={!editingUser}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="name">Display Name</label>
+                <input
+                  type="text"
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
               </div>
 
-              <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving ? 'Saving...' : editingUser ? 'Update User' : 'Create User'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+              <div className="form-group">
+                <label htmlFor="email">Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="role">Role</label>
+              <select
+                id="role"
+                value={formData.role}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              >
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </form>
+        </BottomSheet.Body>
+        <BottomSheet.Footer>
+          <button className="btn btn-secondary" onClick={resetForm}>Cancel</button>
+          <button
+            type="submit"
+            form="user-form"
+            className="btn btn-primary"
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : editingUser ? 'Update User' : 'Create User'}
+          </button>
+        </BottomSheet.Footer>
+      </BottomSheet>
 
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
