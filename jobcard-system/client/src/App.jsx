@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster, ToastBar } from 'react-hot-toast';
 import { useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -44,12 +44,13 @@ function App() {
   return (
     <>
       <Toaster
-        position="top-right"
+        position="top-center"
         toastOptions={{
           duration: 4000,
           style: {
             background: '#333',
             color: '#fff',
+            cursor: 'pointer',
           },
           success: {
             duration: 3000,
@@ -66,7 +67,36 @@ function App() {
             },
           },
         }}
-      />
+      >
+        {(t) => (
+          <ToastBar toast={t}>
+            {({ icon, message }) => (
+              <div
+                onClick={() => toast.dismiss(t.id)}
+                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', width: '100%' }}
+              >
+                {icon}
+                <div style={{ flex: 1 }}>{message}</div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); toast.dismiss(t.id); }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    padding: '0 0 0 8px',
+                    opacity: 0.7,
+                  }}
+                  aria-label="Dismiss"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+          </ToastBar>
+        )}
+      </Toaster>
       <Routes>
       <Route path="/login" element={<Login />} />
       <Route

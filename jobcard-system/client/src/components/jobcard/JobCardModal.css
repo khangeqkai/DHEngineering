@@ -380,6 +380,72 @@
   color: var(--accent-caution);
 }
 
+.due-date-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+}
+
+.due-date-display:hover {
+  border-color: var(--primary-accent);
+}
+
+.due-date-display .due-date-value {
+  color: var(--text-primary);
+}
+
+.due-date-display:not(.field-required) .due-date-value:first-child {
+  color: var(--text-primary);
+}
+
+.due-date-display.field-required .due-date-value {
+  color: var(--text-muted);
+}
+
+.due-date-display .due-date-icon {
+  font-size: 1.1rem;
+}
+
+.due-date-display.overdue {
+  border-color: var(--accent-caution);
+}
+
+.due-date-quick-picks {
+  display: flex;
+  gap: 0.375rem;
+  margin-top: 0.375rem;
+}
+
+.btn-quick-pick {
+  padding: 0.2rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.btn-quick-pick:hover {
+  border-color: var(--primary-accent);
+  background: rgba(2, 132, 199, 0.05);
+}
+
+.btn-quick-pick.active {
+  background: var(--primary-accent);
+  border-color: var(--primary-accent);
+  color: white;
+}
+
 .overdue-text {
   color: var(--accent-caution);
   font-family: var(--font-mono);
@@ -387,19 +453,181 @@
   font-weight: 700;
 }
 
+/* Calendar Picker */
+.calendar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.calendar-modal {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-lg, 0 8px 32px rgba(0, 0, 0, 0.2));
+  min-width: 360px;
+  outline: none;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.calendar-title {
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.calendar-nav {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  width: 36px;
+  height: 36px;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast) ease;
+  color: var(--text-primary);
+}
+
+.calendar-nav:hover {
+  border-color: var(--primary-accent);
+  background: rgba(2, 132, 199, 0.05);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day-label {
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.5rem 0;
+}
+
+.calendar-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+  color: var(--text-primary);
+}
+
+.calendar-cell.empty {
+  cursor: default;
+}
+
+.calendar-cell:not(.empty):hover {
+  border-color: var(--primary-accent);
+  background: rgba(2, 132, 199, 0.05);
+}
+
+.calendar-cell.today {
+  border: 2px solid var(--primary-accent);
+  font-weight: 700;
+  color: var(--primary-accent);
+  background: rgba(2, 132, 199, 0.08);
+}
+
+.calendar-cell.today:hover {
+  background: rgba(2, 132, 199, 0.15);
+}
+
+.calendar-cell.selected {
+  background: var(--primary-accent);
+  border-color: var(--primary-accent);
+  color: white;
+  font-weight: 600;
+}
+
+.calendar-cell.today.selected {
+  background: var(--primary-accent);
+  border: 2px solid var(--primary-accent);
+  color: white;
+}
+
 /* Line Items */
+.line-items-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.line-items-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: 0.375rem;
+}
+
+.line-items-header span {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .line-item-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.line-col-num {
+  width: 32px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.line-col-qty {
+  width: 72px;
+  flex-shrink: 0;
+}
+
+.line-col-desc {
+  flex: 1;
+  min-width: 0;
+}
+
+.line-col-action {
+  width: 32px;
+  flex-shrink: 0;
+  text-align: center;
 }
 
 .item-num {
   font-family: var(--font-mono);
   font-weight: 700;
   color: var(--primary-accent);
-  min-width: 36px;
 }
 
 /* Assignees Grid */

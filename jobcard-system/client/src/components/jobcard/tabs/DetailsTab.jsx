@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   JOB_TYPES,
   PRIORITY_OPTIONS,
@@ -8,6 +9,8 @@ import {
 } from '../constants';
 import { formatFileSize, formatFileDate } from '../mappers';
 import { toTitleCase, capitalizeFirst } from '../../../utils/formatters';
+import CalendarPicker from '../../common/CalendarPicker';
+import SubcontractCreateSection from './SubcontractCreateSection';
 
 export default function DetailsTab({
   isEdit,
@@ -43,6 +46,8 @@ export default function DetailsTab({
   loadingScannerFiles,
   isOverdue
 }) {
+  const [showCalendar, setShowCalendar] = useState(false);
+
   const titleCaseBlur = (field, setter) => (e) => {
     const formatted = toTitleCase(e.target.value);
     if (formatted !== e.target.value) setter(field, formatted);
@@ -55,7 +60,6 @@ export default function DetailsTab({
 
   return (
     <div className="modal-form-grid">
-      {/* Header Info - Edit mode shows job number */}
       {isEdit && (
         <div className="form-section header-section">
           <div className="job-header">
@@ -67,11 +71,10 @@ export default function DetailsTab({
         </div>
       )}
 
-      {/* Status & Type Row */}
+      {/* Classification: Job Number (create) | Status | Job Type */}
       <div className="form-section">
         <h3 className="form-section-title">Classification</h3>
         <div className="form-row">
-          {/* Job number input - only in create mode (edit mode shows in header) */}
           {!isEdit && (
             <div className="form-group">
               <label>Job Card / Quote <span className="required">*</span></label>
@@ -94,39 +97,14 @@ export default function DetailsTab({
             </select>
           </div>
           <div className="form-group">
-            <label>Priority</label>
-            <select name="priority" value={formData.priority} onChange={handleChange} className={formData.priority === 'HIGH' ? 'priority-high' : ''}>
-              {PRIORITY_OPTIONS.map(p => (
-                <option key={p} value={p}>{p}</option>
+            <label>Job Type <span className="required">*</span></label>
+            <select name="jobType" value={formData.jobType} onChange={handleChange} className={!formData.jobType ? 'field-required' : ''}>
+              <option value="">Select job type...</option>
+              {JOB_TYPES.map(t => (
+                <option key={t} value={t}>{t}</option>
               ))}
             </select>
           </div>
-        </div>
-        <div className="form-row" style={{ marginTop: '0.75rem' }}>
-          <div className="form-group checkbox-group">
-            <label className="checkbox-inline">
-              <input
-                type="checkbox"
-                name="isRepeatJob"
-                checked={formData.isRepeatJob}
-                onChange={handleChange}
-              />
-              Repeat Job
-            </label>
-          </div>
-          {formData.isRepeatJob && (
-            <div className="form-group" style={{ flex: 2 }}>
-              <label>Previous Job Reference <span className="required">*</span></label>
-              <input
-                type="text"
-                name="repeatJobReference"
-                value={formData.repeatJobReference}
-                onChange={handleChange}
-                placeholder="JC-XXXXXXXX-XXX"
-                className={formData.isRepeatJob && !formData.repeatJobReference ? 'field-required' : ''}
-              />
-            </div>
-          )}
         </div>
       </div>
 
@@ -227,9 +205,120 @@ export default function DetailsTab({
       </div>
       )}
 
-      {/* Job Details Section */}
+      {/* Scheduling: Priority + Due Date */}
       <div className="form-section">
-        <h3 className="form-section-title">Job Details</h3>
+        <h3 className="form-section-title">Scheduling</h3>
+        <div className="form-row">
+          <div className="form-group">
+            <label>Priority</label>
+            <select name="priority" value={formData.priority} onChange={handleChange} className={formData.priority === 'HIGH' ? 'priority-high' : ''}>
+              {PRIORITY_OPTIONS.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Due Date <span className="required">*</span></label>
+            <div
+              className={`due-date-display${isOverdue ? ' overdue' : ''}${!formData.dueDate ? ' field-required' : ''}`}
+              onClick={() => setShowCalendar(true)}
+            >
+              <span className="due-date-value">
+                {formData.dueDate?.trim()
+                  ? new Date(formData.dueDate + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+                  : 'Select date...'}
+              </span>
+              <span className="due-date-icon">&#128197;</span>
+            </div>
+            <div className="due-date-quick-picks">
+              {[2, 7, 14, 21, 30].map(days => {
+                const date = new Date();
+                date.setDate(date.getDate() + days);
+                const value = date.toISOString().split('T')[0];
+                return (
+                  <button
+                    key={days}
+                    type="button"
+                    className={`btn-quick-pick${formData.dueDate === value ? ' active' : ''}`}
+                    onClick={() => setFormData(prev => ({ ...prev, dueDate: value }))}
+                  >
+                    {days}d
+                  </button>
+                );
+              })}
+            </div>
+            {isOverdue && <span className="overdue-text">OVERDUE</span>}
+            <CalendarPicker
+              isOpen={showCalendar}
+              value={formData.dueDate}
+              onSelect={(dateStr) => setFormData(prev => ({ ...prev, dueDate: dateStr }))}
+              onClose={() => setShowCalendar(false)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Job Description + Line Items */}
+      <div className="form-section">
+        <h3 className="form-section-title">Job Description</h3>
+        <div className="form-group">
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            onBlur={capitalizeBlur('description')}
+            rows={3}
+            placeholder="Job description..."
+          />
+        </div>
+      </div>
+
+      {!isEdit && (
+        <div className="form-section">
+          <div className="form-section-header">
+            <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}>+ Add</button>
+          </div>
+          <div className="line-items-table">
+            <div className="line-items-header">
+              <span className="line-col-num">#</span>
+              <span className="line-col-qty">Qty</span>
+              <span className="line-col-desc">Description</span>
+              <span className="line-col-action"></span>
+            </div>
+            {lineItems.map((item) => (
+              <div key={item.id} className="line-item-row">
+                <span className="line-col-num item-num">{item.itemNumber}</span>
+                <input
+                  className="line-col-qty"
+                  type="text"
+                  value={item.qty}
+                  onChange={(e) => updateLineItem(item.id, 'qty', e.target.value)}
+                />
+                <input
+                  className="line-col-desc"
+                  type="text"
+                  value={item.description}
+                  onChange={(e) => updateLineItem(item.id, 'description', e.target.value)}
+                  onBlur={(e) => {
+                    const f = capitalizeFirst(e.target.value);
+                    if (f !== e.target.value) updateLineItem(item.id, 'description', f);
+                  }}
+                />
+                <span className="line-col-action">
+                  {lineItems.length > 1 && (
+                    <button type="button" className="btn-icon danger" onClick={() => removeLineItem(item.id)}>×</button>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Customer Input: Quality Level + Customer Property + Drawings + Scanner Files */}
+      <div className="form-section">
+        <h3 className="form-section-title">Customer Input</h3>
         <div className="form-row">
           <div className="form-group">
             <label>Quality Level</label>
@@ -238,29 +327,30 @@ export default function DetailsTab({
               <option value="CRITICAL">Critical</option>
             </select>
           </div>
-          <div className="form-group">
-            <label>Job Type <span className="required">*</span></label>
-            <select name="jobType" value={formData.jobType} onChange={handleChange} className={!formData.jobType ? 'field-required' : ''}>
-              <option value="">Select job type...</option>
-              {JOB_TYPES.map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
         </div>
-      </div>
-
-      {/* References */}
-      <div className="form-section">
-        <h3 className="form-section-title">References</h3>
-        <div className="form-row">
-          <div className="form-group">
-            <label>PO Number</label>
-            <input type="text" name="poNumber" value={formData.poNumber} onChange={handleChange} />
-          </div>
-          <div className="form-group">
-            <label>Quote Reference</label>
-            <input type="text" name="quoteReference" value={formData.quoteReference} onChange={handleChange} placeholder="QT-XXXXXXXX-XXX" />
+        <div className="form-group">
+          <label>Customer Property</label>
+          <div className="checkbox-grid">
+            {CUSTOMER_PROPERTY_OPTIONS.filter(o => o.value !== 'NONE').map(opt => {
+              const values = formData.customerProperty ? formData.customerProperty.split(',') : [];
+              const isChecked = values.includes(opt.value);
+              return (
+                <label key={opt.value} className={`checkbox-chip ${isChecked ? 'selected' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={(e) => {
+                      const current = formData.customerProperty ? formData.customerProperty.split(',').filter(v => v) : [];
+                      const updated = e.target.checked
+                        ? [...current, opt.value]
+                        : current.filter(v => v !== opt.value);
+                      setFormData(prev => ({ ...prev, customerProperty: updated.join(',') }));
+                    }}
+                  />
+                  {opt.label}
+                </label>
+              );
+            })}
           </div>
         </div>
         <div className="form-group">
@@ -321,96 +411,48 @@ export default function DetailsTab({
             </div>
           )}
         </div>
+      </div>
+
+      {/* References + Repeat Job */}
+      <div className="form-section">
+        <h3 className="form-section-title">References</h3>
         <div className="form-row">
           <div className="form-group">
-            <label>Due Date <span className="required">*</span></label>
-            <input
-              type="date"
-              name="dueDate"
-              value={formData.dueDate}
-              onChange={handleChange}
-              className={`${isOverdue ? 'overdue' : ''} ${!formData.dueDate ? 'field-required' : ''}`}
-            />
-            {isOverdue && <span className="overdue-text">OVERDUE</span>}
+            <label>PO Number</label>
+            <input type="text" name="poNumber" value={formData.poNumber} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label>Quote Reference</label>
+            <input type="text" name="quoteReference" value={formData.quoteReference} onChange={handleChange} placeholder="QT-XXXXXXXX-XXX" />
           </div>
         </div>
-      </div>
-
-      {/* Description */}
-      <div className="form-section">
-        <h3 className="form-section-title">Description</h3>
-        <div className="form-group">
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            onBlur={capitalizeBlur('description')}
-            rows={3}
-            placeholder="Job description..."
-          />
-        </div>
-        <div className="form-group">
-          <label>Customer Property</label>
-          <div className="checkbox-grid">
-            {CUSTOMER_PROPERTY_OPTIONS.filter(o => o.value !== 'NONE').map(opt => {
-              const values = formData.customerProperty ? formData.customerProperty.split(',') : [];
-              const isChecked = values.includes(opt.value);
-              return (
-                <label key={opt.value} className={`checkbox-chip ${isChecked ? 'selected' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={(e) => {
-                      const current = formData.customerProperty ? formData.customerProperty.split(',').filter(v => v) : [];
-                      const updated = e.target.checked
-                        ? [...current, opt.value]
-                        : current.filter(v => v !== opt.value);
-                      setFormData(prev => ({ ...prev, customerProperty: updated.join(',') }));
-                    }}
-                  />
-                  {opt.label}
-                </label>
-              );
-            })}
+        <div className="form-row" style={{ marginTop: '0.75rem' }}>
+          <div className="form-group checkbox-group">
+            <label className="checkbox-inline">
+              <input
+                type="checkbox"
+                name="isRepeatJob"
+                checked={formData.isRepeatJob}
+                onChange={handleChange}
+              />
+              Repeat Job
+            </label>
           </div>
-        </div>
-      </div>
-
-      {/* Line Items - Create mode only */}
-      {!isEdit && (
-        <div className="form-section">
-          <div className="form-section-header">
-            <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}>+ Add</button>
-          </div>
-          {lineItems.map((item) => (
-            <div key={item.id} className="line-item-row">
-              <span className="item-num">#{item.itemNumber}</span>
+          {formData.isRepeatJob && (
+            <div className="form-group" style={{ flex: 2 }}>
+              <label>Previous Job Reference <span className="required">*</span></label>
               <input
                 type="text"
-                placeholder="Qty"
-                value={item.qty}
-                onChange={(e) => updateLineItem(item.id, 'qty', e.target.value)}
-                style={{ width: '80px' }}
+                name="repeatJobReference"
+                value={formData.repeatJobReference}
+                onChange={handleChange}
+                placeholder="JC-XXXXXXXX-XXX"
+                className={formData.isRepeatJob && !formData.repeatJobReference ? 'field-required' : ''}
               />
-              <input
-                type="text"
-                placeholder="Description"
-                value={item.description}
-                onChange={(e) => updateLineItem(item.id, 'description', e.target.value)}
-                onBlur={(e) => {
-                  const f = capitalizeFirst(e.target.value);
-                  if (f !== e.target.value) updateLineItem(item.id, 'description', f);
-                }}
-                style={{ flex: 1 }}
-              />
-              {lineItems.length > 1 && (
-                <button type="button" className="btn-icon danger" onClick={() => removeLineItem(item.id)}>×</button>
-              )}
             </div>
-          ))}
+          )}
         </div>
-      )}
+      </div>
 
       {/* Assignees */}
       <div className="form-section">
@@ -473,113 +515,12 @@ export default function DetailsTab({
         </div>
       </div>
 
-      {/* Subcontracts - only editable in create mode; edit mode uses SubcontractsTab */}
       {!isEdit && (
-      <div className="form-section">
-        <div className="form-section-header">
-          <h3 className="form-section-title">Subcontracts</h3>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => {
-              setSubcontracts([...subcontracts, {
-                id: Date.now(),
-                supplierId: '',
-                supplierName: '',
-                dateSent: '',
-                dateExpected: '',
-                status: 'PENDING',
-                notes: '',
-                isNew: true
-              }]);
-            }}
-          >
-            + Add Subcontract
-          </button>
-        </div>
-        {subcontracts.length === 0 ? (
-          <p className="empty-state">No subcontracts added. Click "+ Add Subcontract" to add one.</p>
-        ) : (
-          <div className="subcontracts-list">
-            {subcontracts.map((sub, idx) => (
-              <div key={sub.id} className="subcontract-card">
-                {sub.isNew ? (
-                  <div className="subcontract-inline-form">
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label>Supplier <span className="required">*</span></label>
-                        <select
-                          value={sub.supplierId}
-                          onChange={(e) => {
-                            const supplier = suppliers.find(s => s.id === e.target.value);
-                            const updated = [...subcontracts];
-                            updated[idx] = {
-                              ...sub,
-                              supplierId: e.target.value,
-                              supplierName: supplier?.name || ''
-                            };
-                            setSubcontracts(updated);
-                          }}
-                        >
-                          <option value="">Select supplier...</option>
-                          {suppliers.map(s => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label>Date Sent</label>
-                        <input
-                          type="date"
-                          value={sub.dateSent}
-                          onChange={(e) => {
-                            const updated = [...subcontracts];
-                            updated[idx] = { ...sub, dateSent: e.target.value };
-                            setSubcontracts(updated);
-                          }}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Date Expected</label>
-                        <input
-                          type="date"
-                          value={sub.dateExpected}
-                          onChange={(e) => {
-                            const updated = [...subcontracts];
-                            updated[idx] = { ...sub, dateExpected: e.target.value };
-                            setSubcontracts(updated);
-                          }}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        className="btn-icon danger"
-                        onClick={() => setSubcontracts(subcontracts.filter(s => s.id !== sub.id))}
-                        style={{ alignSelf: 'flex-end', marginBottom: '0.5rem' }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="subcontract-display">
-                    <div className="subcontract-header">
-                      <strong>{sub.supplierName}</strong>
-                      <span className={`badge badge-${sub.status?.toLowerCase() || 'pending'}`}>
-                        {sub.status || 'PENDING'}
-                      </span>
-                    </div>
-                    <div className="subcontract-dates">
-                      {sub.dateSent && <span>Sent: {new Date(sub.dateSent).toLocaleDateString()}</span>}
-                      {sub.dateExpected && <span>Expected: {new Date(sub.dateExpected).toLocaleDateString()}</span>}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+        <SubcontractCreateSection
+          subcontracts={subcontracts}
+          setSubcontracts={setSubcontracts}
+          suppliers={suppliers}
+        />
       )}
 
       {/* Notes */}

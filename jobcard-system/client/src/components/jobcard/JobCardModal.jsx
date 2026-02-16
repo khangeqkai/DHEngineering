@@ -283,27 +283,28 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     // Validation
     const errors = [];
     if (!isEdit && !formHook.formData.jobNumber?.trim()) {
-      errors.push('Job Card / Quote number is required');
+      errors.push('Job number is required');
     }
     if (isAdmin && !formHook.formData.contactId && !contactHook.contactFormData.contactName.trim()) {
-      errors.push('Contact Name is required');
+      errors.push('Contact name is required');
     }
     if (!formHook.formData.jobType) {
-      errors.push('Job Type is required');
+      errors.push('Job type is required');
     }
     if (!formHook.formData.dueDate) {
-      errors.push('Due Date is required');
+      errors.push('Due date is required');
     }
     const validItems = formHook.lineItems.filter(item => item.description.trim());
     if (validItems.length === 0) {
-      errors.push('At least one line item with description is required');
+      errors.push('Add at least one line item');
     }
     if (formHook.formData.isRepeatJob && !formHook.formData.repeatJobReference) {
-      errors.push('Previous Job Reference is required for repeat jobs');
+      errors.push('Previous job reference is required');
     }
 
     if (errors.length > 0) {
-      toast.error('Please fix the following:\n\n' + errors.join('\n'));
+      toast.dismiss();
+      errors.forEach(msg => toast.error(msg));
       return;
     }
 
@@ -407,7 +408,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   };
   if (!isOpen) return null;
-  const isOverdue = formHook.formData.dueDate && new Date(formHook.formData.dueDate) < new Date() &&
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isOverdue = formHook.formData.dueDate?.trim() &&
+    new Date(formHook.formData.dueDate + 'T00:00:00') < today &&
     !['DONE', 'INVOICED'].includes(formHook.formData.status);
   const buildTitle = () => isEdit ? `Edit: ${formHook.jobNumber}` : 'New Job Card';
   return (
