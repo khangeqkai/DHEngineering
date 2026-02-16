@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { capitalizeFirst } from '../../../utils/formatters';
 
 // Map treatment values to service tag names
 const TREATMENT_TO_SERVICE_MAP = {
@@ -111,7 +112,19 @@ export default function SubcontractsTab({
 
           <div className="form-group">
             <label>Notes</label>
-            <textarea name="notes" value={subcontractForm.notes} onChange={handleSubcontractChange} rows={2} placeholder="Any notes about this subcontract..." />
+            <textarea
+              name="notes"
+              value={subcontractForm.notes}
+              onChange={handleSubcontractChange}
+              onBlur={(e) => {
+                const formatted = capitalizeFirst(e.target.value);
+                if (formatted !== e.target.value) {
+                  handleSubcontractChange({ target: { name: 'notes', value: formatted } });
+                }
+              }}
+              rows={2}
+              placeholder="Any notes about this subcontract..."
+            />
           </div>
 
           <button type="button" className="btn btn-primary" onClick={handleSaveSubcontract}>

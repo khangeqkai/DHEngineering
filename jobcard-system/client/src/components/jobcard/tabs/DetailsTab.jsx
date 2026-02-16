@@ -7,6 +7,7 @@ import {
   STATUS_OPTIONS
 } from '../constants';
 import { formatFileSize, formatFileDate } from '../mappers';
+import { toTitleCase, capitalizeFirst } from '../../../utils/formatters';
 
 export default function DetailsTab({
   isEdit,
@@ -41,6 +42,16 @@ export default function DetailsTab({
   loadingScannerFiles,
   isOverdue
 }) {
+  const titleCaseBlur = (field, setter) => (e) => {
+    const formatted = toTitleCase(e.target.value);
+    if (formatted !== e.target.value) setter(field, formatted);
+  };
+
+  const capitalizeBlur = (field) => (e) => {
+    const formatted = capitalizeFirst(e.target.value);
+    if (formatted !== e.target.value) setFormData(prev => ({ ...prev, [field]: formatted }));
+  };
+
   return (
     <div className="modal-form-grid">
       {/* Header Info - Edit mode shows job number */}
@@ -174,6 +185,7 @@ export default function DetailsTab({
                 type="text"
                 value={contactFormData.contactName}
                 onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
+                onBlur={titleCaseBlur('contactName', handleContactFieldChange)}
                 placeholder="Contact person..."
                 className={!contactFormData.contactName.trim() ? 'field-required' : ''}
               />
@@ -184,6 +196,7 @@ export default function DetailsTab({
                 type="text"
                 value={contactFormData.companyName}
                 onChange={(e) => handleContactFieldChange('companyName', e.target.value)}
+                onBlur={titleCaseBlur('companyName', handleContactFieldChange)}
                 placeholder="Company name..."
               />
             </div>
@@ -328,6 +341,7 @@ export default function DetailsTab({
             name="description"
             value={formData.description}
             onChange={handleChange}
+            onBlur={capitalizeBlur('description')}
             rows={3}
             placeholder="Job description..."
           />
@@ -381,6 +395,10 @@ export default function DetailsTab({
                 placeholder="Description"
                 value={item.description}
                 onChange={(e) => updateLineItem(item.id, 'description', e.target.value)}
+                onBlur={(e) => {
+                  const f = capitalizeFirst(e.target.value);
+                  if (f !== e.target.value) updateLineItem(item.id, 'description', f);
+                }}
                 style={{ flex: 1 }}
               />
               {lineItems.length > 1 && (
@@ -444,6 +462,7 @@ export default function DetailsTab({
               name="treatmentOther"
               value={formData.treatmentOther}
               onChange={handleChange}
+              onBlur={capitalizeBlur('treatmentOther')}
               placeholder="Specify other treatment..."
               style={{ marginTop: '0.5rem' }}
             />
@@ -568,6 +587,7 @@ export default function DetailsTab({
             name="notes"
             value={formData.notes}
             onChange={handleChange}
+            onBlur={capitalizeBlur('notes')}
             rows={2}
             placeholder="Internal notes (not shown to customer)..."
           />

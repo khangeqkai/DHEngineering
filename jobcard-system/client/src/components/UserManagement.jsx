@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
+import { toTitleCase } from '../utils/formatters';
 import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -199,6 +200,12 @@ export default function UserManagement() {
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onBlur={(e) => {
+                    const formatted = toTitleCase(e.target.value);
+                    if (formatted !== e.target.value) {
+                      setFormData(prev => ({ ...prev, name: formatted }));
+                    }
+                  }}
                 />
               </div>
 

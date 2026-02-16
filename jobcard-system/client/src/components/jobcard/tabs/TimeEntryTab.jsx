@@ -1,3 +1,5 @@
+import { capitalizeFirst } from '../../../utils/formatters';
+
 export default function TimeEntryTab({
   timeEntries,
   showTimeEntryForm,
@@ -56,7 +58,18 @@ export default function TimeEntryTab({
 
           <div className="form-group">
             <label>Description</label>
-            <input type="text" name="description" value={timeEntryForm.description} onChange={handleTimeEntryChange} />
+            <input
+              type="text"
+              name="description"
+              value={timeEntryForm.description}
+              onChange={handleTimeEntryChange}
+              onBlur={(e) => {
+                const formatted = capitalizeFirst(e.target.value);
+                if (formatted !== e.target.value) {
+                  handleTimeEntryChange({ target: { name: 'description', value: formatted } });
+                }
+              }}
+            />
           </div>
 
           <div className="form-row">
@@ -110,13 +123,37 @@ export default function TimeEntryTab({
             {timeEntryForm.firstOffInspection === 'ERROR' && (
               <div className="form-group">
                 <label>First Off Inspection Notes <span className="required">*</span></label>
-                <input type="text" name="firstOffInspectionNotes" value={timeEntryForm.firstOffInspectionNotes} onChange={handleTimeEntryChange} placeholder="Describe the error..." />
+                <input
+                  type="text"
+                  name="firstOffInspectionNotes"
+                  value={timeEntryForm.firstOffInspectionNotes}
+                  onChange={handleTimeEntryChange}
+                  onBlur={(e) => {
+                    const formatted = capitalizeFirst(e.target.value);
+                    if (formatted !== e.target.value) {
+                      handleTimeEntryChange({ target: { name: 'firstOffInspectionNotes', value: formatted } });
+                    }
+                  }}
+                  placeholder="Describe the error..."
+                />
               </div>
             )}
             {timeEntryForm.inProcessValidation === 'ERROR' && (
               <div className="form-group">
                 <label>In-process Validation Notes <span className="required">*</span></label>
-                <input type="text" name="inProcessValidationNotes" value={timeEntryForm.inProcessValidationNotes} onChange={handleTimeEntryChange} placeholder="Describe the error..." />
+                <input
+                  type="text"
+                  name="inProcessValidationNotes"
+                  value={timeEntryForm.inProcessValidationNotes}
+                  onChange={handleTimeEntryChange}
+                  onBlur={(e) => {
+                    const formatted = capitalizeFirst(e.target.value);
+                    if (formatted !== e.target.value) {
+                      handleTimeEntryChange({ target: { name: 'inProcessValidationNotes', value: formatted } });
+                    }
+                  }}
+                  placeholder="Describe the error..."
+                />
               </div>
             )}
           </div>

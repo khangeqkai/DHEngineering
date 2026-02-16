@@ -1,3 +1,5 @@
+import { capitalizeFirst } from '../../../utils/formatters';
+
 export default function ItemsTab({
   lineItems,
   addLineItem,
@@ -30,6 +32,12 @@ export default function ItemsTab({
                 type="text"
                 value={item.description}
                 onChange={(e) => updateLineItem(item.id, 'description', e.target.value)}
+                onBlur={(e) => {
+                  const formatted = capitalizeFirst(e.target.value);
+                  if (formatted !== e.target.value) {
+                    updateLineItem(item.id, 'description', formatted);
+                  }
+                }}
               />
               {lineItems.length > 1 && (
                 <button type="button" className="btn-icon danger" onClick={() => removeLineItem(item.id)}>×</button>

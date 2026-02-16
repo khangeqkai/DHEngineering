@@ -105,6 +105,11 @@ All changes logged to `history` table for audit trail.
 - **Structured logging**: Use `logger` from `utils/logger.js` instead of `console.error()` for server-side logging
 - **Toast notifications**: Use `react-hot-toast` for user feedback instead of `alert()`
 - **Modal accessibility**: Use `role="alertdialog"`, `aria-modal="true"`, `aria-labelledby`/`aria-describedby`, focus trap (prevent Tab from leaving), and Escape key handler
+- **Auto-formatting on blur**: Name and text fields auto-format when the user leaves the field (`onBlur`). Utilities are in `client/src/utils/formatters.js`:
+  - `toTitleCase` — for name fields (person names, company names, display names, tag/label names). Produces "John Snow" style.
+  - `capitalizeFirst` — for text fields (descriptions, notes, addresses). Capitalizes only the first letter.
+  - Skip formatting for: phone, email, passwords, usernames, reference numbers, dates, numbers, search inputs, file paths.
+  - Pattern: `onBlur={(e) => { const f = fn(e.target.value); if (f !== e.target.value) setState(...); }}`
 
 ## Architectural Guidelines
 

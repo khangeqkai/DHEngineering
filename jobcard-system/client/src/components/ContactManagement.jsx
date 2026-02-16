@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
+import { toTitleCase, capitalizeFirst } from '../utils/formatters';
 import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -136,6 +137,12 @@ export default function ContactManagement() {
                   id="contactName"
                   value={formData.contactName}
                   onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                  onBlur={(e) => {
+                    const formatted = toTitleCase(e.target.value);
+                    if (formatted !== e.target.value) {
+                      setFormData(prev => ({ ...prev, contactName: formatted }));
+                    }
+                  }}
                   placeholder="Person's name..."
                   required
                 />
@@ -148,6 +155,12 @@ export default function ContactManagement() {
                   id="companyName"
                   value={formData.companyName}
                   onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                  onBlur={(e) => {
+                    const formatted = toTitleCase(e.target.value);
+                    if (formatted !== e.target.value) {
+                      setFormData(prev => ({ ...prev, companyName: formatted }));
+                    }
+                  }}
                   placeholder="Company name..."
                 />
               </div>
@@ -181,6 +194,12 @@ export default function ContactManagement() {
                 id="address"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                onBlur={(e) => {
+                  const formatted = capitalizeFirst(e.target.value);
+                  if (formatted !== e.target.value) {
+                    setFormData(prev => ({ ...prev, address: formatted }));
+                  }
+                }}
                 rows={2}
               />
             </div>
@@ -191,6 +210,12 @@ export default function ContactManagement() {
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onBlur={(e) => {
+                  const formatted = capitalizeFirst(e.target.value);
+                  if (formatted !== e.target.value) {
+                    setFormData(prev => ({ ...prev, notes: formatted }));
+                  }
+                }}
                 rows={2}
               />
             </div>

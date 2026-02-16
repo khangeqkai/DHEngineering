@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
+import { toTitleCase, capitalizeFirst } from '../utils/formatters';
 import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -175,6 +176,12 @@ export default function SupplierManagement() {
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onBlur={(e) => {
+                    const formatted = toTitleCase(e.target.value);
+                    if (formatted !== e.target.value) {
+                      setFormData(prev => ({ ...prev, name: formatted }));
+                    }
+                  }}
                   required
                 />
               </div>
@@ -186,6 +193,12 @@ export default function SupplierManagement() {
                   id="contactName"
                   value={formData.contactName}
                   onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                  onBlur={(e) => {
+                    const formatted = toTitleCase(e.target.value);
+                    if (formatted !== e.target.value) {
+                      setFormData(prev => ({ ...prev, contactName: formatted }));
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -218,6 +231,12 @@ export default function SupplierManagement() {
                 id="address"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                onBlur={(e) => {
+                  const formatted = capitalizeFirst(e.target.value);
+                  if (formatted !== e.target.value) {
+                    setFormData(prev => ({ ...prev, address: formatted }));
+                  }
+                }}
                 rows={2}
               />
             </div>
@@ -250,6 +269,12 @@ export default function SupplierManagement() {
                       type="text"
                       value={customTagName}
                       onChange={(e) => setCustomTagName(e.target.value)}
+                      onBlur={(e) => {
+                        const formatted = toTitleCase(e.target.value);
+                        if (formatted !== e.target.value) {
+                          setCustomTagName(formatted);
+                        }
+                      }}
                       placeholder="New service name..."
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
@@ -286,6 +311,12 @@ export default function SupplierManagement() {
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onBlur={(e) => {
+                  const formatted = capitalizeFirst(e.target.value);
+                  if (formatted !== e.target.value) {
+                    setFormData(prev => ({ ...prev, notes: formatted }));
+                  }
+                }}
                 rows={2}
               />
             </div>
