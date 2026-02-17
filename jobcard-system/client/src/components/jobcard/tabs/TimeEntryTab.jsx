@@ -85,7 +85,7 @@ export default function TimeEntryTab({
 
           {/* Special Ops Section */}
           <div className="special-ops-section">
-            <h4>Special Ops <span className="required">*</span></h4>
+            <h4>Special Ops</h4>
             <div className="form-row">
               <div className="form-group checkbox-group">
                 <label>
@@ -160,11 +160,11 @@ export default function TimeEntryTab({
 
           {/* Scrap Rate Analysis */}
           <div className="scrap-rate-section">
-            <h4>Scrap Rate Analysis</h4>
+            <h4>Scrap Rate</h4>
             <div className="form-group checkbox-group">
               <label>
                 <input type="checkbox" name="scrapAllGood" checked={timeEntryForm.scrapAllGood} onChange={handleTimeEntryChange} />
-                All Good (No Scrap)
+                No Scrap
               </label>
             </div>
             {!timeEntryForm.scrapAllGood && (
@@ -199,7 +199,7 @@ export default function TimeEntryTab({
         </div>
 
         {timeEntries.length === 0 ? (
-          <p className="empty-message">No time entries recorded yet.</p>
+          <p className="empty-message">No time entries</p>
         ) : (
           <div className="time-entries-list">
             {timeEntries.map(entry => {
@@ -219,7 +219,7 @@ export default function TimeEntryTab({
                     </div>
                   </div>
                   <div className="entry-body">
-                    <div className="entry-description">{entry.description || 'No description'}</div>
+                    {entry.description && <div className="entry-description">{entry.description}</div>}
                     <div className="entry-time">
                       <span>{new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       <span> - </span>
@@ -230,20 +230,14 @@ export default function TimeEntryTab({
                         </span>
                       )}
                     </div>
+                    {(!entry.equipmentChecksDone || !entry.measuringVerificationDone || entry.firstOffInspection === 'ERROR' || entry.inProcessValidation === 'ERROR') && (
                     <div className="entry-special-ops">
-                      <span className={entry.equipmentChecksDone ? 'status-ok' : 'status-pending'}>
-                        Equip: {entry.equipmentChecksDone ? 'Done' : 'Pending'}
-                      </span>
-                      <span className={entry.measuringVerificationDone ? 'status-ok' : 'status-pending'}>
-                        Measure: {entry.measuringVerificationDone ? 'Done' : 'Pending'}
-                      </span>
-                      <span className={entry.firstOffInspection === 'ERROR' ? 'status-error' : 'status-ok'}>
-                        1st Off: {entry.firstOffInspection || 'N/A'}
-                      </span>
-                      <span className={entry.inProcessValidation === 'ERROR' ? 'status-error' : 'status-ok'}>
-                        In-proc: {entry.inProcessValidation || 'N/A'}
-                      </span>
+                      {!entry.equipmentChecksDone && <span className="status-pending">Equip: Pending</span>}
+                      {!entry.measuringVerificationDone && <span className="status-pending">Measure: Pending</span>}
+                      {entry.firstOffInspection === 'ERROR' && <span className="status-error">1st Off: Error</span>}
+                      {entry.inProcessValidation === 'ERROR' && <span className="status-error">In-proc: Error</span>}
                     </div>
+                    )}
                   </div>
                 </div>
               );

@@ -123,12 +123,12 @@ export default function SubcontractsTab({
                 }
               }}
               rows={2}
-              placeholder="Any notes about this subcontract..."
+              placeholder=""
             />
           </div>
 
           <button type="button" className="btn btn-primary" onClick={handleSaveSubcontract}>
-            {editingSubcontractId ? 'Update Subcontract' : 'Add Subcontract'}
+            {editingSubcontractId ? 'Update' : 'Add'}
           </button>
         </div>
       )}
@@ -145,7 +145,7 @@ export default function SubcontractsTab({
         </div>
 
         {subcontracts.length === 0 ? (
-          <p className="empty-message">No subcontracts added yet.</p>
+          <p className="empty-message">No subcontracts</p>
         ) : (
           <div className="subcontracts-list">
             {subcontracts.map(sub => (

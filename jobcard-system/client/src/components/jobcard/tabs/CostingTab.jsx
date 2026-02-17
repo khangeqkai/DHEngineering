@@ -8,7 +8,7 @@ export default function CostingTab({
   return (
     <div className="modal-form-grid">
       <div className="form-section">
-        <h3 className="form-section-title">Job Costing (Admin Only)</h3>
+        <h3 className="form-section-title">Job Costing</h3>
 
         {/* Labour */}
         <div className="costing-row">

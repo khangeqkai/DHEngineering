@@ -437,7 +437,7 @@
   font-size: var(--text-base);
   color: var(--text-primary);
   background: var(--surface);
-  border: 1px solid var(--border-color);
+  border: 2px solid var(--border-strong);
   border-radius: var(--radius-md);
   transition: border-color var(--duration-fast) ease,
               box-shadow var(--duration-fast) ease;

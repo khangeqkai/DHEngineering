@@ -60,17 +60,6 @@ export default function DetailsTab({
 
   return (
     <div className="modal-form-grid">
-      {isEdit && (
-        <div className="form-section header-section">
-          <div className="job-header">
-            <div className="job-number-display">
-              <span className="label">Job Card / Quote</span>
-              <span className="value">{jobNumber}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Classification: Job Number (create) | Status | Job Type */}
       <div className="form-section">
         <h3 className="form-section-title">Classification</h3>
@@ -83,7 +72,7 @@ export default function DetailsTab({
                 name="jobNumber"
                 value={formData.jobNumber}
                 onChange={handleChange}
-                placeholder="Enter job number..."
+                placeholder="JC-XXXXXXXX-XXX"
                 className={!formData.jobNumber?.trim() ? 'field-required' : ''}
               />
             </div>
@@ -130,7 +119,6 @@ export default function DetailsTab({
         ) : (
           <div className="form-row">
             <div className="form-group" style={{ flex: 2 }} ref={contactSearchRef}>
-              <label>Find Existing Contact</label>
               <div className="autocomplete-container">
                 <input
                   type="text"
@@ -155,9 +143,6 @@ export default function DetailsTab({
         )}
 
         <div className="contact-fields-inline">
-          <p className="field-note">
-            {contact ? 'Contact details for this job (editable):' : 'Or enter new contact details:'}
-          </p>
           <div className="form-row">
             <div className="form-group">
               <label>Contact Name <span className="required">*</span></label>
@@ -166,7 +151,7 @@ export default function DetailsTab({
                 value={contactFormData.contactName}
                 onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
                 onBlur={titleCaseBlur('contactName', handleContactFieldChange)}
-                placeholder="Contact person..."
+                placeholder=""
                 className={!contactFormData.contactName.trim() ? 'field-required' : ''}
               />
             </div>
@@ -177,7 +162,7 @@ export default function DetailsTab({
                 value={contactFormData.companyName}
                 onChange={(e) => handleContactFieldChange('companyName', e.target.value)}
                 onBlur={titleCaseBlur('companyName', handleContactFieldChange)}
-                placeholder="Company name..."
+                placeholder=""
               />
             </div>
           </div>
@@ -188,7 +173,7 @@ export default function DetailsTab({
                 type="text"
                 value={contactFormData.phone}
                 onChange={(e) => handleContactFieldChange('phone', e.target.value)}
-                placeholder="Phone number..."
+                placeholder=""
               />
             </div>
             <div className="form-group">
@@ -197,7 +182,7 @@ export default function DetailsTab({
                 type="email"
                 value={contactFormData.email}
                 onChange={(e) => handleContactFieldChange('email', e.target.value)}
-                placeholder="Email address..."
+                placeholder=""
               />
             </div>
           </div>
@@ -268,7 +253,7 @@ export default function DetailsTab({
             onChange={handleChange}
             onBlur={capitalizeBlur('description')}
             rows={3}
-            placeholder="Job description..."
+            placeholder=""
           />
         </div>
       </div>
@@ -279,33 +264,35 @@ export default function DetailsTab({
             <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
             <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}>+ Add</button>
           </div>
-          <div className="line-items-table">
-            <div className="line-items-header">
-              <span className="line-col-num">#</span>
-              <span className="line-col-qty">Qty</span>
-              <span className="line-col-desc">Description</span>
-              <span className="line-col-action"></span>
+          <div className="items-table">
+            <div className="items-header">
+              <span>#</span>
+              <span>Qty</span>
+              <span>Description</span>
+              <span></span>
             </div>
             {lineItems.map((item) => (
-              <div key={item.id} className="line-item-row">
-                <span className="line-col-num item-num">{item.itemNumber}</span>
-                <input
-                  className="line-col-qty"
-                  type="text"
-                  value={item.qty}
-                  onChange={(e) => updateLineItem(item.id, 'qty', e.target.value)}
-                />
-                <input
-                  className="line-col-desc"
-                  type="text"
-                  value={item.description}
-                  onChange={(e) => updateLineItem(item.id, 'description', e.target.value)}
-                  onBlur={(e) => {
-                    const f = capitalizeFirst(e.target.value);
-                    if (f !== e.target.value) updateLineItem(item.id, 'description', f);
-                  }}
-                />
-                <span className="line-col-action">
+              <div key={item.id} className="items-row">
+                <span className="item-num">{item.itemNumber}</span>
+                <span>
+                  <input
+                    type="text"
+                    value={item.qty}
+                    onChange={(e) => updateLineItem(item.id, 'qty', e.target.value)}
+                  />
+                </span>
+                <span>
+                  <input
+                    type="text"
+                    value={item.description}
+                    onChange={(e) => updateLineItem(item.id, 'description', e.target.value)}
+                    onBlur={(e) => {
+                      const f = capitalizeFirst(e.target.value);
+                      if (f !== e.target.value) updateLineItem(item.id, 'description', f);
+                    }}
+                  />
+                </span>
+                <span>
                   {lineItems.length > 1 && (
                     <button type="button" className="btn-icon danger" onClick={() => removeLineItem(item.id)}>×</button>
                   )}
@@ -478,7 +465,6 @@ export default function DetailsTab({
       <div className="form-section">
         <h3 className="form-section-title">Treatment</h3>
         <div className="form-group">
-          <label>Treatment Required</label>
           <div className="checkbox-grid">
             {TREATMENT_OPTIONS.filter(o => o.value !== 'NONE').map(opt => {
               const values = formData.treatmentRequired ? formData.treatmentRequired.split(',') : [];
@@ -508,7 +494,7 @@ export default function DetailsTab({
               value={formData.treatmentOther}
               onChange={handleChange}
               onBlur={capitalizeBlur('treatmentOther')}
-              placeholder="Specify other treatment..."
+              placeholder="e.g. Zinc plating"
               style={{ marginTop: '0.5rem' }}
             />
           )}
@@ -533,7 +519,7 @@ export default function DetailsTab({
             onChange={handleChange}
             onBlur={capitalizeBlur('notes')}
             rows={2}
-            placeholder="Internal notes (not shown to customer)..."
+            placeholder="Not shown to customer"
           />
         </div>
       </div>

@@ -23,19 +23,19 @@ export default function SubcontractCreateSection({ subcontracts, setSubcontracts
       <div className="form-section-header">
         <h3 className="form-section-title">Subcontracts</h3>
         <button type="button" className="btn btn-secondary btn-sm" onClick={addSubcontract}>
-          + Add Subcontract
+          + Add
         </button>
       </div>
       {subcontracts.length === 0 ? (
-        <p className="empty-state">No subcontracts added. Click "+ Add Subcontract" to add one.</p>
+        <p className="empty-state">No subcontracts</p>
       ) : (
-        <div className="subcontracts-list">
+        <div className="subcontracts-create-list">
           {subcontracts.map((sub, idx) => (
-            <div key={sub.id} className="subcontract-card">
+            <div key={sub.id} className="subcontract-create-item">
               {sub.isNew ? (
-                <div className="subcontract-inline-form">
-                  <div className="form-row">
-                    <div className="form-group">
+                <>
+                  <div className="subcontract-create-top">
+                    <div className="form-group" style={{ flex: 1 }}>
                       <label>Supplier <span className="required">*</span></label>
                       <select
                         value={sub.supplierId}
@@ -56,6 +56,16 @@ export default function SubcontractCreateSection({ subcontracts, setSubcontracts
                         ))}
                       </select>
                     </div>
+                    <button
+                      type="button"
+                      className="btn-icon danger subcontract-remove"
+                      onClick={() => setSubcontracts(subcontracts.filter(s => s.id !== sub.id))}
+                      title="Remove"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="subcontract-create-dates">
                     <div className="form-group">
                       <label>Date Sent</label>
                       <input
@@ -72,16 +82,8 @@ export default function SubcontractCreateSection({ subcontracts, setSubcontracts
                         onChange={(e) => updateField(idx, 'dateExpected', e.target.value)}
                       />
                     </div>
-                    <button
-                      type="button"
-                      className="btn-icon danger"
-                      onClick={() => setSubcontracts(subcontracts.filter(s => s.id !== sub.id))}
-                      style={{ alignSelf: 'flex-end', marginBottom: '0.5rem' }}
-                    >
-                      ×
-                    </button>
                   </div>
-                </div>
+                </>
               ) : (
                 <div className="subcontract-display">
                   <div className="subcontract-header">

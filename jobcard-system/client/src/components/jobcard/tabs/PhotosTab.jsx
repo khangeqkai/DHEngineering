@@ -40,7 +40,7 @@ export default function PhotosTab({
             ))}
           </div>
         ) : (
-          <p className="empty-message">No photos attached.</p>
+          <p className="empty-message">No photos</p>
         )}
       </div>
     </div>
