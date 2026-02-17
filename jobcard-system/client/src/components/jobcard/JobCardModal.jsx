@@ -19,6 +19,8 @@ import TimeEntryTab from './tabs/TimeEntryTab';
 import CostingTab from './tabs/CostingTab';
 import QAFormsTab from './tabs/QAFormsTab';
 import PhotosTab from './tabs/PhotosTab';
+import ActivityLogTab from './tabs/ActivityLogTab';
+import { useActivityLog } from './useActivityLog';
 
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess }) {
   const { user } = useAuth();
@@ -37,6 +39,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const camera = useCamera();
   const contactHook = useContactSearch();
   const formHook = useJobCardForm();
+  const activityLog = useActivityLog(jobCardId);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   // Load reference data on mount
@@ -64,6 +67,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const { setFormDataFromJobCard, resetForm: resetFormHook } = formHook;
   const { setContactFromJobCard, resetContact } = contactHook;
   const { setPhotos, stopCamera } = camera;
+  const { loadHistory, resetHistory } = activityLog;
   const loadJobCard = useCallback(async () => {
     if (!isEdit || !jobCardId) return;
 
@@ -129,16 +133,18 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       }
     } catch (err) {
       console.error('Failed to load job card:', err);
-      toast.error('Failed to load job card data');
+      toast.error('Failed to load job card. Please try again.');
+      onClose();
     } finally {
       setLoading(false);
     }
-  }, [isEdit, jobCardId, isAdmin, setFormDataFromJobCard, setContactFromJobCard, setPhotos]);
+  }, [isEdit, jobCardId, isAdmin, setFormDataFromJobCard, setContactFromJobCard, setPhotos, onClose]);
+
   useEffect(() => {
-    if (isOpen && isEdit) {
-      loadJobCard();
+    if (isOpen && isEdit && activeTab === 'activity') {
+      loadHistory();
     }
-  }, [isOpen, isEdit, loadJobCard]);
+  }, [isOpen, isEdit, activeTab, loadHistory]);
   const apiCostingOperations = {
     costing: costing,
     updateCosting: async (data) => {
@@ -244,16 +250,21 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     resetTimeEntries();
     resetCosting();
     setPhotos([]);
+    resetHistory();
     setActiveTab('details');
-  }, [resetFormHook, resetContact, resetSubcontracts, resetTimeEntries, resetCosting, setPhotos]);
+  }, [resetFormHook, resetContact, resetSubcontracts, resetTimeEntries, resetCosting, setPhotos, resetHistory]);
   useEffect(() => {
     if (isOpen && !isEdit) {
       resetForm();
     }
+    if (isOpen && isEdit) {
+      resetForm();
+      loadJobCard();
+    }
     if (!isOpen) {
       stopCamera();
     }
-  }, [isOpen, isEdit, resetForm, stopCamera]);
+  }, [isOpen, isEdit, resetForm, stopCamera, loadJobCard]);
   const loadScannerFiles = async () => {
     formHook.setLoadingScannerFiles(true);
     try {
@@ -430,6 +441,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   <button type="button" className={`tab ${activeTab === 'qa' ? 'active' : ''}`} onClick={() => setActiveTab('qa')}>QA</button>
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>}
                   <button type="button" className={`tab ${activeTab === 'photos' ? 'active' : ''}`} onClick={() => setActiveTab('photos')}>Photos</button>
+                  <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>
                 </div>
               )}
 
@@ -537,6 +549,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   removePhoto={camera.removePhoto}
                   setSelectedPhoto={camera.setSelectedPhoto}
                   videoRef={camera.videoRef}
+                />
+              )}
+
+              {activeTab === 'activity' && isEdit && (
+                <ActivityLogTab
+                  history={activityLog.history}
+                  loading={activityLog.loadingHistory}
+                  onRefresh={loadHistory}
                 />
               )}
             </BottomSheet.Body>
