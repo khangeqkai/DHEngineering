@@ -275,7 +275,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     formHook.setShowScannerFiles(!formHook.showScannerFiles);
   };
   const selectContact = (cont) => contactHook.selectContact(cont, formHook.setFormData);
-  const clearContact = () => contactHook.clearContact(formHook.setFormData);
   const handleContactFieldChange = (field, value) => contactHook.handleContactFieldChange(field, value, formHook.setFormData);
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -446,13 +445,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   contactFormData={contactHook.contactFormData}
                   handleContactFieldChange={handleContactFieldChange}
                   selectContact={selectContact}
-                  clearContact={clearContact}
                   contacts={contactHook.contacts}
                   showContactDropdown={contactHook.showContactDropdown}
-                  setShowContactDropdown={contactHook.setShowContactDropdown}
                   contactSearchRef={contactHook.contactSearchRef}
-                  contactSearch={contactHook.contactSearch}
-                  setContactSearch={contactHook.setContactSearch}
+                  fieldFocused={contactHook.fieldFocused}
+                  handleFieldFocus={contactHook.handleFieldFocus}
+                  handleFieldBlur={contactHook.handleFieldBlur}
                   employees={employees || []}
                   assignees={formHook.assignees}
                   toggleAssignee={formHook.toggleAssignee}

@@ -23,13 +23,12 @@ export default function DetailsTab({
   contactFormData,
   handleContactFieldChange,
   selectContact,
-  clearContact,
   contacts,
   showContactDropdown,
-  setShowContactDropdown,
   contactSearchRef,
-  contactSearch,
-  setContactSearch,
+  fieldFocused,
+  handleFieldFocus,
+  handleFieldBlur,
   employees,
   assignees,
   toggleAssignee,
@@ -97,40 +96,37 @@ export default function DetailsTab({
         </div>
       </div>
 
-      {/* Contact Section - Phone Contacts Style (admin only) */}
+      {/* Contact Section - Inline Autocomplete (admin only) */}
       {isAdmin && (
       <div className="form-section">
-        <h3 className="form-section-title">Contact <span className="required">*</span></h3>
+        <h3 className="form-section-title">
+          Contact <span className="required">*</span>
+          {contact && <span className="contact-linked-badge">Linked</span>}
+        </h3>
 
-        {contact ? (
-          <div className="contact-chip-container">
-            <div className="contact-chip">
-              <div className="contact-chip-info">
-                <span className="contact-chip-name">{contact.contactName}</span>
-                {contact.companyName && (
-                  <span className="contact-chip-company">{contact.companyName}</span>
-                )}
-              </div>
-              <button type="button" className="contact-chip-change" onClick={clearContact}>
-                Change
-              </button>
-            </div>
-          </div>
-        ) : (
+        <div className="contact-fields-inline" ref={contactSearchRef}>
           <div className="form-row">
-            <div className="form-group" style={{ flex: 2 }} ref={contactSearchRef}>
+            <div className="form-group">
+              <label>Contact Name <span className="required">*</span></label>
               <div className="autocomplete-container">
                 <input
                   type="text"
-                  value={contactSearch}
-                  onChange={(e) => setContactSearch(e.target.value)}
-                  onFocus={() => contacts.length > 0 && setShowContactDropdown(true)}
-                  placeholder="Search by name or company..."
+                  value={contactFormData.contactName}
+                  onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
+                  onFocus={handleFieldFocus}
+                  onBlur={(e) => {
+                    handleFieldBlur();
+                    const formatted = toTitleCase(e.target.value);
+                    if (formatted !== e.target.value) handleContactFieldChange('contactName', formatted);
+                  }}
+                  onKeyDown={(e) => { if (e.key === 'Escape') e.target.blur(); }}
+                  placeholder=""
+                  className={!contactFormData.contactName.trim() ? 'field-required' : ''}
                 />
-                {showContactDropdown && contacts.length > 0 && (
+                {showContactDropdown && fieldFocused && contacts.length > 0 && (
                   <div className="customer-dropdown">
                     {contacts.map(c => (
-                      <div key={c.id} className="customer-option" onClick={() => selectContact(c)}>
+                      <div key={c.id} className="customer-option" onMouseDown={() => selectContact(c)}>
                         <strong>{c.contactName}</strong>
                         {c.companyName && <span className="company-name"> ({c.companyName})</span>}
                       </div>
@@ -138,22 +134,6 @@ export default function DetailsTab({
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        )}
-
-        <div className="contact-fields-inline">
-          <div className="form-row">
-            <div className="form-group">
-              <label>Contact Name <span className="required">*</span></label>
-              <input
-                type="text"
-                value={contactFormData.contactName}
-                onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
-                onBlur={titleCaseBlur('contactName', handleContactFieldChange)}
-                placeholder=""
-                className={!contactFormData.contactName.trim() ? 'field-required' : ''}
-              />
             </div>
             <div className="form-group">
               <label>Company</label>

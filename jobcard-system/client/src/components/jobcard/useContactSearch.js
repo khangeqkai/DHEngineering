@@ -14,26 +14,31 @@ function getDefaultContactFormData() {
 }
 
 /**
- * Custom hook for contact search and autocomplete functionality
+ * Custom hook for contact search and inline autocomplete functionality
  * Handles contact selection, search, and form data management
  * Uses phone contacts-style model where each contact is standalone
  */
 export function useContactSearch() {
   // Contact state
   const [contact, setContact] = useState(null);
-  const [contactSearch, setContactSearch] = useState('');
+  const [fieldFocused, setFieldFocused] = useState(false);
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [contactFormData, setContactFormData] = useState(getDefaultContactFormData());
   const [contacts, setContacts] = useState([]);
   const [originalContactName, setOriginalContactName] = useState(''); // For smart detection
   const contactSearchRef = useRef(null);
+  const blurTimeoutRef = useRef(null);
 
-  // Contact search effect using API - searches by name OR company
+  // Contact search effect - watches contactName field for autocomplete
   useEffect(() => {
+    if (!fieldFocused) return;
+
+    const searchValue = contactFormData.contactName;
+
     const searchContacts = async () => {
-      if (contactSearch.length >= 2) {
+      if (searchValue && searchValue.length >= 2) {
         try {
-          const results = await api.searchContacts(contactSearch);
+          const results = await api.searchContacts(searchValue);
           setContacts(results || []);
           setShowContactDropdown(true);
         } catch (err) {
@@ -42,22 +47,45 @@ export function useContactSearch() {
         }
       } else {
         setContacts([]);
+        setShowContactDropdown(false);
       }
     };
 
     const debounceTimer = setTimeout(searchContacts, 300);
     return () => clearTimeout(debounceTimer);
-  }, [contactSearch]);
+  }, [fieldFocused, contactFormData.contactName]);
 
   // Click outside to close contact dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (contactSearchRef.current && !contactSearchRef.current.contains(event.target)) {
         setShowContactDropdown(false);
+        setFieldFocused(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Handle contactName focus - cancel pending blur and show dropdown if results exist
+  const handleFieldFocus = useCallback(() => {
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+    setFieldFocused(true);
+    if (contacts.length > 0) {
+      setShowContactDropdown(true);
+    }
+  }, [contacts.length]);
+
+  // Handle contactName blur - delayed to allow dropdown clicks and re-focus
+  const handleFieldBlur = useCallback(() => {
+    blurTimeoutRef.current = setTimeout(() => {
+      blurTimeoutRef.current = null;
+      setFieldFocused(false);
+      setShowContactDropdown(false);
+    }, 200);
   }, []);
 
   // Select an existing contact from the dropdown
@@ -83,24 +111,8 @@ export function useContactSearch() {
       email: selectedContact.email || ''
     });
 
-    setContactSearch('');
+    setFieldFocused(false);
     setShowContactDropdown(false);
-  }, []);
-
-  // Clear contact selection
-  const clearContact = useCallback((setFormData) => {
-    setContact(null);
-    setOriginalContactName('');
-    setFormData(prev => ({
-      ...prev,
-      contactId: '',
-      contactName: '',
-      companyName: '',
-      contactPhone: '',
-      contactEmail: ''
-    }));
-    setContactFormData(getDefaultContactFormData());
-    setContactSearch('');
   }, []);
 
   // Handle changes to contact form fields
@@ -145,8 +157,6 @@ export function useContactSearch() {
       });
       setOriginalContactName(contactName || '');
 
-      setContactSearch('');
-
       setContactFormData({
         contactName: contactName || '',
         companyName: companyName || '',
@@ -160,7 +170,7 @@ export function useContactSearch() {
   const resetContact = useCallback(() => {
     setContact(null);
     setOriginalContactName('');
-    setContactSearch('');
+    setFieldFocused(false);
     setContactFormData(getDefaultContactFormData());
     setShowContactDropdown(false);
     setContacts([]);
@@ -175,8 +185,7 @@ export function useContactSearch() {
   return {
     // State
     contact,
-    contactSearch,
-    setContactSearch,
+    fieldFocused,
     showContactDropdown,
     setShowContactDropdown,
     contactFormData,
@@ -185,8 +194,9 @@ export function useContactSearch() {
     originalContactName,
     // Actions
     selectContact,
-    clearContact,
     handleContactFieldChange,
+    handleFieldFocus,
+    handleFieldBlur,
     setContactFromJobCard,
     resetContact,
     hasContactNameChanged
