@@ -78,7 +78,7 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
     const user = userQueries.getByUsername.get(username);
     if (!user || !user.active) {
       logger.warn({ username, reason: 'user_not_found_or_inactive' }, 'Failed login attempt');
-      recordHistory('auth', null, 'login_failed', null, username, { reason: 'user_not_found_or_inactive' }, null);
+      recordHistory('auth', 'login', 'login_failed', null, username, { reason: 'user_not_found_or_inactive' }, null);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -86,7 +86,7 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
       logger.warn({ username, userId: user.id, reason: 'invalid_password' }, 'Failed login attempt');
-      recordHistory('auth', null, 'login_failed', null, username, { reason: 'invalid_password', userId: user.id }, null);
+      recordHistory('auth', 'login', 'login_failed', user.id, username, { reason: 'invalid_password' }, null);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
