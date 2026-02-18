@@ -281,12 +281,13 @@ router.put('/users/:id', authenticate, async (req, res) => {
     }
 
     // Track changes for audit (normalize empty string / null for comparison)
+    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
     const changes = {};
-    if (name && name !== user.name) changes.name = { from: user.name, to: name };
-    if (email !== undefined && (email || null) !== (user.email || null)) {
+    if (name && normalizeEmpty(name) !== normalizeEmpty(user.name)) changes.name = { from: user.name, to: name };
+    if (email !== undefined && normalizeEmpty(email) !== normalizeEmpty(user.email)) {
       changes.email = { from: user.email || null, to: email || null };
     }
-    if (role && role !== user.role) changes.role = { from: user.role, to: role };
+    if (role && normalizeEmpty(role) !== normalizeEmpty(user.role)) changes.role = { from: user.role, to: role };
     if (password) changes.password = { changed: true };
 
     // Update user (normalize empty email to null for DB consistency)

@@ -100,8 +100,9 @@ router.put('/:id', (req, res) => {
       ['name', 'name', name || ''],
       ['description', 'description', description || ''],
     ];
+    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
     for (const [dbField, changeKey, newValue] of fieldsToTrack) {
-      if (newValue !== existing[dbField]) {
+      if (normalizeEmpty(newValue) !== normalizeEmpty(existing[dbField])) {
         changes[changeKey] = { from: existing[dbField], to: newValue };
       }
     }

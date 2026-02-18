@@ -95,10 +95,9 @@ router.put('/:id/subcontracts/:subId', authenticate, (req, res) => {
       ['notes', 'notes', data.notes !== undefined ? data.notes : existing.notes],
       ['status', 'status', data.status || existing.status],
     ];
+    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
     for (const [dbField, changeKey, newValue] of fieldsToTrack) {
-      const oldVal = existing[dbField] || '';
-      const newVal = newValue || '';
-      if (oldVal !== newVal) {
+      if (normalizeEmpty(newValue) !== normalizeEmpty(existing[dbField])) {
         changes[changeKey] = { from: existing[dbField], to: newValue };
       }
     }

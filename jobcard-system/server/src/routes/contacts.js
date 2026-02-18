@@ -105,13 +105,14 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
     }
 
     // Track changes for audit
+    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
     const changes = {};
-    if (contactName !== existing.contact_name) changes.contactName = { from: existing.contact_name, to: contactName };
-    if ((companyName || null) !== (existing.company_name || null)) changes.companyName = { from: existing.company_name, to: companyName || null };
-    if ((phone || null) !== (existing.phone || null)) changes.phone = { from: existing.phone, to: phone || null };
-    if ((email || null) !== (existing.email || null)) changes.email = { from: existing.email, to: email || null };
-    if ((address || null) !== (existing.address || null)) changes.address = { from: existing.address, to: address || null };
-    if ((notes || null) !== (existing.notes || null)) changes.notes = { from: existing.notes, to: notes || null };
+    if (normalizeEmpty(contactName) !== normalizeEmpty(existing.contact_name)) changes.contactName = { from: existing.contact_name, to: contactName };
+    if (normalizeEmpty(companyName) !== normalizeEmpty(existing.company_name)) changes.companyName = { from: existing.company_name, to: companyName || null };
+    if (normalizeEmpty(phone) !== normalizeEmpty(existing.phone)) changes.phone = { from: existing.phone, to: phone || null };
+    if (normalizeEmpty(email) !== normalizeEmpty(existing.email)) changes.email = { from: existing.email, to: email || null };
+    if (normalizeEmpty(address) !== normalizeEmpty(existing.address)) changes.address = { from: existing.address, to: address || null };
+    if (normalizeEmpty(notes) !== normalizeEmpty(existing.notes)) changes.notes = { from: existing.notes, to: notes || null };
 
     contactQueries.update.run(
       contactName,

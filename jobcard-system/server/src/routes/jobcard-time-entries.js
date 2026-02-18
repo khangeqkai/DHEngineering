@@ -127,10 +127,9 @@ router.put('/:id/time-entries/:entryId', authenticate, (req, res) => {
       ['start_time', 'startTime', data.startTime],
       ['end_time', 'endTime', data.endTime || null],
     ];
+    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
     for (const [dbField, changeKey, newValue] of fieldsToTrack) {
-      const oldVal = existing[dbField] || '';
-      const newVal = newValue || '';
-      if (String(oldVal) !== String(newVal)) {
+      if (normalizeEmpty(newValue) !== normalizeEmpty(existing[dbField])) {
         changes[changeKey] = { from: existing[dbField], to: newValue };
       }
     }

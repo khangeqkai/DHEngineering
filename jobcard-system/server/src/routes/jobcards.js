@@ -340,12 +340,13 @@ router.put('/:id', authenticate, (req, res) => {
       ['notes', 'notes'],
     ];
 
+    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
     for (const [dbField, reqField] of fieldsToTrack) {
       if (data[reqField] === undefined) continue;
       // Normalize boolean to integer for DB comparison (is_repeat_job stores 0/1)
       const value = dbField === 'is_repeat_job' ? (data[reqField] ? 1 : 0) : data[reqField];
-      if (value !== existing[dbField]) {
-        changes[dbField] = { from: existing[dbField], to: value };
+      if (normalizeEmpty(value) !== normalizeEmpty(existing[dbField])) {
+        changes[reqField] = { from: existing[dbField], to: value };
       }
     }
 
