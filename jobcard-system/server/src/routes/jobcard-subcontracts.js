@@ -70,7 +70,7 @@ router.put('/:id/subcontracts/:subId', authenticate, (req, res) => {
     const { id, subId } = req.params;
     const data = req.body;
 
-    const existing = subcontractQueries.getById.get(subId);
+    const existing = subcontractQueries.getByIdWithSupplier.get(subId);
     if (!existing) {
       return res.status(404).json({ error: 'Subcontract not found' });
     }
@@ -85,11 +85,30 @@ router.put('/:id/subcontracts/:subId', authenticate, (req, res) => {
       subId
     );
 
-    recordHistory('jobcard', id, 'update_subcontract', req.user.userId, req.user.name, {
-      subcontractId: subId,
-      status: data.status,
-      dateReceived: data.dateReceived
-    }, null);
+    // Build proper diff of changed fields
+    const changes = {};
+    const fieldsToTrack = [
+      ['supplier_id', 'supplierId', data.supplierId !== undefined ? data.supplierId : existing.supplier_id],
+      ['date_sent', 'dateSent', data.dateSent !== undefined ? data.dateSent : existing.date_sent],
+      ['date_expected', 'dateExpected', data.dateExpected !== undefined ? data.dateExpected : existing.date_expected],
+      ['date_received', 'dateReceived', data.dateReceived !== undefined ? data.dateReceived : existing.date_received],
+      ['notes', 'notes', data.notes !== undefined ? data.notes : existing.notes],
+      ['status', 'status', data.status || existing.status],
+    ];
+    for (const [dbField, changeKey, newValue] of fieldsToTrack) {
+      const oldVal = existing[dbField] || '';
+      const newVal = newValue || '';
+      if (oldVal !== newVal) {
+        changes[changeKey] = { from: existing[dbField], to: newValue };
+      }
+    }
+
+    if (Object.keys(changes).length > 0) {
+      recordHistory('jobcard', id, 'update_subcontract', req.user.userId, req.user.name, changes, {
+        subcontractId: subId,
+        supplierName: existing.supplier_name
+      });
+    }
 
     const sub = subcontractQueries.getById.get(subId);
     res.json(toResponse(sub));
@@ -104,15 +123,19 @@ router.delete('/:id/subcontracts/:subId', authenticate, (req, res) => {
   try {
     const { id, subId } = req.params;
 
-    const existing = subcontractQueries.getById.get(subId);
+    const existing = subcontractQueries.getByIdWithSupplier.get(subId);
     if (!existing) {
       return res.status(404).json({ error: 'Subcontract not found' });
     }
 
-    recordHistory('jobcard', id, 'delete_subcontract', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'delete_subcontract', req.user.userId, req.user.name, null, {
       subcontractId: subId,
-      supplierId: existing.supplier_id
-    }, null);
+      supplierId: existing.supplier_id,
+      supplierName: existing.supplier_name,
+      status: existing.status,
+      dateSent: existing.date_sent,
+      dateReceived: existing.date_received
+    });
 
     subcontractQueries.delete.run(subId);
 

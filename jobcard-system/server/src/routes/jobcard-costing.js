@@ -45,6 +45,9 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
 
     const costingId = data.id || `costing:${Date.now()}:${uuidv4().slice(0, 8)}`;
 
+    // Get existing costing for diff
+    const existing = jobCostingQueries.getByJobcard.get(id);
+
     // Calculate totals
     const labourTotal = (data.labourHours || 0) * (data.labourRate || 0);
     const labourSpecialTotal = (data.labourSpecialHours || 0) * (data.labourSpecialRate || 0);
@@ -70,7 +73,30 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
       grandTotal
     );
 
-    recordHistory('jobcard', id, 'update_costing', req.user.userId, req.user.name, { grandTotal }, null);
+    // Build proper diff of changed fields
+    const changes = {};
+    const fieldsToTrack = [
+      ['labour_hours', 'labourHours', data.labourHours || 0],
+      ['labour_rate', 'labourRate', data.labourRate || 0],
+      ['labour_special_hours', 'labourSpecialHours', data.labourSpecialHours || 0],
+      ['labour_special_rate', 'labourSpecialRate', data.labourSpecialRate || 0],
+      ['materials_cost', 'materialsCost', data.materialsCost || 0],
+      ['materials_profit_percent', 'materialsProfitPercent', data.materialsProfitPercent || 100],
+      ['subcontractor_cost', 'subcontractorCost', data.subcontractorCost || 0],
+      ['subcontractor_profit_percent', 'subcontractorProfitPercent', data.subcontractorProfitPercent || 0],
+      ['grand_total', 'grandTotal', grandTotal],
+    ];
+    for (const [dbField, changeKey, newValue] of fieldsToTrack) {
+      const oldVal = existing ? Number(existing[dbField]) || 0 : 0;
+      const newVal = Number(newValue) || 0;
+      if (oldVal !== newVal) {
+        changes[changeKey] = { from: oldVal, to: newVal };
+      }
+    }
+
+    if (Object.keys(changes).length > 0) {
+      recordHistory('jobcard', id, 'update_costing', req.user.userId, req.user.name, changes, null);
+    }
 
     res.json({ success: true, grandTotal });
   } catch (err) {

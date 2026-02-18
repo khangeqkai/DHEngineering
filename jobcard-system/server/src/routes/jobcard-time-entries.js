@@ -117,11 +117,29 @@ router.put('/:id/time-entries/:entryId', authenticate, (req, res) => {
       entryId
     );
 
-    recordHistory('jobcard', id, 'update_time_entry', req.user.userId, req.user.name, {
-      timeEntryId: entryId,
-      machineNumber: data.machineNumber,
-      description: data.description
-    }, null);
+    // Build proper diff of changed fields
+    const changes = {};
+    const fieldsToTrack = [
+      ['item_number', 'itemNumber', data.itemNumber || null],
+      ['machine_number', 'machineNumber', data.machineNumber || null],
+      ['qty', 'qty', data.qty || null],
+      ['description', 'description', data.description || null],
+      ['start_time', 'startTime', data.startTime],
+      ['end_time', 'endTime', data.endTime || null],
+    ];
+    for (const [dbField, changeKey, newValue] of fieldsToTrack) {
+      const oldVal = existing[dbField] || '';
+      const newVal = newValue || '';
+      if (String(oldVal) !== String(newVal)) {
+        changes[changeKey] = { from: existing[dbField], to: newValue };
+      }
+    }
+
+    if (Object.keys(changes).length > 0) {
+      recordHistory('jobcard', id, 'update_time_entry', req.user.userId, req.user.name, changes, {
+        timeEntryId: entryId
+      });
+    }
 
     const entry = timeEntryQueries.getById.get(entryId);
     res.json(toCamelCase(entry));
@@ -141,11 +159,14 @@ router.delete('/:id/time-entries/:entryId', authenticate, (req, res) => {
       return res.status(404).json({ error: 'Time entry not found' });
     }
 
-    recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, req.user.name, null, {
       timeEntryId: entryId,
+      machineNumber: existing.machine_number,
+      description: existing.description,
       startTime: existing.start_time,
-      description: existing.description
-    }, null);
+      endTime: existing.end_time,
+      qty: existing.qty
+    });
 
     timeEntryQueries.delete.run(entryId);
 

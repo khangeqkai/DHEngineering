@@ -192,7 +192,7 @@ db.run(data.jobNumber, data.dueDate, data.contactId);
 
 ### Required Patterns
 - **Direct API calls**: Use `api.js` methods for all server communication
-- **Audit trail**: Call `recordHistory()` for all server-side data mutations
+- **Audit trail**: Call `recordHistory(entityType, entityId, action, userId, userName, changes, snapshot)` for all server-side data mutations. Updates must use `{ field: { from: oldVal, to: newVal } }` for changes. Creates/deletes pass `null` for changes and a snapshot of the record. Use `req.user.userId` (not `req.user.id`) for the userId parameter.
 - **Prepared statements**: Use queries defined in `database.js`, never inline SQL
 - **Server error handling**: Try-catch with `logger.error()` from `utils/logger.js`
 - **Client error handling**: Use `toast.error()` from `react-hot-toast` (not `alert()`)

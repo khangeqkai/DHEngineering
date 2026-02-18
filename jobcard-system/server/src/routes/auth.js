@@ -91,7 +91,7 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
     }
 
     // Record login in history
-    recordHistory('user', user.id, 'login', user.id, user.name, null, null);
+    recordHistory('user', user.id, 'login', user.id, user.name, null, { username: user.username, name: user.name });
 
     // Generate session token and store in DB (single-session enforcement)
     const sessionToken = uuidv4();
@@ -308,7 +308,7 @@ router.put('/users/:id', authenticate, async (req, res) => {
 
     // Record in history
     if (Object.keys(changes).length > 0) {
-      recordHistory('user', id, 'update', req.user.userId, req.user.name, changes, null);
+      recordHistory('user', id, 'update', req.user.userId, req.user.name, changes, { username: user.username, name: user.name });
     }
 
     const updatedUser = userQueries.getById.get(id);
@@ -343,7 +343,9 @@ router.post('/users/:id/deactivate', authenticate, requireRole('admin'), (req, r
 
     userQueries.deactivate.run(id);
 
-    recordHistory('user', id, 'deactivate', req.user.userId, req.user.name, null, null);
+    recordHistory('user', id, 'deactivate', req.user.userId, req.user.name, {
+      status: { from: 'Active', to: 'Inactive' }
+    }, { username: user.username, name: user.name });
 
     res.json({ success: true, message: 'User deactivated' });
   } catch (err) {
@@ -364,7 +366,9 @@ router.post('/users/:id/activate', authenticate, requireRole('admin'), (req, res
 
     userQueries.activate.run(id);
 
-    recordHistory('user', id, 'activate', req.user.userId, req.user.name, null, null);
+    recordHistory('user', id, 'activate', req.user.userId, req.user.name, {
+      status: { from: 'Inactive', to: 'Active' }
+    }, { username: user.username, name: user.name });
 
     res.json({ success: true, message: 'User activated' });
   } catch (err) {

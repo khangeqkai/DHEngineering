@@ -12,6 +12,13 @@ const subcontractQueries = {
 
   getById: db.prepare('SELECT * FROM subcontracts WHERE id = ?'),
 
+  getByIdWithSupplier: db.prepare(`
+    SELECT s.*, sup.name as supplier_name
+    FROM subcontracts s
+    JOIN suppliers sup ON s.supplier_id = sup.id
+    WHERE s.id = ?
+  `),
+
   create: db.prepare(`
     INSERT INTO subcontracts (id, jobcard_id, supplier_id, date_sent, date_expected, notes, status, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))

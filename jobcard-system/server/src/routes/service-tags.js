@@ -64,7 +64,7 @@ router.post('/', requireAdmin, (req, res) => {
     serviceTagQueries.create.run(id, trimmedName, 0); // is_system = 0 for custom tags
 
     const tag = serviceTagQueries.getById.get(id);
-    recordHistory('service_tag', id, 'created', req.user.id, req.user.name || req.user.username, null, tag);
+    recordHistory('service_tag', id, 'created', req.user.userId, req.user.name || req.user.username, null, tag);
 
     res.status(201).json(tag);
   } catch (err) {
@@ -95,7 +95,14 @@ router.put('/:id', requireAdmin, (req, res) => {
     serviceTagQueries.update.run(name.trim(), id);
     const tag = serviceTagQueries.getById.get(id);
 
-    recordHistory('service_tag', id, 'updated', req.user.id, req.user.name || req.user.username, req.body, tag);
+    const changes = {};
+    if (name.trim() !== existing.name) {
+      changes.name = { from: existing.name, to: name.trim() };
+    }
+
+    if (Object.keys(changes).length > 0) {
+      recordHistory('service_tag', id, 'updated', req.user.userId, req.user.name || req.user.username, changes, tag);
+    }
 
     res.json(tag);
   } catch (err) {
@@ -119,7 +126,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
     }
 
     serviceTagQueries.delete.run(id);
-    recordHistory('service_tag', id, 'deleted', req.user.id, req.user.name || req.user.username, null, existing);
+    recordHistory('service_tag', id, 'deleted', req.user.userId, req.user.name || req.user.username, null, existing);
 
     res.json({ message: 'Service tag deleted successfully' });
   } catch (err) {

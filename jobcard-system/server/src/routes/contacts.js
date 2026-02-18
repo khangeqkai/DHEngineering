@@ -84,7 +84,7 @@ router.post('/', requireAdmin, validateCreateContact, (req, res) => {
     const contact = contactQueries.getById.get(id);
 
     // Record history
-    recordHistory('contact', id, 'created', req.user.id, req.user.name || req.user.username, null, toApiFormat(contact));
+    recordHistory('contact', id, 'created', req.user.userId, req.user.name || req.user.username, null, toApiFormat(contact));
 
     res.status(201).json(toApiFormat(contact));
   } catch (err) {
@@ -126,7 +126,7 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
     const contact = contactQueries.getById.get(id);
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('contact', id, 'updated', req.user.id, req.user.name || req.user.username, changes, toApiFormat(contact));
+      recordHistory('contact', id, 'updated', req.user.userId, req.user.name || req.user.username, changes, toApiFormat(contact));
     }
 
     res.json(toApiFormat(contact));
@@ -149,7 +149,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
     contactQueries.unlinkJobcards.run(id);
     contactQueries.delete.run(id);
 
-    recordHistory('contact', id, 'deleted', req.user.id, req.user.name || req.user.username, null, toApiFormat(existing));
+    recordHistory('contact', id, 'deleted', req.user.userId, req.user.name || req.user.username, null, toApiFormat(existing));
 
     res.json({ message: 'Contact deleted successfully' });
   } catch (err) {

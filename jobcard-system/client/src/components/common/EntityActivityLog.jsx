@@ -51,6 +51,22 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleString();
 }
 
+function formatTarget(snapshot) {
+  if (!snapshot) return null;
+  // User: show username (display name)
+  if (snapshot.username) {
+    return snapshot.name ? `${snapshot.username} (${snapshot.name})` : snapshot.username;
+  }
+  // Contact: show contact name (company)
+  if (snapshot.contactName) {
+    return snapshot.companyName ? `${snapshot.contactName} (${snapshot.companyName})` : snapshot.contactName;
+  }
+  // Supplier: show company name
+  if (snapshot.name) return snapshot.name;
+  if (snapshot.companyName) return snapshot.companyName;
+  return null;
+}
+
 export default function EntityActivityLog({ entityType, isOpen, onClose, refreshKey }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -115,11 +131,14 @@ export default function EntityActivityLog({ entityType, isOpen, onClose, refresh
           ) : (
             <>
               <div className="eal-list">
-                {history.map((entry) => (
+                {history.map((entry) => {
+                  const target = formatTarget(entry.snapshot);
+                  return (
                   <div key={entry.id} className="eal-entry">
                     <div className="eal-meta">
                       <span className="eal-user">{entry.userName || 'System'}</span>
                       {formatAction(entry.action)}
+                      {target && <span className="eal-target">{target}</span>}
                       <span className="eal-time">{formatDate(entry.createdAt)}</span>
                     </div>
                     {entry.changes && (
@@ -128,7 +147,8 @@ export default function EntityActivityLog({ entityType, isOpen, onClose, refresh
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {totalPages > 1 && (
@@ -229,6 +249,12 @@ export default function EntityActivityLog({ entityType, isOpen, onClose, refresh
           font-weight: 600;
           text-transform: capitalize;
           font-size: var(--text-xs);
+        }
+
+        .eal-target {
+          font-size: var(--text-sm);
+          color: var(--text-primary);
+          font-weight: 500;
         }
 
         .eal-time {
