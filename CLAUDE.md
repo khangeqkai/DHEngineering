@@ -79,6 +79,8 @@ Main routes: `/auth`, `/jobcards`, `/contacts`, `/suppliers`, `/machines`, `/set
 
 Settings endpoints: `GET /settings` (admin), `PUT /settings` (admin), `GET /settings/inactivity-timeout` (all users)
 
+History sub-routes: `GET /history` (recent, admin), `GET /history/user/:userId` (admin), `GET /history/entity/:entityType?page=1` (admin, type = `user`|`contact`|`supplier`, returns `{ data, total, page, totalPages }` with 50 items/page)
+
 Job card sub-routes: `/jobcards/:id/items`, `/assignees`, `/subcontracts`, `/time-entries`, `/costing`, `/documents`, `/qa-forms`, `/history`
 
 ### Database Schema (SQLite)

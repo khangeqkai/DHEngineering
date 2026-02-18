@@ -7,6 +7,7 @@ import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
+import EntityActivityLog from './common/EntityActivityLog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 
 export default function UserManagement() {
@@ -320,6 +321,8 @@ export default function UserManagement() {
           />
         </div>
       </div>
+
+      <EntityActivityLog entityType="user" />
 
       <style>{`
         .show-inactive-label {

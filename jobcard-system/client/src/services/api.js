@@ -401,6 +401,10 @@ class ApiService {
     return this.request(`/history/user/${userId}?limit=${limit}`);
   }
 
+  getEntityHistory(entityType, page = 1) {
+    return this.request(`/history/entity/${entityType}?page=${page}`);
+  }
+
   // Machines
   getMachines() {
     return this.request('/machines');

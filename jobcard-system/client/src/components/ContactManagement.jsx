@@ -7,6 +7,7 @@ import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
+import EntityActivityLog from './common/EntityActivityLog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 
 export default function ContactManagement() {
@@ -277,6 +278,8 @@ export default function ContactManagement() {
           />
         </div>
       </div>
+
+      <EntityActivityLog entityType="contact" />
 
       <ConfirmDialog
         isOpen={dialogState.isOpen}

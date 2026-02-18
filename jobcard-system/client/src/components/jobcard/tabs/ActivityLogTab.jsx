@@ -32,10 +32,10 @@ export default function ActivityLogTab({ history = [], loading, onRefresh }) {
         ) : (
           <>
             <span style={{ textDecoration: 'line-through', color: 'var(--accent-caution)' }}>
-              {change.from || '(empty)'}
+              {change.from != null && change.from !== '' ? change.from : '(empty)'}
             </span>
             {' → '}
-            <span style={{ color: 'var(--accent-ready)' }}>{change.to || '(empty)'}</span>
+            <span style={{ color: 'var(--accent-ready)' }}>{change.to != null && change.to !== '' ? change.to : '(empty)'}</span>
           </>
         )}
       </div>
