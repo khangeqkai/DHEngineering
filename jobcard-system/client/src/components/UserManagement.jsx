@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase } from '../utils/formatters';
-import { Plus, Trash2, Save, UserMinus, UserCheck } from 'lucide-react';
+import { Plus, Trash2, Save, UserMinus, UserCheck, History } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
 import BottomSheet from './common/BottomSheet';
@@ -24,6 +24,8 @@ export default function UserManagement() {
     role: 'user'
   });
   const [saving, setSaving] = useState(false);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
+  const [showActivityLog, setShowActivityLog] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   useEffect(() => {
@@ -60,6 +62,7 @@ export default function UserManagement() {
         await api.createUser(formData);
       }
       await loadUsers();
+      setActivityRefreshKey(k => k + 1);
       resetForm();
     } catch (err) {
       console.error('Failed to save user:', err);
@@ -93,6 +96,7 @@ export default function UserManagement() {
     try {
       await api.deactivateUser(user.id);
       await loadUsers();
+      setActivityRefreshKey(k => k + 1);
     } catch (err) {
       console.error('Failed to deactivate user:', err);
       toast.error(err.message || 'Failed to deactivate user');
@@ -103,6 +107,7 @@ export default function UserManagement() {
     try {
       await api.activateUser(user.id);
       await loadUsers();
+      setActivityRefreshKey(k => k + 1);
     } catch (err) {
       console.error('Failed to activate user:', err);
       toast.error(err.message || 'Failed to activate user');
@@ -121,6 +126,7 @@ export default function UserManagement() {
     try {
       await api.deleteUser(user.id);
       await loadUsers();
+      setActivityRefreshKey(k => k + 1);
     } catch (err) {
       console.error('Failed to delete user:', err);
       toast.error(err.message || 'Failed to delete user');
@@ -154,6 +160,9 @@ export default function UserManagement() {
           />
           Show inactive
         </label>
+        <button className="btn btn-secondary" onClick={() => setShowActivityLog(true)}>
+          <History size={16} /> Activity Log
+        </button>
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
           <Plus size={16} /> Add User
         </button>
@@ -322,7 +331,12 @@ export default function UserManagement() {
         </div>
       </div>
 
-      <EntityActivityLog entityType="user" />
+      <EntityActivityLog
+        entityType="user"
+        isOpen={showActivityLog}
+        onClose={() => setShowActivityLog(false)}
+        refreshKey={activityRefreshKey}
+      />
 
       <style>{`
         .show-inactive-label {

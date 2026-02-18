@@ -280,17 +280,20 @@ router.put('/users/:id', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Track changes for audit
+    // Track changes for audit (normalize empty string / null for comparison)
     const changes = {};
     if (name && name !== user.name) changes.name = { from: user.name, to: name };
-    if (email !== undefined && email !== user.email) changes.email = { from: user.email, to: email };
+    if (email !== undefined && (email || null) !== (user.email || null)) {
+      changes.email = { from: user.email || null, to: email || null };
+    }
     if (role && role !== user.role) changes.role = { from: user.role, to: role };
     if (password) changes.password = { changed: true };
 
-    // Update user
+    // Update user (normalize empty email to null for DB consistency)
+    const emailToStore = email !== undefined ? (email || null) : user.email;
     userQueries.update.run(
       name || user.name,
-      email !== undefined ? email : user.email,
+      emailToStore,
       user.phone,       // preserve existing phone
       user.employee_id, // preserve existing employee_id
       role || user.role,

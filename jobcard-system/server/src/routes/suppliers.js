@@ -120,6 +120,26 @@ router.put('/:id', requireAdmin, (req, res) => {
       return res.status(400).json({ error: 'Supplier name is required' });
     }
 
+    // Track changes for audit
+    const oldTags = serviceTagQueries.getForSupplier.all(id) || [];
+    const oldTagIds = oldTags.map(t => t.id).sort().join(',');
+    const newTagIds = Array.isArray(serviceTagIds) ? [...serviceTagIds].sort().join(',') : oldTagIds;
+    const changes = {};
+    if (name !== existing.name) changes.name = { from: existing.name, to: name };
+    if ((contactName || null) !== (existing.contact_name || null)) changes.contactName = { from: existing.contact_name, to: contactName || null };
+    if ((contactPhone || null) !== (existing.contact_phone || null)) changes.contactPhone = { from: existing.contact_phone, to: contactPhone || null };
+    if ((contactEmail || null) !== (existing.contact_email || null)) changes.contactEmail = { from: existing.contact_email, to: contactEmail || null };
+    if ((address || null) !== (existing.address || null)) changes.address = { from: existing.address, to: address || null };
+    if ((notes || null) !== (existing.notes || null)) changes.notes = { from: existing.notes, to: notes || null };
+    if (newTagIds !== oldTagIds) {
+      const oldTagNames = oldTags.map(t => t.name).sort().join(', ') || null;
+      const allTags = serviceTagQueries.getAll ? serviceTagQueries.getAll.all() : [];
+      const newTagNames = Array.isArray(serviceTagIds)
+        ? serviceTagIds.map(tid => { const t = allTags.find(at => at.id === tid); return t ? t.name : tid; }).sort().join(', ') || null
+        : oldTagNames;
+      changes.serviceTags = { from: oldTagNames, to: newTagNames };
+    }
+
     supplierQueries.update.run(
       name,
       contactName || null,
@@ -141,7 +161,9 @@ router.put('/:id', requireAdmin, (req, res) => {
 
     const supplier = getSupplierWithTags(id);
 
-    recordHistory('supplier', id, 'updated', req.user.id, req.user.name || req.user.username, req.body, supplier);
+    if (Object.keys(changes).length > 0) {
+      recordHistory('supplier', id, 'updated', req.user.id, req.user.name || req.user.username, changes, supplier);
+    }
 
     res.json(supplier);
   } catch (err) {

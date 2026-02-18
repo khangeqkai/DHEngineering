@@ -10,6 +10,7 @@ const {
   subcontractQueries,
   qaFormQueries,
   historyQueries,
+  userQueries,
   recordHistory
 } = require('../db/database');
 
@@ -375,6 +376,17 @@ router.put('/:id', authenticate, (req, res) => {
       id
     );
 
+    // Track photos changes
+    if (data.photos !== undefined) {
+      const newPhotos = JSON.stringify(data.photos);
+      const oldPhotos = existing.photos || '[]';
+      if (newPhotos !== oldPhotos) {
+        const oldCount = existing.photos ? JSON.parse(existing.photos).length : 0;
+        const newCount = data.photos.length;
+        changes['photos'] = { from: `${oldCount} photos`, to: `${newCount} photos` };
+      }
+    }
+
     // Capture existing items/assignees for change tracking
     const existingItems = data.items !== undefined ? jobItemQueries.getByJobcard.all(id) : [];
     const existingAssignees = data.assigneeIds !== undefined ? jobAssigneeQueries.getByJobcard.all(id) : [];
@@ -400,7 +412,7 @@ router.put('/:id', authenticate, (req, res) => {
       const oldDescs = existingItems.map(i => `${i.qty || ''}x ${i.description}`).join(', ');
       const newDescs = data.items.map(i => `${i.qty || ''}x ${i.description}`).join(', ');
       if (oldDescs !== newDescs) {
-        changes['items'] = { from: `${existingItems.length} items`, to: `${data.items.length} items` };
+        changes['items'] = { from: oldDescs || 'none', to: newDescs || 'none' };
       }
     }
 
@@ -423,7 +435,11 @@ router.put('/:id', authenticate, (req, res) => {
       const newIds = [...data.assigneeIds].sort().join(',');
       if (oldIds !== newIds) {
         const oldNames = existingAssignees.map(a => a.user_name).join(', ') || 'none';
-        changes['assignees'] = { from: oldNames, to: 'updated' };
+        const newNames = data.assigneeIds.map(userId => {
+          const user = userQueries.getById.get(userId);
+          return user ? (user.name || user.username) : userId;
+        }).join(', ') || 'none';
+        changes['assignees'] = { from: oldNames, to: newNames };
       }
     }
 

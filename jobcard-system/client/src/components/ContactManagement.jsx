@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase, capitalizeFirst, autoResize } from '../utils/formatters';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Plus, Trash2, Save, History } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
 import BottomSheet from './common/BottomSheet';
@@ -24,6 +24,8 @@ export default function ContactManagement() {
     notes: ''
   });
   const [saving, setSaving] = useState(false);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
+  const [showActivityLog, setShowActivityLog] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   // Load contacts on mount
@@ -55,6 +57,7 @@ export default function ContactManagement() {
         await api.createContact(formData);
       }
       await loadContacts();
+      setActivityRefreshKey(k => k + 1);
       resetForm();
     } catch (err) {
       console.error('Failed to save contact:', err);
@@ -92,6 +95,7 @@ export default function ContactManagement() {
     try {
       await api.deleteContact(contact.id);
       await loadContacts();
+      setActivityRefreshKey(k => k + 1);
     } catch (err) {
       console.error('Failed to delete contact:', err);
       toast.error(err.message || 'Failed to delete contact');
@@ -118,6 +122,9 @@ export default function ContactManagement() {
   return (
     <div className="contact-management page-scroll-layout">
       <PageHeader title="Contacts">
+        <button className="btn btn-secondary" onClick={() => setShowActivityLog(true)}>
+          <History size={16} /> Activity Log
+        </button>
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
           <Plus size={16} /> Add Contact
         </button>
@@ -279,7 +286,12 @@ export default function ContactManagement() {
         </div>
       </div>
 
-      <EntityActivityLog entityType="contact" />
+      <EntityActivityLog
+        entityType="contact"
+        isOpen={showActivityLog}
+        onClose={() => setShowActivityLog(false)}
+        refreshKey={activityRefreshKey}
+      />
 
       <ConfirmDialog
         isOpen={dialogState.isOpen}

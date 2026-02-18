@@ -93,8 +93,23 @@ router.put('/:id', (req, res) => {
 
     const machine = machineQueries.getById.get(id);
 
-    recordHistory('machine', id, 'updated', req.user.id, req.user.name || req.user.username,
-      { machineNumber, name, description }, machine);
+    // Build proper diff of changed fields
+    const changes = {};
+    const fieldsToTrack = [
+      ['machine_number', 'machineNumber', machineNumber],
+      ['name', 'name', name || ''],
+      ['description', 'description', description || ''],
+    ];
+    for (const [dbField, changeKey, newValue] of fieldsToTrack) {
+      if (newValue !== existing[dbField]) {
+        changes[changeKey] = { from: existing[dbField], to: newValue };
+      }
+    }
+
+    if (Object.keys(changes).length > 0) {
+      recordHistory('machine', id, 'updated', req.user.id, req.user.name || req.user.username,
+        changes, machine);
+    }
 
     res.json(toResponseFormat(machine));
   } catch (err) {

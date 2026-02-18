@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { History } from 'lucide-react';
+import BottomSheet from './BottomSheet';
 
 const ACTION_COLORS = {
   create: 'var(--accent-ready)',
@@ -18,12 +19,7 @@ const PAGE_SIZE = 50;
 
 function formatAction(action) {
   return (
-    <span style={{
-      color: ACTION_COLORS[action] || 'var(--text-secondary)',
-      fontWeight: 600,
-      textTransform: 'capitalize',
-      fontSize: 'var(--text-xs)'
-    }}>
+    <span className="eal-action" style={{ color: ACTION_COLORS[action] || 'var(--text-secondary)' }}>
       {action.replace(/_/g, ' ')}
     </span>
   );
@@ -32,18 +28,20 @@ function formatAction(action) {
 function formatChanges(changes) {
   if (!changes) return null;
   return Object.entries(changes).map(([field, change]) => (
-    <div key={field} className="entity-activity-change">
-      <strong>{field.replace(/_/g, ' ')}:</strong>{' '}
+    <div key={field} className="eal-change">
+      <span className="eal-field">{field.replace(/_/g, ' ')}</span>
       {change.changed ? (
-        <span style={{ color: 'var(--primary-accent)', fontStyle: 'italic' }}>modified</span>
+        <span className="eal-modified">modified</span>
       ) : (
-        <>
-          <span style={{ textDecoration: 'line-through', color: 'var(--accent-caution)' }}>
+        <span className="eal-diff">
+          <span className="eal-from">
             {change.from != null && change.from !== '' ? change.from : '(empty)'}
           </span>
-          {' → '}
-          <span style={{ color: 'var(--accent-ready)' }}>{change.to != null && change.to !== '' ? change.to : '(empty)'}</span>
-        </>
+          <span className="eal-arrow">&rarr;</span>
+          <span className="eal-to">
+            {change.to != null && change.to !== '' ? change.to : '(empty)'}
+          </span>
+        </span>
       )}
     </div>
   ));
@@ -53,25 +51,12 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleString();
 }
 
-export default function EntityActivityLog({ entityType }) {
-  const [expanded, setExpanded] = useState(false);
+export default function EntityActivityLog({ entityType, isOpen, onClose, refreshKey }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-
-  useEffect(() => {
-    setLoaded(false);
-    setHistory([]);
-    setPage(1);
-    setTotal(0);
-    setTotalPages(0);
-    if (expanded) {
-      loadHistory(1);
-    }
-  }, [entityType]);
 
   const loadHistory = useCallback(async (fetchPage) => {
     setLoading(true);
@@ -81,7 +66,6 @@ export default function EntityActivityLog({ entityType }) {
       setTotal(result.total);
       setTotalPages(result.totalPages);
       setPage(result.page);
-      setLoaded(true);
     } catch (err) {
       toast.error('Failed to load activity history');
     } finally {
@@ -89,168 +73,239 @@ export default function EntityActivityLog({ entityType }) {
     }
   }, [entityType]);
 
-  const handleToggle = () => {
-    const next = !expanded;
-    setExpanded(next);
-    if (next && !loaded) {
+  // Load on open
+  useEffect(() => {
+    if (isOpen) {
       loadHistory(1);
+    } else {
+      setHistory([]);
+      setPage(1);
+      setTotal(0);
+      setTotalPages(0);
     }
-  };
+  }, [isOpen, entityType, loadHistory]);
+
+  // Refresh when parent signals data has changed
+  useEffect(() => {
+    if (isOpen && refreshKey) {
+      loadHistory(page);
+    }
+  }, [refreshKey, isOpen, page, loadHistory]);
 
   const handlePageChange = (newPage) => {
-    setPage(newPage);
     loadHistory(newPage);
   };
 
-  const label = entityType === 'user' ? 'User' : entityType === 'supplier' ? 'Supplier' : 'Contact';
   const rangeStart = (page - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(page * PAGE_SIZE, total);
 
   return (
-    <div className="card" style={{ marginTop: '1rem' }}>
-      <div
-        className="card-header"
-        onClick={handleToggle}
-        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem' }}
+    <>
+      <BottomSheet
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Activity Log"
+        size="compact"
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-          <span style={{ fontWeight: 600 }}>{label} Activity Log</span>
-          {loaded && (
-            <span className="badge badge-pending" style={{ fontSize: 'var(--text-xs)' }}>
-              {total}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {expanded && (
-        <div className="card-body" style={{ padding: 0 }}>
+        <div className="eal-modal">
           {loading ? (
-            <div className="loading" style={{ padding: '1.5rem' }}>Loading activity log...</div>
+            <div className="eal-status">Loading...</div>
           ) : history.length === 0 ? (
-            <div className="empty-state" style={{ padding: '1.5rem' }}>No activity recorded.</div>
+            <div className="eal-status">No activity recorded.</div>
           ) : (
-            <div className="entity-activity-list">
-              {history.map((entry) => (
-                <div key={entry.id} className="entity-activity-entry">
-                  <div className="entity-activity-meta">
-                    <span className="entity-activity-user">{entry.userName || 'System'}</span>
-                    {formatAction(entry.action)}
-                    <span className="entity-activity-time">{formatDate(entry.createdAt)}</span>
-                  </div>
-                  {entry.changes && (
-                    <div className="entity-activity-changes">
-                      {formatChanges(entry.changes)}
+            <>
+              <div className="eal-list">
+                {history.map((entry) => (
+                  <div key={entry.id} className="eal-entry">
+                    <div className="eal-meta">
+                      <span className="eal-user">{entry.userName || 'System'}</span>
+                      {formatAction(entry.action)}
+                      <span className="eal-time">{formatDate(entry.createdAt)}</span>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {totalPages > 1 && !loading && (
-            <div className="eal-pagination-bar">
-              <span className="eal-pagination-info">
-                {rangeStart}–{rangeEnd} of {total}
-              </span>
-              <div className="eal-pagination-buttons">
-                <button
-                  className="btn btn-secondary btn-sm"
-                  disabled={page <= 1}
-                  onClick={() => handlePageChange(page - 1)}
-                >
-                  Prev
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter((p) => {
-                    if (totalPages <= 7) return true;
-                    if (p === 1 || p === totalPages) return true;
-                    if (Math.abs(p - page) <= 1) return true;
-                    return false;
-                  })
-                  .map((p, idx, arr) => {
-                    const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
-                    return (
-                      <span key={p} style={{ display: 'contents' }}>
-                        {showEllipsis && <span className="eal-pagination-ellipsis">&hellip;</span>}
-                        <button
-                          className={`btn btn-sm ${p === page ? 'btn-primary' : 'btn-secondary'}`}
-                          onClick={() => handlePageChange(p)}
-                        >
-                          {p}
-                        </button>
-                      </span>
-                    );
-                  })}
-                <button
-                  className="btn btn-secondary btn-sm"
-                  disabled={page >= totalPages}
-                  onClick={() => handlePageChange(page + 1)}
-                >
-                  Next
-                </button>
+                    {entry.changes && (
+                      <div className="eal-changes">
+                        {formatChanges(entry.changes)}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            </div>
+
+              {totalPages > 1 && (
+                <div className="eal-pagination">
+                  <span className="eal-pagination-info">
+                    {rangeStart}&ndash;{rangeEnd} of {total}
+                  </span>
+                  <div className="eal-pagination-buttons">
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      disabled={page <= 1}
+                      onClick={() => handlePageChange(page - 1)}
+                    >
+                      Prev
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => {
+                        if (totalPages <= 7) return true;
+                        if (p === 1 || p === totalPages) return true;
+                        if (Math.abs(p - page) <= 1) return true;
+                        return false;
+                      })
+                      .map((p, idx, arr) => {
+                        const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
+                        return (
+                          <span key={p} style={{ display: 'contents' }}>
+                            {showEllipsis && <span className="eal-ellipsis">&hellip;</span>}
+                            <button
+                              className={`btn btn-sm ${p === page ? 'btn-primary' : 'btn-secondary'}`}
+                              onClick={() => handlePageChange(p)}
+                            >
+                              {p}
+                            </button>
+                          </span>
+                        );
+                      })}
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      disabled={page >= totalPages}
+                      onClick={() => handlePageChange(page + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
-      )}
+      </BottomSheet>
 
       <style>{`
-        .entity-activity-list {
+        .eal-modal {
+          flex: 1;
+          overflow-y: auto;
+          min-height: 0;
+        }
+
+        .eal-status {
+          padding: 3rem 1.5rem;
+          text-align: center;
+          color: var(--text-secondary);
+          font-size: var(--text-sm);
+        }
+
+        .eal-list {
           display: flex;
           flex-direction: column;
         }
 
-        .entity-activity-entry {
-          padding: 0.75rem 1rem;
+        .eal-entry {
+          padding: 0.75rem 1.25rem;
           border-bottom: 1px solid var(--border-color);
+          transition: background 0.1s ease;
         }
 
-        .entity-activity-entry:last-child {
+        .eal-entry:last-child {
           border-bottom: none;
         }
 
-        .entity-activity-meta {
+        .eal-entry:hover {
+          background: var(--surface-inset);
+        }
+
+        .eal-meta {
           display: flex;
           align-items: center;
           gap: 0.5rem;
           flex-wrap: wrap;
         }
 
-        .entity-activity-user {
+        .eal-user {
           font-weight: 600;
           font-size: var(--text-sm);
         }
 
-        .entity-activity-time {
+        .eal-action {
+          font-weight: 600;
+          text-transform: capitalize;
+          font-size: var(--text-xs);
+        }
+
+        .eal-time {
           color: var(--text-secondary);
           font-size: var(--text-xs);
           margin-left: auto;
         }
 
-        .entity-activity-changes {
+        .eal-changes {
           margin-top: 0.375rem;
-          padding-left: 0.5rem;
+          padding-left: 0.75rem;
           font-size: var(--text-sm);
         }
 
-        .entity-activity-change {
-          line-height: 1.5;
+        .eal-change {
+          line-height: 1.6;
+          display: flex;
+          align-items: baseline;
+          gap: 0.375rem;
+          flex-wrap: wrap;
         }
 
-        .eal-pagination-bar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0.75rem 1rem;
-          border-top: 1px solid var(--border-color);
-          background: var(--surface-inset);
+        .eal-field {
+          font-weight: 600;
+          color: var(--text-secondary);
+          font-size: var(--text-xs);
+          text-transform: uppercase;
+          letter-spacing: 0.025em;
+          min-width: fit-content;
+        }
+
+        .eal-field::after {
+          content: ':';
+        }
+
+        .eal-modified {
+          color: var(--primary-accent);
+          font-style: italic;
+        }
+
+        .eal-diff {
+          display: inline-flex;
+          align-items: baseline;
+          gap: 0.375rem;
+          flex-wrap: wrap;
+          min-width: 0;
+        }
+
+        .eal-from {
+          text-decoration: line-through;
+          color: var(--accent-caution);
+          word-break: break-word;
+        }
+
+        .eal-arrow {
+          color: var(--text-tertiary);
           flex-shrink: 0;
         }
 
+        .eal-to {
+          color: var(--accent-ready);
+          word-break: break-word;
+        }
+
+        .eal-pagination {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.625rem 1.25rem;
+          border-top: 1px solid var(--border-color);
+          background: var(--surface-inset);
+          position: sticky;
+          bottom: 0;
+        }
+
         .eal-pagination-info {
-          font-size: var(--text-sm);
+          font-size: var(--text-xs);
           color: var(--text-secondary);
         }
 
@@ -260,13 +315,13 @@ export default function EntityActivityLog({ entityType }) {
           align-items: center;
         }
 
-        .eal-pagination-ellipsis {
+        .eal-ellipsis {
           padding: 0 0.25rem;
           color: var(--text-tertiary);
           font-size: var(--text-sm);
           user-select: none;
         }
       `}</style>
-    </div>
+    </>
   );
 }

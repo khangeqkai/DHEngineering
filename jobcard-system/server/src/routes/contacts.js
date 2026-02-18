@@ -104,6 +104,15 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
       return res.status(404).json({ error: 'Contact not found' });
     }
 
+    // Track changes for audit
+    const changes = {};
+    if (contactName !== existing.contact_name) changes.contactName = { from: existing.contact_name, to: contactName };
+    if ((companyName || null) !== (existing.company_name || null)) changes.companyName = { from: existing.company_name, to: companyName || null };
+    if ((phone || null) !== (existing.phone || null)) changes.phone = { from: existing.phone, to: phone || null };
+    if ((email || null) !== (existing.email || null)) changes.email = { from: existing.email, to: email || null };
+    if ((address || null) !== (existing.address || null)) changes.address = { from: existing.address, to: address || null };
+    if ((notes || null) !== (existing.notes || null)) changes.notes = { from: existing.notes, to: notes || null };
+
     contactQueries.update.run(
       contactName,
       companyName || null,
@@ -116,8 +125,9 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
 
     const contact = contactQueries.getById.get(id);
 
-    // Record history
-    recordHistory('contact', id, 'updated', req.user.id, req.user.name || req.user.username, req.body, toApiFormat(contact));
+    if (Object.keys(changes).length > 0) {
+      recordHistory('contact', id, 'updated', req.user.id, req.user.name || req.user.username, changes, toApiFormat(contact));
+    }
 
     res.json(toApiFormat(contact));
   } catch (err) {

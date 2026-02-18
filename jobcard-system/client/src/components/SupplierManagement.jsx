@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase, capitalizeFirst, autoResize } from '../utils/formatters';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Plus, Trash2, Save, History } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
 import BottomSheet from './common/BottomSheet';
@@ -26,6 +26,8 @@ export default function SupplierManagement() {
     serviceTagIds: []
   });
   const [saving, setSaving] = useState(false);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
+  const [showActivityLog, setShowActivityLog] = useState(false);
   const [showCustomTagInput, setShowCustomTagInput] = useState(false);
   const [customTagName, setCustomTagName] = useState('');
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
@@ -64,6 +66,7 @@ export default function SupplierManagement() {
         toast.success('Supplier created');
       }
       await loadData();
+      setActivityRefreshKey(k => k + 1);
       resetForm();
     } catch (err) {
       console.error('Failed to save supplier:', err);
@@ -100,6 +103,7 @@ export default function SupplierManagement() {
       await api.deleteSupplier(supplier.id);
       toast.success('Supplier deleted');
       await loadData();
+      setActivityRefreshKey(k => k + 1);
     } catch (err) {
       console.error('Failed to delete supplier:', err);
       toast.error(err.message || 'Failed to delete supplier');
@@ -179,6 +183,9 @@ export default function SupplierManagement() {
   return (
     <div className="supplier-management page-scroll-layout">
       <PageHeader title="Suppliers">
+        <button className="btn btn-secondary" onClick={() => setShowActivityLog(true)}>
+          <History size={16} /> Activity Log
+        </button>
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
           <Plus size={16} /> Add Supplier
         </button>
@@ -428,7 +435,12 @@ export default function SupplierManagement() {
         </div>
       </div>
 
-      <EntityActivityLog entityType="supplier" />
+      <EntityActivityLog
+        entityType="supplier"
+        isOpen={showActivityLog}
+        onClose={() => setShowActivityLog(false)}
+        refreshKey={activityRefreshKey}
+      />
 
       <style>{`
         .services-cell {
