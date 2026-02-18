@@ -443,6 +443,11 @@
               box-shadow var(--duration-fast) ease;
 }
 
+.form-group textarea {
+  resize: none;
+  overflow: hidden;
+}
+
 .form-group input:focus,
 .form-group textarea:focus,
 .form-group select:focus {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
-import { toTitleCase, capitalizeFirst } from '../utils/formatters';
+import { toTitleCase, capitalizeFirst, autoResize } from '../utils/formatters';
 import { Plus, Trash2, Save } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
@@ -193,6 +193,8 @@ export default function ContactManagement() {
             <div className="form-group">
               <label htmlFor="address">Address</label>
               <textarea
+                ref={(el) => { if (el) autoResize(el); }}
+                onInput={(e) => autoResize(e.target)}
                 id="address"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
@@ -209,6 +211,8 @@ export default function ContactManagement() {
             <div className="form-group">
               <label htmlFor="notes">Notes</label>
               <textarea
+                ref={(el) => { if (el) autoResize(el); }}
+                onInput={(e) => autoResize(e.target)}
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}

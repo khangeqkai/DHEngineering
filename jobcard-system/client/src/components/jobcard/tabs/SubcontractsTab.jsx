@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { capitalizeFirst } from '../../../utils/formatters';
+import { capitalizeFirst, autoResize } from '../../../utils/formatters';
 
 // Map treatment values to service tag names
 const TREATMENT_TO_SERVICE_MAP = {
@@ -113,6 +113,8 @@ export default function SubcontractsTab({
           <div className="form-group">
             <label>Notes</label>
             <textarea
+              ref={(el) => { if (el) autoResize(el); }}
+              onInput={(e) => autoResize(e.target)}
               name="notes"
               value={subcontractForm.notes}
               onChange={handleSubcontractChange}

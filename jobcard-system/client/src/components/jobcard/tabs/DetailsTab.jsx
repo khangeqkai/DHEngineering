@@ -8,7 +8,7 @@ import {
   STATUS_OPTIONS
 } from '../constants';
 import { formatFileSize, formatFileDate } from '../mappers';
-import { toTitleCase, capitalizeFirst } from '../../../utils/formatters';
+import { toTitleCase, capitalizeFirst, autoResize } from '../../../utils/formatters';
 import CalendarPicker from '../../common/CalendarPicker';
 import SubcontractCreateSection from './SubcontractCreateSection';
 
@@ -228,6 +228,8 @@ export default function DetailsTab({
         <h3 className="form-section-title">Job Description</h3>
         <div className="form-group">
           <textarea
+            ref={(el) => { if (el) autoResize(el); }}
+            onInput={(e) => autoResize(e.target)}
             name="description"
             value={formData.description}
             onChange={handleChange}
@@ -492,6 +494,8 @@ export default function DetailsTab({
         <h3 className="form-section-title">Internal Notes</h3>
         <div className="form-group">
           <textarea
+            ref={(el) => { if (el) autoResize(el); }}
+            onInput={(e) => autoResize(e.target)}
             name="notes"
             value={formData.notes}
             onChange={handleChange}

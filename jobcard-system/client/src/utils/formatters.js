@@ -3,6 +3,11 @@ export function toTitleCase(str) {
   return str.trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+export function autoResize(textarea) {
+  textarea.style.height = 'auto';
+  textarea.style.height = textarea.scrollHeight + 'px';
+}
+
 export function capitalizeFirst(str) {
   if (!str) return str;
   const trimmed = str.trim();
