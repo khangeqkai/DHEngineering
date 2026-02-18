@@ -32,7 +32,14 @@ const userQueries = {
     WHERE id = ?
   `),
 
-  delete: db.prepare('DELETE FROM users WHERE id = ?')
+  delete: db.prepare('DELETE FROM users WHERE id = ?'),
+
+  updateSessionToken: db.prepare(`
+    UPDATE users SET session_token = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `),
+
+  getSessionToken: db.prepare('SELECT session_token AS sessionToken FROM users WHERE id = ?')
 };
 
 // Contact queries (phone contacts style - each contact is standalone)

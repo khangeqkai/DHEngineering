@@ -14,6 +14,7 @@ db.exec(`
     phone TEXT,
     employee_id TEXT,
     active INTEGER DEFAULT 1,
+    session_token TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
@@ -341,6 +342,7 @@ const migrations = [
   { table: 'job_costings', column: '_device_id', type: 'TEXT' },
   { table: 'qa_forms', column: '_version', type: 'INTEGER DEFAULT 1' },
   { table: 'qa_forms', column: '_device_id', type: 'TEXT' },
+  { table: 'users', column: 'session_token', type: 'TEXT' },
 ];
 
 // Drop is_critical_qa column from contacts (QA level now lives on job cards only)

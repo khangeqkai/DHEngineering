@@ -3,10 +3,15 @@ const API_URL = 'http://localhost:3000/api';
 class ApiService {
   constructor() {
     this.token = null;
+    this.onSessionInvalidated = null;
   }
 
   setToken(token) {
     this.token = token;
+  }
+
+  setOnSessionInvalidated(callback) {
+    this.onSessionInvalidated = callback;
   }
 
   async request(endpoint, options = {}) {
@@ -27,6 +32,17 @@ class ApiService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
+
+      // Handle session replaced by another login
+      if (response.status === 401 && errorData.code === 'SESSION_REPLACED') {
+        if (this.onSessionInvalidated) {
+          const handler = this.onSessionInvalidated;
+          this.onSessionInvalidated = null;
+          handler();
+        }
+        throw new Error('SESSION_REPLACED');
+      }
+
       const details = errorData.details?.join('. ') || '';
       const message = details || errorData.error || 'Request failed';
       throw new Error(message);

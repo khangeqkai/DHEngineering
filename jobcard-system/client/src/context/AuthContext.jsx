@@ -1,20 +1,45 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useInactivityTimer } from '../hooks/useInactivityTimer';
 
 const AuthContext = createContext(null);
 
 const DEFAULT_TIMEOUT_MINUTES = 5;
+const SESSION_POLL_MS = 5000;
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false); // No token check needed on mount
   const [inactivityTimeoutMs, setInactivityTimeoutMs] = useState(DEFAULT_TIMEOUT_MINUTES * 60 * 1000);
+  const pollRef = useRef(null);
 
   const logout = useCallback(() => {
+    clearInterval(pollRef.current);
     api.setToken(null);
     setUser(null);
   }, []);
+
+  // Register session invalidation handler
+  useEffect(() => {
+    api.setOnSessionInvalidated(() => {
+      clearInterval(pollRef.current);
+      api.setToken(null);
+      setUser(null);
+      toast.error('You have been signed out because your account was logged in from another device.');
+    });
+    return () => api.setOnSessionInvalidated(null);
+  }, []);
+
+  // Poll session validity so stale sessions get kicked promptly
+  useEffect(() => {
+    if (user) {
+      pollRef.current = setInterval(() => {
+        api.getMe().catch(() => {});
+      }, SESSION_POLL_MS);
+    }
+    return () => clearInterval(pollRef.current);
+  }, [user]);
 
   // Load inactivity timeout from server
   const loadInactivityTimeout = useCallback(async () => {

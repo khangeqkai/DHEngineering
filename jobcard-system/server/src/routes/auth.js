@@ -93,13 +93,18 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
     // Record login in history
     recordHistory('user', user.id, 'login', user.id, user.name, null, null);
 
+    // Generate session token and store in DB (single-session enforcement)
+    const sessionToken = uuidv4();
+    userQueries.updateSessionToken.run(sessionToken, user.id);
+
     // Generate token
     const token = jwt.sign(
       {
         userId: user.id,
         username: user.username,
         role: user.role,
-        name: user.name
+        name: user.name,
+        sessionToken
       },
       config.jwt.secret,
       { expiresIn: config.jwt.expiresIn }

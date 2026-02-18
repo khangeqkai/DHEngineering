@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
+const { userQueries } = require('../db/database');
 
 // Middleware to verify JWT token
 function authenticate(req, res, next) {
@@ -18,6 +19,15 @@ function authenticate(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, config.jwt.secret);
+
+    // Single-session enforcement: validate session token against DB
+    if (decoded.sessionToken) {
+      const row = userQueries.getSessionToken.get(decoded.userId);
+      if (!row || row.sessionToken !== decoded.sessionToken) {
+        return res.status(401).json({ error: 'Session invalidated', code: 'SESSION_REPLACED' });
+      }
+    }
+
     req.user = decoded;
     next();
   } catch (err) {
