@@ -321,12 +321,30 @@ router.put('/:id', authenticate, (req, res) => {
       ['quality_level', 'qualityLevel'],
       ['job_type', 'jobType'],
       ['priority', 'priority'],
-      ['due_date', 'dueDate']
+      ['due_date', 'dueDate'],
+      ['contact_id', 'contactId'],
+      ['contact_name', 'contactName'],
+      ['company_name', 'companyName'],
+      ['contact_phone', 'contactPhone'],
+      ['contact_email', 'contactEmail'],
+      ['po_number', 'poNumber'],
+      ['quote_reference', 'quoteReference'],
+      ['drawings_type', 'drawingsType'],
+      ['customer_property', 'customerProperty'],
+      ['description', 'description'],
+      ['is_repeat_job', 'isRepeatJob'],
+      ['repeat_job_reference', 'repeatJobReference'],
+      ['treatment_required', 'treatmentRequired'],
+      ['treatment_other', 'treatmentOther'],
+      ['notes', 'notes'],
     ];
 
     for (const [dbField, reqField] of fieldsToTrack) {
-      if (data[reqField] !== undefined && data[reqField] !== existing[dbField]) {
-        changes[dbField] = { from: existing[dbField], to: data[reqField] };
+      if (data[reqField] === undefined) continue;
+      // Normalize boolean to integer for DB comparison (is_repeat_job stores 0/1)
+      const value = dbField === 'is_repeat_job' ? (data[reqField] ? 1 : 0) : data[reqField];
+      if (value !== existing[dbField]) {
+        changes[dbField] = { from: existing[dbField], to: value };
       }
     }
 
@@ -357,6 +375,10 @@ router.put('/:id', authenticate, (req, res) => {
       id
     );
 
+    // Capture existing items/assignees for change tracking
+    const existingItems = data.items !== undefined ? jobItemQueries.getByJobcard.all(id) : [];
+    const existingAssignees = data.assigneeIds !== undefined ? jobAssigneeQueries.getByJobcard.all(id) : [];
+
     // Update line items if provided
     if (data.items !== undefined) {
       jobItemQueries.deleteByJobcard.run(id);
@@ -373,6 +395,15 @@ router.put('/:id', authenticate, (req, res) => {
       }
     }
 
+    // Track items changes
+    if (data.items !== undefined) {
+      const oldDescs = existingItems.map(i => `${i.qty || ''}x ${i.description}`).join(', ');
+      const newDescs = data.items.map(i => `${i.qty || ''}x ${i.description}`).join(', ');
+      if (oldDescs !== newDescs) {
+        changes['items'] = { from: `${existingItems.length} items`, to: `${data.items.length} items` };
+      }
+    }
+
     // Update assignees if provided
     if (data.assigneeIds !== undefined) {
       jobAssigneeQueries.deleteByJobcard.run(id);
@@ -383,6 +414,16 @@ router.put('/:id', authenticate, (req, res) => {
         } catch (e) {
           // Ignore duplicate
         }
+      }
+    }
+
+    // Track assignees changes
+    if (data.assigneeIds !== undefined) {
+      const oldIds = existingAssignees.map(a => a.user_id).sort().join(',');
+      const newIds = [...data.assigneeIds].sort().join(',');
+      if (oldIds !== newIds) {
+        const oldNames = existingAssignees.map(a => a.user_name).join(', ') || 'none';
+        changes['assignees'] = { from: oldNames, to: 'updated' };
       }
     }
 

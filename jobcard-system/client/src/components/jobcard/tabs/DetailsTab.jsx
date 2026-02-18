@@ -204,7 +204,7 @@ export default function DetailsTab({
                   <button
                     key={days}
                     type="button"
-                    className={`btn-quick-pick${formData.dueDate === value ? ' active' : ''}`}
+                    className={`btn-quick-pick${!isEdit && formData.dueDate === value ? ' active' : ''}`}
                     onClick={() => setFormData(prev => ({ ...prev, dueDate: value }))}
                   >
                     {days}d
