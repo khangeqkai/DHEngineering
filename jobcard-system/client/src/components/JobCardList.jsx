@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Search, Trash2, Archive } from 'lucide-react';
+import { Plus, Trash2, Archive } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import './JobCardList.css';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
@@ -15,7 +17,8 @@ const STATUS_OPTIONS = [
   { value: 'IN_PROGRESS', label: 'In Progress' },
   { value: 'ON_HOLD', label: 'On Hold' },
   { value: 'DONE', label: 'Done' },
-  { value: 'INVOICED', label: 'Invoiced' }
+  { value: 'INVOICED', label: 'Invoiced' },
+  { value: 'OVERDUE', label: 'Overdue' }
 ];
 
 const STATUS_LABELS = {
@@ -39,7 +42,12 @@ const PAGE_SIZE = 20;
 export default function JobCardList() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const [filter, setFilter] = useState('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filter, setFilter] = useState(() => {
+    const paramFilter = searchParams.get('filter');
+    const valid = STATUS_OPTIONS.some(o => o.value === paramFilter);
+    return valid ? paramFilter : 'all';
+  });
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -57,7 +65,6 @@ export default function JobCardList() {
       const data = await api.getJobcards(showArchived);
       setJobcards(data);
     } catch (err) {
-      console.error('Failed to load job cards:', err);
       toast.error(err.message || 'Failed to load job cards');
     } finally {
       setLoading(false);
@@ -81,21 +88,25 @@ export default function JobCardList() {
       await api.deleteJobcard(id);
       await loadJobcards();
     } catch (err) {
-      console.error('Failed to delete job card:', err);
       toast.error(err.message || 'Failed to delete job card');
     }
   };
 
   const handleArchive = async (id) => {
-    const invoiceDate = prompt('Enter invoice date (YYYY-MM-DD):',
-      new Date().toISOString().split('T')[0]);
-    if (!invoiceDate) return;
+    const confirmed = await showConfirm({
+      title: 'Archive Job Card',
+      message: 'Are you sure you want to archive this job card? This will set the invoice date to today.',
+      confirmLabel: 'Archive',
+      confirmVariant: 'success'
+    });
+    if (!confirmed) return;
 
     try {
-      await api.archiveJobcard(id);
+      const invoiceDate = new Date().toISOString().split('T')[0];
+      await api.archiveJobcard(id, invoiceDate);
+      toast.success('Job card archived');
       await loadJobcards();
     } catch (err) {
-      console.error('Failed to archive job card:', err);
       toast.error(err.message || 'Failed to archive job card');
     }
   };
@@ -144,8 +155,17 @@ export default function JobCardList() {
 
   // Filter job cards based on status filter and search
   const filteredCards = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
     return jobcards.filter((card) => {
-      const matchesFilter = filter === 'all' || card.status === filter;
+      let matchesFilter;
+      if (filter === 'all') {
+        matchesFilter = true;
+      } else if (filter === 'OVERDUE') {
+        matchesFilter = card.dueDate && card.dueDate < today &&
+          !['DONE', 'INVOICED'].includes(card.status);
+      } else {
+        matchesFilter = card.status === filter;
+      }
       const matchesSearch =
         !search ||
         card.jobNumber?.toLowerCase().includes(search.toLowerCase()) ||
@@ -155,10 +175,17 @@ export default function JobCardList() {
     });
   }, [jobcards, filter, search, isAdmin]);
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters change, sync filter to URL
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter, search, showArchived]);
+    const params = new URLSearchParams(window.location.search);
+    if (filter === 'all') {
+      params.delete('filter');
+    } else {
+      params.set('filter', filter);
+    }
+    setSearchParams(params, { replace: true });
+  }, [filter, search, showArchived, setSearchParams]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE));
@@ -217,7 +244,7 @@ export default function JobCardList() {
             {STATUS_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
-                className={`btn btn-sm ${filter === opt.value ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn btn-sm ${filter === opt.value ? 'btn-primary' : 'btn-secondary'}${opt.value === 'OVERDUE' ? ' filter-btn-overdue' : ''}`}
                 onClick={() => setFilter(opt.value)}
               >
                 {opt.label}
@@ -399,161 +426,6 @@ export default function JobCardList() {
           </div>
         )}
       </div>
-
-      <style>{`
-        .filters {
-          display: flex;
-          gap: 1rem;
-          margin-bottom: 1.5rem;
-          flex-wrap: wrap;
-        }
-
-        .search-input {
-          flex: 1;
-          min-width: 250px;
-          padding: 0.625rem 0.875rem;
-          border: 1px solid var(--border-color);
-          border-radius: var(--radius-md);
-          font-size: var(--text-sm);
-          background: var(--surface);
-          color: var(--text-primary);
-        }
-
-        .search-input:focus {
-          outline: none;
-          border-color: var(--border-focus);
-          box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
-        }
-
-        .filter-buttons {
-          display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-        }
-
-        .archive-toggle {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: var(--text-sm);
-          cursor: pointer;
-        }
-
-        .description-preview {
-          font-size: var(--text-xs);
-          color: var(--text-secondary);
-          margin-top: 0.25rem;
-          margin-bottom: 0;
-        }
-
-        .overdue-label {
-          display: block;
-          font-size: 0.625rem;
-          margin-top: 0.25rem;
-        }
-
-        .pagination-bar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0.75rem 1rem;
-          border-top: 1px solid var(--border-color);
-          background: var(--surface-inset);
-          flex-shrink: 0;
-        }
-
-        .pagination-info {
-          font-size: var(--text-sm);
-          color: var(--text-secondary);
-        }
-
-        .pagination-buttons {
-          display: flex;
-          gap: 0.25rem;
-          align-items: center;
-        }
-
-        .pagination-ellipsis {
-          padding: 0 0.25rem;
-          color: var(--text-tertiary);
-          font-size: var(--text-sm);
-          user-select: none;
-        }
-
-        .status-popover-wrapper {
-          position: relative;
-          display: inline-block;
-        }
-
-        .badge-clickable {
-          cursor: pointer;
-          transition: opacity 0.15s, box-shadow 0.15s;
-        }
-
-        .badge-clickable:hover {
-          opacity: 0.85;
-          box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.3);
-        }
-
-        .status-popover {
-          position: absolute;
-          top: calc(100% + 4px);
-          left: 50%;
-          transform: translateX(-50%);
-          background: var(--surface);
-          border: 1px solid var(--border-color);
-          border-radius: var(--radius-md);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-          z-index: 100;
-          min-width: 150px;
-          padding: 0.25rem 0;
-        }
-
-        .status-popover-item {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          width: 100%;
-          padding: 0.375rem 0.75rem;
-          border: none;
-          background: none;
-          cursor: pointer;
-          font-size: var(--text-sm);
-          white-space: nowrap;
-        }
-
-        .status-popover-item:hover {
-          background: var(--surface-hover);
-        }
-
-        .status-popover-item.active {
-          background: var(--surface-inset);
-        }
-
-        .status-check {
-          margin-left: 0.5rem;
-          color: var(--success-color);
-          font-weight: 600;
-        }
-
-        @media (max-width: 768px) {
-          .filter-buttons {
-            width: 100%;
-            overflow-x: auto;
-            padding-bottom: 0.5rem;
-          }
-
-          .pagination-bar {
-            flex-direction: column;
-            gap: 0.5rem;
-          }
-
-          .pagination-buttons {
-            flex-wrap: wrap;
-            justify-content: center;
-          }
-        }
-      `}</style>
 
       <JobCardModal
         isOpen={isModalOpen}
