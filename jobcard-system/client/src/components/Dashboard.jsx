@@ -151,71 +151,47 @@ export default function Dashboard() {
 
       <div className="stats-grid">
         <div className="stat-card stat-hero">
-          <div className="stat-card-row">
-            <div className="stat-icon-wrapper stat-icon-hero">
-              <Activity size={24} />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{stats.total}</div>
-              <div className="stat-label">Total Active</div>
-            </div>
+          <div className="stat-icon-wrapper stat-icon-hero">
+            <Activity size={24} />
           </div>
+          <div className="stat-value">{stats.total}</div>
+          <div className="stat-label">Total Active</div>
         </div>
         <div className="stat-card stat-quotes">
-          <div className="stat-card-row">
-            <div className="stat-icon-wrapper stat-icon-quotes">
-              <FileText size={24} />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{stats.quotes}</div>
-              <div className="stat-label">Quotes</div>
-            </div>
+          <div className="stat-icon-wrapper stat-icon-quotes">
+            <FileText size={24} />
           </div>
+          <div className="stat-value">{stats.quotes}</div>
+          <div className="stat-label">Quotes</div>
         </div>
         <div className="stat-card stat-open">
-          <div className="stat-card-row">
-            <div className="stat-icon-wrapper stat-icon-open">
-              <FolderOpen size={24} />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{stats.open}</div>
-              <div className="stat-label">Open</div>
-            </div>
+          <div className="stat-icon-wrapper stat-icon-open">
+            <FolderOpen size={24} />
           </div>
+          <div className="stat-value">{stats.open}</div>
+          <div className="stat-label">Open</div>
         </div>
         <div className="stat-card stat-progress">
-          <div className="stat-card-row">
-            <div className="stat-icon-wrapper stat-icon-progress">
-              <Loader size={24} />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{stats.inProgress}</div>
-              <div className="stat-label">In Progress</div>
-            </div>
+          <div className="stat-icon-wrapper stat-icon-progress">
+            <Loader size={24} />
           </div>
+          <div className="stat-value">{stats.inProgress}</div>
+          <div className="stat-label">In Progress</div>
         </div>
         <div className="stat-card stat-hold">
-          <div className="stat-card-row">
-            <div className="stat-icon-wrapper stat-icon-hold">
-              <Pause size={24} />
-            </div>
-            <div className="stat-content">
-              <div className="stat-value">{stats.onHold}</div>
-              <div className="stat-label">On Hold</div>
-            </div>
+          <div className="stat-icon-wrapper stat-icon-hold">
+            <Pause size={24} />
           </div>
+          <div className="stat-value">{stats.onHold}</div>
+          <div className="stat-label">On Hold</div>
         </div>
         {stats.overdue > 0 && (
           <div className="stat-card stat-overdue">
-            <div className="stat-card-row">
-              <div className="stat-icon-wrapper stat-icon-overdue">
-                <AlertTriangle size={24} />
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{stats.overdue}</div>
-                <div className="stat-label">Overdue</div>
-              </div>
+            <div className="stat-icon-wrapper stat-icon-overdue">
+              <AlertTriangle size={24} />
             </div>
+            <div className="stat-value">{stats.overdue}</div>
+            <div className="stat-label">Overdue</div>
           </div>
         )}
       </div>
