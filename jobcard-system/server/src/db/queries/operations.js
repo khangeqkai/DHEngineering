@@ -42,7 +42,12 @@ const timeEntryQueries = {
     ORDER BY te.start_time DESC
   `),
 
-  getById: db.prepare('SELECT * FROM time_entries WHERE id = ?'),
+  getById: db.prepare(`
+    SELECT te.*, u.name as user_name
+    FROM time_entries te
+    JOIN users u ON te.user_id = u.id
+    WHERE te.id = ?
+  `),
 
   create: db.prepare(`
     INSERT INTO time_entries (
@@ -69,7 +74,38 @@ const timeEntryQueries = {
     WHERE id = ?
   `),
 
-  delete: db.prepare('DELETE FROM time_entries WHERE id = ?')
+  delete: db.prepare('DELETE FROM time_entries WHERE id = ?'),
+
+  getActiveByUser: db.prepare(`
+    SELECT te.*, u.name as user_name, j.job_number
+    FROM time_entries te
+    JOIN users u ON te.user_id = u.id
+    JOIN jobcards j ON te.jobcard_id = j.id
+    WHERE te.user_id = ? AND te.end_time IS NULL
+  `),
+
+  stop: db.prepare(`
+    UPDATE time_entries SET end_time = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `)
+};
+
+// Job note queries
+const jobNoteQueries = {
+  getByJobcard: db.prepare(`
+    SELECT * FROM job_notes
+    WHERE jobcard_id = ?
+    ORDER BY created_at ASC
+  `),
+
+  create: db.prepare(`
+    INSERT INTO job_notes (id, jobcard_id, user_id, user_name, text, created_at)
+    VALUES (?, ?, ?, ?, ?, datetime('now'))
+  `),
+
+  getById: db.prepare('SELECT * FROM job_notes WHERE id = ?'),
+
+  delete: db.prepare('DELETE FROM job_notes WHERE id = ?')
 };
 
 // Job costing queries
@@ -109,5 +145,6 @@ const jobCostingQueries = {
 module.exports = {
   subcontractQueries,
   timeEntryQueries,
+  jobNoteQueries,
   jobCostingQueries
 };

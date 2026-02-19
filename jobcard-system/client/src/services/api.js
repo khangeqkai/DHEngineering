@@ -260,6 +260,41 @@ class ApiService {
     });
   }
 
+  // Timer endpoints
+  getActiveTimer() {
+    return this.request('/jobcards/active-timer');
+  }
+
+  startTimer(jobcardId) {
+    return this.request(`/jobcards/${jobcardId}/time-entries/start`, {
+      method: 'POST'
+    });
+  }
+
+  stopTimer(jobcardId, entryId) {
+    return this.request(`/jobcards/${jobcardId}/time-entries/${entryId}/stop`, {
+      method: 'POST'
+    });
+  }
+
+  // Job Notes
+  getJobNotes(jobcardId) {
+    return this.request(`/jobcards/${jobcardId}/notes`);
+  }
+
+  addJobNote(jobcardId, text) {
+    return this.request(`/jobcards/${jobcardId}/notes`, {
+      method: 'POST',
+      body: JSON.stringify({ text })
+    });
+  }
+
+  deleteJobNote(jobcardId, noteId) {
+    return this.request(`/jobcards/${jobcardId}/notes/${noteId}`, {
+      method: 'DELETE'
+    });
+  }
+
   // Costing (admin only)
   getCosting(jobcardId) {
     return this.request(`/jobcards/${jobcardId}/costing`);

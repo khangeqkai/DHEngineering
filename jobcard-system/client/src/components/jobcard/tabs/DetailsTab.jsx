@@ -11,6 +11,8 @@ import { formatFileSize, formatFileDate } from '../mappers';
 import { toTitleCase, capitalizeFirst, autoResize } from '../../../utils/formatters';
 import CalendarPicker from '../../common/CalendarPicker';
 import SubcontractCreateSection from './SubcontractCreateSection';
+import DetailsReadOnlyView from './DetailsReadOnlyView';
+import NotesSection from './NotesSection';
 
 export default function DetailsTab({
   isEdit,
@@ -43,9 +45,43 @@ export default function DetailsTab({
   toggleScannerFiles,
   scannerFiles,
   loadingScannerFiles,
-  isOverdue
+  isOverdue,
+  // Notes props
+  notes,
+  newNote,
+  setNewNote,
+  onAddNote,
+  onDeleteNote,
+  notesLoading
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
+  const readOnly = isEdit && !isAdmin;
+
+  // Employee read-only view
+  if (readOnly) {
+    return (
+      <>
+        <DetailsReadOnlyView
+          formData={formData}
+          assignees={assignees}
+          lineItems={lineItems}
+          subcontracts={subcontracts}
+          isOverdue={isOverdue}
+        />
+        {isEdit && (
+          <NotesSection
+            notes={notes || []}
+            newNote={newNote || ''}
+            setNewNote={setNewNote}
+            onAddNote={onAddNote}
+            onDeleteNote={onDeleteNote}
+            loading={notesLoading}
+            isAdmin={isAdmin}
+          />
+        )}
+      </>
+    );
+  }
 
   const titleCaseBlur = (field, setter) => (e) => {
     const formatted = toTitleCase(e.target.value);
@@ -489,7 +525,7 @@ export default function DetailsTab({
         />
       )}
 
-      {/* Notes */}
+      {/* Internal Notes (admin only) */}
       <div className="form-section">
         <h3 className="form-section-title">Internal Notes</h3>
         <div className="form-group">
@@ -505,6 +541,19 @@ export default function DetailsTab({
           />
         </div>
       </div>
+
+      {/* Job Notes (shared, append-only) */}
+      {isEdit && (
+        <NotesSection
+          notes={notes || []}
+          newNote={newNote || ''}
+          setNewNote={setNewNote}
+          onAddNote={onAddNote}
+          onDeleteNote={onDeleteNote}
+          loading={notesLoading}
+          isAdmin={isAdmin}
+        />
+      )}
     </div>
   );
 }

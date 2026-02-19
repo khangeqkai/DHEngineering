@@ -21,6 +21,25 @@ import QAFormsTab from './tabs/QAFormsTab';
 import PhotosTab from './tabs/PhotosTab';
 import ActivityLogTab from './tabs/ActivityLogTab';
 import { useActivityLog } from './useActivityLog';
+import { useTimer } from './useTimer';
+import { useJobNotes } from './useJobNotes';
+
+const mapSubcontract = (s) => ({
+  id: s.id, supplierId: s.supplierId, supplierName: s.supplierName,
+  dateSent: s.dateSent, dateExpected: s.dateExpected, dateReceived: s.dateReceived,
+  notes: s.notes, status: s.status
+});
+
+const mapTimeEntry = (t) => ({
+  id: t.id, userId: t.userId, userName: t.userName,
+  itemNumber: t.itemNumber, machineNumber: t.machineNumber, qty: t.qty,
+  description: t.description, startTime: t.startTime, endTime: t.endTime,
+  equipmentChecksDone: t.equipmentChecksDone, measuringVerificationDone: t.measuringVerificationDone,
+  firstOffInspection: t.firstOffInspection, firstOffInspectionNotes: t.firstOffInspectionNotes,
+  inProcessValidation: t.inProcessValidation, inProcessValidationNotes: t.inProcessValidationNotes,
+  scrapAllGood: t.scrapAllGood, scrapRecycleInhouseQty: t.scrapRecycleInhouseQty,
+  scrapRecycleBinQty: t.scrapRecycleBinQty
+});
 
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess }) {
   const { user } = useAuth();
@@ -40,6 +59,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const contactHook = useContactSearch();
   const formHook = useJobCardForm();
   const activityLog = useActivityLog(jobCardId);
+  const timer = useTimer(isEdit ? jobCardId : null);
+  const jobNotes = useJobNotes(isEdit ? jobCardId : null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   // Load reference data on mount
@@ -68,6 +89,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const { setContactFromJobCard, resetContact } = contactHook;
   const { setPhotos, stopCamera } = camera;
   const { loadHistory, resetHistory } = activityLog;
+  const { loadNotes } = jobNotes;
   const loadJobCard = useCallback(async () => {
     if (!isEdit || !jobCardId) return;
 
@@ -85,39 +107,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       setFormDataFromJobCard(jobcardData);
       setContactFromJobCard(jobcardData);
       setPhotos(Array.isArray(jobcardData.photos) ? jobcardData.photos : []);
-      setSubcontracts((subcontractsRes || []).map(s => ({
-        id: s.id,
-        supplierId: s.supplierId,
-        supplierName: s.supplierName,
-        dateSent: s.dateSent,
-        dateExpected: s.dateExpected,
-        dateReceived: s.dateReceived,
-        notes: s.notes,
-        status: s.status
-      })));
-
-      setTimeEntries((timeEntriesRes || []).map(t => ({
-        id: t.id,
-        userId: t.userId,
-        userName: t.userName,
-        itemNumber: t.itemNumber,
-        machineNumber: t.machineNumber,
-        qty: t.qty,
-        description: t.description,
-        startTime: t.startTime,
-        endTime: t.endTime,
-        equipmentChecksDone: t.equipmentChecksDone,
-        measuringVerificationDone: t.measuringVerificationDone,
-        firstOffInspection: t.firstOffInspection,
-        firstOffInspectionNotes: t.firstOffInspectionNotes,
-        inProcessValidation: t.inProcessValidation,
-        inProcessValidationNotes: t.inProcessValidationNotes,
-        scrapAllGood: t.scrapAllGood,
-        scrapRecycleInhouseQty: t.scrapRecycleInhouseQty,
-        scrapRecycleBinQty: t.scrapRecycleBinQty
-      })));
+      setSubcontracts((subcontractsRes || []).map(mapSubcontract));
+      setTimeEntries((timeEntriesRes || []).map(mapTimeEntry));
 
       setQaForms(qaFormsRes || []);
+
+      loadNotes();
 
       if (costingRes) {
         setCostingData({
@@ -138,7 +133,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     } finally {
       setLoading(false);
     }
-  }, [isEdit, jobCardId, isAdmin, setFormDataFromJobCard, setContactFromJobCard, setPhotos, onClose]);
+  }, [isEdit, jobCardId, isAdmin, setFormDataFromJobCard, setContactFromJobCard, setPhotos, loadNotes, onClose]);
 
   useEffect(() => {
     if (isOpen && isEdit && activeTab === 'activity') {
@@ -167,16 +162,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   const reloadSubcontracts = async () => {
     const res = await api.getSubcontracts(jobCardId);
-    setSubcontracts((res || []).map(s => ({
-      id: s.id,
-      supplierId: s.supplierId,
-      supplierName: s.supplierName,
-      dateSent: s.dateSent,
-      dateExpected: s.dateExpected,
-      dateReceived: s.dateReceived,
-      notes: s.notes,
-      status: s.status
-    })));
+    setSubcontracts((res || []).map(mapSubcontract));
   };
 
   const apiSubcontractOperations = {
@@ -196,26 +182,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   const reloadTimeEntries = async () => {
     const res = await api.getTimeEntries(jobCardId);
-    setTimeEntries((res || []).map(t => ({
-      id: t.id,
-      userId: t.userId,
-      userName: t.userName,
-      itemNumber: t.itemNumber,
-      machineNumber: t.machineNumber,
-      qty: t.qty,
-      description: t.description,
-      startTime: t.startTime,
-      endTime: t.endTime,
-      equipmentChecksDone: t.equipmentChecksDone,
-      measuringVerificationDone: t.measuringVerificationDone,
-      firstOffInspection: t.firstOffInspection,
-      firstOffInspectionNotes: t.firstOffInspectionNotes,
-      inProcessValidation: t.inProcessValidation,
-      inProcessValidationNotes: t.inProcessValidationNotes,
-      scrapAllGood: t.scrapAllGood,
-      scrapRecycleInhouseQty: t.scrapRecycleInhouseQty,
-      scrapRecycleBinQty: t.scrapRecycleBinQty
-    })));
+    setTimeEntries((res || []).map(mapTimeEntry));
   };
 
   const apiTimeEntryOperations = {
@@ -239,6 +206,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const { resetSubcontracts } = subcontract;
   const { resetTimeEntries } = timeEntry;
   const { resetCosting } = costingHook;
+  const { resetTimer } = timer;
+  const { resetNotes } = jobNotes;
   const resetForm = useCallback(() => {
     resetFormHook();
     resetContact();
@@ -249,10 +218,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     resetSubcontracts();
     resetTimeEntries();
     resetCosting();
+    resetTimer();
+    resetNotes();
     setPhotos([]);
     resetHistory();
     setActiveTab('details');
-  }, [resetFormHook, resetContact, resetSubcontracts, resetTimeEntries, resetCosting, setPhotos, resetHistory]);
+  }, [resetFormHook, resetContact, resetSubcontracts, resetTimeEntries, resetCosting, resetTimer, resetNotes, setPhotos, resetHistory]);
   useEffect(() => {
     if (isOpen && !isEdit) {
       resetForm();
@@ -289,6 +260,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const handleContactFieldChange = (field, value) => contactHook.handleContactFieldChange(field, value, formHook.setFormData);
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isAdmin && isEdit) return;
 
     // Validation
     const errors = [];
@@ -435,13 +407,15 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               {isEdit && (
                 <div className="modal-tabs">
                   <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>Details</button>
-                  <button type="button" className={`tab ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}>Items</button>
-                  <button type="button" className={`tab ${activeTab === 'subcontracts' ? 'active' : ''}`} onClick={() => setActiveTab('subcontracts')}>Subcontracts</button>
-                  <button type="button" className={`tab ${activeTab === 'time' ? 'active' : ''}`} onClick={() => setActiveTab('time')}>Time</button>
+                  {isAdmin && <button type="button" className={`tab ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}>Items</button>}
+                  {isAdmin && <button type="button" className={`tab ${activeTab === 'subcontracts' ? 'active' : ''}`} onClick={() => setActiveTab('subcontracts')}>Subcontracts</button>}
+                  <button type="button" className={`tab ${activeTab === 'time' ? 'active' : ''}`} onClick={() => setActiveTab('time')}>
+                    Time{!isAdmin && timer.activeTimer ? ' *' : ''}
+                  </button>
                   <button type="button" className={`tab ${activeTab === 'qa' ? 'active' : ''}`} onClick={() => setActiveTab('qa')}>QA</button>
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>}
                   <button type="button" className={`tab ${activeTab === 'photos' ? 'active' : ''}`} onClick={() => setActiveTab('photos')}>Photos</button>
-                  <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>
+                  {isAdmin && <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>}
                 </div>
               )}
 
@@ -478,10 +452,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   scannerFiles={formHook.scannerFiles}
                   loadingScannerFiles={formHook.loadingScannerFiles}
                   isOverdue={isOverdue}
+                  notes={jobNotes.notes}
+                  newNote={jobNotes.newNote}
+                  setNewNote={jobNotes.setNewNote}
+                  onAddNote={jobNotes.addNote}
+                  onDeleteNote={jobNotes.deleteNote}
+                  notesLoading={jobNotes.loading}
                 />
               )}
 
-              {activeTab === 'items' && isEdit && (
+              {activeTab === 'items' && isEdit && isAdmin && (
                 <ItemsTab
                   lineItems={formHook.lineItems}
                   addLineItem={formHook.addLineItem}
@@ -490,7 +470,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 />
               )}
 
-              {activeTab === 'subcontracts' && isEdit && (
+              {activeTab === 'subcontracts' && isEdit && isAdmin && (
                 <SubcontractsTab
                   subcontracts={subcontracts || []}
                   showSubcontractForm={subcontract.showSubcontractForm}
@@ -509,6 +489,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
               {activeTab === 'time' && isEdit && (
                 <TimeEntryTab
+                  isAdmin={isAdmin}
                   timeEntries={timeEntries || []}
                   showTimeEntryForm={timeEntry.showTimeEntryForm}
                   editingTimeEntryId={timeEntry.editingTimeEntryId}
@@ -521,6 +502,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   resetTimeEntryForm={timeEntry.resetTimeEntryForm}
                   lineItems={formHook.lineItems}
                   machines={machines || []}
+                  activeTimer={timer.activeTimer}
+                  elapsed={timer.elapsed}
+                  timerLoading={timer.loading}
+                  onStartTimer={() => timer.startTimerWithConflictCheck(showConfirm)}
+                  onStopTimer={timer.stopTimer}
+                  showQaForm={timer.showQaForm}
+                  qaForm={timer.qaForm}
+                  handleQaChange={timer.handleQaChange}
+                  onSubmitQa={() => timer.submitQaFields(reloadTimeEntries)}
+                  onSkipQa={() => timer.skipQaForm(reloadTimeEntries)}
                 />
               )}
 
@@ -552,7 +543,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 />
               )}
 
-              {activeTab === 'activity' && isEdit && (
+              {activeTab === 'activity' && isEdit && isAdmin && (
                 <ActivityLogTab
                   history={activityLog.history}
                   loading={activityLog.loadingHistory}
@@ -561,11 +552,13 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               )}
             </BottomSheet.Body>
 
-            <BottomSheet.Footer>
-              <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
-              </button>
-            </BottomSheet.Footer>
+            {(isAdmin || !isEdit) && (
+              <BottomSheet.Footer>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+                </button>
+              </BottomSheet.Footer>
+            )}
           </form>
         )}
       </BottomSheet>

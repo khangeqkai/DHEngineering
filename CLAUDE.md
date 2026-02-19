@@ -47,8 +47,8 @@ jobcard-system/
 │   ├── src/
 │   │   ├── components/           # React components
 │   │   │   ├── jobcard/          # JobCardModal + tabs (modular)
-│   │   │   │   ├── tabs/         # 7 tab components
-│   │   │   │   └── use*.js       # Custom hooks (useCosting, useTimeEntries, useJobCardForm, useContactSearch, etc.)
+│   │   │   │   ├── tabs/         # Tab components + DetailsReadOnlyView, NotesSection
+│   │   │   │   └── use*.js       # Custom hooks (useCosting, useTimeEntries, useTimer, useJobNotes, useJobCardForm, useContactSearch, etc.)
 │   │   │   └── common/           # Reusable components
 │   │   ├── context/AuthContext.jsx  # JWT + user state + inactivity timer
 │   │   ├── hooks/                   # Shared custom hooks
@@ -83,10 +83,14 @@ History sub-routes: `GET /history` (recent, admin), `GET /history/user/:userId` 
 
 Auth sub-routes: `PUT /auth/change-password` (all authenticated users, verifies current password)
 
-Job card sub-routes: `/jobcards/:id/items`, `/assignees`, `/subcontracts`, `/time-entries`, `/costing`, `/documents`, `/qa-forms`, `/history`
+Job card sub-routes: `/jobcards/:id/items`, `/assignees`, `/subcontracts`, `/time-entries`, `/costing`, `/documents`, `/qa-forms`, `/history`, `/notes`
+
+Timer endpoints: `GET /jobcards/active-timer` (authenticated), `POST /jobcards/:id/time-entries/start` (assignee/admin), `POST /jobcards/:id/time-entries/:entryId/stop` (assignee/admin)
+
+Notes endpoints: `GET /jobcards/:id/notes` (assignee/admin), `POST /jobcards/:id/notes` (assignee/admin), `DELETE /jobcards/:id/notes/:noteId` (admin only)
 
 ### Database Schema (SQLite)
-Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `subcontracts`, `time_entries`, `job_costings`, `documents`, `qa_forms`, `history`, `settings`, `machines`
+Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `subcontracts`, `time_entries`, `job_costings`, `documents`, `qa_forms`, `history`, `settings`, `machines`, `job_notes`
 
 **Contacts model** (phone contacts style): Each contact is a standalone person with an optional company field. Search works on both `contact_name` and `company_name`. Job cards link to contacts via `contact_id` with override fields for per-job customization.
 
@@ -94,7 +98,8 @@ All changes logged to `history` table for audit trail.
 
 ### Authentication
 - Two roles: `admin` (full access) and `user` (limited)
-- Admin-only: user management, supplier management, costing, settings, activity log, **contact/customer info**, **job card creation/deletion**
+- Admin-only: user management, supplier management, costing, settings, activity log, **contact/customer info**, **job card creation/deletion**, **note deletion**
+- **Employee (user) role**: Read-only job card view (Details tab renders as styled text, not inputs). Can only update photos via PUT. Tabs hidden from employees: Items, Subcontracts, Costing, Activity Log. Employees use Start/Stop timer for time tracking (one active timer at a time, enforced server-side). Can add notes but not delete them.
 - **Job card visibility**: Non-admin users only see job cards they are assigned to (via `job_assignees`). Unassigned job cards are visible only to admins. All `/:id` routes (GET, PUT, and sub-resources) enforce assignee-or-admin access via `requireAssigneeOrAdmin` middleware. List routes use assignee-filtered queries instead.
 - **Settings page**: Non-admin users see only Appearance (dark mode) and Change Password. Admin users see all cards (App Info, Current User, Printers, Security Settings, Scanner Folder, Server Connection).
 - Default credentials: `admin` / `admin123`
@@ -105,7 +110,7 @@ All changes logged to `history` table for audit trail.
 ## Key Patterns
 
 - **Direct API**: All components use `api.js` to communicate directly with the Express server. Components load data on mount and refresh after mutations.
-- **JobCardModal**: Modular tab-based UI with custom hooks for each tab's logic (`useCosting.js`, `useTimeEntries.js`, `useSubcontracts.js`, `useCamera.js`, `useJobCardForm.js`, `useContactSearch.js`)
+- **JobCardModal**: Modular tab-based UI with custom hooks for each tab's logic (`useCosting.js`, `useTimeEntries.js`, `useTimer.js`, `useJobNotes.js`, `useSubcontracts.js`, `useCamera.js`, `useJobCardForm.js`, `useContactSearch.js`)
 - **Prepared statements**: Database queries use better-sqlite3 prepared statements defined in `database.js`
 - **History tracking**: Use `recordHistory()` for server-side data mutations to maintain audit trail
 - **Input validation**: Use `express-validator` middleware from `validation.js` for request validation
@@ -196,7 +201,7 @@ db.run(data.jobNumber, data.dueDate, data.contactId);
 
 ### Required Patterns
 - **Direct API calls**: Use `api.js` methods for all server communication
-- **Audit trail**: Call `recordHistory(entityType, entityId, action, userId, userName, changes, snapshot)` for all server-side data mutations. Updates must use `{ field: { from: oldVal, to: newVal } }` for changes. Creates/deletes pass `null` for changes and a snapshot of the record. Use `req.user.userId` (not `req.user.id`) for the userId parameter.
+- **Audit trail**: Call `recordHistory(entityType, entityId, action, userId, userName, changes, snapshot)` for all server-side data mutations. **IMPORTANT: `changes` must always use `{ field: { from: oldVal, to: newVal } }` format** — this applies to ALL actions including creates, notes, timers, etc. The activity log UI (`formatChanges`) iterates `Object.entries(changes)` and renders `from → to` for each field. If you pass flat data or `null` for changes, nothing will display in the activity log. Only use `snapshot` (7th param) for supplementary context that doesn't need from/to display. Use `req.user.userId` (not `req.user.id`) for the userId parameter.
 - **Prepared statements**: Use queries defined in `database.js`, never inline SQL
 - **Server error handling**: Try-catch with `logger.error()` from `utils/logger.js`
 - **Client error handling**: Use `toast.error()` from `react-hot-toast` (not `alert()`)

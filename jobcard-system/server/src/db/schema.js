@@ -310,6 +310,21 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name);
   CREATE INDEX IF NOT EXISTS idx_supplier_service_tags_supplier ON supplier_service_tags(supplier_id);
   CREATE INDEX IF NOT EXISTS idx_supplier_service_tags_tag ON supplier_service_tags(service_tag_id);
+
+  -- Job notes (append-only shift communication)
+  CREATE TABLE IF NOT EXISTS job_notes (
+    id TEXT PRIMARY KEY,
+    jobcard_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    user_name TEXT NOT NULL,
+    text TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_job_notes_jobcard ON job_notes(jobcard_id);
+
+  -- Index for finding active timers (time entries with no end_time)
+  CREATE INDEX IF NOT EXISTS idx_time_entries_active ON time_entries(user_id, end_time);
 `);
 
 // Migration: Add missing columns to existing tables

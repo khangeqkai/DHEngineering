@@ -8,7 +8,14 @@ export default function ActivityLogTab({ history = [], loading, onRefresh }) {
       deactivate: 'var(--accent-safety)',
       activate: 'var(--accent-ready)',
       'add_photo': 'var(--accent-ready)',
-      'remove_photo': 'var(--accent-caution)'
+      'remove_photo': 'var(--accent-caution)',
+      'add_note': 'var(--accent-ready)',
+      'delete_note': 'var(--accent-caution)',
+      'start_timer': 'var(--accent-ready)',
+      'stop_timer': 'var(--primary-accent)',
+      'add_time_entry': 'var(--accent-ready)',
+      'update_time_entry': 'var(--primary-accent)',
+      'delete_time_entry': 'var(--accent-caution)'
     };
     return (
       <span style={{

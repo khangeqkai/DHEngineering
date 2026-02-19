@@ -310,6 +310,16 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
+    // Non-admin users can only update photos (for Photos tab)
+    if (req.user.role !== 'admin') {
+      const allowedFields = ['photos'];
+      const submittedFields = Object.keys(data).filter(k => data[k] !== undefined);
+      const disallowed = submittedFields.filter(f => !allowedFields.includes(f));
+      if (disallowed.length > 0) {
+        return res.status(403).json({ error: 'Employees can only update photos' });
+      }
+    }
+
     // Non-admin users cannot set contact fields
     if (req.user.role !== 'admin') {
       delete data.contactId;
