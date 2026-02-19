@@ -290,6 +290,19 @@ router.put('/users/:id', authenticate, async (req, res) => {
     if (role && normalizeEmpty(role) !== normalizeEmpty(user.role)) changes.role = { from: user.role, to: role };
     if (password) changes.password = { changed: true };
 
+    // Validate password before any DB writes
+    if (password) {
+      if (password.length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters' });
+      }
+      if (!/[A-Z]/.test(password)) {
+        return res.status(400).json({ error: 'Password must contain at least one uppercase letter' });
+      }
+      if (!/[0-9]/.test(password)) {
+        return res.status(400).json({ error: 'Password must contain at least one number' });
+      }
+    }
+
     // Update user (normalize empty email to null for DB consistency)
     const emailToStore = email !== undefined ? (email || null) : user.email;
     userQueries.update.run(
@@ -301,7 +314,6 @@ router.put('/users/:id', authenticate, async (req, res) => {
       id
     );
 
-    // Update password if provided
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
       userQueries.updatePassword.run(hashedPassword, id);
@@ -389,6 +401,12 @@ router.put('/change-password', authenticate, async (req, res) => {
 
     if (newPassword.length < 8) {
       return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      return res.status(400).json({ error: 'New password must contain at least one uppercase letter' });
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      return res.status(400).json({ error: 'New password must contain at least one number' });
     }
 
     const user = userQueries.getById.get(req.user.userId);

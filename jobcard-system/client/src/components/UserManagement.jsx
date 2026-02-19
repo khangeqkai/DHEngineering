@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
-import { toTitleCase } from '../utils/formatters';
+import { toTitleCase, validatePassword } from '../utils/formatters';
 import { Plus, Trash2, Save, UserMinus, UserCheck, History } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
@@ -47,9 +47,15 @@ export default function UserManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Client-side validation
-    if (!editingUser && formData.password.length < 8) {
-      toast.error('Password must be at least 8 characters');
+    // Client-side password validation
+    if (formData.password) {
+      const passwordError = validatePassword(formData.password);
+      if (passwordError) {
+        toast.error(passwordError);
+        return;
+      }
+    } else if (!editingUser) {
+      toast.error('Password is required');
       return;
     }
 

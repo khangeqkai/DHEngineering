@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { validatePassword } from '../utils/formatters';
 import PageHeader from './common/PageHeader';
+import BottomSheet from './common/BottomSheet';
 
 export default function Settings() {
   const { user, refreshInactivityTimeout } = useAuth();
@@ -23,7 +25,7 @@ export default function Settings() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [savingTimeout, setSavingTimeout] = useState(false);
 
-  // Change password state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -116,9 +118,18 @@ export default function Settings() {
     setDarkMode(!darkMode);
   };
 
-  const handleChangePassword = async () => {
-    if (newPassword.length < 8) {
-      toast.error('New password must be at least 8 characters');
+  const resetPasswordForm = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowPasswordModal(false);
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -129,9 +140,7 @@ export default function Settings() {
     try {
       await api.changePassword(currentPassword, newPassword);
       toast.success('Password changed successfully');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      resetPasswordForm();
     } catch (err) {
       toast.error(err.message || 'Failed to change password');
     } finally {
@@ -191,47 +200,22 @@ export default function Settings() {
 
         <div className="card">
           <div className="card-header">
-            <h2>Change Password</h2>
+            <h2>Account</h2>
           </div>
           <div className="card-body">
-            <div className="password-form">
-              <div className="form-group">
-                <label className="form-label">Current Password</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">New Password</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Minimum 8 characters"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Confirm New Password</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter new password"
-                />
+            <div className="setting-item">
+              <div className="setting-info">
+                <div className="setting-label">Change Password</div>
+                <div className="setting-description">
+                  Update your account password
+                </div>
               </div>
               <button
                 type="button"
-                className="btn btn-primary"
-                onClick={handleChangePassword}
-                disabled={savingPassword || !currentPassword || !newPassword || !confirmPassword}
+                className="btn btn-secondary"
+                onClick={() => setShowPasswordModal(true)}
               >
-                {savingPassword ? 'Changing...' : 'Change Password'}
+                Change Password
               </button>
             </div>
           </div>
@@ -438,6 +422,63 @@ export default function Settings() {
         )}
       </div>
 
+      <BottomSheet
+        isOpen={showPasswordModal}
+        onClose={resetPasswordForm}
+        title="Change Password"
+        size="small"
+        closeOnOverlayClick={false}
+      >
+        <BottomSheet.Body>
+          <form id="change-password-form" onSubmit={handleChangePassword}>
+            <div className="form-group">
+              <label className="form-label">Current Password</label>
+              <input
+                type="password"
+                className="form-control"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">New Password</label>
+              <input
+                type="password"
+                className="form-control"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Min 8 chars, 1 uppercase, 1 number"
+                required
+                minLength={8}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Confirm New Password</label>
+              <input
+                type="password"
+                className="form-control"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter new password"
+                required
+              />
+            </div>
+          </form>
+        </BottomSheet.Body>
+        <BottomSheet.Footer>
+          <button
+            type="submit"
+            form="change-password-form"
+            className="btn btn-primary"
+            disabled={savingPassword || !currentPassword || !newPassword || !confirmPassword}
+          >
+            {savingPassword ? 'Changing...' : 'Change Password'}
+          </button>
+        </BottomSheet.Footer>
+      </BottomSheet>
+
       <style>{`
         .settings-grid {
           display: grid;
@@ -522,27 +563,6 @@ export default function Settings() {
         .timeout-label {
           color: var(--text-secondary);
           font-size: 0.875rem;
-        }
-
-        .password-form {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .password-form .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .password-form .form-label {
-          font-weight: 500;
-          font-size: 0.875rem;
-        }
-
-        .password-form .btn {
-          align-self: flex-start;
         }
 
         @media (max-width: 768px) {

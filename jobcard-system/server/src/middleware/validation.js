@@ -128,7 +128,11 @@ const validateCreateUser = [
     .withMessage('Password is required')
     .isString()
     .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long'),
+    .withMessage('Password must be at least 8 characters')
+    .matches(/[A-Z]/)
+    .withMessage('Password must contain at least one uppercase letter')
+    .matches(/[0-9]/)
+    .withMessage('Password must contain at least one number'),
   optionalEmail('email'),
   optionalString('name', 'Name', 100),
   body('role')
