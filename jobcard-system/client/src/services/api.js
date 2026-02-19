@@ -109,6 +109,13 @@ class ApiService {
     });
   }
 
+  changePassword(currentPassword, newPassword) {
+    return this.request('/auth/change-password', {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+  }
+
   // Jobcard endpoints
   getJobcards(filters = {}) {
     const params = new URLSearchParams();

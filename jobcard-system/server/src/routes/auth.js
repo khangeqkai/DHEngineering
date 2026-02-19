@@ -378,6 +378,43 @@ router.post('/users/:id/activate', authenticate, requireRole('admin'), (req, res
   }
 });
 
+// Change password (any authenticated user, for their own account)
+router.put('/change-password', authenticate, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    }
+
+    const user = userQueries.getById.get(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    userQueries.updatePassword.run(hashedPassword, req.user.userId);
+
+    recordHistory('user', req.user.userId, 'update', req.user.userId, req.user.name, {
+      password: { changed: true }
+    }, { username: user.username, name: user.name });
+
+    res.json({ success: true, message: 'Password changed successfully' });
+  } catch (err) {
+    logger.error({ err }, 'Change password error');
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
 // Delete user permanently (admin only) - hard delete
 router.delete('/users/:id', authenticate, requireRole('admin'), (req, res) => {
   try {

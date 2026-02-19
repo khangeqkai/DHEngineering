@@ -23,7 +23,17 @@ export default function Settings() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [savingTimeout, setSavingTimeout] = useState(false);
 
+  // Change password state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+
   const loadSettings = async () => {
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const data = await api.getSettings();
@@ -41,8 +51,10 @@ export default function Settings() {
 
   useEffect(() => {
     loadSettings();
-    loadAppInfo();
-    loadPrinters();
+    if (isAdmin) {
+      loadAppInfo();
+      loadPrinters();
+    }
   }, []);
 
   const handleSelectScannerFolder = async () => {
@@ -104,6 +116,29 @@ export default function Settings() {
     setDarkMode(!darkMode);
   };
 
+  const handleChangePassword = async () => {
+    if (newPassword.length < 8) {
+      toast.error('New password must be at least 8 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await api.changePassword(currentPassword, newPassword);
+      toast.success('Password changed successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      toast.error(err.message || 'Failed to change password');
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
   const loadAppInfo = async () => {
     if (window.electronAPI) {
       const info = await window.electronAPI.getAppInfo();
@@ -156,90 +191,142 @@ export default function Settings() {
 
         <div className="card">
           <div className="card-header">
-            <h2>Application Info</h2>
+            <h2>Change Password</h2>
           </div>
           <div className="card-body">
-            <dl className="info-list">
-              <div className="info-item">
-                <dt>Version</dt>
-                <dd>{appInfo?.version || 'Development'}</dd>
+            <div className="password-form">
+              <div className="form-group">
+                <label className="form-label">Current Password</label>
+                <input
+                  type="password"
+                  className="form-control"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                />
               </div>
-              <div className="info-item">
-                <dt>Platform</dt>
-                <dd>{appInfo?.platform || navigator.platform}</dd>
+              <div className="form-group">
+                <label className="form-label">New Password</label>
+                <input
+                  type="password"
+                  className="form-control"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimum 8 characters"
+                />
               </div>
-              <div className="info-item">
-                <dt>Architecture</dt>
-                <dd>{appInfo?.arch || 'N/A'}</dd>
+              <div className="form-group">
+                <label className="form-label">Confirm New Password</label>
+                <input
+                  type="password"
+                  className="form-control"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                />
               </div>
-              <div className="info-item">
-                <dt>Mode</dt>
-                <dd>{appInfo?.isDev ? 'Development' : 'Production'}</dd>
-              </div>
-            </dl>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleChangePassword}
+                disabled={savingPassword || !currentPassword || !newPassword || !confirmPassword}
+              >
+                {savingPassword ? 'Changing...' : 'Change Password'}
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <h2>Current User</h2>
-          </div>
-          <div className="card-body">
-            <dl className="info-list">
-              <div className="info-item">
-                <dt>Username</dt>
-                <dd>{user?.username}</dd>
+        {isAdmin && (
+          <>
+            <div className="card">
+              <div className="card-header">
+                <h2>Application Info</h2>
               </div>
-              <div className="info-item">
-                <dt>Display Name</dt>
-                <dd>{user?.name}</dd>
+              <div className="card-body">
+                <dl className="info-list">
+                  <div className="info-item">
+                    <dt>Version</dt>
+                    <dd>{appInfo?.version || 'Development'}</dd>
+                  </div>
+                  <div className="info-item">
+                    <dt>Platform</dt>
+                    <dd>{appInfo?.platform || navigator.platform}</dd>
+                  </div>
+                  <div className="info-item">
+                    <dt>Architecture</dt>
+                    <dd>{appInfo?.arch || 'N/A'}</dd>
+                  </div>
+                  <div className="info-item">
+                    <dt>Mode</dt>
+                    <dd>{appInfo?.isDev ? 'Development' : 'Production'}</dd>
+                  </div>
+                </dl>
               </div>
-              <div className="info-item">
-                <dt>Role</dt>
-                <dd>{user?.role}</dd>
-              </div>
-            </dl>
-          </div>
-        </div>
+            </div>
 
-        <div className="card full-width">
-          <div className="card-header">
-            <h2>Available Printers</h2>
-            <button className="btn btn-secondary btn-sm" onClick={loadPrinters}>
-              Refresh
-            </button>
-          </div>
-          <div className="card-body">
-            {loadingPrinters ? (
-              <p>Loading printers...</p>
-            ) : printers.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>
-                No printers found. Make sure you're running in Electron and printers are connected.
-              </p>
-            ) : (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Display Name</th>
-                    <th>Default</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {printers.map((printer, index) => (
-                    <tr key={index}>
-                      <td>{printer.name}</td>
-                      <td>{printer.displayName}</td>
-                      <td>{printer.isDefault ? 'Yes' : 'No'}</td>
-                      <td>{printer.status === 0 ? 'Ready' : `Status: ${printer.status}`}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
+            <div className="card">
+              <div className="card-header">
+                <h2>Current User</h2>
+              </div>
+              <div className="card-body">
+                <dl className="info-list">
+                  <div className="info-item">
+                    <dt>Username</dt>
+                    <dd>{user?.username}</dd>
+                  </div>
+                  <div className="info-item">
+                    <dt>Display Name</dt>
+                    <dd>{user?.name}</dd>
+                  </div>
+                  <div className="info-item">
+                    <dt>Role</dt>
+                    <dd>{user?.role}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            <div className="card full-width">
+              <div className="card-header">
+                <h2>Available Printers</h2>
+                <button className="btn btn-secondary btn-sm" onClick={loadPrinters}>
+                  Refresh
+                </button>
+              </div>
+              <div className="card-body">
+                {loadingPrinters ? (
+                  <p>Loading printers...</p>
+                ) : printers.length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)' }}>
+                    No printers found. Make sure you're running in Electron and printers are connected.
+                  </p>
+                ) : (
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Display Name</th>
+                        <th>Default</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {printers.map((printer, index) => (
+                        <tr key={index}>
+                          <td>{printer.name}</td>
+                          <td>{printer.displayName}</td>
+                          <td>{printer.isDefault ? 'Yes' : 'No'}</td>
+                          <td>{printer.status === 0 ? 'Ready' : `Status: ${printer.status}`}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         {isAdmin && (
           <>
@@ -322,31 +409,33 @@ export default function Settings() {
           </>
         )}
 
-        <div className="card full-width">
-          <div className="card-header">
-            <h2>Server Connection</h2>
+        {isAdmin && (
+          <div className="card full-width">
+            <div className="card-header">
+              <h2>Server Connection</h2>
+            </div>
+            <div className="card-body">
+              <dl className="info-list">
+                <div className="info-item">
+                  <dt>API Server</dt>
+                  <dd>http://localhost:3000</dd>
+                </div>
+                <div className="info-item">
+                  <dt>Database Server</dt>
+                  <dd>http://localhost:3000/db</dd>
+                </div>
+                <div className="info-item">
+                  <dt>Database UI</dt>
+                  <dd>
+                    <a href="http://localhost:3000/db/_utils" target="_blank" rel="noopener noreferrer">
+                      http://localhost:3000/db/_utils (Fauxton)
+                    </a>
+                  </dd>
+                </div>
+              </dl>
+            </div>
           </div>
-          <div className="card-body">
-            <dl className="info-list">
-              <div className="info-item">
-                <dt>API Server</dt>
-                <dd>http://localhost:3000</dd>
-              </div>
-              <div className="info-item">
-                <dt>Database Server</dt>
-                <dd>http://localhost:3000/db</dd>
-              </div>
-              <div className="info-item">
-                <dt>Database UI</dt>
-                <dd>
-                  <a href="http://localhost:3000/db/_utils" target="_blank" rel="noopener noreferrer">
-                    http://localhost:3000/db/_utils (Fauxton)
-                  </a>
-                </dd>
-              </div>
-            </dl>
-          </div>
-        </div>
+        )}
       </div>
 
       <style>{`
@@ -433,6 +522,27 @@ export default function Settings() {
         .timeout-label {
           color: var(--text-secondary);
           font-size: 0.875rem;
+        }
+
+        .password-form {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .password-form .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .password-form .form-label {
+          font-weight: 500;
+          font-size: 0.875rem;
+        }
+
+        .password-form .btn {
+          align-self: flex-start;
         }
 
         @media (max-width: 768px) {
