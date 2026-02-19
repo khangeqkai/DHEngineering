@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireAssigneeOrAdmin } = require('../middleware/auth');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -85,16 +85,27 @@ function formatJobcard(row, items = [], assignees = [], subcontracts = [], userR
 router.get('/', authenticate, (req, res) => {
   try {
     const { status, contactId, archived } = req.query;
+    const isAdmin = req.user.role === 'admin';
 
     let jobcards;
-    if (archived === 'true') {
-      jobcards = jobcardQueries.getArchived.all();
-    } else if (status) {
-      jobcards = jobcardQueries.getByStatus.all(status);
-    } else if (contactId) {
-      jobcards = jobcardQueries.getByContact.all(contactId);
+    if (isAdmin) {
+      if (archived === 'true') {
+        jobcards = jobcardQueries.getArchived.all();
+      } else if (status) {
+        jobcards = jobcardQueries.getByStatus.all(status);
+      } else if (contactId) {
+        jobcards = jobcardQueries.getByContact.all(contactId);
+      } else {
+        jobcards = jobcardQueries.getAll.all();
+      }
     } else {
-      jobcards = jobcardQueries.getAll.all();
+      if (archived === 'true') {
+        jobcards = jobcardQueries.getArchivedByAssignee.all(req.user.userId);
+      } else if (status) {
+        jobcards = jobcardQueries.getByAssigneeAndStatus.all(req.user.userId, status);
+      } else {
+        jobcards = jobcardQueries.getByAssignee.all(req.user.userId);
+      }
     }
 
     res.json(jobcards.map(jc => formatJobcard(jc, [], [], [], req.user.role)));
@@ -107,7 +118,10 @@ router.get('/', authenticate, (req, res) => {
 // Get overdue job cards
 router.get('/overdue', authenticate, (req, res) => {
   try {
-    const jobcards = jobcardQueries.getOverdue.all();
+    const isAdmin = req.user.role === 'admin';
+    const jobcards = isAdmin
+      ? jobcardQueries.getOverdue.all()
+      : jobcardQueries.getOverdueByAssignee.all(req.user.userId);
     res.json(jobcards.map(jc => formatJobcard(jc, [], [], [], req.user.role)));
   } catch (err) {
     logger.error({ err }, 'Get overdue jobcards error');
@@ -116,7 +130,7 @@ router.get('/overdue', authenticate, (req, res) => {
 });
 
 // Get single job card with all related data
-router.get('/:id', authenticate, (req, res) => {
+router.get('/:id', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const jobcard = jobcardQueries.getById.get(req.params.id);
     if (!jobcard) {
@@ -136,7 +150,7 @@ router.get('/:id', authenticate, (req, res) => {
 });
 
 // Get job card history
-router.get('/:id/history', authenticate, (req, res) => {
+router.get('/:id/history', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const history = historyQueries.getByEntity.all('jobcard', req.params.id);
 
@@ -156,7 +170,7 @@ router.get('/:id/history', authenticate, (req, res) => {
 });
 
 // Create job card
-router.post('/', authenticate, (req, res) => {
+router.post('/', authenticate, requireAdmin, (req, res) => {
   try {
     const data = req.body;
 
@@ -291,7 +305,7 @@ router.post('/', authenticate, (req, res) => {
 });
 
 // Update job card
-router.put('/:id', authenticate, (req, res) => {
+router.put('/:id', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -521,7 +535,7 @@ router.post('/:id/archive', authenticate, requireAdmin, (req, res) => {
 });
 
 // Delete job card
-router.delete('/:id', authenticate, (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
 
@@ -545,8 +559,7 @@ router.delete('/:id', authenticate, (req, res) => {
 });
 
 // Sync endpoints for offline support
-router.post('/sync/create', authenticate, (req, res) => {
-  // Simplified - delegate to main create
+router.post('/sync/create', authenticate, requireAdmin, (req, res) => {
   req.body._id = req.body._id || `jobcard:${Date.now()}:${uuidv4().slice(0, 8)}`;
   return router.handle(req, res);
 });
@@ -557,11 +570,17 @@ router.post('/sync/update', authenticate, (req, res) => {
     const existing = jobcardQueries.getById.get(data._id);
 
     if (!existing) {
-      // Create if doesn't exist
       return res.redirect(307, '/api/jobcards');
     }
 
-    // Update
+    if (req.user.role !== 'admin') {
+      const assignees = jobAssigneeQueries.getByJobcard.all(data._id);
+      const isAssigned = assignees.some(a => a.user_id === req.user.userId);
+      if (!isAssigned) {
+        return res.status(403).json({ error: 'You do not have access to this job card' });
+      }
+    }
+
     req.params = { id: data._id };
     return router.handle(req, res);
   } catch (err) {

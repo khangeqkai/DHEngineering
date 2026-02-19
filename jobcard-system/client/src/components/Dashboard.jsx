@@ -131,9 +131,11 @@ export default function Dashboard() {
   return (
     <div className="dashboard">
       <PageHeader title="Dashboard">
-        <button className="btn btn-primary" onClick={openCreateModal}>
-          <Plus size={16} /> New Job Card
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={openCreateModal}>
+            <Plus size={16} /> New Job Card
+          </button>
+        )}
       </PageHeader>
 
       {/* Compact stat chips */}

@@ -224,7 +224,7 @@ export default function JobCardList() {
           />
           Show Archived
         </label>
-        {!showArchived && (
+        {!showArchived && isAdmin && (
           <button className="btn btn-primary" onClick={openCreateModal}>
             <Plus size={16} /> New Job Card
           </button>

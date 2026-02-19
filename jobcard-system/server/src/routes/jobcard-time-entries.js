@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireAssigneeOrAdmin } = require('../middleware/auth');
 const { timeEntryQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
@@ -33,7 +33,7 @@ function toCamelCase(e) {
 }
 
 // Get job card time entries
-router.get('/:id/time-entries', authenticate, (req, res) => {
+router.get('/:id/time-entries', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const entries = timeEntryQueries.getByJobcard.all(req.params.id);
     res.json(entries.map(toCamelCase));
@@ -44,7 +44,7 @@ router.get('/:id/time-entries', authenticate, (req, res) => {
 });
 
 // Add time entry
-router.post('/:id/time-entries', authenticate, (req, res) => {
+router.post('/:id/time-entries', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -88,7 +88,7 @@ router.post('/:id/time-entries', authenticate, (req, res) => {
 });
 
 // Update time entry
-router.put('/:id/time-entries/:entryId', authenticate, (req, res) => {
+router.put('/:id/time-entries/:entryId', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const { id, entryId } = req.params;
     const data = req.body;
@@ -149,7 +149,7 @@ router.put('/:id/time-entries/:entryId', authenticate, (req, res) => {
 });
 
 // Delete time entry
-router.delete('/:id/time-entries/:entryId', authenticate, (req, res) => {
+router.delete('/:id/time-entries/:entryId', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const { id, entryId } = req.params;
 

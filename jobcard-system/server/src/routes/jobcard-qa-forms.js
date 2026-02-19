@@ -1,13 +1,13 @@
 const express = require('express');
 
 const logger = require('../utils/logger');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireAssigneeOrAdmin } = require('../middleware/auth');
 const { qaFormQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
 // Get job card QA forms
-router.get('/:id/qa-forms', authenticate, (req, res) => {
+router.get('/:id/qa-forms', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const forms = qaFormQueries.getByJobcard.all(req.params.id);
     res.json(forms.map(f => ({
@@ -26,7 +26,7 @@ router.get('/:id/qa-forms', authenticate, (req, res) => {
 });
 
 // Update QA form status
-router.patch('/:id/qa-forms/:formId', authenticate, (req, res) => {
+router.patch('/:id/qa-forms/:formId', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const { id, formId } = req.params;
     const { status, scannedDocumentId, notes } = req.body;

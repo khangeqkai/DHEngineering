@@ -2,13 +2,13 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireAssigneeOrAdmin } = require('../middleware/auth');
 const { documentQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
 // Get job card documents
-router.get('/:id/documents', authenticate, (req, res) => {
+router.get('/:id/documents', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const docs = documentQueries.getByJobcard.all(req.params.id);
     res.json(docs.map(d => ({
@@ -26,7 +26,7 @@ router.get('/:id/documents', authenticate, (req, res) => {
 });
 
 // Add document
-router.post('/:id/documents', authenticate, (req, res) => {
+router.post('/:id/documents', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const { filename, fileType, fileSize, fileData } = req.body;

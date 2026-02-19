@@ -60,7 +60,7 @@ jobcard-system/
 │   ├── src/
 │   │   ├── config.js             # Port, JWT, DB path settings
 │   │   ├── middleware/
-│   │   │   ├── auth.js           # JWT verification + role checking + rate limiting
+│   │   │   ├── auth.js           # JWT verification + role checking + rate limiting + assignee access
 │   │   │   └── validation.js     # express-validator reusable validators
 │   │   ├── utils/
 │   │   │   └── logger.js         # Pino structured logging
@@ -94,7 +94,8 @@ All changes logged to `history` table for audit trail.
 
 ### Authentication
 - Two roles: `admin` (full access) and `user` (limited)
-- Admin-only: user management, supplier management, costing, settings, activity log, **contact/customer info**
+- Admin-only: user management, supplier management, costing, settings, activity log, **contact/customer info**, **job card creation/deletion**
+- **Job card visibility**: Non-admin users only see job cards they are assigned to (via `job_assignees`). Unassigned job cards are visible only to admins. All `/:id` routes (GET, PUT, and sub-resources) enforce assignee-or-admin access via `requireAssigneeOrAdmin` middleware. List routes use assignee-filtered queries instead.
 - **Settings page**: Non-admin users see only Appearance (dark mode) and Change Password. Admin users see all cards (App Info, Current User, Printers, Security Settings, Scanner Folder, Server Connection).
 - Default credentials: `admin` / `admin123`
 - **No token persistence**: JWT stored in memory only (not localStorage). Users must log in every time they open/refresh the app. Designed for shared workstation security.

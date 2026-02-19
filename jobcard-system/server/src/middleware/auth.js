@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
-const { userQueries } = require('../db/database');
+const { userQueries, jobAssigneeQueries } = require('../db/database');
 
 // Middleware to verify JWT token
 function authenticate(req, res, next) {
@@ -56,4 +56,16 @@ function requireRole(...roles) {
 // Convenience middleware for admin-only routes
 const requireAdmin = requireRole('admin');
 
-module.exports = { authenticate, requireRole, requireAdmin };
+function requireAssigneeOrAdmin(req, res, next) {
+  if (req.user.role === 'admin') return next();
+
+  const jobcardId = req.params.id;
+  const assignees = jobAssigneeQueries.getByJobcard.all(jobcardId);
+  const isAssigned = assignees.some(a => a.user_id === req.user.userId);
+  if (!isAssigned) {
+    return res.status(403).json({ error: 'You do not have access to this job card' });
+  }
+  next();
+}
+
+module.exports = { authenticate, requireRole, requireAdmin, requireAssigneeOrAdmin };

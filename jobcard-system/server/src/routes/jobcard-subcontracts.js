@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireAssigneeOrAdmin } = require('../middleware/auth');
 const { subcontractQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
@@ -22,7 +22,7 @@ const toResponse = (s) => ({
 });
 
 // Get subcontracts
-router.get('/:id/subcontracts', authenticate, (req, res) => {
+router.get('/:id/subcontracts', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const subcontracts = subcontractQueries.getByJobcard.all(req.params.id);
     res.json(subcontracts.map(toResponse));
@@ -33,7 +33,7 @@ router.get('/:id/subcontracts', authenticate, (req, res) => {
 });
 
 // Add subcontract
-router.post('/:id/subcontracts', authenticate, (req, res) => {
+router.post('/:id/subcontracts', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -65,7 +65,7 @@ router.post('/:id/subcontracts', authenticate, (req, res) => {
 });
 
 // Update subcontract
-router.put('/:id/subcontracts/:subId', authenticate, (req, res) => {
+router.put('/:id/subcontracts/:subId', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const { id, subId } = req.params;
     const data = req.body;
@@ -118,7 +118,7 @@ router.put('/:id/subcontracts/:subId', authenticate, (req, res) => {
 });
 
 // Delete subcontract
-router.delete('/:id/subcontracts/:subId', authenticate, (req, res) => {
+router.delete('/:id/subcontracts/:subId', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const { id, subId } = req.params;
 
