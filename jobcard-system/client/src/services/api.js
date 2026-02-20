@@ -359,6 +359,23 @@ class ApiService {
     });
   }
 
+  // Drawings files (from job folder on disk)
+  getDrawingsFiles(jobcardId) {
+    return this.request(`/jobcards/${jobcardId}/drawings-files`);
+  }
+
+  getDrawingsFileData(jobcardId, filename) {
+    return this.request(`/jobcards/${jobcardId}/drawings-files/${encodeURIComponent(filename)}`);
+  }
+
+  // Attach scanner file as document
+  attachScannerFile(jobcardId, filePath) {
+    return this.request(`/jobcards/${jobcardId}/documents/from-scanner`, {
+      method: 'POST',
+      body: JSON.stringify({ filePath })
+    });
+  }
+
   // Contact endpoints (phone contacts style)
   getContacts() {
     return this.request('/contacts');

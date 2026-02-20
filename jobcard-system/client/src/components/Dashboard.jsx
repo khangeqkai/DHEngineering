@@ -7,6 +7,8 @@ import { Plus, Activity, FileText, FolderOpen, Loader, Pause, AlertTriangle } fr
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
+import QuickActionPanel from './jobcard/QuickActionPanel';
+import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
 import './Dashboard.css';
 
 const STATUS_LABELS = {
@@ -41,6 +43,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
+  const [quickActionCard, setQuickActionCard] = useState(null);
+  const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
 
   // Load job cards from API
   const loadJobcards = async () => {
@@ -271,11 +275,21 @@ export default function Dashboard() {
                           href="#"
                           onClick={(e) => {
                             e.preventDefault();
-                            openEditModal(card.id);
+                            if (!isAdmin) {
+                              setQuickActionCard(card);
+                            } else {
+                              openEditModal(card.id);
+                            }
                           }}
                         >
                           {card.jobNumber}
                         </a>
+                        {!isAdmin && card.id === activeTimerJobcardId && (
+                          <span className="timer-indicator">
+                            <span className="timer-dot" />
+                            {formattedElapsed}
+                          </span>
+                        )}
                         {card.qualityLevel === 'CRITICAL' && (
                           <span className="critical-badge">Critical QA</span>
                         )}
@@ -343,11 +357,21 @@ export default function Dashboard() {
                             href="#"
                             onClick={(e) => {
                               e.preventDefault();
-                              openEditModal(card.id);
+                              if (!isAdmin) {
+                                setQuickActionCard(card);
+                              } else {
+                                openEditModal(card.id);
+                              }
                             }}
                           >
                             {card.jobNumber}
                           </a>
+                          {!isAdmin && card.id === activeTimerJobcardId && (
+                            <span className="timer-indicator">
+                              <span className="timer-dot" />
+                              {formattedElapsed}
+                            </span>
+                          )}
                           {card.qualityLevel === 'CRITICAL' && (
                             <span className="critical-badge">Critical QA</span>
                           )}
@@ -378,6 +402,17 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      <QuickActionPanel
+        isOpen={!!quickActionCard}
+        onClose={() => setQuickActionCard(null)}
+        jobCard={quickActionCard}
+        onViewDetails={(cardId) => {
+          setQuickActionCard(null);
+          openEditModal(cardId);
+        }}
+        onTimerChange={refreshTimer}
+      />
 
       <JobCardModal
         isOpen={isModalOpen}

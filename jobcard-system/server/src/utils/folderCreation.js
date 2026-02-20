@@ -102,6 +102,7 @@ function createJobCardFolders(companyName, jobNumber) {
 
 module.exports = {
   sanitizeFolderName,
+  isWithinBase,
   createCompanyFolder,
   createJobCardFolders
 };

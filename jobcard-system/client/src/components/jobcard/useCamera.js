@@ -25,11 +25,15 @@ export function useCamera() {
 
   const startCamera = useCallback(async () => {
     try {
+      // Stop any existing stream before starting a new one
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       streamRef.current = stream;
       setCameraActive(true);
     } catch (err) {
-      console.error('Failed to access camera:', err);
       toast.error('Could not access camera: ' + err.message);
     }
   }, []);

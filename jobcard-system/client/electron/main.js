@@ -189,6 +189,50 @@ ipcMain.handle('get-app-info', () => {
   };
 });
 
+// Helper: print in a hidden BrowserWindow with cancel safety
+function printInHiddenWindow(loadFn, options = {}) {
+  let printWindow = null;
+  return new Promise(async (resolve) => {
+    try {
+      printWindow = new BrowserWindow({
+        show: false,
+        webPreferences: { contextIsolation: true, nodeIntegration: false }
+      });
+
+      await loadFn(printWindow);
+
+      printWindow.webContents.print(
+        {
+          silent: options.silent || false,
+          printBackground: true,
+          deviceName: options.printerName || '',
+          pageSize: options.pageSize || 'A4'
+        },
+        (success, failureReason) => {
+          if (printWindow && !printWindow.isDestroyed()) printWindow.close();
+          resolve({ success, cancelled: !success, failureReason: failureReason || '' });
+        }
+      );
+    } catch (err) {
+      if (printWindow && !printWindow.isDestroyed()) printWindow.close();
+      resolve({ success: false, cancelled: false, failureReason: err.message });
+    }
+  });
+}
+
+ipcMain.handle('print-html', async (event, { html, options = {} }) => {
+  return printInHiddenWindow(async (win) => {
+    const encoded = Buffer.from(html, 'utf-8').toString('base64');
+    await win.loadURL(`data:text/html;base64,${encoded}`);
+  }, options);
+});
+
+ipcMain.handle('print-file', async (event, { filePath, options = {} }) => {
+  return printInHiddenWindow(async (win) => {
+    await win.loadFile(filePath);
+  }, options);
+});
+
 // Select folder dialog
 ipcMain.handle('select-folder', async () => {
   const window = BrowserWindow.getAllWindows()[0];

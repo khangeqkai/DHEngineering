@@ -6,8 +6,10 @@ import { useAuth } from '../context/AuthContext';
 import { Plus, Trash2, Archive, ArchiveRestore } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
+import QuickActionPanel from './jobcard/QuickActionPanel';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
 import './JobCardList.css';
 
 const STATUS_OPTIONS = [
@@ -62,6 +64,8 @@ export default function JobCardList() {
   const [statusPopoverId, setStatusPopoverId] = useState(null);
   const popoverRef = useRef(null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
+  const [quickActionCard, setQuickActionCard] = useState(null);
+  const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
 
   const loadJobcards = useCallback(async () => {
     try {
@@ -340,11 +344,21 @@ export default function JobCardList() {
                           href="#"
                           onClick={(e) => {
                             e.preventDefault();
-                            openEditModal(card.id);
+                            if (!isAdmin) {
+                              setQuickActionCard(card);
+                            } else {
+                              openEditModal(card.id);
+                            }
                           }}
                         >
                           <strong>{card.jobNumber}</strong>
                         </a>
+                        {!isAdmin && card.id === activeTimerJobcardId && (
+                          <span className="timer-indicator">
+                            <span className="timer-dot" />
+                            {formattedElapsed}
+                          </span>
+                        )}
                         {card.qualityLevel === 'CRITICAL' && (
                           <span className="critical-badge">Critical QA</span>
                         )}
@@ -504,6 +518,17 @@ export default function JobCardList() {
           </div>
         )}
       </div>
+
+      <QuickActionPanel
+        isOpen={!!quickActionCard}
+        onClose={() => setQuickActionCard(null)}
+        jobCard={quickActionCard}
+        onViewDetails={(cardId) => {
+          setQuickActionCard(null);
+          openEditModal(cardId);
+        }}
+        onTimerChange={refreshTimer}
+      />
 
       <JobCardModal
         isOpen={isModalOpen}
