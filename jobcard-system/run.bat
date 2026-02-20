@@ -66,8 +66,8 @@ if "%1"=="-r" (
 
 :: Start the application
 echo Starting Job Card System...
-echo   Server: http://localhost:3000
-echo   Database: http://localhost:5984
+echo   Server API: http://localhost:3000
+echo   Database:   data/jobcard.db (SQLite)
 echo.
 echo Press Ctrl+C to stop
 echo.

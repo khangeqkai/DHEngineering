@@ -70,6 +70,7 @@ IS_WSL=false
 if grep -qEi "(microsoft|wsl)" /proc/version 2>/dev/null; then
     IS_WSL=true
     echo "WSL environment detected - running in web mode (no Electron)"
+    echo "For native Electron with folder picker, run run.bat from Windows."
 fi
 echo ""
 

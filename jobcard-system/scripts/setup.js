@@ -4,6 +4,7 @@ const path = require('path');
 const os = require('os');
 
 const ROOT_DIR = path.join(__dirname, '..');
+const PLATFORM = os.platform();
 
 // Colors for terminal output
 const colors = {
@@ -20,7 +21,7 @@ function log(message, color = 'reset') {
 
 function checkCommand(cmd) {
   try {
-    if (os.platform() === 'win32') {
+    if (PLATFORM === 'win32') {
       spawnSync('where', [cmd], { stdio: 'pipe' });
     } else {
       spawnSync('which', [cmd], { stdio: 'pipe' });
@@ -31,11 +32,34 @@ function checkCommand(cmd) {
   }
 }
 
+/**
+ * Check if node_modules was installed for the current platform.
+ * Uses a .platform marker file to detect cross-platform mismatches
+ * (e.g. installed in WSL/Linux but running from Windows).
+ */
+function checkPlatformMatch(nodeModulesPath) {
+  const markerPath = path.join(nodeModulesPath, '.platform');
+  if (!fs.existsSync(markerPath)) return false;
+  try {
+    const installed = fs.readFileSync(markerPath, 'utf8').trim();
+    return installed === PLATFORM;
+  } catch {
+    return false;
+  }
+}
+
+function writePlatformMarker(nodeModulesPath) {
+  try {
+    fs.writeFileSync(path.join(nodeModulesPath, '.platform'), PLATFORM);
+  } catch {
+    // Non-critical
+  }
+}
+
 function installDependencies(dir, name) {
   const fullPath = path.join(ROOT_DIR, dir);
   const nodeModulesPath = path.join(fullPath, 'node_modules');
   const packageJsonPath = path.join(fullPath, 'package.json');
-  const packageLockPath = path.join(fullPath, 'package-lock.json');
 
   if (!fs.existsSync(packageJsonPath)) {
     throw new Error(`package.json not found in ${dir}`);
@@ -43,8 +67,11 @@ function installDependencies(dir, name) {
 
   let needsInstall = false;
 
-  // Check if node_modules exists
   if (!fs.existsSync(nodeModulesPath)) {
+    needsInstall = true;
+  } else if (!checkPlatformMatch(nodeModulesPath)) {
+    // node_modules was installed on a different platform (e.g. WSL vs Windows)
+    log(`  ${name}: dependencies were installed for a different platform, reinstalling...`, 'yellow');
     needsInstall = true;
   } else {
     // Check if package.json is newer than node_modules (dependencies changed)
@@ -64,11 +91,57 @@ function installDependencies(dir, name) {
         cwd: fullPath,
         stdio: 'inherit'
       });
+      writePlatformMarker(nodeModulesPath);
     } catch (err) {
       throw new Error(`Failed to install ${name} dependencies`);
     }
   }
   return 'OK';
+}
+
+function checkNativeModules() {
+  const serverDir = path.join(ROOT_DIR, 'server');
+  const betterSqlitePath = path.join(serverDir, 'node_modules', 'better-sqlite3');
+  if (!fs.existsSync(betterSqlitePath)) return 'OK (not yet installed)';
+
+  // Check the .node binary format directly — PE (MZ) for Windows, ELF for Linux
+  const nodeBinary = path.join(betterSqlitePath, 'build', 'Release', 'better_sqlite3.node');
+  let needsReinstall = false;
+
+  if (!fs.existsSync(nodeBinary)) {
+    needsReinstall = true;
+  } else {
+    const header = Buffer.alloc(4);
+    const fd = fs.openSync(nodeBinary, 'r');
+    fs.readSync(fd, header, 0, 4, 0);
+    fs.closeSync(fd);
+
+    const magic = header.toString('hex', 0, 4);
+    if (PLATFORM === 'win32' && header.toString('ascii', 0, 2) !== 'MZ') {
+      // Not a Windows PE binary
+      needsReinstall = true;
+    } else if (PLATFORM === 'darwin' && magic !== 'cffaedfe' && magic !== 'cefaedfe' && magic !== 'cafebabe') {
+      // Not a macOS Mach-O binary (64-bit, 32-bit, or universal)
+      needsReinstall = true;
+    } else if (PLATFORM === 'linux' && magic !== '7f454c46') {
+      // Not a Linux ELF binary
+      needsReinstall = true;
+    }
+  }
+
+  if (!needsReinstall) return 'OK';
+
+  log('  Native module was built for a different platform, reinstalling...', 'yellow');
+  try {
+    fs.rmSync(betterSqlitePath, { recursive: true, force: true });
+    execSync('npm install better-sqlite3', {
+      cwd: serverDir,
+      stdio: 'inherit'
+    });
+    return 'reinstalled';
+  } catch (err) {
+    throw new Error('Failed to install native modules. On Windows, you may need build tools: npm install -g windows-build-tools');
+  }
 }
 
 function ensureDataDir() {
@@ -100,14 +173,13 @@ const checks = [
   {
     name: 'Operating System',
     check: () => {
-      const platform = os.platform();
       const release = os.release();
       const platformNames = {
         darwin: 'macOS',
         win32: 'Windows',
         linux: 'Linux'
       };
-      return `${platformNames[platform] || platform} ${release}`;
+      return `${platformNames[PLATFORM] || PLATFORM} ${release}`;
     }
   },
   {
@@ -121,6 +193,10 @@ const checks = [
   {
     name: 'Client dependencies',
     check: () => installDependencies('client', 'client')
+  },
+  {
+    name: 'Native modules',
+    check: checkNativeModules
   }
 ];
 
