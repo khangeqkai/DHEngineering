@@ -283,6 +283,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (formHook.formData.isRepeatJob && !formHook.formData.repeatJobReference) {
       errors.push('Previous job reference is required');
     }
+    if (!formHook.formData.customerProperty || formHook.formData.customerProperty === 'NONE') {
+      errors.push('Customer Property is required');
+    }
+    if (!formHook.formData.drawingsType || formHook.formData.drawingsType === 'NONE') {
+      errors.push('Drawings type is required');
+    }
 
     if (errors.length > 0) {
       toast.dismiss();

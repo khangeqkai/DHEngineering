@@ -207,6 +207,13 @@ router.post('/', authenticate, requireAdmin, (req, res) => {
       return res.status(400).json({ error: 'Job number already exists' });
     }
 
+    if (!data.customerProperty || data.customerProperty === 'NONE') {
+      return res.status(400).json({ error: 'Customer Property is required' });
+    }
+    if (!data.drawingsType || data.drawingsType === 'NONE') {
+      return res.status(400).json({ error: 'Drawings type is required' });
+    }
+
     const id = `jobcard:${Date.now()}:${uuidv4().slice(0, 8)}`;
 
     // Status from request or default to OPEN

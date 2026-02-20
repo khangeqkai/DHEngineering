@@ -32,6 +32,7 @@ export const TREATMENT_OPTIONS = [
 
 export const CUSTOMER_PROPERTY_OPTIONS = [
   { value: 'NONE', label: 'None' },
+  { value: 'N/A', label: 'N/A' },
   { value: 'MATERIAL_SUPPLIED', label: 'Material Supplied' },
   { value: 'DAMAGED_WORN_SAMPLE', label: 'Damaged or Worn Sample' },
   { value: 'GOOD_SAMPLE', label: 'Good Sample' },

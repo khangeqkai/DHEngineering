@@ -332,8 +332,8 @@ export default function DetailsTab({
           </div>
         </div>
         <div className="form-group">
-          <label>Customer Property</label>
-          <div className="checkbox-grid">
+          <label>Customer Property <span className="required">*</span></label>
+          <div className={`checkbox-grid${!formData.customerProperty || formData.customerProperty === 'NONE' ? ' field-required' : ''}`}>
             {CUSTOMER_PROPERTY_OPTIONS.filter(o => o.value !== 'NONE').map(opt => {
               const values = formData.customerProperty ? formData.customerProperty.split(',') : [];
               const isChecked = values.includes(opt.value);
@@ -343,11 +343,15 @@ export default function DetailsTab({
                     type="checkbox"
                     checked={isChecked}
                     onChange={(e) => {
-                      const current = formData.customerProperty ? formData.customerProperty.split(',').filter(v => v) : [];
-                      const updated = e.target.checked
-                        ? [...current, opt.value]
-                        : current.filter(v => v !== opt.value);
-                      setFormData(prev => ({ ...prev, customerProperty: updated.join(',') }));
+                      if (opt.value === 'N/A') {
+                        setFormData(prev => ({ ...prev, customerProperty: e.target.checked ? 'N/A' : '' }));
+                      } else {
+                        const current = formData.customerProperty ? formData.customerProperty.split(',').filter(v => v && v !== 'N/A') : [];
+                        const updated = e.target.checked
+                          ? [...current, opt.value]
+                          : current.filter(v => v !== opt.value);
+                        setFormData(prev => ({ ...prev, customerProperty: updated.join(',') }));
+                      }
                     }}
                   />
                   {opt.label}
@@ -357,8 +361,8 @@ export default function DetailsTab({
           </div>
         </div>
         <div className="form-group">
-          <label>Drawings</label>
-          <div className="checkbox-grid">
+          <label>Drawings <span className="required">*</span></label>
+          <div className={`checkbox-grid${!formData.drawingsType || formData.drawingsType === 'NONE' ? ' field-required' : ''}`}>
             {DRAWINGS_TYPES.filter(d => d.value !== 'NONE').map(opt => {
               const values = formData.drawingsType ? formData.drawingsType.split(',') : [];
               const isChecked = values.includes(opt.value);
