@@ -103,6 +103,69 @@ function optionalBoolean(field, label) {
     .withMessage(`${label} must be a boolean`);
 }
 
+/**
+ * Optional enum field validator
+ * @param {string} field - Field name to validate
+ * @param {string} label - Human-readable field label
+ * @param {string[]} allowed - Allowed values
+ */
+function optionalEnum(field, label, allowed) {
+  return body(field)
+    .customSanitizer(value => (value === '' || value === null) ? undefined : value)
+    .optional()
+    .isIn(allowed)
+    .withMessage(`${label} must be one of: ${allowed.join(', ')}`);
+}
+
+// =============================================================================
+// Enum Values
+// =============================================================================
+
+const JOB_TYPES = [
+  'MANUFACTURE', 'REPAIR', 'MODIFY', 'FABRICATE',
+  'SUPPLY', 'REVERSE ENGINEER', 'INSPECTION', 'CAD DRAWINGS',
+  'CONSULTATION', 'ON-SITE'
+];
+
+const JOBCARD_STATUSES = ['QUOTE', 'OPEN', 'IN_PROGRESS', 'ON_HOLD', 'DONE', 'INVOICED'];
+
+const PRIORITY_OPTIONS = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
+
+const QUALITY_LEVELS = ['STANDARD', 'CRITICAL'];
+
+const DRAWINGS_TYPES = ['NONE', 'CUSTOMER_CAD', 'CUSTOMER_SKETCH', 'DH_CAD', 'DH_SKETCH', 'PREPARE_SKETCH', 'PREPARE_CAD'];
+
+const CUSTOMER_PROPERTY_OPTIONS = ['NONE', 'N/A', 'MATERIAL_SUPPLIED', 'DAMAGED_WORN_SAMPLE', 'GOOD_SAMPLE', 'PART_FOR_REPAIR', 'PART_FOR_MODIFICATION'];
+
+const TREATMENT_OPTIONS = ['NONE', 'HEAT_TREATMENT', 'PRECISION_GRINDING', 'ANODISE', 'ELECTROPLATE', 'BLASTING', 'POWDERCOAT', 'SPRAYPAINT', 'GALVANISE', 'SPECIALISED_COATING', 'OTHER'];
+
+const SUBCONTRACT_STATUSES = ['PENDING', 'SENT', 'IN_PROGRESS', 'RECEIVED', 'COMPLETE'];
+
+const INSPECTION_OPTIONS = ['NOT_APPLICABLE', 'OK', 'ERROR'];
+
+/**
+ * Optional comma-separated multi-value enum field validator
+ * @param {string} field - Field name to validate
+ * @param {string} label - Human-readable field label
+ * @param {string[]} allowed - Allowed values
+ */
+function optionalMultiEnum(field, label, allowed) {
+  return body(field)
+    .customSanitizer(value => (value === '' || value === null) ? undefined : value)
+    .optional()
+    .custom((value) => {
+      if (typeof value !== 'string') {
+        throw new Error(`${label} must be a comma-separated string`);
+      }
+      const values = value.split(',').map(v => v.trim());
+      const invalid = values.filter(v => !allowed.includes(v));
+      if (invalid.length > 0) {
+        throw new Error(`${label} contains invalid values: ${invalid.join(', ')}`);
+      }
+      return true;
+    });
+}
+
 // =============================================================================
 // Pre-built Validation Arrays for Common Routes
 // =============================================================================
@@ -189,6 +252,38 @@ const validateJobcardListQuery = [
   handleValidationErrors
 ];
 
+/**
+ * Job card enum field validation
+ * Used for both create and update routes
+ */
+const validateJobcardEnums = [
+  optionalEnum('jobType', 'Job type', JOB_TYPES),
+  optionalEnum('status', 'Status', JOBCARD_STATUSES),
+  optionalEnum('priority', 'Priority', PRIORITY_OPTIONS),
+  optionalEnum('qualityLevel', 'Quality level', QUALITY_LEVELS),
+  optionalMultiEnum('drawingsType', 'Drawings type', DRAWINGS_TYPES),
+  optionalMultiEnum('customerProperty', 'Customer property', CUSTOMER_PROPERTY_OPTIONS),
+  optionalMultiEnum('treatmentRequired', 'Treatment required', TREATMENT_OPTIONS),
+  handleValidationErrors
+];
+
+/**
+ * Subcontract status validation
+ */
+const validateSubcontractStatus = [
+  optionalEnum('status', 'Status', SUBCONTRACT_STATUSES),
+  handleValidationErrors
+];
+
+/**
+ * Time entry inspection field validation
+ */
+const validateTimeEntryInspection = [
+  optionalEnum('firstOffInspection', 'First off inspection', INSPECTION_OPTIONS),
+  optionalEnum('inProcessValidation', 'In-process validation', INSPECTION_OPTIONS),
+  handleValidationErrors
+];
+
 module.exports = {
   // Error handler
   handleValidationErrors,
@@ -206,5 +301,18 @@ module.exports = {
   validateCreateUser,
   validateCreateContact,
   validateUpdateContact,
-  validateJobcardListQuery
+  validateJobcardListQuery,
+  validateJobcardEnums,
+  validateSubcontractStatus,
+  validateTimeEntryInspection,
+
+  JOB_TYPES,
+  JOBCARD_STATUSES,
+  PRIORITY_OPTIONS,
+  QUALITY_LEVELS,
+  DRAWINGS_TYPES,
+  CUSTOMER_PROPERTY_OPTIONS,
+  TREATMENT_OPTIONS,
+  SUBCONTRACT_STATUSES,
+  INSPECTION_OPTIONS
 };

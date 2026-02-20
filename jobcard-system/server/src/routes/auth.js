@@ -78,7 +78,9 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
     const user = userQueries.getByUsername.get(username);
     if (!user || !user.active) {
       logger.warn({ username, reason: 'user_not_found_or_inactive' }, 'Failed login attempt');
-      recordHistory('auth', 'login', 'login_failed', null, username, null, { reason: 'user_not_found_or_inactive' });
+      recordHistory('auth', 'login', 'login_failed', null, username, {
+        reason: { from: null, to: 'user_not_found_or_inactive' }
+      });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -86,12 +88,16 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
       logger.warn({ username, userId: user.id, reason: 'invalid_password' }, 'Failed login attempt');
-      recordHistory('auth', 'login', 'login_failed', user.id, username, null, { reason: 'invalid_password' });
+      recordHistory('auth', 'login', 'login_failed', user.id, username, {
+        reason: { from: null, to: 'invalid_password' }
+      });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Record login in history
-    recordHistory('user', user.id, 'login', user.id, user.name, null, { username: user.username, name: user.name });
+    recordHistory('user', user.id, 'login', user.id, user.name, {
+      username: { from: null, to: user.username }
+    });
 
     // Generate session token and store in DB (single-session enforcement)
     const sessionToken = uuidv4();
@@ -235,11 +241,10 @@ router.post('/users', authenticate, requireRole('admin'), userCreationLimiter, v
     );
 
     // Record in history
-    recordHistory('user', userId, 'create', req.user.userId, req.user.name, null, {
-      username,
-      role: role || 'user',
-      name: name || username,
-      email
+    recordHistory('user', userId, 'create', req.user.userId, req.user.name, {
+      username: { from: null, to: username },
+      role: { from: null, to: role || 'user' },
+      name: { from: null, to: name || username }
     });
 
     res.status(201).json({
@@ -288,7 +293,7 @@ router.put('/users/:id', authenticate, async (req, res) => {
       changes.email = { from: user.email || null, to: email || null };
     }
     if (role && normalizeEmpty(role) !== normalizeEmpty(user.role)) changes.role = { from: user.role, to: role };
-    if (password) changes.password = { changed: true };
+    if (password) changes.password = { from: '(hidden)', to: '(changed)' };
 
     // Validate password before any DB writes
     if (password) {
@@ -423,7 +428,7 @@ router.put('/change-password', authenticate, async (req, res) => {
     userQueries.updatePassword.run(hashedPassword, req.user.userId);
 
     recordHistory('user', req.user.userId, 'update', req.user.userId, req.user.name, {
-      password: { changed: true }
+      password: { from: '(hidden)', to: '(changed)' }
     }, { username: user.username, name: user.name });
 
     res.json({ success: true, message: 'Password changed successfully' });
@@ -448,10 +453,10 @@ router.delete('/users/:id', authenticate, requireRole('admin'), (req, res) => {
     }
 
     // Record before deleting
-    recordHistory('user', id, 'delete', req.user.userId, req.user.name, null, {
-      username: user.username,
-      name: user.name,
-      role: user.role
+    recordHistory('user', id, 'delete', req.user.userId, req.user.name, {
+      username: { from: user.username, to: null },
+      name: { from: user.name, to: null },
+      role: { from: user.role, to: null }
     });
 
     userQueries.delete.run(id);

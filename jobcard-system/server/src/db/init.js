@@ -34,6 +34,19 @@ function runMigrations() {
     }
   }
 
+  // Migration: Normalize job_type values (replace underscores with spaces, uppercase)
+  const jobTypeRows = db.prepare("SELECT id, job_type FROM jobcards WHERE INSTR(job_type, '_') > 0").all();
+  if (jobTypeRows.length > 0) {
+    const updateJobType = db.prepare("UPDATE jobcards SET job_type = ? WHERE id = ?");
+    for (const row of jobTypeRows) {
+      const normalized = row.job_type.replace(/_/g, ' ').toUpperCase();
+      if (normalized !== row.job_type) {
+        updateJobType.run(normalized, row.id);
+        logger.info({ id: row.id, from: row.job_type, to: normalized }, 'Normalized job_type');
+      }
+    }
+  }
+
   logger.info('Migrations complete');
 }
 
@@ -61,10 +74,10 @@ async function initializeDatabase() {
       'EMP001'
     );
 
-    recordHistory('user', adminId, 'create', null, 'system', null, {
-      username: 'admin',
-      role: 'admin',
-      name: 'Administrator'
+    recordHistory('user', adminId, 'create', null, 'system', {
+      username: { from: null, to: 'admin' },
+      role: { from: null, to: 'admin' },
+      name: { from: null, to: 'Administrator' }
     });
 
     logger.info('Created default admin user (username: admin, password: admin123)');
@@ -394,7 +407,10 @@ async function seedMockData() {
       }
     }
 
-    recordHistory('jobcard', id, 'create', adminId, 'Administrator', null, { jobNumber, status: jc.status });
+    recordHistory('jobcard', id, 'create', adminId, 'Administrator', {
+      jobNumber: { from: null, to: jobNumber },
+      status: { from: null, to: jc.status }
+    });
   }
 
   logger.info({ count: jobCards.length }, 'Created job cards');

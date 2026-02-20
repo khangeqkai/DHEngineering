@@ -57,7 +57,11 @@ router.post('/', (req, res) => {
 
     const machine = machineQueries.getById.get(id);
 
-    recordHistory('machine', id, 'created', req.user.userId, req.user.name || req.user.username, null, toResponseFormat(machine));
+    const created = toResponseFormat(machine);
+    recordHistory('machine', id, 'created', req.user.userId, req.user.name || req.user.username, {
+      machineNumber: { from: null, to: created.machineNumber },
+      name: { from: null, to: created.name }
+    });
 
     res.status(201).json(toResponseFormat(machine));
   } catch (err) {

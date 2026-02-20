@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { authenticate, requireAssigneeOrAdmin } = require('../middleware/auth');
+const { validateTimeEntryInspection } = require('../middleware/validation');
 const { timeEntryQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
@@ -160,7 +161,7 @@ router.get('/:id/time-entries', authenticate, requireAssigneeOrAdmin, (req, res)
 });
 
 // Add time entry
-router.post('/:id/time-entries', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.post('/:id/time-entries', authenticate, requireAssigneeOrAdmin, ...validateTimeEntryInspection, (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -188,12 +189,11 @@ router.post('/:id/time-entries', authenticate, requireAssigneeOrAdmin, (req, res
       data.scrapRecycleBinQty || 0
     );
 
-    recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name, null, {
-      timeEntryId: entryId,
-      startTime: data.startTime,
-      endTime: data.endTime,
-      machineNumber: data.machineNumber,
-      description: data.description
+    recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name, {
+      timeEntryId: { from: null, to: entryId },
+      machineNumber: { from: null, to: data.machineNumber || null },
+      description: { from: null, to: data.description || null },
+      startTime: { from: null, to: data.startTime }
     });
 
     const entry = timeEntryQueries.getById.get(entryId);
@@ -205,7 +205,7 @@ router.post('/:id/time-entries', authenticate, requireAssigneeOrAdmin, (req, res
 });
 
 // Update time entry
-router.put('/:id/time-entries/:entryId', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.put('/:id/time-entries/:entryId', authenticate, requireAssigneeOrAdmin, ...validateTimeEntryInspection, (req, res) => {
   try {
     const { id, entryId } = req.params;
     const data = req.body;
@@ -275,13 +275,11 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireAssigneeOrAdmin
       return res.status(404).json({ error: 'Time entry not found' });
     }
 
-    recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, req.user.name, null, {
-      timeEntryId: entryId,
-      machineNumber: existing.machine_number,
-      description: existing.description,
-      startTime: existing.start_time,
-      endTime: existing.end_time,
-      qty: existing.qty
+    recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, req.user.name, {
+      timeEntryId: { from: entryId, to: null },
+      machineNumber: { from: existing.machine_number, to: null },
+      description: { from: existing.description, to: null },
+      startTime: { from: existing.start_time, to: null }
     });
 
     timeEntryQueries.delete.run(entryId);

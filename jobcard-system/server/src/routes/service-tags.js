@@ -64,7 +64,9 @@ router.post('/', requireAdmin, (req, res) => {
     serviceTagQueries.create.run(id, trimmedName, 0); // is_system = 0 for custom tags
 
     const tag = serviceTagQueries.getById.get(id);
-    recordHistory('service_tag', id, 'created', req.user.userId, req.user.name || req.user.username, null, tag);
+    recordHistory('service_tag', id, 'created', req.user.userId, req.user.name || req.user.username, {
+      name: { from: null, to: tag.name }
+    });
 
     res.status(201).json(tag);
   } catch (err) {
@@ -126,7 +128,9 @@ router.delete('/:id', requireAdmin, (req, res) => {
     }
 
     serviceTagQueries.delete.run(id);
-    recordHistory('service_tag', id, 'deleted', req.user.userId, req.user.name || req.user.username, null, existing);
+    recordHistory('service_tag', id, 'deleted', req.user.userId, req.user.name || req.user.username, {
+      name: { from: existing.name, to: null }
+    });
 
     res.json({ message: 'Service tag deleted successfully' });
   } catch (err) {

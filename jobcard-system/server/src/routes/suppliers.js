@@ -96,7 +96,10 @@ router.post('/', requireAdmin, (req, res) => {
 
     const supplier = getSupplierWithTags(id);
 
-    recordHistory('supplier', id, 'created', req.user.userId, req.user.name || req.user.username, null, supplier);
+    recordHistory('supplier', id, 'created', req.user.userId, req.user.name || req.user.username, {
+      name: { from: null, to: supplier.name },
+      contactName: { from: null, to: supplier.contactName }
+    });
 
     res.status(201).json(supplier);
   } catch (err) {
@@ -187,7 +190,10 @@ router.delete('/:id', requireAdmin, (req, res) => {
     serviceTagQueries.clearSupplierTags.run(id);
     supplierQueries.delete.run(id);
 
-    recordHistory('supplier', id, 'deleted', req.user.userId, req.user.name || req.user.username, null, existing);
+    recordHistory('supplier', id, 'deleted', req.user.userId, req.user.name || req.user.username, {
+      name: { from: existing.name, to: null },
+      contactName: { from: existing.contactName, to: null }
+    });
 
     res.json({ message: 'Supplier deleted successfully' });
   } catch (err) {

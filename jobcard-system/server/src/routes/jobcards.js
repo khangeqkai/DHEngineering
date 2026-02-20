@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { createJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireAdmin, requireAssigneeOrAdmin } = require('../middleware/auth');
-const { validateJobcardListQuery } = require('../middleware/validation');
+const { validateJobcardListQuery, validateJobcardEnums } = require('../middleware/validation');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -16,73 +16,9 @@ const {
   userQueries,
   recordHistory
 } = require('../db/database');
+const { formatJobcard, buildChanges, createRelatedRecords, initQaForms } = require('./jobcard-helpers');
 
 const router = express.Router();
-
-// Helper to format jobcard response
-function formatJobcard(row, items = [], assignees = [], subcontracts = [], userRole = 'user') {
-  const isAdmin = userRole === 'admin';
-  return {
-    _id: row.id,
-    id: row.id,
-    jobNumber: row.job_number,
-    cardType: row.card_type,
-    status: row.status,
-    contactId: isAdmin ? row.contact_id : null,
-    // Contact info from job card (override values)
-    contactName: isAdmin ? row.contact_name : null,
-    companyName: isAdmin ? row.company_name : null,
-    contactPhone: isAdmin ? row.contact_phone : null,
-    contactEmail: isAdmin ? row.contact_email : null,
-    // Contact info from linked contact (for display)
-    storedContactName: isAdmin ? row.stored_contact_name : null,
-    storedCompanyName: isAdmin ? row.stored_company_name : null,
-    qualityLevel: row.quality_level,
-    jobType: row.job_type,
-    priority: row.priority,
-    poNumber: row.po_number,
-    quoteReference: row.quote_reference,
-    drawingsType: row.drawings_type,
-    customerProperty: row.customer_property,
-    description: row.description,
-    dueDate: row.due_date,
-    isRepeatJob: row.is_repeat_job === 1,
-    repeatJobReference: row.repeat_job_reference,
-    treatmentRequired: row.treatment_required,
-    treatmentOther: row.treatment_other,
-    notes: row.notes,
-    photos: row.photos ? JSON.parse(row.photos) : [],
-    invoicedDate: row.invoiced_date,
-    archived: row.archived === 1,
-    createdBy: row.created_by,
-    updatedBy: row.updated_by,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    // Related data
-    items: items.map(item => ({
-      id: item.id,
-      itemNumber: item.item_number,
-      qty: item.qty,
-      description: item.description
-    })),
-    assignees: assignees.map(a => ({
-      id: a.id,
-      userId: a.user_id,
-      userName: a.user_name,
-      username: a.username
-    })),
-    subcontracts: subcontracts.map(s => ({
-      id: s.id,
-      supplierId: s.supplier_id,
-      supplierName: s.supplier_name,
-      dateSent: s.date_sent,
-      dateExpected: s.date_expected,
-      dateReceived: s.date_received,
-      status: s.status,
-      notes: s.notes
-    }))
-  };
-}
 
 // Get all job cards
 router.get('/', authenticate, validateJobcardListQuery, (req, res) => {
@@ -150,7 +86,6 @@ router.get('/:id', authenticate, requireAssigneeOrAdmin, (req, res) => {
       return res.status(404).json({ error: 'Job card not found' });
     }
 
-    // Get related data
     const items = jobItemQueries.getByJobcard.all(req.params.id);
     const assignees = jobAssigneeQueries.getByJobcard.all(req.params.id);
     const subcontracts = subcontractQueries.getByJobcard.all(req.params.id);
@@ -183,7 +118,7 @@ router.get('/:id/history', authenticate, requireAssigneeOrAdmin, (req, res) => {
 });
 
 // Create job card
-router.post('/', authenticate, requireAdmin, (req, res) => {
+router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, (req, res) => {
   try {
     const data = req.body;
 
@@ -216,14 +151,12 @@ router.post('/', authenticate, requireAdmin, (req, res) => {
     }
 
     const id = `jobcard:${Date.now()}:${uuidv4().slice(0, 8)}`;
-
-    // Status from request or default to OPEN
     const status = data.status || 'OPEN';
 
     jobcardQueries.create.run(
       id,
       jobNumber.trim(),
-      'JOB_CARD', // card_type always JOB_CARD now
+      'JOB_CARD',
       status,
       data.contactId || null,
       data.contactName || null,
@@ -249,61 +182,10 @@ router.post('/', authenticate, requireAdmin, (req, res) => {
       req.user.userId
     );
 
-    // Add line items
-    if (data.items && Array.isArray(data.items)) {
-      for (let i = 0; i < data.items.length; i++) {
-        const item = data.items[i];
-        const itemId = `item:${Date.now()}:${uuidv4().slice(0, 8)}`;
-        jobItemQueries.create.run(
-          itemId,
-          id,
-          i + 1,
-          item.qty || null,
-          item.description
-        );
-      }
-    }
+    createRelatedRecords(id, data);
 
-    // Add assignees
-    if (data.assigneeIds && Array.isArray(data.assigneeIds)) {
-      for (const userId of data.assigneeIds) {
-        const assigneeId = `assignee:${Date.now()}:${uuidv4().slice(0, 8)}`;
-        try {
-          jobAssigneeQueries.create.run(assigneeId, id, userId);
-        } catch (e) {
-          // Ignore duplicate
-        }
-      }
-    }
-
-    // Add subcontracts
-    if (data.subcontracts && Array.isArray(data.subcontracts)) {
-      for (const sub of data.subcontracts) {
-        const subId = `subcontract:${Date.now()}:${uuidv4().slice(0, 8)}`;
-        subcontractQueries.create.run(
-          subId,
-          id,
-          sub.supplierId,
-          sub.dateSent || null,
-          sub.dateExpected || null,
-          sub.notes || null,
-          'PENDING'
-        );
-      }
-    }
-
-    // Initialize QA forms for critical customers
     if (data.qualityLevel === 'CRITICAL') {
-      const qaForms = [
-        { code: 'DHE-F39', name: 'Critical Parts Inspection & Test Plan' },
-        { code: 'DHE-F15', name: 'Inwards Goods Inspection Sticker' },
-        { code: 'DHE-F09', name: 'Inspection Report' },
-        { code: 'DHE-F43', name: 'Hazard, Incident, Non-Conformance & Customer Complaint' }
-      ];
-      for (const form of qaForms) {
-        const formId = `qaform:${Date.now()}:${uuidv4().slice(0, 8)}`;
-        qaFormQueries.create.run(formId, id, form.code, form.name, 'PENDING');
-      }
+      initQaForms(id);
     }
 
     const jobcard = jobcardQueries.getById.get(id);
@@ -312,16 +194,17 @@ router.post('/', authenticate, requireAdmin, (req, res) => {
     const subcontracts = subcontractQueries.getByJobcard.all(id);
 
     // Create job card folders on disk (fire-and-forget)
-    // Use company_name from the saved row to cover both override and linked contact scenarios
     const folderCompany = jobcard.company_name || data.companyName;
     if (folderCompany) {
       createJobCardFolders(folderCompany, jobNumber.trim());
     }
 
-    // Record creation in history
-    recordHistory('jobcard', id, 'create', req.user.userId, req.user.name, null, {
-      jobNumber,
-      status
+    recordHistory('jobcard', id, 'create', req.user.userId, req.user.name, {
+      jobNumber: { from: null, to: jobNumber },
+      status: { from: null, to: status },
+      jobType: { from: null, to: data.jobType || null },
+      priority: { from: null, to: data.priority || 'NONE' },
+      qualityLevel: { from: null, to: data.qualityLevel || 'STANDARD' }
     });
 
     res.status(201).json(formatJobcard(jobcard, items, assignees, subcontracts, req.user.role));
@@ -332,7 +215,7 @@ router.post('/', authenticate, requireAdmin, (req, res) => {
 });
 
 // Update job card
-router.put('/:id', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums, (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -366,43 +249,10 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, (req, res) => {
       return res.status(403).json({ error: 'Only admins can change job card status' });
     }
 
-    // Track changes
-    const changes = {};
-    const fieldsToTrack = [
-      ['status', 'status'],
-      ['quality_level', 'qualityLevel'],
-      ['job_type', 'jobType'],
-      ['priority', 'priority'],
-      ['due_date', 'dueDate'],
-      ['contact_id', 'contactId'],
-      ['contact_name', 'contactName'],
-      ['company_name', 'companyName'],
-      ['contact_phone', 'contactPhone'],
-      ['contact_email', 'contactEmail'],
-      ['po_number', 'poNumber'],
-      ['quote_reference', 'quoteReference'],
-      ['drawings_type', 'drawingsType'],
-      ['customer_property', 'customerProperty'],
-      ['description', 'description'],
-      ['is_repeat_job', 'isRepeatJob'],
-      ['repeat_job_reference', 'repeatJobReference'],
-      ['treatment_required', 'treatmentRequired'],
-      ['treatment_other', 'treatmentOther'],
-      ['notes', 'notes'],
-    ];
-
-    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
-    for (const [dbField, reqField] of fieldsToTrack) {
-      if (data[reqField] === undefined) continue;
-      // Normalize boolean to integer for DB comparison (is_repeat_job stores 0/1)
-      const value = dbField === 'is_repeat_job' ? (data[reqField] ? 1 : 0) : data[reqField];
-      if (normalizeEmpty(value) !== normalizeEmpty(existing[dbField])) {
-        changes[reqField] = { from: existing[dbField], to: value };
-      }
-    }
+    const changes = buildChanges(existing, data);
 
     jobcardQueries.update.run(
-      existing.card_type, // card_type is immutable
+      existing.card_type,
       data.status !== undefined ? data.status : existing.status,
       data.contactId !== undefined ? data.contactId : existing.contact_id,
       data.contactName !== undefined ? data.contactName : existing.contact_name,
@@ -449,13 +299,7 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, (req, res) => {
       for (let i = 0; i < data.items.length; i++) {
         const item = data.items[i];
         const itemId = item.id || `item:${Date.now()}:${uuidv4().slice(0, 8)}`;
-        jobItemQueries.create.run(
-          itemId,
-          id,
-          i + 1,
-          item.qty || null,
-          item.description
-        );
+        jobItemQueries.create.run(itemId, id, i + 1, item.qty || null, item.description);
       }
     }
 
@@ -609,8 +453,9 @@ router.delete('/:id', authenticate, requireAdmin, (req, res) => {
     }
 
     // Record deletion with snapshot
-    recordHistory('jobcard', id, 'delete', req.user.userId, req.user.name, null, {
-      jobNumber: existing.job_number
+    recordHistory('jobcard', id, 'delete', req.user.userId, req.user.name, {
+      jobNumber: { from: existing.job_number, to: null },
+      status: { from: existing.status, to: null }
     });
 
     jobcardQueries.delete.run(id);

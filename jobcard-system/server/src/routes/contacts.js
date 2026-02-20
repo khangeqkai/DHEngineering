@@ -88,7 +88,11 @@ router.post('/', requireAdmin, validateCreateContact, (req, res) => {
     const contact = contactQueries.getById.get(id);
 
     // Record history
-    recordHistory('contact', id, 'created', req.user.userId, req.user.name || req.user.username, null, toApiFormat(contact));
+    const created = toApiFormat(contact);
+    recordHistory('contact', id, 'created', req.user.userId, req.user.name || req.user.username, {
+      contactName: { from: null, to: created.contactName },
+      companyName: { from: null, to: created.companyName }
+    });
 
     res.status(201).json(toApiFormat(contact));
   } catch (err) {
@@ -159,7 +163,11 @@ router.delete('/:id', requireAdmin, (req, res) => {
     contactQueries.unlinkJobcards.run(id);
     contactQueries.delete.run(id);
 
-    recordHistory('contact', id, 'deleted', req.user.userId, req.user.name || req.user.username, null, toApiFormat(existing));
+    const deleted = toApiFormat(existing);
+    recordHistory('contact', id, 'deleted', req.user.userId, req.user.name || req.user.username, {
+      contactName: { from: deleted.contactName, to: null },
+      companyName: { from: deleted.companyName, to: null }
+    });
 
     res.json({ message: 'Contact deleted successfully' });
   } catch (err) {

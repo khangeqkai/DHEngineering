@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { authenticate, requireAssigneeOrAdmin } = require('../middleware/auth');
+const { validateSubcontractStatus } = require('../middleware/validation');
 const { subcontractQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
@@ -33,7 +34,7 @@ router.get('/:id/subcontracts', authenticate, requireAssigneeOrAdmin, (req, res)
 });
 
 // Add subcontract
-router.post('/:id/subcontracts', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.post('/:id/subcontracts', authenticate, requireAssigneeOrAdmin, ...validateSubcontractStatus, (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -50,10 +51,10 @@ router.post('/:id/subcontracts', authenticate, requireAssigneeOrAdmin, (req, res
       data.status || 'PENDING'
     );
 
-    recordHistory('jobcard', id, 'add_subcontract', req.user.userId, req.user.name, null, {
-      subcontractId: subId,
-      supplierId: data.supplierId,
-      status: data.status || 'PENDING'
+    recordHistory('jobcard', id, 'add_subcontract', req.user.userId, req.user.name, {
+      subcontractId: { from: null, to: subId },
+      supplierId: { from: null, to: data.supplierId },
+      status: { from: null, to: data.status || 'PENDING' }
     });
 
     const sub = subcontractQueries.getById.get(subId);
@@ -65,7 +66,7 @@ router.post('/:id/subcontracts', authenticate, requireAssigneeOrAdmin, (req, res
 });
 
 // Update subcontract
-router.put('/:id/subcontracts/:subId', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.put('/:id/subcontracts/:subId', authenticate, requireAssigneeOrAdmin, ...validateSubcontractStatus, (req, res) => {
   try {
     const { id, subId } = req.params;
     const data = req.body;
@@ -127,13 +128,10 @@ router.delete('/:id/subcontracts/:subId', authenticate, requireAssigneeOrAdmin, 
       return res.status(404).json({ error: 'Subcontract not found' });
     }
 
-    recordHistory('jobcard', id, 'delete_subcontract', req.user.userId, req.user.name, null, {
-      subcontractId: subId,
-      supplierId: existing.supplier_id,
-      supplierName: existing.supplier_name,
-      status: existing.status,
-      dateSent: existing.date_sent,
-      dateReceived: existing.date_received
+    recordHistory('jobcard', id, 'delete_subcontract', req.user.userId, req.user.name, {
+      subcontractId: { from: subId, to: null },
+      supplierName: { from: existing.supplier_name, to: null },
+      status: { from: existing.status, to: null }
     });
 
     subcontractQueries.delete.run(subId);
