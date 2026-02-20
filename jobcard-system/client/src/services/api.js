@@ -121,6 +121,7 @@ class ApiService {
     const params = new URLSearchParams();
     if (filters.status) params.append('status', filters.status);
     if (filters.archived) params.append('archived', 'true');
+    if (filters.assigneeId) params.append('assigneeId', filters.assigneeId);
     const query = params.toString();
     return this.request(`/jobcards${query ? `?${query}` : ''}`);
   }

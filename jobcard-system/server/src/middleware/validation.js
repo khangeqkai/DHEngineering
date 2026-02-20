@@ -1,4 +1,4 @@
-const { body, param, validationResult } = require('express-validator');
+const { body, param, query, validationResult } = require('express-validator');
 
 /**
  * Middleware to handle validation errors
@@ -170,6 +170,25 @@ const validateUpdateContact = [
   handleValidationErrors
 ];
 
+/**
+ * Job card list query params validation
+ * GET /jobcards
+ */
+const validateJobcardListQuery = [
+  query('assigneeId')
+    .optional()
+    .custom((value) => {
+      if (value === 'UNASSIGNED') return true;
+      return /^user:[0-9a-f-]+$/.test(value);
+    })
+    .withMessage('assigneeId must be "UNASSIGNED" or a valid user ID'),
+  query('status')
+    .optional()
+    .isString()
+    .withMessage('status must be a string'),
+  handleValidationErrors
+];
+
 module.exports = {
   // Error handler
   handleValidationErrors,
@@ -186,5 +205,6 @@ module.exports = {
   validateLogin,
   validateCreateUser,
   validateCreateContact,
-  validateUpdateContact
+  validateUpdateContact,
+  validateJobcardListQuery
 };

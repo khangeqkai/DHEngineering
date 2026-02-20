@@ -3,10 +3,12 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin, requireAssigneeOrAdmin } = require('../middleware/auth');
+const { validateJobcardListQuery } = require('../middleware/validation');
 const {
   jobcardQueries,
   jobItemQueries,
   jobAssigneeQueries,
+  getAssigneesForJobcards,
   subcontractQueries,
   qaFormQueries,
   historyQueries,
@@ -82,15 +84,23 @@ function formatJobcard(row, items = [], assignees = [], subcontracts = [], userR
 }
 
 // Get all job cards
-router.get('/', authenticate, (req, res) => {
+router.get('/', authenticate, validateJobcardListQuery, (req, res) => {
   try {
-    const { status, contactId, archived } = req.query;
+    const { status, contactId, archived, assigneeId } = req.query;
     const isAdmin = req.user.role === 'admin';
 
     let jobcards;
     if (isAdmin) {
       if (archived === 'true') {
         jobcards = jobcardQueries.getArchived.all();
+      } else if (assigneeId === 'UNASSIGNED') {
+        jobcards = status
+          ? jobcardQueries.getUnassignedByStatus.all(status)
+          : jobcardQueries.getUnassigned.all();
+      } else if (assigneeId) {
+        jobcards = status
+          ? jobcardQueries.getByAssigneeAndStatus.all(assigneeId, status)
+          : jobcardQueries.getByAssignee.all(assigneeId);
       } else if (status) {
         jobcards = jobcardQueries.getByStatus.all(status);
       } else if (contactId) {
@@ -108,7 +118,9 @@ router.get('/', authenticate, (req, res) => {
       }
     }
 
-    res.json(jobcards.map(jc => formatJobcard(jc, [], [], [], req.user.role)));
+    const assigneeMap = getAssigneesForJobcards(jobcards.map(jc => jc.id));
+
+    res.json(jobcards.map(jc => formatJobcard(jc, [], assigneeMap[jc.id] || [], [], req.user.role)));
   } catch (err) {
     logger.error({ err }, 'Get jobcards error');
     res.status(500).json({ error: 'Failed to get job cards' });

@@ -49,6 +49,10 @@ export default function JobCardList() {
     return valid ? paramFilter : 'all';
   });
   const [search, setSearch] = useState('');
+  const [assigneeFilter, setAssigneeFilter] = useState(() => {
+    return searchParams.get('assignee') || 'all';
+  });
+  const [employees, setEmployees] = useState([]);
   const [showArchived, setShowArchived] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
@@ -62,18 +66,29 @@ export default function JobCardList() {
   const loadJobcards = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await api.getJobcards(showArchived);
+      const filters = {};
+      if (showArchived) filters.archived = true;
+      if (isAdmin && assigneeFilter !== 'all' && !showArchived) {
+        filters.assigneeId = assigneeFilter;
+      }
+      const data = await api.getJobcards(filters);
       setJobcards(data);
     } catch (err) {
       toast.error(err.message || 'Failed to load job cards');
     } finally {
       setLoading(false);
     }
-  }, [showArchived]);
+  }, [showArchived, assigneeFilter, isAdmin]);
 
   useEffect(() => {
     loadJobcards();
   }, [loadJobcards]);
+
+  // Fetch employees for assignee filter (admin only)
+  useEffect(() => {
+    if (!isAdmin) return;
+    api.getEmployees().then(setEmployees).catch(() => {});
+  }, [isAdmin]);
 
   const handleDelete = async (id) => {
     const confirmed = await showConfirm({
@@ -166,11 +181,13 @@ export default function JobCardList() {
       } else {
         matchesFilter = card.status === filter;
       }
+      const lowerSearch = search.toLowerCase();
       const matchesSearch =
         !search ||
-        card.jobNumber?.toLowerCase().includes(search.toLowerCase()) ||
-        (isAdmin && card.contactName?.toLowerCase().includes(search.toLowerCase())) ||
-        card.description?.toLowerCase().includes(search.toLowerCase());
+        card.jobNumber?.toLowerCase().includes(lowerSearch) ||
+        (isAdmin && card.contactName?.toLowerCase().includes(lowerSearch)) ||
+        (isAdmin && card.assignees?.some(a => a.userName?.toLowerCase().includes(lowerSearch))) ||
+        card.description?.toLowerCase().includes(lowerSearch);
       return matchesFilter && matchesSearch;
     });
   }, [jobcards, filter, search, isAdmin]);
@@ -184,8 +201,13 @@ export default function JobCardList() {
     } else {
       params.set('filter', filter);
     }
+    if (assigneeFilter === 'all') {
+      params.delete('assignee');
+    } else {
+      params.set('assignee', assigneeFilter);
+    }
     setSearchParams(params, { replace: true });
-  }, [filter, search, showArchived, setSearchParams]);
+  }, [filter, search, showArchived, assigneeFilter, setSearchParams]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE));
@@ -234,11 +256,24 @@ export default function JobCardList() {
       <div className="filters">
         <input
           type="text"
-          placeholder={isAdmin ? "Search by job #, customer, or description..." : "Search by job # or description..."}
+          placeholder={isAdmin ? "Search by job #, customer, assignee, or description..." : "Search by job # or description..."}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="search-input"
         />
+        {isAdmin && !showArchived && (
+          <select
+            className="assignee-filter"
+            value={assigneeFilter}
+            onChange={(e) => setAssigneeFilter(e.target.value)}
+          >
+            <option value="all">All Employees</option>
+            <option value="UNASSIGNED">Unassigned</option>
+            {employees.map(emp => (
+              <option key={emp.id} value={emp.id}>{emp.name || emp.username}</option>
+            ))}
+          </select>
+        )}
         {!showArchived && (
           <div className="filter-buttons">
             {STATUS_OPTIONS.map((opt) => (
@@ -266,6 +301,7 @@ export default function JobCardList() {
                 <tr>
                   <th>Job #</th>
                   {isAdmin && <th>Customer</th>}
+                  {isAdmin && <th>Assigned To</th>}
                   <th>Type</th>
                   <th>Status</th>
                   <th>Priority</th>
@@ -303,6 +339,13 @@ export default function JobCardList() {
                       </td>
                       {isAdmin && (
                         <td>{card.contactName || '-'}</td>
+                      )}
+                      {isAdmin && (
+                        <td className="assignee-cell">
+                          {card.assignees?.length > 0
+                            ? card.assignees.map(a => a.userName).join(', ')
+                            : '-'}
+                        </td>
                       )}
                       <td>{card.jobType || '-'}</td>
                       <td>
@@ -358,14 +401,14 @@ export default function JobCardList() {
                         <div className="action-buttons">
                           {card.status === 'INVOICED' && !card.archived && (
                             <button
-                              className="btn btn-success btn-sm"
+                              className="btn btn-outline-success btn-sm"
                               onClick={() => handleArchive(card.id)}
                             >
                               <Archive size={14} /> Archive
                             </button>
                           )}
                           <button
-                            className="btn btn-danger btn-sm"
+                            className="btn btn-outline-danger btn-sm"
                             onClick={() => handleDelete(card.id)}
                           >
                             <Trash2 size={14} /> Delete

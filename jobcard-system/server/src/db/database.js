@@ -29,7 +29,8 @@ const {
   documentQueries,
   qaFormQueries,
   historyQueries,
-  settingsQueries
+  settingsQueries,
+  getAssigneesForJobcards
 } = require('./queries');
 
 module.exports = {
@@ -55,5 +56,6 @@ module.exports = {
   documentQueries,
   qaFormQueries,
   historyQueries,
-  settingsQueries
+  settingsQueries,
+  getAssigneesForJobcards
 };

@@ -81,6 +81,24 @@ const jobcardQueries = {
     ORDER BY j.due_date ASC
   `),
 
+  getUnassigned: db.prepare(`
+    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
+    FROM jobcards j
+    LEFT JOIN contacts c ON j.contact_id = c.id
+    LEFT JOIN job_assignees ja ON ja.jobcard_id = j.id
+    WHERE ja.id IS NULL AND j.archived = 0
+    ORDER BY j.created_at DESC
+  `),
+
+  getUnassignedByStatus: db.prepare(`
+    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
+    FROM jobcards j
+    LEFT JOIN contacts c ON j.contact_id = c.id
+    LEFT JOIN job_assignees ja ON ja.jobcard_id = j.id
+    WHERE ja.id IS NULL AND j.status = ? AND j.archived = 0
+    ORDER BY j.created_at DESC
+  `),
+
   create: db.prepare(`
     INSERT INTO jobcards (
       id, job_number, card_type, status, contact_id,
@@ -156,8 +174,28 @@ const jobAssigneeQueries = {
   deleteByJobcardAndUser: db.prepare('DELETE FROM job_assignees WHERE jobcard_id = ? AND user_id = ?')
 };
 
+// Dynamic query helpers (better-sqlite3 doesn't support array params)
+function getAssigneesForJobcards(jobcardIds) {
+  if (jobcardIds.length === 0) return {};
+  const placeholders = jobcardIds.map(() => '?').join(',');
+  const rows = db.prepare(`
+    SELECT ja.jobcard_id, ja.id, ja.user_id, u.name as user_name, u.username
+    FROM job_assignees ja
+    JOIN users u ON ja.user_id = u.id
+    WHERE ja.jobcard_id IN (${placeholders})
+    ORDER BY ja.assigned_at ASC
+  `).all(...jobcardIds);
+  const map = {};
+  for (const row of rows) {
+    if (!map[row.jobcard_id]) map[row.jobcard_id] = [];
+    map[row.jobcard_id].push(row);
+  }
+  return map;
+}
+
 module.exports = {
   jobcardQueries,
   jobItemQueries,
-  jobAssigneeQueries
+  jobAssigneeQueries,
+  getAssigneesForJobcards
 };
