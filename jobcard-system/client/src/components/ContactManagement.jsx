@@ -159,7 +159,7 @@ export default function ContactManagement() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="companyName">Company</label>
+                <label htmlFor="companyName">Company *</label>
                 <input
                   type="text"
                   id="companyName"
@@ -172,6 +172,7 @@ export default function ContactManagement() {
                     }
                   }}
                   placeholder="Company name..."
+                  required
                 />
               </div>
             </div>

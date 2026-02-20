@@ -21,8 +21,10 @@ export default function Settings() {
 
   // Local state for settings inputs (synced with settings)
   const [scannerFolder, setScannerFolder] = useState('');
+  const [jobFoldersBase, setJobFoldersBase] = useState('');
   const [inactivityTimeout, setInactivityTimeout] = useState(5);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [savingJobFolders, setSavingJobFolders] = useState(false);
   const [savingTimeout, setSavingTimeout] = useState(false);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -42,6 +44,7 @@ export default function Settings() {
       setSettings(data);
       if (data) {
         setScannerFolder(data.scannerFolder || '');
+        setJobFoldersBase(data.jobFoldersBase || '');
         setInactivityTimeout(parseInt(data.inactivityTimeoutMinutes, 10) || 5);
       }
     } catch (err) {
@@ -84,6 +87,33 @@ export default function Settings() {
       toast.error(err.message || 'Failed to save settings');
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const handleSelectJobFolders = async () => {
+    if (window.electronAPI?.selectFolder) {
+      const folder = await window.electronAPI.selectFolder();
+      if (folder) {
+        setJobFoldersBase(folder);
+      }
+    } else {
+      const folder = prompt('Enter job folders base path:', jobFoldersBase);
+      if (folder !== null) {
+        setJobFoldersBase(folder);
+      }
+    }
+  };
+
+  const handleSaveJobFolders = async () => {
+    setSavingJobFolders(true);
+    try {
+      await api.updateSettings({ jobFoldersBase });
+      await loadSettings();
+      toast.success('Job folders base path saved successfully');
+    } catch (err) {
+      toast.error(err.message || 'Failed to save job folders base path');
+    } finally {
+      setSavingJobFolders(false);
     }
   };
 
@@ -386,6 +416,47 @@ export default function Settings() {
                     disabled={savingSettings}
                   >
                     {savingSettings ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="card full-width">
+              <div className="card-header">
+                <h2>Job Folders</h2>
+              </div>
+              <div className="card-body">
+                <div className="setting-item">
+                  <div className="setting-info">
+                    <div className="setting-label">Job Folders Base Path</div>
+                    <div className="setting-description">
+                      Set the base folder where company and job card folders are automatically created. When a contact is created, a company folder is created here. When a job card is created, subfolders for Drawings and QA Documents are created inside the company folder.
+                    </div>
+                  </div>
+                </div>
+                <div className="folder-input-group">
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={jobFoldersBase}
+                    onChange={(e) => setJobFoldersBase(e.target.value)}
+                    placeholder="Select or enter job folders base path..."
+                    readOnly={!!window.electronAPI?.selectFolder}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleSelectJobFolders}
+                  >
+                    Browse...
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSaveJobFolders}
+                    disabled={savingJobFolders}
+                  >
+                    {savingJobFolders ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               </div>

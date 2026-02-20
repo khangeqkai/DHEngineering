@@ -63,7 +63,8 @@ jobcard-system/
 │   │   │   ├── auth.js           # JWT verification + role checking + rate limiting + assignee access
 │   │   │   └── validation.js     # express-validator reusable validators
 │   │   ├── utils/
-│   │   │   └── logger.js         # Pino structured logging
+│   │   │   ├── logger.js         # Pino structured logging
+│   │   │   └── folderCreation.js # Auto-create company/job folders on disk
 │   │   ├── db/
 │   │   │   ├── database.js       # SQLite schemas + prepared statements
 │   │   │   └── init.js           # Migrations + seeding
@@ -92,16 +93,18 @@ Notes endpoints: `GET /jobcards/:id/notes` (assignee/admin), `POST /jobcards/:id
 ### Database Schema (SQLite)
 Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `subcontracts`, `time_entries`, `job_costings`, `documents`, `qa_forms`, `history`, `settings`, `machines`, `job_notes`
 
-**Contacts model** (phone contacts style): Each contact is a standalone person with an optional company field. Search works on both `contact_name` and `company_name`. Job cards link to contacts via `contact_id` with override fields for per-job customization.
+**Contacts model** (phone contacts style): Each contact is a standalone person with a required company field. Search works on both `contact_name` and `company_name`. Job cards link to contacts via `contact_id` with override fields for per-job customization.
 
 All changes logged to `history` table for audit trail.
+
+**Automatic folder creation**: When `job_folders_base` setting is configured, the system auto-creates `[base]/[Company]/` on contact create/update and `[base]/[Company]/[JobNumber]/Drawings/` + `QA Documents/` on job card create. Folder creation is fire-and-forget (errors logged, never block DB operations). Names are sanitized for cross-platform filesystem safety with path traversal protection.
 
 ### Authentication
 - Two roles: `admin` (full access) and `user` (limited)
 - Admin-only: user management, supplier management, costing, settings, activity log, **contact/customer info**, **job card creation/deletion**, **note deletion**
 - **Employee (user) role**: Read-only job card view (Details tab renders as styled text, not inputs). Can only update photos via PUT. Tabs hidden from employees: Items, Subcontracts, Costing, Activity Log. Employees use Start/Stop timer for time tracking (one active timer at a time, enforced server-side). Can add notes but not delete them.
 - **Job card visibility**: Non-admin users only see job cards they are assigned to (via `job_assignees`). Unassigned job cards are visible only to admins. All `/:id` routes (GET, PUT, and sub-resources) enforce assignee-or-admin access via `requireAssigneeOrAdmin` middleware. List routes use assignee-filtered queries instead.
-- **Settings page**: Non-admin users see only Appearance (dark mode) and Change Password. Admin users see all cards (App Info, Current User, Printers, Security Settings, Scanner Folder, Server Connection).
+- **Settings page**: Non-admin users see only Appearance (dark mode) and Change Password. Admin users see all cards (App Info, Current User, Printers, Security Settings, Scanner Folder, Job Folders, Server Connection).
 - Default credentials: `admin` / `admin123`
 - **No token persistence**: JWT stored in memory only (not localStorage). Users must log in every time they open/refresh the app. Designed for shared workstation security.
 - **Inactivity timeout**: Users auto-logout after configurable period of inactivity (default 5 min). Warning modal appears 30 seconds before logout. Activity = mouse, keyboard, touch, scroll. Timer continues when tab is hidden (security for shared workstations).

@@ -148,7 +148,7 @@ const validateCreateUser = [
  */
 const validateCreateContact = [
   requiredString('contactName', 'Contact name'),
-  optionalString('companyName', 'Company name', 200),
+  requiredString('companyName', 'Company name'),
   optionalEmail('email'),
   optionalPhone('phone'),
   optionalString('address', 'Address', 500),
@@ -162,7 +162,7 @@ const validateCreateContact = [
  */
 const validateUpdateContact = [
   requiredString('contactName', 'Contact name'),
-  optionalString('companyName', 'Company name', 200),
+  requiredString('companyName', 'Company name'),
   optionalEmail('email'),
   optionalPhone('phone'),
   optionalString('address', 'Address', 500),

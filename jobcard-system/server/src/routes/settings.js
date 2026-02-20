@@ -46,6 +46,7 @@ router.put('/', requireAdmin, (req, res) => {
   try {
     // Accept both camelCase and snake_case for backwards compatibility
     const scannerFolder = req.body.scannerFolder ?? req.body.scanner_folder;
+    const jobFoldersBase = req.body.jobFoldersBase ?? req.body.job_folders_base;
     const inactivityTimeoutMinutes = req.body.inactivityTimeoutMinutes ?? req.body.inactivity_timeout_minutes;
     const updates = {};
 
@@ -64,6 +65,21 @@ router.put('/', requireAdmin, (req, res) => {
         }
       }
       updates.scanner_folder = scannerFolder || '';
+    }
+
+    // Validate job folders base path if provided
+    if (jobFoldersBase !== undefined) {
+      if (jobFoldersBase && jobFoldersBase.trim()) {
+        if (!fs.existsSync(jobFoldersBase)) {
+          return res.status(400).json({ error: 'Job folders base path does not exist' });
+        }
+
+        const stats = fs.statSync(jobFoldersBase);
+        if (!stats.isDirectory()) {
+          return res.status(400).json({ error: 'Job folders base path is not a directory' });
+        }
+      }
+      updates.job_folders_base = jobFoldersBase || '';
     }
 
     // Validate inactivity timeout if provided

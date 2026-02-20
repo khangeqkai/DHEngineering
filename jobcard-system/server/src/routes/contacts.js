@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { validateCreateContact, validateUpdateContact } = require('../middleware/validation');
 const { contactQueries, recordHistory } = require('../db/database');
+const { createCompanyFolder } = require('../utils/folderCreation');
 
 const router = express.Router();
 
@@ -74,12 +75,15 @@ router.post('/', requireAdmin, validateCreateContact, (req, res) => {
     contactQueries.create.run(
       id,
       contactName,
-      companyName || null,
+      companyName,
       phone || null,
       email || null,
       address || null,
       notes || null
     );
+
+    // Create company folder on disk (fire-and-forget)
+    createCompanyFolder(companyName);
 
     const contact = contactQueries.getById.get(id);
 
@@ -108,7 +112,7 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
     const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
     const changes = {};
     if (normalizeEmpty(contactName) !== normalizeEmpty(existing.contact_name)) changes.contactName = { from: existing.contact_name, to: contactName };
-    if (normalizeEmpty(companyName) !== normalizeEmpty(existing.company_name)) changes.companyName = { from: existing.company_name, to: companyName || null };
+    if (normalizeEmpty(companyName) !== normalizeEmpty(existing.company_name)) changes.companyName = { from: existing.company_name, to: companyName };
     if (normalizeEmpty(phone) !== normalizeEmpty(existing.phone)) changes.phone = { from: existing.phone, to: phone || null };
     if (normalizeEmpty(email) !== normalizeEmpty(existing.email)) changes.email = { from: existing.email, to: email || null };
     if (normalizeEmpty(address) !== normalizeEmpty(existing.address)) changes.address = { from: existing.address, to: address || null };
@@ -116,7 +120,7 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
 
     contactQueries.update.run(
       contactName,
-      companyName || null,
+      companyName,
       phone || null,
       email || null,
       address || null,
@@ -125,6 +129,11 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
     );
 
     const contact = contactQueries.getById.get(id);
+
+    // Create folder for new company name if it changed (fire-and-forget)
+    if (changes.companyName && companyName) {
+      createCompanyFolder(companyName);
+    }
 
     if (Object.keys(changes).length > 0) {
       recordHistory('contact', id, 'updated', req.user.userId, req.user.name || req.user.username, changes, toApiFormat(contact));

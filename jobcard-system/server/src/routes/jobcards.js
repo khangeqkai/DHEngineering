@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
+const { createJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireAdmin, requireAssigneeOrAdmin } = require('../middleware/auth');
 const { validateJobcardListQuery } = require('../middleware/validation');
 const {
@@ -309,6 +310,13 @@ router.post('/', authenticate, requireAdmin, (req, res) => {
     const items = jobItemQueries.getByJobcard.all(id);
     const assignees = jobAssigneeQueries.getByJobcard.all(id);
     const subcontracts = subcontractQueries.getByJobcard.all(id);
+
+    // Create job card folders on disk (fire-and-forget)
+    // Use company_name from the saved row to cover both override and linked contact scenarios
+    const folderCompany = jobcard.company_name || data.companyName;
+    if (folderCompany) {
+      createJobCardFolders(folderCompany, jobNumber.trim());
+    }
 
     // Record creation in history
     recordHistory('jobcard', id, 'create', req.user.userId, req.user.name, null, {
