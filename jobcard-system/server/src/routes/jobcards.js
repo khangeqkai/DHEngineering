@@ -545,7 +545,7 @@ router.post('/:id/archive', authenticate, requireAdmin, (req, res) => {
 
     jobcardQueries.archive.run(invoicedDate || new Date().toISOString(), req.user.userId, id);
     recordHistory('jobcard', id, 'archive', req.user.userId, req.user.name, {
-      status: { from: existing.status, to: 'INVOICED' },
+      archived: { from: false, to: true },
       invoicedDate: { from: null, to: invoicedDate || new Date().toISOString() }
     }, { jobNumber: existing.job_number });
 
@@ -572,8 +572,8 @@ router.post('/:id/unarchive', authenticate, requireAdmin, (req, res) => {
 
     jobcardQueries.unarchive.run(req.user.userId, id);
     recordHistory('jobcard', id, 'unarchive', req.user.userId, req.user.name, {
-      status: { from: 'INVOICED', to: existing.status },
-      archived: { from: true, to: false }
+      archived: { from: true, to: false },
+      invoicedDate: { from: existing.invoiced_date, to: null }
     }, { jobNumber: existing.job_number });
 
     res.json({ success: true });
