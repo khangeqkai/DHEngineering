@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Shield, User, Lock } from 'lucide-react';
@@ -9,8 +9,32 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const intervalRef = useRef(null);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  const startCountdown = (seconds) => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setCountdown(seconds);
+    intervalRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+          setError('');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,7 +45,15 @@ export default function Login() {
       await login(username, password);
       navigate('/');
     } catch (err) {
-      setError(err.message || 'Login failed');
+      const message = err.message || 'Login failed';
+      const match = message.match(/wait (\d+) seconds/);
+      if (match) {
+        const seconds = parseInt(match[1], 10);
+        setError(`Too many attempts. Please wait ${seconds} seconds before trying again.`);
+        startCountdown(seconds);
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -39,7 +71,13 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {error && <div className="login-error">{error}</div>}
+          {error && (
+            <div className="login-error">
+              {countdown > 0
+                ? `Too many attempts. Please wait ${countdown} second${countdown === 1 ? '' : 's'} before trying again.`
+                : error}
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="username">Username</label>
@@ -76,8 +114,8 @@ export default function Login() {
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary login-btn" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign In'}
+          <button type="submit" className="btn btn-primary login-btn" disabled={loading || countdown > 0}>
+            {loading ? 'Signing in...' : countdown > 0 ? `Wait ${countdown}s` : 'Sign In'}
           </button>
         </form>
 
