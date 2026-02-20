@@ -342,9 +342,18 @@ export default function JobCardList() {
                       )}
                       {isAdmin && (
                         <td className="assignee-cell">
-                          {card.assignees?.length > 0
-                            ? card.assignees.map(a => a.userName).join(', ')
-                            : '-'}
+                          {card.assignees?.length > 1 ? (
+                            <span className="assignee-preview">
+                              <span className="assignee-text">{card.assignees.map(a => a.userName).join(', ')}</span>
+                              <span className="assignee-tooltip">
+                                {card.assignees.map(a => (
+                                  <span key={a.userId} className="assignee-tooltip-item">{a.userName}</span>
+                                ))}
+                              </span>
+                            </span>
+                          ) : card.assignees?.length === 1 ? (
+                            card.assignees[0].userName
+                          ) : '-'}
                         </td>
                       )}
                       <td>{card.jobType || '-'}</td>
