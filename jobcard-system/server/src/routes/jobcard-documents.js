@@ -43,7 +43,7 @@ router.post('/:id/documents', authenticate, requireAssigneeOrAdmin, (req, res) =
       req.user.userId
     );
 
-    recordHistory('jobcard', id, 'add_document', req.user.userId, req.user.name, { filename }, null);
+    recordHistory('jobcard', id, 'add_document', req.user.userId, req.user.name, null, { filename });
 
     res.status(201).json({ id: docId, filename });
   } catch (err) {

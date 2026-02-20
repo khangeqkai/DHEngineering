@@ -188,12 +188,13 @@ router.post('/:id/time-entries', authenticate, requireAssigneeOrAdmin, (req, res
       data.scrapRecycleBinQty || 0
     );
 
-    recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name, null, {
       timeEntryId: entryId,
       startTime: data.startTime,
+      endTime: data.endTime,
       machineNumber: data.machineNumber,
       description: data.description
-    }, null);
+    });
 
     const entry = timeEntryQueries.getById.get(entryId);
     res.status(201).json(toCamelCase(entry));

@@ -50,11 +50,11 @@ router.post('/:id/subcontracts', authenticate, requireAssigneeOrAdmin, (req, res
       data.status || 'PENDING'
     );
 
-    recordHistory('jobcard', id, 'add_subcontract', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'add_subcontract', req.user.userId, req.user.name, null, {
       subcontractId: subId,
       supplierId: data.supplierId,
       status: data.status || 'PENDING'
-    }, null);
+    });
 
     const sub = subcontractQueries.getById.get(subId);
     res.status(201).json(toResponse(sub));

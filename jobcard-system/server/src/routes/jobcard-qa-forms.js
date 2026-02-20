@@ -51,10 +51,8 @@ router.patch('/:id/qa-forms/:formId', authenticate, requireAssigneeOrAdmin, (req
 
     // Record history
     recordHistory('jobcard', id, 'update_qa_form', req.user.userId, req.user.name, {
-      formCode: form.form_code,
-      formName: form.form_name,
-      statusChange: { from: oldStatus, to: status }
-    }, null);
+      status: { from: oldStatus, to: status }
+    }, { formCode: form.form_code, formName: form.form_name });
 
     res.json({ success: true });
   } catch (err) {
