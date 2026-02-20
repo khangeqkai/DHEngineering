@@ -556,6 +556,33 @@ router.post('/:id/archive', authenticate, requireAdmin, (req, res) => {
   }
 });
 
+// Unarchive job card
+router.post('/:id/unarchive', authenticate, requireAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existing = jobcardQueries.getById.get(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Job card not found' });
+    }
+
+    if (existing.archived !== 1) {
+      return res.status(400).json({ error: 'Job card is not archived' });
+    }
+
+    jobcardQueries.unarchive.run(req.user.userId, id);
+    recordHistory('jobcard', id, 'unarchive', req.user.userId, req.user.name, {
+      status: { from: 'INVOICED', to: existing.status },
+      archived: { from: true, to: false }
+    }, { jobNumber: existing.job_number });
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, 'Unarchive error');
+    res.status(500).json({ error: 'Failed to unarchive job card' });
+  }
+});
+
 // Delete job card
 router.delete('/:id', authenticate, requireAdmin, (req, res) => {
   try {

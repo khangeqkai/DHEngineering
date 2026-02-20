@@ -132,6 +132,11 @@ const jobcardQueries = {
     WHERE id = ?
   `),
 
+  unarchive: db.prepare(`
+    UPDATE jobcards SET archived = 0, invoiced_date = NULL, updated_by = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `),
+
   delete: db.prepare('DELETE FROM jobcards WHERE id = ?')
 };
 

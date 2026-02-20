@@ -158,8 +158,12 @@ class ApiService {
   archiveJobcard(id, invoicedDate) {
     return this.request(`/jobcards/${id}/archive`, {
       method: 'POST',
-      body: JSON.stringify({ invoiced_date: invoicedDate })
+      body: JSON.stringify({ invoicedDate })
     });
+  }
+
+  unarchiveJobcard(id) {
+    return this.request(`/jobcards/${id}/unarchive`, { method: 'POST' });
   }
 
   deleteJobcard(id) {

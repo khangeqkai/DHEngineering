@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, Archive } from 'lucide-react';
+import { Plus, Trash2, Archive, ArchiveRestore } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -104,6 +104,24 @@ export default function JobCardList() {
       await loadJobcards();
     } catch (err) {
       toast.error(err.message || 'Failed to delete job card');
+    }
+  };
+
+  const handleUnarchive = async (id) => {
+    const confirmed = await showConfirm({
+      title: 'Unarchive Job Card',
+      message: 'Are you sure you want to unarchive this job card? It will be restored to the active list.',
+      confirmLabel: 'Unarchive',
+      confirmVariant: 'warning'
+    });
+    if (!confirmed) return;
+
+    try {
+      await api.unarchiveJobcard(id);
+      toast.success('Job card unarchived');
+      await loadJobcards();
+    } catch (err) {
+      toast.error(err.message || 'Failed to unarchive job card');
     }
   };
 
@@ -408,6 +426,14 @@ export default function JobCardList() {
                       </td>
                       <td>
                         <div className="action-buttons">
+                          {showArchived && card.archived && (
+                            <button
+                              className="btn btn-outline-warning btn-sm"
+                              onClick={() => handleUnarchive(card.id)}
+                            >
+                              <ArchiveRestore size={14} /> Unarchive
+                            </button>
+                          )}
                           {card.status === 'INVOICED' && !card.archived && (
                             <button
                               className="btn btn-outline-success btn-sm"
