@@ -312,7 +312,7 @@ export default function UserManagement() {
                 label: 'Actions',
                 render: (_, row) => (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {row.id !== currentUser?.userId && (
+                    {row.id !== currentUser?.id && (
                       <>
                         {row.active ? (
                           <button className="btn btn-warning btn-sm" onClick={(e) => { e.stopPropagation(); handleDeactivate(row); }}>
