@@ -13,7 +13,7 @@ export default function QALevelManagement() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingLevel, setEditingLevel] = useState(null);
-  const [formData, setFormData] = useState({ name: '', isActive: true, requireScannedForms: false });
+  const [formData, setFormData] = useState({ name: '' });
   const [saving, setSaving] = useState(false);
   const [uploadingTemplate, setUploadingTemplate] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
@@ -35,7 +35,7 @@ export default function QALevelManagement() {
   }, [loadData]);
 
   const resetForm = () => {
-    setFormData({ name: '', isActive: true, requireScannedForms: false });
+    setFormData({ name: '' });
     setEditingLevel(null);
     setShowForm(false);
   };
@@ -68,9 +68,7 @@ export default function QALevelManagement() {
   const handleEdit = (level) => {
     setEditingLevel(level);
     setFormData({
-      name: level.name,
-      isActive: level.isActive,
-      requireScannedForms: level.requireScannedForms
+      name: level.name
     });
     setShowForm(true);
   };
@@ -174,8 +172,6 @@ export default function QALevelManagement() {
                 <div className="qa-level-info">
                   <h3 className="qa-level-name">
                     {level.name}
-                    {!level.isActive && <span className="badge badge-inactive">Inactive</span>}
-                    {level.requireScannedForms && <span className="badge badge-warning">Requires Scans</span>}
                   </h3>
                   <span className="qa-level-meta">
                     {level.templateCount || 0} template{(level.templateCount || 0) !== 1 ? 's' : ''}
@@ -252,30 +248,6 @@ export default function QALevelManagement() {
                 placeholder="e.g. High Risk"
                 className={!formData.name.trim() ? 'field-required' : ''}
               />
-            </div>
-
-            <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label className="checkbox-inline">
-                <input
-                  type="checkbox"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
-                />
-                Active
-              </label>
-              <p className="form-help">Inactive levels won't appear in the job card dropdown</p>
-            </div>
-
-            <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label className="checkbox-inline">
-                <input
-                  type="checkbox"
-                  checked={formData.requireScannedForms}
-                  onChange={(e) => setFormData(prev => ({ ...prev, requireScannedForms: e.target.checked }))}
-                />
-                Require Scanned Forms
-              </label>
-              <p className="form-help">When enabled, all QA forms must be scanned before the job can be archived</p>
             </div>
           </BottomSheet.Body>
 

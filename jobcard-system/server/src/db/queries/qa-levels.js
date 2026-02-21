@@ -3,17 +3,17 @@ const { db } = require('../connection');
 // QA Level queries
 const qaLevelQueries = {
   getAll: db.prepare('SELECT * FROM qa_levels ORDER BY name ASC'),
-  getActive: db.prepare('SELECT id, name, is_active, require_scanned_forms FROM qa_levels WHERE is_active = 1 ORDER BY name ASC'),
+  getBasic: db.prepare('SELECT id, name FROM qa_levels ORDER BY name ASC'),
   getById: db.prepare('SELECT * FROM qa_levels WHERE id = ?'),
   getByNameLower: db.prepare('SELECT * FROM qa_levels WHERE name_lower = ?'),
 
   create: db.prepare(`
     INSERT INTO qa_levels (id, name, name_lower, folder_path, is_active, require_scanned_forms, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, 1, 0, datetime('now'), datetime('now'))
   `),
 
   update: db.prepare(`
-    UPDATE qa_levels SET name = ?, name_lower = ?, is_active = ?, require_scanned_forms = ?, updated_at = datetime('now')
+    UPDATE qa_levels SET name = ?, name_lower = ?, updated_at = datetime('now')
     WHERE id = ?
   `),
 

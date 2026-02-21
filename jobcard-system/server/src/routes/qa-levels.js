@@ -27,8 +27,6 @@ function formatLevel(row) {
   return {
     id: row.id,
     name: row.name,
-    isActive: row.is_active === 1,
-    requireScannedForms: row.require_scanned_forms === 1,
     folderPath: row.folder_path || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -62,13 +60,11 @@ router.get('/', authenticate, (req, res) => {
       });
       res.json(result);
     } else {
-      // Non-admin: active levels only, no templates
-      const levels = qaLevelQueries.getActive.all();
+      // Non-admin: all levels, no templates
+      const levels = qaLevelQueries.getAll.all();
       res.json(levels.map(level => ({
         id: level.id,
-        name: level.name,
-        isActive: true,
-        requireScannedForms: level.require_scanned_forms === 1
+        name: level.name
       })));
     }
   } catch (err) {
@@ -104,7 +100,7 @@ router.post('/',
   handleValidationErrors,
   (req, res) => {
     try {
-      const { name, requireScannedForms } = req.body;
+      const { name } = req.body;
       const nameLower = name.trim().toLowerCase();
 
       // Check for duplicate name
@@ -135,13 +131,11 @@ router.post('/',
       }
 
       qaLevelQueries.create.run(
-        id, name.trim(), nameLower, folderPath,
-        1, requireScannedForms ? 1 : 0
+        id, name.trim(), nameLower, folderPath
       );
 
       recordHistory('qa_level', id, 'create', req.user.userId, req.user.name, {
-        name: { from: null, to: name.trim() },
-        requireScannedForms: { from: null, to: requireScannedForms ? true : false }
+        name: { from: null, to: name.trim() }
       });
 
       const created = qaLevelQueries.getById.get(id);
@@ -166,7 +160,7 @@ router.put('/:id',
   (req, res) => {
     try {
       const { id } = req.params;
-      const { name, isActive, requireScannedForms } = req.body;
+      const { name } = req.body;
 
       const existing = qaLevelQueries.getById.get(id);
       if (!existing) {
@@ -185,18 +179,10 @@ router.put('/:id',
       if (name.trim() !== existing.name) {
         changes.name = { from: existing.name, to: name.trim() };
       }
-      if ((isActive !== undefined) && ((isActive ? 1 : 0) !== existing.is_active)) {
-        changes.isActive = { from: existing.is_active === 1, to: isActive };
-      }
-      if ((requireScannedForms !== undefined) && ((requireScannedForms ? 1 : 0) !== existing.require_scanned_forms)) {
-        changes.requireScannedForms = { from: existing.require_scanned_forms === 1, to: requireScannedForms };
-      }
 
       qaLevelQueries.update.run(
         name.trim(),
         nameLower,
-        isActive !== undefined ? (isActive ? 1 : 0) : existing.is_active,
-        requireScannedForms !== undefined ? (requireScannedForms ? 1 : 0) : existing.require_scanned_forms,
         id
       );
 

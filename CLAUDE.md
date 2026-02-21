@@ -111,7 +111,7 @@ All changes logged to `history` table for audit trail.
 
 **Automatic folder management**: When `job_folders_base` setting is configured, the system auto-creates `[base]/[Company]/` on contact create/update and `[base]/[Company]/[JobNumber]/Drawings/` + `QA Documents/` on job card create. On job card deletion, the job card folder (`[base]/[Company]/[JobNumber]/`) is recursively deleted but the parent company folder is preserved. Folder operations are fire-and-forget (errors logged, never block DB operations). Names are sanitized for cross-platform filesystem safety with path traversal protection.
 
-**QA Level system**: Admin-managed quality levels with PDF templates. QA level folders stored at `[job_folders_base]/QA Levels/[LevelName]/`. When a job card is created or updated with a QA level, template PDFs are copied to the job's QA Documents folder with form fields auto-filled via `pdf-lib`. The `qualityLevel` column stores the level name, `qa_level_id` is the FK to `qa_levels`. Archive check uses `require_scanned_forms` flag from the QA level.
+**QA Level system**: Admin-managed quality levels with PDF templates. QA level folders stored at `[job_folders_base]/QA Levels/[LevelName]/`. When a job card is created or updated with a QA level, template PDFs are copied to the job's QA Documents folder with form fields auto-filled via `pdf-lib`. The `qualityLevel` column stores the level name, `qa_level_id` is the FK to `qa_levels`.
 
 ### Authentication
 - Two roles: `admin` (full access) and `user` (limited)

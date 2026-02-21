@@ -457,28 +457,6 @@ router.post('/:id/archive', authenticate, requireAdmin, (req, res) => {
       return res.status(404).json({ error: 'Job card not found' });
     }
 
-    // Check for outstanding QA forms if level requires scanned forms
-    let requireScannedForms = false;
-    if (existing.qa_level_id) {
-      const level = qaLevelQueries.getById.get(existing.qa_level_id);
-      if (level) {
-        requireScannedForms = level.require_scanned_forms === 1;
-      }
-    } else {
-      // Legacy fallback
-      requireScannedForms = existing.quality_level === 'CRITICAL';
-    }
-
-    if (requireScannedForms) {
-      const outstanding = qaFormQueries.getOutstanding.all(id);
-      if (outstanding.length > 0) {
-        return res.status(400).json({
-          error: 'Cannot archive: Outstanding QA forms require scanned copies',
-          outstandingForms: outstanding.map(f => f.form_code)
-        });
-      }
-    }
-
     jobcardQueries.archive.run(invoicedDate || new Date().toISOString(), req.user.userId, id);
     recordHistory('jobcard', id, 'archive', req.user.userId, req.user.name, {
       archived: { from: false, to: true },
