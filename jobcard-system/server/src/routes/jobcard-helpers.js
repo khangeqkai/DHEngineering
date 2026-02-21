@@ -1,10 +1,18 @@
 const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
+const path = require('path');
 
+const logger = require('../utils/logger');
+const { sanitizeFolderName, isWithinBase } = require('../utils/folderCreation');
+const { fillPdfTemplate } = require('../utils/pdfFiller');
 const {
   jobItemQueries,
   jobAssigneeQueries,
   subcontractQueries,
-  qaFormQueries
+  qaFormQueries,
+  qaLevelQueries,
+  qaLevelTemplateQueries,
+  getSettings
 } = require('../db/database');
 
 function formatJobcard(row, items = [], assignees = [], subcontracts = [], userRole = 'user') {
@@ -23,6 +31,7 @@ function formatJobcard(row, items = [], assignees = [], subcontracts = [], userR
     storedContactName: isAdmin ? row.stored_contact_name : null,
     storedCompanyName: isAdmin ? row.stored_company_name : null,
     qualityLevel: row.quality_level,
+    qaLevelId: row.qa_level_id || null,
     jobType: row.job_type,
     priority: row.priority,
     poNumber: row.po_number,
@@ -91,6 +100,7 @@ function buildChanges(existing, data) {
     ['treatment_required', 'treatmentRequired'],
     ['treatment_other', 'treatmentOther'],
     ['notes', 'notes'],
+    ['qa_level_id', 'qaLevelId'],
   ];
 
   const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
@@ -150,4 +160,92 @@ function initQaForms(jobcardId) {
   }
 }
 
-module.exports = { formatJobcard, buildChanges, createRelatedRecords, initQaForms };
+/**
+ * Initialize QA forms from a QA level's templates.
+ * Creates qa_forms records and copies template PDFs to the job's QA Documents folder.
+ * @param {string} jobcardId
+ * @param {string} qaLevelId
+ * @param {Object} jobData - Full job data for PDF pre-fill
+ */
+async function initQaFormsFromLevel(jobcardId, qaLevelId, jobData) {
+  const level = qaLevelQueries.getById.get(qaLevelId);
+  if (!level) return;
+
+  const templates = qaLevelTemplateQueries.getByLevel.all(qaLevelId);
+  if (templates.length === 0) return;
+
+  // Create QA form records for each template
+  for (const tmpl of templates) {
+    const formId = `qaform:${Date.now()}:${uuidv4().slice(0, 8)}`;
+    const formCode = path.parse(tmpl.file_name).name;
+    qaFormQueries.create.run(formId, jobcardId, formCode, tmpl.display_name, 'PENDING');
+  }
+
+  // Copy template PDFs to the job's QA Documents folder
+  await copyTemplatesToJobFolder(level, templates, jobData);
+}
+
+/**
+ * Copy template PDFs from QA Level folder to job's QA Documents folder.
+ * Awaits PDF fill so files exist on disk before the API response is sent.
+ */
+async function copyTemplatesToJobFolder(level, templates, jobData) {
+  try {
+    const settings = getSettings();
+    const basePath = settings.job_folders_base;
+    if (!basePath || !basePath.trim()) return;
+
+    const sanitizedCompany = sanitizeFolderName(jobData.companyName);
+    const sanitizedJob = sanitizeFolderName(jobData.jobNumber);
+    if (!sanitizedCompany || !sanitizedJob) return;
+
+    const qaDocsFolder = path.join(basePath.trim(), sanitizedCompany, sanitizedJob, 'QA Documents');
+    if (!isWithinBase(basePath.trim(), qaDocsFolder)) return;
+
+    const qaLevelsBase = path.join(basePath.trim(), 'QA Levels');
+    const sanitizedLevelName = sanitizeFolderName(level.name);
+    const levelFolder = path.join(qaLevelsBase, sanitizedLevelName);
+
+    if (!fs.existsSync(levelFolder)) return;
+
+    fs.mkdirSync(qaDocsFolder, { recursive: true });
+
+    const fillData = {
+      ...jobData,
+      date: new Date().toLocaleDateString('en-AU'),
+      qualityLevel: jobData.qualityLevel || level.name
+    };
+
+    const copyPromises = [];
+    for (const tmpl of templates) {
+      const srcPath = path.join(levelFolder, tmpl.file_name);
+      const destPath = path.join(qaDocsFolder, tmpl.file_name);
+
+      if (!fs.existsSync(srcPath)) continue;
+      if (!isWithinBase(levelFolder, srcPath) || !isWithinBase(qaDocsFolder, destPath)) continue;
+
+      const sourceBuffer = fs.readFileSync(srcPath);
+      copyPromises.push(
+        fillPdfTemplate(sourceBuffer, fillData)
+          .then(filledBuffer => {
+            fs.writeFileSync(destPath, filledBuffer);
+            logger.info({ destPath }, 'Copied QA template to job folder');
+          })
+          .catch(err => {
+            // Fallback: copy as-is
+            try {
+              fs.copyFileSync(srcPath, destPath);
+            } catch (copyErr) {
+              logger.error({ err: copyErr, srcPath, destPath }, 'Failed to copy QA template');
+            }
+          })
+      );
+    }
+
+    await Promise.all(copyPromises);
+  } catch (err) {
+    logger.error({ err }, 'Failed to copy templates to job folder');
+  }
+}
+
+module.exports = { formatJobcard, buildChanges, createRelatedRecords, initQaForms, initQaFormsFromLevel };

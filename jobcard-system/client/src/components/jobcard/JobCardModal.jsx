@@ -54,6 +54,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const [timeEntries, setTimeEntries] = useState([]);
   const [subcontracts, setSubcontracts] = useState([]);
   const [qaForms, setQaForms] = useState([]);
+  const [qaLevels, setQaLevels] = useState([]);
   const [costing, setCostingData] = useState(null);
   const camera = useCamera();
   const contactHook = useContactSearch();
@@ -67,12 +68,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   useEffect(() => {
     const loadReferenceData = async () => {
       try {
-        const [suppliersRes, usersRes, machinesRes] = await Promise.all([
+        const [suppliersRes, usersRes, machinesRes, qaLevelsRes] = await Promise.all([
           api.getSuppliers(),
           api.getEmployees(),
-          api.getMachines()
+          api.getMachines(),
+          api.getQaLevels()
         ]);
         setSuppliers(suppliersRes || []);
+        setQaLevels(qaLevelsRes || []);
         const activeEmployees = (usersRes || [])
           .filter(u => u.active === 1 || u.active === true)
           .sort((a, b) => (a.name || a.username || '').localeCompare(b.name || b.username || ''));
@@ -348,6 +351,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           contactEmail: contactHook.contactFormData.email,
         }),
         qualityLevel: formHook.formData.qualityLevel,
+        qaLevelId: formHook.formData.qaLevelId || null,
         jobType: formHook.formData.jobType,
         priority: formHook.formData.priority,
         poNumber: formHook.formData.poNumber,
@@ -456,6 +460,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   scannerFiles={formHook.scannerFiles}
                   loadingScannerFiles={formHook.loadingScannerFiles}
                   isOverdue={isOverdue}
+                  qaLevels={qaLevels}
                   notes={jobNotes.notes}
                   newNote={jobNotes.newNote}
                   setNewNote={jobNotes.setNewNote}
@@ -530,7 +535,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               )}
 
               {activeTab === 'qa' && isEdit && isAdmin && (
-                <QAFormsTab formData={formHook.formData} qaForms={qaForms || []} />
+                <QAFormsTab
+                  formData={formHook.formData}
+                  qaForms={qaForms || []}
+                  jobCardId={jobCardId}
+                />
               )}
 
               {activeTab === 'photos' && isEdit && isAdmin && (

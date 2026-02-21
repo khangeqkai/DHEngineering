@@ -30,7 +30,9 @@ const {
   qaFormQueries,
   historyQueries,
   settingsQueries,
-  getAssigneesForJobcards
+  getAssigneesForJobcards,
+  qaLevelQueries,
+  qaLevelTemplateQueries
 } = require('./queries');
 
 module.exports = {
@@ -57,5 +59,7 @@ module.exports = {
   qaFormQueries,
   historyQueries,
   settingsQueries,
-  getAssigneesForJobcards
+  getAssigneesForJobcards,
+  qaLevelQueries,
+  qaLevelTemplateQueries
 };

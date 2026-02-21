@@ -10,7 +10,8 @@ import {
   Users,
   Clock,
   Settings,
-  LogOut
+  LogOut,
+  ShieldCheck
 } from 'lucide-react';
 
 export default function Layout() {
@@ -150,6 +151,14 @@ export default function Layout() {
                       <Truck size={18} />
                     </span>
                     <span className="nav-text">Suppliers</span>
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/qa-levels" onClick={handleNavClick}>
+                    <span className="nav-icon">
+                      <ShieldCheck size={18} />
+                    </span>
+                    <span className="nav-text">QA Levels</span>
                   </NavLink>
                 </li>
                 <li>

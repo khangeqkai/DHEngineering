@@ -46,6 +46,8 @@ export default function DetailsTab({
   scannerFiles,
   loadingScannerFiles,
   isOverdue,
+  // QA Levels
+  qaLevels,
   // Notes props
   notes,
   newNote,
@@ -325,9 +327,22 @@ export default function DetailsTab({
         <div className="form-row">
           <div className="form-group">
             <label>Quality Level</label>
-            <select name="qualityLevel" value={formData.qualityLevel} onChange={handleChange}>
-              <option value="STANDARD">Standard</option>
-              <option value="CRITICAL">Critical</option>
+            <select
+              name="qaLevelId"
+              value={formData.qaLevelId || ''}
+              onChange={(e) => {
+                const selectedLevel = (qaLevels || []).find(l => l.id === e.target.value);
+                setFormData(prev => ({
+                  ...prev,
+                  qaLevelId: e.target.value || null,
+                  qualityLevel: selectedLevel ? selectedLevel.name.toUpperCase() : null
+                }));
+              }}
+            >
+              <option value="">None</option>
+              {(qaLevels || []).map(level => (
+                <option key={level.id} value={level.id}>{level.name}</option>
+              ))}
             </select>
           </div>
         </div>

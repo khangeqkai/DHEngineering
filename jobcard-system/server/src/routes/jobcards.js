@@ -12,11 +12,12 @@ const {
   getAssigneesForJobcards,
   subcontractQueries,
   qaFormQueries,
+  qaLevelQueries,
   historyQueries,
   userQueries,
   recordHistory
 } = require('../db/database');
-const { formatJobcard, buildChanges, createRelatedRecords, initQaForms } = require('./jobcard-helpers');
+const { formatJobcard, buildChanges, createRelatedRecords, initQaForms, initQaFormsFromLevel } = require('./jobcard-helpers');
 
 const router = express.Router();
 
@@ -118,7 +119,7 @@ router.get('/:id/history', authenticate, requireAssigneeOrAdmin, (req, res) => {
 });
 
 // Create job card
-router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, (req, res) => {
+router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req, res) => {
   try {
     const data = req.body;
 
@@ -153,6 +154,23 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, (req, res)
     const id = `jobcard:${Date.now()}:${uuidv4().slice(0, 8)}`;
     const status = data.status || 'OPEN';
 
+    // Resolve QA level: prefer qaLevelId, fall back to qualityLevel name match
+    let qaLevelId = data.qaLevelId || null;
+    let qualityLevelName = data.qualityLevel || null;
+
+    if (qaLevelId) {
+      const level = qaLevelQueries.getById.get(qaLevelId);
+      if (level) {
+        qualityLevelName = level.name.toUpperCase();
+      }
+    } else if (qualityLevelName) {
+      // Legacy: match by name
+      const level = qaLevelQueries.getByNameLower.get(qualityLevelName.toLowerCase());
+      if (level) {
+        qaLevelId = level.id;
+      }
+    }
+
     jobcardQueries.create.run(
       id,
       jobNumber.trim(),
@@ -163,7 +181,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, (req, res)
       data.companyName || null,
       data.contactPhone || null,
       data.contactEmail || null,
-      data.qualityLevel || 'STANDARD',
+      qualityLevelName,
       data.jobType || null,
       data.priority || 'NONE',
       data.poNumber || null,
@@ -179,13 +197,31 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, (req, res)
       data.notes || null,
       data.photos ? JSON.stringify(data.photos) : null,
       req.user.userId,
-      req.user.userId
+      req.user.userId,
+      qaLevelId
     );
 
     createRelatedRecords(id, data);
 
-    if (data.qualityLevel === 'CRITICAL') {
-      initQaForms(id);
+    // Initialize QA forms from level templates
+    if (qaLevelId) {
+      await initQaFormsFromLevel(id, qaLevelId, {
+        jobNumber: jobNumber.trim(),
+        status: status,
+        companyName: data.companyName || null,
+        contactName: data.contactName || null,
+        description: data.description || null,
+        jobType: data.jobType || null,
+        priority: data.priority || 'NONE',
+        dueDate: data.dueDate || null,
+        qualityLevel: qualityLevelName,
+        poNumber: data.poNumber || null,
+        quoteReference: data.quoteReference || null,
+        drawingsType: data.drawingsType || null,
+        customerProperty: data.customerProperty || null,
+        treatmentRequired: data.treatmentRequired || null,
+        treatmentOther: data.treatmentOther || null
+      });
     }
 
     const jobcard = jobcardQueries.getById.get(id);
@@ -204,7 +240,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, (req, res)
       status: { from: null, to: status },
       jobType: { from: null, to: data.jobType || null },
       priority: { from: null, to: data.priority || 'NONE' },
-      qualityLevel: { from: null, to: data.qualityLevel || 'STANDARD' }
+      qualityLevel: { from: null, to: qualityLevelName || null }
     });
 
     res.status(201).json(formatJobcard(jobcard, items, assignees, subcontracts, req.user.role));
@@ -215,7 +251,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, (req, res)
 });
 
 // Update job card
-router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums, (req, res) => {
+router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums, async (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -275,6 +311,7 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums
       data.notes !== undefined ? data.notes : existing.notes,
       data.photos !== undefined ? JSON.stringify(data.photos) : existing.photos,
       req.user.userId,
+      data.qaLevelId !== undefined ? data.qaLevelId : existing.qa_level_id,
       id
     );
 
@@ -339,6 +376,35 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums
       }
     }
 
+    // Handle QA level changes - create/remove QA forms and copy templates
+    const newQaLevelId = data.qaLevelId !== undefined ? data.qaLevelId : existing.qa_level_id;
+    if (data.qaLevelId !== undefined && (data.qaLevelId || null) !== (existing.qa_level_id || null)) {
+      // Remove old QA forms
+      qaFormQueries.deleteByJobcard.run(id);
+
+      // Initialize new QA forms from level templates
+      if (newQaLevelId) {
+        const current = jobcardQueries.getById.get(id);
+        await initQaFormsFromLevel(id, newQaLevelId, {
+          jobNumber: current.job_number,
+          status: current.status,
+          companyName: current.company_name || data.companyName || null,
+          contactName: current.contact_name || data.contactName || null,
+          description: current.description || data.description || null,
+          jobType: current.job_type || data.jobType || null,
+          priority: current.priority || data.priority || 'NONE',
+          dueDate: current.due_date || data.dueDate || null,
+          qualityLevel: data.qualityLevel || existing.quality_level,
+          poNumber: current.po_number || data.poNumber || null,
+          quoteReference: current.quote_reference || data.quoteReference || null,
+          drawingsType: current.drawings_type || data.drawingsType || null,
+          customerProperty: current.customer_property || data.customerProperty || null,
+          treatmentRequired: current.treatment_required || data.treatmentRequired || null,
+          treatmentOther: current.treatment_other || data.treatmentOther || null
+        });
+      }
+    }
+
     // Record changes in history
     if (Object.keys(changes).length > 0) {
       recordHistory('jobcard', id, 'update', req.user.userId, req.user.name, changes, null);
@@ -391,12 +457,23 @@ router.post('/:id/archive', authenticate, requireAdmin, (req, res) => {
       return res.status(404).json({ error: 'Job card not found' });
     }
 
-    // Check for outstanding QA forms if critical quality level
-    if (existing.quality_level === 'CRITICAL') {
-      const outstanding = qaFormQueries.getOutstandingForCritical.all(id);
+    // Check for outstanding QA forms if level requires scanned forms
+    let requireScannedForms = false;
+    if (existing.qa_level_id) {
+      const level = qaLevelQueries.getById.get(existing.qa_level_id);
+      if (level) {
+        requireScannedForms = level.require_scanned_forms === 1;
+      }
+    } else {
+      // Legacy fallback
+      requireScannedForms = existing.quality_level === 'CRITICAL';
+    }
+
+    if (requireScannedForms) {
+      const outstanding = qaFormQueries.getOutstanding.all(id);
       if (outstanding.length > 0) {
         return res.status(400).json({
-          error: 'Cannot archive: Outstanding QA forms for critical QA job',
+          error: 'Cannot archive: Outstanding QA forms require scanned copies',
           outstandingForms: outstanding.map(f => f.form_code)
         });
       }

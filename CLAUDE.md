@@ -65,7 +65,8 @@ jobcard-system/
 │   │   │   └── validation.js     # express-validator reusable validators
 │   │   ├── utils/
 │   │   │   ├── logger.js         # Pino structured logging
-│   │   │   └── folderCreation.js # Auto-create company/job folders on disk
+│   │   │   ├── folderCreation.js # Auto-create company/job folders on disk
+│   │   │   └── pdfFiller.js      # PDF form field auto-fill with pdf-lib
 │   │   ├── db/
 │   │   │   ├── database.js       # SQLite schemas + prepared statements
 │   │   │   └── init.js           # Migrations + seeding
@@ -77,7 +78,7 @@ jobcard-system/
 ### API Structure
 Base URL: `http://localhost:3000/api`
 
-Main routes: `/auth`, `/jobcards`, `/contacts`, `/suppliers`, `/machines`, `/settings`, `/history`
+Main routes: `/auth`, `/jobcards`, `/contacts`, `/suppliers`, `/machines`, `/settings`, `/history`, `/qa-levels`
 
 Settings endpoints: `GET /settings` (admin), `PUT /settings` (admin), `GET /settings/inactivity-timeout` (all users)
 
@@ -85,9 +86,13 @@ History sub-routes: `GET /history` (recent, admin), `GET /history/user/:userId` 
 
 Auth sub-routes: `PUT /auth/change-password` (all authenticated users, verifies current password)
 
-Job card sub-routes: `/jobcards/:id/items`, `/assignees`, `/subcontracts`, `/time-entries`, `/costing`, `/documents`, `/drawings-files`, `/qa-forms`, `/history`, `/notes`
+Job card sub-routes: `/jobcards/:id/items`, `/assignees`, `/subcontracts`, `/time-entries`, `/costing`, `/documents`, `/drawings-files`, `/qa-documents-files`, `/qa-forms`, `/history`, `/notes`
 
 Drawings file endpoints: `GET /jobcards/:id/drawings-files` (assignee/admin, lists files from job's Drawings folder on disk), `GET /jobcards/:id/drawings-files/:filename` (assignee/admin, returns file as base64)
+
+QA document file endpoints: `GET /jobcards/:id/qa-documents-files` (assignee/admin, lists files from job's QA Documents folder on disk), `GET /jobcards/:id/qa-documents-files/:filename` (assignee/admin, returns file as base64)
+
+QA level endpoints: `GET /qa-levels` (authenticated, non-admin sees active only), `GET /qa-levels/:id` (admin), `POST /qa-levels` (admin), `PUT /qa-levels/:id` (admin), `DELETE /qa-levels/:id` (admin, blocked if used by jobs), `POST /qa-levels/:id/templates` (admin, upload PDF), `GET /qa-levels/:id/templates` (admin), `DELETE /qa-levels/:id/templates/:tid` (admin)
 
 Document endpoints: `GET /jobcards/:id/documents/:documentId` (assignee/admin, returns document with file data as base64)
 
@@ -98,7 +103,7 @@ Timer endpoints: `GET /jobcards/active-timer` (authenticated), `POST /jobcards/:
 Notes endpoints: `GET /jobcards/:id/notes` (assignee/admin), `POST /jobcards/:id/notes` (assignee/admin), `DELETE /jobcards/:id/notes/:noteId` (admin only)
 
 ### Database Schema (SQLite)
-Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `subcontracts`, `time_entries`, `job_costings`, `documents`, `qa_forms`, `history`, `settings`, `machines`, `job_notes`
+Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `subcontracts`, `time_entries`, `job_costings`, `documents`, `qa_forms`, `qa_levels`, `qa_level_templates`, `history`, `settings`, `machines`, `job_notes`
 
 **Contacts model** (phone contacts style): Each contact is a standalone person with a required company field. Search works on both `contact_name` and `company_name`. Job cards link to contacts via `contact_id` with override fields for per-job customization.
 
@@ -106,9 +111,11 @@ All changes logged to `history` table for audit trail.
 
 **Automatic folder management**: When `job_folders_base` setting is configured, the system auto-creates `[base]/[Company]/` on contact create/update and `[base]/[Company]/[JobNumber]/Drawings/` + `QA Documents/` on job card create. On job card deletion, the job card folder (`[base]/[Company]/[JobNumber]/`) is recursively deleted but the parent company folder is preserved. Folder operations are fire-and-forget (errors logged, never block DB operations). Names are sanitized for cross-platform filesystem safety with path traversal protection.
 
+**QA Level system**: Admin-managed quality levels with PDF templates. QA level folders stored at `[job_folders_base]/QA Levels/[LevelName]/`. When a job card is created or updated with a QA level, template PDFs are copied to the job's QA Documents folder with form fields auto-filled via `pdf-lib`. The `qualityLevel` column stores the level name, `qa_level_id` is the FK to `qa_levels`. Archive check uses `require_scanned_forms` flag from the QA level.
+
 ### Authentication
 - Two roles: `admin` (full access) and `user` (limited)
-- Admin-only: user management, supplier management, costing, settings, activity log, **contact/customer info**, **job card creation/deletion**, **note deletion**
+- Admin-only: user management, supplier management, QA level management, costing, settings, activity log, **contact/customer info**, **job card creation/deletion**, **note deletion**
 - **Employee (user) role**: Read-only job card view (Details tab renders as styled text, not inputs). Can only update photos via PUT. Tabs hidden from employees: Items, Subcontracts, Time, QA, Costing, Photos, Activity Log. Employees use Start/Stop timer for time tracking (one active timer at a time, enforced server-side). Can add notes but not delete them. **Quick Action Panel**: All users clicking a job card row see a QuickActionPanel (centered modal) with large buttons for Print, Scan, Camera, Timer, View Documents, View Photos, and View Details. Clicking "View Details" opens the full JobCardModal. Active timers show a pulsing green indicator on job card rows for all users.
 - **Job card visibility**: Non-admin users only see job cards they are assigned to (via `job_assignees`). Unassigned job cards are visible only to admins. All `/:id` routes (GET, PUT, and sub-resources) enforce assignee-or-admin access via `requireAssigneeOrAdmin` middleware. List routes use assignee-filtered queries instead.
 - **Settings page**: Non-admin users see only Appearance (dark mode) and Change Password. Admin users see all cards (App Info, Current User, Printers, Security Settings, Scanner Folder, Job Folders, Server Connection).

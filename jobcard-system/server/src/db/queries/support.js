@@ -24,6 +24,10 @@ const qaFormQueries = {
     WHERE qf.jobcard_id = ? AND j.quality_level = 'CRITICAL' AND qf.status != 'SCANNED'
   `),
 
+  getOutstanding: db.prepare(`
+    SELECT * FROM qa_forms WHERE jobcard_id = ? AND status != 'SCANNED'
+  `),
+
   create: db.prepare(`
     INSERT INTO qa_forms (id, jobcard_id, form_code, form_name, status, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
@@ -34,7 +38,8 @@ const qaFormQueries = {
     WHERE id = ?
   `),
 
-  delete: db.prepare('DELETE FROM qa_forms WHERE id = ?')
+  delete: db.prepare('DELETE FROM qa_forms WHERE id = ?'),
+  deleteByJobcard: db.prepare('DELETE FROM qa_forms WHERE jobcard_id = ?')
 };
 
 // History queries

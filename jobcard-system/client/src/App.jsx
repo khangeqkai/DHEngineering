@@ -8,6 +8,7 @@ import UserManagement from './components/UserManagement';
 import ContactManagement from './components/ContactManagement';
 import SupplierManagement from './components/SupplierManagement';
 import ActivityLog from './components/ActivityLog';
+import QALevelManagement from './components/QALevelManagement';
 import Settings from './components/Settings';
 import Layout from './components/Layout';
 import './App.css';
@@ -123,6 +124,14 @@ function App() {
           element={
             <AdminRoute>
               <UserManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="qa-levels"
+          element={
+            <AdminRoute>
+              <QALevelManagement />
             </AdminRoute>
           }
         />

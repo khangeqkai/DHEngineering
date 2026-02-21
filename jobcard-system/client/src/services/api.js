@@ -348,7 +348,7 @@ class ApiService {
 
   updateQAForm(jobcardId, formId, formData) {
     return this.request(`/jobcards/${jobcardId}/qa-forms/${formId}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(formData)
     });
   }
@@ -366,6 +366,15 @@ class ApiService {
 
   getDrawingsFileData(jobcardId, filename) {
     return this.request(`/jobcards/${jobcardId}/drawings-files/${encodeURIComponent(filename)}`);
+  }
+
+  // QA Documents files (from job folder on disk)
+  getQaDocumentFiles(jobcardId) {
+    return this.request(`/jobcards/${jobcardId}/qa-documents-files`);
+  }
+
+  getQaDocumentFileData(jobcardId, filename) {
+    return this.request(`/jobcards/${jobcardId}/qa-documents-files/${encodeURIComponent(filename)}`);
   }
 
   // Attach scanner file as document
@@ -527,6 +536,48 @@ class ApiService {
   // Scanner files (part of settings)
   getScannerFiles(limit = 10) {
     return this.request(`/settings/files?limit=${limit}`);
+  }
+
+  // QA Levels
+  getQaLevels() {
+    return this.request('/qa-levels');
+  }
+
+  getQaLevel(id) {
+    return this.request(`/qa-levels/${id}`);
+  }
+
+  createQaLevel(data) {
+    return this.request('/qa-levels', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  updateQaLevel(id, data) {
+    return this.request(`/qa-levels/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  deleteQaLevel(id) {
+    return this.request(`/qa-levels/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  uploadQaTemplate(levelId, data) {
+    return this.request(`/qa-levels/${levelId}/templates`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  deleteQaTemplate(levelId, templateId) {
+    return this.request(`/qa-levels/${levelId}/templates/${templateId}`, {
+      method: 'DELETE'
+    });
   }
 }
 

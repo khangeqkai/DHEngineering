@@ -86,6 +86,7 @@ export function getDefaultFormData() {
     contactPhone: '',
     contactEmail: '',
     qualityLevel: 'STANDARD',
+    qaLevelId: null,
     jobType: '',
     priority: 'NONE',
     poNumber: '',

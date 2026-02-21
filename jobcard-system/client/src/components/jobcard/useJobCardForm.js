@@ -77,6 +77,7 @@ export function useJobCardForm() {
       contactPhone: jobcardData.contactPhone || '',
       contactEmail: jobcardData.contactEmail || '',
       qualityLevel: jobcardData.qualityLevel || 'STANDARD',
+      qaLevelId: jobcardData.qaLevelId || null,
       jobType: jobcardData.jobType || '',
       priority: jobcardData.priority || 'NONE',
       poNumber: jobcardData.poNumber || '',

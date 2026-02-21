@@ -22,6 +22,7 @@ const suppliersRoutes = require('./src/routes/suppliers');
 const serviceTagsRoutes = require('./src/routes/service-tags');
 const machinesRoutes = require('./src/routes/machines');
 const settingsRoutes = require('./src/routes/settings');
+const qaLevelsRoutes = require('./src/routes/qa-levels');
 const { initializeDatabase, seedMockData } = require('./src/db/init');
 
 const app = express();
@@ -61,6 +62,7 @@ app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/service-tags', serviceTagsRoutes);
 app.use('/api/machines', machinesRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/qa-levels', qaLevelsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

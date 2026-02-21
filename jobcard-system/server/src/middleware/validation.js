@@ -260,7 +260,12 @@ const validateJobcardEnums = [
   optionalEnum('jobType', 'Job type', JOB_TYPES),
   optionalEnum('status', 'Status', JOBCARD_STATUSES),
   optionalEnum('priority', 'Priority', PRIORITY_OPTIONS),
-  optionalEnum('qualityLevel', 'Quality level', QUALITY_LEVELS),
+  // qualityLevel is now validated dynamically against qa_levels table (no enum check)
+  body('qualityLevel')
+    .customSanitizer(value => (value === '' || value === null) ? undefined : value)
+    .optional()
+    .isString()
+    .withMessage('Quality level must be a string'),
   optionalMultiEnum('drawingsType', 'Drawings type', DRAWINGS_TYPES),
   optionalMultiEnum('customerProperty', 'Customer property', CUSTOMER_PROPERTY_OPTIONS),
   optionalMultiEnum('treatmentRequired', 'Treatment required', TREATMENT_OPTIONS),

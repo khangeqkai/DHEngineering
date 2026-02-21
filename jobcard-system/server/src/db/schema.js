@@ -325,6 +325,29 @@ db.exec(`
 
   -- Index for finding active timers (time entries with no end_time)
   CREATE INDEX IF NOT EXISTS idx_time_entries_active ON time_entries(user_id, end_time);
+
+  -- QA Levels (admin-managed quality levels)
+  CREATE TABLE IF NOT EXISTS qa_levels (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    name_lower TEXT UNIQUE NOT NULL,
+    folder_path TEXT,
+    is_active INTEGER DEFAULT 1,
+    require_scanned_forms INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
+  -- QA Level Templates (PDF templates per level)
+  CREATE TABLE IF NOT EXISTS qa_level_templates (
+    id TEXT PRIMARY KEY,
+    qa_level_id TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    uploaded_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (qa_level_id) REFERENCES qa_levels(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_qa_level_templates_level ON qa_level_templates(qa_level_id);
 `);
 
 // Migration: Add missing columns to existing tables
@@ -358,6 +381,7 @@ const migrations = [
   { table: 'qa_forms', column: '_version', type: 'INTEGER DEFAULT 1' },
   { table: 'qa_forms', column: '_device_id', type: 'TEXT' },
   { table: 'users', column: 'session_token', type: 'TEXT' },
+  { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
 ];
 
 // Drop is_critical_qa column from contacts (QA level now lives on job cards only)
@@ -474,3 +498,4 @@ for (const tagName of defaultServiceTags) {
     // Tag might already exist, ignore
   }
 }
+
