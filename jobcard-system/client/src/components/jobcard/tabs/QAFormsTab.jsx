@@ -1,60 +1,51 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
+import { X } from 'lucide-react';
 import { api } from '../../../services/api';
+
+function base64ToBlob(base64, mimeType = 'application/pdf') {
+  const bytes = atob(base64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: mimeType });
+}
 
 export default function QAFormsTab({ formData, qaForms, jobCardId }) {
   const [loadingFormId, setLoadingFormId] = useState(null);
+  const [viewerUrl, setViewerUrl] = useState(null);
 
-  const fetchFile = async (form) => {
-    const files = await api.getQaDocumentFiles(jobCardId);
-    const matchingFile = (files || []).find(f => {
-      const nameWithoutExt = f.name.replace(/\.[^.]+$/, '');
-      return nameWithoutExt.toLowerCase() === form.formCode.toLowerCase();
-    });
-    if (!matchingFile) return null;
-    const fileData = await api.getQaDocumentFileData(jobCardId, matchingFile.name);
-    if (!fileData?.data) return null;
-    return { blob: base64ToBlob(fileData.data, fileData.mimeType || 'application/pdf'), mimeType: fileData.mimeType };
-  };
+  const closeViewer = useCallback(() => {
+    setViewerUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
+  }, []);
+
+  useEffect(() => {
+    if (!viewerUrl) return;
+    const handleKeyDown = (e) => { if (e.key === 'Escape') closeViewer(); };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [viewerUrl, closeViewer]);
 
   const handleView = async (form) => {
     if (!jobCardId) return;
     setLoadingFormId(form.id);
     try {
-      const result = await fetchFile(form);
-      if (result) {
-        const url = URL.createObjectURL(result.blob);
-        window.open(url, '_blank');
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
-      } else {
+      const files = await api.getQaDocumentFiles(jobCardId);
+      const matchingFile = (files || []).find(f => {
+        const nameWithoutExt = f.name.replace(/\.[^.]+$/, '');
+        return nameWithoutExt.toLowerCase() === form.formCode.toLowerCase();
+      });
+      if (!matchingFile) {
         toast.error('Document not found in QA Documents folder');
+        return;
       }
-    } catch {
-      toast.error('Failed to load document');
-    } finally {
-      setLoadingFormId(null);
-    }
-  };
-
-  const handlePrint = async (form) => {
-    if (!jobCardId) return;
-    setLoadingFormId(form.id);
-    try {
-      const result = await fetchFile(form);
-      if (result) {
-        const url = URL.createObjectURL(result.blob);
-        const printWindow = window.open(url, '_blank');
-        if (printWindow) {
-          printWindow.addEventListener('load', () => {
-            printWindow.print();
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-          });
-        } else {
-          URL.revokeObjectURL(url);
-        }
-      } else {
+      const fileData = await api.getQaDocumentFileData(jobCardId, matchingFile.name);
+      if (!fileData?.data) {
         toast.error('Document not found in QA Documents folder');
+        return;
       }
+      const blob = base64ToBlob(fileData.data, fileData.mimeType || 'application/pdf');
+      setViewerUrl(URL.createObjectURL(blob));
     } catch {
       toast.error('Failed to load document');
     } finally {
@@ -94,24 +85,14 @@ export default function QAFormsTab({ formData, qaForms, jobCardId }) {
                 </div>
                 <div className="qa-form-actions">
                   {jobCardId && (
-                    <>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost"
-                        onClick={() => handleView(form)}
-                        disabled={loadingFormId === form.id}
-                      >
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost"
-                        onClick={() => handlePrint(form)}
-                        disabled={loadingFormId === form.id}
-                      >
-                        Print
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => handleView(form)}
+                      disabled={loadingFormId === form.id}
+                    >
+                      View
+                    </button>
                   )}
                 </div>
               </div>
@@ -119,15 +100,16 @@ export default function QAFormsTab({ formData, qaForms, jobCardId }) {
           </div>
         )}
       </div>
+
+      {viewerUrl && createPortal(
+        <div className="qap-doc-viewer">
+          <button className="qap-lightbox-close" onClick={closeViewer}>
+            <X size={24} />
+          </button>
+          <iframe src={viewerUrl} className="qap-doc-viewer-frame" title="Document viewer" />
+        </div>,
+        document.body
+      )}
     </div>
   );
-}
-
-function base64ToBlob(base64, mimeType) {
-  const byteCharacters = atob(base64);
-  const byteNumbers = new Array(byteCharacters.length);
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
-  }
-  return new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
 }

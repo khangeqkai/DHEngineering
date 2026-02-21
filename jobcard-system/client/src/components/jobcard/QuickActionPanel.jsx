@@ -43,6 +43,7 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
   const [photosData, setPhotosData] = useState([]);
   const [photosLoading, setPhotosLoading] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const [viewerUrl, setViewerUrl] = useState(null);
   const [loadingFiles, setLoadingFiles] = useState(new Set());
   const panelRef = useRef(null);
 
@@ -58,6 +59,7 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
       setDocuments([]);
       setPhotosData([]);
       setLightboxPhoto(null);
+      if (viewerUrl) { URL.revokeObjectURL(viewerUrl); setViewerUrl(null); }
     }
   }, [isOpen, camera.stopCamera]);
 
@@ -65,7 +67,10 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
     if (!isOpen) return;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (lightboxPhoto) {
+        if (viewerUrl) {
+          URL.revokeObjectURL(viewerUrl);
+          setViewerUrl(null);
+        } else if (lightboxPhoto) {
           setLightboxPhoto(null);
         } else if (activeView !== 'menu') {
           if (activeView === 'camera') {
@@ -184,10 +189,8 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
         toast.error('Failed to load file data');
         return;
       }
-      const blob = base64ToBlob(fileData.data, fileData.mimeType || 'application/octet-stream');
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      const blob = base64ToBlob(fileData.data, fileData.mimeType || 'application/pdf');
+      setViewerUrl(URL.createObjectURL(blob));
     } catch (err) {
       toast.error(err.message || 'Failed to view document');
     } finally {
@@ -470,6 +473,15 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
               alt="Full size"
               onClick={(e) => e.stopPropagation()}
             />
+          </div>
+        )}
+
+        {viewerUrl && (
+          <div className="qap-doc-viewer">
+            <button className="qap-lightbox-close" onClick={() => { URL.revokeObjectURL(viewerUrl); setViewerUrl(null); }}>
+              <X size={24} />
+            </button>
+            <iframe src={viewerUrl} className="qap-doc-viewer-frame" title="Document viewer" />
           </div>
         )}
       </div>
