@@ -100,9 +100,41 @@ function createJobCardFolders(companyName, jobNumber) {
   }
 }
 
+/**
+ * Delete job card folder (Company/JobNumber/) when a job card is deleted.
+ * Only deletes the job card subfolder, not the parent company folder.
+ * Fire-and-forget: logs errors but never throws.
+ */
+function deleteJobCardFolders(companyName, jobNumber) {
+  try {
+    const basePath = getBasePath();
+    if (!basePath) return;
+
+    const sanitizedCompany = sanitizeFolderName(companyName);
+    if (!sanitizedCompany) return;
+
+    const sanitizedJob = sanitizeFolderName(jobNumber);
+    if (!sanitizedJob) return;
+
+    const jobPath = path.join(basePath, sanitizedCompany, sanitizedJob);
+    if (!isWithinBase(basePath, jobPath)) {
+      logger.error({ companyName, jobNumber, jobPath }, 'Job card folder path escapes base directory');
+      return;
+    }
+
+    if (fs.existsSync(jobPath)) {
+      fs.rmSync(jobPath, { recursive: true, force: true });
+      logger.info({ jobPath }, 'Deleted job card folder');
+    }
+  } catch (err) {
+    logger.error({ err, companyName, jobNumber }, 'Failed to delete job card folder');
+  }
+}
+
 module.exports = {
   sanitizeFolderName,
   isWithinBase,
   createCompanyFolder,
-  createJobCardFolders
+  createJobCardFolders,
+  deleteJobCardFolders
 };

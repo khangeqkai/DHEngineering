@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
-const { createJobCardFolders } = require('../utils/folderCreation');
+const { createJobCardFolders, deleteJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireAdmin, requireAssigneeOrAdmin } = require('../middleware/auth');
 const { validateJobcardListQuery, validateJobcardEnums } = require('../middleware/validation');
 const {
@@ -459,6 +459,9 @@ router.delete('/:id', authenticate, requireAdmin, (req, res) => {
     });
 
     jobcardQueries.delete.run(id);
+
+    // Delete job card folder (Company/JobNumber/) but keep the company folder
+    deleteJobCardFolders(existing.company_name, existing.job_number);
 
     res.json({ success: true });
   } catch (err) {
