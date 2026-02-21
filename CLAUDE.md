@@ -69,7 +69,7 @@ jobcard-system/
 │   │   │   └── pdfFiller.js      # PDF form field auto-fill with pdf-lib
 │   │   ├── db/
 │   │   │   ├── database.js       # SQLite schemas + prepared statements
-│   │   │   └── init.js           # Migrations + seeding
+│   │   │   └── init.js           # Migrations + default admin setup
 │   │   └── routes/               # Express route modules
 │   └── index.js                  # Express entry point
 └── data/jobcard.db               # SQLite database file

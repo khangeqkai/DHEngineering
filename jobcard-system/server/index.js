@@ -23,7 +23,7 @@ const serviceTagsRoutes = require('./src/routes/service-tags');
 const machinesRoutes = require('./src/routes/machines');
 const settingsRoutes = require('./src/routes/settings');
 const qaLevelsRoutes = require('./src/routes/qa-levels');
-const { initializeDatabase, seedMockData } = require('./src/db/init');
+const { initializeDatabase } = require('./src/db/init');
 
 const app = express();
 
@@ -78,9 +78,6 @@ async function start() {
   try {
     // Initialize the database with default data
     await initializeDatabase();
-
-    // Seed mock data for testing (only runs if no data exists)
-    await seedMockData();
 
     // Start the server
     app.listen(config.port, config.host, () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { toTitleCase, validatePassword } from '../utils/formatters';
 import { Plus, Trash2, Save, UserMinus, UserCheck, History } from 'lucide-react';
 import PageHeader from './common/PageHeader';
@@ -11,6 +12,7 @@ import EntityActivityLog from './common/EntityActivityLog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 
 export default function UserManagement() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
@@ -310,18 +312,22 @@ export default function UserManagement() {
                 label: 'Actions',
                 render: (_, row) => (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {row.active ? (
-                      <button className="btn btn-warning btn-sm" onClick={(e) => { e.stopPropagation(); handleDeactivate(row); }}>
-                        <UserMinus size={14} /> Deactivate
-                      </button>
-                    ) : (
-                      <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleActivate(row); }}>
-                        <UserCheck size={14} /> Activate
-                      </button>
+                    {row.id !== currentUser?.userId && (
+                      <>
+                        {row.active ? (
+                          <button className="btn btn-warning btn-sm" onClick={(e) => { e.stopPropagation(); handleDeactivate(row); }}>
+                            <UserMinus size={14} /> Deactivate
+                          </button>
+                        ) : (
+                          <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleActivate(row); }}>
+                            <UserCheck size={14} /> Activate
+                          </button>
+                        )}
+                        <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </>
                     )}
-                    <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
-                      <Trash2 size={14} /> Delete
-                    </button>
                   </div>
                 )
               }

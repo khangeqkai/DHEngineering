@@ -8,7 +8,7 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { validateLogin, validateCreateUser } = require('../middleware/validation');
-const { userQueries, recordHistory } = require('../db/database');
+const { db, userQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
@@ -459,7 +459,22 @@ router.delete('/users/:id', authenticate, requireRole('admin'), (req, res) => {
       role: { from: user.role, to: null }
     });
 
-    userQueries.delete.run(id);
+    // Clean up all FK references and delete atomically
+    db.pragma('foreign_keys = OFF');
+    try {
+      const deleteUser = db.transaction(() => {
+        userQueries.cleanupAssignees.run(id);
+        userQueries.cleanupJobcardsCreatedBy.run(id);
+        userQueries.cleanupJobcardsUpdatedBy.run(id);
+        userQueries.cleanupDocuments.run(id);
+        userQueries.cleanupHistory.run(id);
+        userQueries.cleanupJobNotes.run(id);
+        userQueries.delete.run(id);
+      });
+      deleteUser();
+    } finally {
+      db.pragma('foreign_keys = ON');
+    }
 
     res.json({ success: true, message: 'User deleted permanently' });
   } catch (err) {
