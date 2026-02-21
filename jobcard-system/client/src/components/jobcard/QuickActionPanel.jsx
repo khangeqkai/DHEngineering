@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
-import { Printer, ScanLine, Camera, Play, Square, Eye, X, ArrowLeft, Check } from 'lucide-react';
+import { Printer, ScanLine, Camera, Play, Square, Eye, X, ArrowLeft, Check, FileText, Image } from 'lucide-react';
 import { api } from '../../services/api';
 import { useTimer } from './useTimer';
 import { useCamera } from './useCamera';
@@ -32,6 +32,11 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
   const [scannerLoading, setScannerLoading] = useState(false);
   const [attachingFile, setAttachingFile] = useState(null);
   const [savingPhoto, setSavingPhoto] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [photosData, setPhotosData] = useState([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const panelRef = useRef(null);
 
   const timer = useTimer(jobCard?.id);
@@ -44,6 +49,9 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
       setActiveView('menu');
     } else {
       camera.stopCamera();
+      setDocuments([]);
+      setPhotosData([]);
+      setLightboxPhoto(null);
     }
   }, [isOpen, camera.stopCamera]);
 
@@ -51,7 +59,9 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
     if (!isOpen) return;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (activeView !== 'menu') {
+        if (lightboxPhoto) {
+          setLightboxPhoto(null);
+        } else if (activeView !== 'menu') {
           if (activeView === 'camera') {
             camera.stopCamera();
           }
@@ -63,7 +73,7 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, activeView, onClose, camera.stopCamera]);
+  }, [isOpen, activeView, onClose, camera.stopCamera, lightboxPhoto]);
 
   const handleBack = useCallback(() => {
     if (activeView === 'camera') {
@@ -156,6 +166,51 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
     if (onViewDetails) onViewDetails(jobCard.id);
   }, [jobCard, onClose, onViewDetails, camera]);
 
+  const handleDocumentsView = useCallback(async () => {
+    setActiveView('documents');
+    setDocumentsLoading(true);
+    try {
+      const docs = await api.getDocuments(jobCard.id);
+      setDocuments(docs || []);
+    } catch (err) {
+      toast.error('Failed to load documents');
+      setDocuments([]);
+    } finally {
+      setDocumentsLoading(false);
+    }
+  }, [jobCard]);
+
+  const handleViewDocument = useCallback(async (doc) => {
+    try {
+      const result = await api.getDocument(jobCard.id, doc.id);
+      if (result.fileData) {
+        const link = document.createElement('a');
+        link.href = `data:${result.fileType || 'application/octet-stream'};base64,${result.fileData}`;
+        link.download = result.filename || doc.filename;
+        link.click();
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to download document');
+    }
+  }, [jobCard]);
+
+  const handlePhotosView = useCallback(async () => {
+    setActiveView('photos');
+    setPhotosLoading(true);
+    try {
+      const fullCard = await api.getJobcard(jobCard.id);
+      const photos = fullCard.photos
+        ? (typeof fullCard.photos === 'string' ? JSON.parse(fullCard.photos) : fullCard.photos)
+        : [];
+      setPhotosData(photos);
+    } catch (err) {
+      toast.error('Failed to load photos');
+      setPhotosData([]);
+    } finally {
+      setPhotosLoading(false);
+    }
+  }, [jobCard]);
+
   if (!isOpen || !jobCard) return null;
 
   const getStatusClass = (status) => {
@@ -169,7 +224,7 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
   };
 
   return createPortal(
-    <div className="quick-action-overlay" onClick={onClose}>
+    <div className="quick-action-overlay">
       <div
         className="quick-action-panel"
         ref={panelRef}
@@ -249,6 +304,22 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
                     ? `Stop Timer (${formatElapsed(timer.elapsed)})`
                     : 'Start Timer'}
                 </span>
+              </button>
+
+              <button
+                className="qap-action-btn qap-action-documents"
+                onClick={handleDocumentsView}
+              >
+                <FileText size={28} />
+                <span>View Documents</span>
+              </button>
+
+              <button
+                className="qap-action-btn qap-action-photos"
+                onClick={handlePhotosView}
+              >
+                <Image size={28} />
+                <span>View Photos</span>
               </button>
 
               <button
@@ -339,7 +410,75 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
               )}
             </div>
           )}
+
+          {activeView === 'documents' && (
+            <div className="qap-documents-view">
+              <h3>Attached Documents</h3>
+              {documentsLoading ? (
+                <p className="qap-loading">Loading documents...</p>
+              ) : documents.length === 0 ? (
+                <p className="qap-empty">No documents attached</p>
+              ) : (
+                <div className="qap-file-list">
+                  {documents.map((doc) => (
+                    <div key={doc.id} className="qap-file-item">
+                      <div className="qap-file-info">
+                        <span className="qap-file-name">{doc.filename}</span>
+                        <span className="qap-file-meta">
+                          {doc.fileType || 'File'}
+                          {doc.fileSize ? ` · ${(doc.fileSize / 1024).toFixed(0)} KB` : ''}
+                          {doc.uploadedAt ? ` · ${new Date(doc.uploadedAt).toLocaleDateString()}` : ''}
+                        </span>
+                      </div>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => handleViewDocument(doc)}
+                      >
+                        Download
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeView === 'photos' && (
+            <div className="qap-photos-view">
+              <h3>Photos</h3>
+              {photosLoading ? (
+                <p className="qap-loading">Loading photos...</p>
+              ) : photosData.length === 0 ? (
+                <p className="qap-empty">No photos taken</p>
+              ) : (
+                <div className="qap-photos-grid">
+                  {photosData.map((photo, idx) => (
+                    <div
+                      key={idx}
+                      className="qap-photos-grid-item"
+                      onClick={() => setLightboxPhoto(photo)}
+                    >
+                      <img src={typeof photo === 'string' ? photo : photo.data} alt={`Photo ${idx + 1}`} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
+        {lightboxPhoto && (
+          <div className="qap-lightbox" onClick={() => setLightboxPhoto(null)}>
+            <button className="qap-lightbox-close" onClick={() => setLightboxPhoto(null)}>
+              <X size={24} />
+            </button>
+            <img
+              src={typeof lightboxPhoto === 'string' ? lightboxPhoto : lightboxPhoto.data}
+              alt="Full size"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
       </div>
 
       <ConfirmDialog

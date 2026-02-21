@@ -31,6 +31,28 @@ router.get('/:id/documents', authenticate, requireAssigneeOrAdmin, (req, res) =>
   }
 });
 
+// Get single document with file data
+router.get('/:id/documents/:documentId', authenticate, requireAssigneeOrAdmin, (req, res) => {
+  try {
+    const doc = documentQueries.getById.get(req.params.documentId);
+    if (!doc || doc.jobcard_id !== req.params.id) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    res.json({
+      id: doc.id,
+      filename: doc.filename,
+      fileType: doc.file_type,
+      fileSize: doc.file_size,
+      fileData: doc.file_data,
+      uploadedBy: doc.uploaded_by,
+      uploadedAt: doc.uploaded_at
+    });
+  } catch (err) {
+    logger.error({ err }, 'Get document error');
+    res.status(500).json({ error: 'Failed to get document' });
+  }
+});
+
 // Add document
 router.post('/:id/documents', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {

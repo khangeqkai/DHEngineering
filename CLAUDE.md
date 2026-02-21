@@ -89,6 +89,8 @@ Job card sub-routes: `/jobcards/:id/items`, `/assignees`, `/subcontracts`, `/tim
 
 Drawings file endpoints: `GET /jobcards/:id/drawings-files` (assignee/admin, lists files from job's Drawings folder on disk), `GET /jobcards/:id/drawings-files/:filename` (assignee/admin, returns file as base64)
 
+Document endpoints: `GET /jobcards/:id/documents/:documentId` (assignee/admin, returns document with file data as base64)
+
 Scanner attach endpoint: `POST /jobcards/:id/documents/from-scanner` (assignee/admin, attaches a file from configured scanner folder as a document)
 
 Timer endpoints: `GET /jobcards/active-timer` (authenticated), `POST /jobcards/:id/time-entries/start` (assignee/admin), `POST /jobcards/:id/time-entries/:entryId/stop` (assignee/admin)
@@ -107,7 +109,7 @@ All changes logged to `history` table for audit trail.
 ### Authentication
 - Two roles: `admin` (full access) and `user` (limited)
 - Admin-only: user management, supplier management, costing, settings, activity log, **contact/customer info**, **job card creation/deletion**, **note deletion**
-- **Employee (user) role**: Read-only job card view (Details tab renders as styled text, not inputs). Can only update photos via PUT. Tabs hidden from employees: Items, Subcontracts, Costing, Activity Log. Employees use Start/Stop timer for time tracking (one active timer at a time, enforced server-side). Can add notes but not delete them. **Quick Action Panel**: Non-admin users clicking a job card see a QuickActionPanel (bottom sheet) with large buttons for Print, Scan, Camera, Timer, and View Details — instead of opening the full JobCardModal directly. Active timers show a pulsing green indicator on job card rows.
+- **Employee (user) role**: Read-only job card view (Details tab renders as styled text, not inputs). Can only update photos via PUT. Tabs hidden from employees: Items, Subcontracts, Time, QA, Costing, Photos, Activity Log. Employees use Start/Stop timer for time tracking (one active timer at a time, enforced server-side). Can add notes but not delete them. **Quick Action Panel**: Non-admin users clicking a job card see a QuickActionPanel (centered modal) with large buttons for Print, Scan, Camera, Timer, View Documents, View Photos, and View Details — instead of opening the full JobCardModal directly. Active timers show a pulsing green indicator on job card rows.
 - **Job card visibility**: Non-admin users only see job cards they are assigned to (via `job_assignees`). Unassigned job cards are visible only to admins. All `/:id` routes (GET, PUT, and sub-resources) enforce assignee-or-admin access via `requireAssigneeOrAdmin` middleware. List routes use assignee-filtered queries instead.
 - **Settings page**: Non-admin users see only Appearance (dark mode) and Change Password. Admin users see all cards (App Info, Current User, Printers, Security Settings, Scanner Folder, Job Folders, Server Connection).
 - Default credentials: `admin` / `admin123`

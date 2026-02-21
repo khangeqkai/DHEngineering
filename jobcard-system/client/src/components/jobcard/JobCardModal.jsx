@@ -415,12 +415,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>Details</button>
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}>Items</button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'subcontracts' ? 'active' : ''}`} onClick={() => setActiveTab('subcontracts')}>Subcontracts</button>}
-                  <button type="button" className={`tab ${activeTab === 'time' ? 'active' : ''}`} onClick={() => setActiveTab('time')}>
-                    Time{!isAdmin && timer.activeTimer ? ' *' : ''}
-                  </button>
-                  <button type="button" className={`tab ${activeTab === 'qa' ? 'active' : ''}`} onClick={() => setActiveTab('qa')}>QA</button>
+                  {isAdmin && <button type="button" className={`tab ${activeTab === 'time' ? 'active' : ''}`} onClick={() => setActiveTab('time')}>Time</button>}
+                  {isAdmin && <button type="button" className={`tab ${activeTab === 'qa' ? 'active' : ''}`} onClick={() => setActiveTab('qa')}>QA</button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>}
-                  <button type="button" className={`tab ${activeTab === 'photos' ? 'active' : ''}`} onClick={() => setActiveTab('photos')}>Photos</button>
+                  {isAdmin && <button type="button" className={`tab ${activeTab === 'photos' ? 'active' : ''}`} onClick={() => setActiveTab('photos')}>Photos</button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>}
                 </div>
               )}
@@ -493,7 +491,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 />
               )}
 
-              {activeTab === 'time' && isEdit && (
+              {activeTab === 'time' && isEdit && isAdmin && (
                 <TimeEntryTab
                   isAdmin={isAdmin}
                   timeEntries={timeEntries || []}
@@ -531,11 +529,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 />
               )}
 
-              {activeTab === 'qa' && isEdit && (
+              {activeTab === 'qa' && isEdit && isAdmin && (
                 <QAFormsTab formData={formHook.formData} qaForms={qaForms || []} />
               )}
 
-              {activeTab === 'photos' && isEdit && (
+              {activeTab === 'photos' && isEdit && isAdmin && (
                 <PhotosTab
                   photos={camera.photos}
                   cameraActive={camera.cameraActive}

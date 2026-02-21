@@ -1,12 +1,16 @@
 /* Quick Action Panel Overlay */
 .quick-action-overlay {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
   z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
   animation: qap-fade-in 0.15s ease-out;
 }
 
@@ -15,21 +19,22 @@
   to { opacity: 1; }
 }
 
-@keyframes qap-slide-up {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+@keyframes qap-slide-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .quick-action-panel {
   background: var(--surface, #fff);
-  border-radius: 16px 16px 0 0;
-  width: 100%;
-  max-width: 540px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: var(--radius-lg, 12px);
+  width: 540px;
+  max-width: 90vw;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  animation: qap-slide-up 0.2s ease-out;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+  animation: qap-slide-in 0.2s ease-out;
+  box-shadow: var(--shadow-lg, 0 4px 24px rgba(0, 0, 0, 0.15));
 }
 
 /* Header */
@@ -300,6 +305,93 @@
 
 .qap-photo-remove:hover {
   background: rgba(220, 38, 38, 0.8);
+}
+
+/* Documents button */
+.qap-action-documents { color: #ea580c; }
+.qap-action-documents:hover:not(:disabled) { border-color: #ea580c; background: rgba(234, 88, 12, 0.05); }
+
+/* Photos button */
+.qap-action-photos { color: #0d9488; }
+.qap-action-photos:hover:not(:disabled) { border-color: #0d9488; background: rgba(13, 148, 136, 0.05); }
+
+/* Documents sub-view */
+.qap-documents-view h3 {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+}
+
+/* Photos sub-view */
+.qap-photos-view h3 {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+}
+
+.qap-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.qap-photos-grid-item {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color, #e5e7eb);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.qap-photos-grid-item:hover {
+  transform: scale(1.03);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.qap-photos-grid-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Lightbox */
+.qap-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  cursor: pointer;
+}
+
+.qap-lightbox img {
+  max-width: 90vw;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: default;
+}
+
+.qap-lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  transition: background 0.15s ease;
+}
+
+.qap-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Timer indicator on job card rows */
