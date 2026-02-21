@@ -1,14 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
-import { Printer, ScanLine, Camera, Play, Square, Eye, X, ArrowLeft, Check, FileText, Image } from 'lucide-react';
+import { ScanLine, Camera, Play, Square, Eye, X, ArrowLeft, Check, FileText, Image, Printer } from 'lucide-react';
 import { api } from '../../services/api';
 import { useTimer } from './useTimer';
 import { useCamera } from './useCamera';
-import { usePrintJob } from './usePrintJob';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import ConfirmDialog from '../common/ConfirmDialog';
 import './QuickActionPanel.css';
+
+function base64ToBlob(base64, mimeType = 'application/pdf') {
+  const bytes = atob(base64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: mimeType });
+}
 
 const STATUS_LABELS = {
   QUOTE: 'Quote',
@@ -37,11 +43,11 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
   const [photosData, setPhotosData] = useState([]);
   const [photosLoading, setPhotosLoading] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const [loadingFiles, setLoadingFiles] = useState(new Set());
   const panelRef = useRef(null);
 
   const timer = useTimer(jobCard?.id);
   const camera = useCamera();
-  const { handlePrintDocuments, printing } = usePrintJob();
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   useEffect(() => {
@@ -150,16 +156,6 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
     if (onTimerChange) onTimerChange();
   }, [timer, onTimerChange]);
 
-  const handlePrint = useCallback(async () => {
-    if (!jobCard) return;
-    try {
-      const fullCard = await api.getJobcard(jobCard.id);
-      await handlePrintDocuments(fullCard);
-    } catch (err) {
-      toast.error(err.message || 'Failed to print');
-    }
-  }, [jobCard, handlePrintDocuments]);
-
   const handleViewDetails = useCallback(() => {
     camera.stopCamera();
     onClose();
@@ -170,27 +166,58 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
     setActiveView('documents');
     setDocumentsLoading(true);
     try {
-      const docs = await api.getDocuments(jobCard.id);
-      setDocuments(docs || []);
+      const files = await api.getQaDocumentFiles(jobCard.id);
+      setDocuments(files || []);
     } catch (err) {
-      toast.error('Failed to load documents');
+      toast.error('Failed to load QA documents');
       setDocuments([]);
     } finally {
       setDocumentsLoading(false);
     }
   }, [jobCard]);
 
-  const handleViewDocument = useCallback(async (doc) => {
+  const handleViewDocument = useCallback(async (file) => {
+    setLoadingFiles(prev => new Set(prev).add(file.name));
     try {
-      const result = await api.getDocument(jobCard.id, doc.id);
-      if (result.fileData) {
-        const link = document.createElement('a');
-        link.href = `data:${result.fileType || 'application/octet-stream'};base64,${result.fileData}`;
-        link.download = result.filename || doc.filename;
-        link.click();
+      const fileData = await api.getQaDocumentFileData(jobCard.id, file.name);
+      if (!fileData?.data) {
+        toast.error('Failed to load file data');
+        return;
+      }
+      const blob = base64ToBlob(fileData.data, fileData.mimeType || 'application/octet-stream');
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      toast.error(err.message || 'Failed to view document');
+    } finally {
+      setLoadingFiles(prev => { const next = new Set(prev); next.delete(file.name); return next; });
+    }
+  }, [jobCard]);
+
+  const handlePrintDocument = useCallback(async (file) => {
+    setLoadingFiles(prev => new Set(prev).add(file.name));
+    try {
+      const fileData = await api.getQaDocumentFileData(jobCard.id, file.name);
+      if (!fileData?.data) {
+        toast.error('Failed to load file data');
+        return;
+      }
+      const blob = base64ToBlob(fileData.data, fileData.mimeType || 'application/pdf');
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.addEventListener('load', () => {
+          printWindow.print();
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+        });
+      } else {
+        URL.revokeObjectURL(url);
       }
     } catch (err) {
-      toast.error(err.message || 'Failed to download document');
+      toast.error(err.message || 'Failed to print document');
+    } finally {
+      setLoadingFiles(prev => { const next = new Set(prev); next.delete(file.name); return next; });
     }
   }, [jobCard]);
 
@@ -268,15 +295,6 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
         <div className="qap-body">
           {activeView === 'menu' && (
             <div className="qap-actions-grid">
-              <button
-                className="qap-action-btn qap-action-print"
-                onClick={handlePrint}
-                disabled={printing}
-              >
-                <Printer size={28} />
-                <span>{printing ? 'Printing...' : 'Print Documents'}</span>
-              </button>
-
               <button
                 className="qap-action-btn qap-action-scan"
                 onClick={handleScannerView}
@@ -413,29 +431,39 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
 
           {activeView === 'documents' && (
             <div className="qap-documents-view">
-              <h3>Attached Documents</h3>
+              <h3>QA Documents</h3>
               {documentsLoading ? (
                 <p className="qap-loading">Loading documents...</p>
               ) : documents.length === 0 ? (
-                <p className="qap-empty">No documents attached</p>
+                <p className="qap-empty">No documents found</p>
               ) : (
                 <div className="qap-file-list">
-                  {documents.map((doc) => (
-                    <div key={doc.id} className="qap-file-item">
+                  {documents.map((file) => (
+                    <div key={file.name} className="qap-file-item">
                       <div className="qap-file-info">
-                        <span className="qap-file-name">{doc.filename}</span>
+                        <span className="qap-file-name">{file.name}</span>
                         <span className="qap-file-meta">
-                          {doc.fileType || 'File'}
-                          {doc.fileSize ? ` · ${(doc.fileSize / 1024).toFixed(0)} KB` : ''}
-                          {doc.uploadedAt ? ` · ${new Date(doc.uploadedAt).toLocaleDateString()}` : ''}
+                          {(file.size / 1024).toFixed(0)} KB
+                          {' · '}
+                          {new Date(file.modified).toLocaleDateString()}
                         </span>
                       </div>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        onClick={() => handleViewDocument(doc)}
-                      >
-                        Download
-                      </button>
+                      <div className="qap-file-actions">
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => handleViewDocument(file)}
+                          disabled={loadingFiles.has(file.name)}
+                        >
+                          <Eye size={14} /> View
+                        </button>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handlePrintDocument(file)}
+                          disabled={loadingFiles.has(file.name)}
+                        >
+                          <Printer size={14} /> Print
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

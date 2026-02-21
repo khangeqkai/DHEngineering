@@ -161,9 +161,6 @@
   cursor: not-allowed;
 }
 
-.qap-action-print { color: var(--primary-color, #2563eb); }
-.qap-action-print:hover:not(:disabled) { border-color: var(--primary-color, #2563eb); background: rgba(37, 99, 235, 0.05); }
-
 .qap-action-scan { color: #7c3aed; }
 .qap-action-scan:hover:not(:disabled) { border-color: #7c3aed; background: rgba(124, 58, 237, 0.05); }
 
@@ -235,6 +232,18 @@
 .qap-file-meta {
   font-size: 0.75rem;
   color: var(--text-secondary, #6b7280);
+}
+
+.qap-file-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.qap-file-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* Camera sub-view */
