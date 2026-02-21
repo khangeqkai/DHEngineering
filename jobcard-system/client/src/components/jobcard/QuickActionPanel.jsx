@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
-import { ScanLine, Camera, Play, Square, Eye, X, ArrowLeft, Check, FileText, Image, Printer } from 'lucide-react';
+import { ScanLine, Camera, Play, Square, Eye, X, ArrowLeft, Check, FileText, Image } from 'lucide-react';
 import { api } from '../../services/api';
 import { useTimer } from './useTimer';
 import { useCamera } from './useCamera';
@@ -190,32 +190,6 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (err) {
       toast.error(err.message || 'Failed to view document');
-    } finally {
-      setLoadingFiles(prev => { const next = new Set(prev); next.delete(file.name); return next; });
-    }
-  }, [jobCard]);
-
-  const handlePrintDocument = useCallback(async (file) => {
-    setLoadingFiles(prev => new Set(prev).add(file.name));
-    try {
-      const fileData = await api.getQaDocumentFileData(jobCard.id, file.name);
-      if (!fileData?.data) {
-        toast.error('Failed to load file data');
-        return;
-      }
-      const blob = base64ToBlob(fileData.data, fileData.mimeType || 'application/pdf');
-      const url = URL.createObjectURL(blob);
-      const printWindow = window.open(url, '_blank');
-      if (printWindow) {
-        printWindow.addEventListener('load', () => {
-          printWindow.print();
-          setTimeout(() => URL.revokeObjectURL(url), 60000);
-        });
-      } else {
-        URL.revokeObjectURL(url);
-      }
-    } catch (err) {
-      toast.error(err.message || 'Failed to print document');
     } finally {
       setLoadingFiles(prev => { const next = new Set(prev); next.delete(file.name); return next; });
     }
@@ -448,22 +422,13 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
                           {new Date(file.modified).toLocaleDateString()}
                         </span>
                       </div>
-                      <div className="qap-file-actions">
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => handleViewDocument(file)}
-                          disabled={loadingFiles.has(file.name)}
-                        >
-                          <Eye size={14} /> View
-                        </button>
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => handlePrintDocument(file)}
-                          disabled={loadingFiles.has(file.name)}
-                        >
-                          <Printer size={14} /> Print
-                        </button>
-                      </div>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => handleViewDocument(file)}
+                        disabled={loadingFiles.has(file.name)}
+                      >
+                        <Eye size={14} /> View
+                      </button>
                     </div>
                   ))}
                 </div>
