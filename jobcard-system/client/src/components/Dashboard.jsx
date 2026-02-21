@@ -275,16 +275,12 @@ export default function Dashboard() {
                           href="#"
                           onClick={(e) => {
                             e.preventDefault();
-                            if (!isAdmin) {
-                              setQuickActionCard(card);
-                            } else {
-                              openEditModal(card.id);
-                            }
+                            setQuickActionCard(card);
                           }}
                         >
                           {card.jobNumber}
                         </a>
-                        {!isAdmin && card.id === activeTimerJobcardId && (
+                        {card.id === activeTimerJobcardId && (
                           <span className="timer-indicator">
                             <span className="timer-dot" />
                             {formattedElapsed}
@@ -357,16 +353,12 @@ export default function Dashboard() {
                             href="#"
                             onClick={(e) => {
                               e.preventDefault();
-                              if (!isAdmin) {
-                                setQuickActionCard(card);
-                              } else {
-                                openEditModal(card.id);
-                              }
+                              setQuickActionCard(card);
                             }}
                           >
                             {card.jobNumber}
                           </a>
-                          {!isAdmin && card.id === activeTimerJobcardId && (
+                          {card.id === activeTimerJobcardId && (
                             <span className="timer-indicator">
                               <span className="timer-dot" />
                               {formattedElapsed}
