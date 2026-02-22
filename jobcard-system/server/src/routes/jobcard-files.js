@@ -113,10 +113,12 @@ router.get('/:id/job-files', authenticate, requireAssigneeOrAdmin, (req, res) =>
         try {
           const stats = fs.statSync(filePath);
           if (!stats.isFile()) return null;
+          const ext = path.extname(filename).toLowerCase();
           return {
             name: filename,
             size: stats.size,
-            modified: stats.mtime
+            modified: stats.mtime,
+            mimeType: MIME_TYPES[ext] || 'application/octet-stream'
           };
         } catch {
           return null;
@@ -192,10 +194,12 @@ router.get('/:id/qa-form-files', authenticate, requireAssigneeOrAdmin, (req, res
         try {
           const stats = fs.statSync(filePath);
           if (!stats.isFile()) return null;
+          const ext = path.extname(filename).toLowerCase();
           return {
             name: filename,
             size: stats.size,
-            modified: stats.mtime
+            modified: stats.mtime,
+            mimeType: MIME_TYPES[ext] || 'application/octet-stream'
           };
         } catch {
           return null;
@@ -271,10 +275,12 @@ router.get('/:id/customer-property-files', authenticate, requireAssigneeOrAdmin,
         try {
           const stats = fs.statSync(filePath);
           if (!stats.isFile()) return null;
+          const ext = path.extname(filename).toLowerCase();
           return {
             name: filename,
             size: stats.size,
-            modified: stats.mtime
+            modified: stats.mtime,
+            mimeType: MIME_TYPES[ext] || 'application/octet-stream'
           };
         } catch {
           return null;

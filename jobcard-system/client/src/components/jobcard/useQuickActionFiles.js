@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 
@@ -32,6 +32,8 @@ export function useQuickActionFiles(jobCard) {
   const [loadingFiles, setLoadingFiles] = useState(new Set());
   const [viewerUrl, setViewerUrl] = useState(null);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
+
+  const [thumbnails, setThumbnails] = useState(new Map()); // Map<"source:filename", dataUrl>
 
   const loadScannerFiles = useCallback(async () => {
     setScannerLoading(true);
@@ -100,19 +102,72 @@ export function useQuickActionFiles(jobCard) {
     }
   }, [jobCard]);
 
+  const thumbnailGenRef = useRef({ 'qa-forms': 0, 'job-files': 0, 'customer-property': 0 });
+
+  const loadThumbnails = useCallback(async (fileList, source) => {
+    if (!jobCard) return;
+    const imageFiles = (fileList || []).filter(f => f.mimeType?.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+
+    const gen = ++thumbnailGenRef.current[source];
+    const sourcePrefix = `${source}:`;
+    setThumbnails(prev => {
+      const next = new Map();
+      for (const [k, v] of prev) {
+        if (!k.startsWith(sourcePrefix)) next.set(k, v);
+      }
+      return next;
+    });
+
+    const concurrency = 4;
+    for (let i = 0; i < imageFiles.length; i += concurrency) {
+      if (thumbnailGenRef.current[source] !== gen) return;
+      const batch = imageFiles.slice(i, i + concurrency);
+      const results = await Promise.all(batch.map(async (file) => {
+        const key = `${source}:${file.name}`;
+        try {
+          let fileData;
+          if (source === 'qa-forms') {
+            fileData = await api.getQaFormFileData(jobCard.id, file.name);
+          } else if (source === 'customer-property') {
+            fileData = await api.getCustomerPropertyFileData(jobCard.id, file.name);
+          } else {
+            fileData = await api.getJobFileData(jobCard.id, file.name);
+          }
+          if (fileData?.data) {
+            return [key, `data:${fileData.mimeType || 'image/jpeg'};base64,${fileData.data}`];
+          }
+        } catch {
+          return null;
+        }
+        return null;
+      }));
+
+      if (thumbnailGenRef.current[source] !== gen) return;
+      setThumbnails(prev => {
+        const next = new Map(prev);
+        for (const r of results) {
+          if (r) next.set(r[0], r[1]);
+        }
+        return next;
+      });
+    }
+  }, [jobCard]);
+
   const loadQaFormFiles = useCallback(async () => {
     if (!jobCard) return;
     setQaFormFilesLoading(true);
     try {
       const files = await api.getQaFormFiles(jobCard.id);
       setQaFormFiles(files || []);
+      loadThumbnails(files, 'qa-forms');
     } catch {
       toast.error('Failed to load QA forms');
       setQaFormFiles([]);
     } finally {
       setQaFormFilesLoading(false);
     }
-  }, [jobCard]);
+  }, [jobCard, loadThumbnails]);
 
   const loadJobFiles = useCallback(async () => {
     if (!jobCard) return;
@@ -120,13 +175,14 @@ export function useQuickActionFiles(jobCard) {
     try {
       const files = await api.getJobFiles(jobCard.id);
       setJobFiles(files || []);
+      loadThumbnails(files, 'job-files');
     } catch {
       toast.error('Failed to load job files');
       setJobFiles([]);
     } finally {
       setJobFilesLoading(false);
     }
-  }, [jobCard]);
+  }, [jobCard, loadThumbnails]);
 
   const loadCustomerPropertyFiles = useCallback(async () => {
     if (!jobCard) return;
@@ -134,18 +190,26 @@ export function useQuickActionFiles(jobCard) {
     try {
       const files = await api.getCustomerPropertyFiles(jobCard.id);
       setCustomerPropertyFiles(files || []);
+      loadThumbnails(files, 'customer-property');
     } catch {
       toast.error('Failed to load customer property files');
       setCustomerPropertyFiles([]);
     } finally {
       setCustomerPropertyLoading(false);
     }
-  }, [jobCard]);
+  }, [jobCard, loadThumbnails]);
 
   const fileKey = (file, source) => `${source}:${file.name}`;
 
   const handleViewFile = useCallback(async (file, source) => {
     const key = fileKey(file, source);
+
+    const cachedThumb = file.mimeType?.startsWith('image/') ? thumbnails.get(key) : null;
+    if (cachedThumb) {
+      setLightboxPhoto(cachedThumb);
+      return;
+    }
+
     setLoadingFiles(prev => new Set(prev).add(key));
     try {
       let fileData;
@@ -174,7 +238,7 @@ export function useQuickActionFiles(jobCard) {
     } finally {
       setLoadingFiles(prev => { const next = new Set(prev); next.delete(key); return next; });
     }
-  }, [jobCard]);
+  }, [jobCard, thumbnails]);
 
   const closeViewer = useCallback(() => {
     setViewerUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
@@ -185,9 +249,13 @@ export function useQuickActionFiles(jobCard) {
   }, []);
 
   const reset = useCallback(() => {
+    thumbnailGenRef.current['qa-forms']++;
+    thumbnailGenRef.current['job-files']++;
+    thumbnailGenRef.current['customer-property']++;
     setQaFormFiles([]);
     setJobFiles([]);
     setCustomerPropertyFiles([]);
+    setThumbnails(new Map());
     setLightboxPhoto(null);
     setViewerUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
   }, []);
@@ -203,6 +271,7 @@ export function useQuickActionFiles(jobCard) {
     qaFormFiles, qaFormFilesLoading, loadQaFormFiles,
     jobFiles, jobFilesLoading, loadJobFiles,
     customerPropertyFiles, customerPropertyLoading, loadCustomerPropertyFiles,
+    thumbnails,
     loadingFiles, handleViewFile,
     viewerUrl, closeViewer,
     lightboxPhoto, setLightboxPhoto, closeLightbox,

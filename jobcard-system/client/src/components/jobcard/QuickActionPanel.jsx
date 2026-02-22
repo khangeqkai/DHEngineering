@@ -96,7 +96,6 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
     setActiveView('menu');
   }, [activeView, camera]);
 
-  // Upload flow: Category first → Source → Auto-save
   const handleUploadView = useCallback(() => {
     setActiveView('upload-category');
   }, []);
@@ -112,7 +111,6 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
   }, [files.loadScannerFiles]);
 
   const handleAttachFile = useCallback(async (file) => {
-    // Auto-save directly to the pre-selected category
     await files.saveScannerFile(file, selectedCategory);
   }, [files.saveScannerFile, selectedCategory]);
 
@@ -123,7 +121,6 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
 
   const handleSavePhotos = useCallback(async () => {
     if (camera.photos.length === 0) return;
-    // Auto-save directly to the pre-selected category
     const returnView = await files.savePhotos(camera.photos, selectedCategory, () => camera.setPhotos([]));
     if (returnView) {
       setActiveView(returnView);
@@ -131,7 +128,6 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
     }
   }, [camera.photos, camera.setPhotos, camera.startCamera, files.savePhotos, selectedCategory]);
 
-  // Timer
   const handleStartTimer = useCallback(async () => {
     await timer.startTimerWithConflictCheck(showConfirm);
     if (onTimerChange) onTimerChange();
@@ -143,14 +139,12 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
     if (onTimerChange) onTimerChange();
   }, [timer, onTimerChange]);
 
-  // View Details
   const handleViewDetails = useCallback(() => {
     camera.stopCamera();
     onClose();
     if (onViewDetails) onViewDetails(jobCard.id);
   }, [jobCard, onClose, onViewDetails, camera]);
 
-  // View Documents (tabbed)
   const handleDocumentsView = useCallback(() => {
     setActiveView('view-documents');
     setDocTab('qa-forms');
@@ -391,26 +385,35 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
                 ) : tabData.files.length === 0 ? (
                   <p className="qap-empty">No files found</p>
                 ) : (
-                  <div className="qap-file-list">
-                    {tabData.files.map((file) => (
-                      <div key={file.name} className="qap-file-item">
-                        <div className="qap-file-info">
-                          <span className="qap-file-name">{file.name}</span>
-                          <span className="qap-file-meta">
-                            {(file.size / 1024).toFixed(0)} KB
-                            {' · '}
-                            {new Date(file.modified).toLocaleDateString()}
-                          </span>
-                        </div>
+                  <div className="qap-file-grid">
+                    {tabData.files.map((file) => {
+                      const key = `${tabData.source}:${file.name}`;
+                      const isImage = file.mimeType?.startsWith('image/');
+                      const thumb = files.thumbnails.get(key);
+                      const isLoading = files.loadingFiles.has(key);
+                      return (
                         <button
-                          className="btn btn-primary btn-sm"
+                          key={file.name}
+                          className="qap-file-card"
                           onClick={() => files.handleViewFile(file, tabData.source)}
-                          disabled={files.loadingFiles.has(`${tabData.source}:${file.name}`)}
+                          disabled={isLoading}
+                          title={file.name}
                         >
-                          <Eye size={14} /> View
+                          {isImage ? (
+                            thumb ? (
+                              <img src={thumb} alt={file.name} className="qap-file-card-thumb" />
+                            ) : (
+                              <div className="qap-file-card-loading" />
+                            )
+                          ) : (
+                            <div className="qap-file-card-icon">
+                              <FileText size={32} />
+                            </div>
+                          )}
+                          <span className="qap-file-card-name">{file.name}</span>
                         </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
