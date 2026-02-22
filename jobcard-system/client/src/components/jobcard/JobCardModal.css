@@ -809,11 +809,6 @@
   border: 1px solid var(--border-color);
 }
 
-.time-entry-card.has-error {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: var(--accent-caution);
-}
-
 .time-entry-card .entry-header {
   display: flex;
   justify-content: space-between;
@@ -874,51 +869,6 @@
   margin-left: 0.5rem;
   font-weight: 600;
   color: var(--primary-accent);
-}
-
-.entry-special-ops {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.entry-special-ops span {
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-md);
-}
-
-.status-ok {
-  background: rgba(34, 197, 94, 0.15);
-  color: var(--accent-ready);
-}
-
-.status-pending {
-  background: rgba(var(--warning-rgb), 0.15);
-  color: var(--badge-pending-text);
-}
-
-.status-error {
-  background: rgba(239, 68, 68, 0.15);
-  color: var(--accent-caution);
-  font-weight: 700;
-}
-
-.special-ops-section, .scrap-rate-section {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: var(--surface-inset);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-}
-
-.special-ops-section h4, .scrap-rate-section h4 {
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  margin: 0 0 0.75rem 0;
-  color: var(--text-primary);
 }
 
 /* Subcontract styles (Edit Mode) */
@@ -1133,24 +1083,6 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-}
-
-.qa-status {
-  font-family: var(--font-sans);
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-md);
-  font-size: var(--text-xs);
-  font-weight: 600;
-}
-
-.qa-status.status-pending {
-  background: var(--accent-safety);
-  color: var(--text-primary);
-}
-
-.qa-status.status-complete {
-  background: var(--accent-ready);
-  color: var(--text-inverse);
 }
 
 .qa-procedure-section {
@@ -1459,7 +1391,7 @@
   color: var(--text-tertiary);
 }
 
-.timer-qa-form {
+.timer-entry-form {
   border: 2px solid var(--primary-accent);
   border-radius: var(--radius-lg);
   padding: 1.25rem;

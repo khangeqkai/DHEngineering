@@ -6,22 +6,13 @@ export function useTimer(jobcardId) {
   const [activeTimer, setActiveTimer] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [showQaForm, setShowQaForm] = useState(false);
+  const [showEntryForm, setShowEntryForm] = useState(false);
   const [stoppedEntry, setStoppedEntry] = useState(null);
-  const [qaForm, setQaForm] = useState({
+  const [entryForm, setEntryForm] = useState({
     machineNumber: '',
     itemNumber: '',
     qty: '',
-    description: '',
-    equipmentChecksDone: false,
-    measuringVerificationDone: false,
-    firstOffInspection: 'NOT_APPLICABLE',
-    firstOffInspectionNotes: '',
-    inProcessValidation: 'NOT_APPLICABLE',
-    inProcessValidationNotes: '',
-    scrapAllGood: true,
-    scrapRecycleInhouseQty: 0,
-    scrapRecycleBinQty: 0
+    description: ''
   });
   const intervalRef = useRef(null);
 
@@ -138,7 +129,7 @@ export function useTimer(jobcardId) {
       const entry = await api.stopTimer(jobcardId, activeTimer.id);
       setStoppedEntry(entry);
       setActiveTimer(null);
-      setShowQaForm(true);
+      setShowEntryForm(true);
       toast.success('Timer stopped');
     } catch (err) {
       toast.error(err.message || 'Failed to stop timer');
@@ -147,38 +138,29 @@ export function useTimer(jobcardId) {
     }
   }, [jobcardId, activeTimer]);
 
-  const handleQaChange = useCallback((e) => {
+  const handleEntryFormChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
-    setQaForm(prev => ({
+    setEntryForm(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
   }, []);
 
-  const submitQaFields = useCallback(async (reloadEntries) => {
+  const submitEntryForm = useCallback(async (reloadEntries) => {
     if (!stoppedEntry) return;
     setLoading(true);
     try {
       await api.updateTimeEntry(jobcardId, stoppedEntry.id, {
         ...stoppedEntry,
-        ...qaForm
+        ...entryForm
       });
-      setShowQaForm(false);
+      setShowEntryForm(false);
       setStoppedEntry(null);
-      setQaForm({
+      setEntryForm({
         machineNumber: '',
         itemNumber: '',
         qty: '',
-        description: '',
-        equipmentChecksDone: false,
-        measuringVerificationDone: false,
-        firstOffInspection: 'NOT_APPLICABLE',
-        firstOffInspectionNotes: '',
-        inProcessValidation: 'NOT_APPLICABLE',
-        inProcessValidationNotes: '',
-        scrapAllGood: true,
-        scrapRecycleInhouseQty: 0,
-        scrapRecycleBinQty: 0
+        description: ''
       });
       if (reloadEntries) await reloadEntries();
       toast.success('Time entry updated');
@@ -187,10 +169,10 @@ export function useTimer(jobcardId) {
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, stoppedEntry, qaForm]);
+  }, [jobcardId, stoppedEntry, entryForm]);
 
-  const skipQaForm = useCallback(async (reloadEntries) => {
-    setShowQaForm(false);
+  const skipEntryForm = useCallback(async (reloadEntries) => {
+    setShowEntryForm(false);
     setStoppedEntry(null);
     if (reloadEntries) await reloadEntries();
   }, []);
@@ -198,7 +180,7 @@ export function useTimer(jobcardId) {
   const resetTimer = useCallback(() => {
     setActiveTimer(null);
     setElapsed(0);
-    setShowQaForm(false);
+    setShowEntryForm(false);
     setStoppedEntry(null);
   }, []);
 
@@ -206,15 +188,15 @@ export function useTimer(jobcardId) {
     activeTimer,
     elapsed,
     loading,
-    showQaForm,
+    showEntryForm,
     stoppedEntry,
-    qaForm,
+    entryForm,
     startTimer,
     startTimerWithConflictCheck,
     stopTimer,
-    handleQaChange,
-    submitQaFields,
-    skipQaForm,
+    handleEntryFormChange,
+    submitEntryForm,
+    skipEntryForm,
     loadActiveTimer,
     resetTimer
   };

@@ -41,43 +41,18 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       qty: entry.qty || '',
       description: entry.description || '',
       startTime: entry.startTime ? entry.startTime.slice(0, 16) : '',
-      endTime: entry.endTime ? entry.endTime.slice(0, 16) : '',
-      equipmentChecksDone: entry.equipmentChecksDone || false,
-      measuringVerificationDone: entry.measuringVerificationDone || false,
-      firstOffInspection: entry.firstOffInspection || 'NOT_APPLICABLE',
-      firstOffInspectionNotes: entry.firstOffInspectionNotes || '',
-      inProcessValidation: entry.inProcessValidation || 'NOT_APPLICABLE',
-      inProcessValidationNotes: entry.inProcessValidationNotes || '',
-      scrapAllGood: entry.scrapAllGood !== false,
-      scrapRecycleInhouseQty: entry.scrapRecycleInhouseQty || 0,
-      scrapRecycleBinQty: entry.scrapRecycleBinQty || 0
+      endTime: entry.endTime ? entry.endTime.slice(0, 16) : ''
     });
     setShowTimeEntryForm(true);
   }, []);
 
   const handleSaveTimeEntry = useCallback(async () => {
-    // Validation: Special Ops and Scrap Rate must be filled
-    if (!timeEntryForm.equipmentChecksDone || !timeEntryForm.measuringVerificationDone) {
-      toast.error('Equipment Checks and Measuring Equipment Verification must be completed');
-      return;
-    }
-    if (timeEntryForm.firstOffInspection === 'ERROR' && !timeEntryForm.firstOffInspectionNotes) {
-      toast.error('Please provide notes for First Off Inspection error');
-      return;
-    }
-    if (timeEntryForm.inProcessValidation === 'ERROR' && !timeEntryForm.inProcessValidationNotes) {
-      toast.error('Please provide notes for In-process Validation error');
-      return;
-    }
-
     if (!jobCardId) return;
 
     try {
       const entryData = {
         ...timeEntryForm,
-        itemNumber: timeEntryForm.itemNumber ? parseInt(timeEntryForm.itemNumber) : null,
-        scrapRecycleInhouseQty: parseInt(timeEntryForm.scrapRecycleInhouseQty) || 0,
-        scrapRecycleBinQty: parseInt(timeEntryForm.scrapRecycleBinQty) || 0
+        itemNumber: timeEntryForm.itemNumber ? parseInt(timeEntryForm.itemNumber) : null
       };
 
       if (editingTimeEntryId) {

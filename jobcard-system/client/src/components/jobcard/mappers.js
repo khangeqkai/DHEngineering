@@ -11,16 +11,7 @@ export function mapTimeEntryFromApi(e) {
     qty: e.qty,
     description: e.description,
     startTime: e.startTime,
-    endTime: e.endTime,
-    equipmentChecksDone: e.equipmentChecksDone,
-    measuringVerificationDone: e.measuringVerificationDone,
-    firstOffInspection: e.firstOffInspection,
-    firstOffInspectionNotes: e.firstOffInspectionNotes,
-    inProcessValidation: e.inProcessValidation,
-    inProcessValidationNotes: e.inProcessValidationNotes,
-    scrapAllGood: e.scrapAllGood,
-    scrapRecycleInhouseQty: e.scrapRecycleInhouseQty,
-    scrapRecycleBinQty: e.scrapRecycleBinQty
+    endTime: e.endTime
   };
 }
 
@@ -110,16 +101,7 @@ export function getDefaultTimeEntryForm() {
     qty: '',
     description: '',
     startTime: '',
-    endTime: '',
-    equipmentChecksDone: false,
-    measuringVerificationDone: false,
-    firstOffInspection: 'NOT_APPLICABLE',
-    firstOffInspectionNotes: '',
-    inProcessValidation: 'NOT_APPLICABLE',
-    inProcessValidationNotes: '',
-    scrapAllGood: true,
-    scrapRecycleInhouseQty: 0,
-    scrapRecycleBinQty: 0
+    endTime: ''
   };
 }
 

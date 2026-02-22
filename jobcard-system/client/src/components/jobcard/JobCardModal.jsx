@@ -33,12 +33,7 @@ const mapSubcontract = (s) => ({
 const mapTimeEntry = (t) => ({
   id: t.id, userId: t.userId, userName: t.userName,
   itemNumber: t.itemNumber, machineNumber: t.machineNumber, qty: t.qty,
-  description: t.description, startTime: t.startTime, endTime: t.endTime,
-  equipmentChecksDone: t.equipmentChecksDone, measuringVerificationDone: t.measuringVerificationDone,
-  firstOffInspection: t.firstOffInspection, firstOffInspectionNotes: t.firstOffInspectionNotes,
-  inProcessValidation: t.inProcessValidation, inProcessValidationNotes: t.inProcessValidationNotes,
-  scrapAllGood: t.scrapAllGood, scrapRecycleInhouseQty: t.scrapRecycleInhouseQty,
-  scrapRecycleBinQty: t.scrapRecycleBinQty
+  description: t.description, startTime: t.startTime, endTime: t.endTime
 });
 
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess }) {
@@ -516,11 +511,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   timerLoading={timer.loading}
                   onStartTimer={() => timer.startTimerWithConflictCheck(showConfirm)}
                   onStopTimer={timer.stopTimer}
-                  showQaForm={timer.showQaForm}
-                  qaForm={timer.qaForm}
-                  handleQaChange={timer.handleQaChange}
-                  onSubmitQa={() => timer.submitQaFields(reloadTimeEntries)}
-                  onSkipQa={() => timer.skipQaForm(reloadTimeEntries)}
+                  showEntryForm={timer.showEntryForm}
+                  entryForm={timer.entryForm}
+                  handleEntryFormChange={timer.handleEntryFormChange}
+                  onSubmitEntry={() => timer.submitEntryForm(reloadTimeEntries)}
+                  onSkipEntry={() => timer.skipEntryForm(reloadTimeEntries)}
                 />
               )}
 
