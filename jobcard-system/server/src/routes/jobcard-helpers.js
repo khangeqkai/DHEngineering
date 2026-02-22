@@ -162,7 +162,7 @@ function initQaForms(jobcardId) {
 
 /**
  * Initialize QA forms from a QA level's templates.
- * Creates qa_forms records and copies template PDFs to the job's QA Documents folder.
+ * Creates qa_forms records and copies template PDFs to the job's QA Forms folder.
  * @param {string} jobcardId
  * @param {string} qaLevelId
  * @param {Object} jobData - Full job data for PDF pre-fill
@@ -181,12 +181,12 @@ async function initQaFormsFromLevel(jobcardId, qaLevelId, jobData) {
     qaFormQueries.create.run(formId, jobcardId, formCode, tmpl.display_name, 'PENDING');
   }
 
-  // Copy template PDFs to the job's QA Documents folder
+  // Copy template PDFs to the job's QA Forms folder
   await copyTemplatesToJobFolder(level, templates, jobData);
 }
 
 /**
- * Copy template PDFs from QA Level folder to job's QA Documents folder.
+ * Copy template PDFs from QA Level folder to job's QA Forms folder.
  * Awaits PDF fill so files exist on disk before the API response is sent.
  */
 async function copyTemplatesToJobFolder(level, templates, jobData) {
@@ -199,8 +199,8 @@ async function copyTemplatesToJobFolder(level, templates, jobData) {
     const sanitizedJob = sanitizeFolderName(jobData.jobNumber);
     if (!sanitizedCompany || !sanitizedJob) return;
 
-    const qaDocsFolder = path.join(basePath.trim(), sanitizedCompany, sanitizedJob, 'QA Documents');
-    if (!isWithinBase(basePath.trim(), qaDocsFolder)) return;
+    const qaFormsFolder = path.join(basePath.trim(), sanitizedCompany, sanitizedJob, 'QA Forms');
+    if (!isWithinBase(basePath.trim(), qaFormsFolder)) return;
 
     const qaLevelsBase = path.join(basePath.trim(), 'QA Levels');
     const sanitizedLevelName = sanitizeFolderName(level.name);
@@ -208,7 +208,7 @@ async function copyTemplatesToJobFolder(level, templates, jobData) {
 
     if (!fs.existsSync(levelFolder)) return;
 
-    fs.mkdirSync(qaDocsFolder, { recursive: true });
+    fs.mkdirSync(qaFormsFolder, { recursive: true });
 
     const fillData = {
       ...jobData,
@@ -219,10 +219,10 @@ async function copyTemplatesToJobFolder(level, templates, jobData) {
     const copyPromises = [];
     for (const tmpl of templates) {
       const srcPath = path.join(levelFolder, tmpl.file_name);
-      const destPath = path.join(qaDocsFolder, tmpl.file_name);
+      const destPath = path.join(qaFormsFolder, tmpl.file_name);
 
       if (!fs.existsSync(srcPath)) continue;
-      if (!isWithinBase(levelFolder, srcPath) || !isWithinBase(qaDocsFolder, destPath)) continue;
+      if (!isWithinBase(levelFolder, srcPath) || !isWithinBase(qaFormsFolder, destPath)) continue;
 
       const sourceBuffer = fs.readFileSync(srcPath);
       copyPromises.push(

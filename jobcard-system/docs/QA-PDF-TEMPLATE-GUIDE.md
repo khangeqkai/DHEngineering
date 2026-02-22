@@ -5,7 +5,7 @@ When creating custom PDF templates for QA levels, you can include **fillable for
 ## How It Works
 
 1. Admin uploads a PDF template to a QA level
-2. When a job card is created/updated with that QA level, the system copies each template PDF into the job's `QA Documents/` folder
+2. When a job card is created/updated with that QA level, the system copies each template PDF into the job's `QA Forms/` folder
 3. During the copy, `pdf-lib` scans the PDF for fillable form fields and matches field names against the table below
 4. Matched fields are auto-filled with the job's data
 5. If a PDF has **no fillable fields** (e.g. a blank form for handwriting), it is copied as-is — no errors
@@ -78,8 +78,8 @@ If you just want a blank template that workers fill entirely by hand:
 
   ACME Corp/
     JC-001/
-      Drawings/
-      QA Documents/              ← Job-specific copies (auto-filled)
+      Job Files/
+      QA Forms/                  ← Job-specific copies (auto-filled)
         DHE-F39.pdf              ← filled with JC-001 data
         DHE-F15.pdf              ← filled with JC-001 data
 ```

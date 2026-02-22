@@ -126,7 +126,7 @@
   flex: 1;
 }
 
-/* Actions Grid */
+/* Actions Grid — 4 buttons: 2x2 layout */
 .qap-actions-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -161,12 +161,11 @@
   cursor: not-allowed;
 }
 
-.qap-action-scan { color: #7c3aed; }
-.qap-action-scan:hover:not(:disabled) { border-color: #7c3aed; background: rgba(124, 58, 237, 0.05); }
+/* Upload Document button */
+.qap-action-upload { color: #7c3aed; }
+.qap-action-upload:hover:not(:disabled) { border-color: #7c3aed; background: rgba(124, 58, 237, 0.05); }
 
-.qap-action-camera { color: #0891b2; }
-.qap-action-camera:hover:not(:disabled) { border-color: #0891b2; background: rgba(8, 145, 178, 0.05); }
-
+/* Timer buttons */
 .qap-action-start { color: var(--success-color, #16a34a); }
 .qap-action-start:hover:not(:disabled) { border-color: var(--success-color, #16a34a); background: rgba(22, 163, 74, 0.05); }
 
@@ -177,12 +176,73 @@
 }
 .qap-action-stop:hover:not(:disabled) { background: rgba(220, 38, 38, 0.08); }
 
+/* View Documents button */
+.qap-action-view-docs { color: #2563eb; }
+.qap-action-view-docs:hover:not(:disabled) { border-color: #2563eb; background: rgba(37, 99, 235, 0.05); }
+
+/* View Details button */
 .qap-action-details { color: var(--text-secondary, #6b7280); }
 .qap-action-details:hover:not(:disabled) { border-color: var(--text-secondary, #6b7280); background: var(--hover-bg, #f3f4f6); }
 
-/* View Details spans full width when in last row alone */
-.qap-actions-grid .qap-action-details:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
+/* Upload source picker (Scanner / Camera) */
+.qap-upload-source h3 {
+  margin: 0 0 16px;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.qap-source-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.qap-source-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  border: 2px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.qap-source-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.qap-source-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.qap-source-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #6b7280);
+  text-align: center;
+}
+
+.qap-source-scanner {
+  color: #7c3aed;
+  border-color: rgba(124, 58, 237, 0.3);
+}
+.qap-source-scanner:hover {
+  border-color: #7c3aed;
+  background: rgba(124, 58, 237, 0.05);
+}
+
+.qap-source-camera {
+  color: #0891b2;
+  border-color: rgba(8, 145, 178, 0.3);
+}
+.qap-source-camera:hover {
+  border-color: #0891b2;
+  background: rgba(8, 145, 178, 0.05);
 }
 
 /* Scanner sub-view */
@@ -316,50 +376,117 @@
   background: rgba(220, 38, 38, 0.8);
 }
 
-/* Documents button */
-.qap-action-documents { color: #ea580c; }
-.qap-action-documents:hover:not(:disabled) { border-color: #ea580c; background: rgba(234, 88, 12, 0.05); }
+/* Destination / Category picker — 3 columns */
+.qap-destination-picker h3 {
+  margin: 0 0 16px;
+  font-size: 0.95rem;
+  text-align: center;
+}
 
-/* Photos button */
-.qap-action-photos { color: #0d9488; }
-.qap-action-photos:hover:not(:disabled) { border-color: #0d9488; background: rgba(13, 148, 136, 0.05); }
+.qap-destination-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.qap-destination-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 12px;
+  border: 2px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.qap-destination-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.qap-destination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.qap-dest-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.qap-dest-desc {
+  font-size: 0.7rem;
+  color: var(--text-secondary, #6b7280);
+  text-align: center;
+}
+
+.qap-dest-qa-forms {
+  color: #ea580c;
+  border-color: rgba(234, 88, 12, 0.3);
+}
+.qap-dest-qa-forms:hover:not(:disabled) {
+  border-color: #ea580c;
+  background: rgba(234, 88, 12, 0.05);
+}
+
+.qap-dest-job-files {
+  color: #2563eb;
+  border-color: rgba(37, 99, 235, 0.3);
+}
+.qap-dest-job-files:hover:not(:disabled) {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.qap-dest-customer-property {
+  color: #16a34a;
+  border-color: rgba(22, 163, 74, 0.3);
+}
+.qap-dest-customer-property:hover:not(:disabled) {
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, 0.05);
+}
+
+/* Document tabs */
+.qap-doc-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border-color, #e5e7eb);
+  margin-bottom: 12px;
+  gap: 0;
+}
+
+.qap-doc-tab {
+  flex: 1;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  transition: color 0.15s ease, border-color 0.15s ease;
+  text-align: center;
+}
+
+.qap-doc-tab:hover {
+  color: var(--text-primary, #111827);
+}
+
+.qap-doc-tab.active {
+  color: var(--primary-color, #2563eb);
+  border-bottom-color: var(--primary-color, #2563eb);
+}
 
 /* Documents sub-view */
 .qap-documents-view h3 {
   margin: 0 0 12px;
   font-size: 0.95rem;
-}
-
-/* Photos sub-view */
-.qap-photos-view h3 {
-  margin: 0 0 12px;
-  font-size: 0.95rem;
-}
-
-.qap-photos-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.qap-photos-grid-item {
-  aspect-ratio: 1;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--border-color, #e5e7eb);
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.qap-photos-grid-item:hover {
-  transform: scale(1.03);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-}
-
-.qap-photos-grid-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 /* Lightbox */

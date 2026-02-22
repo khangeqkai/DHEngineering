@@ -135,11 +135,6 @@ router.get('/files', authenticate, (req, res) => {
           const stats = fs.statSync(filePath);
           if (!stats.isFile()) return null;
 
-          // Filter for common image/document types
-          const ext = path.extname(filename).toLowerCase();
-          const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp', '.gif'];
-          if (!validExtensions.includes(ext)) return null;
-
           return {
             name: filename,
             path: filePath,

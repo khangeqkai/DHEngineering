@@ -72,7 +72,7 @@ function createCompanyFolder(companyName) {
 }
 
 /**
- * Create job card subfolders (Drawings/ and QA Documents/) under the company folder.
+ * Create job card subfolders (Job Files/, QA Forms/, Customer Property/) under the company folder.
  * Fire-and-forget: logs errors but never throws.
  */
 function createJobCardFolders(companyName, jobNumber) {
@@ -92,8 +92,9 @@ function createJobCardFolders(companyName, jobNumber) {
       return;
     }
 
-    fs.mkdirSync(path.join(jobPath, 'Drawings'), { recursive: true });
-    fs.mkdirSync(path.join(jobPath, 'QA Documents'), { recursive: true });
+    fs.mkdirSync(path.join(jobPath, 'Job Files'), { recursive: true });
+    fs.mkdirSync(path.join(jobPath, 'QA Forms'), { recursive: true });
+    fs.mkdirSync(path.join(jobPath, 'Customer Property'), { recursive: true });
     logger.info({ jobPath }, 'Created job card folders');
   } catch (err) {
     logger.error({ err, companyName, jobNumber }, 'Failed to create job card folders');

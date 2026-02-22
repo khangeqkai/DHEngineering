@@ -30,18 +30,18 @@ export default function QAFormsTab({ formData, qaForms, jobCardId }) {
     if (!jobCardId) return;
     setLoadingFormId(form.id);
     try {
-      const files = await api.getQaDocumentFiles(jobCardId);
+      const files = await api.getQaFormFiles(jobCardId);
       const matchingFile = (files || []).find(f => {
         const nameWithoutExt = f.name.replace(/\.[^.]+$/, '');
         return nameWithoutExt.toLowerCase() === form.formCode.toLowerCase();
       });
       if (!matchingFile) {
-        toast.error('Document not found in QA Documents folder');
+        toast.error('Document not found in QA Forms folder');
         return;
       }
-      const fileData = await api.getQaDocumentFileData(jobCardId, matchingFile.name);
+      const fileData = await api.getQaFormFileData(jobCardId, matchingFile.name);
       if (!fileData?.data) {
-        toast.error('Document not found in QA Documents folder');
+        toast.error('Document not found in QA Forms folder');
         return;
       }
       const blob = base64ToBlob(fileData.data, fileData.mimeType || 'application/pdf');

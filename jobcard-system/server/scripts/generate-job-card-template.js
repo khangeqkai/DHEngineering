@@ -4,7 +4,7 @@
  * This creates a PDF with form fields matching the data visible to
  * non-admin users. When a job card is created with a QA level that
  * includes this template, the fields get auto-filled with job data
- * and copied to the job's QA Documents folder.
+ * and copied to the job's QA Forms folder.
  *
  * Usage: node scripts/generate-job-card-template.js [output-path]
  * Default output: ./Job-Card-Info.pdf

@@ -51,12 +51,24 @@ class ApiService {
     return response.json();
   }
 
+  _post(endpoint, data) {
+    const opts = { method: 'POST' };
+    if (data !== undefined) opts.body = JSON.stringify(data);
+    return this.request(endpoint, opts);
+  }
+  _put(endpoint, data) {
+    return this.request(endpoint, { method: 'PUT', body: JSON.stringify(data) });
+  }
+  _patch(endpoint, data) {
+    return this.request(endpoint, { method: 'PATCH', body: JSON.stringify(data) });
+  }
+  _del(endpoint) {
+    return this.request(endpoint, { method: 'DELETE' });
+  }
+
   // Auth endpoints
   login(username, password) {
-    return this.request('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password })
-    });
+    return this._post('/auth/login', { username, password });
   }
 
   getMe() {
@@ -77,43 +89,14 @@ class ApiService {
     return this.request(`/auth/users/${id}`);
   }
 
-  createUser(userData) {
-    return this.request('/auth/users', {
-      method: 'POST',
-      body: JSON.stringify(userData)
-    });
-  }
-
-  updateUser(id, userData) {
-    return this.request(`/auth/users/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(userData)
-    });
-  }
-
-  deactivateUser(id) {
-    return this.request(`/auth/users/${id}/deactivate`, {
-      method: 'POST'
-    });
-  }
-
-  activateUser(id) {
-    return this.request(`/auth/users/${id}/activate`, {
-      method: 'POST'
-    });
-  }
-
-  deleteUser(id) {
-    return this.request(`/auth/users/${id}`, {
-      method: 'DELETE'
-    });
-  }
+  createUser(userData) { return this._post('/auth/users', userData); }
+  updateUser(id, userData) { return this._put(`/auth/users/${id}`, userData); }
+  deactivateUser(id) { return this._post(`/auth/users/${id}/deactivate`); }
+  activateUser(id) { return this._post(`/auth/users/${id}/activate`); }
+  deleteUser(id) { return this._del(`/auth/users/${id}`); }
 
   changePassword(currentPassword, newPassword) {
-    return this.request('/auth/change-password', {
-      method: 'PUT',
-      body: JSON.stringify({ currentPassword, newPassword })
-    });
+    return this._put('/auth/change-password', { currentPassword, newPassword });
   }
 
   // Jobcard endpoints
@@ -134,43 +117,12 @@ class ApiService {
     return this.request(`/jobcards/${id}/history`);
   }
 
-  createJobcard(jobcardData) {
-    return this.request('/jobcards', {
-      method: 'POST',
-      body: JSON.stringify(jobcardData)
-    });
-  }
-
-  updateJobcard(id, jobcardData) {
-    return this.request(`/jobcards/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(jobcardData)
-    });
-  }
-
-  updateJobcardStatus(id, status) {
-    return this.request(`/jobcards/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status })
-    });
-  }
-
-  archiveJobcard(id, invoicedDate) {
-    return this.request(`/jobcards/${id}/archive`, {
-      method: 'POST',
-      body: JSON.stringify({ invoicedDate })
-    });
-  }
-
-  unarchiveJobcard(id) {
-    return this.request(`/jobcards/${id}/unarchive`, { method: 'POST' });
-  }
-
-  deleteJobcard(id) {
-    return this.request(`/jobcards/${id}`, {
-      method: 'DELETE'
-    });
-  }
+  createJobcard(jobcardData) { return this._post('/jobcards', jobcardData); }
+  updateJobcard(id, jobcardData) { return this._put(`/jobcards/${id}`, jobcardData); }
+  updateJobcardStatus(id, status) { return this._patch(`/jobcards/${id}/status`, { status }); }
+  archiveJobcard(id, invoicedDate) { return this._post(`/jobcards/${id}/archive`, { invoicedDate }); }
+  unarchiveJobcard(id) { return this._post(`/jobcards/${id}/unarchive`); }
+  deleteJobcard(id) { return this._del(`/jobcards/${id}`); }
 
   getOverdueJobcards() {
     return this.request('/jobcards/overdue');
@@ -181,404 +133,136 @@ class ApiService {
   }
 
   // Job Items
-  addJobItem(jobcardId, itemData) {
-    return this.request(`/jobcards/${jobcardId}/items`, {
-      method: 'POST',
-      body: JSON.stringify(itemData)
-    });
-  }
-
-  updateJobItem(jobcardId, itemId, itemData) {
-    return this.request(`/jobcards/${jobcardId}/items/${itemId}`, {
-      method: 'PUT',
-      body: JSON.stringify(itemData)
-    });
-  }
-
-  deleteJobItem(jobcardId, itemId) {
-    return this.request(`/jobcards/${jobcardId}/items/${itemId}`, {
-      method: 'DELETE'
-    });
-  }
+  addJobItem(jobcardId, itemData) { return this._post(`/jobcards/${jobcardId}/items`, itemData); }
+  updateJobItem(jobcardId, itemId, itemData) { return this._put(`/jobcards/${jobcardId}/items/${itemId}`, itemData); }
+  deleteJobItem(jobcardId, itemId) { return this._del(`/jobcards/${jobcardId}/items/${itemId}`); }
 
   // Job Assignees
-  addAssignee(jobcardId, userId) {
-    return this.request(`/jobcards/${jobcardId}/assignees`, {
-      method: 'POST',
-      body: JSON.stringify({ user_id: userId })
-    });
-  }
-
-  removeAssignee(jobcardId, userId) {
-    return this.request(`/jobcards/${jobcardId}/assignees/${userId}`, {
-      method: 'DELETE'
-    });
-  }
+  addAssignee(jobcardId, userId) { return this._post(`/jobcards/${jobcardId}/assignees`, { userId }); }
+  removeAssignee(jobcardId, userId) { return this._del(`/jobcards/${jobcardId}/assignees/${userId}`); }
 
   // Subcontracts
-  getSubcontracts(jobcardId) {
-    return this.request(`/jobcards/${jobcardId}/subcontracts`);
-  }
-
-  addSubcontract(jobcardId, subcontractData) {
-    return this.request(`/jobcards/${jobcardId}/subcontracts`, {
-      method: 'POST',
-      body: JSON.stringify(subcontractData)
-    });
-  }
-
-  updateSubcontract(jobcardId, subcontractId, subcontractData) {
-    return this.request(`/jobcards/${jobcardId}/subcontracts/${subcontractId}`, {
-      method: 'PUT',
-      body: JSON.stringify(subcontractData)
-    });
-  }
-
-  deleteSubcontract(jobcardId, subcontractId) {
-    return this.request(`/jobcards/${jobcardId}/subcontracts/${subcontractId}`, {
-      method: 'DELETE'
-    });
-  }
+  getSubcontracts(jobcardId) { return this.request(`/jobcards/${jobcardId}/subcontracts`); }
+  addSubcontract(jobcardId, data) { return this._post(`/jobcards/${jobcardId}/subcontracts`, data); }
+  updateSubcontract(jobcardId, id, data) { return this._put(`/jobcards/${jobcardId}/subcontracts/${id}`, data); }
+  deleteSubcontract(jobcardId, id) { return this._del(`/jobcards/${jobcardId}/subcontracts/${id}`); }
 
   // Time Entries
-  getTimeEntries(jobcardId) {
-    return this.request(`/jobcards/${jobcardId}/time-entries`);
-  }
-
-  addTimeEntry(jobcardId, entryData) {
-    return this.request(`/jobcards/${jobcardId}/time-entries`, {
-      method: 'POST',
-      body: JSON.stringify(entryData)
-    });
-  }
-
-  updateTimeEntry(jobcardId, entryId, entryData) {
-    return this.request(`/jobcards/${jobcardId}/time-entries/${entryId}`, {
-      method: 'PUT',
-      body: JSON.stringify(entryData)
-    });
-  }
-
-  deleteTimeEntry(jobcardId, entryId) {
-    return this.request(`/jobcards/${jobcardId}/time-entries/${entryId}`, {
-      method: 'DELETE'
-    });
-  }
+  getTimeEntries(jobcardId) { return this.request(`/jobcards/${jobcardId}/time-entries`); }
+  addTimeEntry(jobcardId, data) { return this._post(`/jobcards/${jobcardId}/time-entries`, data); }
+  updateTimeEntry(jobcardId, entryId, data) { return this._put(`/jobcards/${jobcardId}/time-entries/${entryId}`, data); }
+  deleteTimeEntry(jobcardId, entryId) { return this._del(`/jobcards/${jobcardId}/time-entries/${entryId}`); }
 
   // Timer endpoints
-  getActiveTimer() {
-    return this.request('/jobcards/active-timer');
-  }
-
-  startTimer(jobcardId) {
-    return this.request(`/jobcards/${jobcardId}/time-entries/start`, {
-      method: 'POST'
-    });
-  }
-
-  stopTimer(jobcardId, entryId) {
-    return this.request(`/jobcards/${jobcardId}/time-entries/${entryId}/stop`, {
-      method: 'POST'
-    });
-  }
+  getActiveTimer() { return this.request('/jobcards/active-timer'); }
+  startTimer(jobcardId) { return this._post(`/jobcards/${jobcardId}/time-entries/start`); }
+  stopTimer(jobcardId, entryId) { return this._post(`/jobcards/${jobcardId}/time-entries/${entryId}/stop`); }
 
   // Job Notes
-  getJobNotes(jobcardId) {
-    return this.request(`/jobcards/${jobcardId}/notes`);
-  }
-
-  addJobNote(jobcardId, text) {
-    return this.request(`/jobcards/${jobcardId}/notes`, {
-      method: 'POST',
-      body: JSON.stringify({ text })
-    });
-  }
-
-  deleteJobNote(jobcardId, noteId) {
-    return this.request(`/jobcards/${jobcardId}/notes/${noteId}`, {
-      method: 'DELETE'
-    });
-  }
+  getJobNotes(jobcardId) { return this.request(`/jobcards/${jobcardId}/notes`); }
+  addJobNote(jobcardId, text) { return this._post(`/jobcards/${jobcardId}/notes`, { text }); }
+  deleteJobNote(jobcardId, noteId) { return this._del(`/jobcards/${jobcardId}/notes/${noteId}`); }
 
   // Costing (admin only)
-  getCosting(jobcardId) {
-    return this.request(`/jobcards/${jobcardId}/costing`);
-  }
-
-  updateCosting(jobcardId, costingData) {
-    return this.request(`/jobcards/${jobcardId}/costing`, {
-      method: 'PUT',
-      body: JSON.stringify(costingData)
-    });
-  }
+  getCosting(jobcardId) { return this.request(`/jobcards/${jobcardId}/costing`); }
+  updateCosting(jobcardId, data) { return this._put(`/jobcards/${jobcardId}/costing`, data); }
 
   // Documents
-  getDocuments(jobcardId) {
-    return this.request(`/jobcards/${jobcardId}/documents`);
-  }
-
-  uploadDocument(jobcardId, documentData) {
-    return this.request(`/jobcards/${jobcardId}/documents`, {
-      method: 'POST',
-      body: JSON.stringify(documentData)
-    });
-  }
-
-  getDocument(jobcardId, documentId) {
-    return this.request(`/jobcards/${jobcardId}/documents/${documentId}`);
-  }
-
-  deleteDocument(jobcardId, documentId) {
-    return this.request(`/jobcards/${jobcardId}/documents/${documentId}`, {
-      method: 'DELETE'
-    });
-  }
+  getDocuments(jobcardId) { return this.request(`/jobcards/${jobcardId}/documents`); }
+  uploadDocument(jobcardId, data) { return this._post(`/jobcards/${jobcardId}/documents`, data); }
+  getDocument(jobcardId, documentId) { return this.request(`/jobcards/${jobcardId}/documents/${documentId}`); }
+  deleteDocument(jobcardId, documentId) { return this._del(`/jobcards/${jobcardId}/documents/${documentId}`); }
 
   // QA Forms
-  getQAForms(jobcardId) {
-    return this.request(`/jobcards/${jobcardId}/qa-forms`);
+  getQAForms(jobcardId) { return this.request(`/jobcards/${jobcardId}/qa-forms`); }
+  addQAForm(jobcardId, data) { return this._post(`/jobcards/${jobcardId}/qa-forms`, data); }
+  updateQAForm(jobcardId, formId, data) { return this._patch(`/jobcards/${jobcardId}/qa-forms/${formId}`, data); }
+  deleteQAForm(jobcardId, formId) { return this._del(`/jobcards/${jobcardId}/qa-forms/${formId}`); }
+
+  // Job files (from job folder on disk)
+  getJobFiles(jobcardId) {
+    return this.request(`/jobcards/${jobcardId}/job-files`);
   }
 
-  addQAForm(jobcardId, formData) {
-    return this.request(`/jobcards/${jobcardId}/qa-forms`, {
-      method: 'POST',
-      body: JSON.stringify(formData)
-    });
+  getJobFileData(jobcardId, filename) {
+    return this.request(`/jobcards/${jobcardId}/job-files/${encodeURIComponent(filename)}`);
   }
 
-  updateQAForm(jobcardId, formId, formData) {
-    return this.request(`/jobcards/${jobcardId}/qa-forms/${formId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(formData)
-    });
+  // QA Form files (from job folder on disk)
+  getQaFormFiles(jobcardId) {
+    return this.request(`/jobcards/${jobcardId}/qa-form-files`);
   }
 
-  deleteQAForm(jobcardId, formId) {
-    return this.request(`/jobcards/${jobcardId}/qa-forms/${formId}`, {
-      method: 'DELETE'
-    });
+  getQaFormFileData(jobcardId, filename) {
+    return this.request(`/jobcards/${jobcardId}/qa-form-files/${encodeURIComponent(filename)}`);
   }
 
-  // Drawings files (from job folder on disk)
-  getDrawingsFiles(jobcardId) {
-    return this.request(`/jobcards/${jobcardId}/drawings-files`);
-  }
+  // Scanner file → folder
+  scannerToJobFiles(jobcardId, filePath) { return this._post(`/jobcards/${jobcardId}/job-files/from-scanner`, { filePath }); }
+  scannerToQaFormFiles(jobcardId, filePath) { return this._post(`/jobcards/${jobcardId}/qa-form-files/from-scanner`, { filePath }); }
+  scannerToCustomerPropertyFiles(jobcardId, filePath) { return this._post(`/jobcards/${jobcardId}/customer-property-files/from-scanner`, { filePath }); }
 
-  getDrawingsFileData(jobcardId, filename) {
-    return this.request(`/jobcards/${jobcardId}/drawings-files/${encodeURIComponent(filename)}`);
-  }
+  // Upload base64 → folder
+  uploadToJobFiles(jobcardId, filename, fileData) { return this._post(`/jobcards/${jobcardId}/job-files/upload`, { filename, fileData }); }
+  uploadToQaFormFiles(jobcardId, filename, fileData) { return this._post(`/jobcards/${jobcardId}/qa-form-files/upload`, { filename, fileData }); }
+  uploadToCustomerPropertyFiles(jobcardId, filename, fileData) { return this._post(`/jobcards/${jobcardId}/customer-property-files/upload`, { filename, fileData }); }
 
-  // QA Documents files (from job folder on disk)
-  getQaDocumentFiles(jobcardId) {
-    return this.request(`/jobcards/${jobcardId}/qa-documents-files`);
-  }
-
-  getQaDocumentFileData(jobcardId, filename) {
-    return this.request(`/jobcards/${jobcardId}/qa-documents-files/${encodeURIComponent(filename)}`);
-  }
-
-  // Attach scanner file as document
-  attachScannerFile(jobcardId, filePath) {
-    return this.request(`/jobcards/${jobcardId}/documents/from-scanner`, {
-      method: 'POST',
-      body: JSON.stringify({ filePath })
-    });
+  // Customer Property files (from job folder on disk)
+  getCustomerPropertyFiles(jobcardId) { return this.request(`/jobcards/${jobcardId}/customer-property-files`); }
+  getCustomerPropertyFileData(jobcardId, filename) {
+    return this.request(`/jobcards/${jobcardId}/customer-property-files/${encodeURIComponent(filename)}`);
   }
 
   // Contact endpoints (phone contacts style)
-  getContacts() {
-    return this.request('/contacts');
-  }
-
-  searchContacts(query) {
-    return this.request(`/contacts/search?q=${encodeURIComponent(query)}`);
-  }
-
-  getContact(id) {
-    return this.request(`/contacts/${id}`);
-  }
-
-  createContact(contactData) {
-    return this.request('/contacts', {
-      method: 'POST',
-      body: JSON.stringify(contactData)
-    });
-  }
-
-  updateContact(id, contactData) {
-    return this.request(`/contacts/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(contactData)
-    });
-  }
-
-  deleteContact(id) {
-    return this.request(`/contacts/${id}`, {
-      method: 'DELETE'
-    });
-  }
+  getContacts() { return this.request('/contacts'); }
+  searchContacts(query) { return this.request(`/contacts/search?q=${encodeURIComponent(query)}`); }
+  getContact(id) { return this.request(`/contacts/${id}`); }
+  createContact(data) { return this._post('/contacts', data); }
+  updateContact(id, data) { return this._put(`/contacts/${id}`, data); }
+  deleteContact(id) { return this._del(`/contacts/${id}`); }
 
   // Supplier endpoints
-  getSuppliers() {
-    return this.request('/suppliers');
-  }
-
-  getSupplier(id) {
-    return this.request(`/suppliers/${id}`);
-  }
-
-  createSupplier(supplierData) {
-    return this.request('/suppliers', {
-      method: 'POST',
-      body: JSON.stringify(supplierData)
-    });
-  }
-
-  updateSupplier(id, supplierData) {
-    return this.request(`/suppliers/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(supplierData)
-    });
-  }
-
-  deleteSupplier(id) {
-    return this.request(`/suppliers/${id}`, {
-      method: 'DELETE'
-    });
-  }
+  getSuppliers() { return this.request('/suppliers'); }
+  getSupplier(id) { return this.request(`/suppliers/${id}`); }
+  createSupplier(data) { return this._post('/suppliers', data); }
+  updateSupplier(id, data) { return this._put(`/suppliers/${id}`, data); }
+  deleteSupplier(id) { return this._del(`/suppliers/${id}`); }
 
   // Service tag endpoints
-  getServiceTags() {
-    return this.request('/service-tags');
-  }
-
-  createServiceTag(name) {
-    return this.request('/service-tags', {
-      method: 'POST',
-      body: JSON.stringify({ name })
-    });
-  }
-
-  deleteServiceTag(id) {
-    return this.request(`/service-tags/${id}`, {
-      method: 'DELETE'
-    });
-  }
+  getServiceTags() { return this.request('/service-tags'); }
+  createServiceTag(name) { return this._post('/service-tags', { name }); }
+  deleteServiceTag(id) { return this._del(`/service-tags/${id}`); }
 
   // Activity history (admin only)
-  getActivityHistory(limit = 50) {
-    return this.request(`/history?limit=${limit}`);
-  }
-
-  getUserActivity(userId, limit = 50) {
-    return this.request(`/history/user/${userId}?limit=${limit}`);
-  }
-
-  getEntityHistory(entityType, page = 1) {
-    return this.request(`/history/entity/${entityType}?page=${page}`);
-  }
+  getActivityHistory(limit = 50) { return this.request(`/history?limit=${limit}`); }
+  getUserActivity(userId, limit = 50) { return this.request(`/history/user/${userId}?limit=${limit}`); }
+  getEntityHistory(entityType, page = 1) { return this.request(`/history/entity/${entityType}?page=${page}`); }
 
   // Machines
-  getMachines() {
-    return this.request('/machines');
-  }
-
-  createMachine(machineData) {
-    return this.request('/machines', {
-      method: 'POST',
-      body: JSON.stringify(machineData)
-    });
-  }
-
-  updateMachine(id, machineData) {
-    return this.request(`/machines/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(machineData)
-    });
-  }
-
-  deleteMachine(id) {
-    return this.request(`/machines/${id}`, {
-      method: 'DELETE'
-    });
-  }
+  getMachines() { return this.request('/machines'); }
+  createMachine(data) { return this._post('/machines', data); }
+  updateMachine(id, data) { return this._put(`/machines/${id}`, data); }
+  deleteMachine(id) { return this._del(`/machines/${id}`); }
 
   // Hardware endpoints
-  getPrinters() {
-    return this.request('/hardware/printers');
-  }
-
-  getScanners() {
-    return this.request('/hardware/scanners');
-  }
-
-  getHardwareStatus() {
-    return this.request('/hardware/status');
-  }
+  getPrinters() { return this.request('/hardware/printers'); }
+  getScanners() { return this.request('/hardware/scanners'); }
+  getHardwareStatus() { return this.request('/hardware/status'); }
 
   // Settings (admin only)
-  getSettings() {
-    return this.request('/settings');
-  }
-
-  updateSettings(settingsData) {
-    return this.request('/settings', {
-      method: 'PUT',
-      body: JSON.stringify(settingsData)
-    });
-  }
-
-  // Get inactivity timeout (all authenticated users)
-  getInactivityTimeout() {
-    return this.request('/settings/inactivity-timeout');
-  }
-
-  // Scanner files (part of settings)
-  getScannerFiles(limit = 10) {
-    return this.request(`/settings/files?limit=${limit}`);
-  }
+  getSettings() { return this.request('/settings'); }
+  updateSettings(data) { return this._put('/settings', data); }
+  getInactivityTimeout() { return this.request('/settings/inactivity-timeout'); }
+  getScannerFiles(limit = 10) { return this.request(`/settings/files?limit=${limit}`); }
 
   // QA Levels
-  getQaLevels() {
-    return this.request('/qa-levels');
-  }
-
-  getQaLevel(id) {
-    return this.request(`/qa-levels/${id}`);
-  }
-
-  createQaLevel(data) {
-    return this.request('/qa-levels', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-
-  updateQaLevel(id, data) {
-    return this.request(`/qa-levels/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
-  }
-
-  deleteQaLevel(id) {
-    return this.request(`/qa-levels/${id}`, {
-      method: 'DELETE'
-    });
-  }
-
-  uploadQaTemplate(levelId, data) {
-    return this.request(`/qa-levels/${levelId}/templates`, {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-
-  deleteQaTemplate(levelId, templateId) {
-    return this.request(`/qa-levels/${levelId}/templates/${templateId}`, {
-      method: 'DELETE'
-    });
-  }
+  getQaLevels() { return this.request('/qa-levels'); }
+  getQaLevel(id) { return this.request(`/qa-levels/${id}`); }
+  createQaLevel(data) { return this._post('/qa-levels', data); }
+  updateQaLevel(id, data) { return this._put(`/qa-levels/${id}`, data); }
+  deleteQaLevel(id) { return this._del(`/qa-levels/${id}`); }
+  uploadQaTemplate(levelId, data) { return this._post(`/qa-levels/${levelId}/templates`, data); }
+  deleteQaTemplate(levelId, templateId) { return this._del(`/qa-levels/${levelId}/templates/${templateId}`); }
 }
 
 export const api = new ApiService();

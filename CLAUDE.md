@@ -48,12 +48,13 @@ jobcard-system/
 │   │   ├── components/           # React components
 │   │   │   ├── jobcard/          # JobCardModal + tabs (modular)
 │   │   │   │   ├── tabs/         # Tab components + DetailsReadOnlyView, NotesSection
-│   │   │   │   └── use*.js       # Custom hooks (useCosting, useTimeEntries, useTimer, useJobNotes, useJobCardForm, useContactSearch, useCamera, etc.)
+│   │   │   │   └── use*.js       # Custom hooks (useCosting, useTimeEntries, useTimer, useJobNotes, useJobCardForm, useContactSearch, useCamera, useQuickActionFiles, etc.)
 │   │   │   └── common/           # Reusable components
 │   │   ├── context/AuthContext.jsx  # JWT + user state + inactivity timer
 │   │   ├── hooks/                   # Shared custom hooks
 │   │   │   ├── useInactivityTimer.js  # Auto-logout timer logic
-│   │   │   └── useActiveTimerIndicator.js  # Live timer indicator for job card rows
+│   │   │   ├── useActiveTimerIndicator.js  # Live timer indicator for job card rows
+│   │   │   └── useSettings.js     # Settings page state and handlers
 │   │   └── services/
 │   │       └── api.js            # Direct API client to Express server
 │   └── electron/                 # Electron main/preload
@@ -86,17 +87,17 @@ History sub-routes: `GET /history` (recent, admin), `GET /history/user/:userId` 
 
 Auth sub-routes: `PUT /auth/change-password` (all authenticated users, verifies current password)
 
-Job card sub-routes: `/jobcards/:id/items`, `/assignees`, `/subcontracts`, `/time-entries`, `/costing`, `/documents`, `/drawings-files`, `/qa-documents-files`, `/qa-forms`, `/history`, `/notes`
+Job card sub-routes: `/jobcards/:id/items`, `/assignees`, `/subcontracts`, `/time-entries`, `/costing`, `/documents`, `/job-files`, `/qa-form-files`, `/customer-property-files`, `/qa-forms`, `/history`, `/notes`
 
-Drawings file endpoints: `GET /jobcards/:id/drawings-files` (assignee/admin, lists files from job's Drawings folder on disk), `GET /jobcards/:id/drawings-files/:filename` (assignee/admin, returns file as base64)
+Job file endpoints: `GET /jobcards/:id/job-files` (assignee/admin, lists files from job's Job Files folder on disk), `GET /jobcards/:id/job-files/:filename` (assignee/admin, returns file as base64), `POST /jobcards/:id/job-files/from-scanner` (assignee/admin, copy scanner file to Job Files), `POST /jobcards/:id/job-files/upload` (assignee/admin, save base64 data to Job Files)
 
-QA document file endpoints: `GET /jobcards/:id/qa-documents-files` (assignee/admin, lists files from job's QA Documents folder on disk), `GET /jobcards/:id/qa-documents-files/:filename` (assignee/admin, returns file as base64)
+QA form file endpoints: `GET /jobcards/:id/qa-form-files` (assignee/admin, lists files from job's QA Forms folder on disk), `GET /jobcards/:id/qa-form-files/:filename` (assignee/admin, returns file as base64), `POST /jobcards/:id/qa-form-files/from-scanner` (assignee/admin, copy scanner file to QA Forms), `POST /jobcards/:id/qa-form-files/upload` (assignee/admin, save base64 data to QA Forms)
+
+Customer property file endpoints: `GET /jobcards/:id/customer-property-files` (assignee/admin, lists files from job's Customer Property folder on disk), `GET /jobcards/:id/customer-property-files/:filename` (assignee/admin, returns file as base64), `POST /jobcards/:id/customer-property-files/from-scanner` (assignee/admin, copy scanner file to Customer Property), `POST /jobcards/:id/customer-property-files/upload` (assignee/admin, save base64 data to Customer Property)
 
 QA level endpoints: `GET /qa-levels` (authenticated, non-admin sees active only), `GET /qa-levels/:id` (admin), `POST /qa-levels` (admin), `PUT /qa-levels/:id` (admin), `DELETE /qa-levels/:id` (admin, blocked if used by jobs), `POST /qa-levels/:id/templates` (admin, upload PDF), `GET /qa-levels/:id/templates` (admin), `DELETE /qa-levels/:id/templates/:tid` (admin)
 
 Document endpoints: `GET /jobcards/:id/documents/:documentId` (assignee/admin, returns document with file data as base64)
-
-Scanner attach endpoint: `POST /jobcards/:id/documents/from-scanner` (assignee/admin, attaches a file from configured scanner folder as a document)
 
 Timer endpoints: `GET /jobcards/active-timer` (authenticated), `POST /jobcards/:id/time-entries/start` (assignee/admin), `POST /jobcards/:id/time-entries/:entryId/stop` (assignee/admin)
 
@@ -109,14 +110,14 @@ Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_ass
 
 All changes logged to `history` table for audit trail.
 
-**Automatic folder management**: When `job_folders_base` setting is configured, the system auto-creates `[base]/[Company]/` on contact create/update and `[base]/[Company]/[JobNumber]/Drawings/` + `QA Documents/` on job card create. On job card deletion, the job card folder (`[base]/[Company]/[JobNumber]/`) is recursively deleted but the parent company folder is preserved. Folder operations are fire-and-forget (errors logged, never block DB operations). Names are sanitized for cross-platform filesystem safety with path traversal protection.
+**Automatic folder management**: When `job_folders_base` setting is configured, the system auto-creates `[base]/[Company]/` on contact create/update and `[base]/[Company]/[JobNumber]/Job Files/` + `QA Forms/` + `Customer Property/` on job card create. On job card deletion, the job card folder (`[base]/[Company]/[JobNumber]/`) is recursively deleted but the parent company folder is preserved. Folder operations are fire-and-forget (errors logged, never block DB operations). Names are sanitized for cross-platform filesystem safety with path traversal protection.
 
 **QA Level system**: Paper-based quality assurance workflow. The full cycle:
 1. **Admin creates QA levels** (e.g. "Standard", "Critical") and uploads PDF template forms to each level. Templates stored at `[job_folders_base]/QA Levels/[LevelName]/`.
-2. **Job card creation/update with QA level** triggers: template PDFs are copied to `[base]/[Company]/[JobNumber]/QA Documents/`, fillable form fields are auto-populated with job data via `pdf-lib` (see `server/src/utils/pdfFiller.js` for field mappings), and `qa_forms` DB rows are created to track each form (status: PENDING).
-3. **Workers print** the pre-filled PDFs, **fill inspection results by hand** at the machine, then **scan completed forms** back using the scanner integration (QuickActionPanel → Scan Document).
-4. **Scanned documents** are attached to the job via `POST /jobcards/:id/documents/from-scanner` and stored in the `documents` table.
-5. **Anyone can view** QA documents: QuickActionPanel → "View Documents" (lists on-disk files), or JobCardModal → QA Forms tab (matches form codes to files).
+2. **Job card creation/update with QA level** triggers: template PDFs are copied to `[base]/[Company]/[JobNumber]/QA Forms/`, fillable form fields are auto-populated with job data via `pdf-lib` (see `server/src/utils/pdfFiller.js` for field mappings), and `qa_forms` DB rows are created to track each form (status: PENDING).
+3. **Workers print** the pre-filled PDFs, **fill inspection results by hand** at the machine, then **scan completed forms** back using the upload flow (QuickActionPanel → Upload Document → pick category → Scanner/Camera → auto-saved).
+4. **Scanned documents** are saved directly to on-disk folders (Job Files, QA Forms, or Customer Property) via `POST /jobcards/:id/job-files/from-scanner`, `POST /jobcards/:id/qa-form-files/from-scanner`, or `POST /jobcards/:id/customer-property-files/from-scanner`. Camera photos are saved via the `/upload` endpoints.
+5. **Anyone can view** documents: QuickActionPanel → "View Documents" (tabbed view with QA Forms, Job Files, Customer Property tabs), or JobCardModal → QA Forms tab (matches form codes to files). Images can be viewed via lightbox from any View Documents tab.
 
 PDFs without fillable fields are copied as-is (blank templates for handwriting). See `docs/QA-PDF-TEMPLATE-GUIDE.md` for supported field names and template creation instructions. The `qualityLevel` column stores the level name, `qa_level_id` is the FK to `qa_levels`.
 
@@ -125,7 +126,7 @@ PDFs without fillable fields are copied as-is (blank templates for handwriting).
 ### Authentication
 - Two roles: `admin` (full access) and `user` (limited)
 - Admin-only: user management, supplier management, QA level management, costing, settings, activity log, **contact/customer info**, **job card creation/deletion**, **note deletion**
-- **Employee (user) role**: Read-only job card view (Details tab renders as styled text, not inputs). Can only update photos via PUT. Tabs hidden from employees: Items, Subcontracts, Time, QA, Costing, Photos, Activity Log. Employees use Start/Stop timer for time tracking (one active timer at a time, enforced server-side). Can add notes but not delete them. **Quick Action Panel**: All users clicking a job card row see a QuickActionPanel (centered modal) with large buttons for Scan, Camera, Timer, View Documents, View Photos, and View Details. "View Documents" lists files from the job's QA Documents folder on disk with per-file View action. Clicking "View Details" opens the full JobCardModal. Active timers show a pulsing green indicator on job card rows for all users.
+- **Employee (user) role**: Read-only job card view (Details tab renders as styled text, not inputs). Tabs hidden from employees: Items, Subcontracts, Time, QA, Costing, Photos, Activity Log. Employees use Start/Stop timer for time tracking (one active timer at a time, enforced server-side). Can add notes but not delete them. **Quick Action Panel**: All users clicking a job card row see a QuickActionPanel (centered modal) with 4 large buttons: Upload Document, Start/Stop Timer, View Documents, and View Details. **Upload flow**: Upload Document → pick category (QA Form, Job Files, or Customer Property) → choose Scanner or Camera → file saved automatically to the selected folder. **View Documents**: Tabbed view with QA Forms, Job Files, and Customer Property tabs showing files from each folder (images viewable via lightbox). Clicking "View Details" opens the full JobCardModal. Active timers show a pulsing green indicator on job card rows for all users.
 - **Job card visibility**: Non-admin users only see job cards they are assigned to (via `job_assignees`). Unassigned job cards are visible only to admins. All `/:id` routes (GET, PUT, and sub-resources) enforce assignee-or-admin access via `requireAssigneeOrAdmin` middleware. List routes use assignee-filtered queries instead.
 - **Settings page**: Non-admin users see only Appearance (dark mode) and Change Password. Admin users see all cards (App Info, Current User, Printers, Security Settings, Scanner Folder, Job Folders, Server Connection).
 - Default credentials: `admin` / `admin123`
