@@ -29,31 +29,43 @@ export function useContactSearch() {
   const contactSearchRef = useRef(null);
   const blurTimeoutRef = useRef(null);
 
+  // All contacts cache for showing on focus
+  const [allContacts, setAllContacts] = useState([]);
+  const allContactsLoaded = useRef(false);
+
+  // Load all contacts once on first focus
+  const loadAllContacts = useCallback(async () => {
+    if (allContactsLoaded.current) return;
+    try {
+      const results = await api.getContacts();
+      setAllContacts(results || []);
+      allContactsLoaded.current = true;
+    } catch (err) {
+      console.error('Failed to load contacts:', err);
+    }
+  }, []);
+
   // Contact search effect - watches contactName field for autocomplete
   useEffect(() => {
     if (!fieldFocused) return;
 
-    const searchValue = contactFormData.contactName;
+    const searchValue = contactFormData.contactName.trim().toLowerCase();
 
-    const searchContacts = async () => {
-      if (searchValue && searchValue.length >= 2) {
-        try {
-          const results = await api.searchContacts(searchValue);
-          setContacts(results || []);
-          setShowContactDropdown(true);
-        } catch (err) {
-          console.error('Failed to search contacts:', err);
-          setContacts([]);
-        }
-      } else {
-        setContacts([]);
-        setShowContactDropdown(false);
-      }
-    };
+    if (!searchValue) {
+      // No text typed - show all contacts (top 10)
+      setContacts(allContacts.slice(0, 10));
+      setShowContactDropdown(allContacts.length > 0);
+      return;
+    }
 
-    const debounceTimer = setTimeout(searchContacts, 300);
-    return () => clearTimeout(debounceTimer);
-  }, [fieldFocused, contactFormData.contactName]);
+    // Filter from cached contacts for instant results
+    const filtered = allContacts.filter(c =>
+      (c.contactName || '').toLowerCase().includes(searchValue) ||
+      (c.companyName || '').toLowerCase().includes(searchValue)
+    ).slice(0, 10);
+    setContacts(filtered);
+    setShowContactDropdown(filtered.length > 0);
+  }, [fieldFocused, contactFormData.contactName, allContacts]);
 
   // Click outside to close contact dropdown
   useEffect(() => {
@@ -67,17 +79,14 @@ export function useContactSearch() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Handle contactName focus - cancel pending blur and show dropdown if results exist
   const handleFieldFocus = useCallback(() => {
     if (blurTimeoutRef.current) {
       clearTimeout(blurTimeoutRef.current);
       blurTimeoutRef.current = null;
     }
     setFieldFocused(true);
-    if (contacts.length > 0) {
-      setShowContactDropdown(true);
-    }
-  }, [contacts.length]);
+    loadAllContacts();
+  }, [loadAllContacts]);
 
   // Handle contactName blur - delayed to allow dropdown clicks and re-focus
   const handleFieldBlur = useCallback(() => {

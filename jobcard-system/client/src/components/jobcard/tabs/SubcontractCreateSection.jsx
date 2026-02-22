@@ -1,3 +1,5 @@
+import SearchableSupplierSelect from '../../common/SearchableSupplierSelect';
+
 export default function SubcontractCreateSection({ subcontracts, setSubcontracts, suppliers }) {
   const addSubcontract = () => {
     setSubcontracts([...subcontracts, {
@@ -37,24 +39,20 @@ export default function SubcontractCreateSection({ subcontracts, setSubcontracts
                   <div className="subcontract-create-top">
                     <div className="form-group" style={{ flex: 1 }}>
                       <label>Supplier <span className="required">*</span></label>
-                      <select
+                      <SearchableSupplierSelect
+                        suppliers={suppliers}
                         value={sub.supplierId}
-                        onChange={(e) => {
-                          const supplier = suppliers.find(s => s.id === e.target.value);
+                        onChange={(id, name) => {
                           const updated = [...subcontracts];
                           updated[idx] = {
                             ...sub,
-                            supplierId: e.target.value,
-                            supplierName: supplier?.name || ''
+                            supplierId: id,
+                            supplierName: name
                           };
                           setSubcontracts(updated);
                         }}
-                      >
-                        <option value="">Select supplier...</option>
-                        {suppliers.map(s => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
-                      </select>
+                        placeholder="Search supplier..."
+                      />
                     </div>
                     <button
                       type="button"

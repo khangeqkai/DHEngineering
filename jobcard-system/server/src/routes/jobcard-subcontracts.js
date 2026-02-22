@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireAssigneeOrAdmin } = require('../middleware/auth');
 const { validateSubcontractStatus } = require('../middleware/validation');
-const { subcontractQueries, recordHistory } = require('../db/database');
+const { subcontractQueries, supplierQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
@@ -51,13 +51,12 @@ router.post('/:id/subcontracts', authenticate, requireAssigneeOrAdmin, ...valida
       data.status || 'PENDING'
     );
 
+    const sub = subcontractQueries.getByIdWithSupplier.get(subId);
+
     recordHistory('jobcard', id, 'add_subcontract', req.user.userId, req.user.name, {
-      subcontractId: { from: null, to: subId },
-      supplierId: { from: null, to: data.supplierId },
+      supplier: { from: null, to: sub.supplier_name },
       status: { from: null, to: data.status || 'PENDING' }
     });
-
-    const sub = subcontractQueries.getById.get(subId);
     res.status(201).json(toResponse(sub));
   } catch (err) {
     logger.error({ err }, 'Add subcontract error');
@@ -88,15 +87,19 @@ router.put('/:id/subcontracts/:subId', authenticate, requireAssigneeOrAdmin, ...
 
     // Build proper diff of changed fields
     const changes = {};
+    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
+    const newSupplierId = data.supplierId !== undefined ? data.supplierId : existing.supplier_id;
+    if (normalizeEmpty(newSupplierId) !== normalizeEmpty(existing.supplier_id)) {
+      const newSupplier = supplierQueries.getById.get(newSupplierId);
+      changes.supplier = { from: existing.supplier_name, to: newSupplier ? newSupplier.name : newSupplierId };
+    }
     const fieldsToTrack = [
-      ['supplier_id', 'supplierId', data.supplierId !== undefined ? data.supplierId : existing.supplier_id],
       ['date_sent', 'dateSent', data.dateSent !== undefined ? data.dateSent : existing.date_sent],
       ['date_expected', 'dateExpected', data.dateExpected !== undefined ? data.dateExpected : existing.date_expected],
       ['date_received', 'dateReceived', data.dateReceived !== undefined ? data.dateReceived : existing.date_received],
       ['notes', 'notes', data.notes !== undefined ? data.notes : existing.notes],
       ['status', 'status', data.status || existing.status],
     ];
-    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
     for (const [dbField, changeKey, newValue] of fieldsToTrack) {
       if (normalizeEmpty(newValue) !== normalizeEmpty(existing[dbField])) {
         changes[changeKey] = { from: existing[dbField], to: newValue };
@@ -104,13 +107,10 @@ router.put('/:id/subcontracts/:subId', authenticate, requireAssigneeOrAdmin, ...
     }
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('jobcard', id, 'update_subcontract', req.user.userId, req.user.name, changes, {
-        subcontractId: subId,
-        supplierName: existing.supplier_name
-      });
+      recordHistory('jobcard', id, 'update_subcontract', req.user.userId, req.user.name, changes);
     }
 
-    const sub = subcontractQueries.getById.get(subId);
+    const sub = subcontractQueries.getByIdWithSupplier.get(subId);
     res.json(toResponse(sub));
   } catch (err) {
     logger.error({ err }, 'Update subcontract error');
@@ -129,8 +129,7 @@ router.delete('/:id/subcontracts/:subId', authenticate, requireAssigneeOrAdmin, 
     }
 
     recordHistory('jobcard', id, 'delete_subcontract', req.user.userId, req.user.name, {
-      subcontractId: { from: subId, to: null },
-      supplierName: { from: existing.supplier_name, to: null },
+      supplier: { from: existing.supplier_name, to: null },
       status: { from: existing.status, to: null }
     });
 

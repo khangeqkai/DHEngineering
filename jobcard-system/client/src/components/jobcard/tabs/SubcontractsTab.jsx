@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { capitalizeFirst, autoResize } from '../../../utils/formatters';
+import SearchableSupplierSelect from '../../common/SearchableSupplierSelect';
 
 // Map treatment values to service tag names
 const TREATMENT_TO_SERVICE_MAP = {
@@ -69,19 +70,16 @@ export default function SubcontractsTab({
                 <span className="treatment-hint"> (showing {treatmentServiceName} suppliers first)</span>
               )}
             </label>
-            <select name="supplierId" value={subcontractForm.supplierId} onChange={handleSubcontractChange}>
-              <option value="">Select supplier...</option>
-              {sortedSuppliers.map(s => {
-                const hasMatchingService = treatmentServiceName &&
-                  (s.serviceTags || []).some(t => t.name === treatmentServiceName);
-                const serviceNames = (s.serviceTags || []).map(t => t.name).join(', ');
-                return (
-                  <option key={s.id} value={s.id}>
-                    {hasMatchingService ? '★ ' : ''}{s.name}{serviceNames ? ` (${serviceNames})` : ''}
-                  </option>
-                );
-              })}
-            </select>
+            <SearchableSupplierSelect
+              suppliers={sortedSuppliers}
+              value={subcontractForm.supplierId}
+              onChange={(id, name) => {
+                handleSubcontractChange({ target: { name: 'supplierId', value: id } });
+                handleSubcontractChange({ target: { name: 'supplierName', value: name } });
+              }}
+              treatmentServiceName={treatmentServiceName}
+              placeholder="Search supplier..."
+            />
           </div>
 
           <div className="form-row">
