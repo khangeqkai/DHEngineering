@@ -58,14 +58,23 @@ const FIELD_MAPPINGS = {
   treatment_required: 'treatmentRequired',
   treatmentrequired: 'treatmentRequired',
   treatment_other: 'treatmentOther',
-  treatmentother: 'treatmentOther'
+  treatmentother: 'treatmentOther',
+  // Repeat job
+  repeat_job: 'repeatJob',
+  repeatjob: 'repeatJob',
+  repeat_job_reference: 'repeatJobReference',
+  repeatjobreference: 'repeatJobReference',
+  repeat_ref: 'repeatJobReference',
+  repeatref: 'repeatJobReference',
+  // Notes
+  notes: 'notes'
 };
 
 /**
  * Fill PDF form fields with job data.
  * Returns filled PDF buffer, or the original buffer if no fields or on error.
  * @param {Buffer} sourceBuffer - Source PDF file buffer
- * @param {Object} jobData - { jobNumber, companyName, contactName, date, qualityLevel, description }
+ * @param {Object} jobData - Job card data with keys matching FIELD_MAPPINGS (see docs/QA-PDF-TEMPLATE-GUIDE.md)
  * @returns {Promise<Buffer>} Filled PDF buffer
  */
 async function fillPdfTemplate(sourceBuffer, jobData) {

@@ -220,7 +220,10 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
         drawingsType: data.drawingsType || null,
         customerProperty: data.customerProperty || null,
         treatmentRequired: data.treatmentRequired || null,
-        treatmentOther: data.treatmentOther || null
+        treatmentOther: data.treatmentOther || null,
+        repeatJob: data.isRepeatJob ? 'Yes' : 'No',
+        repeatJobReference: data.repeatJobReference || null,
+        notes: data.notes || null
       });
     }
 
@@ -400,7 +403,10 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums
           drawingsType: current.drawings_type || data.drawingsType || null,
           customerProperty: current.customer_property || data.customerProperty || null,
           treatmentRequired: current.treatment_required || data.treatmentRequired || null,
-          treatmentOther: current.treatment_other || data.treatmentOther || null
+          treatmentOther: current.treatment_other || data.treatmentOther || null,
+          repeatJob: (data.isRepeatJob !== undefined ? data.isRepeatJob : current.is_repeat_job === 1) ? 'Yes' : 'No',
+          repeatJobReference: current.repeat_job_reference || data.repeatJobReference || null,
+          notes: current.notes || data.notes || null
         });
       }
     }

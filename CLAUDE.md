@@ -111,7 +111,16 @@ All changes logged to `history` table for audit trail.
 
 **Automatic folder management**: When `job_folders_base` setting is configured, the system auto-creates `[base]/[Company]/` on contact create/update and `[base]/[Company]/[JobNumber]/Drawings/` + `QA Documents/` on job card create. On job card deletion, the job card folder (`[base]/[Company]/[JobNumber]/`) is recursively deleted but the parent company folder is preserved. Folder operations are fire-and-forget (errors logged, never block DB operations). Names are sanitized for cross-platform filesystem safety with path traversal protection.
 
-**QA Level system**: Admin-managed quality levels with PDF templates. QA level folders stored at `[job_folders_base]/QA Levels/[LevelName]/`. When a job card is created or updated with a QA level, template PDFs are copied to the job's QA Documents folder with form fields auto-filled via `pdf-lib`. The `qualityLevel` column stores the level name, `qa_level_id` is the FK to `qa_levels`.
+**QA Level system**: Paper-based quality assurance workflow. The full cycle:
+1. **Admin creates QA levels** (e.g. "Standard", "Critical") and uploads PDF template forms to each level. Templates stored at `[job_folders_base]/QA Levels/[LevelName]/`.
+2. **Job card creation/update with QA level** triggers: template PDFs are copied to `[base]/[Company]/[JobNumber]/QA Documents/`, fillable form fields are auto-populated with job data via `pdf-lib` (see `server/src/utils/pdfFiller.js` for field mappings), and `qa_forms` DB rows are created to track each form (status: PENDING).
+3. **Workers print** the pre-filled PDFs, **fill inspection results by hand** at the machine, then **scan completed forms** back using the scanner integration (QuickActionPanel → Scan Document).
+4. **Scanned documents** are attached to the job via `POST /jobcards/:id/documents/from-scanner` and stored in the `documents` table.
+5. **Anyone can view** QA documents: QuickActionPanel → "View Documents" (lists on-disk files), or JobCardModal → QA Forms tab (matches form codes to files).
+
+PDFs without fillable fields are copied as-is (blank templates for handwriting). See `docs/QA-PDF-TEMPLATE-GUIDE.md` for supported field names and template creation instructions. The `qualityLevel` column stores the level name, `qa_level_id` is the FK to `qa_levels`.
+
+**Time entries**: Simplified to core fields only (item#, machine#, qty, description, start/end time). QA inspection data is captured via the paper form workflow above, not digitally in time entries. The `time_entries` DB table retains legacy QA columns (equipmentChecksDone, firstOffInspection, scrapAllGood, etc.) but they are not used by the current UI.
 
 ### Authentication
 - Two roles: `admin` (full access) and `user` (limited)
