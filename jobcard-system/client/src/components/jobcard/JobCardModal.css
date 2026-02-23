@@ -1024,6 +1024,35 @@
   font-weight: 700;
 }
 
+.input-readonly {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.costing-entry-form {
+  margin-bottom: 1rem;
+}
+
+.special-labour-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  font-size: var(--text-xs);
+  margin-left: 0.5rem;
+}
+
+.special-labour-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.special-labour-label {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
 /* QA Forms styles */
 .critical-qa-notice {
   display: flex;

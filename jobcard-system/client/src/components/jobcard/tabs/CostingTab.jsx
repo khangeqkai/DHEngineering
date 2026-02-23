@@ -1,14 +1,230 @@
+import { useState, useEffect } from 'react';
+import { capitalizeFirst } from '../../../utils/formatters';
+
+function formatElapsed(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function LiveElapsed({ startTime }) {
+  const [elapsed, setElapsed] = useState(() => Math.max(0, Math.floor((Date.now() - new Date(startTime).getTime()) / 1000)));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(Math.max(0, Math.floor((Date.now() - new Date(startTime).getTime()) / 1000)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  return (
+    <span className="timer-indicator">
+      <span className="timer-dot" />
+      {formatElapsed(elapsed)}
+    </span>
+  );
+}
+
+function TimeEntriesSection({
+  timeEntries,
+  showTimeEntryForm,
+  editingTimeEntryId,
+  timeEntryForm,
+  handleTimeEntryChange,
+  handleAddTimeEntry,
+  handleEditTimeEntry,
+  handleSaveTimeEntry,
+  handleDeleteTimeEntry,
+  handleStopActiveEntry,
+  resetTimeEntryForm,
+  onToggleSpecial,
+  lineItems,
+  machines
+}) {
+  return (
+    <div className="form-section">
+      {showTimeEntryForm && (
+        <div className="time-entry-form costing-entry-form">
+          <div className="form-section-header">
+            <h3 className="form-section-title">
+              {editingTimeEntryId ? 'Edit Time Entry' : 'New Time Entry'}
+            </h3>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={resetTimeEntryForm}>
+              Cancel
+            </button>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Item #</label>
+              <select name="itemNumber" value={timeEntryForm.itemNumber} onChange={handleTimeEntryChange}>
+                <option value="">Select item...</option>
+                {lineItems.map(item => (
+                  <option key={item.itemNumber} value={item.itemNumber}>
+                    #{item.itemNumber} - {item.description?.substring(0, 30)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Machine #</label>
+              <select name="machineNumber" value={timeEntryForm.machineNumber} onChange={handleTimeEntryChange}>
+                <option value="">Select machine...</option>
+                {machines.map(m => (
+                  <option key={m.id} value={m.machineNumber}>{m.machineNumber} {m.name && `- ${m.name}`}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Qty</label>
+              <input type="text" name="qty" value={timeEntryForm.qty} onChange={handleTimeEntryChange} />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Description</label>
+            <input
+              type="text"
+              name="description"
+              value={timeEntryForm.description}
+              onChange={handleTimeEntryChange}
+              onBlur={(e) => {
+                const formatted = capitalizeFirst(e.target.value);
+                if (formatted !== e.target.value) {
+                  handleTimeEntryChange({ target: { name: 'description', value: formatted } });
+                }
+              }}
+            />
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Start Time</label>
+              <input type="datetime-local" name="startTime" value={timeEntryForm.startTime} onChange={handleTimeEntryChange} />
+            </div>
+            <div className="form-group">
+              <label>End Time</label>
+              <input type="datetime-local" name="endTime" value={timeEntryForm.endTime} onChange={handleTimeEntryChange} />
+            </div>
+          </div>
+
+          <button type="button" className="btn btn-primary" onClick={handleSaveTimeEntry}>
+            {editingTimeEntryId ? 'Update Entry' : 'Save Entry'}
+          </button>
+        </div>
+      )}
+
+      <div className="form-section-header">
+        <h3 className="form-section-title">Time Entries</h3>
+        {!showTimeEntryForm && (
+          <button type="button" className="btn btn-primary btn-sm" onClick={handleAddTimeEntry}>
+            + Add Entry
+          </button>
+        )}
+      </div>
+
+      {timeEntries.length === 0 ? (
+        <p className="empty-message">No time entries</p>
+      ) : (
+        <div className="time-entries-list">
+          {timeEntries.map(entry => (
+            <div key={entry.id} className="time-entry-card">
+              <div className="entry-header">
+                <div className="entry-info">
+                  <span className="user-name">{entry.userName}</span>
+                  <span className="entry-date">{new Date(entry.startTime).toLocaleDateString()}</span>
+                  {entry.machineNumber && <span className="machine-badge">M#{entry.machineNumber}</span>}
+                  {entry.itemNumber && <span className="item-badge">Item #{entry.itemNumber}</span>}
+                  {entry.endTime && (
+                    <label className="special-labour-toggle" title="Mark as special labour">
+                      <input
+                        type="checkbox"
+                        checked={entry.isSpecialLabour || false}
+                        onChange={() => onToggleSpecial(entry.id)}
+                      />
+                      <span className="special-labour-label">Special</span>
+                    </label>
+                  )}
+                </div>
+                <div className="entry-actions">
+                  {entry.endTime ? (
+                    <>
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleEditTimeEntry(entry)}>Edit</button>
+                      <button type="button" className="btn btn-danger btn-sm" onClick={() => handleDeleteTimeEntry(entry.id)}>Delete</button>
+                    </>
+                  ) : (
+                    <button type="button" className="btn btn-danger btn-sm" onClick={() => handleStopActiveEntry(entry)}>Stop</button>
+                  )}
+                </div>
+              </div>
+              <div className="entry-body">
+                {entry.description && <div className="entry-description">{entry.description}</div>}
+                <div className="entry-time">
+                  <span>{new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span> - </span>
+                  {entry.endTime ? (
+                    <>
+                      <span>{new Date(entry.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span className="duration">
+                        ({formatElapsed(Math.round((new Date(entry.endTime) - new Date(entry.startTime)) / 1000))})
+                      </span>
+                    </>
+                  ) : (
+                    <LiveElapsed startTime={entry.startTime} />
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CostingTab({
   costingForm,
   handleCostingChange,
   calculateCostingTotals,
   handleSaveCosting,
-  savingCosting
+  savingCosting,
+  timeEntries,
+  showTimeEntryForm,
+  editingTimeEntryId,
+  timeEntryForm,
+  handleTimeEntryChange,
+  handleAddTimeEntry,
+  handleEditTimeEntry,
+  handleSaveTimeEntry,
+  handleDeleteTimeEntry,
+  handleStopActiveEntry,
+  resetTimeEntryForm,
+  onToggleSpecial,
+  lineItems,
+  machines
 }) {
   return (
     <div className="modal-form-grid">
+      <TimeEntriesSection
+        timeEntries={timeEntries || []}
+        showTimeEntryForm={showTimeEntryForm}
+        editingTimeEntryId={editingTimeEntryId}
+        timeEntryForm={timeEntryForm}
+        handleTimeEntryChange={handleTimeEntryChange}
+        handleAddTimeEntry={handleAddTimeEntry}
+        handleEditTimeEntry={handleEditTimeEntry}
+        handleSaveTimeEntry={handleSaveTimeEntry}
+        handleDeleteTimeEntry={handleDeleteTimeEntry}
+        handleStopActiveEntry={handleStopActiveEntry}
+        resetTimeEntryForm={resetTimeEntryForm}
+        onToggleSpecial={onToggleSpecial}
+        lineItems={lineItems || []}
+        machines={machines || []}
+      />
+
       <div className="form-section">
-        <h3 className="form-section-title">Job Costing</h3>
+        <h3 className="form-section-title">Costing Summary</h3>
 
         {/* Labour */}
         <div className="costing-row">
@@ -16,7 +232,7 @@ export default function CostingTab({
           <div className="costing-inputs">
             <div className="costing-field">
               <label>Hours</label>
-              <input type="number" name="labourHours" value={costingForm.labourHours} onChange={handleCostingChange} min="0" step="0.5" />
+              <input type="number" name="labourHours" value={costingForm.labourHours} readOnly disabled className="input-readonly" />
             </div>
             <div className="costing-field">
               <label>Rate ($/hr)</label>
@@ -35,7 +251,7 @@ export default function CostingTab({
           <div className="costing-inputs">
             <div className="costing-field">
               <label>Hours</label>
-              <input type="number" name="labourSpecialHours" value={costingForm.labourSpecialHours} onChange={handleCostingChange} min="0" step="0.5" />
+              <input type="number" name="labourSpecialHours" value={costingForm.labourSpecialHours} readOnly disabled className="input-readonly" />
             </div>
             <div className="costing-field">
               <label>Rate ($/hr)</label>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { api } from '../../services/api';
 import { getDefaultCostingForm } from './mappers';
 
 export function useCosting(jobCardId, { costing: offlineCosting, updateCosting } = {}) {
@@ -15,9 +16,9 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
         labourSpecialHours: offlineCosting.labourSpecialHours || 0,
         labourSpecialRate: offlineCosting.labourSpecialRate || 0,
         materialsCost: offlineCosting.materialsCost || 0,
-        materialsProfitPercent: offlineCosting.materialsProfitPercent || 100,
+        materialsProfitPercent: offlineCosting.materialsProfitPercent ?? 100,
         subcontractorCost: offlineCosting.subcontractorCost || 0,
-        subcontractorProfitPercent: offlineCosting.subcontractorProfitPercent || 0
+        subcontractorProfitPercent: offlineCosting.subcontractorProfitPercent ?? 0
       });
     }
   }, [offlineCosting]);
@@ -58,12 +59,27 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
       await updateCosting(costingData);
       toast.success('Costing saved successfully');
     } catch (err) {
-      console.error('Failed to save costing:', err);
       toast.error(err.message || 'Failed to save costing');
     } finally {
       setSavingCosting(false);
     }
   }, [jobCardId, costingForm, calculateCostingTotals, updateCosting]);
+
+  const refreshCosting = useCallback(async () => {
+    if (!jobCardId) return;
+    try {
+      const costingRes = await api.getCosting(jobCardId);
+      if (costingRes) {
+        setCostingForm(prev => ({
+          ...prev,
+          labourHours: costingRes.labourHours || 0,
+          labourSpecialHours: costingRes.labourSpecialHours || 0
+        }));
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to refresh costing hours');
+    }
+  }, [jobCardId]);
 
   const resetCosting = useCallback(() => {
     setCostingForm(getDefaultCostingForm());
@@ -75,6 +91,7 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
     handleCostingChange,
     calculateCostingTotals,
     handleSaveCosting,
+    refreshCosting,
     resetCosting
   };
 }

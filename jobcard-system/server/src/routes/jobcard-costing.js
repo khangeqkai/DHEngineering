@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { jobCostingQueries, recordHistory } = require('../db/database');
+const { jobCostingQueries, timeEntryQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
@@ -11,25 +11,49 @@ const router = express.Router();
 router.get('/:id/costing', authenticate, requireAdmin, (req, res) => {
   try {
     const costing = jobCostingQueries.getByJobcard.get(req.params.id);
+    const hours = timeEntryQueries.getHoursByJobcard.get(req.params.id) || { labour_hours: 0, labour_special_hours: 0 };
+    const labourHours = Math.round(hours.labour_hours * 100) / 100;
+    const labourSpecialHours = Math.round(hours.labour_special_hours * 100) / 100;
+
     if (!costing) {
-      return res.json(null);
+      return res.json({
+        labourHours,
+        labourRate: 0,
+        labourTotal: 0,
+        labourSpecialHours,
+        labourSpecialRate: 0,
+        labourSpecialTotal: 0,
+        materialsCost: 0,
+        materialsProfitPercent: 100,
+        materialsTotal: 0,
+        subcontractorCost: 0,
+        subcontractorProfitPercent: 0,
+        subcontractorTotal: 0,
+        grandTotal: 0
+      });
     }
+    const labourTotal = labourHours * costing.labour_rate;
+    const labourSpecialTotal = labourSpecialHours * costing.labour_special_rate;
+    const materialsTotal = costing.materials_cost * (1 + costing.materials_profit_percent / 100);
+    const subcontractorTotal = costing.subcontractor_cost * (1 + costing.subcontractor_profit_percent / 100);
+    const grandTotal = labourTotal + labourSpecialTotal + materialsTotal + subcontractorTotal;
+
     res.json({
       id: costing.id,
       jobcardId: costing.jobcard_id,
-      labourHours: costing.labour_hours,
+      labourHours,
       labourRate: costing.labour_rate,
-      labourTotal: costing.labour_total,
-      labourSpecialHours: costing.labour_special_hours,
+      labourTotal,
+      labourSpecialHours,
       labourSpecialRate: costing.labour_special_rate,
-      labourSpecialTotal: costing.labour_special_total,
+      labourSpecialTotal,
       materialsCost: costing.materials_cost,
       materialsProfitPercent: costing.materials_profit_percent,
-      materialsTotal: costing.materials_total,
+      materialsTotal,
       subcontractorCost: costing.subcontractor_cost,
       subcontractorProfitPercent: costing.subcontractor_profit_percent,
-      subcontractorTotal: costing.subcontractor_total,
-      grandTotal: costing.grand_total
+      subcontractorTotal,
+      grandTotal
     });
   } catch (err) {
     logger.error({ err }, 'Get costing error');
@@ -48,27 +72,31 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
     // Get existing costing for diff
     const existing = jobCostingQueries.getByJobcard.get(id);
 
+    const hours = timeEntryQueries.getHoursByJobcard.get(id) || { labour_hours: 0, labour_special_hours: 0 };
+    const labourHours = Math.round(hours.labour_hours * 100) / 100;
+    const labourSpecialHours = Math.round(hours.labour_special_hours * 100) / 100;
+
     // Calculate totals
-    const labourTotal = (data.labourHours || 0) * (data.labourRate || 0);
-    const labourSpecialTotal = (data.labourSpecialHours || 0) * (data.labourSpecialRate || 0);
-    const materialsTotal = (data.materialsCost || 0) * (1 + (data.materialsProfitPercent || 100) / 100);
+    const labourTotal = labourHours * (data.labourRate || 0);
+    const labourSpecialTotal = labourSpecialHours * (data.labourSpecialRate || 0);
+    const materialsTotal = (data.materialsCost || 0) * (1 + (data.materialsProfitPercent ?? 100) / 100);
     const subcontractorTotal = (data.subcontractorCost || 0) * (1 + (data.subcontractorProfitPercent || 0) / 100);
     const grandTotal = labourTotal + labourSpecialTotal + materialsTotal + subcontractorTotal;
 
     jobCostingQueries.createOrUpdate.run(
       costingId,
       id,
-      data.labourHours || 0,
+      labourHours,
       data.labourRate || 0,
       labourTotal,
-      data.labourSpecialHours || 0,
+      labourSpecialHours,
       data.labourSpecialRate || 0,
       labourSpecialTotal,
       data.materialsCost || 0,
-      data.materialsProfitPercent || 100,
+      data.materialsProfitPercent ?? 100,
       materialsTotal,
       data.subcontractorCost || 0,
-      data.subcontractorProfitPercent || 0,
+      data.subcontractorProfitPercent ?? 0,
       subcontractorTotal,
       grandTotal
     );
@@ -76,14 +104,14 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
     // Build proper diff of changed fields
     const changes = {};
     const fieldsToTrack = [
-      ['labour_hours', 'labourHours', data.labourHours || 0],
+      ['labour_hours', 'labourHours', labourHours],
       ['labour_rate', 'labourRate', data.labourRate || 0],
-      ['labour_special_hours', 'labourSpecialHours', data.labourSpecialHours || 0],
+      ['labour_special_hours', 'labourSpecialHours', labourSpecialHours],
       ['labour_special_rate', 'labourSpecialRate', data.labourSpecialRate || 0],
       ['materials_cost', 'materialsCost', data.materialsCost || 0],
-      ['materials_profit_percent', 'materialsProfitPercent', data.materialsProfitPercent || 100],
+      ['materials_profit_percent', 'materialsProfitPercent', data.materialsProfitPercent ?? 100],
       ['subcontractor_cost', 'subcontractorCost', data.subcontractorCost || 0],
-      ['subcontractor_profit_percent', 'subcontractorProfitPercent', data.subcontractorProfitPercent || 0],
+      ['subcontractor_profit_percent', 'subcontractorProfitPercent', data.subcontractorProfitPercent ?? 0],
       ['grand_total', 'grandTotal', grandTotal],
     ];
     for (const [dbField, changeKey, newValue] of fieldsToTrack) {

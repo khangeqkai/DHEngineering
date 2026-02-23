@@ -57,9 +57,10 @@ const timeEntryQueries = {
       first_off_inspection, first_off_inspection_notes,
       in_process_validation, in_process_validation_notes,
       scrap_all_good, scrap_recycle_inhouse_qty, scrap_recycle_bin_qty,
+      is_special_labour,
       created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, datetime('now'), datetime('now'))
   `),
 
   update: db.prepare(`
@@ -87,6 +88,18 @@ const timeEntryQueries = {
   stop: db.prepare(`
     UPDATE time_entries SET end_time = ?, updated_at = datetime('now')
     WHERE id = ?
+  `),
+
+  toggleSpecialLabour: db.prepare(`
+    UPDATE time_entries SET is_special_labour = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `),
+
+  getHoursByJobcard: db.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN COALESCE(is_special_labour, 0) = 0 THEN (julianday(end_time) - julianday(start_time)) * 24 ELSE 0 END), 0) as labour_hours,
+      COALESCE(SUM(CASE WHEN COALESCE(is_special_labour, 0) = 1 THEN (julianday(end_time) - julianday(start_time)) * 24 ELSE 0 END), 0) as labour_special_hours
+    FROM time_entries WHERE jobcard_id = ? AND end_time IS NOT NULL
   `)
 };
 

@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
-const { authenticate, requireAssigneeOrAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireAssigneeOrAdmin } = require('../middleware/auth');
 const { validateTimeEntryInspection } = require('../middleware/validation');
 const { timeEntryQueries, recordHistory } = require('../db/database');
 
@@ -29,6 +29,7 @@ function toCamelCase(e) {
     scrapAllGood: e.scrap_all_good === 1,
     scrapRecycleInhouseQty: e.scrap_recycle_inhouse_qty,
     scrapRecycleBinQty: e.scrap_recycle_bin_qty,
+    isSpecialLabour: e.is_special_labour === 1,
     createdAt: e.created_at
   };
 }
@@ -262,6 +263,39 @@ router.put('/:id/time-entries/:entryId', authenticate, requireAssigneeOrAdmin, .
   } catch (err) {
     logger.error({ err }, 'Update time entry error');
     res.status(500).json({ error: 'Failed to update time entry' });
+  }
+});
+
+// Toggle special labour flag (admin only — costing concept)
+router.patch('/:id/time-entries/:entryId/toggle-special', authenticate, requireAdmin, (req, res) => {
+  try {
+    const { id, entryId } = req.params;
+
+    const existing = timeEntryQueries.getById.get(entryId);
+    if (!existing) {
+      return res.status(404).json({ error: 'Time entry not found' });
+    }
+
+    if (existing.jobcard_id !== id) {
+      return res.status(403).json({ error: 'Time entry does not belong to this job card' });
+    }
+
+    if (!existing.end_time) {
+      return res.status(400).json({ error: 'Cannot mark active entry as special labour' });
+    }
+
+    const newValue = existing.is_special_labour === 1 ? 0 : 1;
+    timeEntryQueries.toggleSpecialLabour.run(newValue, entryId);
+
+    recordHistory('jobcard', id, 'update_time_entry', req.user.userId, req.user.name, {
+      isSpecialLabour: { from: existing.is_special_labour === 1, to: newValue === 1 }
+    }, { timeEntryId: entryId });
+
+    const entry = timeEntryQueries.getById.get(entryId);
+    res.json(toCamelCase(entry));
+  } catch (err) {
+    logger.error({ err }, 'Toggle special labour error');
+    res.status(500).json({ error: 'Failed to toggle special labour' });
   }
 });
 

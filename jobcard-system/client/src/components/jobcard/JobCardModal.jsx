@@ -14,7 +14,6 @@ import { useJobCardForm } from './useJobCardForm';
 import DetailsTab from './tabs/DetailsTab';
 import ItemsTab from './tabs/ItemsTab';
 import SubcontractsTab from './tabs/SubcontractsTab';
-import TimeEntryTab from './tabs/TimeEntryTab';
 import CostingTab from './tabs/CostingTab';
 import FilesTab from './tabs/FilesTab';
 import ActivityLogTab from './tabs/ActivityLogTab';
@@ -31,7 +30,8 @@ const mapSubcontract = (s) => ({
 const mapTimeEntry = (t) => ({
   id: t.id, userId: t.userId, userName: t.userName,
   itemNumber: t.itemNumber, machineNumber: t.machineNumber, qty: t.qty,
-  description: t.description, startTime: t.startTime, endTime: t.endTime
+  description: t.description, startTime: t.startTime, endTime: t.endTime,
+  isSpecialLabour: t.isSpecialLabour || false
 });
 
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess }) {
@@ -52,6 +52,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const formHook = useJobCardForm();
   const activityLog = useActivityLog(jobCardId);
   const reloadTimeEntriesRef = useRef(null);
+  const costingHookRef = useRef(null);
   const onExternalStop = useCallback(() => {
     if (reloadTimeEntriesRef.current) reloadTimeEntriesRef.current();
   }, []);
@@ -113,9 +114,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           labourSpecialHours: costingRes.labourSpecialHours || 0,
           labourSpecialRate: costingRes.labourSpecialRate || 0,
           materialsCost: costingRes.materialsCost || 0,
-          materialsProfitPercent: costingRes.materialsProfitPercent || 100,
+          materialsProfitPercent: costingRes.materialsProfitPercent ?? 100,
           subcontractorCost: costingRes.subcontractorCost || 0,
-          subcontractorProfitPercent: costingRes.subcontractorProfitPercent || 0
+          subcontractorProfitPercent: costingRes.subcontractorProfitPercent ?? 0
         });
       }
     } catch (err) {
@@ -143,9 +144,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           labourSpecialHours: costingRes.labourSpecialHours || 0,
           labourSpecialRate: costingRes.labourSpecialRate || 0,
           materialsCost: costingRes.materialsCost || 0,
-          materialsProfitPercent: costingRes.materialsProfitPercent || 100,
+          materialsProfitPercent: costingRes.materialsProfitPercent ?? 100,
           subcontractorCost: costingRes.subcontractorCost || 0,
-          subcontractorProfitPercent: costingRes.subcontractorProfitPercent || 0
+          subcontractorProfitPercent: costingRes.subcontractorProfitPercent ?? 0
         });
       }
     }
@@ -177,29 +178,47 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   }, [jobCardId]);
   reloadTimeEntriesRef.current = reloadTimeEntries;
 
+  const reloadTimeEntriesAndCosting = useCallback(async () => {
+    await reloadTimeEntries();
+    if (costingHookRef.current) await costingHookRef.current();
+  }, [reloadTimeEntries]);
+
   const apiTimeEntryOperations = {
     addTimeEntry: async (data) => {
       await api.addTimeEntry(jobCardId, data);
-      await reloadTimeEntries();
+      await reloadTimeEntriesAndCosting();
     },
     updateTimeEntry: async (id, data) => {
       await api.updateTimeEntry(jobCardId, id, data);
-      await reloadTimeEntries();
+      await reloadTimeEntriesAndCosting();
     },
     deleteTimeEntry: async (id) => {
       await api.deleteTimeEntry(jobCardId, id);
-      await reloadTimeEntries();
+      await reloadTimeEntriesAndCosting();
     },
     stopActiveEntry: async (entryId) => {
       await api.stopTimer(jobCardId, entryId);
       if (timer.activeTimer?.id === entryId) {
         timer.resetTimer();
       }
-      await reloadTimeEntries();
+      await reloadTimeEntriesAndCosting();
     }
   };
 
   const costingHook = useCosting(jobCardId, apiCostingOperations);
+  const { refreshCosting } = costingHook;
+  costingHookRef.current = refreshCosting;
+
+  const handleToggleSpecial = useCallback(async (entryId) => {
+    try {
+      await api.toggleSpecialLabour(jobCardId, entryId);
+      await reloadTimeEntries();
+      await refreshCosting();
+    } catch (err) {
+      toast.error(err.message || 'Failed to toggle special labour');
+    }
+  }, [jobCardId, reloadTimeEntries, refreshCosting]);
+
   const subcontract = useSubcontracts(jobCardId, { ...apiSubcontractOperations, showConfirm });
   const timeEntry = useTimeEntries(jobCardId, { ...apiTimeEntryOperations, showConfirm });
   const { resetSubcontracts } = subcontract;
@@ -412,7 +431,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>Details</button>
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}>Items</button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'subcontracts' ? 'active' : ''}`} onClick={() => setActiveTab('subcontracts')}>Subcontracts</button>}
-                  {isAdmin && <button type="button" className={`tab ${activeTab === 'time' ? 'active' : ''}`} onClick={() => setActiveTab('time')}>Time</button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'files' ? 'active' : ''}`} onClick={() => setActiveTab('files')}>Files</button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>}
@@ -488,9 +506,13 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 />
               )}
 
-              {activeTab === 'time' && isEdit && isAdmin && (
-                <TimeEntryTab
-                  isAdmin={isAdmin}
+              {activeTab === 'costing' && isEdit && isAdmin && (
+                <CostingTab
+                  costingForm={costingHook.costingForm}
+                  handleCostingChange={costingHook.handleCostingChange}
+                  calculateCostingTotals={costingHook.calculateCostingTotals}
+                  handleSaveCosting={costingHook.handleSaveCosting}
+                  savingCosting={costingHook.savingCosting}
                   timeEntries={timeEntries || []}
                   showTimeEntryForm={timeEntry.showTimeEntryForm}
                   editingTimeEntryId={timeEntry.editingTimeEntryId}
@@ -502,28 +524,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   handleDeleteTimeEntry={timeEntry.handleDeleteTimeEntry}
                   handleStopActiveEntry={timeEntry.handleStopActiveEntry}
                   resetTimeEntryForm={timeEntry.resetTimeEntryForm}
+                  onToggleSpecial={handleToggleSpecial}
                   lineItems={formHook.lineItems}
                   machines={machines || []}
-                  activeTimer={timer.activeTimer}
-                  elapsed={timer.elapsed}
-                  timerLoading={timer.loading}
-                  onStartTimer={() => timer.startTimerWithConflictCheck(showConfirm)}
-                  onStopTimer={timer.stopTimer}
-                  showEntryForm={timer.showEntryForm}
-                  entryForm={timer.entryForm}
-                  handleEntryFormChange={timer.handleEntryFormChange}
-                  onSubmitEntry={() => timer.submitEntryForm(reloadTimeEntries)}
-                  onSkipEntry={() => timer.skipEntryForm(reloadTimeEntries)}
-                />
-              )}
-
-              {activeTab === 'costing' && isEdit && isAdmin && (
-                <CostingTab
-                  costingForm={costingHook.costingForm}
-                  handleCostingChange={costingHook.handleCostingChange}
-                  calculateCostingTotals={costingHook.calculateCostingTotals}
-                  handleSaveCosting={costingHook.handleSaveCosting}
-                  savingCosting={costingHook.savingCosting}
                 />
               )}
 

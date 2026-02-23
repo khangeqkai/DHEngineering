@@ -382,6 +382,7 @@ const migrations = [
   { table: 'qa_forms', column: '_device_id', type: 'TEXT' },
   { table: 'users', column: 'session_token', type: 'TEXT' },
   { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
+  { table: 'time_entries', column: 'is_special_labour', type: 'INTEGER DEFAULT 0' },
 ];
 
 // Drop is_critical_qa column from contacts (QA level now lives on job cards only)

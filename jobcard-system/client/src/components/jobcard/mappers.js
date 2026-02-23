@@ -11,7 +11,8 @@ export function mapTimeEntryFromApi(e) {
     qty: e.qty,
     description: e.description,
     startTime: e.startTime,
-    endTime: e.endTime
+    endTime: e.endTime,
+    isSpecialLabour: e.isSpecialLabour || false
   };
 }
 

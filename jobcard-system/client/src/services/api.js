@@ -157,6 +157,7 @@ class ApiService {
   getActiveTimer() { return this.request('/jobcards/active-timer'); }
   startTimer(jobcardId) { return this._post(`/jobcards/${jobcardId}/time-entries/start`); }
   stopTimer(jobcardId, entryId) { return this._post(`/jobcards/${jobcardId}/time-entries/${entryId}/stop`); }
+  toggleSpecialLabour(jobcardId, entryId) { return this._patch(`/jobcards/${jobcardId}/time-entries/${entryId}/toggle-special`); }
 
   // Job Notes
   getJobNotes(jobcardId) { return this.request(`/jobcards/${jobcardId}/notes`); }
