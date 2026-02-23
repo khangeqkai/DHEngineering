@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
@@ -101,6 +101,14 @@ export default function Dashboard() {
       { name: 'Done', value: stats.done, key: 'DONE' },
     ].filter(d => d.value > 0);
   }, [stats]);
+
+  const handleModalClose = useCallback(() => setIsModalOpen(false), []);
+  const handleQuickActionClose = useCallback(() => setQuickActionCard(null), []);
+  const handleViewDetails = useCallback((cardId) => {
+    setQuickActionCard(null);
+    setEditingCardId(cardId);
+    setIsModalOpen(true);
+  }, []);
 
   const openCreateModal = () => {
     setEditingCardId(null);
@@ -397,18 +405,15 @@ export default function Dashboard() {
 
       <QuickActionPanel
         isOpen={!!quickActionCard}
-        onClose={() => setQuickActionCard(null)}
+        onClose={handleQuickActionClose}
         jobCard={quickActionCard}
-        onViewDetails={(cardId) => {
-          setQuickActionCard(null);
-          openEditModal(cardId);
-        }}
+        onViewDetails={handleViewDetails}
         onTimerChange={refreshTimer}
       />
 
       <JobCardModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleModalClose}
         jobCardId={editingCardId}
         onSuccess={handleModalSuccess}
       />

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { capitalizeFirst } from '../../../utils/formatters';
 
 function formatElapsed(seconds) {
@@ -5,6 +6,24 @@ function formatElapsed(seconds) {
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function LiveElapsed({ startTime }) {
+  const [elapsed, setElapsed] = useState(() => Math.max(0, Math.floor((Date.now() - new Date(startTime).getTime()) / 1000)));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(Math.max(0, Math.floor((Date.now() - new Date(startTime).getTime()) / 1000)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  return (
+    <span className="timer-indicator">
+      <span className="timer-dot" />
+      {formatElapsed(elapsed)}
+    </span>
+  );
 }
 
 function EmployeeTimerView({
@@ -123,11 +142,15 @@ function EmployeeTimerView({
                     <div className="entry-time">
                       <span>{new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       <span> - </span>
-                      <span>{entry.endTime ? new Date(entry.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'In progress'}</span>
-                      {entry.endTime && (
-                        <span className="duration">
-                          ({Math.round((new Date(entry.endTime) - new Date(entry.startTime)) / 60000)} min)
-                        </span>
+                      {entry.endTime ? (
+                        <>
+                          <span>{new Date(entry.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="duration">
+                            ({formatElapsed(Math.round((new Date(entry.endTime) - new Date(entry.startTime)) / 1000))})
+                          </span>
+                        </>
+                      ) : (
+                        <LiveElapsed startTime={entry.startTime} />
                       )}
                     </div>
                   </div>
@@ -150,6 +173,7 @@ function AdminTimeEntryView({
   handleEditTimeEntry,
   handleSaveTimeEntry,
   handleDeleteTimeEntry,
+  handleStopActiveEntry,
   resetTimeEntryForm,
   lineItems,
   machines
@@ -254,8 +278,14 @@ function AdminTimeEntryView({
                       {entry.itemNumber && <span className="item-badge">Item #{entry.itemNumber}</span>}
                     </div>
                     <div className="entry-actions">
-                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleEditTimeEntry(entry)}>Edit</button>
-                      <button type="button" className="btn btn-danger btn-sm" onClick={() => handleDeleteTimeEntry(entry.id)}>Delete</button>
+                      {entry.endTime ? (
+                        <>
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleEditTimeEntry(entry)}>Edit</button>
+                          <button type="button" className="btn btn-danger btn-sm" onClick={() => handleDeleteTimeEntry(entry.id)}>Delete</button>
+                        </>
+                      ) : (
+                        <button type="button" className="btn btn-danger btn-sm" onClick={() => handleStopActiveEntry(entry)}>Stop</button>
+                      )}
                     </div>
                   </div>
                   <div className="entry-body">
@@ -263,11 +293,15 @@ function AdminTimeEntryView({
                     <div className="entry-time">
                       <span>{new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       <span> - </span>
-                      <span>{entry.endTime ? new Date(entry.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'In progress'}</span>
-                      {entry.endTime && (
-                        <span className="duration">
-                          ({Math.round((new Date(entry.endTime) - new Date(entry.startTime)) / 60000)} min)
-                        </span>
+                      {entry.endTime ? (
+                        <>
+                          <span>{new Date(entry.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="duration">
+                            ({formatElapsed(Math.round((new Date(entry.endTime) - new Date(entry.startTime)) / 1000))})
+                          </span>
+                        </>
+                      ) : (
+                        <LiveElapsed startTime={entry.startTime} />
                       )}
                     </div>
                   </div>
@@ -291,6 +325,7 @@ export default function TimeEntryTab({
   handleEditTimeEntry,
   handleSaveTimeEntry,
   handleDeleteTimeEntry,
+  handleStopActiveEntry,
   resetTimeEntryForm,
   lineItems,
   machines,
@@ -337,6 +372,7 @@ export default function TimeEntryTab({
       handleEditTimeEntry={handleEditTimeEntry}
       handleSaveTimeEntry={handleSaveTimeEntry}
       handleDeleteTimeEntry={handleDeleteTimeEntry}
+      handleStopActiveEntry={handleStopActiveEntry}
       resetTimeEntryForm={resetTimeEntryForm}
       lineItems={lineItems}
       machines={machines}

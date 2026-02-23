@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 
-export function useTimer(jobcardId) {
+export function useTimer(jobcardId, { onExternalStop } = {}) {
   const [activeTimer, setActiveTimer] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -15,6 +15,7 @@ export function useTimer(jobcardId) {
     description: ''
   });
   const intervalRef = useRef(null);
+  const selfStoppedRef = useRef(false);
 
   const loadActiveTimer = useCallback(async () => {
     try {
@@ -52,6 +53,30 @@ export function useTimer(jobcardId) {
       loadActiveTimer();
     }
   }, [jobcardId, loadActiveTimer]);
+
+  // Poll for external stops (e.g. admin stopped the timer)
+  useEffect(() => {
+    if (!activeTimer || !jobcardId) return;
+
+    const poll = setInterval(async () => {
+      try {
+        const current = await api.getActiveTimer();
+        if (!current || current.id !== activeTimer.id) {
+          if (!selfStoppedRef.current) {
+            toast('Your timer was stopped by an admin', { icon: '\u2139\uFE0F' });
+            if (onExternalStop) onExternalStop();
+          }
+          selfStoppedRef.current = false;
+          setActiveTimer(null);
+          setElapsed(0);
+        }
+      } catch {
+        // Ignore poll errors — network hiccups should not surface to user
+      }
+    }, 5000);
+
+    return () => clearInterval(poll);
+  }, [activeTimer, jobcardId, onExternalStop]);
 
   const startTimer = useCallback(async () => {
     setLoading(true);
@@ -128,6 +153,7 @@ export function useTimer(jobcardId) {
     try {
       const entry = await api.stopTimer(jobcardId, activeTimer.id);
       setStoppedEntry(entry);
+      selfStoppedRef.current = true;
       setActiveTimer(null);
       setShowEntryForm(true);
       toast.success('Timer stopped');

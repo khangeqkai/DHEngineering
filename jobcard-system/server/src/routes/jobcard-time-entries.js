@@ -275,6 +275,10 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireAssigneeOrAdmin
       return res.status(404).json({ error: 'Time entry not found' });
     }
 
+    if (!existing.end_time) {
+      return res.status(400).json({ error: 'Stop the timer before deleting this entry' });
+    }
+
     recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, req.user.name, {
       timeEntryId: { from: entryId, to: null },
       machineNumber: { from: existing.machine_number, to: null },

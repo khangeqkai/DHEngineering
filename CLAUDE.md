@@ -121,7 +121,7 @@ All changes logged to `history` table for audit trail.
 
 PDFs without fillable fields are copied as-is (blank templates for handwriting). See `docs/QA-PDF-TEMPLATE-GUIDE.md` for supported field names and template creation instructions. The `qualityLevel` column stores the level name, `qa_level_id` is the FK to `qa_levels`.
 
-**Time entries**: Simplified to core fields only (item#, machine#, qty, description, start/end time). QA inspection data is captured via the paper form workflow above, not digitally in time entries. The `time_entries` DB table retains legacy QA columns (equipmentChecksDone, firstOffInspection, scrapAllGood, etc.) but they are not used by the current UI.
+**Time entries**: Simplified to core fields only (item#, machine#, qty, description, start/end time). QA inspection data is captured via the paper form workflow above, not digitally in time entries. The `time_entries` DB table retains legacy QA columns (equipmentChecksDone, firstOffInspection, scrapAllGood, etc.) but they are not used by the current UI. **Active timer protection**: Server blocks DELETE on entries with no `end_time` (returns 400). Admin Time tab shows only a Stop button for active entries (no Edit/Delete until stopped). `useTimer` polls every 5s while a timer is active; if an admin stops it externally, the employee sees a toast notification and the time entries list refreshes automatically.
 
 ### Authentication
 - Two roles: `admin` (full access) and `user` (limited)

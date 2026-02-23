@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import BottomSheet from '../common/BottomSheet';
 import ConfirmDialog from '../common/ConfirmDialog';
@@ -55,7 +55,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const contactHook = useContactSearch();
   const formHook = useJobCardForm();
   const activityLog = useActivityLog(jobCardId);
-  const timer = useTimer(isEdit ? jobCardId : null);
+  const reloadTimeEntriesRef = useRef(null);
+  const onExternalStop = useCallback(() => {
+    if (reloadTimeEntriesRef.current) reloadTimeEntriesRef.current();
+  }, []);
+  const timer = useTimer(isEdit ? jobCardId : null, { onExternalStop });
   const jobNotes = useJobNotes(isEdit ? jobCardId : null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
@@ -182,6 +186,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     const res = await api.getTimeEntries(jobCardId);
     setTimeEntries((res || []).map(mapTimeEntry));
   };
+  reloadTimeEntriesRef.current = reloadTimeEntries;
 
   const apiTimeEntryOperations = {
     addTimeEntry: async (data) => {
@@ -194,6 +199,13 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     },
     deleteTimeEntry: async (id) => {
       await api.deleteTimeEntry(jobCardId, id);
+      await reloadTimeEntries();
+    },
+    stopActiveEntry: async (entryId) => {
+      await api.stopTimer(jobCardId, entryId);
+      if (timer.activeTimer?.id === entryId) {
+        timer.resetTimer();
+      }
       await reloadTimeEntries();
     }
   };
@@ -220,8 +232,13 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     resetNotes();
     setPhotos([]);
     resetHistory();
-    setActiveTab('details');
   }, [resetFormHook, resetContact, resetSubcontracts, resetTimeEntries, resetCosting, resetTimer, resetNotes, setPhotos, resetHistory]);
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab('details');
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen && !isEdit) {
       resetForm();
@@ -503,6 +520,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   handleEditTimeEntry={timeEntry.handleEditTimeEntry}
                   handleSaveTimeEntry={timeEntry.handleSaveTimeEntry}
                   handleDeleteTimeEntry={timeEntry.handleDeleteTimeEntry}
+                  handleStopActiveEntry={timeEntry.handleStopActiveEntry}
                   resetTimeEntryForm={timeEntry.resetTimeEntryForm}
                   lineItems={formHook.lineItems}
                   machines={machines || []}
