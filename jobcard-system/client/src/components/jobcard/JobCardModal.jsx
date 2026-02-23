@@ -6,7 +6,6 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import './JobCardModal.css';
-import { useCamera } from './useCamera';
 import { useCosting } from './useCosting';
 import { useSubcontracts } from './useSubcontracts';
 import { useTimeEntries } from './useTimeEntries';
@@ -17,8 +16,7 @@ import ItemsTab from './tabs/ItemsTab';
 import SubcontractsTab from './tabs/SubcontractsTab';
 import TimeEntryTab from './tabs/TimeEntryTab';
 import CostingTab from './tabs/CostingTab';
-import QAFormsTab from './tabs/QAFormsTab';
-import PhotosTab from './tabs/PhotosTab';
+import FilesTab from './tabs/FilesTab';
 import ActivityLogTab from './tabs/ActivityLogTab';
 import { useActivityLog } from './useActivityLog';
 import { useTimer } from './useTimer';
@@ -48,10 +46,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const [machines, setMachines] = useState([]);
   const [timeEntries, setTimeEntries] = useState([]);
   const [subcontracts, setSubcontracts] = useState([]);
-  const [qaForms, setQaForms] = useState([]);
   const [qaLevels, setQaLevels] = useState([]);
   const [costing, setCostingData] = useState(null);
-  const camera = useCamera();
   const contactHook = useContactSearch();
   const formHook = useJobCardForm();
   const activityLog = useActivityLog(jobCardId);
@@ -81,7 +77,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         setEmployees(activeEmployees);
         setMachines(machinesRes || []);
       } catch (err) {
-        console.error('Failed to load reference data:', err);
         toast.error('Failed to load reference data');
       }
     };
@@ -89,7 +84,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   }, []);
   const { setFormDataFromJobCard, resetForm: resetFormHook } = formHook;
   const { setContactFromJobCard, resetContact } = contactHook;
-  const { setPhotos, stopCamera } = camera;
   const { loadHistory, resetHistory } = activityLog;
   const { loadNotes } = jobNotes;
   const loadJobCard = useCallback(async () => {
@@ -97,22 +91,18 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
     setLoading(true);
     try {
-      const [jobcardRes, subcontractsRes, timeEntriesRes, qaFormsRes, costingRes] = await Promise.all([
+      const [jobcardRes, subcontractsRes, timeEntriesRes, costingRes] = await Promise.all([
         api.getJobcard(jobCardId),
         api.getSubcontracts(jobCardId),
         api.getTimeEntries(jobCardId),
-        api.getQAForms(jobCardId),
         isAdmin ? api.getCosting(jobCardId).catch(() => null) : Promise.resolve(null)
       ]);
 
       const jobcardData = jobcardRes;
       setFormDataFromJobCard(jobcardData);
       setContactFromJobCard(jobcardData);
-      setPhotos(Array.isArray(jobcardData.photos) ? jobcardData.photos : []);
       setSubcontracts((subcontractsRes || []).map(mapSubcontract));
       setTimeEntries((timeEntriesRes || []).map(mapTimeEntry));
-
-      setQaForms(qaFormsRes || []);
 
       loadNotes();
 
@@ -129,13 +119,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         });
       }
     } catch (err) {
-      console.error('Failed to load job card:', err);
       toast.error('Failed to load job card. Please try again.');
       onClose();
     } finally {
       setLoading(false);
     }
-  }, [isEdit, jobCardId, isAdmin, setFormDataFromJobCard, setContactFromJobCard, setPhotos, loadNotes, onClose]);
+  }, [isEdit, jobCardId, isAdmin, setFormDataFromJobCard, setContactFromJobCard, loadNotes, onClose]);
 
   useEffect(() => {
     if (isOpen && isEdit && activeTab === 'activity') {
@@ -162,10 +151,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   };
 
-  const reloadSubcontracts = async () => {
+  const reloadSubcontracts = useCallback(async () => {
     const res = await api.getSubcontracts(jobCardId);
     setSubcontracts((res || []).map(mapSubcontract));
-  };
+  }, [jobCardId]);
 
   const apiSubcontractOperations = {
     addSubcontract: async (data) => {
@@ -182,10 +171,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   };
 
-  const reloadTimeEntries = async () => {
+  const reloadTimeEntries = useCallback(async () => {
     const res = await api.getTimeEntries(jobCardId);
     setTimeEntries((res || []).map(mapTimeEntry));
-  };
+  }, [jobCardId]);
   reloadTimeEntriesRef.current = reloadTimeEntries;
 
   const apiTimeEntryOperations = {
@@ -223,16 +212,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     resetContact();
     setSubcontracts([]);
     setTimeEntries([]);
-    setQaForms([]);
     setCostingData(null);
     resetSubcontracts();
     resetTimeEntries();
     resetCosting();
     resetTimer();
     resetNotes();
-    setPhotos([]);
     resetHistory();
-  }, [resetFormHook, resetContact, resetSubcontracts, resetTimeEntries, resetCosting, resetTimer, resetNotes, setPhotos, resetHistory]);
+  }, [resetFormHook, resetContact, resetSubcontracts, resetTimeEntries, resetCosting, resetTimer, resetNotes, resetHistory]);
   useEffect(() => {
     if (isOpen) {
       setActiveTab('details');
@@ -247,17 +234,13 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       resetForm();
       loadJobCard();
     }
-    if (!isOpen) {
-      stopCamera();
-    }
-  }, [isOpen, isEdit, resetForm, stopCamera, loadJobCard]);
+  }, [isOpen, isEdit, resetForm, loadJobCard]);
   const loadScannerFiles = async () => {
     formHook.setLoadingScannerFiles(true);
     try {
       const result = await api.getScannerFiles(10);
       formHook.setScannerFiles(result.files || []);
     } catch (err) {
-      console.error('Failed to load scanner files:', err);
       toast.error('Failed to load scanner files');
       formHook.setScannerFiles([]);
     } finally {
@@ -377,7 +360,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         treatmentRequired: formHook.formData.treatmentRequired,
         treatmentOther: formHook.formData.treatmentOther,
         notes: formHook.formData.notes,
-        photos: camera.photos,
         assigneeIds: formHook.assignees.map(a => a.userId),
         items: validItems.map((item, idx) => ({
           itemNumber: item.itemNumber || idx + 1,
@@ -405,7 +387,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       onSuccess?.();
       onClose();
     } catch (err) {
-      console.error('Failed to save job card:', err);
       toast.error(err.message || 'Failed to save job card');
     } finally {
       setSaving(false);
@@ -432,9 +413,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}>Items</button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'subcontracts' ? 'active' : ''}`} onClick={() => setActiveTab('subcontracts')}>Subcontracts</button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'time' ? 'active' : ''}`} onClick={() => setActiveTab('time')}>Time</button>}
-                  {isAdmin && <button type="button" className={`tab ${activeTab === 'qa' ? 'active' : ''}`} onClick={() => setActiveTab('qa')}>QA</button>}
+                  {isAdmin && <button type="button" className={`tab ${activeTab === 'files' ? 'active' : ''}`} onClick={() => setActiveTab('files')}>Files</button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>}
-                  {isAdmin && <button type="button" className={`tab ${activeTab === 'photos' ? 'active' : ''}`} onClick={() => setActiveTab('photos')}>Photos</button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>}
                 </div>
               )}
@@ -547,26 +527,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 />
               )}
 
-              {activeTab === 'qa' && isEdit && isAdmin && (
-                <QAFormsTab
-                  formData={formHook.formData}
-                  qaForms={qaForms || []}
-                  jobCardId={jobCardId}
-                />
-              )}
-
-              {activeTab === 'photos' && isEdit && isAdmin && (
-                <PhotosTab
-                  photos={camera.photos}
-                  cameraActive={camera.cameraActive}
-                  cameraReady={camera.cameraReady}
-                  startCamera={camera.startCamera}
-                  stopCamera={camera.stopCamera}
-                  capturePhoto={camera.capturePhoto}
-                  removePhoto={camera.removePhoto}
-                  setSelectedPhoto={camera.setSelectedPhoto}
-                  videoRef={camera.videoRef}
-                />
+              {activeTab === 'files' && isEdit && isAdmin && (
+                <FilesTab jobCardId={jobCardId} />
               )}
 
               {activeTab === 'activity' && isEdit && isAdmin && (
@@ -588,15 +550,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           </form>
         )}
       </BottomSheet>
-
-      {camera.selectedPhoto && (
-        <div className="photo-modal" onClick={() => camera.setSelectedPhoto(null)}>
-          <div className="photo-modal-content" onClick={e => e.stopPropagation()}>
-            <button className="photo-modal-close" onClick={() => camera.setSelectedPhoto(null)}>x</button>
-            <img src={camera.selectedPhoto.data} alt="Full size" />
-          </div>
-        </div>
-      )}
 
       <ConfirmDialog
         isOpen={dialogState.isOpen}

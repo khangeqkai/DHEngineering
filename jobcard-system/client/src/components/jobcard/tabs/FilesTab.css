@@ -1,0 +1,195 @@
+/* FilesTab — expandable folder list */
+
+.files-tab {
+  padding: 4px 0;
+}
+
+.files-folder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── Folder header ── */
+.files-folder-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: background var(--duration-fast) ease;
+  text-align: left;
+}
+
+.files-folder-header:hover {
+  background: var(--surface-inset);
+}
+
+.files-folder.expanded > .files-folder-header {
+  color: var(--primary-accent);
+}
+
+/* Chevron rotation */
+.files-folder-chevron {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: transform var(--duration-normal) var(--ease-mechanical);
+}
+
+.files-folder.expanded .files-folder-chevron {
+  transform: rotate(90deg);
+  color: var(--primary-accent);
+}
+
+/* Folder icon */
+.files-folder-icon {
+  flex-shrink: 0;
+  color: var(--accent-safety);
+}
+
+.files-folder.expanded .files-folder-icon {
+  color: var(--accent-safety);
+}
+
+.files-folder-name {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Badge (collapsed file count) */
+.files-folder-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 10px;
+  background: var(--surface-inset);
+  color: var(--text-secondary);
+}
+
+/* ── Folder content (expanded) ── */
+.files-folder-content {
+  margin-left: 20px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border-color);
+  animation: files-expand var(--duration-normal) var(--ease-mechanical);
+}
+
+@keyframes files-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading bar */
+.files-loading {
+  padding: 12px 0;
+}
+
+.files-loading-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--surface-inset);
+  overflow: hidden;
+  position: relative;
+}
+
+.files-loading-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: 2px;
+  background: var(--primary-accent);
+  animation: files-slide 1s ease-in-out infinite;
+}
+
+@keyframes files-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+/* Empty state */
+.files-empty {
+  padding: 10px 12px;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* ── File list ── */
+.files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 0;
+}
+
+/* Individual file row */
+.files-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--duration-fast) ease;
+}
+
+.files-item:hover:not(:disabled) {
+  background: var(--surface-inset);
+}
+
+.files-item:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+/* Preview thumbnail / icon */
+.files-item-preview {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-inset);
+  color: var(--text-tertiary);
+}
+
+.files-item-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* File name */
+.files-item-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
