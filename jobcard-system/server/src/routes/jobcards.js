@@ -343,12 +343,21 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums
       }
     }
 
-    // Track items changes
+    // Track items changes — per-item granularity
     if (data.items !== undefined) {
-      const oldDescs = existingItems.map(i => `${i.qty || ''}x ${i.description}`).join(', ');
-      const newDescs = data.items.map(i => `${i.qty || ''}x ${i.description}`).join(', ');
-      if (oldDescs !== newDescs) {
-        changes['items'] = { from: oldDescs || 'none', to: newDescs || 'none' };
+      const oldMap = new Map(existingItems.map(i => [i.item_number, `${i.qty || ''}x ${i.description}`]));
+      const newMap = new Map(data.items.map((i, idx) => [i.itemNumber || idx + 1, `${i.qty || ''}x ${i.description}`]));
+      for (const [num, desc] of newMap) {
+        if (!oldMap.has(num)) {
+          changes[`item #${num} added`] = { from: null, to: desc };
+        } else if (oldMap.get(num) !== desc) {
+          changes[`item #${num}`] = { from: oldMap.get(num), to: desc };
+        }
+      }
+      for (const [num, desc] of oldMap) {
+        if (!newMap.has(num)) {
+          changes[`item #${num} removed`] = { from: desc, to: null };
+        }
       }
     }
 

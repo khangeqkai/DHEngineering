@@ -859,6 +859,47 @@
   font-size: var(--text-sm);
 }
 
+.entry-items-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.entry-item-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: var(--text-sm);
+  padding: 0.15rem 0;
+}
+
+.entry-item-num {
+  font-weight: 600;
+  color: var(--primary-accent);
+  flex-shrink: 0;
+}
+
+.entry-item-desc {
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-item-qty {
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.entry-item-user-desc {
+  color: var(--text-secondary);
+  font-style: italic;
+  flex-shrink: 0;
+}
+
 .entry-time {
   font-family: var(--font-mono);
   font-size: var(--text-xs);

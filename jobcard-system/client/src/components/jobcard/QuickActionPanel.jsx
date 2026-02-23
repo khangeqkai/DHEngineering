@@ -7,6 +7,7 @@ import { useCamera } from './useCamera';
 import { useQuickActionFiles, CATEGORY_LABELS } from './useQuickActionFiles';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import ConfirmDialog from '../common/ConfirmDialog';
+import StopTimerForm from './StopTimerForm';
 import './QuickActionPanel.css';
 
 const STATUS_LABELS = {
@@ -57,7 +58,9 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
     if (!isOpen) return;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (files.viewerUrl) {
+        if (timer.showEntryForm) {
+          return;
+        } else if (files.viewerUrl) {
           files.closeViewer();
         } else if (files.lightboxPhoto) {
           files.closeLightbox();
@@ -78,7 +81,7 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, activeView, onClose, camera.stopCamera, files.lightboxPhoto, files.viewerUrl, files.closeViewer, files.closeLightbox]);
+  }, [isOpen, activeView, onClose, camera.stopCamera, files.lightboxPhoto, files.viewerUrl, files.closeViewer, files.closeLightbox, timer.showEntryForm]);
 
   const handleBack = useCallback(() => {
     if (activeView === 'scanner' || activeView === 'camera') {
@@ -136,6 +139,15 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
   const handleStopTimer = useCallback(async () => {
     if (!timer.activeTimer) return;
     await timer.stopTimer();
+    if (onTimerChange) onTimerChange();
+  }, [timer, onTimerChange]);
+
+  const handleSubmitEntryForm = useCallback(async () => {
+    await timer.submitEntryForm();
+  }, [timer]);
+
+  const handleCancelEntryForm = useCallback(async () => {
+    await timer.cancelEntryForm();
     if (onTimerChange) onTimerChange();
   }, [timer, onTimerChange]);
 
@@ -214,7 +226,7 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
               )}
             </div>
           </div>
-          <button className="qap-close-btn" onClick={onClose}>
+          <button className="qap-close-btn" onClick={onClose} disabled={timer.showEntryForm}>
             <X size={20} />
           </button>
         </div>
@@ -444,6 +456,17 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
           </div>
         )}
       </div>
+
+      <StopTimerForm
+        isOpen={timer.showEntryForm}
+        jobCard={jobCard}
+        entryForm={timer.entryForm}
+        onItemFieldChange={timer.handleItemFieldChange}
+        onItemMachineToggle={timer.handleItemMachineToggle}
+        onSubmit={handleSubmitEntryForm}
+        onCancel={handleCancelEntryForm}
+        loading={timer.loading}
+      />
 
       <ConfirmDialog
         isOpen={dialogState.isOpen}

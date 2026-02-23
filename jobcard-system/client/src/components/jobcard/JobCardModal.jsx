@@ -20,6 +20,7 @@ import ActivityLogTab from './tabs/ActivityLogTab';
 import { useActivityLog } from './useActivityLog';
 import { useTimer } from './useTimer';
 import { useJobNotes } from './useJobNotes';
+import StopTimerForm from './StopTimerForm';
 
 const mapSubcontract = (s) => ({
   id: s.id, supplierId: s.supplierId, supplierName: s.supplierName,
@@ -182,6 +183,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     await reloadTimeEntries();
     if (costingHookRef.current) await costingHookRef.current();
   }, [reloadTimeEntries]);
+
+  const handleSubmitEntryForm = useCallback(async () => {
+    await timer.submitEntryForm(reloadTimeEntriesAndCosting);
+  }, [timer, reloadTimeEntriesAndCosting]);
+
+  const handleCancelEntryForm = useCallback(async () => {
+    await timer.cancelEntryForm(reloadTimeEntriesAndCosting);
+  }, [timer, reloadTimeEntriesAndCosting]);
 
   const apiTimeEntryOperations = {
     addTimeEntry: async (data) => {
@@ -553,6 +562,17 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           </form>
         )}
       </BottomSheet>
+
+      <StopTimerForm
+        isOpen={timer.showEntryForm}
+        jobCard={jobCardId ? { id: jobCardId, jobNumber: formHook.jobNumber } : null}
+        entryForm={timer.entryForm}
+        onItemFieldChange={timer.handleItemFieldChange}
+        onItemMachineToggle={timer.handleItemMachineToggle}
+        onSubmit={handleSubmitEntryForm}
+        onCancel={handleCancelEntryForm}
+        loading={timer.loading}
+      />
 
       <ConfirmDialog
         isOpen={dialogState.isOpen}

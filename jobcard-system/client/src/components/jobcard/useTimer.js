@@ -9,10 +9,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
   const [showEntryForm, setShowEntryForm] = useState(false);
   const [stoppedEntry, setStoppedEntry] = useState(null);
   const [entryForm, setEntryForm] = useState({
-    machineNumber: '',
-    itemNumber: '',
-    qty: '',
-    description: ''
+    items: {} // { [itemNumber]: { qty, machineNumbers, description } }
   });
   const intervalRef = useRef(null);
   const selfStoppedRef = useRef(false);
@@ -164,30 +161,66 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     }
   }, [jobcardId, activeTimer]);
 
-  const handleEntryFormChange = useCallback((e) => {
-    const { name, value, type, checked } = e.target;
-    setEntryForm(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+  const handleItemFieldChange = useCallback((itemNumber, field, value) => {
+    setEntryForm(prev => {
+      const existing = prev.items[itemNumber] || { qty: '', machineNumbers: [], description: '' };
+      return {
+        ...prev,
+        items: { ...prev.items, [itemNumber]: { ...existing, [field]: value } }
+      };
+    });
+  }, []);
+
+  const handleItemMachineToggle = useCallback((itemNumber, machineNumber) => {
+    setEntryForm(prev => {
+      const item = prev.items[itemNumber] || { qty: '', machineNumbers: [], description: '' };
+      const current = item.machineNumbers || [];
+      const next = current.includes(machineNumber)
+        ? current.filter(m => m !== machineNumber)
+        : [...current, machineNumber];
+      return {
+        ...prev,
+        items: { ...prev.items, [itemNumber]: { ...item, machineNumbers: next } }
+      };
+    });
   }, []);
 
   const submitEntryForm = useCallback(async (reloadEntries) => {
     if (!stoppedEntry) return;
+
+    // Collect items with non-empty qty
+    const filledItems = Object.entries(entryForm.items)
+      .filter(([, item]) => item.qty && String(item.qty).trim() !== '')
+      .map(([itemNumber, item]) => ({
+        itemNumber: Number(itemNumber),
+        qty: String(item.qty).trim(),
+        machineNumbers: item.machineNumbers || [],
+        description: (item.description || '').trim()
+      }));
+
+    if (filledItems.length === 0) return;
+
+    // Combine into a single entry — one timer stop = one time entry
+    const allMachines = [...new Set(filledItems.flatMap(i => i.machineNumbers))];
+    const combinedItemNumber = filledItems.map(i => i.itemNumber).join(', ');
+    const combinedQty = filledItems.map(i => i.qty).join(', ');
+    const combinedDescription = filledItems.length === 1
+      ? filledItems[0].description
+      : filledItems.map(i => `#${i.itemNumber}: ${i.description}`).join('; ');
+
     setLoading(true);
     try {
       await api.updateTimeEntry(jobcardId, stoppedEntry.id, {
         ...stoppedEntry,
-        ...entryForm
+        itemNumber: combinedItemNumber,
+        qty: combinedQty,
+        machineNumber: allMachines.join(', '),
+        description: combinedDescription
       });
+
       setShowEntryForm(false);
       setStoppedEntry(null);
-      setEntryForm({
-        machineNumber: '',
-        itemNumber: '',
-        qty: '',
-        description: ''
-      });
+      setEntryForm({ items: {} });
       if (reloadEntries) await reloadEntries();
       toast.success('Time entry updated');
     } catch (err) {
@@ -197,11 +230,31 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     }
   }, [jobcardId, stoppedEntry, entryForm]);
 
-  const skipEntryForm = useCallback(async (reloadEntries) => {
-    setShowEntryForm(false);
-    setStoppedEntry(null);
-    if (reloadEntries) await reloadEntries();
-  }, []);
+  const cancelEntryForm = useCallback(async (reloadEntries) => {
+    if (!stoppedEntry) return;
+    setLoading(true);
+    try {
+      // Clear end_time to resume the original entry (preserves original startTime)
+      await api.updateTimeEntry(jobcardId, stoppedEntry.id, {
+        ...stoppedEntry,
+        endTime: null
+      });
+      setActiveTimer({
+        id: stoppedEntry.id,
+        jobcardId,
+        startTime: stoppedEntry.startTime
+      });
+      setShowEntryForm(false);
+      setStoppedEntry(null);
+      setEntryForm({ items: {} });
+      if (reloadEntries) await reloadEntries();
+      toast.success('Timer resumed');
+    } catch (err) {
+      toast.error(err.message || 'Failed to resume timer');
+    } finally {
+      setLoading(false);
+    }
+  }, [jobcardId, stoppedEntry]);
 
   const resetTimer = useCallback(() => {
     setActiveTimer(null);
@@ -220,9 +273,10 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     startTimer,
     startTimerWithConflictCheck,
     stopTimer,
-    handleEntryFormChange,
+    handleItemFieldChange,
+    handleItemMachineToggle,
     submitEntryForm,
-    skipEntryForm,
+    cancelEntryForm,
     loadActiveTimer,
     resetTimer
   };
