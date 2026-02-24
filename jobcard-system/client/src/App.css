@@ -47,7 +47,6 @@
 }
 
 .mobile-title {
-  font-family: var(--font-sans);
   font-size: var(--text-base);
   font-weight: 700;
   color: var(--text-primary);
@@ -94,7 +93,6 @@
 }
 
 .sidebar-header h1 {
-  font-family: var(--font-sans);
   font-size: var(--text-lg);
   font-weight: 700;
   color: var(--text-primary);
@@ -125,7 +123,6 @@
   padding: 0.625rem 0.875rem;
   border-radius: var(--radius-md);
   color: var(--text-primary);
-  font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 500;
   transition: background-color var(--duration-fast) ease,
@@ -265,7 +262,6 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.625rem 1.25rem;
-  font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 600;
   border: none;
@@ -422,7 +418,6 @@
   align-items: center;
   gap: 0.375rem;
   margin-bottom: 0.375rem;
-  font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-secondary);
@@ -536,14 +531,12 @@
 }
 
 .toggle-title {
-  font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .toggle-desc {
-  font-family: var(--font-sans);
   font-size: var(--text-xs);
   color: var(--text-secondary);
   letter-spacing: normal;
@@ -599,7 +592,7 @@
 .critical-badge {
   background: var(--danger-color);
   color: var(--text-inverse);
-  font-size: 0.625rem;
+  font-size: var(--text-xs);
   padding: 0.125rem 0.375rem;
   border-radius: var(--radius-sm);
   margin-left: 0.5rem;
@@ -637,8 +630,7 @@
 }
 
 .card-header h2 {
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 600;
   margin: 0;
 }
@@ -664,7 +656,6 @@
 }
 
 .table th {
-  font-family: var(--font-sans);
   font-weight: 600;
   font-size: var(--text-xs);
   text-transform: uppercase;
@@ -743,7 +734,6 @@
   align-items: center;
   gap: 0.375rem;
   padding: 0.25rem 0.625rem;
-  font-family: var(--font-sans);
   font-size: var(--text-xs);
   font-weight: 600;
   border-radius: var(--radius-md);
@@ -839,7 +829,6 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-family: var(--font-sans);
   font-size: var(--text-xs);
   padding: 0.5rem 0;
   color: var(--text-secondary);
@@ -965,7 +954,6 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-family: var(--font-sans);
   font-size: var(--text-xl);
   font-weight: 600;
   letter-spacing: var(--tracking-tight);
@@ -979,7 +967,7 @@
   border: 1px solid var(--border-color);
   background: var(--surface-inset);
   color: var(--text-primary);
-  font-size: 1.25rem;
+  font-size: var(--text-xl);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1064,7 +1052,6 @@
 
 .confirm-dialog h2 {
   margin: 0 0 0.75rem;
-  font-family: var(--font-sans);
   font-size: var(--text-xl);
   color: var(--text-primary);
 }
@@ -1094,7 +1081,6 @@
 }
 
 .page-header h1 {
-  font-family: var(--font-sans);
   font-size: var(--text-2xl);
   font-weight: 700;
   letter-spacing: var(--tracking-tight);
@@ -1297,13 +1283,12 @@
 }
 
 .inactivity-modal-icon {
-  font-size: 3rem;
+  font-size: var(--text-4xl);
   margin-bottom: 0.5rem;
   color: var(--accent-caution);
 }
 
 .inactivity-modal h2 {
-  font-family: var(--font-sans);
   font-size: var(--text-lg);
   font-weight: 700;
   margin: 0 0 0.5rem 0;
@@ -1326,7 +1311,6 @@
 
 .inactivity-subtext {
   color: var(--text-tertiary);
-  font-family: var(--font-sans);
   font-size: var(--text-sm);
   margin-bottom: 1.5rem !important;
 }
@@ -1413,7 +1397,7 @@
 }
 
 .qa-level-meta {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
 }
 
@@ -1424,7 +1408,7 @@
 }
 
 .badge {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   padding: 0.15rem 0.4rem;
   border-radius: var(--radius-sm);
   font-weight: 500;
@@ -1457,7 +1441,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   padding: 0.3rem 0;
 }
@@ -1469,11 +1453,11 @@
 
 .template-file {
   color: var(--text-tertiary);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 
 .template-empty {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
   font-style: italic;
   margin-bottom: 0.75rem;
@@ -1511,7 +1495,7 @@
 }
 
 .form-help {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
   margin-top: 0.25rem;
 }

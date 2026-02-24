@@ -78,7 +78,7 @@
 
 .assignee-tooltip-item {
   padding: 4px 12px;
-  font-size: var(--text-sm, 0.85rem);
+  font-size: var(--text-sm);
   white-space: nowrap;
 }
 
@@ -109,7 +109,7 @@
 
 .overdue-label {
   display: block;
-  font-size: 0.625rem;
+  font-size: var(--text-xs);
   margin-top: 0.25rem;
 }
 
@@ -227,7 +227,7 @@
   border: 1px solid var(--success-color, #16a34a);
   border-radius: var(--radius-md, 6px);
   padding: 0.25rem 0.625rem;
-  font-size: var(--text-sm, 0.8125rem);
+  font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s, color 0.2s, box-shadow 0.2s;
@@ -249,7 +249,7 @@
   border: 1px solid var(--border-color, #e2e8f0);
   border-radius: var(--radius-md, 6px);
   padding: 0.25rem 0.625rem;
-  font-size: var(--text-sm, 0.8125rem);
+  font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;

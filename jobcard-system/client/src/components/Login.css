@@ -70,7 +70,8 @@
 }
 
 .login-header h1 {
-  font-size: 1.75rem;
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
   color: #f1f5f9;
   margin-bottom: 0.5rem;
 }
@@ -85,7 +86,7 @@
   padding: 0.75rem 1rem;
   border-radius: var(--radius-md);
   margin-bottom: 1.25rem;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
@@ -130,6 +131,7 @@
   width: 100%;
   padding: 0.875rem;
   font-size: 1rem;
+  font-weight: var(--font-semibold);
   background: #0284c7 !important;
   border: none;
   color: white !important;
@@ -149,7 +151,7 @@
 }
 
 .login-footer p {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: rgba(148, 163, 184, 0.5);
 }
 
