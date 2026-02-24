@@ -54,7 +54,7 @@ router.get('/user/:userId', authenticate, requireRole('admin'), (req, res) => {
 // Get activity by entity type (admin only)
 router.get('/entity/:entityType', authenticate, requireRole('admin'), (req, res) => {
   try {
-    const allowedTypes = ['user', 'contact', 'supplier'];
+    const allowedTypes = ['user', 'contact', 'supplier', 'machine'];
     const { entityType } = req.params;
     if (!allowedTypes.includes(entityType)) {
       return res.status(400).json({ error: 'Invalid entity type' });

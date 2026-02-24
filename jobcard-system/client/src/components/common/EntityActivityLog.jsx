@@ -57,6 +57,10 @@ function formatTarget(snapshot) {
   if (snapshot.username) {
     return snapshot.name ? `${snapshot.username} (${snapshot.name})` : snapshot.username;
   }
+  // Machine: show machine number (name)
+  if (snapshot.machineNumber) {
+    return snapshot.name ? `${snapshot.machineNumber} (${snapshot.name})` : snapshot.machineNumber;
+  }
   // Contact: show contact name (company)
   if (snapshot.contactName) {
     return snapshot.companyName ? `${snapshot.contactName} (${snapshot.companyName})` : snapshot.contactName;

@@ -139,8 +139,9 @@ router.delete('/:id', (req, res) => {
 
     machineQueries.deactivate.run(id);
 
-    recordHistory('machine', id, 'deactivated', req.user.userId, req.user.name || req.user.username, {
-      status: { from: 'Active', to: 'Inactive' }
+    recordHistory('machine', id, 'deleted', req.user.userId, req.user.name || req.user.username, {
+      machineNumber: { from: existing.machine_number, to: null },
+      name: { from: existing.name, to: null }
     }, toResponseFormat(existing));
 
     res.json({ success: true });
