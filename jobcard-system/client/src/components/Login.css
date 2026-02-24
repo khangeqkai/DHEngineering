@@ -143,18 +143,6 @@
   box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
 }
 
-.login-footer {
-  margin-top: 1.5rem;
-  text-align: center;
-  padding-top: 1.5rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.15);
-}
-
-.login-footer p {
-  font-size: var(--text-xs);
-  color: rgba(148, 163, 184, 0.5);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .login-container::before {
     animation: none;

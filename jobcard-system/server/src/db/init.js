@@ -70,7 +70,7 @@ async function initializeDatabase() {
       name: { from: null, to: 'Administrator' }
     });
 
-    logger.info('Created default admin user (username: admin, password: admin123)');
+    logger.info('Created default admin user (username: admin)');
   } else {
     logger.info('Admin user already exists');
   }

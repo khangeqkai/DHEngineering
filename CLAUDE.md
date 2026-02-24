@@ -60,7 +60,7 @@ jobcard-system/
 │   └── electron/                 # Electron main/preload
 ├── server/
 │   ├── src/
-│   │   ├── config.js             # Port, JWT, DB path settings
+│   │   ├── config.js             # Port, JWT (auto-generated), DB path settings
 │   │   ├── middleware/
 │   │   │   ├── auth.js           # JWT verification + role checking + rate limiting + assignee access
 │   │   │   └── validation.js     # express-validator reusable validators
@@ -73,7 +73,9 @@ jobcard-system/
 │   │   │   └── init.js           # Migrations + default admin setup
 │   │   └── routes/               # Express route modules
 │   └── index.js                  # Express entry point
-└── data/jobcard.db               # SQLite database file
+└── data/
+    ├── jobcard.db                # SQLite database file
+    └── config.json               # Auto-generated JWT secret (persisted)
 ```
 
 ### API Structure
@@ -242,10 +244,11 @@ db.run(data.jobNumber, data.dueDate, data.contactId);
 ```
 PORT=3000                    # Server port
 HOST=0.0.0.0                 # Server host (0.0.0.0 for LAN access)
-JWT_SECRET=your-secret       # Production JWT signing key
+JWT_SECRET=your-secret       # Override auto-generated JWT secret (optional, advanced)
 JWT_EXPIRES_IN=7d            # Token expiration (server-side, but session ends on app close anyway)
 LOG_LEVEL=info               # Logging level (debug, info, warn, error)
 NODE_ENV=production          # Environment (development uses pretty logs)
+DATA_DIR=/path/to/data       # Override data directory (set automatically by Electron in production)
 ```
 
 ## Security Features
@@ -257,3 +260,5 @@ NODE_ENV=production          # Environment (development uses pretty logs)
 - **Inactivity auto-logout**: Configurable timeout (1-60 min, default 5 min) with 30-second warning modal. Admin configures in Settings. Handles system sleep/wake via visibility API.
 - **Audit trail**: All data mutations logged to history table (including failed login attempts)
 - **Prepared statements**: All database queries use prepared statements (SQL injection protection)
+- **Auto-generated JWT secret**: On first run, a random 256-bit secret is generated via `crypto.randomBytes(32)` and persisted to `data/config.json`. Env var `JWT_SECRET` overrides if set.
+- **Electron server lifecycle**: In production builds, Electron auto-starts the Express server as a child process (via `fork()`), polls `/health` until ready, and kills it on app quit. In dev mode, the server is started separately via `npm start`.

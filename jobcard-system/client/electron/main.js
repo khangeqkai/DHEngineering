@@ -1,12 +1,99 @@
 const { app, BrowserWindow, ipcMain, Menu, globalShortcut, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { fork } = require('child_process');
+const http = require('http');
 
 // Hardware integration modules
 let printerModule = null;
 let scannerModule = null;
 
 const isDev = !app.isPackaged;
+
+let serverProcess = null;
+
+function getServerPath() {
+  if (isDev) {
+    return path.join(__dirname, '..', '..', 'server', 'index.js');
+  }
+  return path.join(process.resourcesPath, 'server', 'index.js');
+}
+
+function getDataDir() {
+  if (isDev) {
+    return path.join(__dirname, '..', '..', 'data');
+  }
+  return path.join(app.getPath('userData'), 'data');
+}
+
+function pollServer(url, intervalMs, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const start = Date.now();
+    const check = () => {
+      http.get(url, (res) => {
+        res.resume(); // drain response body to free socket
+        if (!settled && res.statusCode === 200) {
+          settled = true;
+          resolve();
+        } else if (!settled) {
+          retry();
+        }
+      }).on('error', () => {
+        if (!settled) retry();
+      });
+    };
+    const retry = () => {
+      if (Date.now() - start > timeoutMs) {
+        if (!settled) {
+          settled = true;
+          reject(new Error('Server did not start in time'));
+        }
+      } else {
+        setTimeout(check, intervalMs);
+      }
+    };
+    check();
+  });
+}
+
+async function startServer() {
+  const serverPath = getServerPath();
+  const dataDir = getDataDir();
+
+  // Ensure data directory exists
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
+  serverProcess = fork(serverPath, [], {
+    env: {
+      ...process.env,
+      DATA_DIR: dataDir,
+      NODE_ENV: isDev ? 'development' : 'production'
+    },
+    stdio: 'pipe'
+  });
+
+  serverProcess.on('error', (err) => {
+    console.error('Server process error:', err);
+  });
+
+  serverProcess.on('exit', (code) => {
+    console.log('Server process exited with code:', code);
+    serverProcess = null;
+  });
+
+  // Wait for server to be ready
+  await pollServer('http://localhost:3000/health', 200, 15000);
+}
+
+function killServer() {
+  if (serverProcess) {
+    serverProcess.kill();
+    serverProcess = null;
+  }
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -92,8 +179,22 @@ function createMenu() {
 }
 
 // App lifecycle
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createMenu();
+
+  if (!isDev) {
+    try {
+      await startServer();
+    } catch (err) {
+      dialog.showErrorBox(
+        'Server Error',
+        'Failed to start the application server. Please restart the app.\n\n' + err.message
+      );
+      app.quit();
+      return;
+    }
+  }
+
   createWindow();
 
   app.on('activate', () => {
@@ -103,7 +204,12 @@ app.whenReady().then(() => {
   });
 });
 
+app.on('before-quit', () => {
+  if (!isDev) killServer();
+});
+
 app.on('window-all-closed', () => {
+  if (!isDev) killServer();
   if (process.platform !== 'darwin') {
     app.quit();
   }

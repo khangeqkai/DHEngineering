@@ -1,7 +1,7 @@
 {
   "name": "jobcard-client",
   "version": "1.0.0",
-  "description": "Job Card System - Electron Client",
+  "description": "DH Engineering Job Card System",
   "main": "electron/main.js",
   "scripts": {
     "start": "concurrently \"npm run dev\" \"npm run electron\"",
@@ -32,8 +32,8 @@
     "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.jobcard.system",
-    "productName": "Job Card System",
+    "appId": "com.dhengineering.jobcard",
+    "productName": "DH Engineering Job Cards",
     "directories": {
       "output": "release"
     },
@@ -41,11 +41,28 @@
       "dist/**/*",
       "electron/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "../server",
+        "to": "server",
+        "filter": [
+          "**/*",
+          "!node_modules/.cache/**"
+        ]
+      }
+    ],
     "mac": {
       "target": "dmg"
     },
     "win": {
       "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DH Engineering Job Cards"
     },
     "linux": {
       "target": "AppImage"

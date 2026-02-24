@@ -280,16 +280,8 @@ export default function Settings() {
                   <dd>http://localhost:3000</dd>
                 </div>
                 <div className="info-item">
-                  <dt>Database Server</dt>
-                  <dd>http://localhost:3000/db</dd>
-                </div>
-                <div className="info-item">
-                  <dt>Database UI</dt>
-                  <dd>
-                    <a href="http://localhost:3000/db/_utils" target="_blank" rel="noopener noreferrer">
-                      http://localhost:3000/db/_utils (Fauxton)
-                    </a>
-                  </dd>
+                  <dt>Database</dt>
+                  <dd>SQLite (embedded)</dd>
                 </div>
               </dl>
             </div>
