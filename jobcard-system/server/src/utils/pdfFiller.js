@@ -70,6 +70,9 @@ const FIELD_MAPPINGS = {
   notes: 'notes'
 };
 
+// Regex for item fields: item_1_number, item_2_qty, item_3_description, etc.
+const ITEM_FIELD_REGEX = /^item_(\d+)_(number|qty|description)$/;
+
 /**
  * Fill PDF form fields with job data.
  * Returns filled PDF buffer, or the original buffer if no fields or on error.
@@ -93,9 +96,36 @@ async function fillPdfTemplate(sourceBuffer, jobData) {
       return sourceBuffer;
     }
 
+    const items = Array.isArray(jobData.items) ? jobData.items : [];
+
     let filled = false;
     for (const field of fields) {
       const fieldName = field.getName().toLowerCase().trim();
+
+      // Check for item fields first (item_N_number, item_N_qty, item_N_description)
+      const itemMatch = fieldName.match(ITEM_FIELD_REGEX);
+      if (itemMatch) {
+        const index = parseInt(itemMatch[1], 10) - 1; // 1-based → 0-based
+        const prop = itemMatch[2]; // number, qty, description
+        const item = items[index];
+        if (item) {
+          const keyMap = { number: 'itemNumber', qty: 'qty', description: 'description' };
+          const value = item[keyMap[prop]];
+          if (value !== null && value !== undefined && value !== '') {
+            try {
+              if (typeof field.setText === 'function') {
+                field.setText(String(value));
+                filled = true;
+              }
+            } catch {
+              // Field might be read-only or incompatible
+            }
+          }
+        }
+        continue;
+      }
+
+      // Standard field mappings
       const dataKey = FIELD_MAPPINGS[fieldName];
 
       if (dataKey && jobData[dataKey]) {

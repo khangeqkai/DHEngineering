@@ -213,7 +213,8 @@ async function copyTemplatesToJobFolder(level, templates, jobData) {
     const fillData = {
       ...jobData,
       date: new Date().toLocaleDateString('en-AU'),
-      qualityLevel: jobData.qualityLevel || level.name
+      qualityLevel: jobData.qualityLevel || level.name,
+      items: jobData.items || []
     };
 
     const copyPromises = [];

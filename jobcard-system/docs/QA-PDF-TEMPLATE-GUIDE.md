@@ -36,6 +36,18 @@ Use any of these names when creating fillable text fields in your PDF form. Fiel
 | Repeat Job Reference | `repeat_job_reference`, `repeatjobreference`, `repeat_ref`, `repeatref` |
 | Notes | `notes` |
 
+### Item Fields (Indexed)
+
+Job items use indexed field names. Add as many rows as you need (up to 50). Unfilled slots stay blank; extra items beyond the template's slots are silently skipped.
+
+| Item Data | Field Name Pattern | Example (item 1) |
+|-----------|--------------------|-------------------|
+| Item Number | `item_N_number` | `item_1_number` |
+| Quantity | `item_N_qty` | `item_1_qty` |
+| Description | `item_N_description` | `item_1_description` |
+
+Where `N` is the 1-based item index (1, 2, 3, ...). For example, a template with 5 item rows would have fields: `item_1_number`, `item_1_qty`, `item_1_description`, `item_2_number`, ..., `item_5_description`.
+
 ## Creating a Template PDF
 
 ### Option A: Fillable PDF (auto-populated fields + handwritten sections)

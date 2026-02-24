@@ -205,6 +205,8 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
 
     // Initialize QA forms from level templates
     if (qaLevelId) {
+      // Fetch items from DB (already created by createRelatedRecords above)
+      const createdItems = jobItemQueries.getByJobcard.all(id);
       await initQaFormsFromLevel(id, qaLevelId, {
         jobNumber: jobNumber.trim(),
         status: status,
@@ -223,7 +225,8 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
         treatmentOther: data.treatmentOther || null,
         repeatJob: data.isRepeatJob ? 'Yes' : 'No',
         repeatJobReference: data.repeatJobReference || null,
-        notes: data.notes || null
+        notes: data.notes || null,
+        items: createdItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description }))
       });
     }
 
@@ -397,6 +400,7 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums
       // Initialize new QA forms from level templates
       if (newQaLevelId) {
         const current = jobcardQueries.getById.get(id);
+        const currentItems = jobItemQueries.getByJobcard.all(id);
         await initQaFormsFromLevel(id, newQaLevelId, {
           jobNumber: current.job_number,
           status: current.status,
@@ -415,7 +419,8 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums
           treatmentOther: current.treatment_other || data.treatmentOther || null,
           repeatJob: (data.isRepeatJob !== undefined ? data.isRepeatJob : current.is_repeat_job === 1) ? 'Yes' : 'No',
           repeatJobReference: current.repeat_job_reference || data.repeatJobReference || null,
-          notes: current.notes || data.notes || null
+          notes: current.notes || data.notes || null,
+          items: currentItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description }))
         });
       }
     }
