@@ -5,6 +5,8 @@ import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Plus, Trash2, Archive, ArchiveRestore, Check } from 'lucide-react';
 import PageHeader from './common/PageHeader';
+import ExportButton from './common/ExportButton';
+import { exportJobCardList, exportJobCardsFull } from '../utils/excelExport';
 import JobCardModal from './jobcard/JobCardModal';
 import QuickActionPanel from './jobcard/QuickActionPanel';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -268,6 +270,12 @@ export default function JobCardList() {
           />
           Show Archived
         </label>
+        {isAdmin && (
+          <ExportButton
+            onExportView={() => filteredCards.length ? exportJobCardList(filteredCards) : false}
+            onExportAll={() => exportJobCardsFull()}
+          />
+        )}
         {!showArchived && isAdmin && (
           <button className="btn btn-primary" onClick={openCreateModal}>
             <Plus size={16} /> New Job Card

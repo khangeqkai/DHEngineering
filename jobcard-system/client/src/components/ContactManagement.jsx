@@ -4,6 +4,8 @@ import { api } from '../services/api';
 import { toTitleCase, capitalizeFirst, autoResize } from '../utils/formatters';
 import { Plus, Trash2, Save, History } from 'lucide-react';
 import PageHeader from './common/PageHeader';
+import ExportButton from './common/ExportButton';
+import { exportContacts } from '../utils/excelExport';
 import DataTable from './common/DataTable';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -122,6 +124,9 @@ export default function ContactManagement() {
   return (
     <div className="contact-management page-scroll-layout">
       <PageHeader title="Contacts">
+        <ExportButton
+          onExportView={() => contacts.length ? exportContacts(contacts) : false}
+        />
         <button className="btn btn-secondary" onClick={() => setShowActivityLog(true)}>
           <History size={16} /> Activity Log
         </button>

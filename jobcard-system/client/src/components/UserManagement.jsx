@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { toTitleCase, validatePassword } from '../utils/formatters';
 import { Plus, Trash2, Save, UserMinus, UserCheck, History } from 'lucide-react';
 import PageHeader from './common/PageHeader';
+import ExportButton from './common/ExportButton';
+import { exportUsers } from '../utils/excelExport';
 import DataTable from './common/DataTable';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -168,6 +170,13 @@ export default function UserManagement() {
           />
           Show inactive
         </label>
+        <ExportButton
+          onExportView={() => users.length ? exportUsers(users) : false}
+          onExportAll={async () => {
+            const all = await api.getUsers(true);
+            return all.length ? exportUsers(all) : false;
+          }}
+        />
         <button className="btn btn-secondary" onClick={() => setShowActivityLog(true)}>
           <History size={16} /> Activity Log
         </button>

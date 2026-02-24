@@ -3,6 +3,8 @@ import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
+import ExportButton from './common/ExportButton';
+import { exportActivityLog } from '../utils/excelExport';
 
 export default function ActivityLog() {
   const [activities, setActivities] = useState([]);
@@ -96,6 +98,13 @@ export default function ActivityLog() {
           <option value={100}>Last 100</option>
           <option value={200}>Last 200</option>
         </select>
+        <ExportButton
+          onExportView={() => activities.length ? exportActivityLog(activities) : false}
+          onExportAll={async () => {
+            const all = await api.getActivityHistory(999999);
+            return all.length ? exportActivityLog(all) : false;
+          }}
+        />
       </PageHeader>
 
       <div className="card">

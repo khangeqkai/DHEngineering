@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, Menu, globalShortcut, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 // Hardware integration modules
 let printerModule = null;
@@ -231,6 +232,30 @@ ipcMain.handle('print-file', async (event, { filePath, options = {} }) => {
   return printInHiddenWindow(async (win) => {
     await win.loadFile(filePath);
   }, options);
+});
+
+// Save file dialog (for Excel export etc.)
+ipcMain.handle('save-file', async (event, { defaultName, buffer }) => {
+  const win = BrowserWindow.getAllWindows()[0] || null;
+  const result = await dialog.showSaveDialog(win, {
+    defaultPath: defaultName,
+    filters: [
+      { name: 'Excel Workbook', extensions: ['xlsx'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  });
+
+  if (result.canceled || !result.filePath) {
+    return { canceled: true };
+  }
+
+  try {
+    fs.writeFileSync(result.filePath, Buffer.from(buffer));
+    return { canceled: false, filePath: result.filePath };
+  } catch (err) {
+    console.error('Failed to save file:', err.message);
+    throw new Error(`Failed to save file: ${err.message}`);
+  }
 });
 
 // Select folder dialog
