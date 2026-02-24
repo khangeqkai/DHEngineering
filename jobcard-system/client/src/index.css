@@ -43,29 +43,42 @@
 
   /* Border Radius */
   --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 
-  /* Primary */
+  /* ── Amber Primary Accent ── */
   --primary-color: #374151;
   --primary-hover: #1f2937;
-  --primary-accent: #0284c7;
+  --primary-accent: #f59e0b;
+  --primary-accent-hover: #d97706;
+  --accent-text: #b45309;
+  --accent-text-hover: #92400e;
 
-  /* Accents */
+  /* Accents - Semantic */
   --accent-safety: #eab308;
-  --accent-action: #f97316;
+  --accent-action: #f59e0b;
   --accent-caution: #ef4444;
   --accent-ready: #22c55e;
-  --accent-info: #06b6d4;
+  --accent-info: #3b82f6;
 
   /* Legacy mappings */
   --success-color: #22c55e;
   --warning-color: #eab308;
   --danger-color: #ef4444;
 
-  /* Surfaces - Warmer */
-  --background: #f8fafc;
+  /* ── Sidebar Dark Navy ── */
+  --sidebar-bg: #0f172a;
+  --sidebar-bg-elevated: #1e293b;
+  --sidebar-text: #cbd5e1;
+  --sidebar-text-muted: #64748b;
+  --sidebar-border: rgba(148, 163, 184, 0.12);
+  --sidebar-active-bg: #f59e0b;
+  --sidebar-active-text: #0f172a;
+  --sidebar-hover-bg: rgba(148, 163, 184, 0.08);
+
+  /* Surfaces */
+  --background: #f1f5f9;
   --surface: #ffffff;
   --surface-elevated: #f8fafc;
   --surface-inset: #e2e8f0;
@@ -76,14 +89,14 @@
   --text-tertiary: #94a3b8;
   --text-inverse: #f8fafc;
 
-  /* Borders - Lighter */
+  /* Borders */
   --border-color: #e2e8f0;
   --border-strong: #cbd5e1;
-  --border-focus: #0284c7;
+  --border-focus: #f59e0b;
 
-  /* Shadows - Softer */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  /* Shadows - Refined */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
   --shadow: var(--shadow-sm);
 
@@ -99,28 +112,29 @@
   --danger-hover: #dc2626;
   --warning-hover: #fbbf24;
   --success-hover: #16a34a;
-  --action-hover: #ea580c;
+  --action-hover: #d97706;
 
   /* RGB variants (for rgba() usage) */
   --danger-rgb: 239, 68, 68;
   --success-rgb: 34, 197, 94;
   --warning-rgb: 234, 179, 8;
-  --accent-rgb: 2, 132, 199;
+  --accent-rgb: 245, 158, 11;
   --primary-rgb: 55, 65, 81;
   --text-inverse-rgb: 248, 250, 252;
+  --info-rgb: 59, 130, 246;
 
   /* Additional accents */
   --accent-purple: #8b5cf6;
   --accent-purple-hover: #7c3aed;
 
   /* Badge colors - Light mode */
-  --badge-pending-bg: rgba(234, 179, 8, 0.15);
+  --badge-pending-bg: rgba(234, 179, 8, 0.12);
   --badge-pending-text: #a16207;
-  --badge-progress-bg: rgba(2, 132, 199, 0.15);
-  --badge-progress-text: #0369a1;
-  --badge-completed-bg: rgba(34, 197, 94, 0.15);
+  --badge-progress-bg: rgba(59, 130, 246, 0.12);
+  --badge-progress-text: #1d4ed8;
+  --badge-completed-bg: rgba(34, 197, 94, 0.12);
   --badge-completed-text: #15803d;
-  --badge-cancelled-bg: rgba(239, 68, 68, 0.15);
+  --badge-cancelled-bg: rgba(239, 68, 68, 0.12);
   --badge-cancelled-text: #b91c1c;
 }
 
@@ -128,19 +142,28 @@
   /* Primary */
   --primary-color: #94a3b8;
   --primary-hover: #cbd5e1;
-  --primary-accent: #38bdf8;
+  --primary-accent: #fbbf24;
+  --primary-accent-hover: #f59e0b;
+  --accent-text: #fbbf24;
+  --accent-text-hover: #fcd34d;
 
   /* Accents */
   --accent-safety: #facc15;
-  --accent-action: #fb923c;
+  --accent-action: #fbbf24;
   --accent-caution: #f87171;
   --accent-ready: #4ade80;
-  --accent-info: #22d3ee;
+  --accent-info: #60a5fa;
 
   /* Legacy */
   --success-color: #4ade80;
   --warning-color: #facc15;
   --danger-color: #f87171;
+
+  /* Sidebar stays dark navy */
+  --sidebar-bg: #0a0f1a;
+  --sidebar-bg-elevated: #151c2c;
+  --sidebar-active-bg: #fbbf24;
+  --sidebar-active-text: #0a0f1a;
 
   /* Surfaces */
   --background: #0f172a;
@@ -157,11 +180,11 @@
   /* Borders */
   --border-color: #334155;
   --border-strong: #475569;
-  --border-focus: #38bdf8;
+  --border-focus: #fbbf24;
 
   /* Shadows */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.15);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.35);
   --shadow: var(--shadow-sm);
 
@@ -170,28 +193,29 @@
   --danger-hover: #f87171;
   --warning-hover: #fde68a;
   --success-hover: #86efac;
-  --action-hover: #fdba74;
+  --action-hover: #fcd34d;
 
   /* RGB variants */
   --danger-rgb: 248, 113, 113;
   --success-rgb: 74, 222, 128;
   --warning-rgb: 250, 204, 21;
-  --accent-rgb: 56, 189, 248;
+  --accent-rgb: 251, 191, 36;
   --primary-rgb: 148, 163, 184;
   --text-inverse-rgb: 15, 23, 42;
+  --info-rgb: 96, 165, 250;
 
   /* Additional accents */
   --accent-purple: #a78bfa;
   --accent-purple-hover: #8b5cf6;
 
   /* Badge colors - Dark mode */
-  --badge-pending-bg: rgba(234, 179, 8, 0.25);
+  --badge-pending-bg: rgba(234, 179, 8, 0.2);
   --badge-pending-text: #fcd34d;
-  --badge-progress-bg: rgba(56, 189, 248, 0.25);
-  --badge-progress-text: #7dd3fc;
-  --badge-completed-bg: rgba(74, 222, 128, 0.25);
+  --badge-progress-bg: rgba(96, 165, 250, 0.2);
+  --badge-progress-text: #93bbfd;
+  --badge-completed-bg: rgba(74, 222, 128, 0.2);
   --badge-completed-text: #86efac;
-  --badge-cancelled-bg: rgba(248, 113, 113, 0.25);
+  --badge-cancelled-bg: rgba(248, 113, 113, 0.2);
   --badge-cancelled-text: #fca5a5;
 }
 
@@ -216,7 +240,7 @@ input, textarea, select {
 }
 
 a {
-  color: var(--primary-accent);
+  color: var(--accent-text);
   text-decoration: none;
 }
 

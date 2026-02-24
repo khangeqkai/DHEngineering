@@ -19,7 +19,7 @@
 .search-input:focus {
   outline: none;
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
 }
 
 .assignee-filter {
@@ -35,7 +35,7 @@
 .assignee-filter:focus {
   outline: none;
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
 }
 
 .assignee-cell {
@@ -167,7 +167,7 @@
 
 .badge-clickable:hover {
   opacity: 0.85;
-  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.3);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.3);
 }
 
 .status-popover {
@@ -198,7 +198,7 @@
 }
 
 .status-popover-item:hover {
-  background: var(--surface-hover);
+  background: var(--surface-inset);
 }
 
 .status-popover-item.active {

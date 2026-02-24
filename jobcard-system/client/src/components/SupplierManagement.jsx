@@ -466,7 +466,7 @@ export default function SupplierManagement() {
           border-radius: 16px;
           background: var(--surface);
           color: var(--text-primary);
-          font-size: 0.875rem;
+          font-size: var(--text-sm);
           cursor: pointer;
           transition: all 0.15s ease;
         }
@@ -551,7 +551,7 @@ export default function SupplierManagement() {
           padding: 0.375rem 0.5rem;
           border: 1px solid var(--border-color);
           border-radius: 4px;
-          font-size: 0.875rem;
+          font-size: var(--text-sm);
         }
 
         .service-tags-display {
@@ -562,11 +562,12 @@ export default function SupplierManagement() {
 
         .service-tag-badge {
           display: inline-block;
-          padding: 0.125rem 0.5rem;
-          background: var(--primary-color);
-          color: var(--text-inverse);
+          padding: 0.15rem 0.5rem;
+          background: var(--surface-inset);
+          color: var(--text-secondary);
           border-radius: 12px;
-          font-size: 0.75rem;
+          font-size: var(--text-sm);
+          font-weight: 500;
         }
 
       `}</style>

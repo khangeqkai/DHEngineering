@@ -30,7 +30,7 @@ const PRIORITY_COLORS = {
 const CHART_COLORS = {
   QUOTE: '#94a3b8',
   OPEN: '#eab308',
-  IN_PROGRESS: '#0284c7',
+  IN_PROGRESS: '#3b82f6',
   ON_HOLD: '#64748b',
   DONE: '#22c55e',
   INVOICED: '#16a34a'

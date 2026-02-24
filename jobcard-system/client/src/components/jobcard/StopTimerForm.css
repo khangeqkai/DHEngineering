@@ -9,9 +9,9 @@
 }
 
 .stop-timer-form {
-  background: var(--surface, #fff);
-  border: 1px solid var(--border-color, #ddd);
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
   width: 85vw;
   max-width: 1300px;
   height: 85vh;
@@ -31,7 +31,7 @@
 
 .stop-timer-header {
   padding: 1.25rem 1.5rem 0.75rem;
-  border-bottom: 1px solid var(--border-color, #ddd);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .stop-timer-header-top {
@@ -45,7 +45,7 @@
   margin: 0 0 0.25rem;
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
 }
 
 .stop-timer-close-btn {
@@ -55,16 +55,16 @@
   width: 30px;
   height: 30px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: transparent;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .stop-timer-close-btn:hover {
-  background: var(--surface-hover, #f0f0f0);
-  color: var(--text-primary, #333);
+  background: var(--surface-inset);
+  color: var(--text-primary);
 }
 
 .stop-timer-close-btn:disabled {
@@ -75,13 +75,13 @@
 .stop-timer-header p {
   margin: 0;
   font-size: var(--text-sm);
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 
 .stop-timer-loading {
   padding: 2rem;
   text-align: center;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 
 .stop-timer-fields {
@@ -95,17 +95,17 @@
 
 /* Item card */
 .stf-item-card {
-  border: 1px solid var(--border-color, #ddd);
-  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
 .stf-item-card.stf-item-complete {
-  border-color: #4caf50;
+  border-color: var(--success-color);
 }
 
 .stf-item-card.stf-item-incomplete {
-  border-color: #ff9800;
+  border-color: var(--warning-color);
 }
 
 .stf-item-card-header {
@@ -115,16 +115,16 @@
   gap: 0.5rem;
   width: 100%;
   padding: 0.6rem 0.75rem;
-  background: var(--surface-hover, #f8f9fa);
+  background: var(--surface-elevated);
   border: none;
   cursor: pointer;
   text-align: left;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
   font-size: var(--text-sm);
 }
 
 .stf-item-card-header:hover {
-  background: var(--surface-hover, #f0f0f0);
+  background: var(--surface-inset);
 }
 
 .stf-item-card-title {
@@ -137,7 +137,7 @@
 
 .stf-item-num {
   font-weight: 700;
-  color: var(--primary-accent, #4a90d9);
+  color: var(--accent-text);
   flex-shrink: 0;
 }
 
@@ -146,12 +146,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
 }
 
 .stf-item-total {
   font-size: var(--text-sm);
-  color: var(--text-secondary, #888);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
@@ -160,7 +160,7 @@
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
-  color: var(--text-secondary, #888);
+  color: var(--text-secondary);
 }
 
 .stf-item-qty-badge {
@@ -168,8 +168,8 @@
   font-weight: 600;
   padding: 0.15rem 0.5rem;
   border-radius: 10px;
-  background: var(--primary-accent, #4a90d9);
-  color: #fff;
+  background: var(--primary-accent);
+  color: #0f172a;
 }
 
 /* Card body (expanded) */
@@ -178,7 +178,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  border-top: 1px solid var(--border-color, #eee);
+  border-top: 1px solid var(--border-color);
 }
 
 .stf-item-field {
@@ -190,22 +190,22 @@
 .stf-item-field label {
   font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 
 .stf-item-field input[type="text"] {
   padding: 0.45rem 0.65rem;
-  border: 1px solid var(--border-color, #ddd);
-  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   font-size: var(--text-sm);
-  background: var(--input-bg, #fff);
-  color: var(--text-primary, #333);
+  background: var(--surface);
+  color: var(--text-primary);
 }
 
 .stf-item-field input[type="text"]:focus {
   outline: none;
-  border-color: var(--primary-accent, #4a90d9);
-  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.2);
+  border-color: var(--primary-accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2);
 }
 
 .stf-qty-input {
@@ -225,27 +225,27 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.35rem 0.5rem;
-  border: 1px solid var(--border-color, #ddd);
-  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-size: var(--text-sm);
-  color: var(--text-primary, #333);
-  background: var(--surface, #fff);
+  color: var(--text-primary);
+  background: var(--surface);
   transition: border-color 0.15s, background 0.15s;
   user-select: none;
 }
 
 .stf-machine-chip:hover {
-  background: var(--surface-hover, #f5f5f5);
+  background: var(--surface-elevated);
 }
 
 .stf-machine-chip-active {
-  border-color: var(--primary-accent, #4a90d9);
-  background: rgba(74, 144, 217, 0.08);
+  border-color: var(--primary-accent);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 
 .stf-machine-chip input[type="checkbox"] {
-  accent-color: var(--primary-accent, #4a90d9);
+  accent-color: var(--primary-accent);
   width: 15px;
   height: 15px;
   flex-shrink: 0;
