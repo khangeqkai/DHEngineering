@@ -54,7 +54,7 @@
 
 .mobile-title {
   font-size: var(--text-base);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--sidebar-text);
 }
 
@@ -105,7 +105,7 @@
 
 .sidebar-header h1 {
   font-size: var(--text-lg);
-  font-weight: 700;
+  font-weight: 600;
   color: #f1f5f9;
   letter-spacing: var(--tracking-tight);
 }
@@ -239,7 +239,7 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-sans);
-  font-weight: 700;
+  font-weight: 600;
   font-size: var(--text-sm);
 }
 
@@ -462,11 +462,9 @@
   align-items: center;
   gap: 0.375rem;
   margin-bottom: 0.375rem;
-  font-size: var(--text-xs);
+  font-size: var(--text-base);
   font-weight: 600;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
 }
 
 .form-group input,
@@ -476,7 +474,7 @@
   width: 100%;
   padding: 0.625rem 0.875rem;
   font-family: var(--font-sans);
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   color: var(--text-primary);
   background: var(--surface);
   border: 2px solid var(--border-color);
@@ -594,7 +592,7 @@
 /* Required indicator */
 .required {
   color: var(--accent-caution);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* Field states */
@@ -684,10 +682,8 @@
 }
 
 .card-header h2 {
-  font-size: var(--text-sm);
+  font-size: var(--text-lg);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -714,10 +710,8 @@
 
 .table th {
   font-weight: 600;
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
-  color: var(--text-tertiary);
+  font-size: var(--text-lg);
+  color: var(--text-secondary);
   background: var(--surface-elevated);
   border-bottom: 2px solid var(--border-color);
   position: sticky;
@@ -874,7 +868,7 @@
 .badge-critical {
   background: var(--accent-safety);
   color: var(--text-primary);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .badge-critical::before {
@@ -1072,6 +1066,7 @@
 
 .modal-footer > .btn {
   flex: 1;
+  font-size: var(--text-lg);
 }
 
 
@@ -1155,6 +1150,10 @@
 .page-header-actions {
   display: flex;
   gap: 0.5rem;
+}
+
+.page-header-actions > .btn {
+  font-size: var(--text-lg);
 }
 
 /* ========================================
@@ -1342,7 +1341,7 @@
 
 .inactivity-modal h2 {
   font-size: var(--text-lg);
-  font-weight: 700;
+  font-weight: 600;
   margin: 0 0 0.5rem 0;
   color: var(--text-primary);
 }
@@ -1355,7 +1354,7 @@
 .inactivity-countdown {
   font-family: var(--font-mono);
   font-size: 4rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--accent-caution);
   line-height: 1;
   margin: 0.5rem 0 0;

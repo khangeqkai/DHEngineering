@@ -120,7 +120,7 @@
   cursor: pointer;
   text-align: left;
   color: var(--text-primary);
-  font-size: var(--text-sm);
+  font-size: var(--text-lg);
 }
 
 .stf-item-card-header:hover {
@@ -136,7 +136,7 @@
 }
 
 .stf-item-num {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--accent-text);
   flex-shrink: 0;
 }
@@ -188,7 +188,7 @@
 }
 
 .stf-item-field label {
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 600;
   color: var(--text-secondary);
 }

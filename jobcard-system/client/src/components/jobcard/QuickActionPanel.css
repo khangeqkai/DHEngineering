@@ -77,7 +77,7 @@
 
 .qap-job-number {
   font-size: var(--text-lg);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary, #111827);
 }
 
@@ -218,7 +218,7 @@
 
 .qap-source-label {
   font-size: var(--text-base);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .qap-source-desc {
@@ -416,7 +416,7 @@
 
 .qap-dest-label {
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .qap-dest-desc {

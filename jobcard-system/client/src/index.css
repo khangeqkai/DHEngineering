@@ -78,7 +78,7 @@
   --sidebar-hover-bg: rgba(148, 163, 184, 0.08);
 
   /* Surfaces */
-  --background: #f1f5f9;
+  --background: #e2e8f0;
   --surface: #ffffff;
   --surface-elevated: #f8fafc;
   --surface-inset: #e2e8f0;
@@ -236,7 +236,7 @@ button {
 
 input, textarea, select {
   font-family: var(--font-sans);
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
 }
 
 a {
