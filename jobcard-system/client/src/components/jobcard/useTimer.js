@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 export function useTimer(jobcardId, { onExternalStop } = {}) {
+  const { registerBeforeLogout } = useAuth();
   const [activeTimer, setActiveTimer] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -255,6 +257,21 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
       setLoading(false);
     }
   }, [jobcardId, stoppedEntry]);
+
+  // Resume timer if user gets auto-logged out while filling StopTimerForm
+  const stoppedEntryRef = useRef(null);
+  useEffect(() => { stoppedEntryRef.current = stoppedEntry; }, [stoppedEntry]);
+
+  const hasStoppedEntry = !!stoppedEntry;
+  useEffect(() => {
+    if (!showEntryForm || !hasStoppedEntry) return;
+    return registerBeforeLogout(() => {
+      const entry = stoppedEntryRef.current;
+      if (!entry) return;
+      // Fire-and-forget: clear end_time to resume the timer
+      api.updateTimeEntry(jobcardId, entry.id, { ...entry, endTime: null }).catch(() => {});
+    });
+  }, [showEntryForm, hasStoppedEntry, jobcardId, registerBeforeLogout]);
 
   const resetTimer = useCallback(() => {
     setActiveTimer(null);

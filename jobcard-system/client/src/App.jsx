@@ -9,6 +9,7 @@ import ContactManagement from './components/ContactManagement';
 import SupplierManagement from './components/SupplierManagement';
 import ActivityLog from './components/ActivityLog';
 import QALevelManagement from './components/QALevelManagement';
+import EquipmentManagement from './components/EquipmentManagement';
 import Settings from './components/Settings';
 import Layout from './components/Layout';
 import './App.css';
@@ -124,6 +125,14 @@ function App() {
           element={
             <AdminRoute>
               <UserManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="equipment"
+          element={
+            <AdminRoute>
+              <EquipmentManagement />
             </AdminRoute>
           }
         />

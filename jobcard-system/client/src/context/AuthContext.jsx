@@ -13,8 +13,17 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(false); // No token check needed on mount
   const [inactivityTimeoutMs, setInactivityTimeoutMs] = useState(DEFAULT_TIMEOUT_MINUTES * 60 * 1000);
   const pollRef = useRef(null);
+  const beforeLogoutCallbacksRef = useRef([]);
+
+  const registerBeforeLogout = useCallback((callback) => {
+    beforeLogoutCallbacksRef.current.push(callback);
+    return () => {
+      beforeLogoutCallbacksRef.current = beforeLogoutCallbacksRef.current.filter(cb => cb !== callback);
+    };
+  }, []);
 
   const logout = useCallback(() => {
+    beforeLogoutCallbacksRef.current.forEach(cb => cb());
     clearInterval(pollRef.current);
     api.setToken(null);
     setUser(null);
@@ -82,7 +91,8 @@ export function AuthProvider({ children }) {
       secondsRemaining,
       resetInactivityTimer: resetTimer,
       handleActivity,
-      refreshInactivityTimeout: loadInactivityTimeout
+      refreshInactivityTimeout: loadInactivityTimeout,
+      registerBeforeLogout
     }}>
       {children}
     </AuthContext.Provider>

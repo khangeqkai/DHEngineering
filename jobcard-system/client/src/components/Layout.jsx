@@ -11,7 +11,8 @@ import {
   Clock,
   Settings,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Wrench
 } from 'lucide-react';
 
 export default function Layout() {
@@ -151,6 +152,14 @@ export default function Layout() {
                       <Truck size={18} />
                     </span>
                     <span className="nav-text">Suppliers</span>
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/equipment" onClick={handleNavClick}>
+                    <span className="nav-icon">
+                      <Wrench size={18} />
+                    </span>
+                    <span className="nav-text">Equipment</span>
                   </NavLink>
                 </li>
                 <li>

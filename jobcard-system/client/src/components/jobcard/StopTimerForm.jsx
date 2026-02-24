@@ -76,7 +76,7 @@ export default function StopTimerForm({ isOpen, jobCard, entryForm, onItemFieldC
     ([, item]) => item.qty && String(item.qty).trim() !== ''
   );
   const allFilledValid = filledItems.length > 0 && filledItems.every(
-    ([, item]) => (item.machineNumbers || []).length > 0 && (item.description || '').trim()
+    ([, item]) => (item.machineNumbers || []).length > 0
   );
 
   const toggleExpand = (itemNumber) => {
@@ -103,7 +103,7 @@ export default function StopTimerForm({ isOpen, jobCard, entryForm, onItemFieldC
   const getItemStatus = (itemNumber) => {
     const item = itemsData[itemNumber];
     if (!item || !item.qty || !String(item.qty).trim()) return 'empty';
-    if ((item.machineNumbers || []).length === 0 || !(item.description || '').trim()) return 'incomplete';
+    if ((item.machineNumbers || []).length === 0) return 'incomplete';
     return 'complete';
   };
 
@@ -124,7 +124,7 @@ export default function StopTimerForm({ isOpen, jobCard, entryForm, onItemFieldC
               <X size={18} />
             </button>
           </div>
-          <p id="stop-timer-desc">Fill in qty, machines, and description for each item you worked on</p>
+          <p id="stop-timer-desc">Fill in qty and machines for each item you worked on</p>
         </div>
 
         {dataLoading ? (
