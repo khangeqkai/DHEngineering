@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { X, Plus, Calendar } from 'lucide-react';
 import {
   JOB_TYPES,
   PRIORITY_OPTIONS,
@@ -231,7 +232,7 @@ export default function DetailsTab({
                   ? new Date(formData.dueDate + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
                   : 'Select date...'}
               </span>
-              <span className="due-date-icon">&#128197;</span>
+              <span className="due-date-icon"><Calendar size={16} /></span>
             </div>
             <div className="due-date-quick-picks">
               {[2, 7, 14, 21, 30].map(days => {
@@ -282,7 +283,7 @@ export default function DetailsTab({
         <div className="form-section">
           <div className="form-section-header">
             <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}>+ Add</button>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}><Plus size={14} /> Add</button>
           </div>
           <div className="line-items-list">
             {lineItems.map((item) => (
@@ -313,7 +314,7 @@ export default function DetailsTab({
                   </div>
                 </div>
                 {lineItems.length > 1 && (
-                  <button type="button" className="line-item-remove" onClick={() => removeLineItem(item.id)} title="Remove item">×</button>
+                  <button type="button" className="line-item-remove" onClick={() => removeLineItem(item.id)} title="Remove item"><X size={14} /></button>
                 )}
               </div>
             ))}

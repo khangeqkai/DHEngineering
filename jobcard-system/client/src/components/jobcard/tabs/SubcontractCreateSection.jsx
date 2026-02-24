@@ -1,3 +1,4 @@
+import { X, Plus } from 'lucide-react';
 import SearchableSupplierSelect from '../../common/SearchableSupplierSelect';
 
 export default function SubcontractCreateSection({ subcontracts, setSubcontracts, suppliers }) {
@@ -25,7 +26,7 @@ export default function SubcontractCreateSection({ subcontracts, setSubcontracts
       <div className="form-section-header">
         <h3 className="form-section-title">Subcontracts</h3>
         <button type="button" className="btn btn-secondary btn-sm" onClick={addSubcontract}>
-          + Add
+          <Plus size={14} /> Add
         </button>
       </div>
       {subcontracts.length === 0 ? (
@@ -60,7 +61,7 @@ export default function SubcontractCreateSection({ subcontracts, setSubcontracts
                       onClick={() => setSubcontracts(subcontracts.filter(s => s.id !== sub.id))}
                       title="Remove"
                     >
-                      ×
+                      <X size={14} />
                     </button>
                   </div>
                   <div className="subcontract-create-dates">

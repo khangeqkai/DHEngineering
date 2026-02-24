@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 
 export default function BottomSheet({
   isOpen,
@@ -47,7 +48,7 @@ export default function BottomSheet({
             onClick={onClose}
             aria-label="Close"
           >
-            ×
+            <X size={18} />
           </button>
         </div>
 

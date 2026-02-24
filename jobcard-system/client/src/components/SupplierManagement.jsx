@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase, capitalizeFirst, autoResize } from '../utils/formatters';
-import { Plus, Trash2, Save, History } from 'lucide-react';
+import { Plus, Trash2, Save, History, Check, X } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
 import BottomSheet from './common/BottomSheet';
@@ -286,7 +286,7 @@ export default function SupplierManagement() {
                       onClick={() => handleTagToggle(tag.id)}
                     >
                       {tag.name}
-                      {formData.serviceTagIds.includes(tag.id) && <span className="check-mark">&#10003;</span>}
+                      {formData.serviceTagIds.includes(tag.id) && <span className="check-mark"><Check size={12} /></span>}
                     </button>
                     {!tag.isSystem && (
                       <button
@@ -298,7 +298,7 @@ export default function SupplierManagement() {
                         }}
                         title={`Delete "${tag.name}" tag`}
                       >
-                        &times;
+                        <X size={12} />
                       </button>
                     )}
                   </span>

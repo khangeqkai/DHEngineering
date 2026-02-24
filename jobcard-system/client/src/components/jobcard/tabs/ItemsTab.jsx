@@ -1,3 +1,4 @@
+import { X, Plus } from 'lucide-react';
 import { capitalizeFirst } from '../../../utils/formatters';
 
 export default function ItemsTab({
@@ -11,7 +12,7 @@ export default function ItemsTab({
       <div className="form-section">
         <div className="form-section-header">
           <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}>+ Add Item</button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}><Plus size={14} /> Add Item</button>
         </div>
         <div className="line-items-list">
           {lineItems.map(item => (
@@ -44,7 +45,7 @@ export default function ItemsTab({
                 </div>
               </div>
               {lineItems.length > 1 && (
-                <button type="button" className="line-item-remove" onClick={() => removeLineItem(item.id)} title="Remove item">×</button>
+                <button type="button" className="line-item-remove" onClick={() => removeLineItem(item.id)} title="Remove item"><X size={14} /></button>
               )}
             </div>
           ))}

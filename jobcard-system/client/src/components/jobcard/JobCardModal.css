@@ -668,13 +668,14 @@
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-tertiary);
-  font-size: 1.125rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   align-self: flex-end;
+  padding: 0;
+  line-height: 1;
   transition: all var(--duration-fast) ease;
 }
 

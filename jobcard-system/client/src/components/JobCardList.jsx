@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, Archive, ArchiveRestore } from 'lucide-react';
+import { Plus, Trash2, Archive, ArchiveRestore, Check } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
 import QuickActionPanel from './jobcard/QuickActionPanel';
@@ -413,7 +413,7 @@ export default function JobCardList() {
                                     }}
                                   >
                                     <span className={`badge ${getStatusBadgeClass(value)}`}>{label}</span>
-                                    {card.status === value && <span className="status-check">&#10003;</span>}
+                                    {card.status === value && <span className="status-check"><Check size={14} /></span>}
                                   </button>
                                 ))}
                               </div>

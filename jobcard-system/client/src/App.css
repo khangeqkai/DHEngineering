@@ -967,12 +967,13 @@
   border: 1px solid var(--border-color);
   background: var(--surface-inset);
   color: var(--text-primary);
-  font-size: var(--text-xl);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all var(--duration-fast) ease;
+  line-height: 1;
+  padding: 0;
 }
 
 .modal-close:hover {
