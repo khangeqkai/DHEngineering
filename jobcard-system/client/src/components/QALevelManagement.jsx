@@ -147,7 +147,7 @@ export default function QALevelManagement() {
 
   if (loading) {
     return (
-      <div className="page-container">
+      <div className="page-container page-enter">
         <PageHeader title="QA Levels" />
         <div className="loading">Loading...</div>
       </div>
@@ -155,7 +155,7 @@ export default function QALevelManagement() {
   }
 
   return (
-    <div className="page-container">
+    <div className="page-container page-enter">
       <PageHeader title="QA Levels">
         <button className="btn btn-primary" onClick={() => { resetForm(); setShowForm(true); }}>
           <Plus size={16} /> New Level

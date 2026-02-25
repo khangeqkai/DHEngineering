@@ -122,7 +122,7 @@ export default function ContactManagement() {
   }
 
   return (
-    <div className="contact-management page-scroll-layout">
+    <div className="contact-management page-scroll-layout page-enter">
       <PageHeader title="Contacts">
         <ExportButton
           onExportView={() => contacts.length ? exportContacts(contacts) : false}
