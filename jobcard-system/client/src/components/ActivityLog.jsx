@@ -81,9 +81,6 @@ export default function ActivityLog() {
     return date.toLocaleString();
   };
 
-  if (loading) {
-    return <div className="loading">Loading activity log...</div>;
-  }
 
   return (
     <div className="activity-log page-enter">
@@ -160,6 +157,7 @@ export default function ActivityLog() {
               }
             ]}
             data={activities}
+            loading={loading}
             searchable
             searchKeys={['userName', 'action', 'entityType', 'entityId']}
             searchPlaceholder="Search activity..."

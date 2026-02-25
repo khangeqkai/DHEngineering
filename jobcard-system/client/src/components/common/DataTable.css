@@ -195,3 +195,30 @@
 .data-table.density-spacious th {
   font-size: 0.95rem;
 }
+
+/* ========================================
+   SKELETON LOADING
+   ======================================== */
+
+.skeleton-row td {
+  padding: 0.875rem 1rem;
+}
+
+.skeleton-bar {
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--surface-inset) 25%, var(--surface-elevated) 50%, var(--surface-inset) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-bar {
+    animation: none;
+  }
+}

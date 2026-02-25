@@ -117,9 +117,6 @@ export default function ContactManagement() {
     });
   };
 
-  if (loading) {
-    return <div className="loading">Loading contacts...</div>;
-  }
 
   return (
     <div className="contact-management page-scroll-layout page-enter">
@@ -283,6 +280,7 @@ export default function ContactManagement() {
               }
             ]}
             data={contacts}
+            loading={loading}
             searchable
             searchKeys={['contactName', 'companyName', 'email', 'phone']}
             searchPlaceholder="Search contacts..."
