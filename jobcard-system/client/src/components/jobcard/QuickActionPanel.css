@@ -632,6 +632,12 @@
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--success-color, #16a34a);
+  animation: timerTick 1s ease-in-out infinite;
+}
+
+@keyframes timerTick {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
 }
 
 .timer-dot {
