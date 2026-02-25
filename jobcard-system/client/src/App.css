@@ -179,7 +179,7 @@
   text-decoration: none;
 }
 
-/* Active nav = filled amber button */
+/* Active nav = filled accent button */
 .sidebar-nav a.active {
   background-color: var(--sidebar-active-bg);
   color: var(--sidebar-active-text);
@@ -262,7 +262,7 @@
   height: 40px;
   border-radius: var(--radius-md);
   background: var(--primary-accent);
-  color: var(--sidebar-bg);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -359,15 +359,15 @@
   transform: none;
 }
 
-/* Primary - Amber */
+/* Primary - Gold */
 .btn-primary {
   background: var(--primary-accent);
-  color: #0f172a;
+  color: #ffffff;
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--primary-accent-hover);
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 2px 8px rgba(128, 105, 62, 0.3);
 }
 
 /* Secondary */
@@ -392,7 +392,7 @@
   background: var(--danger-hover);
 }
 
-/* Warning — yellow always needs dark text for contrast */
+/* Warning — gold accent with light text for contrast */
 .btn-warning {
   background: var(--warning-color);
   color: var(--text-inverse);
@@ -443,7 +443,7 @@
 /* Action */
 .btn-action {
   background: var(--accent-action);
-  color: #0f172a;
+  color: #ffffff;
 }
 
 .btn-action:hover:not(:disabled) {
@@ -655,7 +655,7 @@
 /* Field states */
 .field-required {
   border-color: var(--accent-safety) !important;
-  background: rgba(234, 179, 8, 0.05) !important;
+  background: rgba(var(--accent-rgb), 0.05) !important;
 }
 
 .field-required:focus {
@@ -871,7 +871,7 @@
 .badge-pending {
   background: var(--badge-pending-bg);
   color: var(--badge-pending-text);
-  border-color: rgba(234, 179, 8, 0.25);
+  border-color: rgba(var(--accent-rgb), 0.25);
 }
 
 .badge-pending::before {
@@ -926,12 +926,12 @@
 
 .badge-critical {
   background: var(--accent-safety);
-  color: var(--text-primary);
+  color: #ffffff;
   font-weight: 600;
 }
 
 .badge-critical::before {
-  background: var(--text-primary);
+  background: #ffffff;
 }
 
 @keyframes pulse-glow {
@@ -981,7 +981,7 @@
 
 .pending-badge {
   background: var(--primary-accent);
-  color: #0f172a;
+  color: #ffffff;
   padding: 0.125rem 0.375rem;
   border-radius: var(--radius-sm);
   font-size: var(--text-xs);

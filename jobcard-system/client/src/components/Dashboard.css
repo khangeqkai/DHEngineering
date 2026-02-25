@@ -52,23 +52,23 @@
   margin-top: 1px;
 }
 
-/* Hero chip - Amber accent */
+/* Hero chip - Primary accent */
 .stat-chip-hero {
   background: var(--primary-accent);
   border-color: var(--primary-accent);
 }
 
 .stat-chip-hero .stat-chip-icon {
-  background: rgba(15, 23, 42, 0.12);
-  color: #0f172a;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
 }
 
 .stat-chip-hero .stat-chip-value {
-  color: #0f172a;
+  color: #ffffff;
 }
 
 .stat-chip-hero .stat-chip-label {
-  color: rgba(15, 23, 42, 0.6);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* Chip color variants */

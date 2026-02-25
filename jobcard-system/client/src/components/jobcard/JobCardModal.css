@@ -331,8 +331,8 @@
     -45deg,
     transparent,
     transparent 10px,
-    rgba(234, 179, 8, 0.1) 10px,
-    rgba(234, 179, 8, 0.1) 20px
+    rgba(var(--accent-rgb), 0.1) 10px,
+    rgba(var(--accent-rgb), 0.1) 20px
   );
   border: 2px solid var(--accent-safety);
   border-radius: var(--radius-md);
@@ -870,7 +870,7 @@
 }
 
 .te-card--special {
-  border-left: 3px solid #f59e0b;
+  border-left: 3px solid var(--primary-accent);
 }
 
 /* Top bar: duration + actions */
@@ -967,16 +967,16 @@
 }
 
 .te-special-toggle:has(input:checked) {
-  color: #f59e0b;
-  border-color: #f59e0b;
-  background: color-mix(in srgb, #f59e0b 8%, var(--surface));
+  color: var(--primary-accent);
+  border-color: var(--primary-accent);
+  background: color-mix(in srgb, var(--primary-accent) 8%, var(--surface));
 }
 
 .te-special-toggle input[type="checkbox"] {
   width: 12px;
   height: 12px;
   cursor: pointer;
-  accent-color: #f59e0b;
+  accent-color: var(--primary-accent);
 }
 
 /* Body: meta + work details */
@@ -1732,17 +1732,17 @@
 }
 
 .readonly-badge.status-open { background: #dbeafe; color: #1d4ed8; }
-.readonly-badge.status-in-progress { background: #fef3c7; color: #d97706; }
+.readonly-badge.status-in-progress { background: var(--badge-pending-bg); color: var(--badge-pending-text); }
 .readonly-badge.status-on-hold { background: #fde8e8; color: #c81e1e; }
 .readonly-badge.status-done { background: #d1fae5; color: #059669; }
 .readonly-badge.status-invoiced { background: #e5e7eb; color: #4b5563; }
 .readonly-badge.status-quote { background: #ede9fe; color: #7c3aed; }
-.readonly-badge.status-pending { background: #fef3c7; color: #d97706; }
+.readonly-badge.status-pending { background: var(--badge-pending-bg); color: var(--badge-pending-text); }
 .readonly-badge.status-sent { background: #dbeafe; color: #1d4ed8; }
 .readonly-badge.status-received { background: #d1fae5; color: #059669; }
 
 .readonly-badge.priority-low { background: #dbeafe; color: #1d4ed8; }
-.readonly-badge.priority-medium { background: #fef3c7; color: #d97706; }
+.readonly-badge.priority-medium { background: var(--badge-pending-bg); color: var(--badge-pending-text); }
 .readonly-badge.priority-high { background: #fde8e8; color: #c81e1e; }
 
 .readonly-badge.assignee {
