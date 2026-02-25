@@ -155,9 +155,6 @@ export default function UserManagement() {
     });
   };
 
-  if (loading) {
-    return <div className="loading">Loading users...</div>;
-  }
 
   return (
     <div className="user-management">
@@ -342,6 +339,7 @@ export default function UserManagement() {
               }
             ]}
             data={users}
+            loading={loading}
             searchable
             searchKeys={['username', 'name', 'email']}
             searchPlaceholder="Search users..."

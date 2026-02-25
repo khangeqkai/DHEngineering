@@ -178,9 +178,6 @@ export default function SupplierManagement() {
     setCustomTagName('');
   };
 
-  if (loading) {
-    return <div className="loading">Loading suppliers...</div>;
-  }
 
   return (
     <div className="supplier-management page-scroll-layout">
@@ -431,6 +428,7 @@ export default function SupplierManagement() {
               }
             ]}
             data={suppliers}
+            loading={loading}
             searchable
             searchKeys={['name', 'contactName', 'contactPhone']}
             searchPlaceholder="Search suppliers..."

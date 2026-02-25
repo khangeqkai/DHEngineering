@@ -107,9 +107,6 @@ export default function EquipmentManagement() {
     });
   };
 
-  if (loading) {
-    return <div className="loading">Loading machines...</div>;
-  }
 
   return (
     <div className="equipment-management page-scroll-layout">
@@ -231,6 +228,7 @@ export default function EquipmentManagement() {
               }
             ]}
             data={machines}
+            loading={loading}
             searchable
             searchKeys={['machineNumber', 'name', 'description']}
             searchPlaceholder="Search machines..."

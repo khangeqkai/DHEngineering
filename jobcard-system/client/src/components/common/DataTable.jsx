@@ -4,10 +4,29 @@ import useTableFilter from '../../hooks/useTableFilter';
 import useTableResize from '../../hooks/useTableResize';
 import './DataTable.css';
 
+const SKELETON_ROW_COUNT = 5;
+const SKELETON_WIDTHS = ['75%', '60%', '85%', '70%', '90%'];
+
+function SkeletonRows({ columnCount }) {
+  return Array.from({ length: SKELETON_ROW_COUNT }, (_, rowIndex) => (
+    <tr key={`skeleton-${rowIndex}`} className="skeleton-row">
+      {Array.from({ length: columnCount }, (_, colIndex) => (
+        <td key={`skeleton-${rowIndex}-${colIndex}`}>
+          <div
+            className="skeleton-bar"
+            style={{ width: SKELETON_WIDTHS[(rowIndex + colIndex) % SKELETON_WIDTHS.length] }}
+          />
+        </td>
+      ))}
+    </tr>
+  ));
+}
+
 export default function DataTable({
   columns,
   data,
   onRowClick,
+  loading = false,
   searchable = false,
   searchKeys = [],
   searchPlaceholder = 'Search...',
@@ -56,7 +75,7 @@ export default function DataTable({
       )}
 
       <div className="data-table-container">
-        {sortedData.length === 0 ? (
+        {!loading && sortedData.length === 0 ? (
           <div className="data-table-empty">
             <div className="data-table-empty-icon">
               <Inbox size={40} />
@@ -96,19 +115,23 @@ export default function DataTable({
               </tr>
             </thead>
             <tbody>
-              {sortedData.map((row, rowIndex) => (
-                <tr
-                  key={row.id || rowIndex}
-                  className={`${onRowClick ? 'clickable' : ''} ${typeof rowClassName === 'function' ? rowClassName(row) : ''}`}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                >
-                  {columns.map((col) => (
-                    <td key={col.key}>
-                      {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '-')}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {loading ? (
+                <SkeletonRows columnCount={columns.length} />
+              ) : (
+                sortedData.map((row, rowIndex) => (
+                  <tr
+                    key={row.id || rowIndex}
+                    className={`${onRowClick ? 'clickable' : ''} ${typeof rowClassName === 'function' ? rowClassName(row) : ''}`}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  >
+                    {columns.map((col) => (
+                      <td key={col.key}>
+                        {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '-')}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         )}
