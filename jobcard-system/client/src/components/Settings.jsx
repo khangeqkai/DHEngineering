@@ -6,7 +6,7 @@ export default function Settings() {
   const s = useSettings();
 
   return (
-    <div className="settings">
+    <div className="settings page-enter">
       <PageHeader title="Settings" />
 
       <div className="settings-grid">

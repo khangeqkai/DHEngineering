@@ -260,7 +260,7 @@ export default function JobCardList() {
   }
 
   return (
-    <div className="jobcard-list page-scroll-layout">
+    <div className="jobcard-list page-scroll-layout page-enter">
       <PageHeader title={showArchived ? 'Archived Job Cards' : 'Job Cards'}>
         <label className="archive-toggle">
           <input

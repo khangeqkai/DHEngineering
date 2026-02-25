@@ -141,7 +141,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="dashboard">
+    <div className="dashboard page-enter">
       <PageHeader title="Dashboard">
         {isAdmin && (
           <button className="btn btn-primary" onClick={openCreateModal}>
