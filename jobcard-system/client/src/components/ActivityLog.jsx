@@ -161,7 +161,11 @@ export default function ActivityLog() {
             searchable
             searchKeys={['userName', 'action', 'entityType', 'entityId']}
             searchPlaceholder="Search activity..."
-            emptyMessage="No activity recorded yet."
+            emptyState={{
+              icon: 'activity',
+              title: 'No activity yet',
+              description: 'Activity will appear here as changes are made.',
+            }}
           />
         </div>
       </div>

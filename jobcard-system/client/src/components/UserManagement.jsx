@@ -343,7 +343,13 @@ export default function UserManagement() {
             searchable
             searchKeys={['username', 'name', 'email']}
             searchPlaceholder="Search users..."
-            emptyMessage="No users found"
+            emptyState={{
+              icon: 'users',
+              title: 'No users found',
+              description: 'Create a user account to get started.',
+              actionLabel: 'Add User',
+              onAction: () => setShowForm(true),
+            }}
             defaultSortKey="username"
             rowClassName={(row) => row.active ? '' : 'inactive-row'}
           />

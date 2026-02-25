@@ -12,6 +12,7 @@ import QuickActionPanel from './jobcard/QuickActionPanel';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
+import EmptyState from './common/EmptyState';
 import './JobCardList.css';
 
 const STATUS_OPTIONS = [
@@ -322,9 +323,13 @@ export default function JobCardList() {
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
           {filteredCards.length === 0 ? (
-            <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              No job cards found.
-            </p>
+            <EmptyState
+              icon="jobcards"
+              title="No job cards yet"
+              description="Create your first job card to get started."
+              actionLabel={isAdmin ? 'New Job Card' : undefined}
+              onAction={isAdmin ? openCreateModal : undefined}
+            />
           ) : (
             <table className="table">
               <thead>

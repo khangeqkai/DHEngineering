@@ -9,6 +9,7 @@ import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
 import QuickActionPanel from './jobcard/QuickActionPanel';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
+import EmptyState from './common/EmptyState';
 import './Dashboard.css';
 
 const STATUS_LABELS = {
@@ -333,9 +334,13 @@ export default function Dashboard() {
           </div>
           <div className="card-body" style={{ padding: 0 }}>
             {recentCards.length === 0 ? (
-              <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                No job cards yet. Create your first one!
-              </p>
+              <EmptyState
+                icon="jobcards"
+                title="No job cards yet"
+                description="Create your first job card to get started."
+                actionLabel={isAdmin ? 'New Job Card' : undefined}
+                onAction={isAdmin ? openCreateModal : undefined}
+              />
             ) : (
               <table className="table">
                 <thead>
