@@ -156,7 +156,7 @@
   background-color: var(--sidebar-active-bg);
   color: var(--sidebar-active-text);
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.3);
 }
 
 .nav-icon {

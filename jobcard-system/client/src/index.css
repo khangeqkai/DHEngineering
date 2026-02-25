@@ -142,14 +142,14 @@
   /* Primary */
   --primary-color: #94a3b8;
   --primary-hover: #cbd5e1;
-  --primary-accent: #fbbf24;
-  --primary-accent-hover: #f59e0b;
-  --accent-text: #fbbf24;
-  --accent-text-hover: #fcd34d;
+  --primary-accent: #fcd34d;
+  --primary-accent-hover: #fbbf24;
+  --accent-text: #fcd34d;
+  --accent-text-hover: #fde68a;
 
   /* Accents */
   --accent-safety: #facc15;
-  --accent-action: #fbbf24;
+  --accent-action: #fcd34d;
   --accent-caution: #f87171;
   --accent-ready: #4ade80;
   --accent-info: #60a5fa;
@@ -160,16 +160,20 @@
   --danger-color: #f87171;
 
   /* Sidebar stays dark navy */
-  --sidebar-bg: #0a0f1a;
-  --sidebar-bg-elevated: #151c2c;
-  --sidebar-active-bg: #fbbf24;
+  --sidebar-bg: #070b14;
+  --sidebar-bg-elevated: #111827;
+  --sidebar-active-bg: #fcd34d;
   --sidebar-active-text: #0a0f1a;
 
   /* Surfaces */
-  --background: #0f172a;
+  --background: #0a0f1a;
   --surface: #1e293b;
-  --surface-elevated: #334155;
+  --surface-elevated: #3b4a63;
   --surface-inset: #0f172a;
+
+  /* Input fields - recessed feel */
+  --input-bg: #162032;
+  --input-border: #3b4a63;
 
   /* Text */
   --text-primary: #f1f5f9;
@@ -178,14 +182,14 @@
   --text-inverse: #0f172a;
 
   /* Borders */
-  --border-color: #334155;
+  --border-color: rgba(148, 163, 184, 0.15);
   --border-strong: #475569;
-  --border-focus: #fbbf24;
+  --border-focus: #fcd34d;
 
   /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.15);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.4);
   --shadow: var(--shadow-sm);
 
   /* Hover states */
@@ -193,13 +197,13 @@
   --danger-hover: #f87171;
   --warning-hover: #fde68a;
   --success-hover: #86efac;
-  --action-hover: #fcd34d;
+  --action-hover: #fde68a;
 
   /* RGB variants */
   --danger-rgb: 248, 113, 113;
   --success-rgb: 74, 222, 128;
   --warning-rgb: 250, 204, 21;
-  --accent-rgb: 251, 191, 36;
+  --accent-rgb: 252, 211, 77;
   --primary-rgb: 148, 163, 184;
   --text-inverse-rgb: 15, 23, 42;
   --info-rgb: 96, 165, 250;
@@ -217,6 +221,66 @@
   --badge-completed-text: #86efac;
   --badge-cancelled-bg: rgba(248, 113, 113, 0.2);
   --badge-cancelled-text: #fca5a5;
+}
+
+/* ── Dark mode enhancements ── */
+
+/* Accent text glow */
+.dark-mode .accent-text,
+.dark-mode a:not(.btn):not(.sidebar-nav a) {
+  text-shadow: 0 0 20px rgba(252, 211, 77, 0.25);
+}
+
+/* Primary button glow in dark mode */
+.dark-mode .btn-primary {
+  box-shadow: 0 0 16px rgba(252, 211, 77, 0.2);
+}
+
+.dark-mode .btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 24px rgba(252, 211, 77, 0.35);
+}
+
+/* Active nav item glow */
+.dark-mode .sidebar-nav a.active {
+  box-shadow: 0 2px 12px rgba(252, 211, 77, 0.35);
+}
+
+/* Input fields - recessed darker background with visible borders */
+.dark-mode .form-group input,
+.dark-mode .form-group textarea,
+.dark-mode .form-group select,
+.dark-mode .form-control {
+  background: var(--input-bg);
+  border-color: var(--input-border);
+}
+
+.dark-mode .form-group input:focus,
+.dark-mode .form-group textarea:focus,
+.dark-mode .form-group select:focus,
+.dark-mode .form-control:focus {
+  border-color: var(--primary-accent);
+  box-shadow: 0 0 0 3px rgba(252, 211, 77, 0.15);
+}
+
+/* Card border reinforcement in dark mode */
+.dark-mode .card {
+  border-color: rgba(148, 163, 184, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(148, 163, 184, 0.08);
+}
+
+.dark-mode .card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(148, 163, 184, 0.12);
+}
+
+/* Modal border reinforcement */
+.dark-mode .modal-popup {
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+/* Table header contrast */
+.dark-mode .table th {
+  background: var(--surface-elevated);
+  border-bottom-color: rgba(148, 163, 184, 0.2);
 }
 
 body {
