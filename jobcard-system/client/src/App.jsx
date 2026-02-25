@@ -49,7 +49,7 @@ function App() {
   return (
     <>
       <Toaster
-        position="top-center"
+        position="top-right"
         toastOptions={{
           duration: 4000,
           className: 'custom-toast',

@@ -320,8 +320,9 @@
 }
 
 .btn:active {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.98);
   box-shadow: none;
+  transition: transform 60ms ease;
 }
 
 .btn:disabled {
@@ -666,10 +667,21 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
-  transition: box-shadow var(--duration-normal) ease;
+  transition: box-shadow var(--duration-normal) ease,
+              transform var(--duration-normal) var(--ease-mechanical);
 }
 
 .card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Clickable cards get a subtle lift on hover */
+.card-clickable {
+  cursor: pointer;
+}
+
+.card-clickable:hover {
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
@@ -1369,6 +1381,23 @@
 /* ========================================
    TOAST NOTIFICATIONS
    ======================================== */
+
+/* Custom toast entrance: slide in from right */
+div[data-hot-toast] > div,
+div[role="status"] {
+  animation: toastSlideIn 300ms var(--ease-mechanical) both !important;
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
 
 .custom-toast {
   background: var(--surface) !important;
