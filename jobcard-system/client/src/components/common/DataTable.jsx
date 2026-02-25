@@ -2,6 +2,7 @@ import { ChevronUp, ChevronDown, ChevronsUpDown, Search, Inbox } from 'lucide-re
 import useTableSort from '../../hooks/useTableSort';
 import useTableFilter from '../../hooks/useTableFilter';
 import useTableResize from '../../hooks/useTableResize';
+import EmptyState from './EmptyState';
 import './DataTable.css';
 
 export default function DataTable({
@@ -12,6 +13,7 @@ export default function DataTable({
   searchKeys = [],
   searchPlaceholder = 'Search...',
   emptyMessage = 'No data found',
+  emptyState,
   defaultSortKey = null,
   defaultSortOrder = 'asc',
   rowClassName,
@@ -57,12 +59,16 @@ export default function DataTable({
 
       <div className="data-table-container">
         {sortedData.length === 0 ? (
-          <div className="data-table-empty">
-            <div className="data-table-empty-icon">
-              <Inbox size={40} />
+          emptyState ? (
+            <EmptyState {...emptyState} />
+          ) : (
+            <div className="data-table-empty">
+              <div className="data-table-empty-icon">
+                <Inbox size={40} />
+              </div>
+              <div className="data-table-empty-text">{emptyMessage}</div>
             </div>
-            <div className="data-table-empty-text">{emptyMessage}</div>
-          </div>
+          )
         ) : (
           <table className="table data-table">
             <thead>

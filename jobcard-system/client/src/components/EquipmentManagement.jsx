@@ -234,7 +234,13 @@ export default function EquipmentManagement() {
             searchable
             searchKeys={['machineNumber', 'name', 'description']}
             searchPlaceholder="Search machines..."
-            emptyMessage="No machines found"
+            emptyState={{
+              icon: 'equipment',
+              title: 'No equipment yet',
+              description: 'Add your first machine to get started.',
+              actionLabel: 'Add Machine',
+              onAction: () => setShowForm(true),
+            }}
             defaultSortKey="machineNumber"
           />
         </div>

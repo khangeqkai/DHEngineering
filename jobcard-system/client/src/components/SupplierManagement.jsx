@@ -434,7 +434,13 @@ export default function SupplierManagement() {
             searchable
             searchKeys={['name', 'contactName', 'contactPhone']}
             searchPlaceholder="Search suppliers..."
-            emptyMessage="No suppliers found"
+            emptyState={{
+              icon: 'suppliers',
+              title: 'No suppliers yet',
+              description: 'Add your first supplier to get started.',
+              actionLabel: 'Add Supplier',
+              onAction: () => setShowForm(true),
+            }}
             defaultSortKey="name"
           />
         </div>

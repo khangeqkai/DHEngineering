@@ -286,7 +286,13 @@ export default function ContactManagement() {
             searchable
             searchKeys={['contactName', 'companyName', 'email', 'phone']}
             searchPlaceholder="Search contacts..."
-            emptyMessage="No contacts found"
+            emptyState={{
+              icon: 'contacts',
+              title: 'No contacts yet',
+              description: 'Add your first contact to get started.',
+              actionLabel: 'Add Contact',
+              onAction: () => setShowForm(true),
+            }}
             defaultSortKey="contactName"
           />
         </div>
