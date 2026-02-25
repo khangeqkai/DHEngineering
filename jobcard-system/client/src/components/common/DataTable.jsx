@@ -1,8 +1,57 @@
+import { useState, useCallback } from 'react';
 import { ChevronUp, ChevronDown, ChevronsUpDown, Search, Inbox } from 'lucide-react';
 import useTableSort from '../../hooks/useTableSort';
 import useTableFilter from '../../hooks/useTableFilter';
 import useTableResize from '../../hooks/useTableResize';
 import './DataTable.css';
+
+const DENSITY_OPTIONS = [
+  {
+    key: 'compact',
+    label: 'Compact',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="3" width="12" height="1.5" rx="0.75" fill="currentColor" />
+        <rect x="2" y="7.25" width="12" height="1.5" rx="0.75" fill="currentColor" />
+        <rect x="2" y="11.5" width="12" height="1.5" rx="0.75" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    key: 'comfortable',
+    label: 'Comfortable',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="2" width="12" height="2" rx="1" fill="currentColor" />
+        <rect x="2" y="7" width="12" height="2" rx="1" fill="currentColor" />
+        <rect x="2" y="12" width="12" height="2" rx="1" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    key: 'spacious',
+    label: 'Spacious',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="1" width="12" height="2.5" rx="1" fill="currentColor" />
+        <rect x="2" y="6.75" width="12" height="2.5" rx="1" fill="currentColor" />
+        <rect x="2" y="12.5" width="12" height="2.5" rx="1" fill="currentColor" />
+      </svg>
+    ),
+  },
+];
+
+function getInitialDensity() {
+  try {
+    const stored = localStorage.getItem('table-density');
+    if (stored && ['compact', 'comfortable', 'spacious'].includes(stored)) {
+      return stored;
+    }
+  } catch {
+    // localStorage unavailable
+  }
+  return 'comfortable';
+}
 
 export default function DataTable({
   columns,
@@ -16,6 +65,7 @@ export default function DataTable({
   defaultSortOrder = 'asc',
   rowClassName,
 }) {
+  const [density, setDensity] = useState(getInitialDensity);
   const { searchTerm, setSearchTerm, filteredData } = useTableFilter(
     data,
     searchKeys
@@ -27,6 +77,15 @@ export default function DataTable({
   );
   const { columnWidths, onMouseDown } = useTableResize(columns);
 
+  const handleDensityChange = useCallback((key) => {
+    setDensity(key);
+    try {
+      localStorage.setItem('table-density', key);
+    } catch {
+      // localStorage unavailable
+    }
+  }, []);
+
   const getSortIcon = (columnKey) => {
     if (sortKey !== columnKey) return <ChevronsUpDown size={14} />;
     return sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
@@ -37,10 +96,26 @@ export default function DataTable({
     return sortOrder === 'asc' ? 'sorted-asc' : 'sorted-desc';
   };
 
+  const densityToggle = (
+    <div className="data-table-density-toggle">
+      {DENSITY_OPTIONS.map((opt) => (
+        <button
+          key={opt.key}
+          type="button"
+          className={`data-table-density-btn${density === opt.key ? ' active' : ''}`}
+          title={opt.label}
+          onClick={() => handleDensityChange(opt.key)}
+        >
+          {opt.icon}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="data-table-wrapper">
-      {searchable && (
-        <div className="data-table-search">
+    <div className={`data-table-wrapper density-${density}`}>
+      {searchable ? (
+        <div className="data-table-toolbar">
           <div className="data-table-search-input">
             <span className="data-table-search-icon">
               <Search size={16} />
@@ -52,6 +127,11 @@ export default function DataTable({
               placeholder={searchPlaceholder}
             />
           </div>
+          {densityToggle}
+        </div>
+      ) : (
+        <div className="data-table-toolbar data-table-toolbar-end">
+          {densityToggle}
         </div>
       )}
 
@@ -64,7 +144,7 @@ export default function DataTable({
             <div className="data-table-empty-text">{emptyMessage}</div>
           </div>
         ) : (
-          <table className="table data-table">
+          <table className={`table data-table density-${density}`}>
             <thead>
               <tr>
                 {columns.map((col) => (
