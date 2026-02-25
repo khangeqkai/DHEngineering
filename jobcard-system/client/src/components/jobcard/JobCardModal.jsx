@@ -437,11 +437,23 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
             <BottomSheet.Body>
               {isEdit && (
                 <div className="modal-tabs">
-                  <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>Details</button>
-                  {isAdmin && <button type="button" className={`tab ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}>Items</button>}
-                  {isAdmin && <button type="button" className={`tab ${activeTab === 'subcontracts' ? 'active' : ''}`} onClick={() => setActiveTab('subcontracts')}>Subcontracts</button>}
+                  <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>
+                    Details
+                    {jobNotes.notes.length > 0 && <span className="tab-badge">{jobNotes.notes.length}</span>}
+                  </button>
+                  {isAdmin && <button type="button" className={`tab ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}>
+                    Items
+                    {formHook.lineItems.filter(i => i.description.trim()).length > 0 && <span className="tab-badge">{formHook.lineItems.filter(i => i.description.trim()).length}</span>}
+                  </button>}
+                  {isAdmin && <button type="button" className={`tab ${activeTab === 'subcontracts' ? 'active' : ''}`} onClick={() => setActiveTab('subcontracts')}>
+                    Subcontracts
+                    {subcontracts.length > 0 && <span className="tab-badge">{subcontracts.length}</span>}
+                  </button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'files' ? 'active' : ''}`} onClick={() => setActiveTab('files')}>Files</button>}
-                  {isAdmin && <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>}
+                  {isAdmin && <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>
+                    Costing
+                    {timeEntries.length > 0 && <span className="tab-badge">{timeEntries.length}</span>}
+                  </button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>}
                 </div>
               )}
