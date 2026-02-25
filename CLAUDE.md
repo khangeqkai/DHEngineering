@@ -73,13 +73,18 @@ jobcard-system/
 │   │   │   └── init.js           # Migrations + default admin setup
 │   │   └── routes/               # Express route modules
 │   └── index.js                  # Express entry point
+├── worker-client/               # Lightweight Electron client for LAN workers
+│   ├── main.js                  # Electron main process (IP config + connect to server)
+│   ├── preload.js               # IPC bridge for setup page
+│   ├── setup.html               # First-launch server IP entry form
+│   └── package.json             # Electron + electron-builder config
 └── data/
     ├── jobcard.db                # SQLite database file
     └── config.json               # Auto-generated JWT secret (persisted)
 ```
 
 ### API Structure
-Base URL: `http://localhost:3000/api`
+Base URL: `/api` (relative; Vite dev server proxies to `http://localhost:3000`, production serves client statically from Express)
 
 Main routes: `/auth`, `/jobcards`, `/contacts`, `/suppliers`, `/machines`, `/settings`, `/history`, `/qa-levels`
 
@@ -249,6 +254,8 @@ JWT_EXPIRES_IN=7d            # Token expiration (server-side, but session ends o
 LOG_LEVEL=info               # Logging level (debug, info, warn, error)
 NODE_ENV=production          # Environment (development uses pretty logs)
 DATA_DIR=/path/to/data       # Override data directory (set automatically by Electron in production)
+ELECTRON_MODE=1              # Set by Electron to prevent server process.exit() on failure (set automatically)
+CLIENT_BUILD_PATH=/path      # Path to built React client for static serving (set automatically by Electron in production)
 ```
 
 ## Security Features
@@ -261,4 +268,4 @@ DATA_DIR=/path/to/data       # Override data directory (set automatically by Ele
 - **Audit trail**: All data mutations logged to history table (including failed login attempts)
 - **Prepared statements**: All database queries use prepared statements (SQL injection protection)
 - **Auto-generated JWT secret**: On first run, a random 256-bit secret is generated via `crypto.randomBytes(32)` and persisted to `data/config.json`. Env var `JWT_SECRET` overrides if set.
-- **Electron server lifecycle**: In production builds, Electron auto-starts the Express server as a child process (via `fork()`), polls `/health` until ready, and kills it on app quit. In dev mode, the server is started separately via `npm start`.
+- **Electron server lifecycle**: In production builds, Electron loads the Express server in-process (via `require()`) and uses `Promise.race` between the server startup promise and `/health` polling to detect readiness or failure. `ELECTRON_MODE` env var prevents the server from calling `process.exit()` on failure, letting Electron show an error dialog instead. In dev mode, the server is started separately via `npm start`.

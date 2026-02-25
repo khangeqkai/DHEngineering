@@ -1,0 +1,36 @@
+{
+  "name": "dh-engineering-worker",
+  "version": "1.0.0",
+  "description": "DH Engineering Worker Client - Connects to LAN server",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^27.3.11",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.dhengineering.worker",
+    "productName": "DH Engineering Worker",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "setup.html"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "../client/public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "DH Engineering Worker"
+    }
+  }
+}

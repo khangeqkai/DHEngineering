@@ -64,6 +64,18 @@ app.use('/api/machines', machinesRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/qa-levels', qaLevelsRoutes);
 
+// Serve React client in production (LAN browser access)
+const clientBuildPath = process.env.CLIENT_BUILD_PATH || path.join(__dirname, '..', 'client', 'dist');
+if (fs.existsSync(clientBuildPath)) {
+  app.use(express.static(clientBuildPath));
+  app.use((req, res) => {
+    if (req.path === '/api' || req.path.startsWith('/api/')) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+}
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   logger.error({ err, url: req.url, method: req.method }, 'Server error');
@@ -79,18 +91,28 @@ async function start() {
     // Initialize the database with default data
     await initializeDatabase();
 
-    // Start the server
-    app.listen(config.port, config.host, () => {
-      logger.info({
-        host: config.host,
-        port: config.port,
-        url: `http://${config.host}:${config.port}`
-      }, 'Job Card Server started');
+    // Start the server and wait for it to be ready
+    await new Promise((resolve, reject) => {
+      const server = app.listen(config.port, config.host, () => {
+        logger.info({
+          host: config.host,
+          port: config.port,
+          url: `http://${config.host}:${config.port}`
+        }, 'Job Card Server started');
+        resolve();
+      });
+      server.on('error', reject);
     });
   } catch (err) {
     logger.fatal({ err }, 'Failed to start server');
-    process.exit(1);
+    throw err;
   }
 }
 
-start();
+// When required by Electron, export the promise so it can handle errors.
+// When run standalone, catch and exit on failure.
+const startPromise = start();
+if (!process.env.ELECTRON_MODE) {
+  startPromise.catch(() => process.exit(1));
+}
+module.exports = startPromise;

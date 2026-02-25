@@ -1,8 +1,18 @@
 const { app, BrowserWindow, ipcMain, Menu, globalShortcut, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { fork } = require('child_process');
-const http = require('http');
+
+// Structured logging for Electron main process
+const logger = {
+  _log(level, obj, msg) {
+    const entry = { level, time: new Date().toISOString(), msg, ...obj };
+    if (obj.err) { entry.err = { message: obj.err.message, stack: obj.err.stack }; }
+    process[level === 'error' || level === 'fatal' ? 'stderr' : 'stdout'].write(JSON.stringify(entry) + '\n');
+  },
+  info(obj, msg) { this._log('info', obj, msg); },
+  error(obj, msg) { this._log('error', obj, msg); },
+  fatal(obj, msg) { this._log('fatal', obj, msg); }
+};
 
 // Hardware integration modules
 let printerModule = null;
@@ -10,88 +20,57 @@ let scannerModule = null;
 
 const isDev = !app.isPackaged;
 
-let serverProcess = null;
-
-function getServerPath() {
-  if (isDev) {
-    return path.join(__dirname, '..', '..', 'server', 'index.js');
-  }
-  return path.join(process.resourcesPath, 'server', 'index.js');
-}
-
-function getDataDir() {
-  if (isDev) {
-    return path.join(__dirname, '..', '..', 'data');
-  }
-  return path.join(app.getPath('userData'), 'data');
-}
-
-function pollServer(url, intervalMs, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const start = Date.now();
-    const check = () => {
-      http.get(url, (res) => {
-        res.resume(); // drain response body to free socket
-        if (!settled && res.statusCode === 200) {
-          settled = true;
-          resolve();
-        } else if (!settled) {
-          retry();
-        }
-      }).on('error', () => {
-        if (!settled) retry();
-      });
-    };
-    const retry = () => {
-      if (Date.now() - start > timeoutMs) {
-        if (!settled) {
-          settled = true;
-          reject(new Error('Server did not start in time'));
-        }
-      } else {
-        setTimeout(check, intervalMs);
-      }
-    };
-    check();
-  });
-}
-
 async function startServer() {
-  const serverPath = getServerPath();
-  const dataDir = getDataDir();
+  // Set environment before requiring server
+  process.env.ELECTRON_MODE = '1';
+  if (isDev) {
+    process.env.DATA_DIR = path.join(__dirname, '..', '..', 'data');
+  } else {
+    process.env.DATA_DIR = path.join(app.getPath('userData'), 'data');
+    process.env.CLIENT_BUILD_PATH = path.join(__dirname, '..', 'dist');
+  }
+  process.env.NODE_ENV = isDev ? 'development' : 'production';
 
   // Ensure data directory exists
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+  if (!fs.existsSync(process.env.DATA_DIR)) {
+    fs.mkdirSync(process.env.DATA_DIR, { recursive: true });
   }
 
-  serverProcess = fork(serverPath, [], {
-    env: {
-      ...process.env,
-      DATA_DIR: dataDir,
-      NODE_ENV: isDev ? 'development' : 'production'
-    },
-    stdio: 'pipe'
-  });
+  // Require the server entry point — it starts Express internally
+  const serverPath = isDev
+    ? path.join(__dirname, '..', '..', 'server', 'index.js')
+    : path.join(process.resourcesPath, 'server', 'index.js');
+  const serverPromise = require(serverPath);
 
-  serverProcess.on('error', (err) => {
-    console.error('Server process error:', err);
-  });
-
-  serverProcess.on('exit', (code) => {
-    console.log('Server process exited with code:', code);
-    serverProcess = null;
-  });
-
-  // Wait for server to be ready
-  await pollServer('http://localhost:3000/health', 200, 15000);
-}
-
-function killServer() {
-  if (serverProcess) {
-    serverProcess.kill();
-    serverProcess = null;
+  // Race: server startup vs health check polling
+  // If DB init fails, serverPromise rejects immediately instead of waiting 15s
+  let cancelPolling = false;
+  try {
+    await Promise.race([
+      serverPromise,
+      new Promise((resolve, reject) => {
+        const start = Date.now();
+        const check = () => {
+          if (cancelPolling) return;
+          const req = require('http').get('http://localhost:3000/health', (res) => {
+            res.resume();
+            if (!cancelPolling && res.statusCode === 200) { cancelPolling = true; resolve(); }
+            else if (!cancelPolling) { retry(); }
+          });
+          req.on('error', () => { if (!cancelPolling) retry(); });
+        };
+        const retry = () => {
+          if (cancelPolling) return;
+          if (Date.now() - start > 15000) {
+            cancelPolling = true;
+            reject(new Error('Server did not start in time'));
+          } else { setTimeout(check, 200); }
+        };
+        check();
+      })
+    ]);
+  } finally {
+    cancelPolling = true;
   }
 }
 
@@ -114,7 +93,7 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+    mainWindow.loadURL('http://localhost:3000');
   }
 
   // Add keyboard shortcut to toggle DevTools
@@ -204,12 +183,7 @@ app.whenReady().then(async () => {
   });
 });
 
-app.on('before-quit', () => {
-  if (!isDev) killServer();
-});
-
 app.on('window-all-closed', () => {
-  if (!isDev) killServer();
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -229,7 +203,7 @@ ipcMain.handle('get-printers', async () => {
       status: p.status
     }));
   } catch (err) {
-    console.error('Failed to get printers:', err);
+    logger.error({ err }, 'Failed to get printers');
     return [];
   }
 });
@@ -255,7 +229,7 @@ ipcMain.handle('print', async (event, options) => {
       );
     });
   } catch (err) {
-    console.error('Print failed:', err);
+    logger.error({ err }, 'Print failed');
     throw err;
   }
 });
@@ -273,7 +247,7 @@ ipcMain.handle('print-to-pdf', async (event, options) => {
     });
     return pdfData;
   } catch (err) {
-    console.error('Print to PDF failed:', err);
+    logger.error({ err }, 'Print to PDF failed');
     throw err;
   }
 });
@@ -359,7 +333,7 @@ ipcMain.handle('save-file', async (event, { defaultName, buffer }) => {
     fs.writeFileSync(result.filePath, Buffer.from(buffer));
     return { canceled: false, filePath: result.filePath };
   } catch (err) {
-    console.error('Failed to save file:', err.message);
+    logger.error({ err }, 'Failed to save file');
     throw new Error(`Failed to save file: ${err.message}`);
   }
 });

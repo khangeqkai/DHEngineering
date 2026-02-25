@@ -6,7 +6,11 @@ export default defineConfig({
   base: './',
   server: {
     port: 5173,
-    strictPort: true
+    strictPort: true,
+    proxy: {
+      '/api': 'http://localhost:3000',
+      '/health': 'http://localhost:3000'
+    }
   },
   build: {
     outDir: 'dist',
