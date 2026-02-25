@@ -58,8 +58,6 @@
 }
 
 .tab.active .tab-badge {
-  background: var(--primary-accent);
-  color: var(--surface);
   opacity: 0.85;
 }
 

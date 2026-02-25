@@ -323,13 +323,21 @@ export default function JobCardList() {
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
           {filteredCards.length === 0 ? (
-            <EmptyState
-              icon="jobcards"
-              title="No job cards yet"
-              description="Create your first job card to get started."
-              actionLabel={isAdmin ? 'New Job Card' : undefined}
-              onAction={isAdmin ? openCreateModal : undefined}
-            />
+            jobcards.length === 0 ? (
+              <EmptyState
+                icon="jobcards"
+                title="No job cards yet"
+                description="Create your first job card to get started."
+                actionLabel={isAdmin ? 'New Job Card' : undefined}
+                onAction={isAdmin ? openCreateModal : undefined}
+              />
+            ) : (
+              <EmptyState
+                icon="jobcards"
+                title="No results"
+                description="Try adjusting your search or filters."
+              />
+            )
           ) : (
             <table className="table">
               <thead>

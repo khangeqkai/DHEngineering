@@ -648,6 +648,13 @@
   animation: timer-pulse 1.5s ease-in-out infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .timer-indicator,
+  .timer-dot {
+    animation: none;
+  }
+}
+
 @keyframes timer-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(0.85); }

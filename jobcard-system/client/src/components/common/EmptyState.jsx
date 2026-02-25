@@ -65,7 +65,7 @@ export default function EmptyState({
 }) {
   return (
     <div className="empty-state">
-      <div className="empty-state-icon">
+      <div className="empty-state-icon" aria-hidden="true">
         {icons[icon] || icons.jobcards}
       </div>
       <h3 className="empty-state-title">{title}</h3>

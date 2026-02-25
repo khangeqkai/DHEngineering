@@ -179,10 +179,6 @@
   font-size: 0.8rem;
 }
 
-.data-table.density-compact th {
-  font-size: 0.8rem;
-}
-
 /* Comfortable density — uses default table styles, no overrides needed */
 
 /* Spacious density */
@@ -192,17 +188,11 @@
   font-size: 0.95rem;
 }
 
-.data-table.density-spacious th {
-  font-size: 0.95rem;
-}
-
 /* ========================================
    SKELETON LOADING
    ======================================== */
 
-.skeleton-row td {
-  padding: 0.875rem 1rem;
-}
+/* Skeleton rows inherit padding from density classes via the td rules above */
 
 .skeleton-bar {
   height: 14px;

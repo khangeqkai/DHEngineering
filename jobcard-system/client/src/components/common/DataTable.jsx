@@ -11,7 +11,7 @@ const DENSITY_OPTIONS = [
     key: 'compact',
     label: 'Compact',
     icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <rect x="2" y="3" width="12" height="1.5" rx="0.75" fill="currentColor" />
         <rect x="2" y="7.25" width="12" height="1.5" rx="0.75" fill="currentColor" />
         <rect x="2" y="11.5" width="12" height="1.5" rx="0.75" fill="currentColor" />
@@ -22,7 +22,7 @@ const DENSITY_OPTIONS = [
     key: 'comfortable',
     label: 'Comfortable',
     icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <rect x="2" y="2" width="12" height="2" rx="1" fill="currentColor" />
         <rect x="2" y="7" width="12" height="2" rx="1" fill="currentColor" />
         <rect x="2" y="12" width="12" height="2" rx="1" fill="currentColor" />
@@ -33,7 +33,7 @@ const DENSITY_OPTIONS = [
     key: 'spacious',
     label: 'Spacious',
     icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <rect x="2" y="1" width="12" height="2.5" rx="1" fill="currentColor" />
         <rect x="2" y="6.75" width="12" height="2.5" rx="1" fill="currentColor" />
         <rect x="2" y="12.5" width="12" height="2.5" rx="1" fill="currentColor" />
@@ -125,6 +125,7 @@ export default function DataTable({
           type="button"
           className={`data-table-density-btn${density === opt.key ? ' active' : ''}`}
           title={opt.label}
+          aria-pressed={density === opt.key}
           onClick={() => handleDensityChange(opt.key)}
         >
           {opt.icon}
@@ -134,7 +135,7 @@ export default function DataTable({
   );
 
   return (
-    <div className={`data-table-wrapper density-${density}`}>
+    <div className="data-table-wrapper">
       {searchable ? (
         <div className="data-table-toolbar">
           <div className="data-table-search-input">
@@ -162,7 +163,7 @@ export default function DataTable({
             <EmptyState {...emptyState} />
           ) : (
             <div className="data-table-empty">
-              <div className="data-table-empty-icon">
+              <div className="data-table-empty-icon" aria-hidden="true">
                 <Inbox size={40} />
               </div>
               <div className="data-table-empty-text">{emptyMessage}</div>

@@ -154,10 +154,19 @@
   --accent-ready: #4ade80;
   --accent-info: #60a5fa;
 
-  /* Legacy */
+  /* Semantic colors — pastel for text/decorative use on dark surfaces */
   --success-color: #4ade80;
   --warning-color: #facc15;
   --danger-color: #f87171;
+
+  /* Saturated variants for button backgrounds (need white text contrast) */
+  --success-bg: #16a34a;
+  --warning-bg: #a16207;
+  --danger-bg: #dc2626;
+  --success-bg-hover: #22c55e;
+  --warning-bg-hover: #ca8a04;
+  --danger-bg-hover: #ef4444;
+  --text-on-saturated: #fff;
 
   /* Sidebar stays dark navy */
   --sidebar-bg: #070b14;
@@ -194,7 +203,7 @@
 
   /* Hover states */
   --primary-light: #cbd5e1;
-  --danger-hover: #f87171;
+  --danger-hover: #fca5a5;
   --warning-hover: #fde68a;
   --success-hover: #86efac;
   --action-hover: #fde68a;

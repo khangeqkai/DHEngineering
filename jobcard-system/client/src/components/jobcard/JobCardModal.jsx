@@ -22,18 +22,9 @@ import { useTimer } from './useTimer';
 import { useJobNotes } from './useJobNotes';
 import StopTimerForm from './StopTimerForm';
 
-const mapSubcontract = (s) => ({
-  id: s.id, supplierId: s.supplierId, supplierName: s.supplierName,
-  dateSent: s.dateSent, dateExpected: s.dateExpected, dateReceived: s.dateReceived,
-  notes: s.notes, status: s.status
-});
+const mapSubcontract = (s) => ({ id: s.id, supplierId: s.supplierId, supplierName: s.supplierName, dateSent: s.dateSent, dateExpected: s.dateExpected, dateReceived: s.dateReceived, notes: s.notes, status: s.status });
 
-const mapTimeEntry = (t) => ({
-  id: t.id, userId: t.userId, userName: t.userName,
-  itemNumber: t.itemNumber, machineNumber: t.machineNumber, qty: t.qty,
-  description: t.description, startTime: t.startTime, endTime: t.endTime,
-  isSpecialLabour: t.isSpecialLabour || false
-});
+const mapTimeEntry = (t) => ({ id: t.id, userId: t.userId, userName: t.userName, itemNumber: t.itemNumber, machineNumber: t.machineNumber, qty: t.qty, description: t.description, startTime: t.startTime, endTime: t.endTime, isSpecialLabour: t.isSpecialLabour || false });
 
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess }) {
   const { user } = useAuth();
@@ -426,6 +417,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const isOverdue = formHook.formData.dueDate?.trim() &&
     new Date(formHook.formData.dueDate + 'T00:00:00') < today &&
     !['DONE', 'INVOICED'].includes(formHook.formData.status);
+  const filledItemCount = formHook.lineItems.filter(i => i.description.trim()).length;
   const buildTitle = () => isEdit ? `Edit: ${formHook.jobNumber}` : 'New Job Card';
   return (
     <>
@@ -443,7 +435,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   </button>
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}>
                     Items
-                    {formHook.lineItems.filter(i => i.description.trim()).length > 0 && <span className="tab-badge">{formHook.lineItems.filter(i => i.description.trim()).length}</span>}
+                    {filledItemCount > 0 && <span className="tab-badge">{filledItemCount}</span>}
                   </button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'subcontracts' ? 'active' : ''}`} onClick={() => setActiveTab('subcontracts')}>
                     Subcontracts

@@ -26,6 +26,15 @@
   animation: pageEnter 200ms var(--ease-mechanical) both;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+  div[data-hot-toast] > div {
+    animation: none !important;
+  }
+}
+
 /* ========================================
    LAYOUT
    ======================================== */
@@ -383,10 +392,10 @@
   background: var(--danger-hover);
 }
 
-/* Warning */
+/* Warning — yellow always needs dark text for contrast */
 .btn-warning {
   background: var(--warning-color);
-  color: var(--text-primary);
+  color: var(--text-inverse);
 }
 
 .btn-warning:hover:not(:disabled) {
@@ -401,6 +410,34 @@
 
 .btn-success:hover:not(:disabled) {
   background: var(--success-hover);
+}
+
+/* Dark mode: semantic color vars are pastel (for text), so buttons use saturated --*-bg vars */
+.dark-mode .btn-danger {
+  background: var(--danger-bg);
+  color: var(--text-on-saturated);
+}
+
+.dark-mode .btn-danger:hover:not(:disabled) {
+  background: var(--danger-bg-hover);
+}
+
+.dark-mode .btn-warning {
+  background: var(--warning-bg);
+  color: var(--text-on-saturated);
+}
+
+.dark-mode .btn-warning:hover:not(:disabled) {
+  background: var(--warning-bg-hover);
+}
+
+.dark-mode .btn-success {
+  background: var(--success-bg);
+  color: var(--text-on-saturated);
+}
+
+.dark-mode .btn-success:hover:not(:disabled) {
+  background: var(--success-bg-hover);
 }
 
 /* Action */
@@ -691,16 +728,6 @@
 }
 
 .card:hover {
-  box-shadow: var(--shadow-md);
-}
-
-/* Clickable cards get a subtle lift on hover */
-.card-clickable {
-  cursor: pointer;
-}
-
-.card-clickable:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
@@ -1230,40 +1257,40 @@
   --page-accent-shadow: rgba(100, 116, 139, 0.3);
 }
 
-/* Dark mode accent adjustments (brighter for dark backgrounds) */
+/* Dark mode accent adjustments — keep saturated colors for buttons, lighter for decorative */
 .dark-mode .page-contacts {
-  --page-accent: #60a5fa;
+  --page-accent: #2563eb;
   --page-accent-hover: #3b82f6;
-  --page-accent-light: rgba(96, 165, 250, 0.15);
-  --page-accent-shadow: rgba(96, 165, 250, 0.3);
+  --page-accent-light: rgba(37, 99, 235, 0.15);
+  --page-accent-shadow: rgba(37, 99, 235, 0.3);
 }
 
 .dark-mode .page-suppliers {
-  --page-accent: #34d399;
+  --page-accent: #059669;
   --page-accent-hover: #10b981;
-  --page-accent-light: rgba(52, 211, 153, 0.15);
-  --page-accent-shadow: rgba(52, 211, 153, 0.3);
+  --page-accent-light: rgba(5, 150, 105, 0.15);
+  --page-accent-shadow: rgba(5, 150, 105, 0.3);
 }
 
 .dark-mode .page-users {
-  --page-accent: #a78bfa;
+  --page-accent: #7c3aed;
   --page-accent-hover: #8b5cf6;
-  --page-accent-light: rgba(167, 139, 250, 0.15);
-  --page-accent-shadow: rgba(167, 139, 250, 0.3);
+  --page-accent-light: rgba(124, 58, 237, 0.15);
+  --page-accent-shadow: rgba(124, 58, 237, 0.3);
 }
 
 .dark-mode .page-equipment {
-  --page-accent: #fb923c;
+  --page-accent: #ea580c;
   --page-accent-hover: #f97316;
-  --page-accent-light: rgba(251, 146, 60, 0.15);
-  --page-accent-shadow: rgba(251, 146, 60, 0.3);
+  --page-accent-light: rgba(234, 88, 12, 0.15);
+  --page-accent-shadow: rgba(234, 88, 12, 0.3);
 }
 
 .dark-mode .page-activity {
-  --page-accent: #94a3b8;
-  --page-accent-hover: #64748b;
-  --page-accent-light: rgba(148, 163, 184, 0.15);
-  --page-accent-shadow: rgba(148, 163, 184, 0.3);
+  --page-accent: #64748b;
+  --page-accent-hover: #94a3b8;
+  --page-accent-light: rgba(100, 116, 139, 0.15);
+  --page-accent-shadow: rgba(100, 116, 139, 0.3);
 }
 
 /* Page header title: colored left border */
@@ -1283,7 +1310,7 @@
 .page-equipment > .page-header .btn-primary,
 .page-activity > .page-header .btn-primary {
   background: var(--page-accent);
-  color: #fff;
+  color: var(--text-on-saturated);
 }
 
 .page-contacts > .page-header .btn-primary:hover:not(:disabled),
@@ -1295,9 +1322,12 @@
   box-shadow: 0 2px 8px var(--page-accent-shadow);
 }
 
-/* Ensure dark text on light accent buttons (orange) */
+/* Ensure dark text on light orange button (light mode), white on dark orange (dark mode) */
 .page-equipment > .page-header .btn-primary {
-  color: #0f172a;
+  color: var(--text-primary);
+}
+.dark-mode .page-equipment > .page-header .btn-primary {
+  color: var(--text-on-saturated);
 }
 
 /* Table row hover tint uses page accent */
@@ -1525,8 +1555,7 @@
    ======================================== */
 
 /* Custom toast entrance: slide in from right */
-div[data-hot-toast] > div,
-div[role="status"] {
+div[data-hot-toast] > div {
   animation: toastSlideIn 300ms var(--ease-mechanical) both !important;
 }
 
