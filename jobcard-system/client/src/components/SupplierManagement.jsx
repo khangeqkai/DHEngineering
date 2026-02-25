@@ -180,7 +180,7 @@ export default function SupplierManagement() {
 
 
   return (
-    <div className="supplier-management page-scroll-layout page-enter">
+    <div className="supplier-management page-suppliers page-scroll-layout page-enter">
       <PageHeader title="Suppliers">
         <ExportButton
           onExportView={() => suppliers.length ? exportSuppliers(suppliers) : false}

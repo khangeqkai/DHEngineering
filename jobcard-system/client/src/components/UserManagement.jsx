@@ -157,7 +157,7 @@ export default function UserManagement() {
 
 
   return (
-    <div className="user-management page-enter">
+    <div className="user-management page-users page-enter">
       <PageHeader title="User Management">
         <label className="show-inactive-label">
           <input

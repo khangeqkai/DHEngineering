@@ -109,7 +109,7 @@ export default function EquipmentManagement() {
 
 
   return (
-    <div className="equipment-management page-scroll-layout page-enter">
+    <div className="equipment-management page-equipment page-scroll-layout page-enter">
       <PageHeader title="Equipment">
         <ExportButton
           onExportView={() => machines.length ? exportEquipment(machines) : false}

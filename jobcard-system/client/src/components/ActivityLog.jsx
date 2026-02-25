@@ -83,7 +83,7 @@ export default function ActivityLog() {
 
 
   return (
-    <div className="activity-log page-enter">
+    <div className="activity-log page-activity page-enter">
       <PageHeader title="Activity Log">
         <select
           value={limit}

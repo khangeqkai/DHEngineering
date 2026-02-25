@@ -1189,6 +1189,127 @@
 }
 
 /* ========================================
+   PAGE ACCENT COLORS
+   Subtle per-page color identity for
+   spatial memory on management pages.
+   ======================================== */
+
+/* Light mode accent definitions */
+.page-contacts {
+  --page-accent: #3b82f6;
+  --page-accent-hover: #2563eb;
+  --page-accent-light: rgba(59, 130, 246, 0.10);
+  --page-accent-shadow: rgba(59, 130, 246, 0.3);
+}
+
+.page-suppliers {
+  --page-accent: #10b981;
+  --page-accent-hover: #059669;
+  --page-accent-light: rgba(16, 185, 129, 0.10);
+  --page-accent-shadow: rgba(16, 185, 129, 0.3);
+}
+
+.page-users {
+  --page-accent: #8b5cf6;
+  --page-accent-hover: #7c3aed;
+  --page-accent-light: rgba(139, 92, 246, 0.10);
+  --page-accent-shadow: rgba(139, 92, 246, 0.3);
+}
+
+.page-equipment {
+  --page-accent: #f97316;
+  --page-accent-hover: #ea580c;
+  --page-accent-light: rgba(249, 115, 22, 0.10);
+  --page-accent-shadow: rgba(249, 115, 22, 0.3);
+}
+
+.page-activity {
+  --page-accent: #64748b;
+  --page-accent-hover: #475569;
+  --page-accent-light: rgba(100, 116, 139, 0.10);
+  --page-accent-shadow: rgba(100, 116, 139, 0.3);
+}
+
+/* Dark mode accent adjustments (brighter for dark backgrounds) */
+.dark-mode .page-contacts {
+  --page-accent: #60a5fa;
+  --page-accent-hover: #3b82f6;
+  --page-accent-light: rgba(96, 165, 250, 0.15);
+  --page-accent-shadow: rgba(96, 165, 250, 0.3);
+}
+
+.dark-mode .page-suppliers {
+  --page-accent: #34d399;
+  --page-accent-hover: #10b981;
+  --page-accent-light: rgba(52, 211, 153, 0.15);
+  --page-accent-shadow: rgba(52, 211, 153, 0.3);
+}
+
+.dark-mode .page-users {
+  --page-accent: #a78bfa;
+  --page-accent-hover: #8b5cf6;
+  --page-accent-light: rgba(167, 139, 250, 0.15);
+  --page-accent-shadow: rgba(167, 139, 250, 0.3);
+}
+
+.dark-mode .page-equipment {
+  --page-accent: #fb923c;
+  --page-accent-hover: #f97316;
+  --page-accent-light: rgba(251, 146, 60, 0.15);
+  --page-accent-shadow: rgba(251, 146, 60, 0.3);
+}
+
+.dark-mode .page-activity {
+  --page-accent: #94a3b8;
+  --page-accent-hover: #64748b;
+  --page-accent-light: rgba(148, 163, 184, 0.15);
+  --page-accent-shadow: rgba(148, 163, 184, 0.3);
+}
+
+/* Page header title: colored left border */
+.page-contacts > .page-header h1,
+.page-suppliers > .page-header h1,
+.page-users > .page-header h1,
+.page-equipment > .page-header h1,
+.page-activity > .page-header h1 {
+  border-left: 3px solid var(--page-accent);
+  padding-left: 12px;
+}
+
+/* Primary action button: use page accent color */
+.page-contacts > .page-header .btn-primary,
+.page-suppliers > .page-header .btn-primary,
+.page-users > .page-header .btn-primary,
+.page-equipment > .page-header .btn-primary,
+.page-activity > .page-header .btn-primary {
+  background: var(--page-accent);
+  color: #fff;
+}
+
+.page-contacts > .page-header .btn-primary:hover:not(:disabled),
+.page-suppliers > .page-header .btn-primary:hover:not(:disabled),
+.page-users > .page-header .btn-primary:hover:not(:disabled),
+.page-equipment > .page-header .btn-primary:hover:not(:disabled),
+.page-activity > .page-header .btn-primary:hover:not(:disabled) {
+  background: var(--page-accent-hover);
+  box-shadow: 0 2px 8px var(--page-accent-shadow);
+}
+
+/* Ensure dark text on light accent buttons (orange) */
+.page-equipment > .page-header .btn-primary {
+  color: #0f172a;
+}
+
+/* Table row hover tint uses page accent */
+.page-contacts .table tbody tr:hover,
+.page-suppliers .table tbody tr:hover,
+.page-users .table tbody tr:hover,
+.page-equipment .table tbody tr:hover,
+.page-activity .table tbody tr:hover {
+  background: var(--page-accent-light);
+}
+
+/* ========================================
    RESPONSIVE SIDEBAR
    ======================================== */
 
