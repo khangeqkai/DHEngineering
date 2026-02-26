@@ -29,6 +29,10 @@ export function useSettings() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [pendingImportPath, setPendingImportPath] = useState(null);
 
   const loadSettings = useCallback(async () => {
     if (!isAdmin) {
@@ -167,6 +171,69 @@ export function useSettings() {
     }
   }, [newPassword, confirmPassword, currentPassword, resetPasswordForm]);
 
+  const handleExportBackup = useCallback(async () => {
+    if (!window.electronAPI?.showSaveDialog) {
+      toast.error('Full backup export requires the desktop app');
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const outputPath = await window.electronAPI.showSaveDialog(
+      `dh-engineering-backup-${today}.zip`,
+      [{ name: 'ZIP Archive', extensions: ['zip'] }]
+    );
+    if (!outputPath) return;
+
+    setExporting(true);
+    try {
+      const result = await api.exportBackup(outputPath);
+      const sizeMB = result?.size ? (result.size / 1024 / 1024).toFixed(1) : null;
+      toast.success(sizeMB ? `Backup exported successfully (${sizeMB} MB)` : 'Backup exported successfully');
+    } catch (err) {
+      toast.error(err.message || 'Failed to export backup');
+    } finally {
+      setExporting(false);
+    }
+  }, []);
+
+  const handleImportBackup = useCallback(async () => {
+    if (!window.electronAPI?.selectFile) {
+      toast.error('Backup import requires the desktop app');
+      return;
+    }
+
+    const inputPath = await window.electronAPI.selectFile(
+      'Select Backup File',
+      [{ name: 'ZIP Archive', extensions: ['zip'] }]
+    );
+    if (!inputPath) return;
+
+    setPendingImportPath(inputPath);
+    setShowImportConfirm(true);
+  }, []);
+
+  const handleConfirmImport = useCallback(async () => {
+    if (!pendingImportPath) return;
+
+    setShowImportConfirm(false);
+    setImporting(true);
+    try {
+      await api.importBackup(pendingImportPath);
+      toast.success('Backup imported successfully. Reloading...');
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err) {
+      toast.error(err.message || 'Failed to import backup');
+    } finally {
+      setImporting(false);
+      setPendingImportPath(null);
+    }
+  }, [pendingImportPath]);
+
+  const handleCancelImport = useCallback(() => {
+    setShowImportConfirm(false);
+    setPendingImportPath(null);
+  }, []);
+
   return {
     user, isAdmin,
     settings, loading, appInfo, printers, loadingPrinters,
@@ -178,6 +245,8 @@ export function useSettings() {
     currentPassword, setCurrentPassword,
     newPassword, setNewPassword,
     confirmPassword, setConfirmPassword,
-    savingPassword, handleChangePassword, resetPasswordForm
+    savingPassword, handleChangePassword, resetPasswordForm,
+    exporting, importing, handleExportBackup, handleImportBackup,
+    showImportConfirm, handleConfirmImport, handleCancelImport
   };
 }

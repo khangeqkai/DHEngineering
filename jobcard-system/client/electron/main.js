@@ -352,3 +352,38 @@ ipcMain.handle('select-folder', async () => {
 
   return result.filePaths[0];
 });
+
+// Show save dialog (returns chosen path without writing)
+ipcMain.handle('show-save-dialog', async (event, { defaultName, filters }) => {
+  const win = BrowserWindow.getAllWindows()[0] || null;
+  const result = await dialog.showSaveDialog(win, {
+    defaultPath: defaultName,
+    filters: filters || [
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  });
+
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
+
+  return result.filePath;
+});
+
+// Select file dialog (for import)
+ipcMain.handle('select-file', async (event, { title, filters }) => {
+  const win = BrowserWindow.getAllWindows()[0] || null;
+  const result = await dialog.showOpenDialog(win, {
+    properties: ['openFile'],
+    title: title || 'Select File',
+    filters: filters || [
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+
+  return result.filePaths[0];
+});

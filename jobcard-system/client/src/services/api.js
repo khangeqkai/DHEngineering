@@ -255,6 +255,8 @@ class ApiService {
   updateSettings(data) { return this._put('/settings', data); }
   getInactivityTimeout() { return this.request('/settings/inactivity-timeout'); }
   getScannerFiles(limit = 10) { return this.request(`/settings/files?limit=${limit}`); }
+  exportBackup(outputPath) { return this._post('/settings/export-backup', { outputPath }); }
+  importBackup(inputPath) { return this._post('/settings/import-backup', { inputPath }); }
 
   // QA Levels
   getQaLevels() { return this.request('/qa-levels'); }

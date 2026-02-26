@@ -271,6 +271,53 @@ export default function Settings() {
         {s.isAdmin && (
           <div className="card full-width">
             <div className="card-header">
+              <h2>Data Backup</h2>
+            </div>
+            <div className="card-body">
+              <div className="setting-item backup-export-row">
+                <div className="setting-info">
+                  <div className="setting-label">Export Full Backup</div>
+                  <div className="setting-description">
+                    Save all data (database + job folder files) to a ZIP file. Use this before updating or reinstalling the application.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={s.handleExportBackup}
+                  disabled={s.exporting || s.importing || !window.electronAPI}
+                >
+                  {s.exporting ? 'Exporting...' : 'Export Backup'}
+                </button>
+              </div>
+              <div className="setting-item">
+                <div className="setting-info">
+                  <div className="setting-label">Import Backup</div>
+                  <div className="setting-description">
+                    Restore all data from a previously exported backup. This will replace all current data and files.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={s.handleImportBackup}
+                  disabled={s.exporting || s.importing || !window.electronAPI}
+                >
+                  {s.importing ? 'Importing...' : 'Import Backup'}
+                </button>
+              </div>
+              {!window.electronAPI && (
+                <p className="setting-description" style={{ marginTop: '1rem' }}>
+                  Backup features require the desktop application.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {s.isAdmin && (
+          <div className="card full-width">
+            <div className="card-header">
               <h2>Server Connection</h2>
             </div>
             <div className="card-body">
@@ -346,6 +393,43 @@ export default function Settings() {
         </BottomSheet.Footer>
       </BottomSheet>
 
+      <BottomSheet
+        isOpen={s.showImportConfirm}
+        onClose={s.handleCancelImport}
+        title="Confirm Import"
+        size="small"
+        closeOnOverlayClick={false}
+      >
+        <BottomSheet.Body>
+          <p style={{ marginBottom: '0.75rem', fontWeight: 500 }}>
+            This will REPLACE all current data with the backup contents:
+          </p>
+          <ul style={{ margin: '0 0 1rem 1.25rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+            <li>All database records (job cards, contacts, users, etc.)</li>
+            <li>All job folder files (scanned documents, QA forms, etc.)</li>
+          </ul>
+          <p style={{ color: 'var(--danger)', fontWeight: 500 }}>
+            This cannot be undone.
+          </p>
+        </BottomSheet.Body>
+        <BottomSheet.Footer>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={s.handleCancelImport}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={s.handleConfirmImport}
+          >
+            Import and Replace All Data
+          </button>
+        </BottomSheet.Footer>
+      </BottomSheet>
+
       <style>{`
         .settings-grid {
           display: grid;
@@ -389,6 +473,10 @@ export default function Settings() {
           justify-content: space-between;
           align-items: center;
           gap: 1rem;
+        }
+
+        .backup-export-row {
+          margin-bottom: 1rem;
         }
 
         .setting-info {

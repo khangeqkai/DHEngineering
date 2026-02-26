@@ -90,7 +90,7 @@ Base URL: `/api` (relative; Vite dev server proxies to `http://localhost:3000`, 
 
 Main routes: `/auth`, `/jobcards`, `/contacts`, `/suppliers`, `/machines`, `/settings`, `/history`, `/qa-levels`
 
-Settings endpoints: `GET /settings` (admin), `PUT /settings` (admin), `GET /settings/inactivity-timeout` (all users)
+Settings endpoints: `GET /settings` (admin), `PUT /settings` (admin), `GET /settings/inactivity-timeout` (all users), `POST /settings/export-backup` (admin, creates ZIP at `outputPath` with database + job folder files), `POST /settings/import-backup` (admin, restores from ZIP at `inputPath`, requires `job_folders_base` configured)
 
 History sub-routes: `GET /history` (recent, admin), `GET /history/user/:userId` (admin), `GET /history/entity/:entityType?page=1` (admin, type = `user`|`contact`|`supplier`|`machine`, returns `{ data, total, page, totalPages }` with 50 items/page)
 
@@ -137,7 +137,7 @@ PDFs without fillable fields are copied as-is (blank templates for handwriting).
 - Admin-only: user management, supplier management, equipment management, QA level management, costing, settings, activity log, **contact/customer info**, **job card creation/deletion**, **note deletion**
 - **Employee (user) role**: Read-only job card view (Details tab renders as styled text, not inputs). Tabs hidden from employees: Items, Subcontracts, Files, Costing, Activity Log. Employees use Start/Stop timer for time tracking (one active timer at a time, enforced server-side). Can add notes but not delete them. **Quick Action Panel**: All users clicking a job card row see a QuickActionPanel (centered modal) with 4 large buttons: Upload Document, Start/Stop Timer, View Documents, and View Details. **Upload flow**: Upload Document → pick category (QA Form, Job Files, or Customer Property) → choose Scanner or Camera → file saved automatically to the selected folder. **View Documents**: Tabbed view with QA Forms, Job Files, and Customer Property tabs showing files from each folder (images viewable via lightbox). Clicking "View Details" opens the full JobCardModal. Active timers show a pulsing green indicator on job card rows for all users.
 - **Job card visibility**: Non-admin users only see job cards they are assigned to (via `job_assignees`). Unassigned job cards are visible only to admins. All `/:id` routes (GET, PUT, and sub-resources) enforce assignee-or-admin access via `requireAssigneeOrAdmin` middleware. List routes use assignee-filtered queries instead.
-- **Settings page**: Non-admin users see only Appearance (dark mode) and Change Password. Admin users see all cards (App Info, Current User, Printers, Security Settings, Scanner Folder, Job Folders, Server Connection).
+- **Settings page**: Non-admin users see only Appearance (dark mode) and Change Password. Admin users see all cards (App Info, Current User, Printers, Security Settings, Scanner Folder, Job Folders, Data Backup, Server Connection).
 - Default credentials: `admin` / `admin123`
 - **No token persistence**: JWT stored in memory only (not localStorage). Users must log in every time they open/refresh the app. Designed for shared workstation security.
 - **Inactivity timeout**: Users auto-logout after configurable period of inactivity (default 5 min). Warning modal appears 30 seconds before logout. Activity = mouse, keyboard, touch, scroll. Timer continues when tab is hidden (security for shared workstations).

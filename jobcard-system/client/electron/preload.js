@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // File dialogs
   selectFolder: () => ipcRenderer.invoke('select-folder'),
   saveFile: (defaultName, buffer) => ipcRenderer.invoke('save-file', { defaultName, buffer }),
+  showSaveDialog: (defaultName, filters) => ipcRenderer.invoke('show-save-dialog', { defaultName, filters }),
+  selectFile: (title, filters) => ipcRenderer.invoke('select-file', { title, filters }),
 
   // Platform detection
   platform: process.platform

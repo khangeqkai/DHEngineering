@@ -2,9 +2,15 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
+const archiver = require('archiver');
+const extractZip = require('extract-zip');
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const db = require('../db/database');
+const { recordHistory } = require('../db/helpers');
+const { requiredString, handleValidationErrors } = require('../middleware/validation');
+const { version: appVersion } = require('../../package.json');
 
 // All settings routes require authentication
 router.use(authenticate);
@@ -155,5 +161,233 @@ router.get('/files', authenticate, (req, res) => {
     res.status(500).json({ error: 'Failed to get scanner files' });
   }
 });
+
+// Table order: parents first, children last (for insert)
+const TABLE_ORDER = [
+  'settings', 'users', 'contacts', 'suppliers', 'machines', 'service_tags',
+  'qa_levels', 'supplier_service_tags', 'jobcards', 'job_items', 'job_assignees',
+  'job_notes', 'subcontracts', 'time_entries', 'job_costings', 'documents',
+  'qa_forms', 'qa_level_templates', 'history'
+];
+
+const SCHEMA_VERSION = 1;
+
+// Get valid column names for a table
+function getTableColumns(table) {
+  return new Set(db.db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name));
+}
+
+// Export full backup as ZIP (admin only)
+router.post('/export-backup', requireAdmin, [
+  requiredString('outputPath', 'Output path'),
+  handleValidationErrors
+], async (req, res) => {
+  const { outputPath } = req.body;
+
+  try {
+    const settings = db.getSettings();
+
+    const dbData = {
+      _metadata: {
+        exportedAt: new Date().toISOString(),
+        appVersion,
+        schemaVersion: SCHEMA_VERSION
+      }
+    };
+    for (const table of TABLE_ORDER) {
+      dbData[table] = db.db.prepare(`SELECT * FROM ${table}`).all();
+    }
+
+    const output = fs.createWriteStream(outputPath);
+    const archive = archiver('zip', { zlib: { level: 5 } });
+
+    await new Promise((resolve, reject) => {
+      output.on('close', resolve);
+      archive.on('error', reject);
+      archive.on('warning', (err) => {
+        if (err.code === 'ENOENT') {
+          logger.warn({ err }, 'File skipped during backup export');
+        } else {
+          reject(err);
+        }
+      });
+      archive.pipe(output);
+
+      archive.append(JSON.stringify(dbData, null, 2), { name: 'database.json' });
+
+      const jobBase = settings.job_folders_base;
+      if (jobBase && fs.existsSync(jobBase)) {
+        archive.directory(jobBase, 'files');
+      }
+
+      archive.finalize();
+    });
+
+    const stats = fs.statSync(outputPath);
+    logger.info({ outputPath, size: stats.size }, 'Backup exported successfully');
+
+    try {
+      recordHistory('system', 'backup', 'data_export', req.user.userId, req.user.name, {
+        outputPath: { from: null, to: outputPath },
+        size: { from: null, to: `${(stats.size / 1024 / 1024).toFixed(1)} MB` }
+      }, null);
+    } catch (histErr) {
+      logger.error({ err: histErr }, 'Failed to record export history');
+    }
+
+    res.json({ success: true, size: stats.size });
+  } catch (err) {
+    try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch (_) { /* ignore */ }
+    logger.error({ err }, 'Error exporting backup');
+    res.status(500).json({ error: 'Failed to export backup: ' + err.message });
+  }
+});
+
+// Import full backup from ZIP (admin only)
+router.post('/import-backup', requireAdmin, [
+  requiredString('inputPath', 'Input path'),
+  handleValidationErrors
+], async (req, res) => {
+  const { inputPath } = req.body;
+
+  if (!fs.existsSync(inputPath)) {
+    return res.status(400).json({ error: 'Backup file not found' });
+  }
+
+  try {
+    const currentSettings = db.getSettings();
+    const currentJobBase = currentSettings.job_folders_base;
+    const currentScannerFolder = currentSettings.scanner_folder;
+
+    if (!currentJobBase) {
+      return res.status(400).json({
+        error: 'Please configure the Job Folders Base path in Settings before importing a backup'
+      });
+    }
+
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dh-backup-'));
+    try {
+      await extractZip(inputPath, { dir: tempDir });
+
+      const dbJsonPath = path.join(tempDir, 'database.json');
+      if (!fs.existsSync(dbJsonPath)) {
+        return res.status(400).json({ error: 'Invalid backup: missing database.json' });
+      }
+
+      const data = JSON.parse(fs.readFileSync(dbJsonPath, 'utf-8'));
+
+      if (!data._metadata) {
+        return res.status(400).json({ error: 'Invalid backup: missing _metadata' });
+      }
+
+      if (data._metadata.schemaVersion !== SCHEMA_VERSION) {
+        return res.status(400).json({
+          error: `Incompatible backup schema version ${data._metadata.schemaVersion} (expected ${SCHEMA_VERSION})`
+        });
+      }
+
+      for (const table of TABLE_ORDER) {
+        if (!Array.isArray(data[table])) {
+          return res.status(400).json({ error: `Invalid backup: missing table "${table}"` });
+        }
+      }
+
+      // FK pragma must be set OUTSIDE the transaction to take effect
+      // Pre-compute valid columns for all tables before the transaction
+      const tableColumns = {};
+      for (const table of TABLE_ORDER) {
+        tableColumns[table] = getTableColumns(table);
+      }
+
+      db.db.pragma('foreign_keys = OFF');
+      try {
+        const importTransaction = db.db.transaction(() => {
+          const reversed = [...TABLE_ORDER].reverse();
+          for (const table of reversed) {
+            db.db.prepare(`DELETE FROM ${table}`).run();
+          }
+
+          for (const table of TABLE_ORDER) {
+            const rows = data[table];
+            if (rows.length === 0) continue;
+
+            const validColumns = tableColumns[table];
+            const columns = Object.keys(rows[0]).filter(c => validColumns.has(c));
+            if (columns.length === 0) continue;
+
+            const placeholders = columns.map(() => '?').join(', ');
+            const columnNames = columns.join(', ');
+            const stmt = db.db.prepare(`INSERT INTO ${table} (${columnNames}) VALUES (${placeholders})`);
+
+            for (const row of rows) {
+              stmt.run(...columns.map(col => row[col]));
+            }
+          }
+
+          // Fix sqlite_sequence for history table (AUTOINCREMENT)
+          if (data.history.length > 0) {
+            const maxId = data.history.reduce((max, r) => r.id > max ? r.id : max, 0);
+            db.db.prepare(`UPDATE sqlite_sequence SET seq = ? WHERE name = 'history'`).run(maxId);
+          }
+        });
+
+        importTransaction();
+      } finally {
+        db.db.pragma('foreign_keys = ON');
+      }
+
+      // Restore current machine's path settings (backup may have different paths)
+      db.updateSettings({
+        job_folders_base: currentJobBase || '',
+        scanner_folder: currentScannerFolder || ''
+      });
+
+      // Restore job folder files using the CURRENT machine's path
+      const filesDir = path.join(tempDir, 'files');
+      if (fs.existsSync(filesDir) && currentJobBase) {
+        copyDirRecursive(filesDir, currentJobBase);
+        logger.info({ from: filesDir, to: currentJobBase }, 'Job folder files restored');
+      }
+
+      // Record import in history (wrap in try-catch since the importing user
+      // may not exist in the restored data, which would cause an FK violation)
+      try {
+        recordHistory('system', 'backup', 'data_import', req.user.userId, req.user.name, {
+          source: { from: null, to: data._metadata.exportedAt },
+          tables: { from: null, to: TABLE_ORDER.length + ' tables restored' },
+          filesRestored: { from: null, to: fs.existsSync(filesDir) ? 'yes' : 'no' }
+        }, null);
+      } catch (histErr) {
+        logger.error({ err: histErr }, 'Failed to record import history (user may not exist in restored data)');
+      }
+
+      res.json({ success: true, message: 'Backup imported successfully' });
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  } catch (err) {
+    try { db.db.pragma('foreign_keys = ON'); } catch (_) { /* ignore */ }
+    logger.error({ err }, 'Error importing backup');
+    res.status(500).json({ error: 'Failed to import backup: ' + err.message });
+  }
+});
+
+// Helper: recursively copy directory contents (merge, overwrite existing files)
+function copyDirRecursive(src, dest) {
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
+  }
+
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      copyDirRecursive(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
 
 module.exports = router;
