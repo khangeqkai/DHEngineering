@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, User, Lock } from 'lucide-react';
+import { User, Lock } from 'lucide-react';
+import dhLogo from '../assets/dh-logo.png';
 import './Login.css';
 
 export default function Login() {
@@ -63,14 +64,13 @@ export default function Login() {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <div className="login-header-icon">
-            <Shield size={28} />
-          </div>
-          <h1>Job Card System</h1>
-          <p>Sign in to continue</p>
+          <img src={dhLogo} alt="DH Engineering" className="login-logo" />
         </div>
 
+        <hr className="login-divider" />
+
         <form onSubmit={handleSubmit}>
+          <h1 className="login-form-title">Job Card System</h1>
           {error && (
             <div className="login-error">
               {countdown > 0

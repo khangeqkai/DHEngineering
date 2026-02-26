@@ -221,6 +221,46 @@
   text-decoration: none;
 }
 
+/* ── No Overdue Card ── */
+.no-overdue-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border-color);
+  background: var(--surface);
+  min-height: 200px;
+}
+
+.no-overdue-content {
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+
+.no-overdue-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(var(--success-rgb), 0.1);
+  color: var(--success-color);
+  margin-bottom: 0.75rem;
+}
+
+.no-overdue-content h3 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.375rem 0;
+}
+
+.no-overdue-content p {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .dashboard-grid {

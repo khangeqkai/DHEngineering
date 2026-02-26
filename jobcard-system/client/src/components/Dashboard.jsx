@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Activity, FileText, FolderOpen, Loader, Pause, AlertTriangle } from 'lucide-react';
+import { Plus, Activity, FileText, FolderOpen, Loader, Pause, AlertTriangle, CheckCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import PageHeader from './common/PageHeader';
 import JobCardModal from './jobcard/JobCardModal';
@@ -320,9 +320,17 @@ export default function Dashboard() {
               View All Overdue Jobs ({stats.overdue})
             </Link>
           </div>
-        ) : stats.total === 0 ? null : (
-          <div />
-        )}
+        ) : stats.total > 0 ? (
+          <div className="card no-overdue-card">
+            <div className="no-overdue-content">
+              <div className="no-overdue-icon">
+                <CheckCircle size={32} />
+              </div>
+              <h3>All On Track</h3>
+              <p>No overdue jobs — everything is running on schedule.</p>
+            </div>
+          </div>
+        ) : null}
 
         {/* Recent Job Cards - full width */}
         <div className="card dashboard-grid-full">

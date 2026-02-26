@@ -1,7 +1,7 @@
 {
   "name": "jobcard-server",
   "version": "1.0.0",
-  "description": "Job Card System Server",
+  "description": "DH Engineering Job Card System Server",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

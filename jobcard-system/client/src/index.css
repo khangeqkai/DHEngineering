@@ -1,3 +1,27 @@
+@font-face {
+  font-family: 'Pragmatica';
+  src: url('./assets/fonts/Pragmatica-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pragmatica';
+  src: url('./assets/fonts/Pragmatica-Book.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pragmatica';
+  src: url('./assets/fonts/Pragmatica-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -7,7 +31,7 @@
 :root {
   /* Typography */
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;
-  --font-sans: 'Google Sans', 'Google Sans Text', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Pragmatica', 'Google Sans', 'Google Sans Text', -apple-system, BlinkMacSystemFont, sans-serif;
 
   /* Font Sizes - Standard scale */
   --text-xs: 0.75rem;

@@ -38,7 +38,8 @@ cd server && npm run dev
 ### Stack
 - **Frontend**: React 18 + React Router, Vite bundler, Electron 27, react-hot-toast (notifications)
 - **Backend**: Express 4, better-sqlite3 (synchronous SQLite), pino (logging), express-validator, express-rate-limit
-- **Auth**: JWT (memory-only, no localStorage), bcryptjs password hashing, rate-limited login (5 attempts/15 min)
+- **Auth**: JWT (memory-only, no localStorage), bcryptjs password hashing, rate-limited login (5 failed attempts/15 min)
+- **Font**: Pragmatica (bundled OTF, weights 300/400/700) with Google Sans fallback
 
 ### Directory Structure
 ```
@@ -50,6 +51,7 @@ jobcard-system/
 │   │   │   │   ├── tabs/         # Tab components + DetailsReadOnlyView, NotesSection
 │   │   │   │   └── use*.js       # Custom hooks (useCosting, useTimeEntries, useTimer, useJobNotes, useJobCardForm, useContactSearch, useCamera, useQuickActionFiles, etc.)
 │   │   │   └── common/           # Reusable components
+│   │   ├── assets/                  # Static assets (logo, fonts)
 │   │   ├── context/AuthContext.jsx  # JWT + user state + inactivity timer
 │   │   ├── hooks/                   # Shared custom hooks
 │   │   │   ├── useInactivityTimer.js  # Auto-logout timer logic
@@ -260,7 +262,7 @@ CLIENT_BUILD_PATH=/path      # Path to built React client for static serving (se
 
 ## Security Features
 
-- **Rate limiting**: Login (first 5 attempts normal, then 30-second cooldown between attempts; resets after 15 min inactivity) and user creation (10 attempts/15 min) per IP
+- **Rate limiting**: Login (first 5 **failed** attempts normal, then 30-second cooldown between attempts; successful login clears failure count; resets after 15 min inactivity) and user creation (10 attempts/15 min) per IP
 - **Password policy**: Minimum 8 characters, at least 1 uppercase letter, at least 1 number. Enforced on create user, update user password, and change own password. Not enforced on login.
 - **Input validation**: All API inputs validated with express-validator
 - **JWT authentication**: Memory-only token storage (no localStorage), role-based access control. Session ends on app close/refresh.

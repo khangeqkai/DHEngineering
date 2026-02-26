@@ -5,7 +5,7 @@ cd /d "%~dp0"
 
 echo.
 echo ================================
-echo   Job Card System Launcher
+echo   DH Engineering Job Card System Launcher
 echo ================================
 echo.
 
@@ -65,7 +65,7 @@ if "%1"=="-r" (
 )
 
 :: Start the application
-echo Starting Job Card System...
+echo Starting DH Engineering Job Card System...
 echo   Server API: http://localhost:3000
 echo   Database:   data/jobcard.db (SQLite)
 echo.

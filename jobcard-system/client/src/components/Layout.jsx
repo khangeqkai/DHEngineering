@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import InactivityWarningModal from './common/InactivityWarningModal';
+import dhLogo from '../assets/dh-logo.png';
 import {
   LayoutGrid,
   ClipboardList,
@@ -90,6 +91,7 @@ export default function Layout() {
           <span className="hamburger-line"></span>
           <span className="hamburger-line"></span>
         </button>
+        <img src={dhLogo} alt="DH Engineering" className="mobile-logo" />
         <h1 className="mobile-title">Job Card System</h1>
       </header>
 
@@ -103,7 +105,7 @@ export default function Layout() {
 
       <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-header">
-          <h1>Job Card System</h1>
+          <img src={dhLogo} alt="DH Engineering" className="sidebar-logo" />
         </div>
 
         <div className="sidebar-user-section">
