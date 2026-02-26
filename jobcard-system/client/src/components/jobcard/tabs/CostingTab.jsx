@@ -294,7 +294,12 @@ export default function CostingTab({
       />
 
       <div className="form-section">
-        <h3 className="form-section-title">Costing Summary</h3>
+        <div className="form-section-header">
+          <h3 className="form-section-title">Costing Summary</h3>
+          <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveCosting} disabled={savingCosting}>
+            {savingCosting ? 'Saving...' : 'Save Costing'}
+          </button>
+        </div>
 
         {/* Labour */}
         <div className="costing-row">
@@ -377,10 +382,6 @@ export default function CostingTab({
           <span className="costing-label">GRAND TOTAL</span>
           <span className="grand-total-value">${calculateCostingTotals().grandTotal.toFixed(2)}</span>
         </div>
-
-        <button type="button" className="btn btn-primary" onClick={handleSaveCosting} disabled={savingCosting}>
-          {savingCosting ? 'Saving...' : 'Save Costing'}
-        </button>
       </div>
     </div>
   );
