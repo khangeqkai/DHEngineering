@@ -153,16 +153,16 @@ export default function Dashboard() {
 
       {/* Compact stat chips */}
       <div className="stats-strip">
-        <div className="stat-chip stat-chip-hero">
+        <Link to="/jobcards" className="stat-chip stat-chip-hero">
           <div className="stat-chip-icon">
             <Activity size={15} />
           </div>
           <div className="stat-chip-text">
             <span className="stat-chip-value">{stats.total}</span>
-            <span className="stat-chip-label">Active</span>
+            <span className="stat-chip-label">All Jobs</span>
           </div>
-        </div>
-        <div className="stat-chip stat-chip-quotes">
+        </Link>
+        <Link to="/jobcards?filter=QUOTE" className="stat-chip stat-chip-quotes">
           <div className="stat-chip-icon">
             <FileText size={15} />
           </div>
@@ -170,8 +170,8 @@ export default function Dashboard() {
             <span className="stat-chip-value">{stats.quotes}</span>
             <span className="stat-chip-label">Quotes</span>
           </div>
-        </div>
-        <div className="stat-chip stat-chip-open">
+        </Link>
+        <Link to="/jobcards?filter=OPEN" className="stat-chip stat-chip-open">
           <div className="stat-chip-icon">
             <FolderOpen size={15} />
           </div>
@@ -179,8 +179,8 @@ export default function Dashboard() {
             <span className="stat-chip-value">{stats.open}</span>
             <span className="stat-chip-label">Open</span>
           </div>
-        </div>
-        <div className="stat-chip stat-chip-progress">
+        </Link>
+        <Link to="/jobcards?filter=IN_PROGRESS" className="stat-chip stat-chip-progress">
           <div className="stat-chip-icon">
             <Loader size={15} />
           </div>
@@ -188,8 +188,8 @@ export default function Dashboard() {
             <span className="stat-chip-value">{stats.inProgress}</span>
             <span className="stat-chip-label">In Progress</span>
           </div>
-        </div>
-        <div className="stat-chip stat-chip-hold">
+        </Link>
+        <Link to="/jobcards?filter=ON_HOLD" className="stat-chip stat-chip-hold">
           <div className="stat-chip-icon">
             <Pause size={15} />
           </div>
@@ -197,9 +197,9 @@ export default function Dashboard() {
             <span className="stat-chip-value">{stats.onHold}</span>
             <span className="stat-chip-label">On Hold</span>
           </div>
-        </div>
+        </Link>
         {stats.overdue > 0 && (
-          <div className="stat-chip stat-chip-overdue">
+          <Link to="/jobcards?filter=OVERDUE" className="stat-chip stat-chip-overdue">
             <div className="stat-chip-icon">
               <AlertTriangle size={15} />
             </div>
@@ -207,7 +207,7 @@ export default function Dashboard() {
               <span className="stat-chip-value">{stats.overdue}</span>
               <span className="stat-chip-label">Overdue</span>
             </div>
-          </div>
+          </Link>
         )}
       </div>
 

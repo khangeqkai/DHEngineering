@@ -16,6 +16,9 @@
   transition: transform var(--duration-fast) ease,
               box-shadow var(--duration-fast) ease;
   min-width: 0;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
 }
 
 .stat-chip:hover {
