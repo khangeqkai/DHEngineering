@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { User, Lock } from 'lucide-react';
 import dhLogo from '../assets/dh-logo.png';
+import MagnetLines from './common/MagnetLines';
 import './Login.css';
 
 export default function Login() {
@@ -62,6 +63,17 @@ export default function Login() {
 
   return (
     <div className="login-container">
+      <div className="login-magnet-bg">
+        <MagnetLines
+          rows={15}
+          columns={20}
+          containerSize="100%"
+          lineColor="rgba(128,105,62,0.6)"
+          lineWidth="2px"
+          lineHeight="24px"
+          baseAngle={-10}
+        />
+      </div>
       <div className="login-card">
         <div className="login-header">
           <img src={dhLogo} alt="DH Engineering" className="login-logo" />

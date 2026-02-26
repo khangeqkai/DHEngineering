@@ -10,32 +10,19 @@
   overflow: hidden;
 }
 
-/* Grid texture overlay */
-.login-container::before {
-  content: '';
+/* MagnetLines background layer */
+.login-magnet-bg {
   position: absolute;
   inset: 0;
-  background:
-    repeating-linear-gradient(
-      0deg,
-      rgba(66, 70, 86, 0.04) 0px,
-      rgba(66, 70, 86, 0.04) 1px,
-      transparent 1px,
-      transparent 60px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      rgba(66, 70, 86, 0.04) 0px,
-      rgba(66, 70, 86, 0.04) 1px,
-      transparent 1px,
-      transparent 60px
-    );
-  animation: grid-pulse 8s ease-in-out infinite;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
-@keyframes grid-pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+.login-magnet-bg .magnet-lines {
+  pointer-events: auto;
 }
 
 .login-card {
@@ -152,24 +139,6 @@
   background: linear-gradient(135deg, #06274e 0%, #0a3565 100%);
 }
 
-.dark-mode .login-container::before {
-  background:
-    repeating-linear-gradient(
-      0deg,
-      rgba(166, 171, 189, 0.03) 0px,
-      rgba(166, 171, 189, 0.03) 1px,
-      transparent 1px,
-      transparent 60px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      rgba(166, 171, 189, 0.03) 0px,
-      rgba(166, 171, 189, 0.03) 1px,
-      transparent 1px,
-      transparent 60px
-    );
-}
-
 .dark-mode .login-card {
   background: rgba(10, 53, 101, 0.9);
   border: 1px solid rgba(166, 171, 189, 0.2);
@@ -228,8 +197,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .login-container::before {
-    animation: none;
-    opacity: 0.75;
+  .login-magnet-bg {
+    display: none;
   }
 }
