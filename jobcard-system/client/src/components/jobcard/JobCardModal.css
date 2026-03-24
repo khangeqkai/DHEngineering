@@ -362,7 +362,17 @@
   margin-bottom: 0;
 }
 
-/* Priority High */
+/* Priority colors */
+.priority-low {
+  border-color: var(--badge-progress-text) !important;
+  color: var(--badge-progress-text);
+}
+
+.priority-medium {
+  border-color: var(--warning-color) !important;
+  color: var(--warning-color);
+}
+
 .priority-high {
   border-color: var(--accent-caution) !important;
   color: var(--accent-caution);

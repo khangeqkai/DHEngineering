@@ -287,9 +287,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (!formHook.formData.jobType) {
       errors.push('Job type is required');
     }
-    if (!formHook.formData.dueDate) {
-      errors.push('Due date is required');
-    }
     const validItems = formHook.lineItems.filter(item => item.description.trim());
     if (validItems.length === 0) {
       errors.push('Add at least one line item');

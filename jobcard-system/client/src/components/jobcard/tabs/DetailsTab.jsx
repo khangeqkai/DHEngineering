@@ -213,16 +213,16 @@ export default function DetailsTab({
         <div className="form-row">
           <div className="form-group">
             <label>Priority</label>
-            <select name="priority" value={formData.priority} onChange={handleChange} className={formData.priority === 'HIGH' ? 'priority-high' : ''}>
+            <select name="priority" value={formData.priority} onChange={handleChange} className={formData.priority !== 'NONE' ? `priority-${formData.priority.toLowerCase()}` : ''}>
               {PRIORITY_OPTIONS.map(p => (
                 <option key={p} value={p}>{p}</option>
               ))}
             </select>
           </div>
           <div className="form-group">
-            <label>Due Date <span className="required">*</span></label>
+            <label>Due Date</label>
             <div
-              className={`due-date-display${isOverdue ? ' overdue' : ''}${!formData.dueDate ? ' field-required' : ''}`}
+              className={`due-date-display${isOverdue ? ' overdue' : ''}`}
               onClick={() => setShowCalendar(true)}
             >
               <span className="due-date-value">
