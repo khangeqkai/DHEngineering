@@ -110,7 +110,7 @@ export default function Login() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">PIN</label>
             <div className="login-input-wrapper">
               <span className="login-input-icon">
                 <Lock size={16} />
@@ -118,9 +118,11 @@ export default function Login() {
               <input
                 type="password"
                 id="password"
+                inputMode="numeric"
+                maxLength={4}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                onChange={(e) => setPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="Enter 4-digit PIN"
                 required
               />
             </div>

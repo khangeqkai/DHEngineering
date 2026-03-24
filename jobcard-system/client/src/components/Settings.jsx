@@ -42,9 +42,9 @@ export default function Settings() {
           <div className="card-body">
             <div className="setting-item">
               <div className="setting-info">
-                <div className="setting-label">Change Password</div>
+                <div className="setting-label">Change PIN</div>
                 <div className="setting-description">
-                  Update your account password
+                  Update your 4-digit PIN
                 </div>
               </div>
               <button
@@ -52,7 +52,7 @@ export default function Settings() {
                 className="btn btn-secondary"
                 onClick={() => s.setShowPasswordModal(true)}
               >
-                Change Password
+                Change PIN
               </button>
             </div>
           </div>
@@ -339,43 +339,48 @@ export default function Settings() {
       <BottomSheet
         isOpen={s.showPasswordModal}
         onClose={s.resetPasswordForm}
-        title="Change Password"
+        title="Change PIN"
         size="small"
         closeOnOverlayClick={false}
       >
         <BottomSheet.Body>
           <form id="change-password-form" onSubmit={s.handleChangePassword}>
             <div className="form-group">
-              <label className="form-label">Current Password</label>
+              <label className="form-label">Current PIN</label>
               <input
                 type="password"
+                inputMode="numeric"
+                maxLength={4}
                 className="form-control"
                 value={s.currentPassword}
-                onChange={(e) => s.setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
+                onChange={(e) => s.setCurrentPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="Enter current 4-digit PIN"
                 required
               />
             </div>
             <div className="form-group">
-              <label className="form-label">New Password</label>
+              <label className="form-label">New PIN</label>
               <input
                 type="password"
+                inputMode="numeric"
+                maxLength={4}
                 className="form-control"
                 value={s.newPassword}
-                onChange={(e) => s.setNewPassword(e.target.value)}
-                placeholder="Min 8 chars, 1 uppercase, 1 number"
+                onChange={(e) => s.setNewPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="Enter 4-digit PIN"
                 required
-                minLength={8}
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Confirm New Password</label>
+              <label className="form-label">Confirm New PIN</label>
               <input
                 type="password"
+                inputMode="numeric"
+                maxLength={4}
                 className="form-control"
                 value={s.confirmPassword}
-                onChange={(e) => s.setConfirmPassword(e.target.value)}
-                placeholder="Re-enter new password"
+                onChange={(e) => s.setConfirmPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="Re-enter 4-digit PIN"
                 required
               />
             </div>
@@ -388,7 +393,7 @@ export default function Settings() {
             className="btn btn-primary"
             disabled={s.savingPassword || !s.currentPassword || !s.newPassword || !s.confirmPassword}
           >
-            {s.savingPassword ? 'Changing...' : 'Change Password'}
+            {s.savingPassword ? 'Changing...' : 'Change PIN'}
           </button>
         </BottomSheet.Footer>
       </BottomSheet>

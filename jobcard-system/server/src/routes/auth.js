@@ -312,14 +312,8 @@ router.put('/users/:id', authenticate, async (req, res) => {
 
     // Validate password before any DB writes
     if (password) {
-      if (password.length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters' });
-      }
-      if (!/[A-Z]/.test(password)) {
-        return res.status(400).json({ error: 'Password must contain at least one uppercase letter' });
-      }
-      if (!/[0-9]/.test(password)) {
-        return res.status(400).json({ error: 'Password must contain at least one number' });
+      if (!/^\d{4}$/.test(password)) {
+        return res.status(400).json({ error: 'Password must be exactly 4 digits' });
       }
     }
 
@@ -419,14 +413,8 @@ router.put('/change-password', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Current password and new password are required' });
     }
 
-    if (newPassword.length < 8) {
-      return res.status(400).json({ error: 'New password must be at least 8 characters' });
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      return res.status(400).json({ error: 'New password must contain at least one uppercase letter' });
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      return res.status(400).json({ error: 'New password must contain at least one number' });
+    if (!/^\d{4}$/.test(newPassword)) {
+      return res.status(400).json({ error: 'New password must be exactly 4 digits' });
     }
 
     const user = userQueries.getById.get(req.user.userId);

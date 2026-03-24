@@ -206,13 +206,16 @@ export default function UserManagement() {
 
               <div className="form-group">
                 <label htmlFor="password">
-                  Password {editingUser ? '(leave blank to keep current)' : '*'}
+                  PIN {editingUser ? '(leave blank to keep current)' : '*'}
                 </label>
                 <input
                   type="password"
+                  inputMode="numeric"
+                  maxLength={4}
                   id="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                  placeholder="4-digit PIN"
                   required={!editingUser}
                 />
               </div>

@@ -50,7 +50,7 @@ async function initializeDatabase() {
   const adminUser = userQueries.getByUsername.get('admin');
 
   if (!adminUser) {
-    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const hashedPassword = await bcrypt.hash('1234', 10);
     const adminId = `user:${uuidv4()}`;
 
     userQueries.create.run(

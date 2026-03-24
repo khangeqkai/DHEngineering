@@ -190,12 +190,8 @@ const validateCreateUser = [
     .exists({ checkFalsy: true })
     .withMessage('Password is required')
     .isString()
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters')
-    .matches(/[A-Z]/)
-    .withMessage('Password must contain at least one uppercase letter')
-    .matches(/[0-9]/)
-    .withMessage('Password must contain at least one number'),
+    .matches(/^\d{4}$/)
+    .withMessage('Password must be exactly 4 digits'),
   optionalEmail('email'),
   optionalString('name', 'Name', 100),
   body('role')
