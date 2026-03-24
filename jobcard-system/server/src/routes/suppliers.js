@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { supplierQueries, serviceTagQueries, recordHistory } = require('../db/database');
+const { supplierQueries, tagQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
@@ -12,7 +12,7 @@ router.use(authenticate);
 // Convert supplier from snake_case (DB) to camelCase (API)
 function toApiFormat(supplier) {
   if (!supplier) return null;
-  const tags = serviceTagQueries.getForSupplier.all(supplier.id);
+  const tags = tagQueries.getForSupplier.all(supplier.id);
   return {
     id: supplier.id,
     name: supplier.name,
@@ -27,7 +27,8 @@ function toApiFormat(supplier) {
     serviceTags: (tags || []).map(t => ({
       id: t.id,
       name: t.name,
-      isSystem: t.is_system
+      value: t.value,
+      isSystem: !!t.is_system
     }))
   };
 }
@@ -90,7 +91,7 @@ router.post('/', requireAdmin, (req, res) => {
     // Add service tags
     if (Array.isArray(serviceTagIds)) {
       for (const tagId of serviceTagIds) {
-        serviceTagQueries.addToSupplier.run(id, tagId);
+        tagQueries.addToSupplier.run(id, tagId);
       }
     }
 
@@ -124,7 +125,7 @@ router.put('/:id', requireAdmin, (req, res) => {
     }
 
     // Track changes for audit
-    const oldTags = serviceTagQueries.getForSupplier.all(id) || [];
+    const oldTags = tagQueries.getForSupplier.all(id) || [];
     const oldTagIds = oldTags.map(t => t.id).sort().join(',');
     const newTagIds = Array.isArray(serviceTagIds) ? [...serviceTagIds].sort().join(',') : oldTagIds;
     const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
@@ -137,7 +138,7 @@ router.put('/:id', requireAdmin, (req, res) => {
     if (normalizeEmpty(notes) !== normalizeEmpty(existing.notes)) changes.notes = { from: existing.notes, to: notes || null };
     if (newTagIds !== oldTagIds) {
       const oldTagNames = oldTags.map(t => t.name).sort().join(', ') || null;
-      const allTags = serviceTagQueries.getAll ? serviceTagQueries.getAll.all() : [];
+      const allTags = tagQueries.getByCategory.all('treatment') || [];
       const newTagNames = Array.isArray(serviceTagIds)
         ? serviceTagIds.map(tid => { const t = allTags.find(at => at.id === tid); return t ? t.name : tid; }).sort().join(', ') || null
         : oldTagNames;
@@ -157,9 +158,9 @@ router.put('/:id', requireAdmin, (req, res) => {
 
     // Update service tags (clear and re-add)
     if (Array.isArray(serviceTagIds)) {
-      serviceTagQueries.clearSupplierTags.run(id);
+      tagQueries.clearSupplierTags.run(id);
       for (const tagId of serviceTagIds) {
-        serviceTagQueries.addToSupplier.run(id, tagId);
+        tagQueries.addToSupplier.run(id, tagId);
       }
     }
 
@@ -187,7 +188,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
     }
 
     // Clear service tags first (cascade should handle this, but be explicit)
-    serviceTagQueries.clearSupplierTags.run(id);
+    tagQueries.clearSupplierTags.run(id);
     supplierQueries.delete.run(id);
 
     recordHistory('supplier', id, 'deleted', req.user.userId, req.user.name || req.user.username, {

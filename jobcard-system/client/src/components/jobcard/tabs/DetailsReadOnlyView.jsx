@@ -1,11 +1,8 @@
 import {
-  JOB_TYPES,
   PRIORITY_OPTIONS,
-  DRAWINGS_TYPES,
-  CUSTOMER_PROPERTY_OPTIONS,
-  STATUS_OPTIONS,
-  TREATMENT_OPTIONS
+  STATUS_OPTIONS
 } from '../constants';
+import { useTags } from '../../../hooks/useTags';
 
 function StatusBadge({ status }) {
   const opt = STATUS_OPTIONS.find(s => s.value === status);
@@ -35,11 +32,15 @@ export default function DetailsReadOnlyView({
   isOverdue,
   onStatusChange
 }) {
+  const { tags: drawingsTags } = useTags('drawings');
+  const { tags: customerPropertyTags } = useTags('customer_property');
+  const { tags: treatmentTags } = useTags('treatment');
+
   const drawingsLabels = (formData.drawingsType || '')
     .split(',')
     .filter(v => v && v !== 'NONE')
     .map(v => {
-      const opt = DRAWINGS_TYPES.find(d => d.value === v);
+      const opt = drawingsTags.find(d => d.value === v);
       return opt ? opt.label : v;
     });
 
@@ -47,7 +48,7 @@ export default function DetailsReadOnlyView({
     .split(',')
     .filter(v => v && v !== 'NONE')
     .map(v => {
-      const opt = CUSTOMER_PROPERTY_OPTIONS.find(c => c.value === v);
+      const opt = customerPropertyTags.find(c => c.value === v);
       return opt ? opt.label : v;
     });
 
@@ -77,7 +78,7 @@ export default function DetailsReadOnlyView({
               <span className="readonly-value"><StatusBadge status={formData.status} /></span>
             )}
           </div>
-          <LabelValue label="Job Type" value={formData.jobType ? formData.jobType.split(/(\s|-)/).map(w => w.length > 1 ? w.charAt(0) + w.slice(1).toLowerCase() : w).join('') : '-'} />
+          <LabelValue label="Job Type" value={formData.jobType || '-'} />
         </div>
       </div>
 
@@ -111,7 +112,7 @@ export default function DetailsReadOnlyView({
                 .split(',')
                 .filter(v => v && v !== 'NONE')
                 .map(v => {
-                  const opt = TREATMENT_OPTIONS.find(t => t.value === v);
+                  const opt = treatmentTags.find(t => t.value === v);
                   return opt ? opt.label : v;
                 });
               if (item.treatmentOther) itemTreatments.push(item.treatmentOther);

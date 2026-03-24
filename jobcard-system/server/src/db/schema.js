@@ -48,7 +48,7 @@ db.exec(`
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
-  -- Service tags for suppliers (predefined + custom)
+  -- Service tags for suppliers (predefined + custom) - legacy, kept for migration
   CREATE TABLE IF NOT EXISTS service_tags (
     id TEXT PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
@@ -57,13 +57,28 @@ db.exec(`
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
-  -- Supplier service tags junction table
+  -- Unified tags table (replaces hardcoded constants + service_tags)
+  CREATE TABLE IF NOT EXISTS tags (
+    id TEXT PRIMARY KEY,
+    category TEXT NOT NULL,
+    name TEXT NOT NULL,
+    value TEXT NOT NULL,
+    is_system INTEGER DEFAULT 0,
+    active INTEGER DEFAULT 1,
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(category, value)
+  );
+  CREATE INDEX IF NOT EXISTS idx_tags_category ON tags(category);
+  CREATE INDEX IF NOT EXISTS idx_tags_category_active ON tags(category, active);
+
+  -- Supplier service tags junction table (references tags table)
   CREATE TABLE IF NOT EXISTS supplier_service_tags (
     supplier_id TEXT NOT NULL,
     service_tag_id TEXT NOT NULL,
     PRIMARY KEY (supplier_id, service_tag_id),
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE,
-    FOREIGN KEY (service_tag_id) REFERENCES service_tags(id) ON DELETE CASCADE
+    FOREIGN KEY (service_tag_id) REFERENCES tags(id) ON DELETE CASCADE
   );
 
   -- Job cards table (comprehensive)
@@ -471,7 +486,7 @@ for (const migration of migrations) {
   }
 }
 
-// Seed default service tags (based on TREATMENT_OPTIONS)
+// Seed default service tags (based on TREATMENT_OPTIONS) - legacy table
 const defaultServiceTags = [
   'Heat Treatment',
   'Precision Grinding',
@@ -497,4 +512,7 @@ for (const tagName of defaultServiceTags) {
     // Tag might already exist, ignore
   }
 }
+
+// Seed unified tags table + migrate service_tags data
+require('./seed-tags');
 

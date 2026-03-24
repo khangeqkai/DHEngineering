@@ -1,10 +1,6 @@
 import * as XLSX from 'xlsx';
 import { api } from '../services/api';
-import {
-  DRAWINGS_TYPES,
-  TREATMENT_OPTIONS,
-  CUSTOMER_PROPERTY_OPTIONS,
-} from '../components/jobcard/constants';
+// Tag labels are now dynamic (DB-driven). For exports, convert values to readable labels.
 
 // ── Save helper ──────────────────────────────────────────────────────────────
 
@@ -77,24 +73,19 @@ function durationHrs(start, end) {
 
 // ── Label lookup helpers ─────────────────────────────────────────────────────
 
-function buildLookup(options) {
-  const map = {};
-  for (const opt of options) map[opt.value] = opt.label;
-  return map;
+function valueToLabel(val) {
+  if (!val) return val;
+  return val.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
 }
 
-const DRAWINGS_LOOKUP = buildLookup(DRAWINGS_TYPES);
-const TREATMENT_LOOKUP = buildLookup(TREATMENT_OPTIONS);
-const CUSTOMER_PROP_LOOKUP = buildLookup(CUSTOMER_PROPERTY_OPTIONS);
-
-function fmtCodeList(val, lookup) {
+function fmtCodeList(val) {
   if (!val) return '';
-  return val.split(',').map(v => lookup[v.trim()] || v.trim()).join(', ');
+  return val.split(',').map(v => valueToLabel(v.trim())).join(', ');
 }
 
-function fmtDrawings(val) { return fmtCodeList(val, DRAWINGS_LOOKUP); }
-function fmtTreatment(val) { return fmtCodeList(val, TREATMENT_LOOKUP); }
-function fmtCustomerProperty(val) { return fmtCodeList(val, CUSTOMER_PROP_LOOKUP); }
+function fmtDrawings(val) { return fmtCodeList(val); }
+function fmtTreatment(val) { return fmtCodeList(val); }
+function fmtCustomerProperty(val) { return fmtCodeList(val); }
 
 // ── Column definitions per entity ────────────────────────────────────────────
 

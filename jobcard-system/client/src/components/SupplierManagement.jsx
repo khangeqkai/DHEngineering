@@ -39,7 +39,7 @@ export default function SupplierManagement() {
       setLoading(true);
       const [suppliersData, tagsData] = await Promise.all([
         api.getSuppliers(),
-        api.getServiceTags()
+        api.getTags('treatment')
       ]);
       setSuppliers(suppliersData);
       setServiceTags(tagsData);
@@ -125,7 +125,7 @@ export default function SupplierManagement() {
     if (!customTagName.trim()) return;
 
     try {
-      const newTag = await api.createServiceTag(customTagName.trim());
+      const newTag = await api.createTag({ category: 'treatment', name: customTagName.trim() });
       setServiceTags(prev => [...prev, newTag]);
       setFormData(prev => ({
         ...prev,
@@ -150,7 +150,7 @@ export default function SupplierManagement() {
     if (!confirmed) return;
 
     try {
-      await api.deleteServiceTag(tag.id);
+      await api.deleteTag(tag.id);
       setServiceTags(prev => prev.filter(t => t.id !== tag.id));
       setFormData(prev => ({
         ...prev,

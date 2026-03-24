@@ -2,19 +2,6 @@ import { useMemo } from 'react';
 import { capitalizeFirst, autoResize } from '../../../utils/formatters';
 import SearchableSupplierSelect from '../../common/SearchableSupplierSelect';
 
-// Map treatment values to service tag names
-const TREATMENT_TO_SERVICE_MAP = {
-  'HEAT_TREATMENT': 'Heat Treatment',
-  'PRECISION_GRINDING': 'Precision Grinding',
-  'ANODISE': 'Anodise',
-  'ELECTROPLATE': 'Electroplate',
-  'BLASTING': 'Blasting',
-  'POWDERCOAT': 'Powdercoat',
-  'SPRAYPAINT': 'Spraypaint',
-  'GALVANISE': 'Galvanise',
-  'SPECIALISED_COATING': 'Specialised Coating'
-};
-
 export default function SubcontractsTab({
   subcontracts,
   showSubcontractForm,
@@ -29,33 +16,36 @@ export default function SubcontractsTab({
   suppliers,
   lineItems
 }) {
-  // Aggregate all unique treatments from line items
-  const treatmentServiceNames = useMemo(() => {
+  // Aggregate all unique treatment values from line items
+  const treatmentValues = useMemo(() => {
     if (!lineItems || lineItems.length === 0) return [];
     const allValues = lineItems.flatMap(item =>
-      (item.treatment || '').split(',').filter(v => v && v !== 'NONE')
+      (item.treatment || '').split(',').filter(v => v && v !== 'NONE' && v !== 'OTHER')
     );
-    const unique = [...new Set(allValues)];
-    return unique.map(v => TREATMENT_TO_SERVICE_MAP[v]).filter(Boolean);
+    return [...new Set(allValues)];
   }, [lineItems]);
 
-  // Sort suppliers: matching any treatment service first, then alphabetically
+  // Sort suppliers: matching any treatment tag first, then alphabetically
+  // Since treatment tags and supplier service tags are now from the same unified tags table,
+  // we match by tag value (e.g. 'HEAT_TREATMENT') against supplier serviceTags
   const sortedSuppliers = useMemo(() => {
-    if (treatmentServiceNames.length === 0) {
+    if (treatmentValues.length === 0) {
       return suppliers;
     }
 
     return [...suppliers].sort((a, b) => {
-      const aHasService = (a.serviceTags || []).some(t => treatmentServiceNames.includes(t.name));
-      const bHasService = (b.serviceTags || []).some(t => treatmentServiceNames.includes(t.name));
+      const aHasService = (a.serviceTags || []).some(t => treatmentValues.includes(t.value));
+      const bHasService = (b.serviceTags || []).some(t => treatmentValues.includes(t.value));
 
       if (aHasService && !bHasService) return -1;
       if (!aHasService && bHasService) return 1;
       return a.name.localeCompare(b.name);
     });
-  }, [suppliers, treatmentServiceNames]);
+  }, [suppliers, treatmentValues]);
 
-  const treatmentServiceName = treatmentServiceNames.length > 0 ? treatmentServiceNames.join(', ') : null;
+  const treatmentServiceName = treatmentValues.length > 0
+    ? treatmentValues.map(v => v.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')).join(', ')
+    : null;
 
   return (
     <div className="modal-form-grid">

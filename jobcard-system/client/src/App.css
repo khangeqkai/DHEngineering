@@ -934,6 +934,28 @@
   background: var(--accent-caution);
 }
 
+.badge-treatment {
+  background: rgba(249, 115, 22, 0.12);
+  color: #ea580c;
+  border-color: rgba(249, 115, 22, 0.25);
+}
+
+.badge-treatment::before {
+  background: #f97316;
+  box-shadow: 0 0 6px #f97316;
+}
+
+.badge-awaiting-material {
+  background: rgba(139, 92, 246, 0.12);
+  color: #7c3aed;
+  border-color: rgba(139, 92, 246, 0.25);
+}
+
+.badge-awaiting-material::before {
+  background: #8b5cf6;
+  box-shadow: 0 0 6px #8b5cf6;
+}
+
 /* Priority badges */
 .badge-priority-high {
   background: var(--accent-caution);

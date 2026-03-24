@@ -19,7 +19,9 @@ const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
   { value: 'QUOTE', label: 'Quotes' },
   { value: 'OPEN', label: 'Open' },
+  { value: 'AWAITING_MATERIAL', label: 'Awaiting Material' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'TREATMENT', label: 'Treatment' },
   { value: 'ON_HOLD', label: 'On Hold' },
   { value: 'DONE', label: 'Done' },
   { value: 'INVOICED', label: 'Invoiced' },
@@ -29,7 +31,9 @@ const STATUS_OPTIONS = [
 const STATUS_LABELS = {
   QUOTE: 'Quote',
   OPEN: 'Open',
+  AWAITING_MATERIAL: 'Awaiting Material',
   IN_PROGRESS: 'In Progress',
+  TREATMENT: 'Treatment',
   ON_HOLD: 'On Hold',
   DONE: 'Done',
   INVOICED: 'Invoiced'
@@ -158,6 +162,8 @@ export default function JobCardList() {
       case 'QUOTE': return 'badge-pending';
       case 'OPEN': return 'badge-pending';
       case 'IN_PROGRESS': return 'badge-in-progress';
+      case 'AWAITING_MATERIAL': return 'badge-awaiting-material';
+      case 'TREATMENT': return 'badge-treatment';
       case 'ON_HOLD': return 'badge-cancelled';
       case 'DONE': return 'badge-completed';
       case 'INVOICED': return 'badge-completed';

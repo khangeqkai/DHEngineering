@@ -13,7 +13,8 @@ import {
   Settings,
   LogOut,
   ShieldCheck,
-  Wrench
+  Wrench,
+  Tag
 } from 'lucide-react';
 
 export default function Layout() {
@@ -162,6 +163,14 @@ export default function Layout() {
                       <Wrench size={18} />
                     </span>
                     <span className="nav-text">Equipment</span>
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/tags" onClick={handleNavClick}>
+                    <span className="nav-icon">
+                      <Tag size={18} />
+                    </span>
+                    <span className="nav-text">Tags</span>
                   </NavLink>
                 </li>
                 <li>

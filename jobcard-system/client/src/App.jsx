@@ -10,6 +10,7 @@ import SupplierManagement from './components/SupplierManagement';
 import ActivityLog from './components/ActivityLog';
 import QALevelManagement from './components/QALevelManagement';
 import EquipmentManagement from './components/EquipmentManagement';
+import TagManagement from './components/TagManagement';
 import Settings from './components/Settings';
 import Layout from './components/Layout';
 import './App.css';
@@ -133,6 +134,14 @@ function App() {
           element={
             <AdminRoute>
               <EquipmentManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="tags"
+          element={
+            <AdminRoute>
+              <TagManagement />
             </AdminRoute>
           }
         />

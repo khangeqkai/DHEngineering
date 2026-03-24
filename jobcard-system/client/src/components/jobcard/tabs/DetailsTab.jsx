@@ -3,12 +3,10 @@ import toast from 'react-hot-toast';
 import { api } from '../../../services/api';
 import { Calendar } from 'lucide-react';
 import {
-  JOB_TYPES,
   PRIORITY_OPTIONS,
-  DRAWINGS_TYPES,
-  CUSTOMER_PROPERTY_OPTIONS,
   STATUS_OPTIONS
 } from '../constants';
+import { useTags } from '../../../hooks/useTags';
 import { formatFileSize, formatFileDate } from '../mappers';
 import { toTitleCase, capitalizeFirst, autoResize } from '../../../utils/formatters';
 import CalendarPicker from '../../common/CalendarPicker';
@@ -62,6 +60,9 @@ export default function DetailsTab({
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const readOnly = isEdit && !isAdmin;
+  const { tags: jobTypeTags } = useTags('job_type');
+  const { tags: customerPropertyTags } = useTags('customer_property');
+  const { tags: drawingsTags } = useTags('drawings');
 
   const handleStatusChange = useCallback(async (newStatus) => {
     try {
@@ -139,8 +140,8 @@ export default function DetailsTab({
             <label>Job Type <span className="required">*</span></label>
             <select name="jobType" value={formData.jobType} onChange={handleChange} className={!formData.jobType ? 'field-required' : ''}>
               <option value="">Select job type...</option>
-              {JOB_TYPES.map(t => (
-                <option key={t} value={t}>{t.split(/(\s|-)/).map(w => w.length > 1 ? w.charAt(0) + w.slice(1).toLowerCase() : w).join('')}</option>
+              {jobTypeTags.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
           </div>
@@ -357,7 +358,7 @@ export default function DetailsTab({
         <div className="form-group">
           <label>Customer Property <span className="required">*</span></label>
           <div className={`checkbox-grid${!formData.customerProperty || formData.customerProperty === 'NONE' ? ' field-required' : ''}`}>
-            {CUSTOMER_PROPERTY_OPTIONS.filter(o => o.value !== 'NONE').map(opt => {
+            {customerPropertyTags.map(opt => {
               const values = formData.customerProperty ? formData.customerProperty.split(',') : [];
               const isChecked = values.includes(opt.value);
               return (
@@ -366,10 +367,10 @@ export default function DetailsTab({
                     type="checkbox"
                     checked={isChecked}
                     onChange={(e) => {
-                      if (opt.value === 'N/A') {
-                        setFormData(prev => ({ ...prev, customerProperty: e.target.checked ? 'N/A' : '' }));
+                      if (opt.value === 'NA') {
+                        setFormData(prev => ({ ...prev, customerProperty: e.target.checked ? 'NA' : '' }));
                       } else {
-                        const current = formData.customerProperty ? formData.customerProperty.split(',').filter(v => v && v !== 'N/A') : [];
+                        const current = formData.customerProperty ? formData.customerProperty.split(',').filter(v => v && v !== 'NA') : [];
                         const updated = e.target.checked
                           ? [...current, opt.value]
                           : current.filter(v => v !== opt.value);
@@ -386,7 +387,7 @@ export default function DetailsTab({
         <div className="form-group">
           <label>Drawings <span className="required">*</span></label>
           <div className={`checkbox-grid${!formData.drawingsType || formData.drawingsType === 'NONE' ? ' field-required' : ''}`}>
-            {DRAWINGS_TYPES.filter(d => d.value !== 'NONE').map(opt => {
+            {drawingsTags.map(opt => {
               const values = formData.drawingsType ? formData.drawingsType.split(',') : [];
               const isChecked = values.includes(opt.value);
               return (

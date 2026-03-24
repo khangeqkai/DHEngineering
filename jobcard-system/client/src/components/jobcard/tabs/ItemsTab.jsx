@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Plus, ChevronDown } from 'lucide-react';
 import { capitalizeFirst } from '../../../utils/formatters';
-import { TREATMENT_OPTIONS } from '../constants';
-
-const SELECTABLE_TREATMENTS = TREATMENT_OPTIONS.filter(o => o.value !== 'NONE');
+import { useTags } from '../../../hooks/useTags';
 
 function TreatmentMultiSelect({ selected, treatmentOther, onToggle, onOtherChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const { tags: treatmentTags } = useTags('treatment');
+
+  // Add OTHER option to the dynamic list
+  const selectableTreatments = [...treatmentTags, { value: 'OTHER', label: 'Other' }];
 
   const values = selected ? selected.split(',').filter(v => v && v !== 'NONE') : [];
 
@@ -44,7 +46,7 @@ function TreatmentMultiSelect({ selected, treatmentOther, onToggle, onOtherChang
   const labels = values
     .filter(v => v !== 'OTHER')
     .map(v => {
-      const opt = SELECTABLE_TREATMENTS.find(t => t.value === v);
+      const opt = selectableTreatments.find(t => t.value === v);
       return opt ? opt.label : v;
     });
   if (values.includes('OTHER') && treatmentOther) {
@@ -67,7 +69,7 @@ function TreatmentMultiSelect({ selected, treatmentOther, onToggle, onOtherChang
       </button>
       {open && (
         <div className="treatment-multiselect-dropdown">
-          {SELECTABLE_TREATMENTS.map(opt => (
+          {selectableTreatments.map(opt => (
             <label key={opt.value} className={`treatment-option${values.includes(opt.value) ? ' selected' : ''}`}>
               <input
                 type="checkbox"

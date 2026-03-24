@@ -15,7 +15,9 @@ import './Dashboard.css';
 const STATUS_LABELS = {
   QUOTE: 'Quote',
   OPEN: 'Open',
+  AWAITING_MATERIAL: 'Awaiting Material',
   IN_PROGRESS: 'In Progress',
+  TREATMENT: 'Treatment',
   ON_HOLD: 'On Hold',
   DONE: 'Done',
   INVOICED: 'Invoiced'
@@ -33,7 +35,9 @@ const PRIORITY_LABELS = { NONE: 'None', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'Hig
 const CHART_COLORS = {
   QUOTE: '#94a3b8',
   OPEN: '#eab308',
+  AWAITING_MATERIAL: '#8b5cf6',
   IN_PROGRESS: '#3b82f6',
+  TREATMENT: '#f97316',
   ON_HOLD: '#64748b',
   DONE: '#22c55e',
   INVOICED: '#16a34a'
@@ -80,6 +84,8 @@ export default function Dashboard() {
       quotes: jobcards.filter(c => c.status === 'QUOTE').length,
       open: jobcards.filter(c => c.status === 'OPEN').length,
       inProgress: jobcards.filter(c => c.status === 'IN_PROGRESS').length,
+      awaitingMaterial: jobcards.filter(c => c.status === 'AWAITING_MATERIAL').length,
+      treatment: jobcards.filter(c => c.status === 'TREATMENT').length,
       onHold: jobcards.filter(c => c.status === 'ON_HOLD').length,
       done: jobcards.filter(c => c.status === 'DONE').length,
       overdue: overdueList.length
@@ -99,7 +105,9 @@ export default function Dashboard() {
     return [
       { name: 'Quotes', value: stats.quotes, key: 'QUOTE' },
       { name: 'Open', value: stats.open, key: 'OPEN' },
+      { name: 'Awaiting Material', value: stats.awaitingMaterial, key: 'AWAITING_MATERIAL' },
       { name: 'In Progress', value: stats.inProgress, key: 'IN_PROGRESS' },
+      { name: 'Treatment', value: stats.treatment, key: 'TREATMENT' },
       { name: 'On Hold', value: stats.onHold, key: 'ON_HOLD' },
       { name: 'Done', value: stats.done, key: 'DONE' },
     ].filter(d => d.value > 0);
@@ -132,6 +140,8 @@ export default function Dashboard() {
       case 'QUOTE': return 'badge-pending';
       case 'OPEN': return 'badge-pending';
       case 'IN_PROGRESS': return 'badge-in-progress';
+      case 'AWAITING_MATERIAL': return 'badge-awaiting-material';
+      case 'TREATMENT': return 'badge-treatment';
       case 'ON_HOLD': return 'badge-cancelled';
       case 'DONE': return 'badge-completed';
       case 'INVOICED': return 'badge-completed';

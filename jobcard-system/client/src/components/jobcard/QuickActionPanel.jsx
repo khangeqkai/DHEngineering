@@ -13,7 +13,9 @@ import './QuickActionPanel.css';
 const STATUS_LABELS = {
   QUOTE: 'Quote',
   OPEN: 'Open',
+  AWAITING_MATERIAL: 'Awaiting Material',
   IN_PROGRESS: 'In Progress',
+  TREATMENT: 'Treatment',
   ON_HOLD: 'On Hold',
   DONE: 'Done',
   INVOICED: 'Invoiced'
@@ -175,7 +177,9 @@ export default function QuickActionPanel({ isOpen, onClose, jobCard, onViewDetai
   const getStatusClass = (status) => {
     switch (status) {
       case 'QUOTE': case 'OPEN': return 'badge-pending';
+      case 'AWAITING_MATERIAL': return 'badge-awaiting-material';
       case 'IN_PROGRESS': return 'badge-in-progress';
+      case 'TREATMENT': return 'badge-treatment';
       case 'ON_HOLD': return 'badge-cancelled';
       case 'DONE': case 'INVOICED': return 'badge-completed';
       default: return '';

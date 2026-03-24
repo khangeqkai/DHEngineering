@@ -1,5 +1,28 @@
 const { body, param, query, validationResult } = require('express-validator');
 
+// Lazy-loaded tag queries (avoids circular dependency with database.js)
+let _tagQueries = null;
+function getTagQueries() {
+  if (!_tagQueries) {
+    _tagQueries = require('../db/database').tagQueries;
+  }
+  return _tagQueries;
+}
+
+/**
+ * Get allowed tag values for a category from the database
+ * @param {string} category - Tag category (e.g., 'treatment', 'job_type')
+ * @returns {string[]} Array of allowed values
+ */
+function getTagValues(category) {
+  try {
+    return getTagQueries().getByCategory.all(category).map(t => t.value);
+  } catch (err) {
+    // Fallback to empty array if DB not ready
+    return [];
+  }
+}
+
 /**
  * Middleware to handle validation errors
  * Returns a 400 response with clear error messages if validation fails
@@ -121,50 +144,16 @@ function optionalEnum(field, label, allowed) {
 // Enum Values
 // =============================================================================
 
-const JOB_TYPES = [
-  'MANUFACTURE', 'REPAIR', 'MODIFY', 'FABRICATE',
-  'SUPPLY', 'REVERSE ENGINEER', 'INSPECTION', 'CAD DRAWINGS',
-  'CONSULTATION', 'ON-SITE'
-];
+// Tag-based enums (JOB_TYPES, DRAWINGS_TYPES, CUSTOMER_PROPERTY_OPTIONS, TREATMENT_OPTIONS)
+// are now validated dynamically via getTagValues() from the tags DB table.
 
-const JOBCARD_STATUSES = ['QUOTE', 'OPEN', 'IN_PROGRESS', 'ON_HOLD', 'DONE', 'INVOICED'];
+const JOBCARD_STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'TREATMENT', 'ON_HOLD', 'DONE', 'INVOICED'];
 
 const PRIORITY_OPTIONS = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
-
-const QUALITY_LEVELS = ['STANDARD', 'CRITICAL'];
-
-const DRAWINGS_TYPES = ['NONE', 'CUSTOMER_CAD', 'CUSTOMER_SKETCH', 'DH_CAD', 'DH_SKETCH', 'PREPARE_SKETCH', 'PREPARE_CAD'];
-
-const CUSTOMER_PROPERTY_OPTIONS = ['NONE', 'N/A', 'MATERIAL_SUPPLIED', 'DAMAGED_WORN_SAMPLE', 'GOOD_SAMPLE', 'PART_FOR_REPAIR', 'PART_FOR_MODIFICATION'];
-
-const TREATMENT_OPTIONS = ['NONE', 'HEAT_TREATMENT', 'PRECISION_GRINDING', 'ANODISE', 'ELECTROPLATE', 'BLASTING', 'POWDERCOAT', 'SPRAYPAINT', 'GALVANISE', 'SPECIALISED_COATING', 'OTHER'];
 
 const SUBCONTRACT_STATUSES = ['PENDING', 'SENT', 'IN_PROGRESS', 'RECEIVED', 'COMPLETE'];
 
 const INSPECTION_OPTIONS = ['NOT_APPLICABLE', 'OK', 'ERROR'];
-
-/**
- * Optional comma-separated multi-value enum field validator
- * @param {string} field - Field name to validate
- * @param {string} label - Human-readable field label
- * @param {string[]} allowed - Allowed values
- */
-function optionalMultiEnum(field, label, allowed) {
-  return body(field)
-    .customSanitizer(value => (value === '' || value === null) ? undefined : value)
-    .optional()
-    .custom((value) => {
-      if (typeof value !== 'string') {
-        throw new Error(`${label} must be a comma-separated string`);
-      }
-      const values = value.split(',').map(v => v.trim());
-      const invalid = values.filter(v => !allowed.includes(v));
-      if (invalid.length > 0) {
-        throw new Error(`${label} contains invalid values: ${invalid.join(', ')}`);
-      }
-      return true;
-    });
-}
 
 // =============================================================================
 // Pre-built Validation Arrays for Common Routes
@@ -253,7 +242,17 @@ const validateJobcardListQuery = [
  * Used for both create and update routes
  */
 const validateJobcardEnums = [
-  optionalEnum('jobType', 'Job type', JOB_TYPES),
+  // Job type validated dynamically against tags table
+  body('jobType')
+    .customSanitizer(value => (value === '' || value === null) ? undefined : value)
+    .optional()
+    .custom((value) => {
+      const allowed = getTagValues('job_type');
+      if (allowed.length > 0 && !allowed.includes(value)) {
+        throw new Error(`Job type must be one of: ${allowed.join(', ')}`);
+      }
+      return true;
+    }),
   optionalEnum('status', 'Status', JOBCARD_STATUSES),
   optionalEnum('priority', 'Priority', PRIORITY_OPTIONS),
   // qualityLevel is now validated dynamically against qa_levels table (no enum check)
@@ -262,8 +261,42 @@ const validateJobcardEnums = [
     .optional()
     .isString()
     .withMessage('Quality level must be a string'),
-  optionalMultiEnum('drawingsType', 'Drawings type', DRAWINGS_TYPES),
-  optionalMultiEnum('customerProperty', 'Customer property', CUSTOMER_PROPERTY_OPTIONS),
+  // Drawings type validated dynamically against tags table
+  body('drawingsType')
+    .customSanitizer(value => (value === '' || value === null) ? undefined : value)
+    .optional()
+    .custom((value) => {
+      if (typeof value !== 'string') {
+        throw new Error('Drawings type must be a comma-separated string');
+      }
+      const allowed = getTagValues('drawings');
+      if (allowed.length > 0) {
+        const values = value.split(',').map(v => v.trim());
+        const invalid = values.filter(v => v && !allowed.includes(v));
+        if (invalid.length > 0) {
+          throw new Error(`Drawings type contains invalid values: ${invalid.join(', ')}`);
+        }
+      }
+      return true;
+    }),
+  // Customer property validated dynamically against tags table
+  body('customerProperty')
+    .customSanitizer(value => (value === '' || value === null) ? undefined : value)
+    .optional()
+    .custom((value) => {
+      if (typeof value !== 'string') {
+        throw new Error('Customer property must be a comma-separated string');
+      }
+      const allowed = getTagValues('customer_property');
+      if (allowed.length > 0) {
+        const values = value.split(',').map(v => v.trim());
+        const invalid = values.filter(v => v && !allowed.includes(v));
+        if (invalid.length > 0) {
+          throw new Error(`Customer property contains invalid values: ${invalid.join(', ')}`);
+        }
+      }
+      return true;
+    }),
   handleValidationErrors
 ];
 
@@ -292,13 +325,17 @@ const validateTimeEntryInspection = [
  */
 function validateItemTreatments(items) {
   if (!Array.isArray(items)) return null;
+  const allowedTreatments = getTagValues('treatment');
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     if (item.treatment) {
       const values = String(item.treatment).split(',').map(v => v.trim());
-      const invalid = values.filter(v => v && !TREATMENT_OPTIONS.includes(v));
-      if (invalid.length > 0) {
-        return `Item #${i + 1} has invalid treatment values: ${invalid.join(', ')}`;
+      // Only validate if we have tags loaded (allow if DB not ready)
+      if (allowedTreatments.length > 0) {
+        const invalid = values.filter(v => v && v !== 'OTHER' && !allowedTreatments.includes(v));
+        if (invalid.length > 0) {
+          return `Item #${i + 1} has invalid treatment values: ${invalid.join(', ')}`;
+        }
       }
     }
     if (item.treatmentOther && String(item.treatmentOther).length > 255) {
@@ -331,13 +368,8 @@ module.exports = {
   validateTimeEntryInspection,
   validateItemTreatments,
 
-  JOB_TYPES,
   JOBCARD_STATUSES,
   PRIORITY_OPTIONS,
-  QUALITY_LEVELS,
-  DRAWINGS_TYPES,
-  CUSTOMER_PROPERTY_OPTIONS,
-  TREATMENT_OPTIONS,
   SUBCONTRACT_STATUSES,
   INSPECTION_OPTIONS
 };
