@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const logger = require('../utils/logger');
-const { authenticate, requireAssigneeOrAdmin } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 const { jobcardQueries, contactQueries, getSettings, recordHistory } = require('../db/database');
 const { sanitizeFolderName, isWithinBase } = require('../utils/folderCreation');
 const { handleValidationErrors, requiredString } = require('../middleware/validation');
@@ -94,7 +94,7 @@ const validateFilename = [
   handleValidationErrors
 ];
 
-router.get('/:id/job-files', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.get('/:id/job-files', authenticate, (req, res) => {
   try {
     const result = resolveJobFilesPath(req.params.id);
     if (result.error) {
@@ -134,7 +134,7 @@ router.get('/:id/job-files', authenticate, requireAssigneeOrAdmin, (req, res) =>
   }
 });
 
-router.get('/:id/job-files/:filename', authenticate, requireAssigneeOrAdmin, validateFilename, (req, res) => {
+router.get('/:id/job-files/:filename', authenticate, validateFilename, (req, res) => {
   try {
     const result = resolveJobFilesPath(req.params.id);
     if (result.error) {
@@ -175,7 +175,7 @@ function resolveQaFormsPath(jobcardId) {
   return { qaFormsPath: result.folderPath };
 }
 
-router.get('/:id/qa-form-files', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.get('/:id/qa-form-files', authenticate, (req, res) => {
   try {
     const result = resolveQaFormsPath(req.params.id);
     if (result.error) {
@@ -215,7 +215,7 @@ router.get('/:id/qa-form-files', authenticate, requireAssigneeOrAdmin, (req, res
   }
 });
 
-router.get('/:id/qa-form-files/:filename', authenticate, requireAssigneeOrAdmin, validateFilename, (req, res) => {
+router.get('/:id/qa-form-files/:filename', authenticate, validateFilename, (req, res) => {
   try {
     const result = resolveQaFormsPath(req.params.id);
     if (result.error) {
@@ -256,7 +256,7 @@ function resolveCustomerPropertyPath(jobcardId) {
   return { customerPropertyPath: result.folderPath };
 }
 
-router.get('/:id/customer-property-files', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.get('/:id/customer-property-files', authenticate, (req, res) => {
   try {
     const result = resolveCustomerPropertyPath(req.params.id);
     if (result.error) {
@@ -296,7 +296,7 @@ router.get('/:id/customer-property-files', authenticate, requireAssigneeOrAdmin,
   }
 });
 
-router.get('/:id/customer-property-files/:filename', authenticate, requireAssigneeOrAdmin, validateFilename, (req, res) => {
+router.get('/:id/customer-property-files/:filename', authenticate, validateFilename, (req, res) => {
   try {
     const result = resolveCustomerPropertyPath(req.params.id);
     if (result.error) {
@@ -348,7 +348,7 @@ function deduplicateFilename(dir, filename) {
 
 // ─── Scanner → Job Files ───
 
-router.post('/:id/job-files/from-scanner', authenticate, requireAssigneeOrAdmin, [
+router.post('/:id/job-files/from-scanner', authenticate, [
   requiredString('filePath', 'File path'),
   handleValidationErrors
 ], (req, res) => {
@@ -394,7 +394,7 @@ router.post('/:id/job-files/from-scanner', authenticate, requireAssigneeOrAdmin,
 
 // ─── Scanner → QA Forms ───
 
-router.post('/:id/qa-form-files/from-scanner', authenticate, requireAssigneeOrAdmin, [
+router.post('/:id/qa-form-files/from-scanner', authenticate, [
   requiredString('filePath', 'File path'),
   handleValidationErrors
 ], (req, res) => {
@@ -456,7 +456,7 @@ const validateUploadBody = [
   handleValidationErrors
 ];
 
-router.post('/:id/job-files/upload', authenticate, requireAssigneeOrAdmin, validateUploadBody, (req, res) => {
+router.post('/:id/job-files/upload', authenticate, validateUploadBody, (req, res) => {
   try {
     const { id } = req.params;
     const { filename, fileData } = req.body;
@@ -484,7 +484,7 @@ router.post('/:id/job-files/upload', authenticate, requireAssigneeOrAdmin, valid
 
 // ─── Upload (base64) → QA Forms ───
 
-router.post('/:id/qa-form-files/upload', authenticate, requireAssigneeOrAdmin, validateUploadBody, (req, res) => {
+router.post('/:id/qa-form-files/upload', authenticate, validateUploadBody, (req, res) => {
   try {
     const { id } = req.params;
     const { filename, fileData } = req.body;
@@ -512,7 +512,7 @@ router.post('/:id/qa-form-files/upload', authenticate, requireAssigneeOrAdmin, v
 
 // ─── Scanner → Customer Property ───
 
-router.post('/:id/customer-property-files/from-scanner', authenticate, requireAssigneeOrAdmin, [
+router.post('/:id/customer-property-files/from-scanner', authenticate, [
   requiredString('filePath', 'File path'),
   handleValidationErrors
 ], (req, res) => {
@@ -558,7 +558,7 @@ router.post('/:id/customer-property-files/from-scanner', authenticate, requireAs
 
 // ─── Upload (base64) → Customer Property ───
 
-router.post('/:id/customer-property-files/upload', authenticate, requireAssigneeOrAdmin, validateUploadBody, (req, res) => {
+router.post('/:id/customer-property-files/upload', authenticate, validateUploadBody, (req, res) => {
   try {
     const { id } = req.params;
     const { filename, fileData } = req.body;

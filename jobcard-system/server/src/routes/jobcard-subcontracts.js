@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
-const { authenticate, requireAssigneeOrAdmin } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 const { validateSubcontractStatus } = require('../middleware/validation');
 const { subcontractQueries, supplierQueries, recordHistory } = require('../db/database');
 
@@ -23,7 +23,7 @@ const toResponse = (s) => ({
 });
 
 // Get subcontracts
-router.get('/:id/subcontracts', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.get('/:id/subcontracts', authenticate, (req, res) => {
   try {
     const subcontracts = subcontractQueries.getByJobcard.all(req.params.id);
     res.json(subcontracts.map(toResponse));
@@ -34,7 +34,7 @@ router.get('/:id/subcontracts', authenticate, requireAssigneeOrAdmin, (req, res)
 });
 
 // Add subcontract
-router.post('/:id/subcontracts', authenticate, requireAssigneeOrAdmin, ...validateSubcontractStatus, (req, res) => {
+router.post('/:id/subcontracts', authenticate, ...validateSubcontractStatus, (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -65,7 +65,7 @@ router.post('/:id/subcontracts', authenticate, requireAssigneeOrAdmin, ...valida
 });
 
 // Update subcontract
-router.put('/:id/subcontracts/:subId', authenticate, requireAssigneeOrAdmin, ...validateSubcontractStatus, (req, res) => {
+router.put('/:id/subcontracts/:subId', authenticate, ...validateSubcontractStatus, (req, res) => {
   try {
     const { id, subId } = req.params;
     const data = req.body;
@@ -119,7 +119,7 @@ router.put('/:id/subcontracts/:subId', authenticate, requireAssigneeOrAdmin, ...
 });
 
 // Delete subcontract
-router.delete('/:id/subcontracts/:subId', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.delete('/:id/subcontracts/:subId', authenticate, (req, res) => {
   try {
     const { id, subId } = req.params;
 

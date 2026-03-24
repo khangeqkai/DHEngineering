@@ -4,7 +4,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
-const { authenticate, requireAssigneeOrAdmin } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 const { documentQueries, getSettings, recordHistory } = require('../db/database');
 const { isWithinBase } = require('../utils/folderCreation');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
@@ -14,7 +14,7 @@ const router = express.Router();
 const MAX_SCANNER_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
 // Get job card documents
-router.get('/:id/documents', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.get('/:id/documents', authenticate, (req, res) => {
   try {
     const docs = documentQueries.getByJobcard.all(req.params.id);
     res.json(docs.map(d => ({
@@ -32,7 +32,7 @@ router.get('/:id/documents', authenticate, requireAssigneeOrAdmin, (req, res) =>
 });
 
 // Get single document with file data
-router.get('/:id/documents/:documentId', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.get('/:id/documents/:documentId', authenticate, (req, res) => {
   try {
     const doc = documentQueries.getById.get(req.params.documentId);
     if (!doc || doc.jobcard_id !== req.params.id) {
@@ -54,7 +54,7 @@ router.get('/:id/documents/:documentId', authenticate, requireAssigneeOrAdmin, (
 });
 
 // Add document
-router.post('/:id/documents', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.post('/:id/documents', authenticate, (req, res) => {
   try {
     const { id } = req.params;
     const { filename, fileType, fileSize, fileData } = req.body;

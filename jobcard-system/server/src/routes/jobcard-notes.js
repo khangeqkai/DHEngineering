@@ -2,14 +2,14 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
-const { authenticate, requireAdmin, requireAssigneeOrAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
 const { jobNoteQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
 // Get notes for a job card
-router.get('/:id/notes', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.get('/:id/notes', authenticate, (req, res) => {
   try {
     const notes = jobNoteQueries.getByJobcard.all(req.params.id);
     res.json(notes.map(n => ({
@@ -27,7 +27,7 @@ router.get('/:id/notes', authenticate, requireAssigneeOrAdmin, (req, res) => {
 });
 
 // Add a note
-router.post('/:id/notes', authenticate, requireAssigneeOrAdmin, [
+router.post('/:id/notes', authenticate, [
   requiredString('text', 'Note text'),
   handleValidationErrors
 ], (req, res) => {

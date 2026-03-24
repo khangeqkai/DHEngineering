@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
-const { authenticate, requireAdmin, requireAssigneeOrAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 const { validateTimeEntryInspection } = require('../middleware/validation');
 const { timeEntryQueries, recordHistory } = require('../db/database');
 
@@ -56,7 +56,7 @@ router.get('/active-timer', authenticate, (req, res) => {
 });
 
 // Start timer (create entry with start_time only)
-router.post('/:id/time-entries/start', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.post('/:id/time-entries/start', authenticate, (req, res) => {
   try {
     const { id } = req.params;
 
@@ -117,7 +117,7 @@ router.post('/:id/time-entries/start', authenticate, requireAssigneeOrAdmin, (re
 });
 
 // Stop timer
-router.post('/:id/time-entries/:entryId/stop', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
   try {
     const { id, entryId } = req.params;
 
@@ -151,7 +151,7 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, requireAssigneeOrAd
 });
 
 // Get job card time entries
-router.get('/:id/time-entries', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.get('/:id/time-entries', authenticate, (req, res) => {
   try {
     const entries = timeEntryQueries.getByJobcard.all(req.params.id);
     res.json(entries.map(toCamelCase));
@@ -162,7 +162,7 @@ router.get('/:id/time-entries', authenticate, requireAssigneeOrAdmin, (req, res)
 });
 
 // Add time entry
-router.post('/:id/time-entries', authenticate, requireAssigneeOrAdmin, ...validateTimeEntryInspection, (req, res) => {
+router.post('/:id/time-entries', authenticate, ...validateTimeEntryInspection, (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -206,7 +206,7 @@ router.post('/:id/time-entries', authenticate, requireAssigneeOrAdmin, ...valida
 });
 
 // Update time entry
-router.put('/:id/time-entries/:entryId', authenticate, requireAssigneeOrAdmin, ...validateTimeEntryInspection, (req, res) => {
+router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryInspection, (req, res) => {
   try {
     const { id, entryId } = req.params;
     const data = req.body;
@@ -300,7 +300,7 @@ router.patch('/:id/time-entries/:entryId/toggle-special', authenticate, requireA
 });
 
 // Delete time entry
-router.delete('/:id/time-entries/:entryId', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.delete('/:id/time-entries/:entryId', authenticate, (req, res) => {
   try {
     const { id, entryId } = req.params;
 

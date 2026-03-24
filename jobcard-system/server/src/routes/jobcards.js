@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { createJobCardFolders, deleteJobCardFolders } = require('../utils/folderCreation');
-const { authenticate, requireAdmin, requireAssigneeOrAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 const { validateJobcardListQuery, validateJobcardEnums, validateItemTreatments, JOBCARD_STATUSES } = require('../middleware/validation');
 const {
   jobcardQueries,
@@ -26,35 +26,24 @@ const router = express.Router();
 router.get('/', authenticate, validateJobcardListQuery, (req, res) => {
   try {
     const { status, contactId, archived, assigneeId } = req.query;
-    const isAdmin = req.user.role === 'admin';
 
     let jobcards;
-    if (isAdmin) {
-      if (archived === 'true') {
-        jobcards = jobcardQueries.getArchived.all();
-      } else if (assigneeId === 'UNASSIGNED') {
-        jobcards = status
-          ? jobcardQueries.getUnassignedByStatus.all(status)
-          : jobcardQueries.getUnassigned.all();
-      } else if (assigneeId) {
-        jobcards = status
-          ? jobcardQueries.getByAssigneeAndStatus.all(assigneeId, status)
-          : jobcardQueries.getByAssignee.all(assigneeId);
-      } else if (status) {
-        jobcards = jobcardQueries.getByStatus.all(status);
-      } else if (contactId) {
-        jobcards = jobcardQueries.getByContact.all(contactId);
-      } else {
-        jobcards = jobcardQueries.getAll.all();
-      }
+    if (archived === 'true') {
+      jobcards = jobcardQueries.getArchived.all();
+    } else if (assigneeId === 'UNASSIGNED') {
+      jobcards = status
+        ? jobcardQueries.getUnassignedByStatus.all(status)
+        : jobcardQueries.getUnassigned.all();
+    } else if (assigneeId) {
+      jobcards = status
+        ? jobcardQueries.getByAssigneeAndStatus.all(assigneeId, status)
+        : jobcardQueries.getByAssignee.all(assigneeId);
+    } else if (status) {
+      jobcards = jobcardQueries.getByStatus.all(status);
+    } else if (contactId) {
+      jobcards = jobcardQueries.getByContact.all(contactId);
     } else {
-      if (archived === 'true') {
-        jobcards = jobcardQueries.getArchivedByAssignee.all(req.user.userId);
-      } else if (status) {
-        jobcards = jobcardQueries.getByAssigneeAndStatus.all(req.user.userId, status);
-      } else {
-        jobcards = jobcardQueries.getByAssignee.all(req.user.userId);
-      }
+      jobcards = jobcardQueries.getAll.all();
     }
 
     const assigneeMap = getAssigneesForJobcards(jobcards.map(jc => jc.id));
@@ -69,10 +58,7 @@ router.get('/', authenticate, validateJobcardListQuery, (req, res) => {
 // Get overdue job cards
 router.get('/overdue', authenticate, (req, res) => {
   try {
-    const isAdmin = req.user.role === 'admin';
-    const jobcards = isAdmin
-      ? jobcardQueries.getOverdue.all()
-      : jobcardQueries.getOverdueByAssignee.all(req.user.userId);
+    const jobcards = jobcardQueries.getOverdue.all();
     res.json(jobcards.map(jc => formatJobcard(jc, [], [], [], req.user.role)));
   } catch (err) {
     logger.error({ err }, 'Get overdue jobcards error');
@@ -81,7 +67,7 @@ router.get('/overdue', authenticate, (req, res) => {
 });
 
 // Get single job card with all related data
-router.get('/:id', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.get('/:id', authenticate, (req, res) => {
   try {
     const jobcard = jobcardQueries.getById.get(req.params.id);
     if (!jobcard) {
@@ -100,7 +86,7 @@ router.get('/:id', authenticate, requireAssigneeOrAdmin, (req, res) => {
 });
 
 // Get job card history
-router.get('/:id/history', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.get('/:id/history', authenticate, (req, res) => {
   try {
     const history = historyQueries.getByEntity.all('jobcard', req.params.id);
 
@@ -265,7 +251,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
 });
 
 // Update job card
-router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums, async (req, res) => {
+router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -458,7 +444,7 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums
 });
 
 // Update job card status only
-router.patch('/:id/status', authenticate, requireAssigneeOrAdmin, (req, res) => {
+router.patch('/:id/status', authenticate, (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -579,13 +565,6 @@ router.post('/sync/update', authenticate, (req, res) => {
       return res.redirect(307, '/api/jobcards');
     }
 
-    if (req.user.role !== 'admin') {
-      const assignees = jobAssigneeQueries.getByJobcard.all(data._id);
-      const isAssigned = assignees.some(a => a.user_id === req.user.userId);
-      if (!isAssigned) {
-        return res.status(403).json({ error: 'You do not have access to this job card' });
-      }
-    }
 
     req.params = { id: data._id };
     return router.handle(req, res);

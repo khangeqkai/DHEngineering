@@ -65,7 +65,7 @@ jobcard-system/
 │   ├── src/
 │   │   ├── config.js             # Port, JWT (auto-generated), DB path settings
 │   │   ├── middleware/
-│   │   │   ├── auth.js           # JWT verification + role checking + rate limiting + assignee access
+│   │   │   ├── auth.js           # JWT verification + role checking + rate limiting
 │   │   │   └── validation.js     # express-validator reusable validators
 │   │   ├── utils/
 │   │   │   ├── logger.js         # Pino structured logging
@@ -143,7 +143,7 @@ PDFs without fillable fields are copied as-is (blank templates for handwriting).
 - Two roles: `admin` (full access) and `user` (limited)
 - Admin-only: user management, supplier management, equipment management, QA level management, costing, settings, activity log, **contact/customer info**, **job card creation/deletion**, **note deletion**
 - **Employee (user) role**: Read-only job card view (Details tab renders as styled text, not inputs) except status dropdown (employees can change job status via `PATCH /:id/status`). Tabs hidden from employees: Items, Subcontracts, Files, Costing, Activity Log. Employees use Start/Stop timer for time tracking (one active timer at a time, enforced server-side). Can add notes but not delete them. **Quick Action Panel**: All users clicking a job card row see a QuickActionPanel (centered modal) with 4 large buttons: Upload Document, Start/Stop Timer, View Documents, and View Details. **Upload flow**: Upload Document → pick category (QA Form, Job Files, or Customer Property) → choose Scanner or Camera → file saved automatically to the selected folder. **View Documents**: Tabbed view with QA Forms, Job Files, and Customer Property tabs showing files from each folder (images viewable via lightbox). Clicking "View Details" opens the full JobCardModal. Active timers show a pulsing green indicator on job card rows for all users.
-- **Job card visibility**: Non-admin users only see job cards they are assigned to (via `job_assignees`). Unassigned job cards are visible only to admins. All `/:id` routes (GET, PUT, and sub-resources) enforce assignee-or-admin access via `requireAssigneeOrAdmin` middleware. List routes use assignee-filtered queries instead.
+- **Job card visibility**: All authenticated users can see and access all job cards (same visibility as admin). Non-admin users remain read-only with limited actions (status change, timer, notes). Assignees are still tracked via `job_assignees` for display purposes and admin filtering.
 - **Settings page**: Non-admin users see only Appearance (dark mode) and Change PIN. Admin users see all cards (App Info, Current User, Printers, Security Settings, Scanner Folder, Job Folders, Data Backup, Server Connection).
 - Default credentials: `admin` / `1234`
 - **No token persistence**: JWT stored in memory only (not localStorage). Users must log in every time they open/refresh the app. Designed for shared workstation security.
