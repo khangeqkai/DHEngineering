@@ -119,6 +119,8 @@ Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_ass
 
 All changes logged to `history` table for audit trail.
 
+**Job card auto-numbering**: Job numbers are auto-generated from two settings: `job_number_prefix` (e.g. `"DH-"`) and `job_number_next` (e.g. `"00001"`). The format preserves leading zeros (width of `job_number_next` string). On each job card creation, the server generates `{prefix}{paddedNumber}`, validates uniqueness, inserts the record, then increments `job_number_next`. Deleted job numbers are never reused (counter only goes forward). The job number field is read-only in the create form. Admin configures prefix and starting number in Settings > Job Card Numbering. If not configured, job card creation is blocked with an error message.
+
 **Automatic folder management**: When `job_folders_base` setting is configured, the system auto-creates `[base]/[Company]/` on contact create/update and `[base]/[Company]/[JobNumber]/Job Files/` + `QA Forms/` + `Customer Property/` on job card create. On job card deletion, the job card folder (`[base]/[Company]/[JobNumber]/`) is recursively deleted but the parent company folder is preserved. Folder operations are fire-and-forget (errors logged, never block DB operations). Names are sanitized for cross-platform filesystem safety with path traversal protection.
 
 **QA Level system**: Paper-based quality assurance workflow. The full cycle:

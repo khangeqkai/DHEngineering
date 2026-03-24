@@ -104,14 +104,12 @@ export default function DetailsTab({
         <div className="form-row">
           {!isEdit && (
             <div className="form-group">
-              <label>Job Card / Quote <span className="required">*</span></label>
+              <label>Job Card Number</label>
               <input
                 type="text"
-                name="jobNumber"
-                value={formData.jobNumber}
-                onChange={handleChange}
-                placeholder="JC-XXXXXXXX-XXX"
-                className={!formData.jobNumber?.trim() ? 'field-required' : ''}
+                value="Auto-generated"
+                readOnly
+                style={{ opacity: 0.6 }}
               />
             </div>
           )}

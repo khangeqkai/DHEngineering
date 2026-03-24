@@ -7,7 +7,7 @@ require('./schema');
 // Import helpers
 const {
   recordHistory,
-  generateJobNumber,
+  generateAndIncrementJobNumber,
   getSettings,
   updateSettings
 } = require('./helpers');
@@ -40,7 +40,7 @@ module.exports = {
   DATA_DIR,
   DB_PATH,
   recordHistory,
-  generateJobNumber,
+  generateAndIncrementJobNumber,
   getSettings,
   updateSettings,
   userQueries,

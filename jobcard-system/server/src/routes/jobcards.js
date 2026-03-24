@@ -18,6 +18,7 @@ const {
   recordHistory
 } = require('../db/database');
 const { formatJobcard, buildChanges, createRelatedRecords, initQaForms, initQaFormsFromLevel } = require('./jobcard-helpers');
+const { generateAndIncrementJobNumber } = require('../db/helpers');
 
 const router = express.Router();
 
@@ -132,23 +133,24 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       delete data.contactEmail;
     }
 
-    // Job number from user input (required)
-    const jobNumber = data.jobNumber;
-    if (!jobNumber || !jobNumber.trim()) {
-      return res.status(400).json({ error: 'Job number is required' });
-    }
-
-    // Check for duplicate job number
-    const existing = jobcardQueries.getByJobNumber.get(jobNumber.trim());
-    if (existing) {
-      return res.status(400).json({ error: 'Job number already exists' });
-    }
-
+    // Validate required fields before consuming a job number
     if (!data.customerProperty || data.customerProperty === 'NONE') {
       return res.status(400).json({ error: 'Customer Property is required' });
     }
     if (!data.drawingsType || data.drawingsType === 'NONE') {
       return res.status(400).json({ error: 'Drawings type is required' });
+    }
+
+    // Atomically generate job number and increment counter
+    const { jobNumber, error: jobNumError } = generateAndIncrementJobNumber();
+    if (jobNumError) {
+      return res.status(400).json({ error: jobNumError });
+    }
+
+    // Check for duplicate (safety check against manual DB edits)
+    const existing = jobcardQueries.getByJobNumber.get(jobNumber);
+    if (existing) {
+      return res.status(409).json({ error: `Job number ${jobNumber} already exists. Please update the starting number in Settings.` });
     }
 
     const id = `jobcard:${Date.now()}:${uuidv4().slice(0, 8)}`;
@@ -173,7 +175,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
 
     jobcardQueries.create.run(
       id,
-      jobNumber.trim(),
+      jobNumber,
       'JOB_CARD',
       status,
       data.contactId || null,
@@ -208,7 +210,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       // Fetch items from DB (already created by createRelatedRecords above)
       const createdItems = jobItemQueries.getByJobcard.all(id);
       await initQaFormsFromLevel(id, qaLevelId, {
-        jobNumber: jobNumber.trim(),
+        jobNumber: jobNumber,
         status: status,
         companyName: data.companyName || null,
         contactName: data.contactName || null,
@@ -238,7 +240,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
     // Create job card folders on disk (fire-and-forget)
     const folderCompany = jobcard.company_name || data.companyName;
     if (folderCompany) {
-      createJobCardFolders(folderCompany, jobNumber.trim());
+      createJobCardFolders(folderCompany, jobNumber);
     }
 
     recordHistory('jobcard', id, 'create', req.user.userId, req.user.name, {

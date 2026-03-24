@@ -186,6 +186,57 @@ export default function Settings() {
 
             <div className="card full-width">
               <div className="card-header">
+                <h2>Job Card Numbering</h2>
+              </div>
+              <div className="card-body">
+                <div className="setting-item">
+                  <div className="setting-info">
+                    <div className="setting-label">Auto-Generated Job Numbers</div>
+                    <div className="setting-description">
+                      Set a prefix and starting number for job cards. Numbers auto-increment with each new job card.
+                      Leading zeros are preserved (e.g. 00001 → 00002). Preview: {s.jobNumberPrefix}{s.jobNumberNext || '—'}
+                    </div>
+                  </div>
+                </div>
+                <div className="job-number-input-group">
+                  <div className="form-group" style={{ flex: '0 0 auto' }}>
+                    <label className="form-label">Prefix</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={s.jobNumberPrefix}
+                      onChange={(e) => s.setJobNumberPrefix(e.target.value)}
+                      placeholder="e.g. DH-"
+                      style={{ width: '120px' }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ flex: '0 0 auto' }}>
+                    <label className="form-label">Starting Number</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={s.jobNumberNext}
+                      onChange={(e) => s.setJobNumberNext(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="e.g. 00001"
+                      style={{ width: '160px' }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ flex: '0 0 auto', alignSelf: 'flex-end' }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={s.handleSaveJobNumber}
+                      disabled={s.savingJobNumber}
+                    >
+                      {s.savingJobNumber ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="card full-width">
+              <div className="card-header">
                 <h2>Scanner Folder</h2>
               </div>
               <div className="card-body">
@@ -508,6 +559,19 @@ export default function Settings() {
           flex: 1;
         }
 
+        .job-number-input-group {
+          display: flex;
+          align-items: flex-end;
+          gap: 0.75rem;
+          margin-top: 1rem;
+        }
+
+        .job-number-input-group .form-label {
+          font-size: 0.8rem;
+          color: var(--text-secondary);
+          margin-bottom: 0.25rem;
+        }
+
         .timeout-input-group {
           display: flex;
           align-items: center;
@@ -532,6 +596,10 @@ export default function Settings() {
 
           .folder-input-group {
             flex-direction: column;
+          }
+
+          .job-number-input-group {
+            flex-wrap: wrap;
           }
         }
       `}</style>

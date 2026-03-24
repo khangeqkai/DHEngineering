@@ -281,9 +281,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
     // Validation
     const errors = [];
-    if (!isEdit && !formHook.formData.jobNumber?.trim()) {
-      errors.push('Job number is required');
-    }
     if (isAdmin && !formHook.formData.contactId && !contactHook.contactFormData.contactName.trim()) {
       errors.push('Contact name is required');
     }
@@ -355,7 +352,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       }
 
       const jobcardData = {
-        jobNumber: formHook.formData.jobNumber,
         status: formHook.formData.status,
         ...(isAdmin && {
           contactId: contactId,

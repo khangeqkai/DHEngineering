@@ -18,22 +18,34 @@ function recordHistory(entityType, entityId, action, userId, userName, changes, 
   );
 }
 
-// Generate job number: JC-YYYYMMDD-XXX or QT-YYYYMMDD-XXX
-function generateJobNumber(isQuote = false) {
-  const prefix = isQuote ? 'QT' : 'JC';
-  const today = new Date();
-  const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+// Atomically generate the next job number and increment the counter.
+// Returns { jobNumber, error } - error if not configured.
+// Uses a transaction so concurrent creates cannot get the same number.
+const generateAndIncrementJobNumber = db.transaction(() => {
+  const settings = getSettings();
+  const prefix = settings.job_number_prefix || '';
+  const nextStr = settings.job_number_next || '';
 
-  // Get count of jobs created today
-  const countStmt = db.prepare(`
-    SELECT COUNT(*) as count FROM jobcards
-    WHERE job_number LIKE ?
-  `);
-  const result = countStmt.get(`${prefix}-${dateStr}-%`);
-  const nextNum = (result.count || 0) + 1;
+  if (!nextStr) {
+    return { jobNumber: null, error: 'Job number sequence not configured. Please set it in Settings.' };
+  }
 
-  return `${prefix}-${dateStr}-${String(nextNum).padStart(3, '0')}`;
-}
+  // Preserve leading zeros: use the width of the stored string
+  const width = nextStr.length;
+  const nextNum = parseInt(nextStr, 10);
+  if (isNaN(nextNum) || nextNum < 0) {
+    return { jobNumber: null, error: 'Invalid job number sequence value.' };
+  }
+
+  const paddedNum = String(nextNum).padStart(width, '0');
+  const jobNumber = prefix + paddedNum;
+
+  // Increment immediately within the same transaction
+  const newValue = String(nextNum + 1).padStart(width, '0');
+  settingsQueries.upsert.run('job_number_next', newValue);
+
+  return { jobNumber, error: null };
+});
 
 // Settings helper functions
 function getSettings() {
@@ -56,7 +68,7 @@ function updateSettings(settingsObj) {
 
 module.exports = {
   recordHistory,
-  generateJobNumber,
+  generateAndIncrementJobNumber,
   getSettings,
   updateSettings
 };

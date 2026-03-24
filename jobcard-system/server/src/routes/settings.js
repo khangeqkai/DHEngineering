@@ -97,6 +97,21 @@ router.put('/', requireAdmin, (req, res) => {
       updates.inactivity_timeout_minutes = String(timeout);
     }
 
+    // Validate job number prefix if provided
+    const jobNumberPrefix = req.body.jobNumberPrefix ?? req.body.job_number_prefix;
+    if (jobNumberPrefix !== undefined) {
+      updates.job_number_prefix = jobNumberPrefix || '';
+    }
+
+    // Validate job number next if provided
+    const jobNumberNext = req.body.jobNumberNext ?? req.body.job_number_next;
+    if (jobNumberNext !== undefined) {
+      if (jobNumberNext && !/^\d+$/.test(jobNumberNext)) {
+        return res.status(400).json({ error: 'Starting number must contain only digits (e.g. 00001)' });
+      }
+      updates.job_number_next = jobNumberNext || '';
+    }
+
     if (Object.keys(updates).length > 0) {
       db.updateSettings(updates);
     }

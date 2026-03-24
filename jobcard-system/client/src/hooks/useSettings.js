@@ -20,9 +20,12 @@ export function useSettings() {
   const [scannerFolder, setScannerFolder] = useState('');
   const [jobFoldersBase, setJobFoldersBase] = useState('');
   const [inactivityTimeout, setInactivityTimeout] = useState(5);
+  const [jobNumberPrefix, setJobNumberPrefix] = useState('');
+  const [jobNumberNext, setJobNumberNext] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
   const [savingJobFolders, setSavingJobFolders] = useState(false);
   const [savingTimeout, setSavingTimeout] = useState(false);
+  const [savingJobNumber, setSavingJobNumber] = useState(false);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -47,6 +50,8 @@ export function useSettings() {
         setScannerFolder(data.scannerFolder || '');
         setJobFoldersBase(data.jobFoldersBase || '');
         setInactivityTimeout(parseInt(data.inactivityTimeoutMinutes, 10) || 5);
+        setJobNumberPrefix(data.jobNumberPrefix || '');
+        setJobNumberNext(data.jobNumberNext || '');
       }
     } catch (err) {
       toast.error('Failed to load settings');
@@ -138,6 +143,23 @@ export function useSettings() {
       setSavingTimeout(false);
     }
   }, [inactivityTimeout, loadSettings, refreshInactivityTimeout]);
+
+  const handleSaveJobNumber = useCallback(async () => {
+    if (jobNumberNext && !/^\d+$/.test(jobNumberNext)) {
+      toast.error('Starting number must contain only digits (e.g. 00001)');
+      return;
+    }
+    setSavingJobNumber(true);
+    try {
+      await api.updateSettings({ jobNumberPrefix, jobNumberNext });
+      await loadSettings();
+      toast.success('Job number settings saved successfully');
+    } catch (err) {
+      toast.error(err.message || 'Failed to save job number settings');
+    } finally {
+      setSavingJobNumber(false);
+    }
+  }, [jobNumberPrefix, jobNumberNext, loadSettings]);
 
   const toggleDarkMode = useCallback(() => setDarkMode(prev => !prev), []);
 
@@ -241,6 +263,7 @@ export function useSettings() {
     scannerFolder, setScannerFolder, handleSelectScannerFolder, handleSaveScannerFolder, savingSettings,
     jobFoldersBase, setJobFoldersBase, handleSelectJobFolders, handleSaveJobFolders, savingJobFolders,
     inactivityTimeout, setInactivityTimeout, handleSaveInactivityTimeout, savingTimeout,
+    jobNumberPrefix, setJobNumberPrefix, jobNumberNext, setJobNumberNext, handleSaveJobNumber, savingJobNumber,
     showPasswordModal, setShowPasswordModal,
     currentPassword, setCurrentPassword,
     newPassword, setNewPassword,

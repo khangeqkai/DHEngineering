@@ -79,6 +79,8 @@ async function initializeDatabase() {
   const settingsStmt = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
   settingsStmt.run('company_name', 'DH Engineering');
   settingsStmt.run('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
+  settingsStmt.run('job_number_prefix', '');
+  settingsStmt.run('job_number_next', '');
 
   logger.info('Database initialization complete');
 }
