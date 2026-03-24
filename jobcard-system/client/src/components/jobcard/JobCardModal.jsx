@@ -287,6 +287,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (!formHook.formData.jobType) {
       errors.push('Job type is required');
     }
+    if (!formHook.formData.description?.trim()) {
+      errors.push('Job description is required');
+    }
     const validItems = formHook.lineItems.filter(item => item.description.trim());
     if (validItems.length === 0) {
       errors.push('Add at least one line item');
@@ -362,7 +365,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         jobType: formHook.formData.jobType,
         priority: formHook.formData.priority,
         poNumber: formHook.formData.poNumber,
-        quoteReference: formHook.formData.quoteReference,
         drawingsType: formHook.formData.drawingsType,
         customerProperty: formHook.formData.customerProperty,
         description: formHook.formData.description,
@@ -397,7 +399,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       }
 
       onSuccess?.();
-      onClose();
+      if (isEdit) {
+        toast.success('Job card updated');
+      } else {
+        onClose();
+      }
     } catch (err) {
       toast.error(err.message || 'Failed to save job card');
     } finally {
@@ -418,7 +424,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         {loading ? (
           <div className="loading" style={{ padding: '2rem' }}>Loading...</div>
         ) : (
-          <form onSubmit={handleSubmit} style={{ display: 'contents' }}>
+          <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT' && e.target.type !== 'submit') e.preventDefault(); }} style={{ display: 'contents' }}>
             <BottomSheet.Body>
               {isEdit && (
                 <div className="modal-tabs">
@@ -447,6 +453,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 <DetailsTab
                   isEdit={isEdit}
                   isAdmin={isAdmin}
+                  jobCardId={jobCardId}
                   jobNumber={formHook.jobNumber}
                   formData={formHook.formData}
                   setFormData={formHook.setFormData}

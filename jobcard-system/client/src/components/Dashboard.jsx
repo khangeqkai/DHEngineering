@@ -23,10 +23,12 @@ const STATUS_LABELS = {
 
 const PRIORITY_COLORS = {
   NONE: 'var(--text-secondary)',
-  LOW: 'var(--success-color)',
-  MEDIUM: 'var(--warning-color)',
+  LOW: 'var(--badge-progress-text)',
+  MEDIUM: '#d97706',
   HIGH: 'var(--danger-color)'
 };
+
+const PRIORITY_LABELS = { NONE: 'None', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' };
 
 const CHART_COLORS = {
   QUOTE: '#94a3b8',
@@ -307,7 +309,7 @@ export default function Dashboard() {
                       </td>
                       <td>
                         <span style={{ color: PRIORITY_COLORS[card.priority] || PRIORITY_COLORS.NONE }}>
-                          {card.priority || 'NONE'}
+                          {PRIORITY_LABELS[card.priority] || 'None'}
                         </span>
                       </td>
                     </tr>
@@ -400,7 +402,7 @@ export default function Dashboard() {
                         </td>
                         <td>
                           <span style={{ color: PRIORITY_COLORS[card.priority] || PRIORITY_COLORS.NONE, fontWeight: 500 }}>
-                            {card.priority || 'NONE'}
+                            {PRIORITY_LABELS[card.priority] || 'None'}
                           </span>
                         </td>
                         <td className={isOverdue ? 'overdue-date' : ''}>

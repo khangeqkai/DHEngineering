@@ -11,7 +11,7 @@ export default function NotesSection({
 }) {
   return (
     <div className="form-section notes-section">
-      <h3 className="form-section-title">Job Notes</h3>
+      <h3 className="form-section-title">Job Comments</h3>
 
       {/* Add note form */}
       <div className="notes-add">
@@ -22,7 +22,7 @@ export default function NotesSection({
             const formatted = capitalizeFirst(e.target.value);
             if (formatted !== e.target.value) setNewNote(formatted);
           }}
-          placeholder="Add a note for the team..."
+          placeholder="Add a comment for the team..."
           rows={2}
           className="notes-textarea"
         />
@@ -32,13 +32,13 @@ export default function NotesSection({
           onClick={onAddNote}
           disabled={loading || !newNote.trim()}
         >
-          Add Note
+          Add Comment
         </button>
       </div>
 
       {/* Notes list */}
       {notes.length === 0 ? (
-        <p className="empty-message">No notes yet</p>
+        <p className="empty-message">No comments yet</p>
       ) : (
         <div className="notes-list">
           {notes.map(note => (

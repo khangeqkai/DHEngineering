@@ -14,7 +14,8 @@ function StatusBadge({ status }) {
 
 function PriorityBadge({ priority }) {
   if (!priority || priority === 'NONE') return <span className="readonly-value">None</span>;
-  return <span className={`readonly-badge priority-${priority.toLowerCase()}`}>{priority}</span>;
+  const opt = PRIORITY_OPTIONS.find(p => p.value === priority);
+  return <span className={`readonly-badge priority-${priority.toLowerCase()}`}>{opt?.label || priority}</span>;
 }
 
 function LabelValue({ label, value, className }) {
@@ -31,7 +32,8 @@ export default function DetailsReadOnlyView({
   assignees,
   lineItems,
   subcontracts,
-  isOverdue
+  isOverdue,
+  onStatusChange
 }) {
   const treatmentLabels = (formData.treatmentRequired || '')
     .split(',')
@@ -67,8 +69,23 @@ export default function DetailsReadOnlyView({
       <div className="form-section">
         <h3 className="form-section-title">Classification</h3>
         <div className="readonly-row">
-          <LabelValue label="Status" value={<StatusBadge status={formData.status} />} />
-          <LabelValue label="Job Type" value={formData.jobType || '-'} />
+          <div className="readonly-field">
+            <span className="readonly-label">Status</span>
+            {onStatusChange ? (
+              <select
+                value={formData.status}
+                onChange={(e) => onStatusChange(e.target.value)}
+                className="readonly-status-select"
+              >
+                {STATUS_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            ) : (
+              <span className="readonly-value"><StatusBadge status={formData.status} /></span>
+            )}
+          </div>
+          <LabelValue label="Job Type" value={formData.jobType ? formData.jobType.split(/(\s|-)/).map(w => w.length > 1 ? w.charAt(0) + w.slice(1).toLowerCase() : w).join('') : '-'} />
         </div>
       </div>
 
@@ -152,21 +169,17 @@ export default function DetailsReadOnlyView({
             <LabelValue label="Drawings" value={drawingsLabels.join(', ')} />
           </div>
         )}
-      </div>
-
-      {/* References */}
-      {(formData.poNumber || formData.quoteReference || formData.isRepeatJob) && (
-        <div className="form-section">
-          <h3 className="form-section-title">References</h3>
+        {formData.poNumber && (
           <div className="readonly-row">
-            {formData.poNumber && <LabelValue label="PO Number" value={formData.poNumber} />}
-            {formData.quoteReference && <LabelValue label="Quote Reference" value={formData.quoteReference} />}
+            <LabelValue label="Customer's PO Number" value={formData.poNumber} />
           </div>
-          {formData.isRepeatJob && (
+        )}
+        {formData.isRepeatJob && (
+          <div className="readonly-row">
             <LabelValue label="Repeat Job" value={formData.repeatJobReference || 'Yes'} />
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {/* Treatment */}
       {treatmentLabels.length > 0 && (

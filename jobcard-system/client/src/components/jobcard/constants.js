@@ -4,7 +4,12 @@ export const JOB_TYPES = [
   'CONSULTATION', 'ON-SITE'
 ];
 
-export const PRIORITY_OPTIONS = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
+export const PRIORITY_OPTIONS = [
+  { value: 'NONE', label: 'None' },
+  { value: 'LOW', label: 'Low' },
+  { value: 'MEDIUM', label: 'Medium' },
+  { value: 'HIGH', label: 'High' }
+];
 
 export const DRAWINGS_TYPES = [
   { value: 'NONE', label: 'None' },

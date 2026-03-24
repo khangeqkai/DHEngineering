@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import toast from 'react-hot-toast';
+import { api } from '../../../services/api';
 import { X, Plus, Calendar } from 'lucide-react';
 import {
   JOB_TYPES,
@@ -18,6 +20,7 @@ import NotesSection from './NotesSection';
 export default function DetailsTab({
   isEdit,
   isAdmin,
+  jobCardId,
   jobNumber,
   formData,
   setFormData,
@@ -60,6 +63,16 @@ export default function DetailsTab({
   const [showCalendar, setShowCalendar] = useState(false);
   const readOnly = isEdit && !isAdmin;
 
+  const handleStatusChange = useCallback(async (newStatus) => {
+    try {
+      await api.updateJobcardStatus(jobCardId, newStatus);
+      setFormData(prev => ({ ...prev, status: newStatus }));
+      toast.success('Status updated');
+    } catch (err) {
+      toast.error('Failed to update status');
+    }
+  }, [jobCardId, setFormData]);
+
   // Employee read-only view
   if (readOnly) {
     return (
@@ -70,6 +83,7 @@ export default function DetailsTab({
           lineItems={lineItems}
           subcontracts={subcontracts}
           isOverdue={isOverdue}
+          onStatusChange={handleStatusChange}
         />
         {isEdit && (
           <NotesSection
@@ -109,7 +123,7 @@ export default function DetailsTab({
                 type="text"
                 value="Auto-generated"
                 readOnly
-                style={{ opacity: 0.6 }}
+                className="input-disabled"
               />
             </div>
           )}
@@ -126,7 +140,7 @@ export default function DetailsTab({
             <select name="jobType" value={formData.jobType} onChange={handleChange} className={!formData.jobType ? 'field-required' : ''}>
               <option value="">Select job type...</option>
               {JOB_TYPES.map(t => (
-                <option key={t} value={t}>{t}</option>
+                <option key={t} value={t}>{t.split(/(\s|-)/).map(w => w.length > 1 ? w.charAt(0) + w.slice(1).toLowerCase() : w).join('')}</option>
               ))}
             </select>
           </div>
@@ -215,7 +229,7 @@ export default function DetailsTab({
             <label>Priority</label>
             <select name="priority" value={formData.priority} onChange={handleChange} className={formData.priority !== 'NONE' ? `priority-${formData.priority.toLowerCase()}` : ''}>
               {PRIORITY_OPTIONS.map(p => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p.value} value={p.value}>{p.label}</option>
               ))}
             </select>
           </div>
@@ -262,7 +276,7 @@ export default function DetailsTab({
 
       {/* Job Description + Line Items */}
       <div className="form-section">
-        <h3 className="form-section-title">Job Description</h3>
+        <h3 className="form-section-title">Job Description <span className="required">*</span></h3>
         <div className="form-group">
           <textarea
             ref={(el) => { if (el) autoResize(el); }}
@@ -272,7 +286,7 @@ export default function DetailsTab({
             onChange={handleChange}
             onBlur={capitalizeBlur('description')}
             rows={3}
-            placeholder=""
+            placeholder="Describe the work required..."
           />
         </div>
       </div>
@@ -307,7 +321,7 @@ export default function DetailsTab({
                         const f = capitalizeFirst(e.target.value);
                         if (f !== e.target.value) updateLineItem(item.id, 'description', f);
                       }}
-                      placeholder="What needs to be done..."
+                      placeholder="Describe the item..."
                     />
                   </div>
                 </div>
@@ -320,10 +334,14 @@ export default function DetailsTab({
         </div>
       )}
 
-      {/* Customer Input: Quality Level + Customer Property + Drawings + Scanner Files */}
+      {/* Customer Input */}
       <div className="form-section">
         <h3 className="form-section-title">Customer Input</h3>
         <div className="form-row">
+          <div className="form-group">
+            <label>Customer's PO Number</label>
+            <input type="text" name="poNumber" value={formData.poNumber} onChange={handleChange} />
+          </div>
           <div className="form-group">
             <label>Quality Level</label>
             <select
@@ -344,7 +362,32 @@ export default function DetailsTab({
               ))}
             </select>
           </div>
+          <div className="form-group">
+            <label>Repeat Job</label>
+            <label className="checkbox-inline">
+              <input
+                type="checkbox"
+                name="isRepeatJob"
+                checked={formData.isRepeatJob}
+                onChange={handleChange}
+              />
+              {formData.isRepeatJob ? 'Yes' : 'No'}
+            </label>
+          </div>
         </div>
+        {formData.isRepeatJob && (
+          <div className="form-group">
+            <label>Previous Job Reference <span className="required">*</span></label>
+            <input
+              type="text"
+              name="repeatJobReference"
+              value={formData.repeatJobReference}
+              onChange={handleChange}
+              placeholder="JC-XXXXXXXX-XXX"
+              className={!formData.repeatJobReference ? 'field-required' : ''}
+            />
+          </div>
+        )}
         <div className="form-group">
           <label>Customer Property <span className="required">*</span></label>
           <div className={`checkbox-grid${!formData.customerProperty || formData.customerProperty === 'NONE' ? ' field-required' : ''}`}>
@@ -398,16 +441,18 @@ export default function DetailsTab({
               );
             })}
           </div>
+        </div>
+        <div className="form-group">
+          <label>Scanner Files</label>
           <button
             type="button"
             className="btn btn-secondary btn-sm"
             onClick={toggleScannerFiles}
-            style={{ marginTop: '0.75rem' }}
           >
             {showScannerFiles ? 'Hide Scanner Files' : 'Browse Scanner Files'}
           </button>
           {showScannerFiles && (
-            <div className="scanner-files-container">
+            <div className="scanner-files-container" style={{ marginTop: '0.5rem' }}>
               {loadingScannerFiles ? (
                 <p className="scanner-files-loading">Loading files...</p>
               ) : scannerFiles.length === 0 ? (
@@ -429,47 +474,6 @@ export default function DetailsTab({
                   ))}
                 </div>
               )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* References + Repeat Job */}
-      <div className="form-section">
-        <h3 className="form-section-title">References</h3>
-        <div className="form-row">
-          <div className="form-group">
-            <label>PO Number</label>
-            <input type="text" name="poNumber" value={formData.poNumber} onChange={handleChange} />
-          </div>
-          <div className="form-group">
-            <label>Quote Reference</label>
-            <input type="text" name="quoteReference" value={formData.quoteReference} onChange={handleChange} placeholder="QT-XXXXXXXX-XXX" />
-          </div>
-        </div>
-        <div className="form-row" style={{ marginTop: '0.75rem' }}>
-          <div className="form-group checkbox-group">
-            <label className="checkbox-inline">
-              <input
-                type="checkbox"
-                name="isRepeatJob"
-                checked={formData.isRepeatJob}
-                onChange={handleChange}
-              />
-              Repeat Job
-            </label>
-          </div>
-          {formData.isRepeatJob && (
-            <div className="form-group" style={{ flex: 2 }}>
-              <label>Previous Job Reference <span className="required">*</span></label>
-              <input
-                type="text"
-                name="repeatJobReference"
-                value={formData.repeatJobReference}
-                onChange={handleChange}
-                placeholder="JC-XXXXXXXX-XXX"
-                className={formData.isRepeatJob && !formData.repeatJobReference ? 'field-required' : ''}
-              />
             </div>
           )}
         </div>
@@ -543,9 +547,9 @@ export default function DetailsTab({
         />
       )}
 
-      {/* Internal Notes (admin only) */}
+      {/* Internal Comments (admin only) */}
       <div className="form-section">
-        <h3 className="form-section-title">Internal Notes</h3>
+        <h3 className="form-section-title">Internal Comments</h3>
         <div className="form-group">
           <textarea
             ref={(el) => { if (el) autoResize(el); }}
@@ -555,12 +559,13 @@ export default function DetailsTab({
             onChange={handleChange}
             onBlur={capitalizeBlur('notes')}
             rows={2}
-            placeholder="Not shown to customer"
+            placeholder="Add internal notes..."
           />
+          <span className="field-hint">Only visible to admin, not shown to staff or customer</span>
         </div>
       </div>
 
-      {/* Job Notes (shared, append-only) */}
+      {/* Job Comments (shared, append-only) */}
       {isEdit && (
         <NotesSection
           notes={notes || []}

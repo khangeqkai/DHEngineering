@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { createJobCardFolders, deleteJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireAdmin, requireAssigneeOrAdmin } = require('../middleware/auth');
-const { validateJobcardListQuery, validateJobcardEnums } = require('../middleware/validation');
+const { validateJobcardListQuery, validateJobcardEnums, JOBCARD_STATUSES } = require('../middleware/validation');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -445,10 +445,14 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums
 });
 
 // Update job card status only
-router.patch('/:id/status', authenticate, requireAdmin, (req, res) => {
+router.patch('/:id/status', authenticate, requireAssigneeOrAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+
+    if (!status || !JOBCARD_STATUSES.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
 
     const existing = jobcardQueries.getById.get(id);
     if (!existing) {

@@ -358,6 +358,18 @@
   font-style: italic;
 }
 
+.field-hint {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: 0.25rem;
+}
+
+.input-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .contact-fields-inline .form-row {
   margin-bottom: 0;
 }
@@ -369,8 +381,8 @@
 }
 
 .priority-medium {
-  border-color: var(--warning-color) !important;
-  color: var(--warning-color);
+  border-color: #d97706 !important;
+  color: #d97706;
 }
 
 .priority-high {
@@ -1718,6 +1730,17 @@
   font-weight: 600;
 }
 
+.readonly-status-select {
+  padding: 0.35rem 0.5rem;
+  font-size: var(--text-sm);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  width: fit-content;
+}
+
 .readonly-value {
   font-size: var(--text-sm);
   color: var(--text-primary);
@@ -1752,7 +1775,7 @@
 .readonly-badge.status-received { background: #d1fae5; color: #059669; }
 
 .readonly-badge.priority-low { background: #dbeafe; color: #1d4ed8; }
-.readonly-badge.priority-medium { background: var(--badge-pending-bg); color: var(--badge-pending-text); }
+.readonly-badge.priority-medium { background: #fef3c7; color: #b45309; }
 .readonly-badge.priority-high { background: #fde8e8; color: #c81e1e; }
 
 .readonly-badge.assignee {
