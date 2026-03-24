@@ -27,8 +27,7 @@ function toApiFormat(supplier) {
     serviceTags: (tags || []).map(t => ({
       id: t.id,
       name: t.name,
-      value: t.value,
-      isSystem: !!t.is_system
+      value: t.value
     }))
   };
 }

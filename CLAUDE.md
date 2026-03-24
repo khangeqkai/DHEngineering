@@ -91,7 +91,7 @@ Base URL: `/api` (relative; Vite dev server proxies to `http://localhost:3000`, 
 
 Main routes: `/auth`, `/jobcards`, `/contacts`, `/suppliers`, `/machines`, `/settings`, `/history`, `/qa-levels`, `/tags`
 
-Tag endpoints: `GET /tags` (authenticated, optional `?category=treatment&includeInactive=true`), `GET /tags/categories` (authenticated), `GET /tags/:id` (admin), `POST /tags` (admin, `{ category, name }`), `PUT /tags/:id` (admin, custom only), `DELETE /tags/:id` (admin, custom only), `PATCH /tags/:id/toggle-active` (admin)
+Tag endpoints: `GET /tags` (authenticated, optional `?category=treatment`), `GET /tags/categories` (authenticated), `GET /tags/:id` (admin), `POST /tags` (admin, `{ category, name }`), `PUT /tags/:id` (admin), `DELETE /tags/:id` (admin)
 
 Settings endpoints: `GET /settings` (admin), `PUT /settings` (admin), `GET /settings/inactivity-timeout` (all users), `POST /settings/export-backup` (admin, creates ZIP at `outputPath` with database + job folder files), `POST /settings/import-backup` (admin, restores from ZIP at `inputPath`, requires `job_folders_base` configured)
 
@@ -118,7 +118,7 @@ Notes endpoints: `GET /jobcards/:id/notes` (assignee/admin), `POST /jobcards/:id
 ### Database Schema (SQLite)
 Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `subcontracts`, `time_entries`, `job_costings`, `documents`, `qa_forms`, `qa_levels`, `qa_level_templates`, `history`, `settings`, `machines`, `job_notes`, `tags`, `supplier_service_tags`
 
-**Unified tags system**: The `tags` table stores all dynamic dropdown/multi-select options with columns: `id`, `category` (treatment/customer_property/drawings/job_type), `name`, `value`, `is_system`, `active`, `sort_order`. Tags replace the old hardcoded constants (JOB_TYPES, DRAWINGS_TYPES, TREATMENT_OPTIONS, CUSTOMER_PROPERTY_OPTIONS) and the old `service_tags` table. The `supplier_service_tags` junction table links suppliers to treatment tags. Frontend uses the `useTags(category)` hook from `client/src/hooks/useTags.js` to fetch tags dynamically. Admin manages tags via the Tags page (`/tags`).
+**Unified tags system**: The `tags` table stores all dynamic dropdown/multi-select options with columns: `id`, `category` (treatment/customer_property/drawings/job_type), `name`, `value`, `sort_order`, `created_at`. The `supplier_service_tags` junction table links suppliers to treatment tags. Frontend uses the `useTags(category)` hook from `client/src/hooks/useTags.js` to fetch tags dynamically. Admin manages tags and equipment via the "Tags & Equipment" page (`/tags`). Equipment is managed through the existing `machines` table but shares the same admin UI.
 
 **Contacts model** (phone contacts style): Each contact is a standalone person with a required company field. Search works on both `contact_name` and `company_name`. Job cards link to contacts via `contact_id` with override fields for per-job customization.
 
@@ -168,8 +168,9 @@ PDFs without fillable fields are copied as-is (blank templates for handwriting).
 
 ## Architectural Guidelines
 
-### No Backward Compatibility
+### No Backward Compatibility / No Legacy Code
 - **Do NOT add backward-compatibility logic** (migration shims, old-value fallbacks, renamed aliases, etc.)
+- **Actively remove legacy code** when replacing a system — delete old files, routes, queries, tables, imports, and exports. Do not leave orphaned code "for reference" or "just in case."
 - This is a fresh, actively-developed project — old data can be wiped/re-seeded
 - If a schema or value format changes, just change it everywhere; don't preserve old formats
 

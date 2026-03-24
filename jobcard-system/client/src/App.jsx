@@ -9,7 +9,6 @@ import ContactManagement from './components/ContactManagement';
 import SupplierManagement from './components/SupplierManagement';
 import ActivityLog from './components/ActivityLog';
 import QALevelManagement from './components/QALevelManagement';
-import EquipmentManagement from './components/EquipmentManagement';
 import TagManagement from './components/TagManagement';
 import Settings from './components/Settings';
 import Layout from './components/Layout';
@@ -129,14 +128,7 @@ function App() {
             </AdminRoute>
           }
         />
-        <Route
-          path="equipment"
-          element={
-            <AdminRoute>
-              <EquipmentManagement />
-            </AdminRoute>
-          }
-        />
+        <Route path="equipment" element={<Navigate to="/tags" replace />} />
         <Route
           path="tags"
           element={

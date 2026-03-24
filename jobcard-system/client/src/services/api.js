@@ -234,17 +234,10 @@ class ApiService {
     const query = category ? `?category=${encodeURIComponent(category)}` : '';
     return this.request(`/tags${query}`);
   }
-  getTagsIncludeInactive(category) {
-    const params = new URLSearchParams();
-    if (category) params.append('category', category);
-    params.append('includeInactive', 'true');
-    return this.request(`/tags?${params.toString()}`);
-  }
   getTagCategories() { return this.request('/tags/categories'); }
   createTag(data) { return this._post('/tags', data); }
   updateTag(id, data) { return this._put(`/tags/${id}`, data); }
   deleteTag(id) { return this._del(`/tags/${id}`); }
-  toggleTagActive(id) { return this._patch(`/tags/${id}/toggle-active`); }
 
   // Activity history (admin only)
   getActivityHistory(limit = 50) { return this.request(`/history?limit=${limit}`); }

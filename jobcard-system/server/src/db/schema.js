@@ -48,29 +48,17 @@ db.exec(`
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
-  -- Service tags for suppliers (predefined + custom) - legacy, kept for migration
-  CREATE TABLE IF NOT EXISTS service_tags (
-    id TEXT PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL,
-    is_system INTEGER DEFAULT 0,
-    active INTEGER DEFAULT 1,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-  );
-
-  -- Unified tags table (replaces hardcoded constants + service_tags)
+  -- Tags table (dynamic dropdown/multi-select options)
   CREATE TABLE IF NOT EXISTS tags (
     id TEXT PRIMARY KEY,
     category TEXT NOT NULL,
     name TEXT NOT NULL,
     value TEXT NOT NULL,
-    is_system INTEGER DEFAULT 0,
-    active INTEGER DEFAULT 1,
     sort_order INTEGER DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(category, value)
   );
   CREATE INDEX IF NOT EXISTS idx_tags_category ON tags(category);
-  CREATE INDEX IF NOT EXISTS idx_tags_category_active ON tags(category, active);
 
   -- Supplier service tags junction table (references tags table)
   CREATE TABLE IF NOT EXISTS supplier_service_tags (
@@ -486,33 +474,6 @@ for (const migration of migrations) {
   }
 }
 
-// Seed default service tags (based on TREATMENT_OPTIONS) - legacy table
-const defaultServiceTags = [
-  'Heat Treatment',
-  'Precision Grinding',
-  'Anodise',
-  'Electroplate',
-  'Blasting',
-  'Powdercoat',
-  'Spraypaint',
-  'Galvanise',
-  'Specialised Coating'
-];
-
-const insertServiceTag = db.prepare(`
-  INSERT OR IGNORE INTO service_tags (id, name, is_system, active)
-  VALUES (?, ?, 1, 1)
-`);
-
-for (const tagName of defaultServiceTags) {
-  try {
-    const tagId = tagName.toLowerCase().replace(/\s+/g, '-');
-    insertServiceTag.run(tagId, tagName);
-  } catch (err) {
-    // Tag might already exist, ignore
-  }
-}
-
-// Seed unified tags table + migrate service_tags data
+// Seed default tags
 require('./seed-tags');
 

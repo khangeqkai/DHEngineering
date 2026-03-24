@@ -281,7 +281,7 @@ export default function SupplierManagement() {
               <label>Services Provided</label>
               <div className="service-tags-selector">
                 {serviceTags.map(tag => (
-                  <span key={tag.id} className={`tag-chip-wrapper ${!tag.isSystem ? 'deletable' : ''}`}>
+                  <span key={tag.id} className="tag-chip-wrapper deletable">
                     <button
                       type="button"
                       className={`tag-chip ${formData.serviceTagIds.includes(tag.id) ? 'selected' : ''}`}
@@ -290,19 +290,17 @@ export default function SupplierManagement() {
                       {tag.name}
                       {formData.serviceTagIds.includes(tag.id) && <span className="check-mark"><Check size={12} /></span>}
                     </button>
-                    {!tag.isSystem && (
-                      <button
-                        type="button"
-                        className="tag-delete-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteTag(tag);
-                        }}
-                        title={`Delete "${tag.name}" tag`}
-                      >
-                        <X size={12} />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      className="tag-delete-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteTag(tag);
+                      }}
+                      title={`Delete "${tag.name}" tag`}
+                    >
+                      <X size={12} />
+                    </button>
                   </span>
                 ))}
                 {!showCustomTagInput ? (

@@ -5,8 +5,8 @@ function nameToValue(name) {
 }
 
 const insertTag = db.prepare(`
-  INSERT OR IGNORE INTO tags (id, category, name, value, is_system, active, sort_order)
-  VALUES (?, ?, ?, ?, 1, 1, ?)
+  INSERT OR IGNORE INTO tags (id, category, name, value, sort_order)
+  VALUES (?, ?, ?, ?, ?)
 `);
 
 const seedTags = [

@@ -98,74 +98,20 @@ const supplierQueries = {
   delete: db.prepare('DELETE FROM suppliers WHERE id = ?')
 };
 
-// Service tag queries (legacy - kept for backward compat, delegates to tags table)
-const serviceTagQueries = {
-  getById: db.prepare('SELECT * FROM service_tags WHERE id = ?'),
-  getByName: db.prepare('SELECT * FROM service_tags WHERE name = ?'),
-  getAll: db.prepare('SELECT * FROM service_tags WHERE active = 1 ORDER BY is_system DESC, name ASC'),
-  getAllIncludeInactive: db.prepare('SELECT * FROM service_tags ORDER BY is_system DESC, name ASC'),
-
-  create: db.prepare(`
-    INSERT INTO service_tags (id, name, is_system, active, created_at)
-    VALUES (?, ?, ?, 1, datetime('now'))
-  `),
-
-  update: db.prepare(`UPDATE service_tags SET name = ? WHERE id = ?`),
-  deactivate: db.prepare(`UPDATE service_tags SET active = 0 WHERE id = ?`),
-  activate: db.prepare(`UPDATE service_tags SET active = 1 WHERE id = ?`),
-  delete: db.prepare('DELETE FROM service_tags WHERE id = ?'),
-
-  // Get tags for a supplier (now from tags table)
-  getForSupplier: db.prepare(`
-    SELECT t.* FROM tags t
-    INNER JOIN supplier_service_tags sst ON t.id = sst.service_tag_id
-    WHERE sst.supplier_id = ? AND t.active = 1
-    ORDER BY t.name ASC
-  `),
-
-  // Add tag to supplier
-  addToSupplier: db.prepare(`
-    INSERT OR IGNORE INTO supplier_service_tags (supplier_id, service_tag_id)
-    VALUES (?, ?)
-  `),
-
-  // Remove tag from supplier
-  removeFromSupplier: db.prepare(`
-    DELETE FROM supplier_service_tags WHERE supplier_id = ? AND service_tag_id = ?
-  `),
-
-  // Clear all tags from supplier
-  clearSupplierTags: db.prepare(`
-    DELETE FROM supplier_service_tags WHERE supplier_id = ?
-  `),
-
-  // Get suppliers by service tag
-  getSuppliersByTag: db.prepare(`
-    SELECT s.* FROM suppliers s
-    INNER JOIN supplier_service_tags sst ON s.id = sst.supplier_id
-    WHERE sst.service_tag_id = ? AND s.active = 1
-    ORDER BY s.name ASC
-  `)
-};
-
-// Unified tag queries
+// Tag queries
 const tagQueries = {
   getById: db.prepare('SELECT * FROM tags WHERE id = ?'),
   getByValue: db.prepare('SELECT * FROM tags WHERE category = ? AND value = ?'),
   getByName: db.prepare('SELECT * FROM tags WHERE category = ? AND name = ?'),
-  getByCategory: db.prepare('SELECT * FROM tags WHERE category = ? AND active = 1 ORDER BY sort_order ASC, name ASC'),
-  getByCategoryAll: db.prepare('SELECT * FROM tags WHERE category = ? ORDER BY sort_order ASC, name ASC'),
-  getAll: db.prepare('SELECT * FROM tags WHERE active = 1 ORDER BY category ASC, sort_order ASC, name ASC'),
-  getAllIncludeInactive: db.prepare('SELECT * FROM tags ORDER BY category ASC, sort_order ASC, name ASC'),
+  getByCategory: db.prepare('SELECT * FROM tags WHERE category = ? ORDER BY sort_order ASC, name ASC'),
+  getAll: db.prepare('SELECT * FROM tags ORDER BY category ASC, sort_order ASC, name ASC'),
 
   create: db.prepare(`
-    INSERT INTO tags (id, category, name, value, is_system, active, sort_order, created_at)
-    VALUES (?, ?, ?, ?, ?, 1, ?, datetime('now'))
+    INSERT INTO tags (id, category, name, value, sort_order, created_at)
+    VALUES (?, ?, ?, ?, ?, datetime('now'))
   `),
 
   update: db.prepare('UPDATE tags SET name = ?, value = ? WHERE id = ?'),
-  deactivate: db.prepare('UPDATE tags SET active = 0 WHERE id = ?'),
-  activate: db.prepare('UPDATE tags SET active = 1 WHERE id = ?'),
   delete: db.prepare('DELETE FROM tags WHERE id = ?'),
 
   getMaxSortOrder: db.prepare('SELECT MAX(sort_order) as max_sort FROM tags WHERE category = ?'),
@@ -175,7 +121,7 @@ const tagQueries = {
   getForSupplier: db.prepare(`
     SELECT t.* FROM tags t
     INNER JOIN supplier_service_tags sst ON t.id = sst.service_tag_id
-    WHERE sst.supplier_id = ? AND t.active = 1
+    WHERE sst.supplier_id = ?
     ORDER BY t.sort_order ASC, t.name ASC
   `),
 
@@ -225,6 +171,5 @@ module.exports = {
   contactQueries,
   supplierQueries,
   machineQueries,
-  serviceTagQueries,
   tagQueries
 };

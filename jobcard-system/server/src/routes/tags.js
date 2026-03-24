@@ -18,8 +18,6 @@ function formatTag(t) {
     category: t.category,
     name: t.name,
     value: t.value,
-    isSystem: !!t.is_system,
-    active: !!t.active,
     sortOrder: t.sort_order,
     createdAt: t.created_at
   };
@@ -36,23 +34,19 @@ router.get('/categories', (req, res) => {
   })));
 });
 
-// GET /api/tags - List tags, optional ?category=treatment&includeInactive=true
+// GET /api/tags - List tags, optional ?category=treatment
 router.get('/', (req, res) => {
   try {
-    const { category, includeInactive } = req.query;
+    const { category } = req.query;
 
     let tags;
     if (category) {
       if (!VALID_CATEGORIES.includes(category)) {
         return res.status(400).json({ error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}` });
       }
-      tags = includeInactive === 'true'
-        ? tagQueries.getByCategoryAll.all(category)
-        : tagQueries.getByCategory.all(category);
+      tags = tagQueries.getByCategory.all(category);
     } else {
-      tags = includeInactive === 'true'
-        ? tagQueries.getAllIncludeInactive.all()
-        : tagQueries.getAll.all();
+      tags = tagQueries.getAll.all();
     }
 
     res.json(tags.map(formatTag));
@@ -95,10 +89,6 @@ router.post('/', requireAdmin, (req, res) => {
     // Check if tag already exists in this category
     const existing = tagQueries.getByValue.get(category, value);
     if (existing) {
-      if (!existing.active) {
-        tagQueries.activate.run(existing.id);
-        return res.json(formatTag(tagQueries.getById.get(existing.id)));
-      }
       return res.status(400).json({ error: 'Tag already exists in this category' });
     }
 
@@ -106,7 +96,7 @@ router.post('/', requireAdmin, (req, res) => {
     const maxSort = tagQueries.getMaxSortOrder.get(category);
     const sortOrder = (maxSort?.max_sort || 0) + 1;
 
-    tagQueries.create.run(id, category, trimmedName, value, 0, sortOrder);
+    tagQueries.create.run(id, category, trimmedName, value, sortOrder);
 
     const tag = tagQueries.getById.get(id);
     recordHistory('tag', id, 'created', req.user.userId, req.user.name || req.user.username, {
@@ -130,10 +120,6 @@ router.put('/:id', requireAdmin, (req, res) => {
     const existing = tagQueries.getById.get(id);
     if (!existing) {
       return res.status(404).json({ error: 'Tag not found' });
-    }
-
-    if (existing.is_system) {
-      return res.status(400).json({ error: 'Cannot modify system tags' });
     }
 
     if (!name || !name.trim()) {
@@ -167,31 +153,6 @@ router.put('/:id', requireAdmin, (req, res) => {
   }
 });
 
-// PATCH /api/tags/:id/toggle-active - Toggle active status (admin only)
-router.patch('/:id/toggle-active', requireAdmin, (req, res) => {
-  try {
-    const tag = tagQueries.getById.get(req.params.id);
-    if (!tag) {
-      return res.status(404).json({ error: 'Tag not found' });
-    }
-
-    if (tag.active) {
-      tagQueries.deactivate.run(tag.id);
-    } else {
-      tagQueries.activate.run(tag.id);
-    }
-
-    recordHistory('tag', tag.id, tag.active ? 'deactivated' : 'activated', req.user.userId, req.user.name || req.user.username, {
-      active: { from: !!tag.active, to: !tag.active }
-    });
-
-    res.json(formatTag(tagQueries.getById.get(tag.id)));
-  } catch (err) {
-    logger.error({ err }, 'Failed to toggle tag active status');
-    res.status(500).json({ error: 'Failed to toggle tag active status' });
-  }
-});
-
 // DELETE /api/tags/:id - Delete tag (admin only, custom tags only)
 router.delete('/:id', requireAdmin, (req, res) => {
   try {
@@ -200,10 +161,6 @@ router.delete('/:id', requireAdmin, (req, res) => {
     const existing = tagQueries.getById.get(id);
     if (!existing) {
       return res.status(404).json({ error: 'Tag not found' });
-    }
-
-    if (existing.is_system) {
-      return res.status(400).json({ error: 'Cannot delete system tags. You can deactivate them instead.' });
     }
 
     tagQueries.delete.run(id);
