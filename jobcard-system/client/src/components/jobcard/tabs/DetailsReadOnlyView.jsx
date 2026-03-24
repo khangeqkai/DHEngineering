@@ -2,9 +2,9 @@ import {
   JOB_TYPES,
   PRIORITY_OPTIONS,
   DRAWINGS_TYPES,
-  TREATMENT_OPTIONS,
   CUSTOMER_PROPERTY_OPTIONS,
-  STATUS_OPTIONS
+  STATUS_OPTIONS,
+  TREATMENT_OPTIONS
 } from '../constants';
 
 function StatusBadge({ status }) {
@@ -35,14 +35,6 @@ export default function DetailsReadOnlyView({
   isOverdue,
   onStatusChange
 }) {
-  const treatmentLabels = (formData.treatmentRequired || '')
-    .split(',')
-    .filter(v => v && v !== 'NONE')
-    .map(v => {
-      const opt = TREATMENT_OPTIONS.find(t => t.value === v);
-      return opt ? opt.label : v;
-    });
-
   const drawingsLabels = (formData.drawingsType || '')
     .split(',')
     .filter(v => v && v !== 'NONE')
@@ -114,13 +106,30 @@ export default function DetailsReadOnlyView({
         <div className="form-section">
           <h3 className="form-section-title">Line Items</h3>
           <div className="readonly-items-list">
-            {lineItems.map(item => (
-              <div key={item.id || item.itemNumber} className="readonly-item">
-                <span className="readonly-item-badge">#{item.itemNumber}</span>
-                {item.qty && <span className="readonly-item-qty">Qty: {item.qty}</span>}
-                <span className="readonly-item-desc">{item.description}</span>
-              </div>
-            ))}
+            {lineItems.map(item => {
+              const itemTreatments = (item.treatment || '')
+                .split(',')
+                .filter(v => v && v !== 'NONE')
+                .map(v => {
+                  const opt = TREATMENT_OPTIONS.find(t => t.value === v);
+                  return opt ? opt.label : v;
+                });
+              if (item.treatmentOther) itemTreatments.push(item.treatmentOther);
+              return (
+                <div key={item.id || item.itemNumber} className="readonly-item">
+                  <span className="readonly-item-badge">#{item.itemNumber}</span>
+                  {item.qty && <span className="readonly-item-qty">Qty: {item.qty}</span>}
+                  <span className="readonly-item-desc">{item.description}</span>
+                  {itemTreatments.length > 0 && (
+                    <span className="readonly-item-treatments">
+                      {itemTreatments.map(label => (
+                        <span key={label} className="readonly-badge treatment">{label}</span>
+                      ))}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -181,18 +190,6 @@ export default function DetailsReadOnlyView({
         )}
       </div>
 
-      {/* Treatment */}
-      {treatmentLabels.length > 0 && (
-        <div className="form-section">
-          <h3 className="form-section-title">Treatment</h3>
-          <div className="readonly-badges">
-            {treatmentLabels.map(label => (
-              <span key={label} className="readonly-badge treatment">{label}</span>
-            ))}
-            {formData.treatmentOther && <span className="readonly-badge treatment">{formData.treatmentOther}</span>}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -86,6 +86,7 @@ export default function SearchableSupplierSelect({
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') {
+      e.stopPropagation();
       setIsOpen(false);
       e.target.blur();
     }

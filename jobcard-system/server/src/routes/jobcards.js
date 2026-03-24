@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { createJobCardFolders, deleteJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireAdmin, requireAssigneeOrAdmin } = require('../middleware/auth');
-const { validateJobcardListQuery, validateJobcardEnums, JOBCARD_STATUSES } = require('../middleware/validation');
+const { validateJobcardListQuery, validateJobcardEnums, validateItemTreatments, JOBCARD_STATUSES } = require('../middleware/validation');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -141,6 +141,11 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       return res.status(400).json({ error: 'Drawings type is required' });
     }
 
+    const treatmentError = validateItemTreatments(data.items);
+    if (treatmentError) {
+      return res.status(400).json({ error: treatmentError });
+    }
+
     // Atomically generate job number and increment counter
     const { jobNumber, error: jobNumError } = generateAndIncrementJobNumber();
     if (jobNumError) {
@@ -194,8 +199,6 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       data.dueDate || null,
       data.isRepeatJob ? 1 : 0,
       data.repeatJobReference || null,
-      data.treatmentRequired || null,
-      data.treatmentOther || null,
       data.notes || null,
       data.photos ? JSON.stringify(data.photos) : null,
       req.user.userId,
@@ -209,6 +212,9 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
     if (qaLevelId) {
       // Fetch items from DB (already created by createRelatedRecords above)
       const createdItems = jobItemQueries.getByJobcard.all(id);
+      // Aggregate treatments from all items for PDF fill
+      const allTreatments = [...new Set(createdItems.flatMap(i => (i.treatment || '').split(',').filter(v => v && v !== 'NONE')))];
+      const allTreatmentOther = createdItems.map(i => i.treatment_other).filter(Boolean).join(', ');
       await initQaFormsFromLevel(id, qaLevelId, {
         jobNumber: jobNumber,
         status: status,
@@ -223,12 +229,12 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
         quoteReference: data.quoteReference || null,
         drawingsType: data.drawingsType || null,
         customerProperty: data.customerProperty || null,
-        treatmentRequired: data.treatmentRequired || null,
-        treatmentOther: data.treatmentOther || null,
+        treatmentRequired: allTreatments.join(',') || null,
+        treatmentOther: allTreatmentOther || null,
         repeatJob: data.isRepeatJob ? 'Yes' : 'No',
         repeatJobReference: data.repeatJobReference || null,
         notes: data.notes || null,
-        items: createdItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description }))
+        items: createdItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description, treatment: i.treatment, treatmentOther: i.treatment_other }))
       });
     }
 
@@ -293,6 +299,13 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums
       return res.status(403).json({ error: 'Only admins can change job card status' });
     }
 
+    if (data.items !== undefined) {
+      const treatmentError = validateItemTreatments(data.items);
+      if (treatmentError) {
+        return res.status(400).json({ error: treatmentError });
+      }
+    }
+
     const changes = buildChanges(existing, data);
 
     jobcardQueries.update.run(
@@ -314,8 +327,6 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums
       data.dueDate !== undefined ? data.dueDate : existing.due_date,
       data.isRepeatJob !== undefined ? (data.isRepeatJob ? 1 : 0) : existing.is_repeat_job,
       data.repeatJobReference !== undefined ? data.repeatJobReference : existing.repeat_job_reference,
-      data.treatmentRequired !== undefined ? data.treatmentRequired : existing.treatment_required,
-      data.treatmentOther !== undefined ? data.treatmentOther : existing.treatment_other,
       data.notes !== undefined ? data.notes : existing.notes,
       data.photos !== undefined ? JSON.stringify(data.photos) : existing.photos,
       req.user.userId,
@@ -344,14 +355,14 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums
       for (let i = 0; i < data.items.length; i++) {
         const item = data.items[i];
         const itemId = item.id || `item:${Date.now()}:${uuidv4().slice(0, 8)}`;
-        jobItemQueries.create.run(itemId, id, i + 1, item.qty || null, item.description);
+        jobItemQueries.create.run(itemId, id, i + 1, item.qty || null, item.description, item.treatment || null, item.treatmentOther || null);
       }
     }
 
     // Track items changes — per-item granularity
     if (data.items !== undefined) {
-      const oldMap = new Map(existingItems.map(i => [i.item_number, `${i.qty || ''}x ${i.description}`]));
-      const newMap = new Map(data.items.map((i, idx) => [i.itemNumber || idx + 1, `${i.qty || ''}x ${i.description}`]));
+      const oldMap = new Map(existingItems.map(i => [i.item_number, `${i.qty || ''}x ${i.description}${i.treatment ? ' [' + i.treatment + ']' : ''}`]));
+      const newMap = new Map(data.items.map((i, idx) => [i.itemNumber || idx + 1, `${i.qty || ''}x ${i.description}${i.treatment ? ' [' + i.treatment + ']' : ''}`]));
       for (const [num, desc] of newMap) {
         if (!oldMap.has(num)) {
           changes[`item #${num} added`] = { from: null, to: desc };
@@ -403,6 +414,8 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums
       if (newQaLevelId) {
         const current = jobcardQueries.getById.get(id);
         const currentItems = jobItemQueries.getByJobcard.all(id);
+        const allTreatments = [...new Set(currentItems.flatMap(i => (i.treatment || '').split(',').filter(v => v && v !== 'NONE')))];
+        const allTreatmentOther = currentItems.map(i => i.treatment_other).filter(Boolean).join(', ');
         await initQaFormsFromLevel(id, newQaLevelId, {
           jobNumber: current.job_number,
           status: current.status,
@@ -417,12 +430,12 @@ router.put('/:id', authenticate, requireAssigneeOrAdmin, ...validateJobcardEnums
           quoteReference: current.quote_reference || data.quoteReference || null,
           drawingsType: current.drawings_type || data.drawingsType || null,
           customerProperty: current.customer_property || data.customerProperty || null,
-          treatmentRequired: current.treatment_required || data.treatmentRequired || null,
-          treatmentOther: current.treatment_other || data.treatmentOther || null,
+          treatmentRequired: allTreatments.join(',') || null,
+          treatmentOther: allTreatmentOther || null,
           repeatJob: (data.isRepeatJob !== undefined ? data.isRepeatJob : current.is_repeat_job === 1) ? 'Yes' : 'No',
           repeatJobReference: current.repeat_job_reference || data.repeatJobReference || null,
           notes: current.notes || data.notes || null,
-          items: currentItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description }))
+          items: currentItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description, treatment: i.treatment, treatmentOther: i.treatment_other }))
         });
       }
     }

@@ -1,18 +1,18 @@
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../../services/api';
-import { X, Plus, Calendar } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import {
   JOB_TYPES,
   PRIORITY_OPTIONS,
   DRAWINGS_TYPES,
-  TREATMENT_OPTIONS,
   CUSTOMER_PROPERTY_OPTIONS,
   STATUS_OPTIONS
 } from '../constants';
 import { formatFileSize, formatFileDate } from '../mappers';
 import { toTitleCase, capitalizeFirst, autoResize } from '../../../utils/formatters';
 import CalendarPicker from '../../common/CalendarPicker';
+import ItemsTab from './ItemsTab';
 import SubcontractCreateSection from './SubcontractCreateSection';
 import DetailsReadOnlyView from './DetailsReadOnlyView';
 import NotesSection from './NotesSection';
@@ -170,7 +170,7 @@ export default function DetailsTab({
                     const formatted = toTitleCase(e.target.value);
                     if (formatted !== e.target.value) handleContactFieldChange('contactName', formatted);
                   }}
-                  onKeyDown={(e) => { if (e.key === 'Escape') e.target.blur(); }}
+                  onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); e.target.blur(); } }}
                   placeholder=""
                   className={!contactFormData.contactName.trim() ? 'field-required' : ''}
                 />
@@ -292,46 +292,12 @@ export default function DetailsTab({
       </div>
 
       {!isEdit && (
-        <div className="form-section">
-          <div className="form-section-header">
-            <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}><Plus size={14} /> Add</button>
-          </div>
-          <div className="line-items-list">
-            {lineItems.map((item) => (
-              <div key={item.id} className="line-item-card">
-                <div className="line-item-badge">#{item.itemNumber}</div>
-                <div className="line-item-fields">
-                  <div className="line-item-qty">
-                    <label>Qty</label>
-                    <input
-                      type="text"
-                      value={item.qty}
-                      onChange={(e) => updateLineItem(item.id, 'qty', e.target.value)}
-                      placeholder="-"
-                    />
-                  </div>
-                  <div className="line-item-desc">
-                    <label>Description</label>
-                    <input
-                      type="text"
-                      value={item.description}
-                      onChange={(e) => updateLineItem(item.id, 'description', e.target.value)}
-                      onBlur={(e) => {
-                        const f = capitalizeFirst(e.target.value);
-                        if (f !== e.target.value) updateLineItem(item.id, 'description', f);
-                      }}
-                      placeholder="Describe the item..."
-                    />
-                  </div>
-                </div>
-                {lineItems.length > 1 && (
-                  <button type="button" className="line-item-remove" onClick={() => removeLineItem(item.id)} title="Remove item"><X size={14} /></button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        <ItemsTab
+          lineItems={lineItems}
+          addLineItem={addLineItem}
+          updateLineItem={updateLineItem}
+          removeLineItem={removeLineItem}
+        />
       )}
 
       {/* Customer Input */}
@@ -496,46 +462,6 @@ export default function DetailsTab({
               </label>
             );
           })}
-        </div>
-      </div>
-
-      {/* Treatment */}
-      <div className="form-section">
-        <h3 className="form-section-title">Treatment</h3>
-        <div className="form-group">
-          <div className="checkbox-grid">
-            {TREATMENT_OPTIONS.filter(o => o.value !== 'NONE').map(opt => {
-              const values = formData.treatmentRequired ? formData.treatmentRequired.split(',') : [];
-              const isChecked = values.includes(opt.value);
-              return (
-                <label key={opt.value} className={`checkbox-chip ${isChecked ? 'selected' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={(e) => {
-                      const current = formData.treatmentRequired ? formData.treatmentRequired.split(',').filter(v => v && v !== 'NONE') : [];
-                      const updated = e.target.checked
-                        ? [...current, opt.value]
-                        : current.filter(v => v !== opt.value);
-                      setFormData(prev => ({ ...prev, treatmentRequired: updated.length ? updated.join(',') : 'NONE' }));
-                    }}
-                  />
-                  {opt.label}
-                </label>
-              );
-            })}
-          </div>
-          {formData.treatmentRequired?.includes('OTHER') && (
-            <input
-              type="text"
-              name="treatmentOther"
-              value={formData.treatmentOther}
-              onChange={handleChange}
-              onBlur={capitalizeBlur('treatmentOther')}
-              placeholder="e.g. Zinc plating"
-              style={{ marginTop: '0.5rem' }}
-            />
-          )}
         </div>
       </div>
 

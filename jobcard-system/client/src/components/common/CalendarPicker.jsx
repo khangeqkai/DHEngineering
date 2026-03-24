@@ -35,6 +35,7 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose }) {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
       if (e.key === 'Tab' && calendarRef.current) {

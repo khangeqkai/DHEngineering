@@ -42,8 +42,6 @@ function formatJobcard(row, items = [], assignees = [], subcontracts = [], userR
     dueDate: row.due_date,
     isRepeatJob: row.is_repeat_job === 1,
     repeatJobReference: row.repeat_job_reference,
-    treatmentRequired: row.treatment_required,
-    treatmentOther: row.treatment_other,
     notes: row.notes,
     photos: row.photos ? JSON.parse(row.photos) : [],
     invoicedDate: row.invoiced_date,
@@ -56,7 +54,9 @@ function formatJobcard(row, items = [], assignees = [], subcontracts = [], userR
       id: item.id,
       itemNumber: item.item_number,
       qty: item.qty,
-      description: item.description
+      description: item.description,
+      treatment: item.treatment || null,
+      treatmentOther: item.treatment_other || null
     })),
     assignees: assignees.map(a => ({
       id: a.id,
@@ -97,8 +97,6 @@ function buildChanges(existing, data) {
     ['description', 'description'],
     ['is_repeat_job', 'isRepeatJob'],
     ['repeat_job_reference', 'repeatJobReference'],
-    ['treatment_required', 'treatmentRequired'],
-    ['treatment_other', 'treatmentOther'],
     ['notes', 'notes'],
     ['qa_level_id', 'qaLevelId'],
   ];
@@ -120,7 +118,7 @@ function createRelatedRecords(jobcardId, data) {
     for (let i = 0; i < data.items.length; i++) {
       const item = data.items[i];
       const itemId = `item:${Date.now()}:${uuidv4().slice(0, 8)}`;
-      jobItemQueries.create.run(itemId, jobcardId, i + 1, item.qty || null, item.description);
+      jobItemQueries.create.run(itemId, jobcardId, i + 1, item.qty || null, item.description, item.treatment || null, item.treatmentOther || null);
     }
   }
 

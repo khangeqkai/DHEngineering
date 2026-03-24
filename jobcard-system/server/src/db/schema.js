@@ -105,10 +105,6 @@ db.exec(`
     is_repeat_job INTEGER DEFAULT 0,
     repeat_job_reference TEXT,
 
-    -- Treatment
-    treatment_required TEXT,
-    treatment_other TEXT,
-
     -- Internal Notes
     notes TEXT,
 
@@ -137,6 +133,8 @@ db.exec(`
     item_number INTEGER NOT NULL,
     qty TEXT,
     description TEXT NOT NULL,
+    treatment TEXT,
+    treatment_other TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE

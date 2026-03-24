@@ -168,8 +168,15 @@ const JOBCARD_SUMMARY_COLS = [
   { label: 'PO Number', value: r => r.poNumber },
   { label: 'Job Type', value: r => r.jobType },
   { label: 'Drawings', value: r => fmtDrawings(r.drawingsType) },
-  { label: 'Treatment', value: r => fmtTreatment(r.treatmentRequired) },
-  { label: 'Treatment Other', value: r => r.treatmentOther },
+  { label: 'Treatment', value: r => {
+    const items = r.items || [];
+    const all = [...new Set(items.flatMap(i => (i.treatment || '').split(',').filter(v => v && v !== 'NONE')))];
+    return fmtTreatment(all.join(','));
+  }},
+  { label: 'Treatment Other', value: r => {
+    const items = r.items || [];
+    return items.map(i => i.treatmentOther).filter(Boolean).join(', ');
+  }},
   { label: 'Customer Property', value: r => fmtCustomerProperty(r.customerProperty) },
   { label: 'Subcontractors', value: r => (r._subcontracts || []).map(s => s.supplierName).join(', ') },
   { label: 'Notes', value: r => (r._notes || []).map(n => n.text).join(' | ') },

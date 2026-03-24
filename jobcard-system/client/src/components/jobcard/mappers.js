@@ -53,7 +53,9 @@ export function mapLineItemFromApi(item) {
     id: item.id,
     itemNumber: item.itemNumber,
     qty: item.qty || '',
-    description: item.description || ''
+    description: item.description || '',
+    treatment: item.treatment || '',
+    treatmentOther: item.treatmentOther || ''
   };
 }
 
@@ -89,8 +91,6 @@ export function getDefaultFormData() {
     dueDate: '',
     isRepeatJob: false,
     repeatJobReference: '',
-    treatmentRequired: 'NONE',
-    treatmentOther: '',
     notes: ''
   };
 }

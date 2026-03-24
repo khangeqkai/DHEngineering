@@ -264,7 +264,6 @@ const validateJobcardEnums = [
     .withMessage('Quality level must be a string'),
   optionalMultiEnum('drawingsType', 'Drawings type', DRAWINGS_TYPES),
   optionalMultiEnum('customerProperty', 'Customer property', CUSTOMER_PROPERTY_OPTIONS),
-  optionalMultiEnum('treatmentRequired', 'Treatment required', TREATMENT_OPTIONS),
   handleValidationErrors
 ];
 
@@ -284,6 +283,30 @@ const validateTimeEntryInspection = [
   optionalEnum('inProcessValidation', 'In-process validation', INSPECTION_OPTIONS),
   handleValidationErrors
 ];
+
+/**
+ * Validate treatment fields on line items array.
+ * Each item.treatment must be comma-separated values from TREATMENT_OPTIONS.
+ * Each item.treatmentOther is free text (trimmed, max 255 chars).
+ * Returns error string or null if valid.
+ */
+function validateItemTreatments(items) {
+  if (!Array.isArray(items)) return null;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.treatment) {
+      const values = String(item.treatment).split(',').map(v => v.trim());
+      const invalid = values.filter(v => v && !TREATMENT_OPTIONS.includes(v));
+      if (invalid.length > 0) {
+        return `Item #${i + 1} has invalid treatment values: ${invalid.join(', ')}`;
+      }
+    }
+    if (item.treatmentOther && String(item.treatmentOther).length > 255) {
+      return `Item #${i + 1} treatment other text exceeds 255 characters`;
+    }
+  }
+  return null;
+}
 
 module.exports = {
   // Error handler
@@ -306,6 +329,7 @@ module.exports = {
   validateJobcardEnums,
   validateSubcontractStatus,
   validateTimeEntryInspection,
+  validateItemTreatments,
 
   JOB_TYPES,
   JOBCARD_STATUSES,

@@ -12,7 +12,7 @@ export function useJobCardForm() {
 
   // Related data (locally managed for create mode, from API for edit mode)
   const [assignees, setAssignees] = useState([]);
-  const [lineItems, setLineItems] = useState([{ id: Date.now(), itemNumber: 1, qty: '', description: '' }]);
+  const [lineItems, setLineItems] = useState([{ id: Date.now(), itemNumber: 1, qty: '', description: '', treatment: '', treatmentOther: '' }]);
   // Local subcontracts state for create mode (in edit mode, uses apiSubcontracts)
   const [localSubcontracts, setLocalSubcontracts] = useState([]);
 
@@ -33,7 +33,7 @@ export function useJobCardForm() {
   const addLineItem = useCallback(() => {
     setLineItems(prev => {
       const nextNum = prev.length > 0 ? Math.max(...prev.map(i => i.itemNumber)) + 1 : 1;
-      return [...prev, { id: Date.now(), itemNumber: nextNum, qty: '', description: '' }];
+      return [...prev, { id: Date.now(), itemNumber: nextNum, qty: '', description: '', treatment: '', treatmentOther: '' }];
     });
   }, []);
 
@@ -88,8 +88,6 @@ export function useJobCardForm() {
       dueDate: jobcardData.dueDate || '',
       isRepeatJob: jobcardData.isRepeatJob || false,
       repeatJobReference: jobcardData.repeatJobReference || '',
-      treatmentRequired: jobcardData.treatmentRequired || 'NONE',
-      treatmentOther: jobcardData.treatmentOther || '',
       notes: jobcardData.notes || ''
     });
 
@@ -106,16 +104,18 @@ export function useJobCardForm() {
       id: item.id,
       itemNumber: item.itemNumber,
       qty: item.qty || '',
-      description: item.description || ''
+      description: item.description || '',
+      treatment: item.treatment || '',
+      treatmentOther: item.treatmentOther || ''
     }));
-    setLineItems(mappedItems.length > 0 ? mappedItems : [{ id: Date.now(), itemNumber: 1, qty: '', description: '' }]);
+    setLineItems(mappedItems.length > 0 ? mappedItems : [{ id: Date.now(), itemNumber: 1, qty: '', description: '', treatment: '', treatmentOther: '' }]);
   }, []);
 
   const resetForm = useCallback(() => {
     setFormData(getDefaultFormData());
     setJobNumber('');
     setAssignees([]);
-    setLineItems([{ id: Date.now(), itemNumber: 1, qty: '', description: '' }]);
+    setLineItems([{ id: Date.now(), itemNumber: 1, qty: '', description: '', treatment: '', treatmentOther: '' }]);
     setLocalSubcontracts([]);
     setScannerFiles([]);
     setShowScannerFiles(false);

@@ -371,14 +371,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         dueDate: formHook.formData.dueDate,
         isRepeatJob: formHook.formData.isRepeatJob,
         repeatJobReference: formHook.formData.repeatJobReference,
-        treatmentRequired: formHook.formData.treatmentRequired,
-        treatmentOther: formHook.formData.treatmentOther,
         notes: formHook.formData.notes,
         assigneeIds: formHook.assignees.map(a => a.userId),
         items: validItems.map((item, idx) => ({
           itemNumber: item.itemNumber || idx + 1,
           qty: item.qty,
-          description: item.description
+          description: item.description,
+          treatment: item.treatment || null,
+          treatmentOther: item.treatmentOther || null
         }))
       };
       if (isEdit) {
@@ -515,7 +515,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   handleDeleteSubcontract={subcontract.handleDeleteSubcontract}
                   resetSubcontractForm={subcontract.resetSubcontractForm}
                   suppliers={suppliers || []}
-                  treatmentRequired={formHook.formData.treatmentRequired}
+                  lineItems={formHook.lineItems}
                 />
               )}
 

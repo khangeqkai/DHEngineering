@@ -732,6 +732,120 @@
   color: var(--danger-color);
 }
 
+/* Treatment Multi-Select (per line item) */
+.line-item-treatment {
+  display: flex;
+  flex-direction: column;
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.treatment-multiselect {
+  position: relative;
+}
+
+.treatment-multiselect-trigger {
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--text-tertiary);
+  transition: border-color var(--duration-fast) ease;
+}
+
+.treatment-multiselect-trigger.has-values {
+  color: var(--text-primary);
+}
+
+.treatment-multiselect-trigger:hover,
+.treatment-multiselect-trigger:focus {
+  outline: none;
+  border-color: var(--primary-accent);
+}
+
+.treatment-multiselect-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treatment-chevron {
+  flex-shrink: 0;
+  transition: transform var(--duration-fast) ease;
+  color: var(--text-tertiary);
+}
+
+.treatment-chevron.open {
+  transform: rotate(180deg);
+}
+
+.treatment-multiselect-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 220px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.15));
+  z-index: 100;
+  padding: 0.25rem;
+}
+
+.treatment-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  transition: background var(--duration-fast) ease;
+}
+
+.treatment-option:hover {
+  background: var(--surface-inset);
+}
+
+.treatment-option.selected {
+  background: rgba(var(--accent-rgb, 2, 132, 199), 0.08);
+  font-weight: 500;
+}
+
+.treatment-option input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--primary-accent);
+  flex-shrink: 0;
+}
+
+.treatment-other-input {
+  width: calc(100% - 0.5rem);
+  margin: 0.25rem;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface);
+  font-size: var(--text-sm);
+}
+
+.treatment-other-input:focus {
+  outline: none;
+  border-color: var(--primary-accent);
+}
+
 /* Subcontracts */
 .subcontracts-list {
   display: flex;
@@ -1829,6 +1943,13 @@
 
 .readonly-item-desc {
   color: var(--text-secondary);
+}
+
+.readonly-item-treatments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-left: auto;
 }
 
 /* =============================================

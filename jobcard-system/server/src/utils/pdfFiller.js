@@ -70,8 +70,8 @@ const FIELD_MAPPINGS = {
   notes: 'notes'
 };
 
-// Regex for item fields: item_1_number, item_2_qty, item_3_description, etc.
-const ITEM_FIELD_REGEX = /^item_(\d+)_(number|qty|description)$/;
+// Regex for item fields: item_1_number, item_2_qty, item_3_description, item_1_treatment, etc.
+const ITEM_FIELD_REGEX = /^item_(\d+)_(number|qty|description|treatment|treatment_other)$/;
 
 /**
  * Fill PDF form fields with job data.
@@ -109,7 +109,7 @@ async function fillPdfTemplate(sourceBuffer, jobData) {
         const prop = itemMatch[2]; // number, qty, description
         const item = items[index];
         if (item) {
-          const keyMap = { number: 'itemNumber', qty: 'qty', description: 'description' };
+          const keyMap = { number: 'itemNumber', qty: 'qty', description: 'description', treatment: 'treatment', treatment_other: 'treatmentOther' };
           const value = item[keyMap[prop]];
           if (value !== null && value !== undefined && value !== '') {
             try {

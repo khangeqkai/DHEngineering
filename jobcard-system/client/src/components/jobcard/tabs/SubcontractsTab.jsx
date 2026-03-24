@@ -27,27 +27,35 @@ export default function SubcontractsTab({
   handleDeleteSubcontract,
   resetSubcontractForm,
   suppliers,
-  treatmentRequired
+  lineItems
 }) {
-  // Sort suppliers: matching service first, then alphabetically
-  const sortedSuppliers = useMemo(() => {
-    const treatmentServiceName = TREATMENT_TO_SERVICE_MAP[treatmentRequired];
+  // Aggregate all unique treatments from line items
+  const treatmentServiceNames = useMemo(() => {
+    if (!lineItems || lineItems.length === 0) return [];
+    const allValues = lineItems.flatMap(item =>
+      (item.treatment || '').split(',').filter(v => v && v !== 'NONE')
+    );
+    const unique = [...new Set(allValues)];
+    return unique.map(v => TREATMENT_TO_SERVICE_MAP[v]).filter(Boolean);
+  }, [lineItems]);
 
-    if (!treatmentServiceName) {
+  // Sort suppliers: matching any treatment service first, then alphabetically
+  const sortedSuppliers = useMemo(() => {
+    if (treatmentServiceNames.length === 0) {
       return suppliers;
     }
 
     return [...suppliers].sort((a, b) => {
-      const aHasService = (a.serviceTags || []).some(t => t.name === treatmentServiceName);
-      const bHasService = (b.serviceTags || []).some(t => t.name === treatmentServiceName);
+      const aHasService = (a.serviceTags || []).some(t => treatmentServiceNames.includes(t.name));
+      const bHasService = (b.serviceTags || []).some(t => treatmentServiceNames.includes(t.name));
 
       if (aHasService && !bHasService) return -1;
       if (!aHasService && bHasService) return 1;
       return a.name.localeCompare(b.name);
     });
-  }, [suppliers, treatmentRequired]);
+  }, [suppliers, treatmentServiceNames]);
 
-  const treatmentServiceName = TREATMENT_TO_SERVICE_MAP[treatmentRequired];
+  const treatmentServiceName = treatmentServiceNames.length > 0 ? treatmentServiceNames.join(', ') : null;
 
   return (
     <div className="modal-form-grid">
