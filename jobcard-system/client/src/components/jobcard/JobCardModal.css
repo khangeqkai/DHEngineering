@@ -374,21 +374,93 @@
   margin-bottom: 0;
 }
 
-/* Priority colors */
-.priority-low {
-  border-color: var(--badge-progress-text) !important;
-  color: var(--badge-progress-text);
+/* Priority tag selector */
+.priority-tags {
+  display: flex;
+  gap: 0.5rem;
 }
 
-.priority-medium {
-  border-color: #d97706 !important;
+.priority-tag {
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1.5px solid transparent;
+  background: var(--surface);
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.priority-tag:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+/* Low */
+.priority-tag-low {
+  border-color: #93c5fd;
+  color: #3b82f6;
+}
+.priority-tag-low.active {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+  opacity: 1;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* Medium */
+.priority-tag-medium {
+  border-color: #fcd34d;
   color: #d97706;
 }
-
-.priority-high {
-  border-color: var(--accent-caution) !important;
-  color: var(--accent-caution);
+.priority-tag-medium.active {
+  background: #fef3c7;
+  border-color: #d97706;
+  color: #b45309;
+  opacity: 1;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
 }
+
+/* High */
+.priority-tag-high {
+  border-color: #fca5a5;
+  color: #ef4444;
+}
+.priority-tag-high.active {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #c81e1e;
+  opacity: 1;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+/* Dark mode priority tags */
+.dark-mode .priority-tag {
+  background: transparent;
+}
+.dark-mode .priority-tag-low.active {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+.dark-mode .priority-tag-medium.active {
+  background: rgba(217, 119, 6, 0.15);
+  color: #fcd34d;
+  border-color: #d97706;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+}
+.dark-mode .priority-tag-high.active {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
 
 .due-date-display {
   display: flex;

@@ -228,11 +228,18 @@ export default function DetailsTab({
         <div className="form-row">
           <div className="form-group">
             <label>Priority</label>
-            <select name="priority" value={formData.priority} onChange={handleChange} className={formData.priority !== 'NONE' ? `priority-${formData.priority.toLowerCase()}` : ''}>
-              {PRIORITY_OPTIONS.map(p => (
-                <option key={p.value} value={p.value}>{p.label}</option>
+            <div className="priority-tags">
+              {PRIORITY_OPTIONS.filter(p => p.value !== 'NONE').map(p => (
+                <button
+                  key={p.value}
+                  type="button"
+                  className={`priority-tag priority-tag-${p.value.toLowerCase()}${formData.priority === p.value ? ' active' : ''}`}
+                  onClick={() => setFormData(prev => ({ ...prev, priority: prev.priority === p.value ? 'NONE' : p.value }))}
+                >
+                  {p.label}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
           <div className="form-group">
             <label>Due Date</label>
