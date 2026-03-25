@@ -109,6 +109,31 @@ router.put('/', requireAdmin, (req, res) => {
       if (jobNumberNext && !/^\d+$/.test(jobNumberNext)) {
         return res.status(400).json({ error: 'Starting number must contain only digits (e.g. 00001)' });
       }
+
+      // Prevent setting the counter backward into existing job numbers
+      if (jobNumberNext) {
+        const currentSettings = db.getSettings();
+        const effectivePrefix = jobNumberPrefix !== undefined ? (jobNumberPrefix || '') : (currentSettings.job_number_prefix || '');
+        const newNum = parseInt(jobNumberNext, 10);
+        const width = jobNumberNext.length;
+
+        // Find all job numbers with this prefix and extract the highest numeric part
+        const rows = db.db.prepare("SELECT job_number FROM jobcards WHERE substr(job_number, 1, ?) = ?").all(effectivePrefix.length, effectivePrefix);
+        let maxExisting = 0;
+        for (const row of rows) {
+          const numPart = row.job_number.slice(effectivePrefix.length);
+          const num = parseInt(numPart, 10);
+          if (!isNaN(num) && num > maxExisting) maxExisting = num;
+        }
+
+        if (maxExisting > 0 && newNum <= maxExisting) {
+          const paddedMax = String(maxExisting).padStart(width, '0');
+          return res.status(400).json({
+            error: `Starting number must be greater than ${paddedMax} — job ${effectivePrefix}${paddedMax} already exists`
+          });
+        }
+      }
+
       updates.job_number_next = jobNumberNext || '';
     }
 
