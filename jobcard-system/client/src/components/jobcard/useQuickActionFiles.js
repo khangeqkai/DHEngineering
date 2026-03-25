@@ -31,6 +31,7 @@ export function useQuickActionFiles(jobCard) {
 
   const [loadingFiles, setLoadingFiles] = useState(new Set());
   const [viewerUrl, setViewerUrl] = useState(null);
+  const viewerUrlRef = useRef(null);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
 
   const [thumbnails, setThumbnails] = useState(new Map()); // Map<"source:filename", dataUrl>
@@ -231,7 +232,9 @@ export function useQuickActionFiles(jobCard) {
       } else {
         const blob = base64ToBlob(fileData.data, fileData.mimeType || 'application/pdf');
         const url = URL.createObjectURL(blob);
-        setViewerUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
+        if (viewerUrlRef.current) URL.revokeObjectURL(viewerUrlRef.current);
+        viewerUrlRef.current = url;
+        setViewerUrl(url);
       }
     } catch (err) {
       toast.error(err.message || 'Failed to view file');
@@ -241,7 +244,9 @@ export function useQuickActionFiles(jobCard) {
   }, [jobCard, thumbnails]);
 
   const closeViewer = useCallback(() => {
-    setViewerUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
+    if (viewerUrlRef.current) URL.revokeObjectURL(viewerUrlRef.current);
+    viewerUrlRef.current = null;
+    setViewerUrl(null);
   }, []);
 
   const closeLightbox = useCallback(() => {
@@ -257,12 +262,19 @@ export function useQuickActionFiles(jobCard) {
     setCustomerPropertyFiles([]);
     setThumbnails(new Map());
     setLightboxPhoto(null);
-    setViewerUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
+    if (viewerUrlRef.current) URL.revokeObjectURL(viewerUrlRef.current);
+    viewerUrlRef.current = null;
+    setViewerUrl(null);
   }, []);
 
   // Cleanup blob URL on unmount
   useEffect(() => {
-    return () => setViewerUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
+    return () => {
+      if (viewerUrlRef.current) {
+        URL.revokeObjectURL(viewerUrlRef.current);
+        viewerUrlRef.current = null;
+      }
+    };
   }, []);
 
   return {

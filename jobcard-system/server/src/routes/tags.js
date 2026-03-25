@@ -99,7 +99,7 @@ router.post('/', requireAdmin, (req, res) => {
     tagQueries.create.run(id, category, trimmedName, value, sortOrder);
 
     const tag = tagQueries.getById.get(id);
-    recordHistory('tag', id, 'created', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('tag', id, 'create', req.user.userId, req.user.name || req.user.username, {
       name: { from: null, to: tag.name },
       category: { from: null, to: tag.category }
     });
@@ -143,7 +143,7 @@ router.put('/:id', requireAdmin, (req, res) => {
     }
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('tag', id, 'updated', req.user.userId, req.user.name || req.user.username, changes);
+      recordHistory('tag', id, 'update', req.user.userId, req.user.name || req.user.username, changes);
     }
 
     res.json(formatTag(tagQueries.getById.get(id)));
@@ -164,7 +164,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
     }
 
     tagQueries.delete.run(id);
-    recordHistory('tag', id, 'deleted', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('tag', id, 'delete', req.user.userId, req.user.name || req.user.username, {
       name: { from: existing.name, to: null },
       category: { from: existing.category, to: null }
     });

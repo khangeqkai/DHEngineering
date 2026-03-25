@@ -3,6 +3,7 @@ import {
   STATUS_OPTIONS
 } from '../constants';
 import { useTags } from '../../../hooks/useTags';
+import { snakeToTitleCase } from '../../../utils/formatters';
 
 function StatusBadge({ status }) {
   const opt = STATUS_OPTIONS.find(s => s.value === status);
@@ -78,7 +79,7 @@ export default function DetailsReadOnlyView({
               <span className="readonly-value"><StatusBadge status={formData.status} /></span>
             )}
           </div>
-          <LabelValue label="Job Type" value={formData.jobType || '-'} />
+          <LabelValue label="Job Type" value={snakeToTitleCase(formData.jobType) || '-'} />
         </div>
       </div>
 

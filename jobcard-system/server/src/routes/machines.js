@@ -58,7 +58,7 @@ router.post('/', (req, res) => {
     const machine = machineQueries.getById.get(id);
 
     const created = toResponseFormat(machine);
-    recordHistory('machine', id, 'created', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('machine', id, 'create', req.user.userId, req.user.name || req.user.username, {
       machineNumber: { from: null, to: created.machineNumber },
       name: { from: null, to: created.name }
     });
@@ -112,7 +112,7 @@ router.put('/:id', (req, res) => {
     }
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('machine', id, 'updated', req.user.userId, req.user.name || req.user.username,
+      recordHistory('machine', id, 'update', req.user.userId, req.user.name || req.user.username,
         changes, toResponseFormat(machine));
     }
 
@@ -139,7 +139,7 @@ router.delete('/:id', (req, res) => {
 
     machineQueries.deactivate.run(id);
 
-    recordHistory('machine', id, 'deleted', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('machine', id, 'delete', req.user.userId, req.user.name || req.user.username, {
       machineNumber: { from: existing.machine_number, to: null },
       name: { from: existing.name, to: null }
     }, toResponseFormat(existing));

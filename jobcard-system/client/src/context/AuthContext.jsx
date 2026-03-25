@@ -53,8 +53,8 @@ export function AuthProvider({ children }) {
   // Load inactivity timeout from server
   const loadInactivityTimeout = useCallback(async () => {
     try {
-      const { inactivity_timeout_minutes } = await api.getInactivityTimeout();
-      setInactivityTimeoutMs((inactivity_timeout_minutes || DEFAULT_TIMEOUT_MINUTES) * 60 * 1000);
+      const { inactivityTimeoutMinutes } = await api.getInactivityTimeout();
+      setInactivityTimeoutMs((inactivityTimeoutMinutes || DEFAULT_TIMEOUT_MINUTES) * 60 * 1000);
     } catch (err) {
       // Use default if fetch fails
       setInactivityTimeoutMs(DEFAULT_TIMEOUT_MINUTES * 60 * 1000);

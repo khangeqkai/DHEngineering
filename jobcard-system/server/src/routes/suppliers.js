@@ -96,7 +96,7 @@ router.post('/', requireAdmin, (req, res) => {
 
     const supplier = getSupplierWithTags(id);
 
-    recordHistory('supplier', id, 'created', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('supplier', id, 'create', req.user.userId, req.user.name || req.user.username, {
       name: { from: null, to: supplier.name },
       contactName: { from: null, to: supplier.contactName }
     });
@@ -166,7 +166,7 @@ router.put('/:id', requireAdmin, (req, res) => {
     const supplier = getSupplierWithTags(id);
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('supplier', id, 'updated', req.user.userId, req.user.name || req.user.username, changes, supplier);
+      recordHistory('supplier', id, 'update', req.user.userId, req.user.name || req.user.username, changes, supplier);
     }
 
     res.json(supplier);
@@ -190,7 +190,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
     tagQueries.clearSupplierTags.run(id);
     supplierQueries.delete.run(id);
 
-    recordHistory('supplier', id, 'deleted', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('supplier', id, 'delete', req.user.userId, req.user.name || req.user.username, {
       name: { from: existing.name, to: null },
       contactName: { from: existing.contactName, to: null }
     });

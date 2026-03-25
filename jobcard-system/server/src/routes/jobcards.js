@@ -153,9 +153,10 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
 
     if (qaLevelId) {
       const level = qaLevelQueries.getById.get(qaLevelId);
-      if (level) {
-        qualityLevelName = level.name.toUpperCase();
+      if (!level) {
+        return res.status(400).json({ error: 'Invalid QA level selected' });
       }
+      qualityLevelName = level.name.toUpperCase();
     } else if (qualityLevelName) {
       // Legacy: match by name
       const level = qaLevelQueries.getByNameLower.get(qualityLevelName.toLowerCase());
@@ -393,6 +394,14 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     // Handle QA level changes - create/remove QA forms and copy templates
     const newQaLevelId = data.qaLevelId !== undefined ? data.qaLevelId : existing.qa_level_id;
     if (data.qaLevelId !== undefined && (data.qaLevelId || null) !== (existing.qa_level_id || null)) {
+      // Validate new QA level exists before deleting old forms
+      if (newQaLevelId) {
+        const newLevel = qaLevelQueries.getById.get(newQaLevelId);
+        if (!newLevel) {
+          return res.status(400).json({ error: 'Invalid QA level selected' });
+        }
+      }
+
       // Remove old QA forms
       qaFormQueries.deleteByJobcard.run(id);
 

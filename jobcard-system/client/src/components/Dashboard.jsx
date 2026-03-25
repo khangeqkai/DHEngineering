@@ -14,6 +14,7 @@ import CountUp from './common/CountUp';
 import SpotlightCard from './common/SpotlightCard';
 import StarBorder from './common/StarBorder';
 import './common/SpotlightCard.css';
+import { snakeToTitleCase } from '../utils/formatters';
 import './Dashboard.css';
 
 const STATUS_LABELS = {
@@ -420,7 +421,7 @@ export default function Dashboard() {
                         {isAdmin && (
                           <td>{card.contactName || '-'}</td>
                         )}
-                        <td>{card.jobType || '-'}</td>
+                        <td>{snakeToTitleCase(card.jobType) || '-'}</td>
                         <td>
                           <span className={`badge ${getStatusBadgeClass(card.status)}`}>
                             {STATUS_LABELS[card.status] || card.status}

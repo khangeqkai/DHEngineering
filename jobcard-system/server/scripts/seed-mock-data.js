@@ -188,7 +188,8 @@ const jobDescriptions = [
   { desc: 'On-site machining of turbine coupling face', items: [{ qty: '1', desc: 'On-site facing — portable lathe', treatment: 'N/A' }] },
 ];
 
-const jobTypes = ['Manufacture', 'Repair', 'Modify', 'Fabricate', 'Supply', 'Reverse Engineer', 'Inspection', 'CAD Drawings', 'Consultation', 'On-Site'];
+const nameToValue = (name) => name.toUpperCase().replace(/[\s/]+/g, '_').replace(/[^A-Z0-9_]/g, '');
+const jobTypes = ['Manufacture', 'Repair', 'Modify', 'Fabricate', 'Supply', 'Reverse Engineer', 'Inspection', 'CAD Drawings', 'Consultation', 'On-Site'].map(nameToValue);
 
 const insertJobcard = db.prepare(`INSERT INTO jobcards (
   id, job_number, card_type, status, contact_id, contact_name, company_name,

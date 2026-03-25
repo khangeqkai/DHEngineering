@@ -166,6 +166,7 @@ PDFs without fillable fields are copied as-is (blank templates for handwriting).
 - **Auto-formatting on blur**: Name and text fields auto-format when the user leaves the field (`onBlur`). Utilities are in `client/src/utils/formatters.js`:
   - `toTitleCase` — for name fields (person names, company names, display names, tag/label names). Produces "John Snow" style.
   - `capitalizeFirst` — for text fields (descriptions, notes, addresses). Capitalizes only the first letter.
+  - `snakeToTitleCase` — for displaying DB enum values stored as UPPER_SNAKE_CASE (e.g. `"REVERSE_ENGINEER"` → `"Reverse Engineer"`). Used for jobType display on Dashboard, JobCardList, DetailsReadOnlyView, and Excel exports.
   - Skip formatting for: phone, email, passwords, usernames, reference numbers, dates, numbers, search inputs, file paths.
   - Pattern: `onBlur={(e) => { const f = fn(e.target.value); if (f !== e.target.value) setState(...); }}`
 
@@ -253,7 +254,7 @@ db.run(data.jobNumber, data.dueDate, data.contactId);
 
 ### Required Patterns
 - **Direct API calls**: Use `api.js` methods for all server communication
-- **Audit trail**: Call `recordHistory(entityType, entityId, action, userId, userName, changes, snapshot)` for all server-side data mutations. **IMPORTANT: `changes` must always use `{ field: { from: oldVal, to: newVal } }` format** — this applies to ALL actions including creates, notes, timers, etc. The activity log UI (`formatChanges`) iterates `Object.entries(changes)` and renders `from → to` for each field. If you pass flat data or `null` for changes, nothing will display in the activity log. Only use `snapshot` (7th param) for supplementary context that doesn't need from/to display. Use `req.user.userId` (not `req.user.id`) for the userId parameter.
+- **Audit trail**: Call `recordHistory(entityType, entityId, action, userId, userName, changes, snapshot)` for all server-side data mutations. **Action names use present tense**: `'create'`, `'update'`, `'delete'` (not past tense). **IMPORTANT: `changes` must always use `{ field: { from: oldVal, to: newVal } }` format** — this applies to ALL actions including creates, notes, timers, etc. The activity log UI (`formatChanges`) iterates `Object.entries(changes)` and renders `from → to` for each field. If you pass flat data or `null` for changes, nothing will display in the activity log. Only use `snapshot` (7th param) for supplementary context that doesn't need from/to display. Use `req.user.userId` (not `req.user.id`) for the userId parameter.
 - **Prepared statements**: Use queries defined in `database.js`, never inline SQL
 - **Server error handling**: Try-catch with `logger.error()` from `utils/logger.js`
 - **Client error handling**: Use `toast.error()` from `react-hot-toast` (not `alert()`)

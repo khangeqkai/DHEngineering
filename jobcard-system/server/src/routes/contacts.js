@@ -89,7 +89,7 @@ router.post('/', requireAdmin, validateCreateContact, (req, res) => {
 
     // Record history
     const created = toApiFormat(contact);
-    recordHistory('contact', id, 'created', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('contact', id, 'create', req.user.userId, req.user.name || req.user.username, {
       contactName: { from: null, to: created.contactName },
       companyName: { from: null, to: created.companyName }
     });
@@ -140,7 +140,7 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
     }
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('contact', id, 'updated', req.user.userId, req.user.name || req.user.username, changes, toApiFormat(contact));
+      recordHistory('contact', id, 'update', req.user.userId, req.user.name || req.user.username, changes, toApiFormat(contact));
     }
 
     res.json(toApiFormat(contact));
@@ -164,7 +164,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
     contactQueries.delete.run(id);
 
     const deleted = toApiFormat(existing);
-    recordHistory('contact', id, 'deleted', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('contact', id, 'delete', req.user.userId, req.user.name || req.user.username, {
       contactName: { from: deleted.contactName, to: null },
       companyName: { from: deleted.companyName, to: null }
     });

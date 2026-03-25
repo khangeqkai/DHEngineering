@@ -13,6 +13,7 @@ function toCamelCase(e) {
   return {
     id: e.id,
     userId: e.user_id,
+    jobcardId: e.jobcard_id,
     userName: e.user_name,
     itemNumber: e.item_number,
     machineNumber: e.machine_number,
