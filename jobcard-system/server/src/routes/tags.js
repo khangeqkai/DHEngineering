@@ -169,7 +169,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
       category: { from: existing.category, to: null }
     });
 
-    res.json({ message: 'Tag deleted successfully' });
+    res.json({ success: true });
   } catch (err) {
     logger.error({ err }, 'Failed to delete tag');
     res.status(500).json({ error: 'Failed to delete tag' });

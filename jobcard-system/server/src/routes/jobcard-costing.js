@@ -123,7 +123,7 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
     }
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('jobcard', id, 'update_costing', req.user.userId, req.user.name, changes, null);
+      recordHistory('jobcard', id, 'update_costing', req.user.userId, req.user.name || req.user.username, changes, null);
     }
 
     res.json({ success: true, grandTotal });

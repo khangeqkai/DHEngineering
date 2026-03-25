@@ -73,7 +73,13 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
         setCostingForm(prev => ({
           ...prev,
           labourHours: costingRes.labourHours || 0,
-          labourSpecialHours: costingRes.labourSpecialHours || 0
+          labourRate: costingRes.labourRate ?? prev.labourRate,
+          labourSpecialHours: costingRes.labourSpecialHours || 0,
+          labourSpecialRate: costingRes.labourSpecialRate ?? prev.labourSpecialRate,
+          materialsCost: costingRes.materialsCost ?? prev.materialsCost,
+          materialsProfitPercent: costingRes.materialsProfitPercent ?? prev.materialsProfitPercent,
+          subcontractorCost: costingRes.subcontractorCost ?? prev.subcontractorCost,
+          subcontractorProfitPercent: costingRes.subcontractorProfitPercent ?? prev.subcontractorProfitPercent
         }));
       }
     } catch (err) {

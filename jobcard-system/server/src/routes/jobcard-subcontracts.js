@@ -53,7 +53,7 @@ router.post('/:id/subcontracts', authenticate, ...validateSubcontractStatus, (re
 
     const sub = subcontractQueries.getByIdWithSupplier.get(subId);
 
-    recordHistory('jobcard', id, 'add_subcontract', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'add_subcontract', req.user.userId, req.user.name || req.user.username, {
       supplier: { from: null, to: sub.supplier_name },
       status: { from: null, to: data.status || 'PENDING' }
     });
@@ -107,7 +107,7 @@ router.put('/:id/subcontracts/:subId', authenticate, ...validateSubcontractStatu
     }
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('jobcard', id, 'update_subcontract', req.user.userId, req.user.name, changes);
+      recordHistory('jobcard', id, 'update_subcontract', req.user.userId, req.user.name || req.user.username, changes);
     }
 
     const sub = subcontractQueries.getByIdWithSupplier.get(subId);
@@ -128,7 +128,7 @@ router.delete('/:id/subcontracts/:subId', authenticate, (req, res) => {
       return res.status(404).json({ error: 'Subcontract not found' });
     }
 
-    recordHistory('jobcard', id, 'delete_subcontract', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'delete_subcontract', req.user.userId, req.user.name || req.user.username, {
       supplier: { from: existing.supplier_name, to: null },
       status: { from: existing.status, to: null }
     });

@@ -380,7 +380,7 @@ router.post('/:id/job-files/from-scanner', authenticate, [
     fs.copyFileSync(filePath, path.join(jobFilesPath, finalName));
     fs.unlinkSync(filePath);
 
-    recordHistory('jobcard', id, 'upload_file', req.user.userId, req.user.name,
+    recordHistory('jobcard', id, 'upload_file', req.user.userId, req.user.name || req.user.username,
       { file: { from: null, to: finalName } },
       { destination: 'Job Files', source: 'scanner' }
     );
@@ -426,7 +426,7 @@ router.post('/:id/qa-form-files/from-scanner', authenticate, [
     fs.copyFileSync(filePath, path.join(qaFormsPath, finalName));
     fs.unlinkSync(filePath);
 
-    recordHistory('jobcard', id, 'upload_file', req.user.userId, req.user.name,
+    recordHistory('jobcard', id, 'upload_file', req.user.userId, req.user.name || req.user.username,
       { file: { from: null, to: finalName } },
       { destination: 'QA Forms', source: 'scanner' }
     );
@@ -470,7 +470,7 @@ router.post('/:id/job-files/upload', authenticate, validateUploadBody, (req, res
     const finalName = deduplicateFilename(jobFilesPath, filename);
     fs.writeFileSync(path.join(jobFilesPath, finalName), Buffer.from(fileData, 'base64'));
 
-    recordHistory('jobcard', id, 'upload_file', req.user.userId, req.user.name,
+    recordHistory('jobcard', id, 'upload_file', req.user.userId, req.user.name || req.user.username,
       { file: { from: null, to: finalName } },
       { destination: 'Job Files', source: 'camera' }
     );
@@ -498,7 +498,7 @@ router.post('/:id/qa-form-files/upload', authenticate, validateUploadBody, (req,
     const finalName = deduplicateFilename(qaFormsPath, filename);
     fs.writeFileSync(path.join(qaFormsPath, finalName), Buffer.from(fileData, 'base64'));
 
-    recordHistory('jobcard', id, 'upload_file', req.user.userId, req.user.name,
+    recordHistory('jobcard', id, 'upload_file', req.user.userId, req.user.name || req.user.username,
       { file: { from: null, to: finalName } },
       { destination: 'QA Forms', source: 'camera' }
     );
@@ -544,7 +544,7 @@ router.post('/:id/customer-property-files/from-scanner', authenticate, [
     fs.copyFileSync(filePath, path.join(customerPropertyPath, finalName));
     fs.unlinkSync(filePath);
 
-    recordHistory('jobcard', id, 'upload_file', req.user.userId, req.user.name,
+    recordHistory('jobcard', id, 'upload_file', req.user.userId, req.user.name || req.user.username,
       { file: { from: null, to: finalName } },
       { destination: 'Customer Property', source: 'scanner' }
     );
@@ -572,7 +572,7 @@ router.post('/:id/customer-property-files/upload', authenticate, validateUploadB
     const finalName = deduplicateFilename(customerPropertyPath, filename);
     fs.writeFileSync(path.join(customerPropertyPath, finalName), Buffer.from(fileData, 'base64'));
 
-    recordHistory('jobcard', id, 'upload_file', req.user.userId, req.user.name,
+    recordHistory('jobcard', id, 'upload_file', req.user.userId, req.user.name || req.user.username,
       { file: { from: null, to: finalName } },
       { destination: 'Customer Property', source: 'camera' }
     );

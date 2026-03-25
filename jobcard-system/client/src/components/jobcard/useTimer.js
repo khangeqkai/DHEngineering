@@ -15,6 +15,8 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
   });
   const intervalRef = useRef(null);
   const selfStoppedRef = useRef(false);
+  const onExternalStopRef = useRef(onExternalStop);
+  onExternalStopRef.current = onExternalStop;
 
   const loadActiveTimer = useCallback(async () => {
     try {
@@ -63,7 +65,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
         if (!current || current.id !== activeTimer.id) {
           if (!selfStoppedRef.current) {
             toast('Your timer was stopped by an admin', { icon: '\u2139\uFE0F' });
-            if (onExternalStop) onExternalStop();
+            if (onExternalStopRef.current) onExternalStopRef.current();
           }
           selfStoppedRef.current = false;
           setActiveTimer(null);
@@ -75,7 +77,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     }, 5000);
 
     return () => clearInterval(poll);
-  }, [activeTimer, jobcardId, onExternalStop]);
+  }, [activeTimer, jobcardId]);
 
   const startTimer = useCallback(async () => {
     setLoading(true);

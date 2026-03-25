@@ -101,7 +101,7 @@ router.post('/:id/time-entries/start', authenticate, (req, res) => {
       0  // scrapRecycleBinQty
     );
 
-    recordHistory('jobcard', id, 'start_timer', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'start_timer', req.user.userId, req.user.name || req.user.username, {
       timer: { from: null, to: startTime }
     }, null);
 
@@ -138,7 +138,7 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
     const endTime = new Date().toISOString();
     timeEntryQueries.stop.run(endTime, entryId);
 
-    recordHistory('jobcard', id, 'stop_timer', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'stop_timer', req.user.userId, req.user.name || req.user.username, {
       endTime: { from: null, to: endTime }
     }, { timeEntryId: entryId, startTime: existing.start_time });
 
@@ -190,7 +190,7 @@ router.post('/:id/time-entries', authenticate, ...validateTimeEntryInspection, (
       data.scrapRecycleBinQty || 0
     );
 
-    recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name || req.user.username, {
       timeEntryId: { from: null, to: entryId },
       machineNumber: { from: null, to: data.machineNumber || null },
       description: { from: null, to: data.description || null },
@@ -253,7 +253,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryInspe
     }
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('jobcard', id, 'update_time_entry', req.user.userId, req.user.name, changes, {
+      recordHistory('jobcard', id, 'update_time_entry', req.user.userId, req.user.name || req.user.username, changes, {
         timeEntryId: entryId
       });
     }
@@ -287,8 +287,8 @@ router.patch('/:id/time-entries/:entryId/toggle-special', authenticate, requireA
     const newValue = existing.is_special_labour === 1 ? 0 : 1;
     timeEntryQueries.toggleSpecialLabour.run(newValue, entryId);
 
-    recordHistory('jobcard', id, 'update_time_entry', req.user.userId, req.user.name, {
-      isSpecialLabour: { from: existing.is_special_labour === 1, to: newValue === 1 }
+    recordHistory('jobcard', id, 'update_time_entry', req.user.userId, req.user.name || req.user.username, {
+      isSpecialLabour: { from: existing.is_special_labour, to: newValue }
     }, { timeEntryId: entryId });
 
     const entry = timeEntryQueries.getById.get(entryId);
@@ -313,7 +313,7 @@ router.delete('/:id/time-entries/:entryId', authenticate, (req, res) => {
       return res.status(400).json({ error: 'Stop the timer before deleting this entry' });
     }
 
-    recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, req.user.name || req.user.username, {
       timeEntryId: { from: entryId, to: null },
       machineNumber: { from: existing.machine_number, to: null },
       description: { from: existing.description, to: null },

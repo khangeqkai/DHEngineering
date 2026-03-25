@@ -71,7 +71,7 @@ router.post('/:id/documents', authenticate, (req, res) => {
       req.user.userId
     );
 
-    recordHistory('jobcard', id, 'add_document', req.user.userId, req.user.name,
+    recordHistory('jobcard', id, 'add_document', req.user.userId, req.user.name || req.user.username,
       { document: { from: null, to: filename } },
       { filename }
     );

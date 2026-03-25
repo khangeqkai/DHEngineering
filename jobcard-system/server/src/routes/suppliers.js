@@ -195,7 +195,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
       contactName: { from: existing.contactName, to: null }
     });
 
-    res.json({ message: 'Supplier deleted successfully' });
+    res.json({ success: true });
   } catch (err) {
     logger.error({ err }, 'Failed to delete supplier');
     res.status(500).json({ error: 'Failed to delete supplier' });

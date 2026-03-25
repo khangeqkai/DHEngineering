@@ -16,7 +16,7 @@ function runMigrations() {
   const existingColumns = tableInfo.map(col => col.name);
 
   // Migration: Add contact override fields to jobcards
-  const contactColumns = ['contact_name', 'contact_phone', 'contact_email'];
+  const contactColumns = ['contact_name', 'company_name', 'contact_phone', 'contact_email'];
   for (const col of contactColumns) {
     if (!existingColumns.includes(col)) {
       logger.info({ column: col }, 'Adding column to jobcards');

@@ -25,8 +25,12 @@ export default function useTableSort(data, defaultSortKey = null, defaultSortOrd
       if (bVal == null) return -1;
 
       if (typeof aVal === 'string' && /^\d{4}-\d{2}-\d{2}/.test(aVal)) {
-        aVal = new Date(aVal).getTime();
-        bVal = new Date(bVal).getTime();
+        const aTime = new Date(aVal).getTime();
+        const bTime = new Date(bVal).getTime();
+        if (!isNaN(aTime) && !isNaN(bTime)) {
+          aVal = aTime;
+          bVal = bTime;
+        }
       } else if (typeof aVal === 'number' && typeof bVal === 'number') {
         // no conversion needed
       } else {

@@ -235,7 +235,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       createJobCardFolders(folderCompany, jobNumber);
     }
 
-    recordHistory('jobcard', id, 'create', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'create', req.user.userId, req.user.name || req.user.username, {
       jobNumber: { from: null, to: jobNumber },
       status: { from: null, to: status },
       jobType: { from: null, to: data.jobType || null },
@@ -428,7 +428,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
 
     // Record changes in history
     if (Object.keys(changes).length > 0) {
-      recordHistory('jobcard', id, 'update', req.user.userId, req.user.name, changes, null);
+      recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, changes, null);
     }
 
     const updated = jobcardQueries.getById.get(id);
@@ -461,7 +461,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
     const changes = { status: { from: existing.status, to: status } };
 
     jobcardQueries.updateStatus.run(status, req.user.userId, id);
-    recordHistory('jobcard', id, 'update', req.user.userId, req.user.name, changes, null);
+    recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, changes, null);
 
     const updated = jobcardQueries.getById.get(id);
     res.json(formatJobcard(updated, [], [], [], req.user.role));
@@ -483,7 +483,7 @@ router.post('/:id/archive', authenticate, requireAdmin, (req, res) => {
     }
 
     jobcardQueries.archive.run(invoicedDate || new Date().toISOString(), req.user.userId, id);
-    recordHistory('jobcard', id, 'archive', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'archive', req.user.userId, req.user.name || req.user.username, {
       archived: { from: false, to: true },
       invoicedDate: { from: null, to: invoicedDate || new Date().toISOString() }
     }, { jobNumber: existing.job_number });
@@ -510,7 +510,7 @@ router.post('/:id/unarchive', authenticate, requireAdmin, (req, res) => {
     }
 
     jobcardQueries.unarchive.run(req.user.userId, id);
-    recordHistory('jobcard', id, 'unarchive', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
       archived: { from: true, to: false },
       invoicedDate: { from: existing.invoiced_date, to: null }
     }, { jobNumber: existing.job_number });
@@ -533,7 +533,7 @@ router.delete('/:id', authenticate, requireAdmin, (req, res) => {
     }
 
     // Record deletion with snapshot
-    recordHistory('jobcard', id, 'delete', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'delete', req.user.userId, req.user.name || req.user.username, {
       jobNumber: { from: existing.job_number, to: null },
       status: { from: existing.status, to: null }
     });

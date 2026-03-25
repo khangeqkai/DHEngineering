@@ -24,6 +24,9 @@ export function useActiveTimerIndicator() {
 
   useEffect(() => {
     fetchTimer();
+    // Poll every 10s for external timer changes
+    const pollInterval = setInterval(fetchTimer, 10000);
+    return () => clearInterval(pollInterval);
   }, [fetchTimer]);
 
   useEffect(() => {

@@ -134,7 +134,7 @@ router.post('/',
         id, name.trim(), nameLower, folderPath
       );
 
-      recordHistory('qa_level', id, 'create', req.user.userId, req.user.name, {
+      recordHistory('qa_level', id, 'create', req.user.userId, req.user.name || req.user.username, {
         name: { from: null, to: name.trim() }
       });
 
@@ -187,7 +187,7 @@ router.put('/:id',
       );
 
       if (Object.keys(changes).length > 0) {
-        recordHistory('qa_level', id, 'update', req.user.userId, req.user.name, changes);
+        recordHistory('qa_level', id, 'update', req.user.userId, req.user.name || req.user.username, changes);
       }
 
       const updated = qaLevelQueries.getById.get(id);
@@ -237,7 +237,7 @@ router.delete('/:id', authenticate, requireAdmin, (req, res) => {
 
     qaLevelQueries.delete.run(id);
 
-    recordHistory('qa_level', id, 'delete', req.user.userId, req.user.name, {
+    recordHistory('qa_level', id, 'delete', req.user.userId, req.user.name || req.user.username, {
       name: { from: existing.name, to: null }
     });
 
@@ -290,7 +290,7 @@ router.post('/:id/templates', authenticate, requireAdmin, (req, res) => {
 
     qaLevelTemplateQueries.create.run(templateId, id, sanitizedFileName, finalDisplayName);
 
-    recordHistory('qa_level', id, 'add_template', req.user.userId, req.user.name, {
+    recordHistory('qa_level', id, 'add_template', req.user.userId, req.user.name || req.user.username, {
       template: { from: null, to: finalDisplayName }
     });
 
@@ -347,7 +347,7 @@ router.delete('/:id/templates/:tid', authenticate, requireAdmin, (req, res) => {
 
     qaLevelTemplateQueries.delete.run(tid);
 
-    recordHistory('qa_level', id, 'remove_template', req.user.userId, req.user.name, {
+    recordHistory('qa_level', id, 'remove_template', req.user.userId, req.user.name || req.user.username, {
       template: { from: template.display_name, to: null }
     });
 

@@ -256,7 +256,7 @@ router.post('/users', authenticate, requireRole('admin'), userCreationLimiter, v
     );
 
     // Record in history
-    recordHistory('user', userId, 'create', req.user.userId, req.user.name, {
+    recordHistory('user', userId, 'create', req.user.userId, req.user.name || req.user.username, {
       username: { from: null, to: username },
       role: { from: null, to: role || 'user' },
       name: { from: null, to: name || username }
@@ -335,7 +335,7 @@ router.put('/users/:id', authenticate, async (req, res) => {
 
     // Record in history
     if (Object.keys(changes).length > 0) {
-      recordHistory('user', id, 'update', req.user.userId, req.user.name, changes, { username: user.username, name: user.name });
+      recordHistory('user', id, 'update', req.user.userId, req.user.name || req.user.username, changes, { username: user.username, name: user.name });
     }
 
     const updatedUser = userQueries.getById.get(id);
@@ -370,7 +370,7 @@ router.post('/users/:id/deactivate', authenticate, requireRole('admin'), (req, r
 
     userQueries.deactivate.run(id);
 
-    recordHistory('user', id, 'deactivate', req.user.userId, req.user.name, {
+    recordHistory('user', id, 'deactivate', req.user.userId, req.user.name || req.user.username, {
       status: { from: 'Active', to: 'Inactive' }
     }, { username: user.username, name: user.name });
 
@@ -393,7 +393,7 @@ router.post('/users/:id/activate', authenticate, requireRole('admin'), (req, res
 
     userQueries.activate.run(id);
 
-    recordHistory('user', id, 'activate', req.user.userId, req.user.name, {
+    recordHistory('user', id, 'activate', req.user.userId, req.user.name || req.user.username, {
       status: { from: 'Inactive', to: 'Active' }
     }, { username: user.username, name: user.name });
 
@@ -430,7 +430,7 @@ router.put('/change-password', authenticate, async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     userQueries.updatePassword.run(hashedPassword, req.user.userId);
 
-    recordHistory('user', req.user.userId, 'update', req.user.userId, req.user.name, {
+    recordHistory('user', req.user.userId, 'update', req.user.userId, req.user.name || req.user.username, {
       password: { from: '(hidden)', to: '(changed)' }
     }, { username: user.username, name: user.name });
 
@@ -456,7 +456,7 @@ router.delete('/users/:id', authenticate, requireRole('admin'), (req, res) => {
     }
 
     // Record before deleting
-    recordHistory('user', id, 'delete', req.user.userId, req.user.name, {
+    recordHistory('user', id, 'delete', req.user.userId, req.user.name || req.user.username, {
       username: { from: user.username, to: null },
       name: { from: user.name, to: null },
       role: { from: user.role, to: null }

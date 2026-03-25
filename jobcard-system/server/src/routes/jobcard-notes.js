@@ -41,11 +41,11 @@ router.post('/:id/notes', authenticate, [
       noteId,
       id,
       req.user.userId,
-      req.user.name,
+      req.user.name || req.user.username,
       text.trim()
     );
 
-    recordHistory('jobcard', id, 'add_note', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'add_note', req.user.userId, req.user.name || req.user.username, {
       note: { from: null, to: text.trim() }
     }, null);
 
@@ -74,7 +74,7 @@ router.delete('/:id/notes/:noteId', authenticate, requireAdmin, (req, res) => {
       return res.status(404).json({ error: 'Note not found' });
     }
 
-    recordHistory('jobcard', id, 'delete_note', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'delete_note', req.user.userId, req.user.name || req.user.username, {
       note: { from: existing.text, to: null },
       'note author': { from: existing.user_name, to: null }
     }, null);

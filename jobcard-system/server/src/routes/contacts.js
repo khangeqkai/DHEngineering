@@ -169,7 +169,7 @@ router.delete('/:id', requireAdmin, (req, res) => {
       companyName: { from: deleted.companyName, to: null }
     });
 
-    res.json({ message: 'Contact deleted successfully' });
+    res.json({ success: true });
   } catch (err) {
     logger.error({ err }, 'Failed to delete contact');
     res.status(500).json({ error: 'Failed to delete contact' });

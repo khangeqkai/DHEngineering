@@ -267,7 +267,7 @@ router.post('/export-backup', requireAdmin, [
     logger.info({ outputPath, size: stats.size }, 'Backup exported successfully');
 
     try {
-      recordHistory('system', 'backup', 'data_export', req.user.userId, req.user.name, {
+      recordHistory('system', 'backup', 'data_export', req.user.userId, req.user.name || req.user.username, {
         outputPath: { from: null, to: outputPath },
         size: { from: null, to: `${(stats.size / 1024 / 1024).toFixed(1)} MB` }
       }, null);
@@ -392,7 +392,7 @@ router.post('/import-backup', requireAdmin, [
       // Record import in history (wrap in try-catch since the importing user
       // may not exist in the restored data, which would cause an FK violation)
       try {
-        recordHistory('system', 'backup', 'data_import', req.user.userId, req.user.name, {
+        recordHistory('system', 'backup', 'data_import', req.user.userId, req.user.name || req.user.username, {
           source: { from: null, to: data._metadata.exportedAt },
           tables: { from: null, to: TABLE_ORDER.length + ' tables restored' },
           filesRestored: { from: null, to: fs.existsSync(filesDir) ? 'yes' : 'no' }

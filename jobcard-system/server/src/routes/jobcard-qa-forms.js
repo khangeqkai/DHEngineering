@@ -50,7 +50,7 @@ router.patch('/:id/qa-forms/:formId', authenticate, (req, res) => {
     );
 
     // Record history
-    recordHistory('jobcard', id, 'update_qa_form', req.user.userId, req.user.name, {
+    recordHistory('jobcard', id, 'update_qa_form', req.user.userId, req.user.name || req.user.username, {
       status: { from: oldStatus, to: status }
     }, { formCode: form.form_code, formName: form.form_name });
 
