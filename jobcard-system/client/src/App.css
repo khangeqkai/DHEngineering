@@ -129,6 +129,7 @@
               width 0.3s var(--ease-mechanical),
               padding 0.3s var(--ease-mechanical);
   overflow: hidden auto;
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
 }
 
 .sidebar-waves {
