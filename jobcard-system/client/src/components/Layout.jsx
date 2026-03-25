@@ -18,6 +18,7 @@ import {
   PanelLeftOpen
 } from 'lucide-react';
 import ClickSpark from './common/ClickSpark';
+import Waves from './common/Waves';
 
 export default function Layout() {
   const {
@@ -115,6 +116,21 @@ export default function Layout() {
       )}
 
       <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+        <div className="sidebar-waves">
+          <Waves
+            lineColor="rgba(37, 99, 235, 0.35)"
+            backgroundColor="transparent"
+            waveSpeedX={0.015}
+            waveSpeedY={0.005}
+            waveAmpX={40}
+            waveAmpY={20}
+            xGap={12}
+            yGap={36}
+            friction={0.925}
+            tension={0.005}
+            maxCursorMove={120}
+          />
+        </div>
         <div className="sidebar-header">
           <img src={dhLogo} alt="DH Engineering" className="sidebar-logo" />
         </div>

@@ -128,6 +128,22 @@
   transition: transform 0.3s var(--ease-mechanical),
               width 0.3s var(--ease-mechanical),
               padding 0.3s var(--ease-mechanical);
+  overflow: hidden auto;
+}
+
+.sidebar-waves {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.sidebar > *:not(.sidebar-waves) {
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar-open {
@@ -1411,7 +1427,7 @@
   }
 
   .sidebar {
-    position: static;
+    position: relative;
     transform: none;
     width: 70px;
     padding: 1rem 0.5rem;
