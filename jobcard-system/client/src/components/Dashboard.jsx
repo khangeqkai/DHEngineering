@@ -10,6 +10,10 @@ import JobCardModal from './jobcard/JobCardModal';
 import QuickActionPanel from './jobcard/QuickActionPanel';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
 import EmptyState from './common/EmptyState';
+import CountUp from './common/CountUp';
+import SpotlightCard from './common/SpotlightCard';
+import StarBorder from './common/StarBorder';
+import './common/SpotlightCard.css';
 import './Dashboard.css';
 
 const STATUS_LABELS = {
@@ -165,21 +169,23 @@ export default function Dashboard() {
 
       {/* Compact stat chips */}
       <div className="stats-strip">
-        <Link to="/jobcards" className="stat-chip stat-chip-hero">
-          <div className="stat-chip-icon">
-            <Activity size={15} />
-          </div>
-          <div className="stat-chip-text">
-            <span className="stat-chip-value">{stats.total}</span>
-            <span className="stat-chip-label">All Jobs</span>
-          </div>
-        </Link>
+        <StarBorder as="div" color="rgba(37, 99, 235, 0.6)" speed="4s">
+          <Link to="/jobcards" className="stat-chip stat-chip-hero" style={{ borderRadius: 'inherit' }}>
+            <div className="stat-chip-icon">
+              <Activity size={15} />
+            </div>
+            <div className="stat-chip-text">
+              <span className="stat-chip-value"><CountUp to={stats.total} duration={1.5} /></span>
+              <span className="stat-chip-label">All Jobs</span>
+            </div>
+          </Link>
+        </StarBorder>
         <Link to="/jobcards?filter=QUOTE" className="stat-chip stat-chip-quotes">
           <div className="stat-chip-icon">
             <FileText size={15} />
           </div>
           <div className="stat-chip-text">
-            <span className="stat-chip-value">{stats.quotes}</span>
+            <span className="stat-chip-value"><CountUp to={stats.quotes} duration={1.5} /></span>
             <span className="stat-chip-label">Quotes</span>
           </div>
         </Link>
@@ -188,7 +194,7 @@ export default function Dashboard() {
             <FolderOpen size={15} />
           </div>
           <div className="stat-chip-text">
-            <span className="stat-chip-value">{stats.open}</span>
+            <span className="stat-chip-value"><CountUp to={stats.open} duration={1.5} /></span>
             <span className="stat-chip-label">Open</span>
           </div>
         </Link>
@@ -197,7 +203,7 @@ export default function Dashboard() {
             <Loader size={15} />
           </div>
           <div className="stat-chip-text">
-            <span className="stat-chip-value">{stats.inProgress}</span>
+            <span className="stat-chip-value"><CountUp to={stats.inProgress} duration={1.5} /></span>
             <span className="stat-chip-label">In Progress</span>
           </div>
         </Link>
@@ -206,7 +212,7 @@ export default function Dashboard() {
             <Pause size={15} />
           </div>
           <div className="stat-chip-text">
-            <span className="stat-chip-value">{stats.onHold}</span>
+            <span className="stat-chip-value"><CountUp to={stats.onHold} duration={1.5} /></span>
             <span className="stat-chip-label">On Hold</span>
           </div>
         </Link>
@@ -216,7 +222,7 @@ export default function Dashboard() {
               <AlertTriangle size={15} />
             </div>
             <div className="stat-chip-text">
-              <span className="stat-chip-value">{stats.overdue}</span>
+              <span className="stat-chip-value"><CountUp to={stats.overdue} duration={1.5} /></span>
               <span className="stat-chip-label">Overdue</span>
             </div>
           </Link>
@@ -226,7 +232,7 @@ export default function Dashboard() {
       {/* Two-column: Chart + Overdue */}
       <div className="dashboard-grid">
         {stats.total > 0 && (
-          <div className="chart-card">
+          <SpotlightCard className="chart-card" spotlightColor="rgba(37, 99, 235, 0.06)">
             <h3>Job Status</h3>
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
@@ -268,12 +274,13 @@ export default function Dashboard() {
                 />
               </PieChart>
             </ResponsiveContainer>
-          </div>
+          </SpotlightCard>
         )}
 
         {/* Overdue jobs table with full-width action button */}
         {overdueCards.length > 0 ? (
-          <div className="card overdue-card">
+          <StarBorder as="div" color="rgba(239, 68, 68, 0.6)" speed="4s">
+          <div className="card overdue-card" style={{ borderRadius: 'inherit' }}>
             <div className="card-header overdue-header">
               <h2>Overdue Jobs</h2>
               <span className="overdue-count">{stats.overdue}</span>
@@ -332,6 +339,7 @@ export default function Dashboard() {
               View All Overdue Jobs ({stats.overdue})
             </Link>
           </div>
+          </StarBorder>
         ) : stats.total > 0 ? (
           <div className="card no-overdue-card">
             <div className="no-overdue-content">
@@ -345,7 +353,7 @@ export default function Dashboard() {
         ) : null}
 
         {/* Recent Job Cards - full width */}
-        <div className="card dashboard-grid-full">
+        <SpotlightCard className="card dashboard-grid-full" spotlightColor="rgba(37, 99, 235, 0.06)">
           <div className="card-header">
             <h2>Recent Job Cards</h2>
             <Link to="/jobcards" className="btn btn-secondary btn-sm">
@@ -425,7 +433,7 @@ export default function Dashboard() {
               </table>
             )}
           </div>
-        </div>
+        </SpotlightCard>
       </div>
 
       <QuickActionPanel

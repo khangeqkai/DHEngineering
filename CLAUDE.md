@@ -31,12 +31,15 @@ cd client && npm run build:electron
 
 # Server with auto-reload
 cd server && npm run dev
+
+# Seed mock data (wipes DB, creates test data) — run on Windows
+seed.bat
 ```
 
 ## Architecture
 
 ### Stack
-- **Frontend**: React 18 + React Router, Vite bundler, Electron 27, react-hot-toast (notifications)
+- **Frontend**: React 18 + React Router, Vite bundler, Electron 27, react-hot-toast (notifications), framer-motion (animations)
 - **Backend**: Express 4, better-sqlite3 (synchronous SQLite), pino (logging), express-validator, express-rate-limit
 - **Auth**: JWT (memory-only, no localStorage), bcryptjs password hashing, rate-limited login (5 failed attempts/15 min)
 - **Font**: Pragmatica (bundled OTF, weights 300/400/700) with Google Sans fallback
@@ -50,7 +53,7 @@ jobcard-system/
 │   │   │   ├── jobcard/          # JobCardModal + tabs (modular)
 │   │   │   │   ├── tabs/         # Tab components + DetailsReadOnlyView, NotesSection
 │   │   │   │   └── use*.js       # Custom hooks (useCosting, useTimeEntries, useTimer, useJobNotes, useJobCardForm, useContactSearch, useCamera, useQuickActionFiles, etc.)
-│   │   │   └── common/           # Reusable components
+│   │   │   └── common/           # Reusable components + Reactbits animation components (CountUp, ClickSpark, SpotlightCard, StarBorder, ShinyText, GradientText, Waves)
 │   │   ├── assets/                  # Static assets (logo, fonts)
 │   │   ├── context/AuthContext.jsx  # JWT + user state + inactivity timer
 │   │   ├── hooks/                   # Shared custom hooks

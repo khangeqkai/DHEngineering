@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { User, Lock } from 'lucide-react';
 import dhLogo from '../assets/dh-logo.png';
-import MagnetLines from './common/MagnetLines';
+import Waves from './common/Waves';
+import GradientText from './common/GradientText';
 import './Login.css';
 
 export default function Login() {
@@ -63,15 +64,19 @@ export default function Login() {
 
   return (
     <div className="login-container">
-      <div className="login-magnet-bg">
-        <MagnetLines
-          rows={15}
-          columns={20}
-          containerSize="100%"
-          lineColor="rgba(128,105,62,0.6)"
-          lineWidth="2px"
-          lineHeight="24px"
-          baseAngle={-10}
+      <div className="login-bg" style={{ pointerEvents: 'auto' }}>
+        <Waves
+          lineColor="rgba(37, 99, 235, 0.35)"
+          backgroundColor="#060e1c"
+          waveSpeedX={0.015}
+          waveSpeedY={0.005}
+          waveAmpX={40}
+          waveAmpY={20}
+          xGap={12}
+          yGap={36}
+          friction={0.925}
+          tension={0.005}
+          maxCursorMove={120}
         />
       </div>
       <div className="login-card">
@@ -82,7 +87,11 @@ export default function Login() {
         <hr className="login-divider" />
 
         <form onSubmit={handleSubmit}>
-          <h1 className="login-form-title">Job Card System</h1>
+          <h1 className="login-form-title">
+            <GradientText colors={['#0b2d52', '#2563eb', '#60a5fa', '#2563eb', '#0b2d52']} animationSpeed={8}>
+              Job Card System
+            </GradientText>
+          </h1>
           {error && (
             <div className="login-error">
               {countdown > 0

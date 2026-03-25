@@ -224,7 +224,7 @@
 
 .checkbox-chip:hover {
   border-color: var(--primary-accent);
-  background: rgba(2, 132, 199, 0.05);
+  background: rgba(37, 99, 235, 0.05);
 }
 
 .checkbox-chip.selected {
@@ -517,7 +517,7 @@
 
 .btn-quick-pick:hover {
   border-color: var(--primary-accent);
-  background: rgba(2, 132, 199, 0.05);
+  background: rgba(37, 99, 235, 0.05);
 }
 
 .btn-quick-pick.active {
@@ -584,7 +584,7 @@
 
 .calendar-nav:hover {
   border-color: var(--primary-accent);
-  background: rgba(2, 132, 199, 0.05);
+  background: rgba(37, 99, 235, 0.05);
 }
 
 .calendar-grid {
@@ -621,18 +621,18 @@
 
 .calendar-cell:not(.empty):hover {
   border-color: var(--primary-accent);
-  background: rgba(2, 132, 199, 0.05);
+  background: rgba(37, 99, 235, 0.05);
 }
 
 .calendar-cell.today {
   border: 2px solid var(--primary-accent);
   font-weight: 600;
   color: var(--primary-accent);
-  background: rgba(2, 132, 199, 0.08);
+  background: rgba(37, 99, 235, 0.08);
 }
 
 .calendar-cell.today:hover {
-  background: rgba(2, 132, 199, 0.15);
+  background: rgba(37, 99, 235, 0.12);
 }
 
 .calendar-cell.selected {
@@ -1760,7 +1760,7 @@
 
 .scanner-file-item:hover {
   border-color: var(--primary-accent);
-  background: rgba(2, 132, 199, 0.05);
+  background: rgba(37, 99, 235, 0.05);
 }
 
 .scanner-file-icon {

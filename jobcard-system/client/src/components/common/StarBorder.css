@@ -1,0 +1,30 @@
+.star-border-container {
+  display: block;
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  padding: 2px;
+  border: none;
+  background: transparent;
+}
+
+.star-border-glow {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  animation: star-rotate linear infinite;
+  z-index: 0;
+}
+
+.star-border-inner {
+  position: relative;
+  background: var(--surface);
+  border-radius: calc(var(--radius-lg) - 2px);
+  z-index: 1;
+}
+
+@keyframes star-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

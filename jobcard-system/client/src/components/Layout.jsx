@@ -13,8 +13,11 @@ import {
   Settings,
   LogOut,
   ShieldCheck,
-  Tag
+  Tag,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
+import ClickSpark from './common/ClickSpark';
 
 export default function Layout() {
   const {
@@ -26,9 +29,16 @@ export default function Layout() {
     handleActivity
   } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('sidebarCollapsed') === 'true';
+  });
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('darkMode') === 'true';
   });
+
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', sidebarCollapsed);
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     // Apply dark mode
@@ -72,6 +82,7 @@ export default function Layout() {
   };
 
   return (
+    <ClickSpark sparkColor="#2563eb" sparkSize={8} sparkRadius={12} sparkCount={6} duration={350}>
     <div className="app-layout">
       {/* Inactivity Warning Modal */}
       <InactivityWarningModal
@@ -103,7 +114,7 @@ export default function Layout() {
         ></div>
       )}
 
-      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
+      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <div className="sidebar-header">
           <img src={dhLogo} alt="DH Engineering" className="sidebar-logo" />
         </div>
@@ -202,6 +213,16 @@ export default function Layout() {
         </nav>
 
         <div className="sidebar-footer">
+          <button
+            className="sidebar-toggle"
+            onClick={() => setSidebarCollapsed(prev => !prev)}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <span className="nav-icon">
+              {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </span>
+            <span className="nav-text">{sidebarCollapsed ? 'Expand' : 'Collapse'}</span>
+          </button>
           <button className="btn btn-secondary signout-btn" onClick={logout}>
             <span className="nav-icon">
               <LogOut size={18} />
@@ -215,5 +236,6 @@ export default function Layout() {
         <Outlet />
       </main>
     </div>
+    </ClickSpark>
   );
 }

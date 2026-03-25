@@ -33,11 +33,11 @@
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;
   --font-sans: 'Pragmatica', 'Google Sans', 'Google Sans Text', -apple-system, BlinkMacSystemFont, sans-serif;
 
-  /* Font Sizes - Standard scale */
+  /* Font Sizes — slightly refined scale */
   --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-lg: 1.125rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
   --text-3xl: 1.75rem;
@@ -49,10 +49,10 @@
   --font-semibold: 600;
   --font-bold: 700;
 
-  /* Letter Spacing - Reduced */
-  --tracking-tight: -0.01em;
-  --tracking-normal: 0;
-  --tracking-wide: 0.02em;
+  /* Letter Spacing — tighter for modern feel */
+  --tracking-tight: -0.02em;
+  --tracking-normal: -0.006em;
+  --tracking-wide: 0.01em;
   --tracking-wider: 0.04em;
 
   /* Spacing Scale */
@@ -65,89 +65,91 @@
   --space-8: 2rem;
   --space-10: 2.5rem;
 
-  /* Border Radius */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* Border Radius — softer, rounder */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
 
-  /* ── Gold & Navy Brand Palette ── */
-  --primary-color: #424656;
-  --primary-hover: #06274e;
-  --primary-accent: #80693e;
-  --primary-accent-hover: #4c3a11;
-  --accent-text: #4c3a11;
-  --accent-text-hover: #3a2b0d;
+  /* ── Navy-Blue Palette ── */
+  /* Navy is the hero. Bright blue is the accent. */
+  --primary-color: #0f2645;
+  --primary-hover: #0a1e38;
+  --primary-accent: #2563eb;
+  --primary-accent-hover: #1d4ed8;
+  --accent-text: #1d4ed8;
+  --accent-text-hover: #1e40af;
 
   /* Accents - Semantic */
-  --accent-safety: #80693e;
-  --accent-action: #80693e;
+  --accent-safety: #2563eb;
+  --accent-action: #2563eb;
   --accent-caution: #ef4444;
   --accent-ready: #22c55e;
   --accent-info: #3b82f6;
 
   /* Legacy mappings */
   --success-color: #22c55e;
-  --warning-color: #80693e;
+  --warning-color: #f59e0b;
   --danger-color: #ef4444;
 
-  /* ── Sidebar Deep Navy ── */
-  --sidebar-bg: #06274e;
-  --sidebar-bg-elevated: #0a3565;
-  --sidebar-text: #a6abbd;
-  --sidebar-text-muted: #6b7492;
-  --sidebar-border: rgba(166, 171, 189, 0.12);
-  --sidebar-active-bg: #80693e;
+  /* ── Sidebar — Deep Navy ── */
+  --sidebar-bg: #0b1e36;
+  --sidebar-bg-elevated: #112a4a;
+  --sidebar-text: #94a3c0;
+  --sidebar-text-muted: #5a6d8a;
+  --sidebar-border: rgba(148, 163, 192, 0.1);
+  --sidebar-active-bg: #2563eb;
   --sidebar-active-text: #ffffff;
-  --sidebar-hover-bg: rgba(166, 171, 189, 0.10);
+  --sidebar-hover-bg: rgba(148, 163, 192, 0.08);
 
-  /* Surfaces */
-  --background: #dfe2ea;
+  /* Surfaces — clean, barely warm whites */
+  --background: #f4f6f9;
   --surface: #ffffff;
-  --surface-elevated: #f5f6f9;
-  --surface-inset: #d4d7e2;
+  --surface-elevated: #f8f9fb;
+  --surface-inset: #eef0f4;
 
-  /* Text */
-  --text-primary: #06274e;
-  --text-secondary: #424656;
-  --text-tertiary: #7d8194;
-  --text-inverse: #f5f6f9;
+  /* Text — clean hierarchy */
+  --text-primary: #0f1729;
+  --text-secondary: #3b4563;
+  --text-tertiary: #7c869b;
+  --text-inverse: #f8f9fb;
 
-  /* Borders */
-  --border-color: #d4d7e2;
-  --border-strong: #a6abbd;
-  --border-focus: #80693e;
+  /* Borders — subtle */
+  --border-color: #e3e6ee;
+  --border-strong: #c7cdd9;
+  --border-focus: #2563eb;
 
   /* Text on saturated accent backgrounds */
   --text-on-saturated: #fff;
 
-  /* Shadows - Refined */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
+  /* Shadows — clean, performant */
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
   --shadow: var(--shadow-sm);
 
-  /* Animation */
-  --ease-mechanical: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-snap: cubic-bezier(0.68, -0.6, 0.32, 1.6);
-  --duration-fast: 120ms;
-  --duration-normal: 180ms;
-  --duration-slow: 280ms;
+  /* Animation — spring easing */
+  --ease-mechanical: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-snap: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 350ms;
 
   /* Hover states */
-  --primary-light: #a6abbd;
+  --primary-light: #94a3c0;
   --danger-hover: #dc2626;
-  --warning-hover: #9a8050;
+  --warning-hover: #d97706;
   --success-hover: #16a34a;
-  --action-hover: #4c3a11;
+  --action-hover: #1d4ed8;
 
   /* RGB variants (for rgba() usage) */
   --danger-rgb: 239, 68, 68;
   --success-rgb: 34, 197, 94;
-  --warning-rgb: 128, 105, 62;
-  --accent-rgb: 128, 105, 62;
-  --primary-rgb: 66, 70, 86;
-  --text-inverse-rgb: 245, 246, 249;
+  --warning-rgb: 245, 158, 11;
+  --accent-rgb: 37, 99, 235;
+  --primary-rgb: 15, 38, 69;
+  --text-inverse-rgb: 248, 249, 251;
   --info-rgb: 59, 130, 246;
 
   /* Additional accents */
@@ -155,93 +157,93 @@
   --accent-purple-hover: #7c3aed;
 
   /* Badge colors - Light mode */
-  --badge-pending-bg: rgba(128, 105, 62, 0.12);
-  --badge-pending-text: #4c3a11;
-  --badge-progress-bg: rgba(59, 130, 246, 0.12);
+  --badge-pending-bg: rgba(245, 158, 11, 0.1);
+  --badge-pending-text: #b45309;
+  --badge-progress-bg: rgba(59, 130, 246, 0.1);
   --badge-progress-text: #1d4ed8;
-  --badge-completed-bg: rgba(34, 197, 94, 0.12);
+  --badge-completed-bg: rgba(34, 197, 94, 0.1);
   --badge-completed-text: #15803d;
-  --badge-cancelled-bg: rgba(239, 68, 68, 0.12);
+  --badge-cancelled-bg: rgba(239, 68, 68, 0.08);
   --badge-cancelled-text: #b91c1c;
 }
 
 .dark-mode {
   /* Primary */
-  --primary-color: #a6abbd;
-  --primary-hover: #c8ccd8;
-  --primary-accent: #b8976a;
-  --primary-accent-hover: #a6894f;
-  --accent-text: #b8976a;
-  --accent-text-hover: #d4b88a;
+  --primary-color: #94a3c0;
+  --primary-hover: #c7cdd9;
+  --primary-accent: #3b82f6;
+  --primary-accent-hover: #2563eb;
+  --accent-text: #60a5fa;
+  --accent-text-hover: #93bbfd;
 
   /* Accents */
-  --accent-safety: #b8976a;
-  --accent-action: #b8976a;
+  --accent-safety: #3b82f6;
+  --accent-action: #3b82f6;
   --accent-caution: #f87171;
   --accent-ready: #4ade80;
   --accent-info: #60a5fa;
 
-  /* Semantic colors — pastel for text/decorative use on dark surfaces */
+  /* Semantic colors */
   --success-color: #4ade80;
-  --warning-color: #b8976a;
+  --warning-color: #fbbf24;
   --danger-color: #f87171;
 
-  /* Saturated variants for button backgrounds (need white text contrast) */
+  /* Saturated variants for button backgrounds */
   --success-bg: #16a34a;
-  --warning-bg: #80693e;
+  --warning-bg: #d97706;
   --danger-bg: #dc2626;
   --success-bg-hover: #22c55e;
-  --warning-bg-hover: #9a8050;
+  --warning-bg-hover: #f59e0b;
   --danger-bg-hover: #ef4444;
   --text-on-saturated: #fff;
 
-  /* Sidebar - deeper navy */
-  --sidebar-bg: #031a36;
-  --sidebar-bg-elevated: #06274e;
-  --sidebar-active-bg: #b8976a;
-  --sidebar-active-text: #031a36;
+  /* Sidebar */
+  --sidebar-bg: #060e1c;
+  --sidebar-bg-elevated: #0b1e36;
+  --sidebar-active-bg: #2563eb;
+  --sidebar-active-text: #ffffff;
 
-  /* Surfaces */
-  --background: #030f1f;
-  --surface: #0a2240;
-  --surface-elevated: #143660;
-  --surface-inset: #06274e;
+  /* Surfaces — rich dark navy layers */
+  --background: #060e1c;
+  --surface: #0b1e36;
+  --surface-elevated: #112a4a;
+  --surface-inset: #091726;
 
-  /* Input fields - recessed feel */
-  --input-bg: #081d38;
-  --input-border: #143660;
+  /* Input fields */
+  --input-bg: #081530;
+  --input-border: #1a3a66;
 
   /* Text */
-  --text-primary: #e8eaf0;
-  --text-secondary: #a6abbd;
-  --text-tertiary: #6b7492;
-  --text-inverse: #06274e;
+  --text-primary: #eaecf2;
+  --text-secondary: #94a3c0;
+  --text-tertiary: #5a6d8a;
+  --text-inverse: #0b1e36;
 
   /* Borders */
-  --border-color: rgba(166, 171, 189, 0.15);
-  --border-strong: #424656;
-  --border-focus: #b8976a;
+  --border-color: rgba(148, 163, 192, 0.12);
+  --border-strong: #2a3f5e;
+  --border-focus: #3b82f6;
 
   /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3), 0 24px 48px rgba(0, 0, 0, 0.25);
   --shadow: var(--shadow-sm);
 
   /* Hover states */
-  --primary-light: #c8ccd8;
+  --primary-light: #c7cdd9;
   --danger-hover: #fca5a5;
-  --warning-hover: #d4b88a;
+  --warning-hover: #fcd34d;
   --success-hover: #86efac;
-  --action-hover: #d4b88a;
+  --action-hover: #60a5fa;
 
   /* RGB variants */
   --danger-rgb: 248, 113, 113;
   --success-rgb: 74, 222, 128;
-  --warning-rgb: 184, 151, 106;
-  --accent-rgb: 184, 151, 106;
-  --primary-rgb: 166, 171, 189;
-  --text-inverse-rgb: 6, 39, 78;
+  --warning-rgb: 251, 191, 36;
+  --accent-rgb: 59, 130, 246;
+  --primary-rgb: 148, 163, 192;
+  --text-inverse-rgb: 11, 30, 54;
   --info-rgb: 96, 165, 250;
 
   /* Additional accents */
@@ -249,13 +251,13 @@
   --accent-purple-hover: #8b5cf6;
 
   /* Badge colors - Dark mode */
-  --badge-pending-bg: rgba(184, 151, 106, 0.2);
-  --badge-pending-text: #d4b88a;
-  --badge-progress-bg: rgba(96, 165, 250, 0.2);
+  --badge-pending-bg: rgba(251, 191, 36, 0.15);
+  --badge-pending-text: #fcd34d;
+  --badge-progress-bg: rgba(96, 165, 250, 0.15);
   --badge-progress-text: #93bbfd;
-  --badge-completed-bg: rgba(74, 222, 128, 0.2);
+  --badge-completed-bg: rgba(74, 222, 128, 0.15);
   --badge-completed-text: #86efac;
-  --badge-cancelled-bg: rgba(248, 113, 113, 0.2);
+  --badge-cancelled-bg: rgba(248, 113, 113, 0.15);
   --badge-cancelled-text: #fca5a5;
 }
 
@@ -264,24 +266,24 @@
 /* Accent text glow */
 .dark-mode .accent-text,
 .dark-mode a:not(.btn):not(.sidebar-nav a) {
-  text-shadow: 0 0 20px rgba(184, 151, 106, 0.25);
+  text-shadow: 0 0 24px rgba(59, 130, 246, 0.2);
 }
 
 /* Primary button glow in dark mode */
 .dark-mode .btn-primary {
-  box-shadow: 0 0 16px rgba(184, 151, 106, 0.2);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.2), 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .dark-mode .btn-primary:hover:not(:disabled) {
-  box-shadow: 0 0 24px rgba(184, 151, 106, 0.35);
+  box-shadow: 0 0 32px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 /* Active nav item glow */
 .dark-mode .sidebar-nav a.active {
-  box-shadow: 0 2px 12px rgba(184, 151, 106, 0.35);
+  box-shadow: 0 2px 16px rgba(59, 130, 246, 0.35);
 }
 
-/* Input fields - recessed darker background with visible borders */
+/* Input fields */
 .dark-mode .form-group input,
 .dark-mode .form-group textarea,
 .dark-mode .form-group select,
@@ -295,36 +297,37 @@
 .dark-mode .form-group select:focus,
 .dark-mode .form-control:focus {
   border-color: var(--primary-accent);
-  box-shadow: 0 0 0 3px rgba(184, 151, 106, 0.15);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
-/* Card border reinforcement in dark mode */
+/* Card reinforcement */
 .dark-mode .card {
-  border-color: rgba(166, 171, 189, 0.15);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(166, 171, 189, 0.08);
+  border-color: rgba(148, 163, 192, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(148, 163, 192, 0.06);
 }
 
 .dark-mode .card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(166, 171, 189, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(148, 163, 192, 0.1);
 }
 
 /* Modal border reinforcement */
 .dark-mode .modal-popup {
-  border-color: rgba(166, 171, 189, 0.18);
+  border-color: rgba(148, 163, 192, 0.12);
 }
 
 /* Table header contrast */
 .dark-mode .table th {
   background: var(--surface-elevated);
-  border-bottom-color: rgba(166, 171, 189, 0.2);
+  border-bottom-color: rgba(148, 163, 192, 0.15);
 }
 
 body {
   font-family: var(--font-sans);
   background-color: var(--background);
   color: var(--text-primary);
-  line-height: 1.5;
+  line-height: 1.55;
   font-size: var(--text-base);
+  letter-spacing: var(--tracking-normal);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -359,14 +362,14 @@ a:hover {
 .field-error textarea,
 .field-error select {
   border-color: var(--danger-color) !important;
-  background: rgba(var(--danger-rgb), 0.05) !important;
+  background: rgba(var(--danger-rgb), 0.04) !important;
 }
 
 .field-success input,
 .field-success textarea,
 .field-success select {
   border-color: var(--success-color) !important;
-  background: rgba(var(--success-rgb), 0.05) !important;
+  background: rgba(var(--success-rgb), 0.04) !important;
 }
 
 .field-error-message {
