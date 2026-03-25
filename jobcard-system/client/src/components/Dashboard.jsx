@@ -170,7 +170,7 @@ export default function Dashboard() {
       {/* Compact stat chips */}
       <div className="stats-strip">
         <StarBorder as="div" color="rgba(37, 99, 235, 0.6)" speed="4s">
-          <Link to="/jobcards" className="stat-chip stat-chip-hero" style={{ borderRadius: 'inherit' }}>
+          <Link to="/jobcards" className="stat-chip stat-chip-hero">
             <div className="stat-chip-icon">
               <Activity size={15} />
             </div>
@@ -280,7 +280,7 @@ export default function Dashboard() {
         {/* Overdue jobs table with full-width action button */}
         {overdueCards.length > 0 ? (
           <StarBorder as="div" color="rgba(239, 68, 68, 0.6)" speed="4s">
-          <div className="card overdue-card" style={{ borderRadius: 'inherit' }}>
+          <div className="card overdue-card">
             <div className="card-header overdue-header">
               <h2>Overdue Jobs</h2>
               <span className="overdue-count">{stats.overdue}</span>

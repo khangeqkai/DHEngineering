@@ -9,15 +9,12 @@ const StarBorder = ({
   ...rest
 }) => {
   return (
-    <Component className={`star-border-container ${className}`} {...rest}>
-      <div
-        className="star-border-glow"
-        style={{
-          background: `conic-gradient(from 0deg, transparent 0%, ${color} 10%, transparent 20%, transparent 50%, ${color} 60%, transparent 70%)`,
-          animationDuration: speed
-        }}
-      />
-      <div className="star-border-inner">{children}</div>
+    <Component
+      className={`star-border-container ${className}`}
+      style={{ '--star-color': color, '--star-speed': speed }}
+      {...rest}
+    >
+      {children}
     </Component>
   );
 };

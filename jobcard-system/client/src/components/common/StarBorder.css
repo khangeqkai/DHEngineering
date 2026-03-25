@@ -1,30 +1,50 @@
+@property --star-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
 .star-border-container {
-  display: block;
+  display: flex;
+  flex-direction: column;
   position: relative;
   border-radius: var(--radius-lg);
-  overflow: hidden;
-  padding: 2px;
-  border: none;
-  background: transparent;
 }
 
-.star-border-glow {
+.star-border-container > * {
+  flex: 1;
+}
+
+.star-border-container::before {
+  content: '';
   position: absolute;
-  inset: -50%;
-  width: 200%;
-  height: 200%;
-  animation: star-rotate linear infinite;
-  z-index: 0;
-}
-
-.star-border-inner {
-  position: relative;
-  background: var(--surface);
-  border-radius: calc(var(--radius-lg) - 2px);
-  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--star-angle),
+    transparent 0%,
+    var(--star-color, rgba(37, 99, 235, 0.8)) 10%,
+    transparent 20%,
+    transparent 50%,
+    var(--star-color, rgba(37, 99, 235, 0.8)) 60%,
+    transparent 70%,
+    transparent 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: star-rotate var(--star-speed, 6s) linear infinite;
+  pointer-events: none;
+  z-index: 2;
 }
 
 @keyframes star-rotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% { --star-angle: 0deg; }
+  100% { --star-angle: 360deg; }
 }
