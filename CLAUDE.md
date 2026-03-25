@@ -60,7 +60,8 @@ jobcard-system/
 │   │   │   ├── useInactivityTimer.js  # Auto-logout timer logic
 │   │   │   ├── useActiveTimerIndicator.js  # Live timer indicator for job card rows
 │   │   │   ├── useSettings.js     # Settings page state and handlers
-│   │   │   └── useTags.js         # Fetch tags by category with caching
+│   │   │   ├── useTags.js         # Fetch tags by category with caching
+│   │   │   └── useSearch.js       # Search page state, filters, debounced API calls
 │   │   └── services/
 │   │       └── api.js            # Direct API client to Express server
 │   └── electron/                 # Electron main/preload
@@ -92,7 +93,7 @@ jobcard-system/
 ### API Structure
 Base URL: `/api` (relative; Vite dev server proxies to `http://localhost:3000`, production serves client statically from Express)
 
-Main routes: `/auth`, `/jobcards`, `/contacts`, `/suppliers`, `/machines`, `/settings`, `/history`, `/qa-levels`, `/tags`
+Main routes: `/auth`, `/jobcards`, `/contacts`, `/suppliers`, `/machines`, `/settings`, `/history`, `/qa-levels`, `/tags`, `/search`
 
 Tag endpoints: `GET /tags` (authenticated, optional `?category=treatment`), `GET /tags/categories` (authenticated), `GET /tags/:id` (admin), `POST /tags` (admin, `{ category, name }`), `PUT /tags/:id` (admin), `DELETE /tags/:id` (admin)
 
@@ -117,6 +118,8 @@ Document endpoints: `GET /jobcards/:id/documents/:documentId` (assignee/admin, r
 Timer endpoints: `GET /jobcards/active-timer` (authenticated), `POST /jobcards/:id/time-entries/start` (assignee/admin), `POST /jobcards/:id/time-entries/:entryId/stop` (assignee/admin), `PATCH /jobcards/:id/time-entries/:entryId/toggle-special` (admin, toggle special labour flag)
 
 Notes endpoints: `GET /jobcards/:id/notes` (assignee/admin), `POST /jobcards/:id/notes` (assignee/admin), `DELETE /jobcards/:id/notes/:noteId` (admin only)
+
+Search endpoint: `GET /search` (authenticated, scoped). Query params: `scope` (all|jobs|people|activity|time), `q` (text query), `page`, `status`, `assigneeId`, `priority`, `jobType`, `qaLevel`, `dateFrom`, `dateTo`, `dateField` (created|due), `includeArchived`, `peopleType` (both|contacts|suppliers), `userId`, `action`, `entityType`, `field` (search within changes JSON keys), `workerId`, `machineId`, `specialOnly`, `jobNumber`. Scopes `people` and `activity` are admin-only. `time` scope restricts non-admin to own entries. `all` scope returns grouped previews (top 5 per category with counts); other scopes return paginated results (25/page).
 
 ### Database Schema (SQLite)
 Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `subcontracts`, `time_entries`, `job_costings`, `documents`, `qa_forms`, `qa_levels`, `qa_level_templates`, `history`, `settings`, `machines`, `job_notes`, `tags`, `supplier_service_tags`

@@ -11,6 +11,7 @@ import ActivityLog from './components/ActivityLog';
 import QALevelManagement from './components/QALevelManagement';
 import TagManagement from './components/TagManagement';
 import Settings from './components/Settings';
+import SearchPage from './components/SearchPage';
 import Layout from './components/Layout';
 import './App.css';
 
@@ -103,6 +104,7 @@ function App() {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="search" element={<SearchPage />} />
         <Route path="jobcards" element={<JobCardList />} />
         <Route
           path="contacts"

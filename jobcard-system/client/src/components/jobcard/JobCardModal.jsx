@@ -26,7 +26,7 @@ const mapSubcontract = (s) => ({ id: s.id, supplierId: s.supplierId, supplierNam
 
 const mapTimeEntry = (t) => ({ id: t.id, userId: t.userId, userName: t.userName, itemNumber: t.itemNumber, machineNumber: t.machineNumber, qty: t.qty, description: t.description, startTime: t.startTime, endTime: t.endTime, isSpecialLabour: t.isSpecialLabour || false });
 
-export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess }) {
+export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, initialTab = null }) {
   const { user } = useAuth();
   const isEdit = Boolean(jobCardId);
   const isAdmin = user?.role === 'admin';
@@ -241,9 +241,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   }, [resetFormHook, resetContact, resetSubcontracts, resetTimeEntries, resetCosting, resetTimer, resetNotes, resetHistory]);
   useEffect(() => {
     if (isOpen) {
-      setActiveTab('details');
+      setActiveTab(initialTab || 'details');
     }
-  }, [isOpen]);
+  }, [isOpen, initialTab]);
 
   useEffect(() => {
     if (isOpen && !isEdit) {

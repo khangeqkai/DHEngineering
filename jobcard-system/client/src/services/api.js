@@ -263,6 +263,15 @@ class ApiService {
   exportBackup(outputPath) { return this._post('/settings/export-backup', { outputPath }); }
   importBackup(inputPath) { return this._post('/settings/import-backup', { inputPath }); }
 
+  // Search
+  search(params) {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') query.set(k, String(v));
+    });
+    return this.request(`/search?${query.toString()}`);
+  }
+
   // QA Levels
   getQaLevels() { return this.request('/qa-levels'); }
   getQaLevel(id) { return this.request(`/qa-levels/${id}`); }

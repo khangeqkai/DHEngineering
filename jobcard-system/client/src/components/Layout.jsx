@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   Tag,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Search
 } from 'lucide-react';
 import ClickSpark from './common/ClickSpark';
 import Waves from './common/Waves';
@@ -153,6 +154,14 @@ export default function Layout() {
                   <LayoutGrid size={18} />
                 </span>
                 <span className="nav-text">Dashboard</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/search" onClick={handleNavClick}>
+                <span className="nav-icon">
+                  <Search size={18} />
+                </span>
+                <span className="nav-text">Search</span>
               </NavLink>
             </li>
             <li>

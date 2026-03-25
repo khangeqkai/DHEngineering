@@ -30,6 +30,15 @@ const wipe = db.transaction(() => {
   }
   // Reset autoincrement
   db.prepare("DELETE FROM sqlite_sequence WHERE name = 'history'").run();
+  // Recreate supplier_service_tags to fix stale FK references
+  db.prepare('DROP TABLE IF EXISTS supplier_service_tags').run();
+  db.prepare(`CREATE TABLE supplier_service_tags (
+    supplier_id TEXT NOT NULL,
+    service_tag_id TEXT NOT NULL,
+    PRIMARY KEY (supplier_id, service_tag_id),
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE,
+    FOREIGN KEY (service_tag_id) REFERENCES tags(id) ON DELETE CASCADE
+  )`).run();
 });
 wipe();
 db.pragma('foreign_keys = ON');
@@ -114,6 +123,9 @@ for (const m of machines) {
 }
 console.log(`Created ${machines.length} machines.`);
 
+// Must match seed-tags.js nameToValue: strips special chars, replaces spaces/slashes with _
+const tagValue = (name) => name.toUpperCase().replace(/[\s/]+/g, '_').replace(/[^A-Z0-9_]/g, '');
+
 // ─── TAGS ───
 console.log('Creating tags...');
 const tagData = {
@@ -130,7 +142,7 @@ for (const [category, names] of Object.entries(tagData)) {
   tagIds[category] = [];
   for (const name of names) {
     const id = uid('tag');
-    const value = name.toUpperCase().replace(/\s+/g, '_');
+    const value = tagValue(name);
     insertTag.run(id, category, name, value, sortOrder++);
     tagIds[category].push(id);
   }
@@ -163,33 +175,32 @@ console.log('Creating job cards...');
 
 const statuses = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'TREATMENT', 'ON_HOLD', 'DONE', 'INVOICED'];
 const priorities = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
-const drawingsTypes = ['CUSTOMER_CAD', 'CUSTOMER_SKETCH', 'DH_CAD', 'DH_SKETCH', 'PREPARE_SKETCH', 'PREPARE_CAD'];
+const drawingsTypes = tagData.drawings.map(tagValue);
 
 const jobDescriptions = [
   { desc: 'Manufacture 4x hydraulic cylinder rods to drawing', items: [{ qty: '4', desc: 'Hydraulic cylinder rod Ø45x650mm', treatment: 'HEAT_TREATMENT' }] },
-  { desc: 'Repair cracked pump housing — weld and re-machine', items: [{ qty: '1', desc: 'Pump housing repair — weld crack', treatment: 'BLASTING' }, { qty: '1', desc: 'Re-machine bore to Ø125H7', treatment: 'N/A' }] },
+  { desc: 'Repair cracked pump housing — weld and re-machine', items: [{ qty: '1', desc: 'Pump housing repair — weld crack', treatment: 'BLASTING' }, { qty: '1', desc: 'Re-machine bore to Ø125H7', treatment: null }] },
   { desc: 'Fabricate structural mounting brackets for conveyor', items: [{ qty: '8', desc: 'Mounting bracket 150x100x12mm mild steel', treatment: 'GALVANISE' }] },
   { desc: 'Manufacture replacement gearbox shaft', items: [{ qty: '1', desc: 'Gearbox shaft EN19T Ø80x450mm', treatment: 'HEAT_TREATMENT,PRECISION_GRINDING' }] },
-  { desc: 'Reverse engineer worn impeller and manufacture new', items: [{ qty: '2', desc: 'Pump impeller Ø280mm CF8M', treatment: 'N/A' }] },
-  { desc: 'Modify existing flange to new bolt pattern', items: [{ qty: '3', desc: 'Flange modification — re-drill PCD', treatment: 'N/A' }] },
+  { desc: 'Reverse engineer worn impeller and manufacture new', items: [{ qty: '2', desc: 'Pump impeller Ø280mm CF8M', treatment: null }] },
+  { desc: 'Modify existing flange to new bolt pattern', items: [{ qty: '3', desc: 'Flange modification — re-drill PCD', treatment: null }] },
   { desc: 'Manufacture precision dowel pins', items: [{ qty: '20', desc: 'Dowel pin Ø10m6 x 40mm', treatment: 'HEAT_TREATMENT' }] },
-  { desc: 'CNC machining of valve body — 5-axis work', items: [{ qty: '1', desc: 'Valve body 316SS per DWG-2024-089', treatment: 'N/A' }] },
+  { desc: 'CNC machining of valve body — 5-axis work', items: [{ qty: '1', desc: 'Valve body 316SS per DWG-2024-089', treatment: null }] },
   { desc: 'Fabricate and powder coat control panel enclosure', items: [{ qty: '1', desc: 'Enclosure 600x400x200mm 2mm MS', treatment: 'POWDERCOAT' }] },
-  { desc: 'Manufacture wear plates for crusher', items: [{ qty: '6', desc: 'Wear plate 400BHN 300x200x25mm', treatment: 'N/A' }] },
+  { desc: 'Manufacture wear plates for crusher', items: [{ qty: '6', desc: 'Wear plate 400BHN 300x200x25mm', treatment: null }] },
   { desc: 'Repair and re-chrome roller shaft', items: [{ qty: '1', desc: 'Roller shaft repair — chrome plating', treatment: 'ELECTROPLATE' }] },
-  { desc: 'Manufacture coupling adapter', items: [{ qty: '2', desc: 'Coupling adapter EN8 Ø150x120mm', treatment: 'N/A' }] },
-  { desc: 'Inspection and report on failed bearing housing', items: [{ qty: '1', desc: 'Bearing housing inspection — dimensional report', treatment: 'N/A' }] },
+  { desc: 'Manufacture coupling adapter', items: [{ qty: '2', desc: 'Coupling adapter EN8 Ø150x120mm', treatment: null }] },
+  { desc: 'Inspection and report on failed bearing housing', items: [{ qty: '1', desc: 'Bearing housing inspection — dimensional report', treatment: null }] },
   { desc: 'Manufacture tooling jig for production line', items: [{ qty: '1', desc: 'Assembly jig — welded frame with machined locators', treatment: 'SPRAYPAINT' }] },
-  { desc: 'Supply and machine bronze bushes', items: [{ qty: '10', desc: 'Bronze bush PB1 Ø50x40x30mm', treatment: 'N/A' }] },
+  { desc: 'Supply and machine bronze bushes', items: [{ qty: '10', desc: 'Bronze bush PB1 Ø50x40x30mm', treatment: null }] },
   { desc: 'Emergency repair — conveyor drive shaft snapped', items: [{ qty: '1', desc: 'Drive shaft EN24T Ø100x1200mm — emergency', treatment: 'HEAT_TREATMENT' }] },
   { desc: 'Anodise batch of aluminium housings', items: [{ qty: '25', desc: 'Housing 6082-T6 per DWG-2024-115', treatment: 'ANODISE' }] },
   { desc: 'Manufacture pipe spools to isometric drawing', items: [{ qty: '4', desc: 'Pipe spool 6" Sch40 CS — welded', treatment: 'BLASTING,SPRAYPAINT' }] },
-  { desc: 'CAD drawing service — customer sketch to 3D model', items: [{ qty: '1', desc: 'CAD modelling and drawing production', treatment: 'N/A' }] },
-  { desc: 'On-site machining of turbine coupling face', items: [{ qty: '1', desc: 'On-site facing — portable lathe', treatment: 'N/A' }] },
+  { desc: 'CAD drawing service — customer sketch to 3D model', items: [{ qty: '1', desc: 'CAD modelling and drawing production', treatment: null }] },
+  { desc: 'On-site machining of turbine coupling face', items: [{ qty: '1', desc: 'On-site facing — portable lathe', treatment: null }] },
 ];
 
-const nameToValue = (name) => name.toUpperCase().replace(/[\s/]+/g, '_').replace(/[^A-Z0-9_]/g, '');
-const jobTypes = ['Manufacture', 'Repair', 'Modify', 'Fabricate', 'Supply', 'Reverse Engineer', 'Inspection', 'CAD Drawings', 'Consultation', 'On-Site'].map(nameToValue);
+const jobTypes = tagData.job_type.map(tagValue);
 
 const insertJobcard = db.prepare(`INSERT INTO jobcards (
   id, job_number, card_type, status, contact_id, contact_name, company_name,
@@ -204,7 +215,7 @@ const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, us
 
 const workerIds = users.filter(u => u.role === 'user').map(u => u.id);
 const workerNames = users.filter(u => u.role === 'user').map(u => u.name);
-const customerProps = ['N/A', 'MATERIAL_SUPPLIED', 'DAMAGED_OR_WORN_SAMPLE', 'GOOD_SAMPLE', 'PART_FOR_REPAIR'];
+const customerProps = tagData.customer_property.map(tagValue);
 
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 const pickN = (arr, n) => arr.sort(() => 0.5 - Math.random()).slice(0, n);

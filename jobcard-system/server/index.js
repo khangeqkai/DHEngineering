@@ -23,6 +23,7 @@ const tagsRoutes = require('./src/routes/tags');
 const machinesRoutes = require('./src/routes/machines');
 const settingsRoutes = require('./src/routes/settings');
 const qaLevelsRoutes = require('./src/routes/qa-levels');
+const searchRoutes = require('./src/routes/search');
 const { initializeDatabase } = require('./src/db/init');
 
 const app = express();
@@ -63,6 +64,7 @@ app.use('/api/tags', tagsRoutes);
 app.use('/api/machines', machinesRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/qa-levels', qaLevelsRoutes);
+app.use('/api/search', searchRoutes);
 
 // Serve React client in production (LAN browser access)
 const clientBuildPath = process.env.CLIENT_BUILD_PATH || path.join(__dirname, '..', 'client', 'dist');
