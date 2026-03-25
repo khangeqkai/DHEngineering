@@ -41,7 +41,6 @@ export default function ContactManagement() {
       const data = await api.getContacts();
       setContacts(data);
     } catch (err) {
-      console.error('Failed to load contacts:', err);
       toast.error('Failed to load contacts');
     } finally {
       setLoading(false);
@@ -62,7 +61,6 @@ export default function ContactManagement() {
       setActivityRefreshKey(k => k + 1);
       resetForm();
     } catch (err) {
-      console.error('Failed to save contact:', err);
       toast.error(err.message || 'Failed to save contact');
     } finally {
       setSaving(false);
@@ -83,9 +81,9 @@ export default function ContactManagement() {
   };
 
   const handleDelete = async (contact) => {
-    const displayName = contact.companyName
-      ? `${contact.contactName} (${contact.companyName})`
-      : contact.contactName;
+    const displayName = contact.contactName
+      ? `${contact.companyName} (${contact.contactName})`
+      : contact.companyName;
     const confirmed = await showConfirm({
       title: 'Delete Contact',
       message: `Are you sure you want to delete "${displayName}"? This cannot be undone.`,
@@ -99,7 +97,6 @@ export default function ContactManagement() {
       await loadContacts();
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
-      console.error('Failed to delete contact:', err);
       toast.error(err.message || 'Failed to delete contact');
     }
   };
@@ -143,24 +140,6 @@ export default function ContactManagement() {
           <form id="contact-form" onSubmit={handleSubmit}>
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="contactName">Contact Name *</label>
-                <input
-                  type="text"
-                  id="contactName"
-                  value={formData.contactName}
-                  onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                  onBlur={(e) => {
-                    const formatted = toTitleCase(e.target.value);
-                    if (formatted !== e.target.value) {
-                      setFormData(prev => ({ ...prev, contactName: formatted }));
-                    }
-                  }}
-                  placeholder="Person's name..."
-                  required
-                />
-              </div>
-
-              <div className="form-group">
                 <label htmlFor="companyName">Company *</label>
                 <input
                   type="text"
@@ -175,6 +154,23 @@ export default function ContactManagement() {
                   }}
                   placeholder="Company name..."
                   required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="contactName">Contact Name</label>
+                <input
+                  type="text"
+                  id="contactName"
+                  value={formData.contactName}
+                  onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                  onBlur={(e) => {
+                    const formatted = toTitleCase(e.target.value);
+                    if (formatted !== e.target.value) {
+                      setFormData(prev => ({ ...prev, contactName: formatted }));
+                    }
+                  }}
+                  placeholder="Person's name..."
                 />
               </div>
             </div>
@@ -255,8 +251,8 @@ export default function ContactManagement() {
           <DataTable
             columns={[
               {
-                key: 'contactName',
-                label: 'Contact Name',
+                key: 'companyName',
+                label: 'Company',
                 sortable: true,
                 render: (val, row) => (
                   <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(row); }}>
@@ -264,7 +260,7 @@ export default function ContactManagement() {
                   </a>
                 )
               },
-              { key: 'companyName', label: 'Company', sortable: true },
+              { key: 'contactName', label: 'Contact Name', sortable: true },
               { key: 'phone', label: 'Phone' },
               { key: 'email', label: 'Email', sortable: true },
               {
@@ -282,7 +278,7 @@ export default function ContactManagement() {
             data={contacts}
             loading={loading}
             searchable
-            searchKeys={['contactName', 'companyName', 'email', 'phone']}
+            searchKeys={['companyName', 'contactName', 'email', 'phone']}
             searchPlaceholder="Search contacts..."
             emptyState={{
               icon: 'contacts',
@@ -291,7 +287,7 @@ export default function ContactManagement() {
               actionLabel: 'Add Contact',
               onAction: () => setShowForm(true),
             }}
-            defaultSortKey="contactName"
+            defaultSortKey="companyName"
           />
         </div>
       </div>

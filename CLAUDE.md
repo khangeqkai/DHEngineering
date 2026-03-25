@@ -123,7 +123,7 @@ Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_ass
 
 **Unified tags system**: The `tags` table stores all dynamic dropdown/multi-select options with columns: `id`, `category` (treatment/customer_property/drawings/job_type), `name`, `value`, `sort_order`, `created_at`. The `supplier_service_tags` junction table links suppliers to treatment tags. Frontend uses the `useTags(category)` hook from `client/src/hooks/useTags.js` to fetch tags dynamically. Admin manages tags and equipment via the "Tags & Equipment" page (`/tags`). Equipment is managed through the existing `machines` table but shares the same admin UI.
 
-**Contacts model** (phone contacts style): Each contact is a standalone person with a required company field. Search works on both `contact_name` and `company_name`. Job cards link to contacts via `contact_id` with override fields for per-job customization.
+**Contacts model** (company-primary): Each contact requires a `company_name` (NOT NULL); `contact_name` is optional. Search autocomplete is on the Company field, with dropdown showing **Company (Contact)** format. Search filters by both `company_name` and `contact_name`. Job cards link to contacts via `contact_id` with override fields for per-job customization.
 
 All changes logged to `history` table for audit trail.
 

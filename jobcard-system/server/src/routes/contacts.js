@@ -74,7 +74,7 @@ router.post('/', requireAdmin, validateCreateContact, (req, res) => {
 
     contactQueries.create.run(
       id,
-      contactName,
+      contactName || null,
       companyName,
       phone || null,
       email || null,
@@ -115,7 +115,7 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
     // Track changes for audit
     const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
     const changes = {};
-    if (normalizeEmpty(contactName) !== normalizeEmpty(existing.contact_name)) changes.contactName = { from: existing.contact_name, to: contactName };
+    if (normalizeEmpty(contactName) !== normalizeEmpty(existing.contact_name)) changes.contactName = { from: existing.contact_name, to: contactName || null };
     if (normalizeEmpty(companyName) !== normalizeEmpty(existing.company_name)) changes.companyName = { from: existing.company_name, to: companyName };
     if (normalizeEmpty(phone) !== normalizeEmpty(existing.phone)) changes.phone = { from: existing.phone, to: phone || null };
     if (normalizeEmpty(email) !== normalizeEmpty(existing.email)) changes.email = { from: existing.email, to: email || null };
@@ -123,7 +123,7 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
     if (normalizeEmpty(notes) !== normalizeEmpty(existing.notes)) changes.notes = { from: existing.notes, to: notes || null };
 
     contactQueries.update.run(
-      contactName,
+      contactName || null,
       companyName,
       phone || null,
       email || null,

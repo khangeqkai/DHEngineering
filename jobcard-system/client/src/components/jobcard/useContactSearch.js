@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 
 /**
@@ -25,7 +26,7 @@ export function useContactSearch() {
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [contactFormData, setContactFormData] = useState(getDefaultContactFormData());
   const [contacts, setContacts] = useState([]);
-  const [originalContactName, setOriginalContactName] = useState(''); // For smart detection
+  const [originalCompanyName, setOriginalCompanyName] = useState(''); // For smart detection
   const contactSearchRef = useRef(null);
   const blurTimeoutRef = useRef(null);
 
@@ -41,15 +42,15 @@ export function useContactSearch() {
       setAllContacts(results || []);
       allContactsLoaded.current = true;
     } catch (err) {
-      console.error('Failed to load contacts:', err);
+      toast.error('Failed to load contacts');
     }
   }, []);
 
-  // Contact search effect - watches contactName field for autocomplete
+  // Contact search effect - watches companyName field for autocomplete
   useEffect(() => {
     if (!fieldFocused) return;
 
-    const searchValue = contactFormData.contactName.trim().toLowerCase();
+    const searchValue = contactFormData.companyName.trim().toLowerCase();
 
     if (!searchValue) {
       // No text typed - show all contacts (top 10)
@@ -60,12 +61,12 @@ export function useContactSearch() {
 
     // Filter from cached contacts for instant results
     const filtered = allContacts.filter(c =>
-      (c.contactName || '').toLowerCase().includes(searchValue) ||
-      (c.companyName || '').toLowerCase().includes(searchValue)
+      (c.companyName || '').toLowerCase().includes(searchValue) ||
+      (c.contactName || '').toLowerCase().includes(searchValue)
     ).slice(0, 10);
     setContacts(filtered);
     setShowContactDropdown(filtered.length > 0);
-  }, [fieldFocused, contactFormData.contactName, allContacts]);
+  }, [fieldFocused, contactFormData.companyName, allContacts]);
 
   // Click outside to close contact dropdown
   useEffect(() => {
@@ -100,7 +101,7 @@ export function useContactSearch() {
   // Select an existing contact from the dropdown
   const selectContact = useCallback((selectedContact, setFormData) => {
     setContact(selectedContact);
-    setOriginalContactName(selectedContact.contactName || '');
+    setOriginalCompanyName(selectedContact.companyName || '');
 
     // Update form data with contact info
     setFormData(prev => ({
@@ -158,13 +159,13 @@ export function useContactSearch() {
     const contactName = jobcardData.contactName;
     const companyName = jobcardData.companyName;
 
-    if (contactId || contactName) {
+    if (contactId || companyName) {
       setContact({
         id: contactId,
         contactName: contactName,
         companyName: companyName
       });
-      setOriginalContactName(contactName || '');
+      setOriginalCompanyName(companyName || '');
 
       setContactFormData({
         contactName: contactName || '',
@@ -178,18 +179,18 @@ export function useContactSearch() {
   // Reset contact state
   const resetContact = useCallback(() => {
     setContact(null);
-    setOriginalContactName('');
+    setOriginalCompanyName('');
     setFieldFocused(false);
     setContactFormData(getDefaultContactFormData());
     setShowContactDropdown(false);
     setContacts([]);
   }, []);
 
-  // Check if contact name changed (for smart detection)
-  const hasContactNameChanged = useCallback(() => {
-    if (!originalContactName) return false;
-    return contactFormData.contactName.trim() !== originalContactName.trim();
-  }, [originalContactName, contactFormData.contactName]);
+  // Check if company name changed (for smart detection)
+  const hasCompanyNameChanged = useCallback(() => {
+    if (!originalCompanyName) return false;
+    return contactFormData.companyName.trim() !== originalCompanyName.trim();
+  }, [originalCompanyName, contactFormData.companyName]);
 
   return {
     // State
@@ -200,7 +201,6 @@ export function useContactSearch() {
     contactFormData,
     contacts,
     contactSearchRef,
-    originalContactName,
     // Actions
     selectContact,
     handleContactFieldChange,
@@ -208,7 +208,7 @@ export function useContactSearch() {
     handleFieldBlur,
     setContactFromJobCard,
     resetContact,
-    hasContactNameChanged
+    hasCompanyNameChanged
   };
 }
 

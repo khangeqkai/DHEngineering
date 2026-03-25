@@ -281,8 +281,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
     // Validation
     const errors = [];
-    if (isAdmin && !formHook.formData.contactId && !contactHook.contactFormData.contactName.trim()) {
-      errors.push('Contact name is required');
+    if (isAdmin && !formHook.formData.contactId && !contactHook.contactFormData.companyName.trim()) {
+      errors.push('Company name is required');
     }
     if (!formHook.formData.jobType) {
       errors.push('Job type is required');
@@ -316,11 +316,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       let contactId = formHook.formData.contactId;
 
       if (isAdmin) {
-        // Smart detection: Check if user edited a selected contact and changed the name
-        if (contactHook.hasContactNameChanged()) {
+        // Smart detection: Check if user edited a selected contact and changed the company
+        if (contactHook.hasCompanyNameChanged()) {
           const saveNew = await showConfirm({
             title: 'Save New Contact',
-            message: `Save "${contactHook.contactFormData.contactName}" as a new contact?`,
+            message: `Save "${contactHook.contactFormData.companyName}" as a new contact?`,
             confirmLabel: 'Save',
             cancelLabel: 'No',
             confirmVariant: 'primary'
@@ -328,8 +328,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           if (saveNew) {
             // Create new contact
             const newContact = await api.createContact({
-              contactName: contactHook.contactFormData.contactName.trim(),
-              companyName: contactHook.contactFormData.companyName || null,
+              contactName: contactHook.contactFormData.contactName.trim() || null,
+              companyName: contactHook.contactFormData.companyName.trim(),
               phone: contactHook.contactFormData.phone || null,
               email: contactHook.contactFormData.email || null
             });
@@ -339,11 +339,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           // If not saving as new, keep the original contactId but use override fields
         }
 
-        // Create new contact if no contact selected and contact name provided
-        if (!contactId && contactHook.contactFormData.contactName.trim()) {
+        // Create new contact if no contact selected and company name provided
+        if (!contactId && contactHook.contactFormData.companyName.trim()) {
           const newContact = await api.createContact({
-            contactName: contactHook.contactFormData.contactName.trim(),
-            companyName: contactHook.contactFormData.companyName || null,
+            contactName: contactHook.contactFormData.contactName.trim() || null,
+            companyName: contactHook.contactFormData.companyName.trim(),
             phone: contactHook.contactFormData.phone || null,
             email: contactHook.contactFormData.email || null
           });

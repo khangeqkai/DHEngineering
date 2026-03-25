@@ -53,14 +53,13 @@ const userQueries = {
 // Contact queries (phone contacts style - each contact is standalone)
 const contactQueries = {
   getById: db.prepare('SELECT * FROM contacts WHERE id = ?'),
-  getByName: db.prepare('SELECT * FROM contacts WHERE contact_name = ?'),
-  getAll: db.prepare('SELECT * FROM contacts ORDER BY contact_name ASC'),
+  getAll: db.prepare('SELECT * FROM contacts ORDER BY company_name ASC'),
 
-  // Search by contact name OR company name
+  // Search by company name OR contact name
   search: db.prepare(`
     SELECT * FROM contacts
-    WHERE contact_name LIKE ? OR company_name LIKE ?
-    ORDER BY contact_name ASC
+    WHERE company_name LIKE ? OR contact_name LIKE ?
+    ORDER BY company_name ASC
     LIMIT 20
   `),
 

@@ -61,9 +61,9 @@ function formatTarget(snapshot) {
   if (snapshot.machineNumber) {
     return snapshot.name ? `${snapshot.machineNumber} (${snapshot.name})` : snapshot.machineNumber;
   }
-  // Contact: show contact name (company)
-  if (snapshot.contactName) {
-    return snapshot.companyName ? `${snapshot.contactName} (${snapshot.companyName})` : snapshot.contactName;
+  // Contact: show company name (contact)
+  if (snapshot.companyName && snapshot.contactName) {
+    return `${snapshot.companyName} (${snapshot.contactName})`;
   }
   // Supplier: show company name
   if (snapshot.name) return snapshot.name;

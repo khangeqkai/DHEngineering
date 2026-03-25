@@ -296,7 +296,7 @@ export default function JobCardList() {
       <div className="filters">
         <input
           type="text"
-          placeholder={isAdmin ? "Search by job #, customer, company, assignee, or description..." : "Search by job # or description..."}
+          placeholder={isAdmin ? "Search by job #, company, customer, assignee, or description..." : "Search by job # or description..."}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="search-input"

@@ -22,8 +22,8 @@ db.exec(`
   -- Contacts table (phone contacts style - each contact is standalone)
   CREATE TABLE IF NOT EXISTS contacts (
     id TEXT PRIMARY KEY,
-    contact_name TEXT NOT NULL,
-    company_name TEXT,
+    contact_name TEXT,
+    company_name TEXT NOT NULL,
     phone TEXT,
     email TEXT,
     address TEXT,

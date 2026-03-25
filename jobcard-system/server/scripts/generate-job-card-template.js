@@ -161,8 +161,8 @@ async function generateTemplate(outputPath) {
   // Contact
   y1 = drawSectionHeader(page1, y1, 'Contact');
   y1 = drawRow(page1, y1, [
-    { label: 'Contact Name', name: 'contact_name', flex: 1 },
-    { label: 'Company', name: 'company_name', flex: 1 }
+    { label: 'Company', name: 'company_name', flex: 1 },
+    { label: 'Contact Name', name: 'contact_name', flex: 1 }
   ]);
 
   // Job Description

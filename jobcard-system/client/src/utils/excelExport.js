@@ -90,8 +90,8 @@ function fmtCustomerProperty(val) { return fmtCodeList(val); }
 // ── Column definitions per entity ────────────────────────────────────────────
 
 const CONTACT_COLS = [
-  { label: 'Contact Name', value: r => r.contactName },
   { label: 'Company', value: r => r.companyName },
+  { label: 'Contact Name', value: r => r.contactName },
   { label: 'Phone', value: r => r.phone },
   { label: 'Email', value: r => r.email },
   { label: 'Address', value: r => r.address },
@@ -144,8 +144,8 @@ const ACTIVITY_COLS = [
 
 const JOBCARD_SUMMARY_COLS = [
   { label: 'Job #', value: r => r.jobNumber },
-  { label: 'Customer', value: r => r.contactName || r.storedContactName },
   { label: 'Company', value: r => r.companyName || r.storedCompanyName },
+  { label: 'Contact Name', value: r => r.contactName || r.storedContactName },
   { label: 'Contact Phone', value: r => r.contactPhone },
   { label: 'Contact Email', value: r => r.contactEmail },
   { label: 'Type', value: r => r.cardType },

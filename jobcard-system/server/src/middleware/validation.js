@@ -195,7 +195,7 @@ const validateCreateUser = [
  * POST /contacts
  */
 const validateCreateContact = [
-  requiredString('contactName', 'Contact name'),
+  optionalString('contactName', 'Contact name', 200),
   requiredString('companyName', 'Company name'),
   optionalEmail('email'),
   optionalPhone('phone'),
@@ -209,7 +209,7 @@ const validateCreateContact = [
  * PUT /contacts/:id
  */
 const validateUpdateContact = [
-  requiredString('contactName', 'Contact name'),
+  optionalString('contactName', 'Contact name', 200),
   requiredString('companyName', 'Company name'),
   optionalEmail('email'),
   optionalPhone('phone'),

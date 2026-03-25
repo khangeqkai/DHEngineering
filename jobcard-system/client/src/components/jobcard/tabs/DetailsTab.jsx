@@ -159,28 +159,28 @@ export default function DetailsTab({
         <div className="contact-fields-inline" ref={contactSearchRef}>
           <div className="form-row">
             <div className="form-group">
-              <label>Contact Name <span className="required">*</span></label>
+              <label>Company <span className="required">*</span></label>
               <div className="autocomplete-container">
                 <input
                   type="text"
-                  value={contactFormData.contactName}
-                  onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
+                  value={contactFormData.companyName}
+                  onChange={(e) => handleContactFieldChange('companyName', e.target.value)}
                   onFocus={handleFieldFocus}
                   onBlur={(e) => {
                     handleFieldBlur();
                     const formatted = toTitleCase(e.target.value);
-                    if (formatted !== e.target.value) handleContactFieldChange('contactName', formatted);
+                    if (formatted !== e.target.value) handleContactFieldChange('companyName', formatted);
                   }}
                   onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); e.target.blur(); } }}
                   placeholder=""
-                  className={!contactFormData.contactName.trim() ? 'field-required' : ''}
+                  className={!contactFormData.companyName.trim() ? 'field-required' : ''}
                 />
                 {showContactDropdown && fieldFocused && contacts.length > 0 && (
                   <div className="customer-dropdown">
                     {contacts.map(c => (
                       <div key={c.id} className="customer-option" onMouseDown={() => selectContact(c)}>
-                        <strong>{c.contactName}</strong>
-                        {c.companyName && <span className="company-name"> ({c.companyName})</span>}
+                        <strong>{c.companyName || 'No company'}</strong>
+                        {c.contactName && <span className="contact-name"> ({c.contactName})</span>}
                       </div>
                     ))}
                   </div>
@@ -188,12 +188,12 @@ export default function DetailsTab({
               </div>
             </div>
             <div className="form-group">
-              <label>Company</label>
+              <label>Contact Name</label>
               <input
                 type="text"
-                value={contactFormData.companyName}
-                onChange={(e) => handleContactFieldChange('companyName', e.target.value)}
-                onBlur={titleCaseBlur('companyName', handleContactFieldChange)}
+                value={contactFormData.contactName}
+                onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
+                onBlur={titleCaseBlur('contactName', handleContactFieldChange)}
                 placeholder=""
               />
             </div>
