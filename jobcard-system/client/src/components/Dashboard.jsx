@@ -290,6 +290,7 @@ export default function Dashboard() {
                 <thead>
                   <tr>
                     <th>Job #</th>
+                    {isAdmin && <th>Company</th>}
                     {isAdmin && <th>Customer</th>}
                     <th>Due Date</th>
                     <th>Priority</th>
@@ -318,6 +319,9 @@ export default function Dashboard() {
                           <span className="critical-badge">Critical QA</span>
                         )}
                       </td>
+                      {isAdmin && (
+                        <td>{card.companyName || '-'}</td>
+                      )}
                       {isAdmin && (
                         <td>{card.contactName || '-'}</td>
                       )}
@@ -374,6 +378,7 @@ export default function Dashboard() {
                 <thead>
                   <tr>
                     <th>Job #</th>
+                    {isAdmin && <th>Company</th>}
                     {isAdmin && <th>Customer</th>}
                     <th>Type</th>
                     <th>Status</th>
@@ -409,6 +414,9 @@ export default function Dashboard() {
                             <span className="critical-badge">Critical QA</span>
                           )}
                         </td>
+                        {isAdmin && (
+                          <td>{card.companyName || '-'}</td>
+                        )}
                         {isAdmin && (
                           <td>{card.contactName || '-'}</td>
                         )}

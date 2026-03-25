@@ -219,6 +219,7 @@ export default function JobCardList() {
         !search ||
         card.jobNumber?.toLowerCase().includes(lowerSearch) ||
         (isAdmin && card.contactName?.toLowerCase().includes(lowerSearch)) ||
+        (isAdmin && card.companyName?.toLowerCase().includes(lowerSearch)) ||
         (isAdmin && card.assignees?.some(a => a.userName?.toLowerCase().includes(lowerSearch))) ||
         card.description?.toLowerCase().includes(lowerSearch);
       return matchesFilter && matchesSearch;
@@ -295,7 +296,7 @@ export default function JobCardList() {
       <div className="filters">
         <input
           type="text"
-          placeholder={isAdmin ? "Search by job #, customer, assignee, or description..." : "Search by job # or description..."}
+          placeholder={isAdmin ? "Search by job #, customer, company, assignee, or description..." : "Search by job # or description..."}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="search-input"
@@ -351,6 +352,7 @@ export default function JobCardList() {
               <thead>
                 <tr>
                   <th>Job #</th>
+                  {isAdmin && <th>Company</th>}
                   {isAdmin && <th>Customer</th>}
                   {isAdmin && <th>Assigned To</th>}
                   <th>Type</th>
@@ -394,6 +396,9 @@ export default function JobCardList() {
                           </p>
                         )}
                       </td>
+                      {isAdmin && (
+                        <td>{card.companyName || '-'}</td>
+                      )}
                       {isAdmin && (
                         <td>{card.contactName || '-'}</td>
                       )}
