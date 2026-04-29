@@ -1,6 +1,5 @@
 import * as XLSX from 'xlsx';
 import { api } from '../services/api';
-import { snakeToTitleCase } from './formatters';
 // Tag labels are now dynamic (DB-driven). For exports, convert values to readable labels.
 
 // ── Save helper ──────────────────────────────────────────────────────────────
@@ -159,7 +158,11 @@ const JOBCARD_SUMMARY_COLS = [
   { label: 'Assigned To', value: r => (r.assignees || []).map(a => a.userName || a.name).join(', ') },
   { label: 'Items', value: r => (r.items || []).map(it => `#${it.itemNumber}: ${it.description || ''}`).join(', ') },
   { label: 'PO Number', value: r => r.poNumber },
-  { label: 'Job Type', value: r => snakeToTitleCase(r.jobType) },
+  { label: 'Job Type', value: r => {
+    const items = r.items || [];
+    const all = [...new Set(items.map(i => i.jobType).filter(Boolean))];
+    return fmtCodeList(all.join(','));
+  }},
   { label: 'Drawings', value: r => fmtDrawings(r.drawingsType) },
   { label: 'Material', value: r => {
     const items = r.items || [];

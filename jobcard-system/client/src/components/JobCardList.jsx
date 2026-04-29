@@ -13,7 +13,6 @@ import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
 import EmptyState from './common/EmptyState';
-import { snakeToTitleCase } from '../utils/formatters';
 import './JobCardList.css';
 
 const STATUS_OPTIONS = [
@@ -356,7 +355,6 @@ export default function JobCardList() {
                   {isAdmin && <th>Company</th>}
                   {isAdmin && <th>Customer</th>}
                   {isAdmin && <th>Assigned To</th>}
-                  <th>Type</th>
                   <th>Status</th>
                   <th>Priority</th>
                   <th>Due Date</th>
@@ -419,7 +417,6 @@ export default function JobCardList() {
                           ) : '-'}
                         </td>
                       )}
-                      <td>{snakeToTitleCase(card.jobType) || '-'}</td>
                       <td>
                         {isAdmin && !showArchived ? (
                           <div className="status-popover-wrapper" ref={statusPopoverId === card.id ? popoverRef : null}>

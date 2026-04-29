@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { createJobCardFolders, deleteJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { validateJobcardListQuery, validateJobcardEnums, validateItemTreatments, validateItemMaterials, JOBCARD_STATUSES } = require('../middleware/validation');
+const { validateJobcardListQuery, validateJobcardEnums, validateItemTreatments, validateItemMaterials, validateItemJobTypes, JOBCARD_STATUSES } = require('../middleware/validation');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -137,6 +137,11 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       return res.status(400).json({ error: materialError });
     }
 
+    const jobTypeError = validateItemJobTypes(data.items);
+    if (jobTypeError) {
+      return res.status(400).json({ error: jobTypeError });
+    }
+
     // Atomically generate job number and increment counter
     const { jobNumber, error: jobNumError } = generateAndIncrementJobNumber();
     if (jobNumError) {
@@ -181,7 +186,6 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       data.contactPhone || null,
       data.contactEmail || null,
       qualityLevelName,
-      data.jobType || null,
       data.priority || 'NONE',
       data.poNumber || null,
       data.quoteReference || null,
@@ -204,16 +208,17 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
     if (qaLevelId) {
       // Fetch items from DB (already created by createRelatedRecords above)
       const createdItems = jobItemQueries.getByJobcard.all(id);
-      // Aggregate treatments from all items for PDF fill
+      // Aggregate treatments and job types from all items for PDF fill
       const allTreatments = [...new Set(createdItems.flatMap(i => (i.treatment || '').split(',').filter(v => v && v !== 'NONE')))];
       const allTreatmentOther = createdItems.map(i => i.treatment_other).filter(Boolean).join(', ');
+      const allJobTypes = [...new Set(createdItems.map(i => i.job_type).filter(Boolean))];
       await initQaFormsFromLevel(id, qaLevelId, {
         jobNumber: jobNumber,
         status: status,
         companyName: data.companyName || null,
         contactName: data.contactName || null,
         description: data.description || null,
-        jobType: data.jobType || null,
+        jobType: allJobTypes.join(',') || null,
         priority: data.priority || 'NONE',
         dueDate: data.dueDate || null,
         qualityLevel: qualityLevelName,
@@ -226,7 +231,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
         repeatJob: data.isRepeatJob ? 'Yes' : 'No',
         repeatJobReference: data.repeatJobReference || null,
         notes: data.notes || null,
-        items: createdItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description, material: i.material, treatment: i.treatment, treatmentOther: i.treatment_other }))
+        items: createdItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description, jobType: i.job_type, material: i.material, treatment: i.treatment, treatmentOther: i.treatment_other }))
       });
     }
 
@@ -244,7 +249,6 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
     recordHistory('jobcard', id, 'create', req.user.userId, req.user.name || req.user.username, {
       jobNumber: { from: null, to: jobNumber },
       status: { from: null, to: status },
-      jobType: { from: null, to: data.jobType || null },
       priority: { from: null, to: data.priority || 'NONE' },
       qualityLevel: { from: null, to: qualityLevelName || null }
     });
@@ -300,6 +304,10 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       if (materialError) {
         return res.status(400).json({ error: materialError });
       }
+      const jobTypeError = validateItemJobTypes(data.items);
+      if (jobTypeError) {
+        return res.status(400).json({ error: jobTypeError });
+      }
     }
 
     const changes = buildChanges(existing, data);
@@ -313,7 +321,6 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       data.contactPhone !== undefined ? data.contactPhone : existing.contact_phone,
       data.contactEmail !== undefined ? data.contactEmail : existing.contact_email,
       data.qualityLevel !== undefined ? data.qualityLevel : existing.quality_level,
-      data.jobType !== undefined ? data.jobType : existing.job_type,
       data.priority !== undefined ? data.priority : existing.priority,
       data.poNumber !== undefined ? data.poNumber : existing.po_number,
       data.quoteReference !== undefined ? data.quoteReference : existing.quote_reference,
@@ -351,15 +358,15 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       for (let i = 0; i < data.items.length; i++) {
         const item = data.items[i];
         const itemId = item.id || `item:${Date.now()}:${uuidv4().slice(0, 8)}`;
-        jobItemQueries.create.run(itemId, id, i + 1, item.qty || null, item.description, item.material || null, item.treatment || null, item.treatmentOther || null);
+        jobItemQueries.create.run(itemId, id, i + 1, item.qty || null, item.description, item.jobType || null, item.material || null, item.treatment || null, item.treatmentOther || null);
       }
     }
 
     // Track items changes — per-item granularity
     if (data.items !== undefined) {
-      const itemSummary = (qty, description, material, treatment) => `${qty || ''}x ${description}${material ? ' (' + material + ')' : ''}${treatment ? ' [' + treatment + ']' : ''}`;
-      const oldMap = new Map(existingItems.map(i => [i.item_number, itemSummary(i.qty, i.description, i.material, i.treatment)]));
-      const newMap = new Map(data.items.map((i, idx) => [i.itemNumber || idx + 1, itemSummary(i.qty, i.description, i.material, i.treatment)]));
+      const itemSummary = (qty, description, jobType, material, treatment) => `${qty || ''}x ${description}${jobType ? ' <' + jobType + '>' : ''}${material ? ' (' + material + ')' : ''}${treatment ? ' [' + treatment + ']' : ''}`;
+      const oldMap = new Map(existingItems.map(i => [i.item_number, itemSummary(i.qty, i.description, i.job_type, i.material, i.treatment)]));
+      const newMap = new Map(data.items.map((i, idx) => [i.itemNumber || idx + 1, itemSummary(i.qty, i.description, i.jobType, i.material, i.treatment)]));
       for (const [num, desc] of newMap) {
         if (!oldMap.has(num)) {
           changes[`item #${num} added`] = { from: null, to: desc };
@@ -421,13 +428,14 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
         const currentItems = jobItemQueries.getByJobcard.all(id);
         const allTreatments = [...new Set(currentItems.flatMap(i => (i.treatment || '').split(',').filter(v => v && v !== 'NONE')))];
         const allTreatmentOther = currentItems.map(i => i.treatment_other).filter(Boolean).join(', ');
+        const allJobTypes = [...new Set(currentItems.map(i => i.job_type).filter(Boolean))];
         await initQaFormsFromLevel(id, newQaLevelId, {
           jobNumber: current.job_number,
           status: current.status,
           companyName: current.company_name || data.companyName || null,
           contactName: current.contact_name || data.contactName || null,
           description: current.description || data.description || null,
-          jobType: current.job_type || data.jobType || null,
+          jobType: allJobTypes.join(',') || null,
           priority: current.priority || data.priority || 'NONE',
           dueDate: current.due_date || data.dueDate || null,
           qualityLevel: data.qualityLevel || existing.quality_level,
@@ -440,7 +448,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
           repeatJob: (data.isRepeatJob !== undefined ? data.isRepeatJob : current.is_repeat_job === 1) ? 'Yes' : 'No',
           repeatJobReference: current.repeat_job_reference || data.repeatJobReference || null,
           notes: current.notes || data.notes || null,
-          items: currentItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description, material: i.material, treatment: i.treatment, treatmentOther: i.treatment_other }))
+          items: currentItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description, jobType: i.job_type, material: i.material, treatment: i.treatment, treatmentOther: i.treatment_other }))
         });
       }
     }

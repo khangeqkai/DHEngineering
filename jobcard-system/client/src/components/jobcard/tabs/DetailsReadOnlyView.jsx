@@ -3,7 +3,6 @@ import {
   STATUS_OPTIONS
 } from '../constants';
 import { useTags } from '../../../hooks/useTags';
-import { snakeToTitleCase } from '../../../utils/formatters';
 
 function StatusBadge({ status }) {
   const opt = STATUS_OPTIONS.find(s => s.value === status);
@@ -37,6 +36,7 @@ export default function DetailsReadOnlyView({
   const { tags: customerPropertyTags } = useTags('customer_property');
   const { tags: treatmentTags } = useTags('treatment');
   const { tags: materialTags } = useTags('material');
+  const { tags: jobTypeTags } = useTags('job_type');
 
   const drawingsLabels = (formData.drawingsType || '')
     .split(',')
@@ -80,7 +80,6 @@ export default function DetailsReadOnlyView({
               <span className="readonly-value"><StatusBadge status={formData.status} /></span>
             )}
           </div>
-          <LabelValue label="Job Type" value={snakeToTitleCase(formData.jobType) || '-'} />
         </div>
       </div>
 
@@ -121,11 +120,17 @@ export default function DetailsReadOnlyView({
               const materialLabel = item.material
                 ? (materialTags.find(m => m.value === item.material)?.label || item.material)
                 : null;
+              const jobTypeLabel = item.jobType
+                ? (jobTypeTags.find(j => j.value === item.jobType)?.label || item.jobType)
+                : null;
               return (
                 <div key={item.id || item.itemNumber} className="readonly-item">
                   <span className="readonly-item-badge">#{item.itemNumber}</span>
                   {item.qty && <span className="readonly-item-qty">Qty: {item.qty}</span>}
                   <span className="readonly-item-desc">{item.description}</span>
+                  {jobTypeLabel && (
+                    <span className="readonly-badge job-type">{jobTypeLabel}</span>
+                  )}
                   {materialLabel && (
                     <span className="readonly-badge material">{materialLabel}</span>
                   )}

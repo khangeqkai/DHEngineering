@@ -24,19 +24,6 @@ function runMigrations() {
     }
   }
 
-  // Migration: Normalize job_type values (replace underscores with spaces, uppercase)
-  const jobTypeRows = db.prepare("SELECT id, job_type FROM jobcards WHERE INSTR(job_type, '_') > 0").all();
-  if (jobTypeRows.length > 0) {
-    const updateJobType = db.prepare("UPDATE jobcards SET job_type = ? WHERE id = ?");
-    for (const row of jobTypeRows) {
-      const normalized = row.job_type.replace(/_/g, ' ').toUpperCase();
-      if (normalized !== row.job_type) {
-        updateJobType.run(normalized, row.id);
-        logger.info({ id: row.id, from: row.job_type, to: normalized }, 'Normalized job_type');
-      }
-    }
-  }
-
   logger.info('Migrations complete');
 }
 

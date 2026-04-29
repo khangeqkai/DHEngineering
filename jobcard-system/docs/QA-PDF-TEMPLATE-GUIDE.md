@@ -45,6 +45,7 @@ Job items use indexed field names. Add as many rows as you need (up to 50). Unfi
 | Item Number | `item_N_number` | `item_1_number` |
 | Quantity | `item_N_qty` | `item_1_qty` |
 | Description | `item_N_description` | `item_1_description` |
+| Job Type | `item_N_job_type` | `item_1_job_type` |
 | Material | `item_N_material` | `item_1_material` |
 | Treatment | `item_N_treatment` | `item_1_treatment` |
 | Treatment Other | `item_N_treatment_other` | `item_1_treatment_other` |

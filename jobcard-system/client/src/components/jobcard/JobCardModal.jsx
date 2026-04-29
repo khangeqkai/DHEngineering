@@ -284,15 +284,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (isAdmin && !formHook.formData.contactId && !contactHook.contactFormData.companyName.trim()) {
       errors.push('Company name is required');
     }
-    if (!formHook.formData.jobType) {
-      errors.push('Job type is required');
-    }
     if (!formHook.formData.description?.trim()) {
       errors.push('Job description is required');
     }
     const validItems = formHook.lineItems.filter(item => item.description.trim());
     if (validItems.length === 0) {
       errors.push('Add at least one line item');
+    }
+    const itemMissingJobType = validItems.findIndex(item => !item.jobType);
+    if (itemMissingJobType !== -1) {
+      errors.push(`Job type is required on item #${itemMissingJobType + 1}`);
     }
     if (!formHook.formData.customerProperty || formHook.formData.customerProperty === 'NONE') {
       errors.push('Customer Property is required');
@@ -359,7 +360,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         }),
         qualityLevel: formHook.formData.qualityLevel,
         qaLevelId: formHook.formData.qaLevelId || null,
-        jobType: formHook.formData.jobType,
         priority: formHook.formData.priority,
         poNumber: formHook.formData.poNumber,
         drawingsType: formHook.formData.drawingsType,
@@ -374,6 +374,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           itemNumber: item.itemNumber || idx + 1,
           qty: item.qty,
           description: item.description,
+          jobType: item.jobType || null,
           material: item.material || null,
           treatment: item.treatment || null,
           treatmentOther: item.treatmentOther || null

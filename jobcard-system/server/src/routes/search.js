@@ -17,7 +17,6 @@ function formatJob(row, assignees, isAdmin) {
     companyName: isAdmin ? (row.stored_company_name || row.company_name) : null,
     contactName: isAdmin ? (row.stored_contact_name || row.contact_name) : null,
     status: row.status,
-    jobType: row.job_type,
     priority: row.priority,
     qualityLevel: row.quality_level,
     dueDate: row.due_date,
@@ -183,7 +182,7 @@ function searchJobs(req, res, isAdmin) {
     params.push(assigneeId);
   }
   if (priority) { conditions.push('j.priority = ?'); params.push(priority); }
-  if (jobType) { conditions.push('j.job_type = ?'); params.push(jobType); }
+  if (jobType) { conditions.push('j.id IN (SELECT jobcard_id FROM job_items WHERE job_type = ?)'); params.push(jobType); }
   if (qaLevel) { conditions.push('j.quality_level = ?'); params.push(qaLevel); }
   if (dateFrom || dateTo) {
     const col = dateField === 'due' ? 'j.due_date' : 'j.created_at';

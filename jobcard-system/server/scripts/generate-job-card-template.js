@@ -146,8 +146,7 @@ async function generateTemplate(outputPath) {
   y1 = drawSectionHeader(page1, y1, 'Classification');
   y1 = drawRow(page1, y1, [
     { label: 'Job Number', name: 'job_number', flex: 2 },
-    { label: 'Status', name: 'status', flex: 1 },
-    { label: 'Job Type', name: 'job_type', flex: 1.5 }
+    { label: 'Status', name: 'status', flex: 1 }
   ]);
 
   // Scheduling
@@ -200,13 +199,17 @@ async function generateTemplate(outputPath) {
 
   const colNum = { x: margin, w: 45 };
   const colQty = { x: margin + 57, w: 55 };
-  const colDesc = { x: margin + 124, w: contentWidth - 124 };
+  const colType = { x: margin + 124, w: 100 };
+  const colDesc = { x: margin + 236, w: contentWidth - 236 };
 
   page2.drawText('#', {
     x: colNum.x, y: y2, size: tableHeaderSize, font: fontBold, color: labelColor
   });
   page2.drawText('Qty', {
     x: colQty.x, y: y2, size: tableHeaderSize, font: fontBold, color: labelColor
+  });
+  page2.drawText('Job Type', {
+    x: colType.x, y: y2, size: tableHeaderSize, font: fontBold, color: labelColor
   });
   page2.drawText('Description', {
     x: colDesc.x, y: y2, size: tableHeaderSize, font: fontBold, color: labelColor
@@ -234,6 +237,13 @@ async function generateTemplate(outputPath) {
       borderWidth: 0.5, borderColor: fieldBorder
     });
     qtyField.setFontSize(itemFieldSize);
+
+    const typeField = form.createTextField(`item_${i}_job_type`);
+    typeField.addToPage(page2, {
+      x: colType.x, y: fieldY, width: colType.w, height: itemRowHeight,
+      borderWidth: 0.5, borderColor: fieldBorder
+    });
+    typeField.setFontSize(itemFieldSize);
 
     const descField = form.createTextField(`item_${i}_description`);
     descField.addToPage(page2, {

@@ -144,8 +144,8 @@ function optionalEnum(field, label, allowed) {
 // Enum Values
 // =============================================================================
 
-// Tag-based enums (JOB_TYPES, DRAWINGS_TYPES, CUSTOMER_PROPERTY_OPTIONS, TREATMENT_OPTIONS)
-// are now validated dynamically via getTagValues() from the tags DB table.
+// Tag-based fields (drawings, customer_property, treatment, material, job_type)
+// are validated dynamically via getTagValues() from the tags DB table.
 
 const JOBCARD_STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'TREATMENT', 'ON_HOLD', 'DONE', 'INVOICED'];
 
@@ -242,17 +242,6 @@ const validateJobcardListQuery = [
  * Used for both create and update routes
  */
 const validateJobcardEnums = [
-  // Job type validated dynamically against tags table
-  body('jobType')
-    .customSanitizer(value => (value === '' || value === null) ? undefined : value)
-    .optional()
-    .custom((value) => {
-      const allowed = getTagValues('job_type');
-      if (allowed.length > 0 && !allowed.includes(value)) {
-        throw new Error(`Job type must be one of: ${allowed.join(', ')}`);
-      }
-      return true;
-    }),
   optionalEnum('status', 'Status', JOBCARD_STATUSES),
   optionalEnum('priority', 'Priority', PRIORITY_OPTIONS),
   // qualityLevel is now validated dynamically against qa_levels table (no enum check)
@@ -365,6 +354,28 @@ function validateItemMaterials(items) {
   return null;
 }
 
+/**
+ * Validate jobType field on line items array.
+ * Each item.jobType is a single tag value from the 'job_type' category.
+ * Required: every item must have a jobType.
+ * Returns error string or null if valid.
+ */
+function validateItemJobTypes(items) {
+  if (!Array.isArray(items)) return null;
+  const allowedJobTypes = getTagValues('job_type');
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const value = item.jobType ? String(item.jobType).trim() : '';
+    if (!value) {
+      return `Item #${i + 1} is missing job type`;
+    }
+    if (allowedJobTypes.length > 0 && !allowedJobTypes.includes(value)) {
+      return `Item #${i + 1} has invalid job type value: ${value}`;
+    }
+  }
+  return null;
+}
+
 module.exports = {
   // Error handler
   handleValidationErrors,
@@ -388,6 +399,7 @@ module.exports = {
   validateTimeEntryInspection,
   validateItemTreatments,
   validateItemMaterials,
+  validateItemJobTypes,
 
   JOBCARD_STATUSES,
   PRIORITY_OPTIONS,

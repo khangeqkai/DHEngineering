@@ -804,6 +804,27 @@
   color: var(--danger-color);
 }
 
+.line-item-job-type {
+  display: flex;
+  flex-direction: column;
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.line-item-job-type select {
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface);
+  font-size: var(--text-sm);
+}
+
+.line-item-job-type select:focus {
+  outline: none;
+  border-color: var(--primary-accent);
+}
+
 .line-item-material {
   display: flex;
   flex-direction: column;
@@ -1998,6 +2019,11 @@
 .readonly-badge.material {
   background: #e0f2fe;
   color: #0369a1;
+}
+
+.readonly-badge.job-type {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .readonly-badges {

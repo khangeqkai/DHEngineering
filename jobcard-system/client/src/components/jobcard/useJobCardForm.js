@@ -12,7 +12,7 @@ export function useJobCardForm() {
 
   // Related data (locally managed for create mode, from API for edit mode)
   const [assignees, setAssignees] = useState([]);
-  const [lineItems, setLineItems] = useState([{ id: Date.now(), itemNumber: 1, qty: '', description: '', material: '', treatment: '', treatmentOther: '' }]);
+  const [lineItems, setLineItems] = useState([{ id: Date.now(), itemNumber: 1, qty: '', description: '', jobType: '', material: '', treatment: '', treatmentOther: '' }]);
   // Local subcontracts state for create mode (in edit mode, uses apiSubcontracts)
   const [localSubcontracts, setLocalSubcontracts] = useState([]);
 
@@ -33,7 +33,7 @@ export function useJobCardForm() {
   const addLineItem = useCallback(() => {
     setLineItems(prev => {
       const nextNum = prev.length > 0 ? Math.max(...prev.map(i => i.itemNumber)) + 1 : 1;
-      return [...prev, { id: Date.now(), itemNumber: nextNum, qty: '', description: '', material: '', treatment: '', treatmentOther: '' }];
+      return [...prev, { id: Date.now(), itemNumber: nextNum, qty: '', description: '', jobType: '', material: '', treatment: '', treatmentOther: '' }];
     });
   }, []);
 
@@ -78,7 +78,6 @@ export function useJobCardForm() {
       contactEmail: jobcardData.contactEmail || '',
       qualityLevel: jobcardData.qualityLevel || 'STANDARD',
       qaLevelId: jobcardData.qaLevelId || null,
-      jobType: jobcardData.jobType || '',
       priority: jobcardData.priority || 'NONE',
       poNumber: jobcardData.poNumber || '',
       quoteReference: jobcardData.quoteReference || '',
@@ -105,18 +104,19 @@ export function useJobCardForm() {
       itemNumber: item.itemNumber,
       qty: item.qty || '',
       description: item.description || '',
+      jobType: item.jobType || '',
       material: item.material || '',
       treatment: item.treatment || '',
       treatmentOther: item.treatmentOther || ''
     }));
-    setLineItems(mappedItems.length > 0 ? mappedItems : [{ id: Date.now(), itemNumber: 1, qty: '', description: '', material: '', treatment: '', treatmentOther: '' }]);
+    setLineItems(mappedItems.length > 0 ? mappedItems : [{ id: Date.now(), itemNumber: 1, qty: '', description: '', jobType: '', material: '', treatment: '', treatmentOther: '' }]);
   }, []);
 
   const resetForm = useCallback(() => {
     setFormData(getDefaultFormData());
     setJobNumber('');
     setAssignees([]);
-    setLineItems([{ id: Date.now(), itemNumber: 1, qty: '', description: '', material: '', treatment: '', treatmentOther: '' }]);
+    setLineItems([{ id: Date.now(), itemNumber: 1, qty: '', description: '', jobType: '', material: '', treatment: '', treatmentOther: '' }]);
     setLocalSubcontracts([]);
     setScannerFiles([]);
     setShowScannerFiles(false);

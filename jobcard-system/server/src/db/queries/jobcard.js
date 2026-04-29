@@ -86,19 +86,19 @@ const jobcardQueries = {
     INSERT INTO jobcards (
       id, job_number, card_type, status, contact_id,
       contact_name, company_name, contact_phone, contact_email,
-      quality_level, job_type, priority, po_number, quote_reference,
+      quality_level, priority, po_number, quote_reference,
       drawings_type, customer_property, description, due_date,
       is_repeat_job, repeat_job_reference,
       notes, photos, created_by, updated_by, qa_level_id, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `),
 
   update: db.prepare(`
     UPDATE jobcards SET
       card_type = ?, status = ?, contact_id = ?,
       contact_name = ?, company_name = ?, contact_phone = ?, contact_email = ?,
-      quality_level = ?, job_type = ?, priority = ?, po_number = ?, quote_reference = ?,
+      quality_level = ?, priority = ?, po_number = ?, quote_reference = ?,
       drawings_type = ?, customer_property = ?, description = ?, due_date = ?,
       is_repeat_job = ?, repeat_job_reference = ?,
       notes = ?, photos = ?, updated_by = ?, qa_level_id = ?, updated_at = datetime('now')
@@ -128,8 +128,8 @@ const jobItemQueries = {
   getByJobcard: db.prepare('SELECT * FROM job_items WHERE jobcard_id = ? ORDER BY item_number ASC'),
 
   create: db.prepare(`
-    INSERT INTO job_items (id, jobcard_id, item_number, qty, description, material, treatment, treatment_other, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatment, treatment_other, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `),
 
   deleteByJobcard: db.prepare('DELETE FROM job_items WHERE jobcard_id = ?')

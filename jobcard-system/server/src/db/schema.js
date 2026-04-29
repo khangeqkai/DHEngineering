@@ -87,7 +87,6 @@ db.exec(`
 
     -- Quality & Classification
     quality_level TEXT DEFAULT 'STANDARD',
-    job_type TEXT,
     priority TEXT DEFAULT 'NONE',
 
     -- References
@@ -136,6 +135,7 @@ db.exec(`
     item_number INTEGER NOT NULL,
     qty TEXT,
     description TEXT NOT NULL,
+    job_type TEXT,
     material TEXT,
     treatment TEXT,
     treatment_other TEXT,
@@ -386,6 +386,7 @@ const migrations = [
   { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
   { table: 'time_entries', column: 'is_special_labour', type: 'INTEGER DEFAULT 0' },
   { table: 'job_items', column: 'material', type: 'TEXT' },
+  { table: 'job_items', column: 'job_type', type: 'TEXT' },
 ];
 
 // Drop is_critical_qa column from contacts (QA level now lives on job cards only)
@@ -461,6 +462,17 @@ try {
 } catch (err) {
   db.exec('PRAGMA foreign_keys = ON');
   logger.error({ err }, 'Migration: Failed to remove active from contacts');
+}
+
+// Drop job_type column from jobcards (now lives on job_items)
+try {
+  const cols = db.prepare('PRAGMA table_info(jobcards)').all();
+  if (cols.some(c => c.name === 'job_type')) {
+    db.exec('ALTER TABLE jobcards DROP COLUMN job_type');
+    logger.info('Migration: Dropped job_type column from jobcards');
+  }
+} catch (err) {
+  logger.error({ err }, 'Migration: Failed to drop job_type from jobcards');
 }
 
 for (const migration of migrations) {

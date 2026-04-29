@@ -54,6 +54,7 @@ export function mapLineItemFromApi(item) {
     itemNumber: item.itemNumber,
     qty: item.qty || '',
     description: item.description || '',
+    jobType: item.jobType || '',
     material: item.material || '',
     treatment: item.treatment || '',
     treatmentOther: item.treatmentOther || ''
@@ -82,7 +83,6 @@ export function getDefaultFormData() {
     contactEmail: '',
     qualityLevel: 'STANDARD',
     qaLevelId: null,
-    jobType: '',
     priority: 'NONE',
     poNumber: '',
     quoteReference: '',

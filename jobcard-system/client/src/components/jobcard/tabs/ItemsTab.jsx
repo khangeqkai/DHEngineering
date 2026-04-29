@@ -106,6 +106,7 @@ export default function ItemsTab({
   removeLineItem
 }) {
   const { tags: materialTags } = useTags('material');
+  const { tags: jobTypeTags } = useTags('job_type');
 
   return (
     <div className="modal-form-grid">
@@ -142,6 +143,19 @@ export default function ItemsTab({
                     }}
                     placeholder="What needs to be done..."
                   />
+                </div>
+                <div className="line-item-job-type">
+                  <label>Job Type <span className="required">*</span></label>
+                  <select
+                    value={item.jobType || ''}
+                    onChange={(e) => updateLineItem(item.id, 'jobType', e.target.value)}
+                    className={!item.jobType ? 'field-required' : ''}
+                  >
+                    <option value="">Select...</option>
+                    {jobTypeTags.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="line-item-material">
                   <label>Material</label>

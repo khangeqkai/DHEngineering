@@ -60,7 +60,6 @@ export default function DetailsTab({
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const readOnly = isEdit && !isAdmin;
-  const { tags: jobTypeTags } = useTags('job_type');
   const { tags: customerPropertyTags } = useTags('customer_property');
   const { tags: drawingsTags } = useTags('drawings');
 
@@ -113,7 +112,7 @@ export default function DetailsTab({
 
   return (
     <div className="modal-form-grid">
-      {/* Classification: Job Number (create) | Status | Job Type */}
+      {/* Classification: Job Number (create) | Status */}
       <div className="form-section">
         <h3 className="form-section-title">Classification</h3>
         <div className="form-row">
@@ -133,15 +132,6 @@ export default function DetailsTab({
             <select name="status" value={formData.status} onChange={handleChange}>
               {STATUS_OPTIONS.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Job Type <span className="required">*</span></label>
-            <select name="jobType" value={formData.jobType} onChange={handleChange} className={!formData.jobType ? 'field-required' : ''}>
-              <option value="">Select job type...</option>
-              {jobTypeTags.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
           </div>

@@ -14,14 +14,6 @@ export function capitalizeFirst(str) {
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
-export function snakeToTitleCase(str) {
-  if (!str) return str;
-  return str
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-}
-
 export function validatePassword(password) {
   if (!/^\d{4}$/.test(password)) return 'Password must be exactly 4 digits';
   return null;

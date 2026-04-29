@@ -70,8 +70,8 @@ const FIELD_MAPPINGS = {
   notes: 'notes'
 };
 
-// Regex for item fields: item_1_number, item_2_qty, item_3_description, item_1_material, item_1_treatment, etc.
-const ITEM_FIELD_REGEX = /^item_(\d+)_(number|qty|description|material|treatment|treatment_other)$/;
+// Regex for item fields: item_1_number, item_2_qty, item_3_description, item_1_job_type, item_1_material, item_1_treatment, etc.
+const ITEM_FIELD_REGEX = /^item_(\d+)_(number|qty|description|job_type|material|treatment|treatment_other)$/;
 
 /**
  * Fill PDF form fields with job data.
@@ -102,14 +102,14 @@ async function fillPdfTemplate(sourceBuffer, jobData) {
     for (const field of fields) {
       const fieldName = field.getName().toLowerCase().trim();
 
-      // Check for item fields first (item_N_number, item_N_qty, item_N_description, item_N_material, item_N_treatment, item_N_treatment_other)
+      // Check for item fields first (item_N_number, item_N_qty, item_N_description, item_N_job_type, item_N_material, item_N_treatment, item_N_treatment_other)
       const itemMatch = fieldName.match(ITEM_FIELD_REGEX);
       if (itemMatch) {
         const index = parseInt(itemMatch[1], 10) - 1; // 1-based → 0-based
         const prop = itemMatch[2];
         const item = items[index];
         if (item) {
-          const keyMap = { number: 'itemNumber', qty: 'qty', description: 'description', material: 'material', treatment: 'treatment', treatment_other: 'treatmentOther' };
+          const keyMap = { number: 'itemNumber', qty: 'qty', description: 'description', job_type: 'jobType', material: 'material', treatment: 'treatment', treatment_other: 'treatmentOther' };
           const value = item[keyMap[prop]];
           if (value !== null && value !== undefined && value !== '') {
             try {
