@@ -63,5 +63,3 @@ export default function useJobCardSort(cards) {
 
   return { sortBy, sortDir, handleSort, sortedCards };
 }
-</content>
-</invoke>
