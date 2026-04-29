@@ -8,14 +8,23 @@ const { fillPdfTemplate } = require('../utils/pdfFiller');
 const {
   jobItemQueries,
   jobAssigneeQueries,
-  subcontractQueries,
   qaFormQueries,
   qaLevelQueries,
   qaLevelTemplateQueries,
   getSettings
 } = require('../db/database');
 
-function formatJobcard(row, items = [], assignees = [], subcontracts = [], userRole = 'user') {
+function parseTreatments(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
   const isAdmin = userRole === 'admin';
   return {
     _id: row.id,
@@ -56,24 +65,13 @@ function formatJobcard(row, items = [], assignees = [], subcontracts = [], userR
       description: item.description,
       jobType: item.job_type || null,
       material: item.material || null,
-      treatment: item.treatment || null,
-      treatmentOther: item.treatment_other || null
+      treatments: parseTreatments(item.treatments)
     })),
     assignees: assignees.map(a => ({
       id: a.id,
       userId: a.user_id,
       userName: a.user_name,
       username: a.username
-    })),
-    subcontracts: subcontracts.map(s => ({
-      id: s.id,
-      supplierId: s.supplier_id,
-      supplierName: s.supplier_name,
-      dateSent: s.date_sent,
-      dateExpected: s.date_expected,
-      dateReceived: s.date_received,
-      status: s.status,
-      notes: s.notes
     }))
   };
 }
@@ -113,12 +111,47 @@ function buildChanges(existing, data) {
   return changes;
 }
 
+function serializeTreatments(treatments) {
+  if (!Array.isArray(treatments) || treatments.length === 0) return null;
+  return JSON.stringify(treatments);
+}
+
+// Build the data object passed to initQaFormsFromLevel for PDF pre-fill.
+// Loads current items from DB and aggregates treatments/job types across them.
+function buildQaFillData(jobcardId, fields) {
+  const items = jobItemQueries.getByJobcard.all(jobcardId);
+  const itemsForPdf = items.map(i => ({
+    itemNumber: i.item_number,
+    qty: i.qty,
+    description: i.description,
+    jobType: i.job_type,
+    material: i.material,
+    treatments: parseTreatments(i.treatments)
+  }));
+  const allTreatments = itemsForPdf.flatMap(i => i.treatments).map(t => {
+    const name = t.value === 'OTHER' ? (t.otherText || 'Other') : t.value;
+    return t.supplierName ? `${name} → ${t.supplierName}` : name;
+  });
+  const allJobTypes = [...new Set(items.map(i => i.job_type).filter(Boolean))];
+  return {
+    ...fields,
+    jobType: allJobTypes.join(',') || null,
+    treatmentRequired: allTreatments.join(', ') || null,
+    items: itemsForPdf
+  };
+}
+
 function createRelatedRecords(jobcardId, data) {
   if (data.items && Array.isArray(data.items)) {
     for (let i = 0; i < data.items.length; i++) {
       const item = data.items[i];
       const itemId = `item:${Date.now()}:${uuidv4().slice(0, 8)}`;
-      jobItemQueries.create.run(itemId, jobcardId, i + 1, item.qty || null, item.description, item.jobType || null, item.material || null, item.treatment || null, item.treatmentOther || null);
+      jobItemQueries.create.run(
+        itemId, jobcardId, i + 1,
+        item.qty || null, item.description,
+        item.jobType || null, item.material || null,
+        serializeTreatments(item.treatments)
+      );
     }
   }
 
@@ -130,17 +163,6 @@ function createRelatedRecords(jobcardId, data) {
       } catch (e) {
         // Ignore duplicate
       }
-    }
-  }
-
-  if (data.subcontracts && Array.isArray(data.subcontracts)) {
-    for (const sub of data.subcontracts) {
-      const subId = `subcontract:${Date.now()}:${uuidv4().slice(0, 8)}`;
-      subcontractQueries.create.run(
-        subId, jobcardId, sub.supplierId,
-        sub.dateSent || null, sub.dateExpected || null,
-        sub.notes || null, 'PENDING'
-      );
     }
   }
 }
@@ -247,4 +269,4 @@ async function copyTemplatesToJobFolder(level, templates, jobData) {
   }
 }
 
-module.exports = { formatJobcard, buildChanges, createRelatedRecords, initQaForms, initQaFormsFromLevel };
+module.exports = { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, initQaForms, initQaFormsFromLevel };

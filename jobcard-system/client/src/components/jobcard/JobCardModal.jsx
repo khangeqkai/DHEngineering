@@ -7,13 +7,11 @@ import { useAuth } from '../../context/AuthContext';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import './JobCardModal.css';
 import { useCosting } from './useCosting';
-import { useSubcontracts } from './useSubcontracts';
 import { useTimeEntries } from './useTimeEntries';
 import { useContactSearch } from './useContactSearch';
 import { useJobCardForm } from './useJobCardForm';
 import DetailsTab from './tabs/DetailsTab';
 import ItemsTab from './tabs/ItemsTab';
-import SubcontractsTab from './tabs/SubcontractsTab';
 import CostingTab from './tabs/CostingTab';
 import FilesTab from './tabs/FilesTab';
 import ActivityLogTab from './tabs/ActivityLogTab';
@@ -21,8 +19,6 @@ import { useActivityLog } from './useActivityLog';
 import { useTimer } from './useTimer';
 import { useJobNotes } from './useJobNotes';
 import StopTimerForm from './StopTimerForm';
-
-const mapSubcontract = (s) => ({ id: s.id, supplierId: s.supplierId, supplierName: s.supplierName, dateSent: s.dateSent, dateExpected: s.dateExpected, dateReceived: s.dateReceived, notes: s.notes, status: s.status });
 
 const mapTimeEntry = (t) => ({ id: t.id, userId: t.userId, userName: t.userName, itemNumber: t.itemNumber, machineNumber: t.machineNumber, qty: t.qty, description: t.description, startTime: t.startTime, endTime: t.endTime, isSpecialLabour: t.isSpecialLabour || false });
 
@@ -37,7 +33,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const [employees, setEmployees] = useState([]);
   const [machines, setMachines] = useState([]);
   const [timeEntries, setTimeEntries] = useState([]);
-  const [subcontracts, setSubcontracts] = useState([]);
   const [qaLevels, setQaLevels] = useState([]);
   const [costing, setCostingData] = useState(null);
   const contactHook = useContactSearch();
@@ -84,9 +79,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
     setLoading(true);
     try {
-      const [jobcardRes, subcontractsRes, timeEntriesRes, costingRes] = await Promise.all([
+      const [jobcardRes, timeEntriesRes, costingRes] = await Promise.all([
         api.getJobcard(jobCardId),
-        api.getSubcontracts(jobCardId),
         api.getTimeEntries(jobCardId),
         isAdmin ? api.getCosting(jobCardId).catch(() => null) : Promise.resolve(null)
       ]);
@@ -94,7 +88,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       const jobcardData = jobcardRes;
       setFormDataFromJobCard(jobcardData);
       setContactFromJobCard(jobcardData);
-      setSubcontracts((subcontractsRes || []).map(mapSubcontract));
       setTimeEntries((timeEntriesRes || []).map(mapTimeEntry));
 
       loadNotes();
@@ -141,26 +134,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           subcontractorProfitPercent: costingRes.subcontractorProfitPercent ?? 0
         });
       }
-    }
-  };
-
-  const reloadSubcontracts = useCallback(async () => {
-    const res = await api.getSubcontracts(jobCardId);
-    setSubcontracts((res || []).map(mapSubcontract));
-  }, [jobCardId]);
-
-  const apiSubcontractOperations = {
-    addSubcontract: async (data) => {
-      await api.addSubcontract(jobCardId, data);
-      await reloadSubcontracts();
-    },
-    updateSubcontract: async (id, data) => {
-      await api.updateSubcontract(jobCardId, id, data);
-      await reloadSubcontracts();
-    },
-    deleteSubcontract: async (id) => {
-      await api.deleteSubcontract(jobCardId, id);
-      await reloadSubcontracts();
     }
   };
 
@@ -219,9 +192,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   }, [jobCardId, reloadTimeEntries, refreshCosting]);
 
-  const subcontract = useSubcontracts(jobCardId, { ...apiSubcontractOperations, showConfirm });
   const timeEntry = useTimeEntries(jobCardId, { ...apiTimeEntryOperations, showConfirm });
-  const { resetSubcontracts } = subcontract;
   const { resetTimeEntries } = timeEntry;
   const { resetCosting } = costingHook;
   const { resetTimer } = timer;
@@ -229,16 +200,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const resetForm = useCallback(() => {
     resetFormHook();
     resetContact();
-    setSubcontracts([]);
     setTimeEntries([]);
     setCostingData(null);
-    resetSubcontracts();
     resetTimeEntries();
     resetCosting();
     resetTimer();
     resetNotes();
     resetHistory();
-  }, [resetFormHook, resetContact, resetSubcontracts, resetTimeEntries, resetCosting, resetTimer, resetNotes, resetHistory]);
+  }, [resetFormHook, resetContact, resetTimeEntries, resetCosting, resetTimer, resetNotes, resetHistory]);
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab || 'details');
@@ -294,6 +263,23 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     const itemMissingJobType = validItems.findIndex(item => !item.jobType);
     if (itemMissingJobType !== -1) {
       errors.push(`Job type is required on item #${itemMissingJobType + 1}`);
+    }
+    // Each treatment must have a value and supplier
+    for (let i = 0; i < validItems.length; i++) {
+      const item = validItems[i];
+      const treatments = Array.isArray(item.treatments) ? item.treatments : [];
+      for (let t = 0; t < treatments.length; t++) {
+        const tr = treatments[t];
+        if (!tr.value) {
+          errors.push(`Item #${i + 1} treatment ${t + 1} is missing a treatment`);
+        }
+        if (tr.value === 'OTHER' && !(tr.otherText || '').trim()) {
+          errors.push(`Item #${i + 1} treatment ${t + 1} (Other) needs text`);
+        }
+        if (!tr.supplierId) {
+          errors.push(`Item #${i + 1} treatment ${t + 1} is missing a supplier`);
+        }
+      }
     }
     if (!formHook.formData.customerProperty || formHook.formData.customerProperty === 'NONE') {
       errors.push('Customer Property is required');
@@ -376,25 +362,18 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           description: item.description,
           jobType: item.jobType || null,
           material: item.material || null,
-          treatment: item.treatment || null,
-          treatmentOther: item.treatmentOther || null
+          treatments: (item.treatments || []).map(t => ({
+            value: t.value,
+            otherText: t.otherText || '',
+            supplierId: t.supplierId,
+            supplierName: t.supplierName || ''
+          }))
         }))
       };
       if (isEdit) {
         await api.updateJobcard(jobCardId, jobcardData);
       } else {
-        const newJobcard = await api.createJobcard(jobcardData);
-        // Add subcontracts for new job cards
-        for (const sub of formHook.localSubcontracts.filter(s => s.supplierId)) {
-          await api.addSubcontract(newJobcard.id, {
-            supplierId: sub.supplierId,
-            supplierName: sub.supplierName,
-            dateSent: sub.dateSent || null,
-            dateExpected: sub.dateExpected || null,
-            notes: sub.notes || null,
-            status: sub.status || 'PENDING'
-          });
-        }
+        await api.createJobcard(jobcardData);
       }
 
       onSuccess?.();
@@ -435,10 +414,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                     Items
                     {filledItemCount > 0 && <span className="tab-badge">{filledItemCount}</span>}
                   </button>}
-                  {isAdmin && <button type="button" className={`tab ${activeTab === 'subcontracts' ? 'active' : ''}`} onClick={() => setActiveTab('subcontracts')}>
-                    Subcontracts
-                    {subcontracts.length > 0 && <span className="tab-badge">{subcontracts.length}</span>}
-                  </button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'files' ? 'active' : ''}`} onClick={() => setActiveTab('files')}>Files</button>}
                   {isAdmin && <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>
                     Costing
@@ -474,8 +449,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   addLineItem={formHook.addLineItem}
                   updateLineItem={formHook.updateLineItem}
                   removeLineItem={formHook.removeLineItem}
-                  subcontracts={isEdit ? subcontracts : formHook.localSubcontracts}
-                  setSubcontracts={isEdit ? null : formHook.setLocalSubcontracts}
                   suppliers={suppliers || []}
                   showScannerFiles={formHook.showScannerFiles}
                   toggleScannerFiles={toggleScannerFiles}
@@ -498,23 +471,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   addLineItem={formHook.addLineItem}
                   updateLineItem={formHook.updateLineItem}
                   removeLineItem={formHook.removeLineItem}
-                />
-              )}
-
-              {activeTab === 'subcontracts' && isEdit && isAdmin && (
-                <SubcontractsTab
-                  subcontracts={subcontracts || []}
-                  showSubcontractForm={subcontract.showSubcontractForm}
-                  editingSubcontractId={subcontract.editingSubcontractId}
-                  subcontractForm={subcontract.subcontractForm}
-                  handleSubcontractChange={subcontract.handleSubcontractChange}
-                  handleAddSubcontract={subcontract.handleAddSubcontract}
-                  handleEditSubcontract={subcontract.handleEditSubcontract}
-                  handleSaveSubcontract={subcontract.handleSaveSubcontract}
-                  handleDeleteSubcontract={subcontract.handleDeleteSubcontract}
-                  resetSubcontractForm={subcontract.resetSubcontractForm}
                   suppliers={suppliers || []}
-                  lineItems={formHook.lineItems}
                 />
               )}
 

@@ -206,7 +206,7 @@ router.get('/files', authenticate, (req, res) => {
 const TABLE_ORDER = [
   'settings', 'users', 'contacts', 'suppliers', 'machines', 'tags',
   'qa_levels', 'supplier_service_tags', 'jobcards', 'job_items', 'job_assignees',
-  'job_notes', 'subcontracts', 'time_entries', 'job_costings', 'documents',
+  'job_notes', 'time_entries', 'job_costings', 'documents',
   'qa_forms', 'qa_level_templates', 'history'
 ];
 

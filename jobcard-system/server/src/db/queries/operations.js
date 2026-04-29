@@ -1,37 +1,5 @@
 const { db } = require('../connection');
 
-// Subcontract queries
-const subcontractQueries = {
-  getByJobcard: db.prepare(`
-    SELECT s.*, sup.name as supplier_name
-    FROM subcontracts s
-    JOIN suppliers sup ON s.supplier_id = sup.id
-    WHERE s.jobcard_id = ?
-    ORDER BY s.created_at DESC
-  `),
-
-  getById: db.prepare('SELECT * FROM subcontracts WHERE id = ?'),
-
-  getByIdWithSupplier: db.prepare(`
-    SELECT s.*, sup.name as supplier_name
-    FROM subcontracts s
-    JOIN suppliers sup ON s.supplier_id = sup.id
-    WHERE s.id = ?
-  `),
-
-  create: db.prepare(`
-    INSERT INTO subcontracts (id, jobcard_id, supplier_id, date_sent, date_expected, notes, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-  `),
-
-  update: db.prepare(`
-    UPDATE subcontracts SET supplier_id = ?, date_sent = ?, date_expected = ?, date_received = ?, notes = ?, status = ?, updated_at = datetime('now')
-    WHERE id = ?
-  `),
-
-  delete: db.prepare('DELETE FROM subcontracts WHERE id = ?')
-};
-
 // Time entry queries
 const timeEntryQueries = {
   getByJobcard: db.prepare(`
@@ -156,7 +124,6 @@ const jobCostingQueries = {
 };
 
 module.exports = {
-  subcontractQueries,
   timeEntryQueries,
   jobNoteQueries,
   jobCostingQueries

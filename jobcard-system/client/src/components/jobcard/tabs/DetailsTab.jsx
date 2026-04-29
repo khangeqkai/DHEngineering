@@ -11,7 +11,6 @@ import { formatFileSize, formatFileDate } from '../mappers';
 import { toTitleCase, capitalizeFirst, autoResize } from '../../../utils/formatters';
 import CalendarPicker from '../../common/CalendarPicker';
 import ItemsTab from './ItemsTab';
-import SubcontractCreateSection from './SubcontractCreateSection';
 import DetailsReadOnlyView from './DetailsReadOnlyView';
 import NotesSection from './NotesSection';
 
@@ -40,8 +39,6 @@ export default function DetailsTab({
   addLineItem,
   updateLineItem,
   removeLineItem,
-  subcontracts,
-  setSubcontracts,
   suppliers,
   showScannerFiles,
   toggleScannerFiles,
@@ -81,7 +78,6 @@ export default function DetailsTab({
           formData={formData}
           assignees={assignees}
           lineItems={lineItems}
-          subcontracts={subcontracts}
           isOverdue={isOverdue}
           onStatusChange={handleStatusChange}
         />
@@ -295,6 +291,7 @@ export default function DetailsTab({
           addLineItem={addLineItem}
           updateLineItem={updateLineItem}
           removeLineItem={removeLineItem}
+          suppliers={suppliers}
         />
       )}
 
@@ -461,14 +458,6 @@ export default function DetailsTab({
           })}
         </div>
       </div>
-
-      {!isEdit && (
-        <SubcontractCreateSection
-          subcontracts={subcontracts}
-          setSubcontracts={setSubcontracts}
-          suppliers={suppliers}
-        />
-      )}
 
       {/* Internal Comments (admin only) */}
       <div className="form-section">

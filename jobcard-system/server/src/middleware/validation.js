@@ -151,8 +151,6 @@ const JOBCARD_STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', '
 
 const PRIORITY_OPTIONS = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
 
-const SUBCONTRACT_STATUSES = ['PENDING', 'SENT', 'IN_PROGRESS', 'RECEIVED', 'COMPLETE'];
-
 const INSPECTION_OPTIONS = ['NOT_APPLICABLE', 'OK', 'ERROR'];
 
 // =============================================================================
@@ -290,14 +288,6 @@ const validateJobcardEnums = [
 ];
 
 /**
- * Subcontract status validation
- */
-const validateSubcontractStatus = [
-  optionalEnum('status', 'Status', SUBCONTRACT_STATUSES),
-  handleValidationErrors
-];
-
-/**
  * Time entry inspection field validation
  */
 const validateTimeEntryInspection = [
@@ -307,9 +297,9 @@ const validateTimeEntryInspection = [
 ];
 
 /**
- * Validate treatment fields on line items array.
- * Each item.treatment must be comma-separated values from TREATMENT_OPTIONS.
- * Each item.treatmentOther is free text (trimmed, max 255 chars).
+ * Validate treatments array on line items.
+ * Each item.treatments is an array of objects: { value, otherText, supplierId, supplierName }
+ * Required: value (must be a known treatment tag value, or 'OTHER' with otherText) and supplierId.
  * Returns error string or null if valid.
  */
 function validateItemTreatments(items) {
@@ -317,18 +307,35 @@ function validateItemTreatments(items) {
   const allowedTreatments = getTagValues('treatment');
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    if (item.treatment) {
-      const values = String(item.treatment).split(',').map(v => v.trim());
-      // Only validate if we have tags loaded (allow if DB not ready)
-      if (allowedTreatments.length > 0) {
-        const invalid = values.filter(v => v && v !== 'OTHER' && !allowedTreatments.includes(v));
-        if (invalid.length > 0) {
-          return `Item #${i + 1} has invalid treatment values: ${invalid.join(', ')}`;
-        }
-      }
+    const treatments = item.treatments;
+    if (treatments === undefined || treatments === null) continue;
+    if (!Array.isArray(treatments)) {
+      return `Item #${i + 1} treatments must be an array`;
     }
-    if (item.treatmentOther && String(item.treatmentOther).length > 255) {
-      return `Item #${i + 1} treatment other text exceeds 255 characters`;
+    for (let t = 0; t < treatments.length; t++) {
+      const tr = treatments[t];
+      if (!tr || typeof tr !== 'object') {
+        return `Item #${i + 1} treatment ${t + 1} must be an object`;
+      }
+      const value = tr.value ? String(tr.value).trim() : '';
+      if (!value) {
+        return `Item #${i + 1} treatment ${t + 1} is missing a treatment value`;
+      }
+      if (value === 'OTHER') {
+        const otherText = tr.otherText ? String(tr.otherText).trim() : '';
+        if (!otherText) {
+          return `Item #${i + 1} treatment ${t + 1} (OTHER) requires text`;
+        }
+        if (otherText.length > 255) {
+          return `Item #${i + 1} treatment ${t + 1} otherText exceeds 255 characters`;
+        }
+      } else if (allowedTreatments.length > 0 && !allowedTreatments.includes(value)) {
+        return `Item #${i + 1} treatment ${t + 1} has invalid value: ${value}`;
+      }
+      const supplierId = tr.supplierId ? String(tr.supplierId).trim() : '';
+      if (!supplierId) {
+        return `Item #${i + 1} treatment ${t + 1} is missing a supplier`;
+      }
     }
   }
   return null;
@@ -395,7 +402,6 @@ module.exports = {
   validateUpdateContact,
   validateJobcardListQuery,
   validateJobcardEnums,
-  validateSubcontractStatus,
   validateTimeEntryInspection,
   validateItemTreatments,
   validateItemMaterials,
@@ -403,6 +409,5 @@ module.exports = {
 
   JOBCARD_STATUSES,
   PRIORITY_OPTIONS,
-  SUBCONTRACT_STATUSES,
   INSPECTION_OPTIONS
 };

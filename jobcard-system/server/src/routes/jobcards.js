@@ -10,14 +10,13 @@ const {
   jobItemQueries,
   jobAssigneeQueries,
   getAssigneesForJobcards,
-  subcontractQueries,
   qaFormQueries,
   qaLevelQueries,
   historyQueries,
   userQueries,
   recordHistory
 } = require('../db/database');
-const { formatJobcard, buildChanges, createRelatedRecords, initQaForms, initQaFormsFromLevel } = require('./jobcard-helpers');
+const { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, initQaForms, initQaFormsFromLevel } = require('./jobcard-helpers');
 const { generateAndIncrementJobNumber } = require('../db/helpers');
 
 const router = express.Router();
@@ -48,7 +47,7 @@ router.get('/', authenticate, validateJobcardListQuery, (req, res) => {
 
     const assigneeMap = getAssigneesForJobcards(jobcards.map(jc => jc.id));
 
-    res.json(jobcards.map(jc => formatJobcard(jc, [], assigneeMap[jc.id] || [], [], req.user.role)));
+    res.json(jobcards.map(jc => formatJobcard(jc, [], assigneeMap[jc.id] || [], req.user.role)));
   } catch (err) {
     logger.error({ err }, 'Get jobcards error');
     res.status(500).json({ error: 'Failed to get job cards' });
@@ -59,7 +58,7 @@ router.get('/', authenticate, validateJobcardListQuery, (req, res) => {
 router.get('/overdue', authenticate, (req, res) => {
   try {
     const jobcards = jobcardQueries.getOverdue.all();
-    res.json(jobcards.map(jc => formatJobcard(jc, [], [], [], req.user.role)));
+    res.json(jobcards.map(jc => formatJobcard(jc, [], [], req.user.role)));
   } catch (err) {
     logger.error({ err }, 'Get overdue jobcards error');
     res.status(500).json({ error: 'Failed to get overdue job cards' });
@@ -76,9 +75,8 @@ router.get('/:id', authenticate, (req, res) => {
 
     const items = jobItemQueries.getByJobcard.all(req.params.id);
     const assignees = jobAssigneeQueries.getByJobcard.all(req.params.id);
-    const subcontracts = subcontractQueries.getByJobcard.all(req.params.id);
 
-    res.json(formatJobcard(jobcard, items, assignees, subcontracts, req.user.role));
+    res.json(formatJobcard(jobcard, items, assignees, req.user.role));
   } catch (err) {
     logger.error({ err }, 'Get jobcard error');
     res.status(500).json({ error: 'Failed to get job card' });
@@ -206,19 +204,12 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
 
     // Initialize QA forms from level templates
     if (qaLevelId) {
-      // Fetch items from DB (already created by createRelatedRecords above)
-      const createdItems = jobItemQueries.getByJobcard.all(id);
-      // Aggregate treatments and job types from all items for PDF fill
-      const allTreatments = [...new Set(createdItems.flatMap(i => (i.treatment || '').split(',').filter(v => v && v !== 'NONE')))];
-      const allTreatmentOther = createdItems.map(i => i.treatment_other).filter(Boolean).join(', ');
-      const allJobTypes = [...new Set(createdItems.map(i => i.job_type).filter(Boolean))];
-      await initQaFormsFromLevel(id, qaLevelId, {
+      await initQaFormsFromLevel(id, qaLevelId, buildQaFillData(id, {
         jobNumber: jobNumber,
         status: status,
         companyName: data.companyName || null,
         contactName: data.contactName || null,
         description: data.description || null,
-        jobType: allJobTypes.join(',') || null,
         priority: data.priority || 'NONE',
         dueDate: data.dueDate || null,
         qualityLevel: qualityLevelName,
@@ -226,19 +217,15 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
         quoteReference: data.quoteReference || null,
         drawingsType: data.drawingsType || null,
         customerProperty: data.customerProperty || null,
-        treatmentRequired: allTreatments.join(',') || null,
-        treatmentOther: allTreatmentOther || null,
         repeatJob: data.isRepeatJob ? 'Yes' : 'No',
         repeatJobReference: data.repeatJobReference || null,
-        notes: data.notes || null,
-        items: createdItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description, jobType: i.job_type, material: i.material, treatment: i.treatment, treatmentOther: i.treatment_other }))
-      });
+        notes: data.notes || null
+      }));
     }
 
     const jobcard = jobcardQueries.getById.get(id);
     const items = jobItemQueries.getByJobcard.all(id);
     const assignees = jobAssigneeQueries.getByJobcard.all(id);
-    const subcontracts = subcontractQueries.getByJobcard.all(id);
 
     // Create job card folders on disk (fire-and-forget)
     const folderCompany = jobcard.company_name || data.companyName;
@@ -253,7 +240,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       qualityLevel: { from: null, to: qualityLevelName || null }
     });
 
-    res.status(201).json(formatJobcard(jobcard, items, assignees, subcontracts, req.user.role));
+    res.status(201).json(formatJobcard(jobcard, items, assignees, req.user.role));
   } catch (err) {
     logger.error({ err }, 'Create jobcard error');
     res.status(500).json({ error: 'Failed to create job card' });
@@ -358,15 +345,30 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       for (let i = 0; i < data.items.length; i++) {
         const item = data.items[i];
         const itemId = item.id || `item:${Date.now()}:${uuidv4().slice(0, 8)}`;
-        jobItemQueries.create.run(itemId, id, i + 1, item.qty || null, item.description, item.jobType || null, item.material || null, item.treatment || null, item.treatmentOther || null);
+        jobItemQueries.create.run(
+          itemId, id, i + 1,
+          item.qty || null, item.description,
+          item.jobType || null, item.material || null,
+          serializeTreatments(item.treatments)
+        );
       }
     }
 
     // Track items changes — per-item granularity
     if (data.items !== undefined) {
-      const itemSummary = (qty, description, jobType, material, treatment) => `${qty || ''}x ${description}${jobType ? ' <' + jobType + '>' : ''}${material ? ' (' + material + ')' : ''}${treatment ? ' [' + treatment + ']' : ''}`;
-      const oldMap = new Map(existingItems.map(i => [i.item_number, itemSummary(i.qty, i.description, i.job_type, i.material, i.treatment)]));
-      const newMap = new Map(data.items.map((i, idx) => [i.itemNumber || idx + 1, itemSummary(i.qty, i.description, i.jobType, i.material, i.treatment)]));
+      const treatmentsToText = (treatments) => {
+        const arr = Array.isArray(treatments) ? treatments : parseTreatments(treatments);
+        return arr.map(t => {
+          const tName = t.value === 'OTHER' ? (t.otherText || 'Other') : t.value;
+          return `${tName}→${t.supplierName || t.supplierId || '?'}`;
+        }).join(', ');
+      };
+      const itemSummary = (qty, description, jobType, material, treatments) => {
+        const tStr = treatmentsToText(treatments);
+        return `${qty || ''}x ${description}${jobType ? ' <' + jobType + '>' : ''}${material ? ' (' + material + ')' : ''}${tStr ? ' [' + tStr + ']' : ''}`;
+      };
+      const oldMap = new Map(existingItems.map(i => [i.item_number, itemSummary(i.qty, i.description, i.job_type, i.material, i.treatments)]));
+      const newMap = new Map(data.items.map((i, idx) => [i.itemNumber || idx + 1, itemSummary(i.qty, i.description, i.jobType, i.material, i.treatments)]));
       for (const [num, desc] of newMap) {
         if (!oldMap.has(num)) {
           changes[`item #${num} added`] = { from: null, to: desc };
@@ -425,17 +427,12 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       // Initialize new QA forms from level templates
       if (newQaLevelId) {
         const current = jobcardQueries.getById.get(id);
-        const currentItems = jobItemQueries.getByJobcard.all(id);
-        const allTreatments = [...new Set(currentItems.flatMap(i => (i.treatment || '').split(',').filter(v => v && v !== 'NONE')))];
-        const allTreatmentOther = currentItems.map(i => i.treatment_other).filter(Boolean).join(', ');
-        const allJobTypes = [...new Set(currentItems.map(i => i.job_type).filter(Boolean))];
-        await initQaFormsFromLevel(id, newQaLevelId, {
+        await initQaFormsFromLevel(id, newQaLevelId, buildQaFillData(id, {
           jobNumber: current.job_number,
           status: current.status,
           companyName: current.company_name || data.companyName || null,
           contactName: current.contact_name || data.contactName || null,
           description: current.description || data.description || null,
-          jobType: allJobTypes.join(',') || null,
           priority: current.priority || data.priority || 'NONE',
           dueDate: current.due_date || data.dueDate || null,
           qualityLevel: data.qualityLevel || existing.quality_level,
@@ -443,13 +440,10 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
           quoteReference: current.quote_reference || data.quoteReference || null,
           drawingsType: current.drawings_type || data.drawingsType || null,
           customerProperty: current.customer_property || data.customerProperty || null,
-          treatmentRequired: allTreatments.join(',') || null,
-          treatmentOther: allTreatmentOther || null,
           repeatJob: (data.isRepeatJob !== undefined ? data.isRepeatJob : current.is_repeat_job === 1) ? 'Yes' : 'No',
           repeatJobReference: current.repeat_job_reference || data.repeatJobReference || null,
-          notes: current.notes || data.notes || null,
-          items: currentItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description, jobType: i.job_type, material: i.material, treatment: i.treatment, treatmentOther: i.treatment_other }))
-        });
+          notes: current.notes || data.notes || null
+        }));
       }
     }
 
@@ -461,9 +455,8 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     const updated = jobcardQueries.getById.get(id);
     const items = jobItemQueries.getByJobcard.all(id);
     const assignees = jobAssigneeQueries.getByJobcard.all(id);
-    const subcontracts = subcontractQueries.getByJobcard.all(id);
 
-    res.json(formatJobcard(updated, items, assignees, subcontracts, req.user.role));
+    res.json(formatJobcard(updated, items, assignees, req.user.role));
   } catch (err) {
     logger.error({ err }, 'Update jobcard error');
     res.status(500).json({ error: 'Failed to update job card' });
@@ -491,7 +484,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
     recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, changes, null);
 
     const updated = jobcardQueries.getById.get(id);
-    res.json(formatJobcard(updated, [], [], [], req.user.role));
+    res.json(formatJobcard(updated, [], [], req.user.role));
   } catch (err) {
     logger.error({ err }, 'Update status error');
     res.status(500).json({ error: 'Failed to update status' });

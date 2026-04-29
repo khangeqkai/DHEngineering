@@ -9,7 +9,7 @@ import JobCardModal from './jobcard/JobCardModal';
 
 const STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'TREATMENT', 'ON_HOLD', 'DONE', 'INVOICED'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
-const ACTIONS = ['create', 'update', 'delete', 'archive', 'unarchive', 'start_timer', 'stop_timer', 'add_time_entry', 'update_time_entry', 'delete_time_entry', 'add_note', 'delete_note', 'update_costing', 'add_subcontract', 'update_subcontract', 'delete_subcontract', 'update_qa_form', 'add_template', 'remove_template', 'upload_file', 'add_document', 'login', 'login_failed', 'deactivate', 'activate', 'data_export', 'data_import'];
+const ACTIONS = ['create', 'update', 'delete', 'archive', 'unarchive', 'start_timer', 'stop_timer', 'add_time_entry', 'update_time_entry', 'delete_time_entry', 'add_note', 'delete_note', 'update_costing', 'update_qa_form', 'add_template', 'remove_template', 'upload_file', 'add_document', 'login', 'login_failed', 'deactivate', 'activate', 'data_export', 'data_import'];
 const ENTITY_TYPES = ['jobcard', 'contact', 'supplier', 'user', 'machine', 'auth', 'tag', 'qa_level', 'system'];
 const SCOPES = [
   { key: 'all', label: 'All', icon: Search },
@@ -38,7 +38,6 @@ const ACTION_COLORS = {
   add_time_entry: 'var(--accent-ready)', update_time_entry: 'var(--primary-accent)', delete_time_entry: 'var(--accent-caution)',
   add_note: 'var(--accent-ready)', delete_note: 'var(--accent-caution)',
   update_costing: 'var(--primary-accent)',
-  add_subcontract: 'var(--accent-ready)', update_subcontract: 'var(--primary-accent)', delete_subcontract: 'var(--accent-caution)',
   update_qa_form: 'var(--primary-accent)', add_template: 'var(--accent-ready)', remove_template: 'var(--accent-caution)',
   upload_file: 'var(--accent-ready)', add_document: 'var(--accent-ready)',
   login: 'var(--accent-info)', login_failed: 'var(--accent-caution)',
@@ -101,7 +100,6 @@ const ACTION_TO_TAB = {
   add_time_entry: 'details', update_time_entry: 'details', delete_time_entry: 'details',
   add_note: 'details',  delete_note: 'details',
   update_costing: 'costing',
-  add_subcontract: 'subcontracts', update_subcontract: 'subcontracts', delete_subcontract: 'subcontracts',
   update_qa_form: 'files',
   upload_file: 'files', add_document: 'files',
 };

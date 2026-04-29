@@ -19,7 +19,7 @@ const uid = (prefix) => `${prefix}:${Date.now()}:${uuidv4().slice(0, 8)}`;
 console.log('Wiping all data...');
 const tables = [
   'history', 'qa_level_templates', 'qa_forms', 'documents', 'job_costings',
-  'time_entries', 'subcontracts', 'job_notes', 'job_assignees', 'job_items',
+  'time_entries', 'job_notes', 'job_assignees', 'job_items',
   'jobcards', 'supplier_service_tags', 'tags', 'machines', 'suppliers',
   'contacts', 'users', 'qa_levels'
 ];
@@ -208,7 +208,7 @@ const insertJobcard = db.prepare(`INSERT INTO jobcards (
   description, due_date, is_repeat_job, created_by, updated_by, created_at
 ) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
-const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
 const insertNote = db.prepare('INSERT INTO job_notes (id, jobcard_id, user_id, user_name, text, created_at) VALUES (?, ?, ?, ?, ?, ?)');
 const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, user_id, item_number, machine_number, qty, description, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
@@ -232,6 +232,34 @@ const daysFromNow = (d) => {
   dt.setDate(dt.getDate() + d);
   return dt.toISOString().split('T')[0];
 };
+
+// Treatment value → supplier mapping (matches supplier_service_tags links below)
+const treatmentSupplierMap = {
+  HEAT_TREATMENT: suppliers[0],     // Bohler
+  PRECISION_GRINDING: suppliers[4], // Precision Grinding SA
+  ANODISE: suppliers[2],            // SA Anodisers
+  ELECTROPLATE: suppliers[2],       // SA Anodisers (electrochemical)
+  BLASTING: suppliers[3],           // Spray Tech (blasting prep)
+  POWDERCOAT: suppliers[3],         // Spray Tech
+  SPRAYPAINT: suppliers[3],         // Spray Tech
+  GALVANISE: suppliers[1]           // Robor
+};
+
+function buildTreatments(treatmentStr) {
+  if (!treatmentStr) return null;
+  const values = treatmentStr.split(',').map(v => v.trim()).filter(Boolean);
+  if (values.length === 0) return null;
+  const arr = values.map(value => {
+    const sup = treatmentSupplierMap[value] || suppliers[0];
+    return {
+      value,
+      otherText: '',
+      supplierId: sup.id,
+      supplierName: sup.name
+    };
+  });
+  return JSON.stringify(arr);
+}
 
 const createJobs = db.transaction(() => {
   let jobNum = 1;
@@ -271,7 +299,7 @@ const createJobs = db.transaction(() => {
 
     // Line items
     jobData.items.forEach((item, idx) => {
-      insertItem.run(uid('item'), jobId, idx + 1, item.qty, item.desc, item.jobType, item.material, item.treatment);
+      insertItem.run(uid('item'), jobId, idx + 1, item.qty, item.desc, item.jobType, item.material, buildTreatments(item.treatment));
     });
 
     // Assign 1-3 workers
@@ -335,9 +363,11 @@ const insertServiceTag = db.prepare('INSERT OR IGNORE INTO supplier_service_tags
 insertServiceTag.run(suppliers[0].id, tagIds.treatment[0]);
 // Robor → Galvanise
 insertServiceTag.run(suppliers[1].id, tagIds.treatment[7]);
-// SA Anodisers → Anodise
+// SA Anodisers → Anodise, Electroplate
 insertServiceTag.run(suppliers[2].id, tagIds.treatment[2]);
-// Spray Tech → Powdercoat, Spraypaint
+insertServiceTag.run(suppliers[2].id, tagIds.treatment[3]);
+// Spray Tech → Blasting, Powdercoat, Spraypaint
+insertServiceTag.run(suppliers[3].id, tagIds.treatment[4]);
 insertServiceTag.run(suppliers[3].id, tagIds.treatment[5]);
 insertServiceTag.run(suppliers[3].id, tagIds.treatment[6]);
 // Precision Grinding → Precision Grinding

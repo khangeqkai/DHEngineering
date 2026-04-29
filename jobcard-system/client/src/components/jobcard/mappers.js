@@ -16,19 +16,6 @@ export function mapTimeEntryFromApi(e) {
   };
 }
 
-export function mapSubcontractFromApi(s) {
-  return {
-    id: s.id,
-    supplierId: s.supplierId,
-    supplierName: s.supplierName,
-    dateSent: s.dateSent || '',
-    dateExpected: s.dateExpected || '',
-    dateReceived: s.dateReceived || '',
-    status: s.status,
-    notes: s.notes || ''
-  };
-}
-
 export function mapQaFormFromApi(f) {
   return {
     id: f.id,
@@ -56,8 +43,25 @@ export function mapLineItemFromApi(item) {
     description: item.description || '',
     jobType: item.jobType || '',
     material: item.material || '',
-    treatment: item.treatment || '',
-    treatmentOther: item.treatmentOther || ''
+    treatments: Array.isArray(item.treatments) ? item.treatments.map(mapTreatmentFromApi) : []
+  };
+}
+
+export function mapTreatmentFromApi(t) {
+  return {
+    value: t.value || '',
+    otherText: t.otherText || '',
+    supplierId: t.supplierId || '',
+    supplierName: t.supplierName || ''
+  };
+}
+
+export function makeEmptyTreatment(value = '', supplier = null) {
+  return {
+    value,
+    otherText: '',
+    supplierId: supplier ? supplier.id : '',
+    supplierName: supplier ? supplier.name : ''
   };
 }
 
@@ -104,17 +108,6 @@ export function getDefaultTimeEntryForm() {
     description: '',
     startTime: '',
     endTime: ''
-  };
-}
-
-export function getDefaultSubcontractForm() {
-  return {
-    supplierId: '',
-    dateSent: '',
-    dateExpected: '',
-    dateReceived: '',
-    notes: '',
-    status: 'PENDING'
   };
 }
 

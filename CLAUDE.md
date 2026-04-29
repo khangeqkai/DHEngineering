@@ -103,7 +103,7 @@ History sub-routes: `GET /history` (recent, admin), `GET /history/user/:userId` 
 
 Auth sub-routes: `PUT /auth/change-password` (all authenticated users, verifies current password)
 
-Job card sub-routes: `/assignees`, `/subcontracts`, `/time-entries`, `/costing`, `/documents`, `/job-files`, `/qa-form-files`, `/customer-property-files`, `/qa-forms`, `/history`, `/notes`
+Job card sub-routes: `/assignees`, `/time-entries`, `/costing`, `/documents`, `/job-files`, `/qa-form-files`, `/customer-property-files`, `/qa-forms`, `/history`, `/notes`
 
 Job file endpoints: `GET /jobcards/:id/job-files` (assignee/admin, lists files from job's Job Files folder on disk), `GET /jobcards/:id/job-files/:filename` (assignee/admin, returns file as base64), `POST /jobcards/:id/job-files/from-scanner` (assignee/admin, copy scanner file to Job Files), `POST /jobcards/:id/job-files/upload` (assignee/admin, save base64 data to Job Files)
 
@@ -122,7 +122,9 @@ Notes endpoints: `GET /jobcards/:id/notes` (assignee/admin), `POST /jobcards/:id
 Search endpoint: `GET /search` (authenticated, scoped). Query params: `scope` (all|jobs|people|activity|time), `q` (text query), `page`, `status`, `assigneeId`, `priority`, `jobType` (matches any item.job_type), `qaLevel`, `dateFrom`, `dateTo`, `dateField` (created|due), `includeArchived`, `peopleType` (both|contacts|suppliers), `userId`, `action`, `entityType`, `field` (search within changes JSON keys), `workerId`, `machineId`, `specialOnly`, `jobNumber`. Scopes `people` and `activity` are admin-only. `time` scope restricts non-admin to own entries. `all` scope returns grouped previews (top 5 per category with counts); other scopes return paginated results (25/page).
 
 ### Database Schema (SQLite)
-Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `subcontracts`, `time_entries`, `job_costings`, `documents`, `qa_forms`, `qa_levels`, `qa_level_templates`, `history`, `settings`, `machines`, `job_notes`, `tags`, `supplier_service_tags`
+Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `time_entries`, `job_costings`, `documents`, `qa_forms`, `qa_levels`, `qa_level_templates`, `history`, `settings`, `machines`, `job_notes`, `tags`, `supplier_service_tags`
+
+**Per-line-item treatments**: Each job item carries a `treatments` JSON column (array of `{ value, otherText, supplierId, supplierName }`). `value` is a treatment tag value (or `'OTHER'` with required `otherText`); `supplierId` is required and chosen from suppliers whose `serviceTags` include the treatment. The UI is a chip-based picker (`tabs/TreatmentChips.jsx`); validated server-side in `validateItemTreatments`. This replaces the previous `subcontracts` table — there is no separate subcontract entity, tab, or workflow.
 
 **Unified tags system**: The `tags` table stores all dynamic dropdown/multi-select options with columns: `id`, `category` (treatment/material/customer_property/drawings/job_type), `name`, `value`, `sort_order`, `created_at`. The `supplier_service_tags` junction table links suppliers to treatment tags. Frontend uses the `useTags(category)` hook from `client/src/hooks/useTags.js` to fetch tags dynamically. Admin manages tags and equipment via the "Tags & Equipment" page (`/tags`). Equipment is managed through the existing `machines` table but shares the same admin UI.
 
@@ -148,7 +150,7 @@ PDFs without fillable fields are copied as-is (blank templates for handwriting).
 ### Authentication
 - Two roles: `admin` (full access) and `user` (limited)
 - Admin-only: user management, supplier management, equipment management, QA level management, costing, settings, activity log, **contact/customer info**, **job card creation/deletion**, **note deletion**
-- **Employee (user) role**: Read-only job card view (Details tab renders as styled text, not inputs) except status dropdown (employees can change job status via `PATCH /:id/status`). Tabs hidden from employees: Items, Subcontracts, Files, Costing, Activity Log. Employees use Start/Stop timer for time tracking (one active timer at a time, enforced server-side). Can add notes but not delete them. **Quick Action Panel**: All users clicking a job card row see a QuickActionPanel (centered modal) with 4 large buttons: Upload Document, Start/Stop Timer, View Documents, and View Details. **Upload flow**: Upload Document → pick category (QA Form, Job Files, or Customer Property) → choose Scanner or Camera → file saved automatically to the selected folder. **View Documents**: Tabbed view with QA Forms, Job Files, and Customer Property tabs showing files from each folder (images viewable via lightbox). Clicking "View Details" opens the full JobCardModal. Active timers show a pulsing green indicator on job card rows for all users.
+- **Employee (user) role**: Read-only job card view (Details tab renders as styled text, not inputs) except status dropdown (employees can change job status via `PATCH /:id/status`). Tabs hidden from employees: Items, Files, Costing, Activity Log. Employees use Start/Stop timer for time tracking (one active timer at a time, enforced server-side). Can add notes but not delete them. **Quick Action Panel**: All users clicking a job card row see a QuickActionPanel (centered modal) with 4 large buttons: Upload Document, Start/Stop Timer, View Documents, and View Details. **Upload flow**: Upload Document → pick category (QA Form, Job Files, or Customer Property) → choose Scanner or Camera → file saved automatically to the selected folder. **View Documents**: Tabbed view with QA Forms, Job Files, and Customer Property tabs showing files from each folder (images viewable via lightbox). Clicking "View Details" opens the full JobCardModal. Active timers show a pulsing green indicator on job card rows for all users.
 - **Job card visibility**: All authenticated users can see and access all job cards (same visibility as admin). Non-admin users remain read-only with limited actions (status change, timer, notes). Assignees are still tracked via `job_assignees` for display purposes and admin filtering.
 - **Settings page**: Non-admin users see only Appearance (dark mode) and Change PIN. Admin users see all cards (App Info, Current User, Printers, Security Settings, Scanner Folder, Job Folders, Data Backup, Server Connection).
 - Default credentials: `admin` / `1234`
@@ -159,7 +161,7 @@ PDFs without fillable fields are copied as-is (blank templates for handwriting).
 ## Key Patterns
 
 - **Direct API**: All components use `api.js` to communicate directly with the Express server. Components load data on mount and refresh after mutations.
-- **JobCardModal**: Modular tab-based UI with custom hooks for each tab's logic (`useCosting.js`, `useTimeEntries.js`, `useTimer.js`, `useJobNotes.js`, `useSubcontracts.js`, `useCamera.js`, `useJobCardForm.js`, `useContactSearch.js`)
+- **JobCardModal**: Modular tab-based UI with custom hooks for each tab's logic (`useCosting.js`, `useTimeEntries.js`, `useTimer.js`, `useJobNotes.js`, `useCamera.js`, `useJobCardForm.js`, `useContactSearch.js`)
 - **Prepared statements**: Database queries use better-sqlite3 prepared statements defined in `database.js`
 - **History tracking**: Use `recordHistory()` for server-side data mutations to maintain audit trail
 - **Input validation**: Use `express-validator` middleware from `validation.js` for request validation

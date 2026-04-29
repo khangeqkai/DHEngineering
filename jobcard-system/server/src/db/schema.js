@@ -32,7 +32,7 @@ db.exec(`
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
-  -- Suppliers table (for subcontracts)
+  -- Suppliers table (linked to per-line-item treatments via treatments JSON)
   CREATE TABLE IF NOT EXISTS suppliers (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -129,6 +129,8 @@ db.exec(`
   );
 
   -- Job line items
+  -- treatments column: JSON array of objects with shape:
+  --   { value, otherText, supplierId, supplierName, dateSent, dateExpected, dateReceived, status, notes }
   CREATE TABLE IF NOT EXISTS job_items (
     id TEXT PRIMARY KEY,
     jobcard_id TEXT NOT NULL,
@@ -137,8 +139,7 @@ db.exec(`
     description TEXT NOT NULL,
     job_type TEXT,
     material TEXT,
-    treatment TEXT,
-    treatment_other TEXT,
+    treatments TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE
@@ -153,22 +154,6 @@ db.exec(`
     FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id),
     UNIQUE(jobcard_id, user_id)
-  );
-
-  -- Subcontracts
-  CREATE TABLE IF NOT EXISTS subcontracts (
-    id TEXT PRIMARY KEY,
-    jobcard_id TEXT NOT NULL,
-    supplier_id TEXT NOT NULL,
-    date_sent TEXT,
-    date_expected TEXT,
-    date_received TEXT,
-    notes TEXT,
-    status TEXT DEFAULT 'PENDING',
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE,
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
   );
 
   -- Time entries
@@ -374,8 +359,6 @@ const migrations = [
   { table: 'jobcards', column: '_device_id', type: 'TEXT' },
   { table: 'job_items', column: '_version', type: 'INTEGER DEFAULT 1' },
   { table: 'job_items', column: '_device_id', type: 'TEXT' },
-  { table: 'subcontracts', column: '_version', type: 'INTEGER DEFAULT 1' },
-  { table: 'subcontracts', column: '_device_id', type: 'TEXT' },
   { table: 'time_entries', column: '_version', type: 'INTEGER DEFAULT 1' },
   { table: 'time_entries', column: '_device_id', type: 'TEXT' },
   { table: 'job_costings', column: '_version', type: 'INTEGER DEFAULT 1' },

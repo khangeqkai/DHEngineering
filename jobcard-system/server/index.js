@@ -10,7 +10,6 @@ const authRoutes = require('./src/routes/auth');
 const hardwareRoutes = require('./src/routes/hardware');
 const jobcardsRoutes = require('./src/routes/jobcards');
 const jobcardTimeEntriesRoutes = require('./src/routes/jobcard-time-entries');
-const jobcardSubcontractsRoutes = require('./src/routes/jobcard-subcontracts');
 const jobcardCostingRoutes = require('./src/routes/jobcard-costing');
 const jobcardDocumentsRoutes = require('./src/routes/jobcard-documents');
 const jobcardFilesRoutes = require('./src/routes/jobcard-files');
@@ -50,7 +49,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/hardware', hardwareRoutes);
 // Mount sub-routes before main jobcards route for proper matching
 app.use('/api/jobcards', jobcardTimeEntriesRoutes);
-app.use('/api/jobcards', jobcardSubcontractsRoutes);
 app.use('/api/jobcards', jobcardCostingRoutes);
 app.use('/api/jobcards', jobcardFilesRoutes);
 app.use('/api/jobcards', jobcardDocumentsRoutes);

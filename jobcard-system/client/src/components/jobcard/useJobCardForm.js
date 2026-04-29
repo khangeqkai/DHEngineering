@@ -1,5 +1,15 @@
 import { useState, useCallback } from 'react';
-import { getDefaultFormData } from './mappers';
+import { getDefaultFormData, mapLineItemFromApi } from './mappers';
+
+const makeEmptyLineItem = (itemNumber = 1) => ({
+  id: Date.now() + Math.random(),
+  itemNumber,
+  qty: '',
+  description: '',
+  jobType: '',
+  material: '',
+  treatments: []
+});
 
 /**
  * Custom hook for job card form state management
@@ -12,9 +22,7 @@ export function useJobCardForm() {
 
   // Related data (locally managed for create mode, from API for edit mode)
   const [assignees, setAssignees] = useState([]);
-  const [lineItems, setLineItems] = useState([{ id: Date.now(), itemNumber: 1, qty: '', description: '', jobType: '', material: '', treatment: '', treatmentOther: '' }]);
-  // Local subcontracts state for create mode (in edit mode, uses apiSubcontracts)
-  const [localSubcontracts, setLocalSubcontracts] = useState([]);
+  const [lineItems, setLineItems] = useState([makeEmptyLineItem(1)]);
 
   // Scanner files state
   const [scannerFiles, setScannerFiles] = useState([]);
@@ -33,7 +41,7 @@ export function useJobCardForm() {
   const addLineItem = useCallback(() => {
     setLineItems(prev => {
       const nextNum = prev.length > 0 ? Math.max(...prev.map(i => i.itemNumber)) + 1 : 1;
-      return [...prev, { id: Date.now(), itemNumber: nextNum, qty: '', description: '', jobType: '', material: '', treatment: '', treatmentOther: '' }];
+      return [...prev, makeEmptyLineItem(nextNum)];
     });
   }, []);
 
@@ -99,25 +107,15 @@ export function useJobCardForm() {
 
     // Map line items from API data
     const apiItems = jobcardData.items || [];
-    const mappedItems = apiItems.map(item => ({
-      id: item.id,
-      itemNumber: item.itemNumber,
-      qty: item.qty || '',
-      description: item.description || '',
-      jobType: item.jobType || '',
-      material: item.material || '',
-      treatment: item.treatment || '',
-      treatmentOther: item.treatmentOther || ''
-    }));
-    setLineItems(mappedItems.length > 0 ? mappedItems : [{ id: Date.now(), itemNumber: 1, qty: '', description: '', jobType: '', material: '', treatment: '', treatmentOther: '' }]);
+    const mappedItems = apiItems.map(mapLineItemFromApi);
+    setLineItems(mappedItems.length > 0 ? mappedItems : [makeEmptyLineItem(1)]);
   }, []);
 
   const resetForm = useCallback(() => {
     setFormData(getDefaultFormData());
     setJobNumber('');
     setAssignees([]);
-    setLineItems([{ id: Date.now(), itemNumber: 1, qty: '', description: '', jobType: '', material: '', treatment: '', treatmentOther: '' }]);
-    setLocalSubcontracts([]);
+    setLineItems([makeEmptyLineItem(1)]);
     setScannerFiles([]);
     setShowScannerFiles(false);
   }, []);
@@ -133,8 +131,6 @@ export function useJobCardForm() {
     setAssignees,
     lineItems,
     setLineItems,
-    localSubcontracts,
-    setLocalSubcontracts,
     // Scanner files
     scannerFiles,
     setScannerFiles,

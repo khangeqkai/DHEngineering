@@ -28,7 +28,6 @@ export default function DetailsReadOnlyView({
   formData,
   assignees,
   lineItems,
-  subcontracts,
   isOverdue,
   onStatusChange
 }) {
@@ -109,14 +108,7 @@ export default function DetailsReadOnlyView({
           <h3 className="form-section-title">Line Items</h3>
           <div className="readonly-items-list">
             {lineItems.map(item => {
-              const itemTreatments = (item.treatment || '')
-                .split(',')
-                .filter(v => v && v !== 'NONE')
-                .map(v => {
-                  const opt = treatmentTags.find(t => t.value === v);
-                  return opt ? opt.label : v;
-                });
-              if (item.treatmentOther) itemTreatments.push(item.treatmentOther);
+              const treatments = Array.isArray(item.treatments) ? item.treatments : [];
               const materialLabel = item.material
                 ? (materialTags.find(m => m.value === item.material)?.label || item.material)
                 : null;
@@ -134,32 +126,22 @@ export default function DetailsReadOnlyView({
                   {materialLabel && (
                     <span className="readonly-badge material">{materialLabel}</span>
                   )}
-                  {itemTreatments.length > 0 && (
+                  {treatments.length > 0 && (
                     <span className="readonly-item-treatments">
-                      {itemTreatments.map(label => (
-                        <span key={label} className="readonly-badge treatment">{label}</span>
-                      ))}
+                      {treatments.map((t, i) => {
+                        const tName = t.value === 'OTHER'
+                          ? (t.otherText || 'Other')
+                          : (treatmentTags.find(tt => tt.value === t.value)?.label || t.value);
+                        const sName = t.supplierName || '(no supplier)';
+                        return (
+                          <span key={i} className="readonly-badge treatment">{tName} → {sName}</span>
+                        );
+                      })}
                     </span>
                   )}
                 </div>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {/* Subcontracts */}
-      {subcontracts && subcontracts.length > 0 && (
-        <div className="form-section">
-          <h3 className="form-section-title">Subcontracts</h3>
-          <div className="readonly-items-list">
-            {subcontracts.map(sub => (
-              <div key={sub.id} className="readonly-item">
-                <span className="readonly-value">{sub.supplierName}</span>
-                <span className={`readonly-badge status-${(sub.status || '').toLowerCase()}`}>{sub.status}</span>
-                {sub.dateExpected && <span className="readonly-item-desc">Expected: {new Date(sub.dateExpected).toLocaleDateString()}</span>}
-              </div>
-            ))}
           </div>
         </div>
       )}

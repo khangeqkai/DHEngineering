@@ -128,8 +128,8 @@ const jobItemQueries = {
   getByJobcard: db.prepare('SELECT * FROM job_items WHERE jobcard_id = ? ORDER BY item_number ASC'),
 
   create: db.prepare(`
-    INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatment, treatment_other, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `),
 
   deleteByJobcard: db.prepare('DELETE FROM job_items WHERE jobcard_id = ?')

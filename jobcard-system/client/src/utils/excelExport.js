@@ -84,7 +84,6 @@ function fmtCodeList(val) {
 }
 
 function fmtDrawings(val) { return fmtCodeList(val); }
-function fmtTreatment(val) { return fmtCodeList(val); }
 function fmtMaterial(val) { return fmtCodeList(val); }
 function fmtCustomerProperty(val) { return fmtCodeList(val); }
 
@@ -171,15 +170,17 @@ const JOBCARD_SUMMARY_COLS = [
   }},
   { label: 'Treatment', value: r => {
     const items = r.items || [];
-    const all = [...new Set(items.flatMap(i => (i.treatment || '').split(',').filter(v => v && v !== 'NONE')))];
-    return fmtTreatment(all.join(','));
-  }},
-  { label: 'Treatment Other', value: r => {
-    const items = r.items || [];
-    return items.map(i => i.treatmentOther).filter(Boolean).join(', ');
+    const parts = [];
+    for (const item of items) {
+      for (const t of (item.treatments || [])) {
+        const tName = t.value === 'OTHER' ? (t.otherText || 'Other') : valueToLabel(t.value);
+        const sName = t.supplierName || '(no supplier)';
+        parts.push(`${tName}→${sName}`);
+      }
+    }
+    return parts.join(', ');
   }},
   { label: 'Customer Property', value: r => fmtCustomerProperty(r.customerProperty) },
-  { label: 'Subcontractors', value: r => (r._subcontracts || []).map(s => s.supplierName).join(', ') },
   { label: 'Notes', value: r => (r._notes || []).map(n => n.text).join(' | ') },
   { label: 'Repeat Job', value: r => r.isRepeatJob ? 'Yes' : 'No' },
   { label: 'Repeat Job Ref', value: r => r.repeatJobReference },
@@ -200,21 +201,15 @@ const TIME_ENTRY_COLS = [
   { label: 'Special Labour', value: r => r.isSpecialLabour ? 'Yes' : 'No' },
 ];
 
-const SUBCONTRACT_COLS = [
-  { label: 'Job #', value: r => r._jobNumber },
-  { label: 'Supplier', value: r => r.supplierName },
-  { label: 'Date Sent', value: r => fmtDate(r.dateSent) },
-  { label: 'Date Expected', value: r => fmtDate(r.dateExpected) },
-  { label: 'Date Received', value: r => fmtDate(r.dateReceived) },
-  { label: 'Status', value: r => r.status },
-  { label: 'Notes', value: r => r.notes },
-];
-
 const ITEM_COLS = [
   { label: 'Job #', value: r => r._jobNumber },
   { label: 'Item #', value: r => r.itemNumber },
   { label: 'Qty', value: r => r.qty },
   { label: 'Description', value: r => r.description },
+  { label: 'Treatments', value: r => (r.treatments || []).map(t => {
+    const tName = t.value === 'OTHER' ? (t.otherText || 'Other') : valueToLabel(t.value);
+    return `${tName}→${t.supplierName || '(no supplier)'}`;
+  }).join(', ') },
 ];
 
 const COSTING_COLS = [
@@ -283,7 +278,7 @@ async function buildJobCardWorkbook(cards, onProgress) {
 
   const ids = cards.map(c => c.id);
 
-  // Fetch full card details (list endpoint omits items/subcontracts)
+  // Fetch full card details (list endpoint omits items)
   onProgress?.('Fetching job card details...');
   const fullCards = await fetchInBatches(ids, id =>
     api.getJobcard(id).catch(() => null)
@@ -317,7 +312,6 @@ async function buildJobCardWorkbook(cards, onProgress) {
 
   const enrichedCards = mergedCards.map(c => ({
     ...c,
-    _subcontracts: c.subcontracts || [],
     _notes: notesByJob[c.id] || [],
   }));
 
@@ -335,13 +329,6 @@ async function buildJobCardWorkbook(cards, onProgress) {
     }
   }
 
-  const allSubcontracts = [];
-  for (const c of mergedCards) {
-    for (const s of c.subcontracts || []) {
-      allSubcontracts.push({ ...s, _jobNumber: c.jobNumber });
-    }
-  }
-
   const allCosting = [];
   for (const { id, costing } of costingPerJob) {
     if (costing) {
@@ -354,7 +341,6 @@ async function buildJobCardWorkbook(cards, onProgress) {
   XLSX.utils.book_append_sheet(wb, buildSheet(enrichedCards, JOBCARD_SUMMARY_COLS), 'Summary');
   XLSX.utils.book_append_sheet(wb, buildSheet(allItems, ITEM_COLS), 'Items');
   XLSX.utils.book_append_sheet(wb, buildSheet(allTimeEntries, TIME_ENTRY_COLS), 'Time Entries');
-  XLSX.utils.book_append_sheet(wb, buildSheet(allSubcontracts, SUBCONTRACT_COLS), 'Subcontracts');
   XLSX.utils.book_append_sheet(wb, buildSheet(allCosting, COSTING_COLS), 'Costing');
 
   return wb;

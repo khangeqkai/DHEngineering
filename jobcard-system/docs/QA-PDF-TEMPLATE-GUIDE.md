@@ -30,8 +30,7 @@ Use any of these names when creating fillable text fields in your PDF form. Fiel
 | Quote Reference | `quote_reference`, `quotereference`, `quote_ref`, `quoteref` |
 | Drawings Type | `drawings_type`, `drawingstype`, `drawings` |
 | Customer Property | `customer_property`, `customerproperty` |
-| Treatment Required | `treatment`, `treatment_required`, `treatmentrequired` |
-| Treatment Other | `treatment_other`, `treatmentother` |
+| Treatment Required | `treatment`, `treatment_required`, `treatmentrequired` (formatted as `Treatment → Supplier, ...` across all items) |
 | Repeat Job (Yes/No) | `repeat_job`, `repeatjob` |
 | Repeat Job Reference | `repeat_job_reference`, `repeatjobreference`, `repeat_ref`, `repeatref` |
 | Notes | `notes` |
@@ -47,8 +46,7 @@ Job items use indexed field names. Add as many rows as you need (up to 50). Unfi
 | Description | `item_N_description` | `item_1_description` |
 | Job Type | `item_N_job_type` | `item_1_job_type` |
 | Material | `item_N_material` | `item_1_material` |
-| Treatment | `item_N_treatment` | `item_1_treatment` |
-| Treatment Other | `item_N_treatment_other` | `item_1_treatment_other` |
+| Treatment | `item_N_treatment` (formatted as `Treatment → Supplier, ...`) | `item_1_treatment` |
 
 Where `N` is the 1-based item index (1, 2, 3, ...). For example, a template with 5 item rows would have fields: `item_1_number`, `item_1_qty`, `item_1_description`, `item_2_number`, ..., `item_5_description`.
 

@@ -136,12 +136,6 @@ class ApiService {
   addAssignee(jobcardId, userId) { return this._post(`/jobcards/${jobcardId}/assignees`, { userId }); }
   removeAssignee(jobcardId, userId) { return this._del(`/jobcards/${jobcardId}/assignees/${userId}`); }
 
-  // Subcontracts
-  getSubcontracts(jobcardId) { return this.request(`/jobcards/${jobcardId}/subcontracts`); }
-  addSubcontract(jobcardId, data) { return this._post(`/jobcards/${jobcardId}/subcontracts`, data); }
-  updateSubcontract(jobcardId, id, data) { return this._put(`/jobcards/${jobcardId}/subcontracts/${id}`, data); }
-  deleteSubcontract(jobcardId, id) { return this._del(`/jobcards/${jobcardId}/subcontracts/${id}`); }
-
   // Time Entries
   getTimeEntries(jobcardId) { return this.request(`/jobcards/${jobcardId}/time-entries`); }
   addTimeEntry(jobcardId, data) { return this._post(`/jobcards/${jobcardId}/time-entries`, data); }

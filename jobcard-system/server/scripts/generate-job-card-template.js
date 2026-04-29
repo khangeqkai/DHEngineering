@@ -179,8 +179,7 @@ async function generateTemplate(outputPath) {
   // Treatment
   y1 = drawSectionHeader(page1, y1, 'Treatment');
   y1 = drawRow(page1, y1, [
-    { label: 'Treatment Required', name: 'treatment_required', flex: 1 },
-    { label: 'Treatment Other', name: 'treatment_other', flex: 1 }
+    { label: 'Treatment Required', name: 'treatment_required', flex: 1 }
   ]);
 
   drawFooter(page1, 1, 2);
