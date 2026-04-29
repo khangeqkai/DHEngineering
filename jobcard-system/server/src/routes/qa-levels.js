@@ -109,7 +109,7 @@ router.post('/',
         return res.status(400).json({ error: 'A QA level with this name already exists' });
       }
 
-      const id = `qa-level:${Date.now()}:${uuidv4().slice(0, 8)}`;
+      const id = `qa-level:${uuidv4()}`;
       const sanitizedName = sanitizeFolderName(name.trim());
 
       // Create folder on disk
@@ -263,7 +263,7 @@ router.post('/:id/templates', authenticate, requireAdmin, (req, res) => {
       return res.status(404).json({ error: 'QA level not found' });
     }
 
-    const templateId = `qa-template:${Date.now()}:${uuidv4().slice(0, 8)}`;
+    const templateId = `qa-template:${uuidv4()}`;
     const sanitizedFileName = sanitizeFolderName(path.parse(fileName).name) + path.extname(fileName);
     const finalDisplayName = displayName || sanitizedFileName;
 

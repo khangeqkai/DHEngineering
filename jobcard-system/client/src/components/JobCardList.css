@@ -354,6 +354,39 @@
   box-shadow: 0 1px 4px rgba(239, 68, 68, 0.2);
 }
 
+/* Sortable / draggable column headers */
+.jc-th {
+  cursor: grab;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.jc-th.jc-th-sortable {
+  cursor: pointer;
+}
+
+.jc-th .jc-th-label {
+  margin-right: 0.35rem;
+}
+
+.jc-th .jc-sort-icon {
+  display: inline-flex;
+  vertical-align: middle;
+  color: var(--text-tertiary);
+  opacity: 0.55;
+  transition: opacity var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+
+.jc-th.jc-th-sortable:hover .jc-sort-icon {
+  opacity: 1;
+  color: var(--text-secondary);
+}
+
+.jc-th.jc-th-sorted .jc-sort-icon {
+  opacity: 1;
+  color: var(--primary-accent);
+}
+
 @media (max-width: 768px) {
   .filter-buttons {
     width: 100%;

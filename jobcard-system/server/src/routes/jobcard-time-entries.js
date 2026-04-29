@@ -78,7 +78,7 @@ router.post('/:id/time-entries/start', authenticate, (req, res) => {
       });
     }
 
-    const entryId = `timeentry:${Date.now()}:${uuidv4().slice(0, 8)}`;
+    const entryId = `timeentry:${uuidv4()}`;
     const startTime = new Date().toISOString();
 
     timeEntryQueries.create.run(
@@ -168,7 +168,7 @@ router.post('/:id/time-entries', authenticate, ...validateTimeEntryInspection, (
     const { id } = req.params;
     const data = req.body;
 
-    const entryId = `timeentry:${Date.now()}:${uuidv4().slice(0, 8)}`;
+    const entryId = `timeentry:${uuidv4()}`;
 
     timeEntryQueries.create.run(
       entryId,

@@ -145,7 +145,7 @@ function createRelatedRecords(jobcardId, data) {
   if (data.items && Array.isArray(data.items)) {
     for (let i = 0; i < data.items.length; i++) {
       const item = data.items[i];
-      const itemId = `item:${Date.now()}:${uuidv4().slice(0, 8)}`;
+      const itemId = `item:${uuidv4()}`;
       jobItemQueries.create.run(
         itemId, jobcardId, i + 1,
         item.qty || null, item.description,
@@ -157,7 +157,7 @@ function createRelatedRecords(jobcardId, data) {
 
   if (data.assigneeIds && Array.isArray(data.assigneeIds)) {
     for (const userId of data.assigneeIds) {
-      const assigneeId = `assignee:${Date.now()}:${uuidv4().slice(0, 8)}`;
+      const assigneeId = `assignee:${uuidv4()}`;
       try {
         jobAssigneeQueries.create.run(assigneeId, jobcardId, userId);
       } catch (e) {
@@ -175,7 +175,7 @@ function initQaForms(jobcardId) {
     { code: 'DHE-F43', name: 'Hazard, Incident, Non-Conformance & Customer Complaint' }
   ];
   for (const form of qaForms) {
-    const formId = `qaform:${Date.now()}:${uuidv4().slice(0, 8)}`;
+    const formId = `qaform:${uuidv4()}`;
     qaFormQueries.create.run(formId, jobcardId, form.code, form.name, 'PENDING');
   }
 }
@@ -196,7 +196,7 @@ async function initQaFormsFromLevel(jobcardId, qaLevelId, jobData) {
 
   // Create QA form records for each template
   for (const tmpl of templates) {
-    const formId = `qaform:${Date.now()}:${uuidv4().slice(0, 8)}`;
+    const formId = `qaform:${uuidv4()}`;
     const formCode = path.parse(tmpl.file_name).name;
     qaFormQueries.create.run(formId, jobcardId, formCode, tmpl.display_name, 'PENDING');
   }

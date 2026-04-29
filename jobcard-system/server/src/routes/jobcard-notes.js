@@ -35,7 +35,7 @@ router.post('/:id/notes', authenticate, [
     const { id } = req.params;
     const { text } = req.body;
 
-    const noteId = `note:${Date.now()}:${uuidv4().slice(0, 8)}`;
+    const noteId = `note:${uuidv4()}`;
 
     jobNoteQueries.create.run(
       noteId,

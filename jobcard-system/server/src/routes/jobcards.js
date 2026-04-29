@@ -152,7 +152,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       return res.status(409).json({ error: `Job number ${jobNumber} already exists. Please update the starting number in Settings.` });
     }
 
-    const id = `jobcard:${Date.now()}:${uuidv4().slice(0, 8)}`;
+    const id = `jobcard:${uuidv4()}`;
     const status = data.status || 'OPEN';
 
     // Resolve QA level: prefer qaLevelId, fall back to qualityLevel name match
@@ -344,7 +344,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       jobItemQueries.deleteByJobcard.run(id);
       for (let i = 0; i < data.items.length; i++) {
         const item = data.items[i];
-        const itemId = item.id || `item:${Date.now()}:${uuidv4().slice(0, 8)}`;
+        const itemId = item.id || `item:${uuidv4()}`;
         jobItemQueries.create.run(
           itemId, id, i + 1,
           item.qty || null, item.description,
@@ -387,7 +387,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     if (data.assigneeIds !== undefined) {
       jobAssigneeQueries.deleteByJobcard.run(id);
       for (const userId of data.assigneeIds) {
-        const assigneeId = `assignee:${Date.now()}:${uuidv4().slice(0, 8)}`;
+        const assigneeId = `assignee:${uuidv4()}`;
         try {
           jobAssigneeQueries.create.run(assigneeId, id, userId);
         } catch (e) {
@@ -569,7 +569,7 @@ router.delete('/:id', authenticate, requireAdmin, (req, res) => {
 
 // Sync endpoints for offline support
 router.post('/sync/create', authenticate, requireAdmin, (req, res) => {
-  req.body._id = req.body._id || `jobcard:${Date.now()}:${uuidv4().slice(0, 8)}`;
+  req.body._id = req.body._id || `jobcard:${uuidv4()}`;
   return router.handle(req, res);
 });
 

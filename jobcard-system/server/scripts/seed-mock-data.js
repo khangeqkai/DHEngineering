@@ -13,7 +13,7 @@ const { db } = require('../src/db/connection');
 require('../src/db/schema'); // run migrations so new columns exist before prepare
 const { settingsQueries } = require('../src/db/queries/support');
 
-const uid = (prefix) => `${prefix}:${Date.now()}:${uuidv4().slice(0, 8)}`;
+const uid = (prefix) => `${prefix}:${uuidv4()}`;
 
 // ─── WIPE ALL TABLES ───
 console.log('Wiping all data...');

@@ -59,7 +59,7 @@ router.post('/:id/documents', authenticate, (req, res) => {
     const { id } = req.params;
     const { filename, fileType, fileSize, fileData } = req.body;
 
-    const docId = `doc:${Date.now()}:${uuidv4().slice(0, 8)}`;
+    const docId = `doc:${uuidv4()}`;
 
     documentQueries.create.run(
       docId,

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, ArchiveRestore, Check, Calendar, List } from 'lucide-react';
+import { Plus, Trash2, ArchiveRestore, Check, Calendar, List, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportJobCardList, exportJobCardsFull } from '../utils/excelExport';
@@ -13,6 +13,7 @@ import QuickActionPanel from './jobcard/QuickActionPanel';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
+import useJobCardSort, { SORT_VALUE_GETTERS } from '../hooks/useJobCardSort';
 import EmptyState from './common/EmptyState';
 import JobCardListDensityToggle, { useJobCardListDensity } from './JobCardListDensity';
 import JobCardCalendarView from './JobCardCalendarView';
@@ -277,7 +278,9 @@ export default function JobCardList() {
     });
   }, [jobcards, filter, search, isAdmin]);
 
-  // Reset to page 1 when filters change, sync filter to URL
+  const { sortBy, sortDir, handleSort, sortedCards } = useJobCardSort(filteredCards);
+
+  // Reset to page 1 when filters or sort change, sync filter to URL
   useEffect(() => {
     setCurrentPage(1);
     const params = new URLSearchParams(window.location.search);
@@ -292,12 +295,12 @@ export default function JobCardList() {
       params.set('assignee', assigneeFilter);
     }
     setSearchParams(params, { replace: true });
-  }, [filter, search, showArchived, assigneeFilter, setSearchParams]);
+  }, [filter, search, showArchived, assigneeFilter, sortBy, sortDir, setSearchParams]);
 
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(sortedCards.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const paginatedCards = filteredCards.slice(
+  const paginatedCards = sortedCards.slice(
     (safeCurrentPage - 1) * PAGE_SIZE,
     safeCurrentPage * PAGE_SIZE
   );
@@ -527,7 +530,7 @@ export default function JobCardList() {
         </label>
         {isAdmin && (
           <ExportButton
-            onExportView={() => filteredCards.length ? exportJobCardList(filteredCards) : false}
+            onExportView={() => sortedCards.length ? exportJobCardList(sortedCards) : false}
             onExportAll={() => exportJobCardsFull()}
           />
         )}
@@ -623,20 +626,33 @@ export default function JobCardList() {
             <table className="table" data-density={density}>
               <thead>
                 <tr>
-                  {visibleColumns.map(col => (
-                    <th
-                      key={col.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, col.id)}
-                      onDragEnd={handleDragEnd}
-                      onDragOver={(e) => handleDragOver(e, col.id)}
-                      onDrop={(e) => handleDrop(e, col.id)}
-                      style={{ cursor: 'grab' }}
-                      title="Drag to reorder columns"
-                    >
-                      {col.label}
-                    </th>
-                  ))}
+                  {visibleColumns.map(col => {
+                    const sortable = !!SORT_VALUE_GETTERS[col.id];
+                    const active = sortable && sortBy === col.id;
+                    return (
+                      <th
+                        key={col.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, col.id)}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={(e) => handleDragOver(e, col.id)}
+                        onDrop={(e) => handleDrop(e, col.id)}
+                        onClick={sortable ? () => handleSort(col.id) : undefined}
+                        className={`jc-th${sortable ? ' jc-th-sortable' : ''}${active ? ' jc-th-sorted' : ''}`}
+                        title={sortable ? 'Click to sort, drag to reorder' : 'Drag to reorder columns'}
+                        aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
+                      >
+                        <span className="jc-th-label">{col.label}</span>
+                        {sortable && (
+                          <span className="jc-sort-icon" aria-hidden="true">
+                            {!active && <ChevronsUpDown size={12} />}
+                            {active && sortDir === 'asc' && <ChevronUp size={14} />}
+                            {active && sortDir === 'desc' && <ChevronDown size={14} />}
+                          </span>
+                        )}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -660,7 +676,7 @@ export default function JobCardList() {
         {totalPages > 1 && (
           <div className="pagination-bar">
             <span className="pagination-info">
-              {(safeCurrentPage - 1) * PAGE_SIZE + 1}–{Math.min(safeCurrentPage * PAGE_SIZE, filteredCards.length)} of {filteredCards.length}
+              {(safeCurrentPage - 1) * PAGE_SIZE + 1}–{Math.min(safeCurrentPage * PAGE_SIZE, sortedCards.length)} of {sortedCards.length}
             </span>
             <div className="pagination-buttons">
               <button

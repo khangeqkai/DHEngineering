@@ -67,7 +67,7 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    const costingId = data.id || `costing:${Date.now()}:${uuidv4().slice(0, 8)}`;
+    const costingId = data.id || `costing:${uuidv4()}`;
 
     // Get existing costing for diff
     const existing = jobCostingQueries.getByJobcard.get(id);
