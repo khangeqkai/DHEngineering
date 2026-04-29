@@ -1,0 +1,159 @@
+.calendar-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-card-header);
+}
+
+.calendar-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.calendar-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  flex: 1;
+  overflow-y: auto;
+}
+
+.calendar-day-header {
+  padding: 0.5rem;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  background: var(--bg-card-header);
+}
+
+.calendar-day-header:last-child {
+  border-right: none;
+}
+
+.calendar-day {
+  min-height: 120px;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.calendar-day:nth-child(7n) {
+  border-right: none;
+}
+
+.calendar-day.empty {
+  background: var(--bg-body);
+}
+
+.calendar-day.today {
+  background: rgba(var(--primary-color-rgb), 0.05);
+}
+
+.calendar-day-number {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.calendar-day.today .calendar-day-number {
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+.calendar-day-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.calendar-card {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  border: 1px solid transparent;
+}
+
+.calendar-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  filter: brightness(0.95);
+}
+
+.calendar-card-job {
+  font-weight: 600;
+}
+
+.calendar-card-company {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.9;
+}
+
+/* Reuse badge colors for calendar cards */
+.calendar-card.badge-pending {
+  background-color: var(--badge-pending-bg);
+  color: var(--badge-pending-text);
+  border-color: rgba(var(--badge-pending-text-rgb), 0.2);
+}
+
+.calendar-card.badge-in-progress {
+  background-color: var(--badge-progress-bg);
+  color: var(--badge-progress-text);
+  border-color: rgba(var(--badge-progress-text-rgb), 0.2);
+}
+
+.calendar-card.badge-awaiting-material {
+  background-color: var(--badge-awaiting-bg);
+  color: var(--badge-awaiting-text);
+  border-color: rgba(var(--badge-awaiting-text-rgb), 0.2);
+}
+
+.calendar-card.badge-treatment {
+  background-color: var(--badge-treatment-bg);
+  color: var(--badge-treatment-text);
+  border-color: rgba(var(--badge-treatment-text-rgb), 0.2);
+}
+
+.calendar-card.badge-completed {
+  background-color: var(--badge-completed-bg);
+  color: var(--badge-completed-text);
+  border-color: rgba(var(--badge-completed-text-rgb), 0.2);
+}
+
+.calendar-card.badge-cancelled {
+  background-color: var(--badge-cancelled-bg);
+  color: var(--badge-cancelled-text);
+  border-color: rgba(var(--badge-cancelled-text-rgb), 0.2);
+}

@@ -15,6 +15,8 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
 import EmptyState from './common/EmptyState';
 import JobCardListDensityToggle, { useJobCardListDensity } from './JobCardListDensity';
+import JobCardCalendarView from './JobCardCalendarView';
+import { Calendar, List } from 'lucide-react';
 import './JobCardList.css';
 
 const STATUS_OPTIONS = [
@@ -78,6 +80,7 @@ export default function JobCardList() {
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   const [quickActionCard, setQuickActionCard] = useState(null);
   const [density, setDensity] = useJobCardListDensity();
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
   
   const [columnOrder, setColumnOrder] = useState(() => {
@@ -572,9 +575,35 @@ export default function JobCardList() {
             ))}
           </div>
         )}
-        <JobCardListDensityToggle density={density} onChange={setDensity} />
+        <div className="view-toggle">
+          <button
+            className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setViewMode('list')}
+            title="List View"
+          >
+            <List size={16} />
+          </button>
+          <button
+            className={`btn btn-sm ${viewMode === 'calendar' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setViewMode('calendar')}
+            title="Calendar View"
+          >
+            <Calendar size={16} />
+          </button>
+        </div>
+        {viewMode === 'list' && <JobCardListDensityToggle density={density} onChange={setDensity} />}
       </div>
 
+      {viewMode === 'calendar' ? (
+        <div className="calendar-container" style={{ flex: 1, minHeight: '600px', marginBottom: '1rem' }}>
+          <JobCardCalendarView
+            jobcards={filteredCards}
+            onCardClick={(card) => setQuickActionCard(card)}
+            getStatusBadgeClass={getStatusBadgeClass}
+            STATUS_LABELS={STATUS_LABELS}
+          />
+        </div>
+      ) : (
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
           {filteredCards.length === 0 ? (
@@ -676,6 +705,7 @@ export default function JobCardList() {
           </div>
         )}
       </div>
+      )}
 
       <QuickActionPanel
         isOpen={!!quickActionCard}
