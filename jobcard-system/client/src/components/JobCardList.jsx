@@ -7,6 +7,7 @@ import { Plus, Trash2, ArchiveRestore, Check } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportJobCardList, exportJobCardsFull } from '../utils/excelExport';
+import { getInitials, getAvatarColor } from '../utils/initials';
 import JobCardModal from './jobcard/JobCardModal';
 import QuickActionPanel from './jobcard/QuickActionPanel';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -384,18 +385,39 @@ export default function JobCardList() {
                       )}
                       {isAdmin && (
                         <td className="assignee-cell">
-                          {card.assignees?.length > 1 ? (
-                            <span className="assignee-preview">
-                              <span className="assignee-text">{card.assignees.map(a => a.userName).join(', ')}</span>
-                              <span className="assignee-tooltip">
-                                {card.assignees.map(a => (
-                                  <span key={a.userId} className="assignee-tooltip-item">{a.userName}</span>
-                                ))}
+                          {card.assignees?.length ? (() => {
+                            const MAX_VISIBLE = 3;
+                            const visible = card.assignees.slice(0, MAX_VISIBLE);
+                            const overflow = card.assignees.length - visible.length;
+                            return (
+                              <span className="assignee-preview">
+                                <span className="avatar-stack">
+                                  {visible.map(a => {
+                                    const c = getAvatarColor(a.userName || a.username || a.userId);
+                                    return (
+                                      <span
+                                        key={a.userId}
+                                        className="avatar-chip"
+                                        style={{ backgroundColor: c.bg, color: c.fg }}
+                                      >
+                                        {getInitials(a.userName)}
+                                      </span>
+                                    );
+                                  })}
+                                  {overflow > 0 && (
+                                    <span className="avatar-chip avatar-overflow">
+                                      +{overflow}
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="assignee-tooltip">
+                                  {card.assignees.map(a => (
+                                    <span key={a.userId} className="assignee-tooltip-item">{a.userName}</span>
+                                  ))}
+                                </span>
                               </span>
-                            </span>
-                          ) : card.assignees?.length === 1 ? (
-                            card.assignees[0].userName
-                          ) : '-'}
+                            );
+                          })() : '-'}
                         </td>
                       )}
                       <td>
