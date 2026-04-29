@@ -55,7 +55,8 @@ const Waves = ({
   tension = 0.005,
   maxCursorMove = 100,
   style = {},
-  className = ''
+  className = '',
+  staticRender = false
 }) => {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
@@ -171,7 +172,6 @@ const Waves = ({
       frameIdRef.current = requestAnimationFrame(tick);
     }
 
-    function onResize() { setSize(); setLines(); }
     function onMouseMove(e) { updateMouse(e.clientX, e.clientY); }
     function onTouchMove(e) { const touch = e.touches[0]; updateMouse(touch.clientX, touch.clientY); }
     function updateMouse(x, y) {
@@ -183,18 +183,29 @@ const Waves = ({
 
     setSize();
     setLines();
+
+    if (staticRender) {
+      const staticTime = Math.random() * 1e6;
+      const renderStatic = () => { setSize(); setLines(); movePoints(staticTime); drawLines(); };
+      renderStatic();
+      const ro = new ResizeObserver(renderStatic);
+      ro.observe(container);
+      return () => ro.disconnect();
+    }
+
     frameIdRef.current = requestAnimationFrame(tick);
-    window.addEventListener('resize', onResize);
+    const ro = new ResizeObserver(() => { setSize(); setLines(); });
+    ro.observe(container);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('touchmove', onTouchMove, { passive: false });
 
     return () => {
-      window.removeEventListener('resize', onResize);
+      ro.disconnect();
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('touchmove', onTouchMove);
       cancelAnimationFrame(frameIdRef.current);
     };
-  }, []);
+  }, [staticRender]);
 
   return (
     <div

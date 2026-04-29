@@ -118,16 +118,13 @@ export default function Layout() {
       <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <div className="sidebar-waves">
           <Waves
+            staticRender
             lineColor="rgba(37, 99, 235, 0.35)"
             backgroundColor="transparent"
-            waveSpeedX={0.015}
-            waveSpeedY={0.005}
             waveAmpX={40}
             waveAmpY={20}
             xGap={12}
             yGap={36}
-            friction={0.925}
-            tension={0.005}
             maxCursorMove={120}
           />
         </div>
