@@ -8,6 +8,7 @@ export default function BottomSheet({
   title,
   size = 'compact',
   closeOnOverlayClick = true,
+  headerActions,
   children
 }) {
   const handleEscape = useCallback((e) => {
@@ -43,6 +44,9 @@ export default function BottomSheet({
       >
         <div className="modal-header">
           <h2 id="modal-title">{title}</h2>
+          {headerActions && (
+            <div className="modal-header-actions">{headerActions}</div>
+          )}
           <button
             className="modal-close"
             onClick={onClose}

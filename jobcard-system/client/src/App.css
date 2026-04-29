@@ -1147,6 +1147,14 @@
   font-weight: 700;
   letter-spacing: var(--tracking-tight);
   margin: 0;
+  margin-right: auto;
+}
+
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 0.75rem;
 }
 
 .modal-close {

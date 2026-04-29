@@ -20,7 +20,7 @@
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--text-base);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   cursor: pointer;
   white-space: nowrap;
   transition: all var(--duration-fast) ease;
@@ -49,7 +49,7 @@
   padding: 0 5px;
   margin-left: 0.4rem;
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: var(--font-bold);
   line-height: 1;
   border-radius: 9px;
   background: var(--primary-accent);
@@ -97,7 +97,7 @@
   background: var(--surface-inset);
   border-bottom: 1px solid var(--border-color);
   font-size: var(--text-lg);
-  font-weight: 700;
+  font-weight: var(--font-bold);
   letter-spacing: -0.02em;
   color: var(--text-primary);
 }
@@ -128,7 +128,7 @@
   border: none;
   border-bottom: 1px solid var(--primary-accent);
   border-left: 1px solid rgba(0, 0, 0, 0.1);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   font-size: var(--text-base);
   border-radius: 0 var(--radius-md) 0 0;
   transition: all var(--duration-fast) ease;
@@ -172,7 +172,7 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-2xl);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   letter-spacing: var(--tracking-wide);
 }
 
@@ -316,7 +316,7 @@
 .contact-linked-badge {
   margin-left: 0.5rem;
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--accent-ready);
 }
 
@@ -337,7 +337,7 @@
   border: 2px solid var(--accent-safety);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--accent-safety);
 }
 
@@ -384,7 +384,7 @@
   padding: 0.4rem 1rem;
   border-radius: 999px;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   letter-spacing: 0.03em;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -531,7 +531,7 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
 }
 
 /* Calendar Picker */
@@ -564,7 +564,7 @@
 
 .calendar-title {
   font-size: var(--text-lg);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
 }
 
 .calendar-nav {
@@ -596,7 +596,7 @@
 .calendar-day-label {
   text-align: center;
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--text-muted);
   padding: 0.5rem 0;
 }
@@ -626,7 +626,7 @@
 
 .calendar-cell.today {
   border: 2px solid var(--primary-accent);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--primary-accent);
   background: rgba(37, 99, 235, 0.08);
 }
@@ -639,7 +639,7 @@
   background: var(--primary-accent);
   border-color: var(--primary-accent);
   color: var(--text-inverse);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
 }
 
 .calendar-cell.today.selected {
@@ -710,7 +710,7 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--primary-accent);
   background: rgba(var(--accent-rgb, 2, 132, 199), 0.1);
   padding: 0.375rem 0.5rem;
@@ -733,7 +733,7 @@
 
 .line-item-fields label {
   font-size: var(--text-base);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--text-tertiary);
   margin-bottom: 0.125rem;
   line-height: 1.5;
@@ -889,7 +889,7 @@
 }
 
 .treatment-chip-label {
-  font-weight: 500;
+  font-weight: var(--font-medium);
 }
 
 .treatment-chip-arrow {
@@ -1049,7 +1049,7 @@
 
 .treatment-add-option.selected {
   background: rgba(var(--accent-rgb, 2, 132, 199), 0.08);
-  font-weight: 500;
+  font-weight: var(--font-medium);
 }
 
 .treatment-add-option:disabled {
@@ -1103,7 +1103,7 @@
 
 .te-group-label {
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--text-secondary);
   padding: 0.35rem 0;
   border-bottom: 1px solid var(--border-color);
@@ -1169,7 +1169,7 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--primary-accent);
   letter-spacing: 0.02em;
 }
@@ -1188,7 +1188,7 @@
 /* Compact action buttons */
 .te-btn {
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
   border: 1px solid var(--border-color);
@@ -1233,7 +1233,7 @@
   gap: 0.3rem;
   cursor: pointer;
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--text-secondary);
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
@@ -1275,7 +1275,7 @@
 }
 
 .te-worker {
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   font-size: var(--text-sm);
   color: var(--text-primary);
   line-height: 1.2;
@@ -1316,7 +1316,7 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   padding: 0.1rem 0.4rem;
   border-radius: 3px;
   background: var(--primary-accent);
@@ -1342,7 +1342,7 @@
 .te-item-num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   font-size: var(--text-xs);
   color: var(--primary-accent);
   flex-shrink: 0;
@@ -1362,7 +1362,7 @@
 .te-item-qty {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   font-size: var(--text-xs);
   color: var(--text-secondary);
   flex-shrink: 0;
@@ -1392,7 +1392,7 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   padding: 0.125rem 0.5rem;
   border-radius: var(--radius-md);
   background: var(--primary-accent);
@@ -1410,7 +1410,7 @@
 
 .costing-label {
   min-width: 140px;
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   font-size: var(--text-sm);
 }
 
@@ -1448,7 +1448,7 @@
 .costing-total {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--primary-accent);
   font-size: var(--text-base);
   padding: 0.5rem 0;
@@ -1474,7 +1474,7 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-2xl);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
 }
 
 .input-readonly {
@@ -1553,7 +1553,7 @@
 .qa-form-code {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   font-size: var(--text-sm);
   color: var(--primary-accent);
 }
@@ -1577,7 +1577,7 @@
 
 .qa-procedure-section h4 {
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   margin: 0 0 0.75rem 0;
 }
 
@@ -1768,7 +1768,7 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   flex-shrink: 0;
 }
 
@@ -1778,7 +1778,7 @@
 }
 
 .scanner-file-name {
-  font-weight: 500;
+  font-weight: var(--font-medium);
   font-size: var(--text-sm);
   white-space: nowrap;
   overflow: hidden;
@@ -1817,7 +1817,7 @@
 }
 
 .activity-log-user {
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   font-size: var(--text-sm);
 }
 
@@ -1860,14 +1860,14 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 3rem;
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--text-primary);
 }
 
 .btn-timer {
   padding: 1rem 3rem;
   font-size: var(--text-lg);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   border-radius: var(--radius-lg);
 }
 
@@ -1906,7 +1906,7 @@
 .readonly-label {
   font-size: var(--text-base);
   color: var(--text-tertiary);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
 }
 
 .readonly-status-select {
@@ -1937,7 +1937,7 @@
   display: inline-block;
   padding: 0.2em 0.6em;
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   border-radius: var(--radius-sm);
   background: var(--surface-inset);
   color: var(--text-secondary);
@@ -2003,7 +2003,7 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   color: var(--primary-accent);
   background: var(--surface);
   padding: 0.15em 0.4em;
@@ -2013,7 +2013,7 @@
 .readonly-item-qty {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
-  font-weight: 500;
+  font-weight: var(--font-medium);
 }
 
 .readonly-item-desc {
@@ -2083,7 +2083,7 @@
 }
 
 .note-author {
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   font-size: var(--text-sm);
   color: var(--text-primary);
 }
@@ -2106,4 +2106,63 @@
   color: var(--text-secondary);
   line-height: 1.5;
   white-space: pre-wrap;
+}
+
+/* =============================================
+   Zoom Modes (Compact / Comfortable / Spacious)
+   ============================================= */
+
+.jc-zoom-root {
+  /* Comfortable is the default — no override needed */
+}
+
+.jc-zoom-root[data-zoom="compact"] {
+  zoom: 0.9;
+  --font-medium: 300;
+  --font-semibold: 400;
+  --font-bold: 600;
+}
+
+.jc-zoom-root[data-zoom="spacious"] {
+  zoom: 1.12;
+  --font-medium: 600;
+  --font-semibold: 700;
+  --font-bold: 700;
+}
+
+/* Header-mounted zoom toggle */
+.jc-zoom-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.jc-zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.jc-zoom-btn:hover {
+  color: var(--text-primary);
+  background: var(--surface);
+}
+
+.jc-zoom-btn.active {
+  color: var(--primary-accent);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }

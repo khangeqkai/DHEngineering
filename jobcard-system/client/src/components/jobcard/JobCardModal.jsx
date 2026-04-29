@@ -19,6 +19,7 @@ import { useActivityLog } from './useActivityLog';
 import { useTimer } from './useTimer';
 import { useJobNotes } from './useJobNotes';
 import StopTimerForm from './StopTimerForm';
+import ZoomToggle, { useJobCardZoom } from './ZoomToggle';
 
 const mapTimeEntry = (t) => ({ id: t.id, userId: t.userId, userName: t.userName, itemNumber: t.itemNumber, machineNumber: t.machineNumber, qty: t.qty, description: t.description, startTime: t.startTime, endTime: t.endTime, isSpecialLabour: t.isSpecialLabour || false });
 
@@ -27,6 +28,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const isEdit = Boolean(jobCardId);
   const isAdmin = user?.role === 'admin';
   const [activeTab, setActiveTab] = useState('details');
+  const [zoom, setZoom] = useJobCardZoom();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
@@ -396,14 +398,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     !['DONE', 'INVOICED'].includes(formHook.formData.status);
   const filledItemCount = formHook.lineItems.filter(i => i.description.trim()).length;
   const buildTitle = () => isEdit ? `Edit: ${formHook.jobNumber}` : 'New Job Card';
+
   return (
     <>
-      <BottomSheet isOpen={isOpen} onClose={onClose} title={buildTitle()} size="large" closeOnOverlayClick={false}>
+      <BottomSheet isOpen={isOpen} onClose={onClose} title={buildTitle()} size="large" closeOnOverlayClick={false} headerActions={<ZoomToggle zoom={zoom} onChange={setZoom} />}>
         {loading ? (
           <div className="loading" style={{ padding: '2rem' }}>Loading...</div>
         ) : (
           <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT' && e.target.type !== 'submit') e.preventDefault(); }} style={{ display: 'contents' }}>
             <BottomSheet.Body>
+              <div className="jc-zoom-root" data-zoom={zoom}>
               {isEdit && (
                 <div className="modal-tabs">
                   <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>
@@ -510,6 +514,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   onRefresh={loadHistory}
                 />
               )}
+              </div>
             </BottomSheet.Body>
 
             {(isAdmin || !isEdit) && (

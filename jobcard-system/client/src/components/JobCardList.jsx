@@ -14,6 +14,7 @@ import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
 import EmptyState from './common/EmptyState';
+import JobCardListDensityToggle, { useJobCardListDensity } from './JobCardListDensity';
 import './JobCardList.css';
 
 const STATUS_OPTIONS = [
@@ -75,6 +76,7 @@ export default function JobCardList() {
   const popoverRef = useRef(null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   const [quickActionCard, setQuickActionCard] = useState(null);
+  const [density, setDensity] = useJobCardListDensity();
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
 
   const loadJobcards = useCallback(async () => {
@@ -309,6 +311,7 @@ export default function JobCardList() {
             ))}
           </div>
         )}
+        <JobCardListDensityToggle density={density} onChange={setDensity} />
       </div>
 
       <div className="card">
@@ -330,7 +333,7 @@ export default function JobCardList() {
               />
             )
           ) : (
-            <table className="table">
+            <table className="table" data-density={density}>
               <thead>
                 <tr>
                   <th>Job #</th>
