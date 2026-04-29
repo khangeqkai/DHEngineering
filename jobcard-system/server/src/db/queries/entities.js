@@ -52,9 +52,7 @@ const userQueries = {
   updateJobcardColumnOrder: db.prepare(`
     UPDATE users SET jobcard_column_order = ?, updated_at = datetime('now')
     WHERE id = ?
-  `),
-
-  getJobcardColumnOrder: db.prepare('SELECT jobcard_column_order FROM users WHERE id = ?')
+  `)
 };
 
 // Contact queries (phone contacts style - each contact is standalone)

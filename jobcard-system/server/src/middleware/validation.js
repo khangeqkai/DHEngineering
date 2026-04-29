@@ -153,6 +153,11 @@ const PRIORITY_OPTIONS = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
 
 const INSPECTION_OPTIONS = ['NOT_APPLICABLE', 'OK', 'ERROR'];
 
+const JOBCARD_COLUMN_IDS = [
+  'jobNumber', 'company', 'customer', 'assignedTo',
+  'status', 'priority', 'dueDate', 'createdAt', 'actions'
+];
+
 // =============================================================================
 // Pre-built Validation Arrays for Common Routes
 // =============================================================================
@@ -213,6 +218,32 @@ const validateUpdateContact = [
   optionalPhone('phone'),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
+  handleValidationErrors
+];
+
+/**
+ * Update user preferences validation
+ * PUT /auth/me/preferences
+ */
+const validateUpdatePreferences = [
+  body('jobcardColumnOrder')
+    .optional()
+    .isArray({ min: 1, max: JOBCARD_COLUMN_IDS.length })
+    .withMessage(`jobcardColumnOrder must be an array of 1-${JOBCARD_COLUMN_IDS.length} column IDs`)
+    .bail()
+    .custom((value) => {
+      const seen = new Set();
+      for (const id of value) {
+        if (typeof id !== 'string' || !JOBCARD_COLUMN_IDS.includes(id)) {
+          throw new Error(`jobcardColumnOrder contains invalid column ID: ${id}`);
+        }
+        if (seen.has(id)) {
+          throw new Error(`jobcardColumnOrder contains duplicate column ID: ${id}`);
+        }
+        seen.add(id);
+      }
+      return true;
+    }),
   handleValidationErrors
 ];
 
@@ -398,6 +429,7 @@ module.exports = {
   // Pre-built validation arrays
   validateLogin,
   validateCreateUser,
+  validateUpdatePreferences,
   validateCreateContact,
   validateUpdateContact,
   validateJobcardListQuery,

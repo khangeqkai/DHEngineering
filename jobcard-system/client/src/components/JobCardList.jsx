@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, ArchiveRestore, Check } from 'lucide-react';
+import { Plus, Trash2, ArchiveRestore, Check, Calendar, List } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportJobCardList, exportJobCardsFull } from '../utils/excelExport';
@@ -16,7 +16,6 @@ import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
 import EmptyState from './common/EmptyState';
 import JobCardListDensityToggle, { useJobCardListDensity } from './JobCardListDensity';
 import JobCardCalendarView from './JobCardCalendarView';
-import { Calendar, List } from 'lucide-react';
 import './JobCardList.css';
 
 const STATUS_OPTIONS = [
@@ -131,21 +130,14 @@ export default function JobCardList() {
     e.preventDefault();
     if (!draggedCol || draggedCol === targetColId) return;
 
-    setColumnOrder(prev => {
-      const newOrder = [...prev];
-      const draggedIdx = newOrder.indexOf(draggedCol);
-      const targetIdx = newOrder.indexOf(targetColId);
-      
-      if (draggedIdx !== -1 && targetIdx !== -1) {
-        newOrder.splice(draggedIdx, 1);
-        newOrder.splice(targetIdx, 0, draggedCol);
-      }
-      
-      updatePreferences({ jobcardColumnOrder: newOrder }).catch(err => {
-        toast.error('Failed to save column order preference');
-      });
-      
-      return newOrder;
+    const newOrder = columnOrder.filter(c => c !== draggedCol);
+    const targetIdx = newOrder.indexOf(targetColId);
+    if (targetIdx === -1) return;
+    newOrder.splice(targetIdx, 0, draggedCol);
+
+    setColumnOrder(newOrder);
+    updatePreferences({ jobcardColumnOrder: newOrder }).catch(() => {
+      toast.error('Failed to save column order preference');
     });
   };
 

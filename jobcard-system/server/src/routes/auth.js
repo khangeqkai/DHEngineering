@@ -7,7 +7,7 @@ const rateLimit = require('express-rate-limit');
 const config = require('../config');
 const logger = require('../utils/logger');
 const { authenticate, requireRole } = require('../middleware/auth');
-const { validateLogin, validateCreateUser } = require('../middleware/validation');
+const { validateLogin, validateCreateUser, validateUpdatePreferences } = require('../middleware/validation');
 const { db, userQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
@@ -167,14 +167,14 @@ router.get('/me', authenticate, (req, res) => {
 });
 
 // Update user preferences
-router.put('/me/preferences', authenticate, (req, res) => {
+router.put('/me/preferences', authenticate, validateUpdatePreferences, (req, res) => {
   try {
     const { jobcardColumnOrder } = req.body;
-    
+
     if (jobcardColumnOrder) {
       userQueries.updateJobcardColumnOrder.run(JSON.stringify(jobcardColumnOrder), req.user.userId);
     }
-    
+
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, 'Update preferences error');
