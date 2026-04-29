@@ -11,7 +11,7 @@ const CACHE_TTL = 60000; // 1 minute
  * Returns tags as { value, label } array for dropdowns/checkboxes,
  * plus the raw tag objects for additional metadata.
  *
- * @param {string} category - Tag category: 'treatment', 'customer_property', 'drawings', 'job_type'
+ * @param {string} category - Tag category: 'treatment', 'material', 'customer_property', 'drawings', 'job_type'
  * @returns {{ tags: Array, rawTags: Array, loading: boolean, refresh: Function }}
  */
 export function useTags(category) {

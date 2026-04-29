@@ -54,6 +54,7 @@ export function mapLineItemFromApi(item) {
     itemNumber: item.itemNumber,
     qty: item.qty || '',
     description: item.description || '',
+    material: item.material || '',
     treatment: item.treatment || '',
     treatmentOther: item.treatmentOther || ''
   };

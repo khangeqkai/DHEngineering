@@ -6,7 +6,7 @@ const { tagQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
-const VALID_CATEGORIES = ['treatment', 'customer_property', 'drawings', 'job_type'];
+const VALID_CATEGORIES = ['treatment', 'customer_property', 'drawings', 'job_type', 'material'];
 
 function nameToValue(name) {
   return name.toUpperCase().replace(/[\s/]+/g, '_').replace(/[^A-Z0-9_]/g, '');

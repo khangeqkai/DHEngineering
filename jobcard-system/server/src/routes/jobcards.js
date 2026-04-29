@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { createJobCardFolders, deleteJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { validateJobcardListQuery, validateJobcardEnums, validateItemTreatments, JOBCARD_STATUSES } = require('../middleware/validation');
+const { validateJobcardListQuery, validateJobcardEnums, validateItemTreatments, validateItemMaterials, JOBCARD_STATUSES } = require('../middleware/validation');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -132,6 +132,11 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       return res.status(400).json({ error: treatmentError });
     }
 
+    const materialError = validateItemMaterials(data.items);
+    if (materialError) {
+      return res.status(400).json({ error: materialError });
+    }
+
     // Atomically generate job number and increment counter
     const { jobNumber, error: jobNumError } = generateAndIncrementJobNumber();
     if (jobNumError) {
@@ -221,7 +226,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
         repeatJob: data.isRepeatJob ? 'Yes' : 'No',
         repeatJobReference: data.repeatJobReference || null,
         notes: data.notes || null,
-        items: createdItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description, treatment: i.treatment, treatmentOther: i.treatment_other }))
+        items: createdItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description, material: i.material, treatment: i.treatment, treatmentOther: i.treatment_other }))
       });
     }
 
@@ -291,6 +296,10 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       if (treatmentError) {
         return res.status(400).json({ error: treatmentError });
       }
+      const materialError = validateItemMaterials(data.items);
+      if (materialError) {
+        return res.status(400).json({ error: materialError });
+      }
     }
 
     const changes = buildChanges(existing, data);
@@ -342,14 +351,15 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       for (let i = 0; i < data.items.length; i++) {
         const item = data.items[i];
         const itemId = item.id || `item:${Date.now()}:${uuidv4().slice(0, 8)}`;
-        jobItemQueries.create.run(itemId, id, i + 1, item.qty || null, item.description, item.treatment || null, item.treatmentOther || null);
+        jobItemQueries.create.run(itemId, id, i + 1, item.qty || null, item.description, item.material || null, item.treatment || null, item.treatmentOther || null);
       }
     }
 
     // Track items changes — per-item granularity
     if (data.items !== undefined) {
-      const oldMap = new Map(existingItems.map(i => [i.item_number, `${i.qty || ''}x ${i.description}${i.treatment ? ' [' + i.treatment + ']' : ''}`]));
-      const newMap = new Map(data.items.map((i, idx) => [i.itemNumber || idx + 1, `${i.qty || ''}x ${i.description}${i.treatment ? ' [' + i.treatment + ']' : ''}`]));
+      const itemSummary = (qty, description, material, treatment) => `${qty || ''}x ${description}${material ? ' (' + material + ')' : ''}${treatment ? ' [' + treatment + ']' : ''}`;
+      const oldMap = new Map(existingItems.map(i => [i.item_number, itemSummary(i.qty, i.description, i.material, i.treatment)]));
+      const newMap = new Map(data.items.map((i, idx) => [i.itemNumber || idx + 1, itemSummary(i.qty, i.description, i.material, i.treatment)]));
       for (const [num, desc] of newMap) {
         if (!oldMap.has(num)) {
           changes[`item #${num} added`] = { from: null, to: desc };
@@ -430,7 +440,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
           repeatJob: (data.isRepeatJob !== undefined ? data.isRepeatJob : current.is_repeat_job === 1) ? 'Yes' : 'No',
           repeatJobReference: current.repeat_job_reference || data.repeatJobReference || null,
           notes: current.notes || data.notes || null,
-          items: currentItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description, treatment: i.treatment, treatmentOther: i.treatment_other }))
+          items: currentItems.map(i => ({ itemNumber: i.item_number, qty: i.qty, description: i.description, material: i.material, treatment: i.treatment, treatmentOther: i.treatment_other }))
         });
       }
     }

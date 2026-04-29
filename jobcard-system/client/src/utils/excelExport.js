@@ -86,6 +86,7 @@ function fmtCodeList(val) {
 
 function fmtDrawings(val) { return fmtCodeList(val); }
 function fmtTreatment(val) { return fmtCodeList(val); }
+function fmtMaterial(val) { return fmtCodeList(val); }
 function fmtCustomerProperty(val) { return fmtCodeList(val); }
 
 // ── Column definitions per entity ────────────────────────────────────────────
@@ -160,6 +161,11 @@ const JOBCARD_SUMMARY_COLS = [
   { label: 'PO Number', value: r => r.poNumber },
   { label: 'Job Type', value: r => snakeToTitleCase(r.jobType) },
   { label: 'Drawings', value: r => fmtDrawings(r.drawingsType) },
+  { label: 'Material', value: r => {
+    const items = r.items || [];
+    const all = [...new Set(items.map(i => i.material).filter(Boolean))];
+    return fmtMaterial(all.join(','));
+  }},
   { label: 'Treatment', value: r => {
     const items = r.items || [];
     const all = [...new Set(items.flatMap(i => (i.treatment || '').split(',').filter(v => v && v !== 'NONE')))];

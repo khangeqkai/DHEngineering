@@ -103,7 +103,7 @@ History sub-routes: `GET /history` (recent, admin), `GET /history/user/:userId` 
 
 Auth sub-routes: `PUT /auth/change-password` (all authenticated users, verifies current password)
 
-Job card sub-routes: `/jobcards/:id/items`, `/assignees`, `/subcontracts`, `/time-entries`, `/costing`, `/documents`, `/job-files`, `/qa-form-files`, `/customer-property-files`, `/qa-forms`, `/history`, `/notes`
+Job card sub-routes: `/assignees`, `/subcontracts`, `/time-entries`, `/costing`, `/documents`, `/job-files`, `/qa-form-files`, `/customer-property-files`, `/qa-forms`, `/history`, `/notes`
 
 Job file endpoints: `GET /jobcards/:id/job-files` (assignee/admin, lists files from job's Job Files folder on disk), `GET /jobcards/:id/job-files/:filename` (assignee/admin, returns file as base64), `POST /jobcards/:id/job-files/from-scanner` (assignee/admin, copy scanner file to Job Files), `POST /jobcards/:id/job-files/upload` (assignee/admin, save base64 data to Job Files)
 
@@ -124,7 +124,7 @@ Search endpoint: `GET /search` (authenticated, scoped). Query params: `scope` (a
 ### Database Schema (SQLite)
 Core tables: `users`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `subcontracts`, `time_entries`, `job_costings`, `documents`, `qa_forms`, `qa_levels`, `qa_level_templates`, `history`, `settings`, `machines`, `job_notes`, `tags`, `supplier_service_tags`
 
-**Unified tags system**: The `tags` table stores all dynamic dropdown/multi-select options with columns: `id`, `category` (treatment/customer_property/drawings/job_type), `name`, `value`, `sort_order`, `created_at`. The `supplier_service_tags` junction table links suppliers to treatment tags. Frontend uses the `useTags(category)` hook from `client/src/hooks/useTags.js` to fetch tags dynamically. Admin manages tags and equipment via the "Tags & Equipment" page (`/tags`). Equipment is managed through the existing `machines` table but shares the same admin UI.
+**Unified tags system**: The `tags` table stores all dynamic dropdown/multi-select options with columns: `id`, `category` (treatment/material/customer_property/drawings/job_type), `name`, `value`, `sort_order`, `created_at`. The `supplier_service_tags` junction table links suppliers to treatment tags. Frontend uses the `useTags(category)` hook from `client/src/hooks/useTags.js` to fetch tags dynamically. Admin manages tags and equipment via the "Tags & Equipment" page (`/tags`). Equipment is managed through the existing `machines` table but shares the same admin UI.
 
 **Contacts model** (company-primary): Each contact requires a `company_name` (NOT NULL); `contact_name` is optional. Search autocomplete is on the Company field, with dropdown showing **Company (Contact)** format. Search filters by both `company_name` and `contact_name`. Job cards link to contacts via `contact_id` with override fields for per-job customization.
 

@@ -36,6 +36,7 @@ export default function DetailsReadOnlyView({
   const { tags: drawingsTags } = useTags('drawings');
   const { tags: customerPropertyTags } = useTags('customer_property');
   const { tags: treatmentTags } = useTags('treatment');
+  const { tags: materialTags } = useTags('material');
 
   const drawingsLabels = (formData.drawingsType || '')
     .split(',')
@@ -117,11 +118,17 @@ export default function DetailsReadOnlyView({
                   return opt ? opt.label : v;
                 });
               if (item.treatmentOther) itemTreatments.push(item.treatmentOther);
+              const materialLabel = item.material
+                ? (materialTags.find(m => m.value === item.material)?.label || item.material)
+                : null;
               return (
                 <div key={item.id || item.itemNumber} className="readonly-item">
                   <span className="readonly-item-badge">#{item.itemNumber}</span>
                   {item.qty && <span className="readonly-item-qty">Qty: {item.qty}</span>}
                   <span className="readonly-item-desc">{item.description}</span>
+                  {materialLabel && (
+                    <span className="readonly-badge material">{materialLabel}</span>
+                  )}
                   {itemTreatments.length > 0 && (
                     <span className="readonly-item-treatments">
                       {itemTreatments.map(label => (

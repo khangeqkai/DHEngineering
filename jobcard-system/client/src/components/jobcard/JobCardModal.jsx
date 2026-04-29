@@ -374,6 +374,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           itemNumber: item.itemNumber || idx + 1,
           qty: item.qty,
           description: item.description,
+          material: item.material || null,
           treatment: item.treatment || null,
           treatmentOther: item.treatmentOther || null
         }))

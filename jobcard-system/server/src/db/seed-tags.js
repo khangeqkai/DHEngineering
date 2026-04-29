@@ -44,6 +44,16 @@ const seedTags = [
   { category: 'job_type', name: 'CAD Drawings' },
   { category: 'job_type', name: 'Consultation' },
   { category: 'job_type', name: 'On-Site' },
+
+  { category: 'material', name: 'Steel' },
+  { category: 'material', name: 'Stainless Steel' },
+  { category: 'material', name: 'Aluminium' },
+  { category: 'material', name: 'Brass' },
+  { category: 'material', name: 'Copper' },
+  { category: 'material', name: 'Bronze' },
+  { category: 'material', name: 'Cast Iron' },
+  { category: 'material', name: 'Titanium' },
+  { category: 'material', name: 'Plastic' },
 ];
 
 const categoryCounters = {};

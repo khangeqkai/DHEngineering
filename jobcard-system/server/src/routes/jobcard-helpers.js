@@ -55,6 +55,7 @@ function formatJobcard(row, items = [], assignees = [], subcontracts = [], userR
       itemNumber: item.item_number,
       qty: item.qty,
       description: item.description,
+      material: item.material || null,
       treatment: item.treatment || null,
       treatmentOther: item.treatment_other || null
     })),
@@ -118,7 +119,7 @@ function createRelatedRecords(jobcardId, data) {
     for (let i = 0; i < data.items.length; i++) {
       const item = data.items[i];
       const itemId = `item:${Date.now()}:${uuidv4().slice(0, 8)}`;
-      jobItemQueries.create.run(itemId, jobcardId, i + 1, item.qty || null, item.description, item.treatment || null, item.treatmentOther || null);
+      jobItemQueries.create.run(itemId, jobcardId, i + 1, item.qty || null, item.description, item.material || null, item.treatment || null, item.treatmentOther || null);
     }
   }
 

@@ -136,6 +136,7 @@ db.exec(`
     item_number INTEGER NOT NULL,
     qty TEXT,
     description TEXT NOT NULL,
+    material TEXT,
     treatment TEXT,
     treatment_other TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -384,6 +385,7 @@ const migrations = [
   { table: 'users', column: 'session_token', type: 'TEXT' },
   { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
   { table: 'time_entries', column: 'is_special_labour', type: 'INTEGER DEFAULT 0' },
+  { table: 'job_items', column: 'material', type: 'TEXT' },
 ];
 
 // Drop is_critical_qa column from contacts (QA level now lives on job cards only)

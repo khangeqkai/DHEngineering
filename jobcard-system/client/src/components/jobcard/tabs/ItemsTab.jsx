@@ -105,6 +105,8 @@ export default function ItemsTab({
   updateLineItem,
   removeLineItem
 }) {
+  const { tags: materialTags } = useTags('material');
+
   return (
     <div className="modal-form-grid">
       <div className="form-section">
@@ -140,6 +142,18 @@ export default function ItemsTab({
                     }}
                     placeholder="What needs to be done..."
                   />
+                </div>
+                <div className="line-item-material">
+                  <label>Material</label>
+                  <select
+                    value={item.material || ''}
+                    onChange={(e) => updateLineItem(item.id, 'material', e.target.value)}
+                  >
+                    <option value="">No material</option>
+                    {materialTags.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="line-item-treatment">
                   <label>Treatment</label>

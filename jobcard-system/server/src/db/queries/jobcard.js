@@ -126,19 +126,12 @@ const jobcardQueries = {
 // Job items queries
 const jobItemQueries = {
   getByJobcard: db.prepare('SELECT * FROM job_items WHERE jobcard_id = ? ORDER BY item_number ASC'),
-  getNextItemNumber: db.prepare('SELECT COALESCE(MAX(item_number), 0) + 1 as next FROM job_items WHERE jobcard_id = ?'),
 
   create: db.prepare(`
-    INSERT INTO job_items (id, jobcard_id, item_number, qty, description, treatment, treatment_other, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    INSERT INTO job_items (id, jobcard_id, item_number, qty, description, material, treatment, treatment_other, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `),
 
-  update: db.prepare(`
-    UPDATE job_items SET qty = ?, description = ?, treatment = ?, treatment_other = ?, updated_at = datetime('now')
-    WHERE id = ?
-  `),
-
-  delete: db.prepare('DELETE FROM job_items WHERE id = ?'),
   deleteByJobcard: db.prepare('DELETE FROM job_items WHERE jobcard_id = ?')
 };
 

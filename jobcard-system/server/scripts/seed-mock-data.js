@@ -130,6 +130,7 @@ const tagValue = (name) => name.toUpperCase().replace(/[\s/]+/g, '_').replace(/[
 console.log('Creating tags...');
 const tagData = {
   treatment: ['Heat Treatment', 'Precision Grinding', 'Anodise', 'Electroplate', 'Blasting', 'Powdercoat', 'Spraypaint', 'Galvanise', 'Specialised Coating'],
+  material: ['Steel', 'Stainless Steel', 'Aluminium', 'Brass', 'Copper', 'Bronze', 'Cast Iron', 'Titanium', 'Plastic'],
   customer_property: ['N/A', 'Material Supplied', 'Damaged Or Worn Sample', 'Good Sample', 'Part For Repair', 'Part For Modification'],
   drawings: ['Customer CAD', 'Customer Sketch', 'DH CAD', 'DH Sketch', 'Prepare Sketch', 'Prepare CAD'],
   job_type: ['Manufacture', 'Repair', 'Modify', 'Fabricate', 'Supply', 'Reverse Engineer', 'Inspection', 'CAD Drawings', 'Consultation', 'On-Site'],
@@ -178,26 +179,26 @@ const priorities = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
 const drawingsTypes = tagData.drawings.map(tagValue);
 
 const jobDescriptions = [
-  { desc: 'Manufacture 4x hydraulic cylinder rods to drawing', items: [{ qty: '4', desc: 'Hydraulic cylinder rod Ø45x650mm', treatment: 'HEAT_TREATMENT' }] },
-  { desc: 'Repair cracked pump housing — weld and re-machine', items: [{ qty: '1', desc: 'Pump housing repair — weld crack', treatment: 'BLASTING' }, { qty: '1', desc: 'Re-machine bore to Ø125H7', treatment: null }] },
-  { desc: 'Fabricate structural mounting brackets for conveyor', items: [{ qty: '8', desc: 'Mounting bracket 150x100x12mm mild steel', treatment: 'GALVANISE' }] },
-  { desc: 'Manufacture replacement gearbox shaft', items: [{ qty: '1', desc: 'Gearbox shaft EN19T Ø80x450mm', treatment: 'HEAT_TREATMENT,PRECISION_GRINDING' }] },
-  { desc: 'Reverse engineer worn impeller and manufacture new', items: [{ qty: '2', desc: 'Pump impeller Ø280mm CF8M', treatment: null }] },
-  { desc: 'Modify existing flange to new bolt pattern', items: [{ qty: '3', desc: 'Flange modification — re-drill PCD', treatment: null }] },
-  { desc: 'Manufacture precision dowel pins', items: [{ qty: '20', desc: 'Dowel pin Ø10m6 x 40mm', treatment: 'HEAT_TREATMENT' }] },
-  { desc: 'CNC machining of valve body — 5-axis work', items: [{ qty: '1', desc: 'Valve body 316SS per DWG-2024-089', treatment: null }] },
-  { desc: 'Fabricate and powder coat control panel enclosure', items: [{ qty: '1', desc: 'Enclosure 600x400x200mm 2mm MS', treatment: 'POWDERCOAT' }] },
-  { desc: 'Manufacture wear plates for crusher', items: [{ qty: '6', desc: 'Wear plate 400BHN 300x200x25mm', treatment: null }] },
-  { desc: 'Repair and re-chrome roller shaft', items: [{ qty: '1', desc: 'Roller shaft repair — chrome plating', treatment: 'ELECTROPLATE' }] },
-  { desc: 'Manufacture coupling adapter', items: [{ qty: '2', desc: 'Coupling adapter EN8 Ø150x120mm', treatment: null }] },
-  { desc: 'Inspection and report on failed bearing housing', items: [{ qty: '1', desc: 'Bearing housing inspection — dimensional report', treatment: null }] },
-  { desc: 'Manufacture tooling jig for production line', items: [{ qty: '1', desc: 'Assembly jig — welded frame with machined locators', treatment: 'SPRAYPAINT' }] },
-  { desc: 'Supply and machine bronze bushes', items: [{ qty: '10', desc: 'Bronze bush PB1 Ø50x40x30mm', treatment: null }] },
-  { desc: 'Emergency repair — conveyor drive shaft snapped', items: [{ qty: '1', desc: 'Drive shaft EN24T Ø100x1200mm — emergency', treatment: 'HEAT_TREATMENT' }] },
-  { desc: 'Anodise batch of aluminium housings', items: [{ qty: '25', desc: 'Housing 6082-T6 per DWG-2024-115', treatment: 'ANODISE' }] },
-  { desc: 'Manufacture pipe spools to isometric drawing', items: [{ qty: '4', desc: 'Pipe spool 6" Sch40 CS — welded', treatment: 'BLASTING,SPRAYPAINT' }] },
-  { desc: 'CAD drawing service — customer sketch to 3D model', items: [{ qty: '1', desc: 'CAD modelling and drawing production', treatment: null }] },
-  { desc: 'On-site machining of turbine coupling face', items: [{ qty: '1', desc: 'On-site facing — portable lathe', treatment: null }] },
+  { desc: 'Manufacture 4x hydraulic cylinder rods to drawing', items: [{ qty: '4', desc: 'Hydraulic cylinder rod Ø45x650mm', material: 'STEEL', treatment: 'HEAT_TREATMENT' }] },
+  { desc: 'Repair cracked pump housing — weld and re-machine', items: [{ qty: '1', desc: 'Pump housing repair — weld crack', material: 'CAST_IRON', treatment: 'BLASTING' }, { qty: '1', desc: 'Re-machine bore to Ø125H7', material: 'CAST_IRON', treatment: null }] },
+  { desc: 'Fabricate structural mounting brackets for conveyor', items: [{ qty: '8', desc: 'Mounting bracket 150x100x12mm mild steel', material: 'STEEL', treatment: 'GALVANISE' }] },
+  { desc: 'Manufacture replacement gearbox shaft', items: [{ qty: '1', desc: 'Gearbox shaft EN19T Ø80x450mm', material: 'STEEL', treatment: 'HEAT_TREATMENT,PRECISION_GRINDING' }] },
+  { desc: 'Reverse engineer worn impeller and manufacture new', items: [{ qty: '2', desc: 'Pump impeller Ø280mm CF8M', material: 'STAINLESS_STEEL', treatment: null }] },
+  { desc: 'Modify existing flange to new bolt pattern', items: [{ qty: '3', desc: 'Flange modification — re-drill PCD', material: 'STEEL', treatment: null }] },
+  { desc: 'Manufacture precision dowel pins', items: [{ qty: '20', desc: 'Dowel pin Ø10m6 x 40mm', material: 'STEEL', treatment: 'HEAT_TREATMENT' }] },
+  { desc: 'CNC machining of valve body — 5-axis work', items: [{ qty: '1', desc: 'Valve body 316SS per DWG-2024-089', material: 'STAINLESS_STEEL', treatment: null }] },
+  { desc: 'Fabricate and powder coat control panel enclosure', items: [{ qty: '1', desc: 'Enclosure 600x400x200mm 2mm MS', material: 'STEEL', treatment: 'POWDERCOAT' }] },
+  { desc: 'Manufacture wear plates for crusher', items: [{ qty: '6', desc: 'Wear plate 400BHN 300x200x25mm', material: 'STEEL', treatment: null }] },
+  { desc: 'Repair and re-chrome roller shaft', items: [{ qty: '1', desc: 'Roller shaft repair — chrome plating', material: 'STEEL', treatment: 'ELECTROPLATE' }] },
+  { desc: 'Manufacture coupling adapter', items: [{ qty: '2', desc: 'Coupling adapter EN8 Ø150x120mm', material: 'STEEL', treatment: null }] },
+  { desc: 'Inspection and report on failed bearing housing', items: [{ qty: '1', desc: 'Bearing housing inspection — dimensional report', material: null, treatment: null }] },
+  { desc: 'Manufacture tooling jig for production line', items: [{ qty: '1', desc: 'Assembly jig — welded frame with machined locators', material: 'STEEL', treatment: 'SPRAYPAINT' }] },
+  { desc: 'Supply and machine bronze bushes', items: [{ qty: '10', desc: 'Bronze bush PB1 Ø50x40x30mm', material: 'BRONZE', treatment: null }] },
+  { desc: 'Emergency repair — conveyor drive shaft snapped', items: [{ qty: '1', desc: 'Drive shaft EN24T Ø100x1200mm — emergency', material: 'STEEL', treatment: 'HEAT_TREATMENT' }] },
+  { desc: 'Anodise batch of aluminium housings', items: [{ qty: '25', desc: 'Housing 6082-T6 per DWG-2024-115', material: 'ALUMINIUM', treatment: 'ANODISE' }] },
+  { desc: 'Manufacture pipe spools to isometric drawing', items: [{ qty: '4', desc: 'Pipe spool 6" Sch40 CS — welded', material: 'STEEL', treatment: 'BLASTING,SPRAYPAINT' }] },
+  { desc: 'CAD drawing service — customer sketch to 3D model', items: [{ qty: '1', desc: 'CAD modelling and drawing production', material: null, treatment: null }] },
+  { desc: 'On-site machining of turbine coupling face', items: [{ qty: '1', desc: 'On-site facing — portable lathe', material: null, treatment: null }] },
 ];
 
 const jobTypes = tagData.job_type.map(tagValue);
@@ -208,7 +209,7 @@ const insertJobcard = db.prepare(`INSERT INTO jobcards (
   description, due_date, is_repeat_job, created_by, updated_by, created_at
 ) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
-const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, treatment) VALUES (?, ?, ?, ?, ?, ?)');
+const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, material, treatment) VALUES (?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
 const insertNote = db.prepare('INSERT INTO job_notes (id, jobcard_id, user_id, user_name, text, created_at) VALUES (?, ?, ?, ?, ?, ?)');
 const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, user_id, item_number, machine_number, qty, description, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
@@ -272,7 +273,7 @@ const createJobs = db.transaction(() => {
 
     // Line items
     jobData.items.forEach((item, idx) => {
-      insertItem.run(uid('item'), jobId, idx + 1, item.qty, item.desc, item.treatment);
+      insertItem.run(uid('item'), jobId, idx + 1, item.qty, item.desc, item.material, item.treatment);
     });
 
     // Assign 1-3 workers

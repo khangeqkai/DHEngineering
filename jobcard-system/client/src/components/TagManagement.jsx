@@ -11,6 +11,7 @@ import { invalidateTagCache } from '../hooks/useTags';
 
 const CATEGORY_INFO = {
   treatment: { label: 'Treatment', description: 'Treatment options for line items. Used in job card items and supplier services.' },
+  material: { label: 'Material', description: 'Material options for line items.' },
   customer_property: { label: 'Customer Property', description: 'Types of customer property received with a job.' },
   drawings: { label: 'Drawings', description: 'Drawing types associated with a job.' },
   job_type: { label: 'Job Type', description: 'Classification of the type of work.' },

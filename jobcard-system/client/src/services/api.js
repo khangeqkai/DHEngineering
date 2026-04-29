@@ -132,11 +132,6 @@ class ApiService {
     return this.request('/jobcards/archived');
   }
 
-  // Job Items
-  addJobItem(jobcardId, itemData) { return this._post(`/jobcards/${jobcardId}/items`, itemData); }
-  updateJobItem(jobcardId, itemId, itemData) { return this._put(`/jobcards/${jobcardId}/items/${itemId}`, itemData); }
-  deleteJobItem(jobcardId, itemId) { return this._del(`/jobcards/${jobcardId}/items/${itemId}`); }
-
   // Job Assignees
   addAssignee(jobcardId, userId) { return this._post(`/jobcards/${jobcardId}/assignees`, { userId }); }
   removeAssignee(jobcardId, userId) { return this._del(`/jobcards/${jobcardId}/assignees/${userId}`); }

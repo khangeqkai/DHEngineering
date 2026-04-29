@@ -45,6 +45,9 @@ Job items use indexed field names. Add as many rows as you need (up to 50). Unfi
 | Item Number | `item_N_number` | `item_1_number` |
 | Quantity | `item_N_qty` | `item_1_qty` |
 | Description | `item_N_description` | `item_1_description` |
+| Material | `item_N_material` | `item_1_material` |
+| Treatment | `item_N_treatment` | `item_1_treatment` |
+| Treatment Other | `item_N_treatment_other` | `item_1_treatment_other` |
 
 Where `N` is the 1-based item index (1, 2, 3, ...). For example, a template with 5 item rows would have fields: `item_1_number`, `item_1_qty`, `item_1_description`, `item_2_number`, ..., `item_5_description`.
 

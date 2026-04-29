@@ -345,6 +345,26 @@ function validateItemTreatments(items) {
   return null;
 }
 
+/**
+ * Validate material field on line items array.
+ * Each item.material is a single tag value from the 'material' category.
+ * Returns error string or null if valid.
+ */
+function validateItemMaterials(items) {
+  if (!Array.isArray(items)) return null;
+  const allowedMaterials = getTagValues('material');
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.material) {
+      const value = String(item.material).trim();
+      if (value && allowedMaterials.length > 0 && !allowedMaterials.includes(value)) {
+        return `Item #${i + 1} has invalid material value: ${value}`;
+      }
+    }
+  }
+  return null;
+}
+
 module.exports = {
   // Error handler
   handleValidationErrors,
@@ -367,6 +387,7 @@ module.exports = {
   validateSubcontractStatus,
   validateTimeEntryInspection,
   validateItemTreatments,
+  validateItemMaterials,
 
   JOBCARD_STATUSES,
   PRIORITY_OPTIONS,
