@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import InactivityWarningModal from './common/InactivityWarningModal';
 import dhLogo from '../assets/dh-logo.png';
 import {
-  LayoutGrid,
   ClipboardList,
   UserCircle,
   Truck,
@@ -148,14 +147,6 @@ export default function Layout() {
 
         <nav className="sidebar-nav">
           <ul>
-            <li>
-              <NavLink to="/" end onClick={handleNavClick}>
-                <span className="nav-icon">
-                  <LayoutGrid size={18} />
-                </span>
-                <span className="nav-text">Dashboard</span>
-              </NavLink>
-            </li>
             <li>
               <NavLink to="/search" onClick={handleNavClick}>
                 <span className="nav-icon">

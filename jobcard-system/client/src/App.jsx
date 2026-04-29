@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import toast, { Toaster, ToastBar } from 'react-hot-toast';
 import { useAuth } from './context/AuthContext';
 import Login from './components/Login';
-import Dashboard from './components/Dashboard';
 import JobCardList from './components/JobCardList';
 import UserManagement from './components/UserManagement';
 import ContactManagement from './components/ContactManagement';
@@ -103,7 +102,7 @@ function App() {
           </PrivateRoute>
         }
       >
-        <Route index element={<Dashboard />} />
+        <Route index element={<Navigate to="/jobcards" replace />} />
         <Route path="search" element={<SearchPage />} />
         <Route path="jobcards" element={<JobCardList />} />
         <Route

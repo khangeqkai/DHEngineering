@@ -53,7 +53,7 @@ jobcard-system/
 │   │   │   ├── jobcard/          # JobCardModal + tabs (modular)
 │   │   │   │   ├── tabs/         # Tab components + DetailsReadOnlyView, NotesSection
 │   │   │   │   └── use*.js       # Custom hooks (useCosting, useTimeEntries, useTimer, useJobNotes, useJobCardForm, useContactSearch, useCamera, useQuickActionFiles, etc.)
-│   │   │   └── common/           # Reusable components + Reactbits animation components (CountUp, ClickSpark, SpotlightCard, StarBorder, ShinyText, GradientText, Waves)
+│   │   │   └── common/           # Reusable components + Reactbits animation components (ClickSpark, ShinyText, GradientText, Waves)
 │   │   ├── assets/                  # Static assets (logo, fonts)
 │   │   ├── context/AuthContext.jsx  # JWT + user state + inactivity timer
 │   │   ├── hooks/                   # Shared custom hooks
@@ -199,7 +199,7 @@ PDFs without fillable fields are copied as-is (blank templates for handwriting).
 ### Naming Conventions
 | Type | Convention | Example |
 |------|------------|---------|
-| Components | PascalCase.jsx | `Dashboard.jsx` |
+| Components | PascalCase.jsx | `JobCardList.jsx` |
 | Hooks | use*.js | `useTimeEntries.js` |
 | Utilities | camelCase.js | `mappers.js` |
 | Route files | kebab-case.js | `jobcard-time-entries.js` |
