@@ -10,6 +10,7 @@ const { v4: uuidv4 } = require('uuid');
 // Set DATA_DIR before requiring database
 process.env.DATA_DIR = path.join(__dirname, '..', '..', 'data');
 const { db } = require('../src/db/connection');
+require('../src/db/schema'); // run migrations so new columns exist before prepare
 const { settingsQueries } = require('../src/db/queries/support');
 
 const uid = (prefix) => `${prefix}:${Date.now()}:${uuidv4().slice(0, 8)}`;
@@ -205,7 +206,7 @@ const insertJobcard = db.prepare(`INSERT INTO jobcards (
   id, job_number, card_type, status, contact_id, contact_name, company_name,
   quality_level, qa_level_id, priority, drawings_type, customer_property,
   description, due_date, is_repeat_job, created_by, updated_by, created_at
-) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
 const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
