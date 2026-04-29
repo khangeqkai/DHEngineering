@@ -351,14 +351,13 @@ export default function DetailsTab({
         </div>
         {formData.isRepeatJob && (
           <div className="form-group">
-            <label>Previous Job Reference <span className="required">*</span></label>
+            <label>Previous Job Reference</label>
             <input
               type="text"
               name="repeatJobReference"
               value={formData.repeatJobReference}
               onChange={handleChange}
               placeholder="JC-XXXXXXXX-XXX"
-              className={!formData.repeatJobReference ? 'field-required' : ''}
             />
           </div>
         )}

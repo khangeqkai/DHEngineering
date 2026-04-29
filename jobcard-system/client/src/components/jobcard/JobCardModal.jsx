@@ -294,9 +294,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (validItems.length === 0) {
       errors.push('Add at least one line item');
     }
-    if (formHook.formData.isRepeatJob && !formHook.formData.repeatJobReference) {
-      errors.push('Previous job reference is required');
-    }
     if (!formHook.formData.customerProperty || formHook.formData.customerProperty === 'NONE') {
       errors.push('Customer Property is required');
     }
