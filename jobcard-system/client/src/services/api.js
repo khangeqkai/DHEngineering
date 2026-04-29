@@ -75,6 +75,10 @@ class ApiService {
     return this.request('/auth/me');
   }
 
+  updatePreferences(preferences) {
+    return this._put('/auth/me/preferences', preferences);
+  }
+
   // User management
   getUsers(includeInactive = false) {
     return this.request(`/auth/users${includeInactive ? '?includeInactive=true' : ''}`);

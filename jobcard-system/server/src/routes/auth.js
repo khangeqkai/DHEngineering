@@ -158,10 +158,27 @@ router.get('/me', authenticate, (req, res) => {
       username: user.username,
       role: user.role,
       name: user.name,
-      email: user.email
+      email: user.email,
+      jobcardColumnOrder: user.jobcard_column_order ? JSON.parse(user.jobcard_column_order) : null
     });
   } catch (err) {
     res.status(404).json({ error: 'User not found' });
+  }
+});
+
+// Update user preferences
+router.put('/me/preferences', authenticate, (req, res) => {
+  try {
+    const { jobcardColumnOrder } = req.body;
+    
+    if (jobcardColumnOrder) {
+      userQueries.updateJobcardColumnOrder.run(JSON.stringify(jobcardColumnOrder), req.user.userId);
+    }
+    
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, 'Update preferences error');
+    res.status(500).json({ error: 'Failed to update preferences' });
   }
 });
 

@@ -53,9 +53,10 @@ const PRIORITY_LABELS = { NONE: 'None', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'Hig
 const PAGE_SIZE = 20;
 
 export default function JobCardList() {
-  const { user } = useAuth();
+  const { user, updatePreferences } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [searchParams, setSearchParams] = useSearchParams();
+  
   const [filter, setFilter] = useState(() => {
     const paramFilter = searchParams.get('filter');
     const valid = STATUS_OPTIONS.some(o => o.value === paramFilter);
@@ -78,6 +79,72 @@ export default function JobCardList() {
   const [quickActionCard, setQuickActionCard] = useState(null);
   const [density, setDensity] = useJobCardListDensity();
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
+  
+  const [columnOrder, setColumnOrder] = useState(() => {
+    if (user?.jobcardColumnOrder) {
+      return user.jobcardColumnOrder;
+    }
+    return [
+      'jobNumber',
+      'company',
+      'customer',
+      'assignedTo',
+      'status',
+      'priority',
+      'dueDate',
+      'createdAt',
+      'actions'
+    ];
+  });
+
+  useEffect(() => {
+    if (user?.jobcardColumnOrder) {
+      setColumnOrder(user.jobcardColumnOrder);
+    }
+  }, [user?.jobcardColumnOrder]);
+
+  const [draggedCol, setDraggedCol] = useState(null);
+
+  const handleDragStart = (e, colId) => {
+    setDraggedCol(colId);
+    e.dataTransfer.effectAllowed = 'move';
+    // Set a slight opacity to the dragged header
+    setTimeout(() => {
+      if (e.target) e.target.style.opacity = '0.5';
+    }, 0);
+  };
+
+  const handleDragEnd = (e) => {
+    if (e.target) e.target.style.opacity = '1';
+    setDraggedCol(null);
+  };
+
+  const handleDragOver = (e, colId) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, targetColId) => {
+    e.preventDefault();
+    if (!draggedCol || draggedCol === targetColId) return;
+
+    setColumnOrder(prev => {
+      const newOrder = [...prev];
+      const draggedIdx = newOrder.indexOf(draggedCol);
+      const targetIdx = newOrder.indexOf(targetColId);
+      
+      if (draggedIdx !== -1 && targetIdx !== -1) {
+        newOrder.splice(draggedIdx, 1);
+        newOrder.splice(targetIdx, 0, draggedCol);
+      }
+      
+      updatePreferences({ jobcardColumnOrder: newOrder }).catch(err => {
+        toast.error('Failed to save column order preference');
+      });
+      
+      return newOrder;
+    });
+  };
 
   const loadJobcards = useCallback(async () => {
     try {
@@ -249,6 +316,200 @@ export default function JobCardList() {
     loadJobcards();
   };
 
+  const COLUMNS = [
+    {
+      id: 'jobNumber',
+      label: 'Job #',
+      renderCell: (card, isOverdue) => (
+        <td key="jobNumber">
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              setQuickActionCard(card);
+            }}
+          >
+            <strong>{card.jobNumber}</strong>
+          </a>
+          {card.id === activeTimerJobcardId && (
+            <span className="timer-indicator">
+              <span className="timer-dot" />
+              {formattedElapsed}
+            </span>
+          )}
+          {card.qualityLevel === 'CRITICAL' && (
+            <span className="critical-badge">Critical QA</span>
+          )}
+          {card.description && (
+            <p className="description-preview">
+              {card.description.substring(0, 60)}
+              {card.description.length > 60 ? '...' : ''}
+            </p>
+          )}
+        </td>
+      )
+    },
+    {
+      id: 'company',
+      label: 'Company',
+      adminOnly: true,
+      renderCell: (card) => <td key="company">{card.companyName || '-'}</td>
+    },
+    {
+      id: 'customer',
+      label: 'Customer',
+      adminOnly: true,
+      renderCell: (card) => <td key="customer">{card.contactName || '-'}</td>
+    },
+    {
+      id: 'assignedTo',
+      label: 'Assigned To',
+      adminOnly: true,
+      renderCell: (card) => (
+        <td key="assignedTo" className="assignee-cell">
+          {card.assignees?.length ? (() => {
+            const MAX_VISIBLE = 3;
+            const visible = card.assignees.slice(0, MAX_VISIBLE);
+            const overflow = card.assignees.length - visible.length;
+            return (
+              <span className="assignee-preview">
+                <span className="avatar-stack">
+                  {visible.map(a => {
+                    const c = getAvatarColor(a.userName || a.username || a.userId);
+                    return (
+                      <span
+                        key={a.userId}
+                        className="avatar-chip"
+                        style={{ backgroundColor: c.bg, color: c.fg }}
+                      >
+                        {getInitials(a.userName)}
+                      </span>
+                    );
+                  })}
+                  {overflow > 0 && (
+                    <span className="avatar-chip avatar-overflow">
+                      +{overflow}
+                    </span>
+                  )}
+                </span>
+                <span className="assignee-tooltip">
+                  {card.assignees.map(a => (
+                    <span key={a.userId} className="assignee-tooltip-item">{a.userName}</span>
+                  ))}
+                </span>
+              </span>
+            );
+          })() : '-'}
+        </td>
+      )
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      renderCell: (card) => (
+        <td key="status">
+          {isAdmin && !showArchived ? (
+            <div className="status-popover-wrapper" ref={statusPopoverId === card.id ? popoverRef : null}>
+              <span
+                className={`badge ${getStatusBadgeClass(card.status)} badge-clickable`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setStatusPopoverId(statusPopoverId === card.id ? null : card.id);
+                }}
+              >
+                {STATUS_LABELS[card.status] || card.status}
+              </span>
+              {statusPopoverId === card.id && (
+                <div className="status-popover">
+                  {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                    <button
+                      key={value}
+                      className={`status-popover-item ${card.status === value ? 'active' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (card.status !== value) {
+                          handleQuickStatusChange(card.id, value);
+                        } else {
+                          setStatusPopoverId(null);
+                        }
+                      }}
+                    >
+                      <span className={`badge ${getStatusBadgeClass(value)}`}>{label}</span>
+                      {card.status === value && <span className="status-check"><Check size={14} /></span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <span className={`badge ${getStatusBadgeClass(card.status)}`}>
+              {STATUS_LABELS[card.status] || card.status}
+            </span>
+          )}
+        </td>
+      )
+    },
+    {
+      id: 'priority',
+      label: 'Priority',
+      renderCell: (card) => (
+        <td key="priority">
+          <span style={{ color: PRIORITY_COLORS[card.priority] || PRIORITY_COLORS.NONE, fontWeight: 500 }}>
+            {PRIORITY_LABELS[card.priority] || 'None'}
+          </span>
+        </td>
+      )
+    },
+    {
+      id: 'dueDate',
+      label: 'Due Date',
+      renderCell: (card, isOverdue) => (
+        <td key="dueDate" className={isOverdue ? 'overdue-date' : ''}>
+          {card.dueDate ? new Date(card.dueDate).toLocaleDateString() : '-'}
+          {isOverdue && <span className="overdue-label">OVERDUE</span>}
+        </td>
+      )
+    },
+    {
+      id: 'createdAt',
+      label: 'Created At',
+      renderCell: (card) => (
+        <td key="createdAt">
+          {card.createdAt ? new Date(card.createdAt).toLocaleString() : '-'}
+        </td>
+      )
+    },
+    {
+      id: 'actions',
+      label: 'Actions',
+      renderCell: (card) => (
+        <td key="actions">
+          <div className="action-buttons">
+            {showArchived && card.archived && (
+              <button
+                className="btn btn-outline-warning btn-sm"
+                onClick={() => handleUnarchive(card.id)}
+              >
+                <ArchiveRestore size={14} /> Unarchive
+              </button>
+            )}
+            <button
+              className="btn btn-outline-danger btn-sm"
+              onClick={() => handleDelete(card.id)}
+            >
+              <Trash2 size={14} /> Delete
+            </button>
+          </div>
+        </td>
+      )
+    }
+  ];
+
+  const visibleColumns = columnOrder
+    .map(id => COLUMNS.find(c => c.id === id))
+    .filter(Boolean)
+    .filter(col => !col.adminOnly || isAdmin);
+
   if (loading) {
     return <div className="loading">Loading job cards...</div>;
   }
@@ -336,15 +597,20 @@ export default function JobCardList() {
             <table className="table" data-density={density}>
               <thead>
                 <tr>
-                  <th>Job #</th>
-                  {isAdmin && <th>Company</th>}
-                  {isAdmin && <th>Customer</th>}
-                  {isAdmin && <th>Assigned To</th>}
-                  <th>Status</th>
-                  <th>Priority</th>
-                  <th>Due Date</th>
-                  <th>Created At</th>
-                  <th>Actions</th>
+                  {visibleColumns.map(col => (
+                    <th
+                      key={col.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, col.id)}
+                      onDragEnd={handleDragEnd}
+                      onDragOver={(e) => handleDragOver(e, col.id)}
+                      onDrop={(e) => handleDrop(e, col.id)}
+                      style={{ cursor: 'grab' }}
+                      title="Drag to reorder columns"
+                    >
+                      {col.label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -355,145 +621,7 @@ export default function JobCardList() {
 
                   return (
                     <tr key={card.id} className={isOverdue ? 'overdue-row' : ''}>
-                      <td>
-                        <a
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setQuickActionCard(card);
-                          }}
-                        >
-                          <strong>{card.jobNumber}</strong>
-                        </a>
-                        {card.id === activeTimerJobcardId && (
-                          <span className="timer-indicator">
-                            <span className="timer-dot" />
-                            {formattedElapsed}
-                          </span>
-                        )}
-                        {card.qualityLevel === 'CRITICAL' && (
-                          <span className="critical-badge">Critical QA</span>
-                        )}
-                        {card.description && (
-                          <p className="description-preview">
-                            {card.description.substring(0, 60)}
-                            {card.description.length > 60 ? '...' : ''}
-                          </p>
-                        )}
-                      </td>
-                      {isAdmin && (
-                        <td>{card.companyName || '-'}</td>
-                      )}
-                      {isAdmin && (
-                        <td>{card.contactName || '-'}</td>
-                      )}
-                      {isAdmin && (
-                        <td className="assignee-cell">
-                          {card.assignees?.length ? (() => {
-                            const MAX_VISIBLE = 3;
-                            const visible = card.assignees.slice(0, MAX_VISIBLE);
-                            const overflow = card.assignees.length - visible.length;
-                            return (
-                              <span className="assignee-preview">
-                                <span className="avatar-stack">
-                                  {visible.map(a => {
-                                    const c = getAvatarColor(a.userName || a.username || a.userId);
-                                    return (
-                                      <span
-                                        key={a.userId}
-                                        className="avatar-chip"
-                                        style={{ backgroundColor: c.bg, color: c.fg }}
-                                      >
-                                        {getInitials(a.userName)}
-                                      </span>
-                                    );
-                                  })}
-                                  {overflow > 0 && (
-                                    <span className="avatar-chip avatar-overflow">
-                                      +{overflow}
-                                    </span>
-                                  )}
-                                </span>
-                                <span className="assignee-tooltip">
-                                  {card.assignees.map(a => (
-                                    <span key={a.userId} className="assignee-tooltip-item">{a.userName}</span>
-                                  ))}
-                                </span>
-                              </span>
-                            );
-                          })() : '-'}
-                        </td>
-                      )}
-                      <td>
-                        {isAdmin && !showArchived ? (
-                          <div className="status-popover-wrapper" ref={statusPopoverId === card.id ? popoverRef : null}>
-                            <span
-                              className={`badge ${getStatusBadgeClass(card.status)} badge-clickable`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setStatusPopoverId(statusPopoverId === card.id ? null : card.id);
-                              }}
-                            >
-                              {STATUS_LABELS[card.status] || card.status}
-                            </span>
-                            {statusPopoverId === card.id && (
-                              <div className="status-popover">
-                                {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                                  <button
-                                    key={value}
-                                    className={`status-popover-item ${card.status === value ? 'active' : ''}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (card.status !== value) {
-                                        handleQuickStatusChange(card.id, value);
-                                      } else {
-                                        setStatusPopoverId(null);
-                                      }
-                                    }}
-                                  >
-                                    <span className={`badge ${getStatusBadgeClass(value)}`}>{label}</span>
-                                    {card.status === value && <span className="status-check"><Check size={14} /></span>}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className={`badge ${getStatusBadgeClass(card.status)}`}>
-                            {STATUS_LABELS[card.status] || card.status}
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <span style={{ color: PRIORITY_COLORS[card.priority] || PRIORITY_COLORS.NONE, fontWeight: 500 }}>
-                          {PRIORITY_LABELS[card.priority] || 'None'}
-                        </span>
-                      </td>
-                      <td className={isOverdue ? 'overdue-date' : ''}>
-                        {card.dueDate ? new Date(card.dueDate).toLocaleDateString() : '-'}
-                        {isOverdue && <span className="overdue-label">OVERDUE</span>}
-                      </td>
-                      <td>
-                        {card.createdAt ? new Date(card.createdAt).toLocaleString() : '-'}
-                      </td>
-                      <td>
-                        <div className="action-buttons">
-                          {showArchived && card.archived && (
-                            <button
-                              className="btn btn-outline-warning btn-sm"
-                              onClick={() => handleUnarchive(card.id)}
-                            >
-                              <ArchiveRestore size={14} /> Unarchive
-                            </button>
-                          )}
-                          <button
-                            className="btn btn-outline-danger btn-sm"
-                            onClick={() => handleDelete(card.id)}
-                          >
-                            <Trash2 size={14} /> Delete
-                          </button>
-                        </div>
-                      </td>
+                      {visibleColumns.map(col => col.renderCell(card, isOverdue))}
                     </tr>
                   );
                 })}

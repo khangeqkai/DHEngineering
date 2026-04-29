@@ -76,9 +76,18 @@ export function AuthProvider({ children }) {
   const login = async (username, password) => {
     const response = await api.login(username, password);
     api.setToken(response.token);
-    setUser(response.user);
+    
+    // Fetch full user profile to get preferences
+    const fullUser = await api.getMe();
+    setUser(fullUser);
+    
     await loadInactivityTimeout();
-    return response.user;
+    return fullUser;
+  };
+
+  const updatePreferences = async (preferences) => {
+    await api.updatePreferences(preferences);
+    setUser(prev => ({ ...prev, ...preferences }));
   };
 
   return (
@@ -92,7 +101,8 @@ export function AuthProvider({ children }) {
       resetInactivityTimer: resetTimer,
       handleActivity,
       refreshInactivityTimeout: loadInactivityTimeout,
-      registerBeforeLogout
+      registerBeforeLogout,
+      updatePreferences
     }}>
       {children}
     </AuthContext.Provider>
