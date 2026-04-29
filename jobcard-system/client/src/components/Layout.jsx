@@ -148,14 +148,6 @@ export default function Layout() {
         <nav className="sidebar-nav">
           <ul>
             <li>
-              <NavLink to="/search" onClick={handleNavClick}>
-                <span className="nav-icon">
-                  <Search size={18} />
-                </span>
-                <span className="nav-text">Search</span>
-              </NavLink>
-            </li>
-            <li>
               <NavLink to="/jobcards" onClick={handleNavClick}>
                 <span className="nav-icon">
                   <ClipboardList size={18} />
@@ -164,17 +156,15 @@ export default function Layout() {
               </NavLink>
             </li>
             {user?.role === 'admin' && (
-              <li>
-                <NavLink to="/contacts" onClick={handleNavClick}>
-                  <span className="nav-icon">
-                    <UserCircle size={18} />
-                  </span>
-                  <span className="nav-text">Contacts</span>
-                </NavLink>
-              </li>
-            )}
-            {user?.role === 'admin' && (
               <>
+                <li>
+                  <NavLink to="/contacts" onClick={handleNavClick}>
+                    <span className="nav-icon">
+                      <UserCircle size={18} />
+                    </span>
+                    <span className="nav-text">Contacts</span>
+                  </NavLink>
+                </li>
                 <li>
                   <NavLink to="/suppliers" onClick={handleNavClick}>
                     <span className="nav-icon">
@@ -207,15 +197,25 @@ export default function Layout() {
                     <span className="nav-text">Users</span>
                   </NavLink>
                 </li>
-                <li>
-                  <NavLink to="/activity" onClick={handleNavClick}>
-                    <span className="nav-icon">
-                      <Clock size={18} />
-                    </span>
-                    <span className="nav-text">Activity Log</span>
-                  </NavLink>
-                </li>
               </>
+            )}
+            <li>
+              <NavLink to="/search" onClick={handleNavClick}>
+                <span className="nav-icon">
+                  <Search size={18} />
+                </span>
+                <span className="nav-text">Search</span>
+              </NavLink>
+            </li>
+            {user?.role === 'admin' && (
+              <li>
+                <NavLink to="/activity" onClick={handleNavClick}>
+                  <span className="nav-icon">
+                    <Clock size={18} />
+                  </span>
+                  <span className="nav-text">Activity Log</span>
+                </NavLink>
+              </li>
             )}
             <li>
               <NavLink to="/settings" onClick={handleNavClick}>
