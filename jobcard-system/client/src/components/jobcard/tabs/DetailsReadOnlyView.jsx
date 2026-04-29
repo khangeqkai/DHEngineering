@@ -126,11 +126,11 @@ export default function DetailsReadOnlyView({
               return (
                 <div key={item.id || item.itemNumber} className="readonly-item">
                   <span className="readonly-item-badge">#{item.itemNumber}</span>
-                  {item.qty && <span className="readonly-item-qty">Qty: {item.qty}</span>}
-                  <span className="readonly-item-desc">{item.description}</span>
                   {jobTypeLabel && (
                     <span className="readonly-badge job-type">{jobTypeLabel}</span>
                   )}
+                  {item.qty && <span className="readonly-item-qty">Qty: {item.qty}</span>}
+                  <span className="readonly-item-desc">{item.description}</span>
                   {materialLabel && (
                     <span className="readonly-badge material">{materialLabel}</span>
                   )}

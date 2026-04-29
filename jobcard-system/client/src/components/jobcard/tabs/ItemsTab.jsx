@@ -120,6 +120,19 @@ export default function ItemsTab({
             <div key={item.id} className="line-item-card">
               <div className="line-item-badge">#{item.itemNumber}</div>
               <div className="line-item-fields">
+                <div className="line-item-job-type">
+                  <label>Job Type <span className="required">*</span></label>
+                  <select
+                    value={item.jobType || ''}
+                    onChange={(e) => updateLineItem(item.id, 'jobType', e.target.value)}
+                    className={!item.jobType ? 'field-required' : ''}
+                  >
+                    <option value="">Select...</option>
+                    {jobTypeTags.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="line-item-qty">
                   <label>Qty</label>
                   <input
@@ -143,19 +156,6 @@ export default function ItemsTab({
                     }}
                     placeholder="What needs to be done..."
                   />
-                </div>
-                <div className="line-item-job-type">
-                  <label>Job Type <span className="required">*</span></label>
-                  <select
-                    value={item.jobType || ''}
-                    onChange={(e) => updateLineItem(item.id, 'jobType', e.target.value)}
-                    className={!item.jobType ? 'field-required' : ''}
-                  >
-                    <option value="">Select...</option>
-                    {jobTypeTags.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
                 </div>
                 <div className="line-item-material">
                   <label>Material</label>
