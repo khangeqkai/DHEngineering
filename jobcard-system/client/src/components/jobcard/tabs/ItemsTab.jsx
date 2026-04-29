@@ -117,6 +117,15 @@ export default function ItemsTab({
             <div key={item.id} className="line-item-card">
               <div className="line-item-badge">#{item.itemNumber}</div>
               <div className="line-item-fields">
+                <div className="line-item-qty">
+                  <label>Qty</label>
+                  <input
+                    type="text"
+                    value={item.qty}
+                    onChange={(e) => updateLineItem(item.id, 'qty', e.target.value)}
+                    placeholder="-"
+                  />
+                </div>
                 <div className="line-item-desc">
                   <label>Description</label>
                   <input
@@ -139,15 +148,6 @@ export default function ItemsTab({
                     treatmentOther={item.treatmentOther}
                     onToggle={(val) => updateLineItem(item.id, 'treatment', val)}
                     onOtherChange={(val) => updateLineItem(item.id, 'treatmentOther', val)}
-                  />
-                </div>
-                <div className="line-item-qty">
-                  <label>Qty</label>
-                  <input
-                    type="text"
-                    value={item.qty}
-                    onChange={(e) => updateLineItem(item.id, 'qty', e.target.value)}
-                    placeholder="-"
                   />
                 </div>
               </div>
