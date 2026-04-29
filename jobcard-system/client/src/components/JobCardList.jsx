@@ -130,10 +130,15 @@ export default function JobCardList() {
     e.preventDefault();
     if (!draggedCol || draggedCol === targetColId) return;
 
+    const draggedIdx = columnOrder.indexOf(draggedCol);
+    const targetIdx = columnOrder.indexOf(targetColId);
+    if (draggedIdx === -1 || targetIdx === -1) return;
+
     const newOrder = columnOrder.filter(c => c !== draggedCol);
-    const targetIdx = newOrder.indexOf(targetColId);
-    if (targetIdx === -1) return;
-    newOrder.splice(targetIdx, 0, draggedCol);
+    const insertAt = draggedIdx < targetIdx
+      ? newOrder.indexOf(targetColId) + 1
+      : newOrder.indexOf(targetColId);
+    newOrder.splice(insertAt, 0, draggedCol);
 
     setColumnOrder(newOrder);
     updatePreferences({ jobcardColumnOrder: newOrder }).catch(() => {
