@@ -120,16 +120,11 @@ class ApiService {
   createJobcard(jobcardData) { return this._post('/jobcards', jobcardData); }
   updateJobcard(id, jobcardData) { return this._put(`/jobcards/${id}`, jobcardData); }
   updateJobcardStatus(id, status) { return this._patch(`/jobcards/${id}/status`, { status }); }
-  archiveJobcard(id, invoicedDate) { return this._post(`/jobcards/${id}/archive`, { invoicedDate }); }
   unarchiveJobcard(id) { return this._post(`/jobcards/${id}/unarchive`); }
   deleteJobcard(id) { return this._del(`/jobcards/${id}`); }
 
   getOverdueJobcards() {
     return this.request('/jobcards/overdue');
-  }
-
-  getArchivedJobcards() {
-    return this.request('/jobcards/archived');
   }
 
   // Job Assignees

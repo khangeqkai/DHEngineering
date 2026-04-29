@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, Archive, ArchiveRestore, Check } from 'lucide-react';
+import { Plus, Trash2, ArchiveRestore, Check } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportJobCardList, exportJobCardsFull } from '../utils/excelExport';
@@ -135,25 +135,6 @@ export default function JobCardList() {
       await loadJobcards();
     } catch (err) {
       toast.error(err.message || 'Failed to unarchive job card');
-    }
-  };
-
-  const handleArchive = async (id) => {
-    const confirmed = await showConfirm({
-      title: 'Archive Job Card',
-      message: 'Are you sure you want to archive this job card? This will set the invoice date to today.',
-      confirmLabel: 'Archive',
-      confirmVariant: 'success'
-    });
-    if (!confirmed) return;
-
-    try {
-      const invoiceDate = new Date().toISOString().split('T')[0];
-      await api.archiveJobcard(id, invoiceDate);
-      toast.success('Job card archived');
-      await loadJobcards();
-    } catch (err) {
-      toast.error(err.message || 'Failed to archive job card');
     }
   };
 
@@ -474,14 +455,6 @@ export default function JobCardList() {
                               onClick={() => handleUnarchive(card.id)}
                             >
                               <ArchiveRestore size={14} /> Unarchive
-                            </button>
-                          )}
-                          {card.status === 'INVOICED' && !card.archived && (
-                            <button
-                              className="btn btn-outline-success btn-sm"
-                              onClick={() => handleArchive(card.id)}
-                            >
-                              <Archive size={14} /> Archive
                             </button>
                           )}
                           <button

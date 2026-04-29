@@ -71,7 +71,7 @@ export default function DetailsReadOnlyView({
                 onChange={(e) => onStatusChange(e.target.value)}
                 className="readonly-status-select"
               >
-                {STATUS_OPTIONS.map(opt => (
+                {STATUS_OPTIONS.filter(opt => opt.value !== 'INVOICED').map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>

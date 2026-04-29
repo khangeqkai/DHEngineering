@@ -447,6 +447,15 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       }
     }
 
+    // Auto-archive when status transitions to INVOICED
+    const newStatus = data.status !== undefined ? data.status : existing.status;
+    if (newStatus === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0) {
+      const invoicedDate = new Date().toISOString();
+      jobcardQueries.archive.run(invoicedDate, req.user.userId, id);
+      changes.archived = { from: false, to: true };
+      changes.invoicedDate = { from: null, to: invoicedDate };
+    }
+
     // Record changes in history
     if (Object.keys(changes).length > 0) {
       recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, changes, null);
@@ -473,6 +482,10 @@ router.patch('/:id/status', authenticate, (req, res) => {
       return res.status(400).json({ error: 'Invalid status value' });
     }
 
+    if (status === 'INVOICED' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can mark a job card as invoiced' });
+    }
+
     const existing = jobcardQueries.getById.get(id);
     if (!existing) {
       return res.status(404).json({ error: 'Job card not found' });
@@ -481,6 +494,14 @@ router.patch('/:id/status', authenticate, (req, res) => {
     const changes = { status: { from: existing.status, to: status } };
 
     jobcardQueries.updateStatus.run(status, req.user.userId, id);
+
+    if (status === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0) {
+      const invoicedDate = new Date().toISOString();
+      jobcardQueries.archive.run(invoicedDate, req.user.userId, id);
+      changes.archived = { from: false, to: true };
+      changes.invoicedDate = { from: null, to: invoicedDate };
+    }
+
     recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, changes, null);
 
     const updated = jobcardQueries.getById.get(id);
@@ -488,30 +509,6 @@ router.patch('/:id/status', authenticate, (req, res) => {
   } catch (err) {
     logger.error({ err }, 'Update status error');
     res.status(500).json({ error: 'Failed to update status' });
-  }
-});
-
-// Archive job card (mark as invoiced)
-router.post('/:id/archive', authenticate, requireAdmin, (req, res) => {
-  try {
-    const { id } = req.params;
-    const { invoicedDate } = req.body;
-
-    const existing = jobcardQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
-
-    jobcardQueries.archive.run(invoicedDate || new Date().toISOString(), req.user.userId, id);
-    recordHistory('jobcard', id, 'archive', req.user.userId, req.user.name || req.user.username, {
-      archived: { from: false, to: true },
-      invoicedDate: { from: null, to: invoicedDate || new Date().toISOString() }
-    }, { jobNumber: existing.job_number });
-
-    res.json({ success: true });
-  } catch (err) {
-    logger.error({ err }, 'Archive error');
-    res.status(500).json({ error: 'Failed to archive job card' });
   }
 });
 
