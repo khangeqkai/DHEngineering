@@ -343,6 +343,7 @@ export default function JobCardList() {
                   <th>Status</th>
                   <th>Priority</th>
                   <th>Due Date</th>
+                  <th>Created At</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -471,6 +472,9 @@ export default function JobCardList() {
                       <td className={isOverdue ? 'overdue-date' : ''}>
                         {card.dueDate ? new Date(card.dueDate).toLocaleDateString() : '-'}
                         {isOverdue && <span className="overdue-label">OVERDUE</span>}
+                      </td>
+                      <td>
+                        {card.createdAt ? new Date(card.createdAt).toLocaleString() : '-'}
                       </td>
                       <td>
                         <div className="action-buttons">

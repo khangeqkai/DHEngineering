@@ -95,7 +95,8 @@ export function useJobCardForm() {
       dueDate: jobcardData.dueDate || '',
       isRepeatJob: jobcardData.isRepeatJob || false,
       repeatJobReference: jobcardData.repeatJobReference || '',
-      notes: jobcardData.notes || ''
+      notes: jobcardData.notes || '',
+      createdAt: jobcardData.createdAt || ''
     });
 
     // Map assignees from API data
