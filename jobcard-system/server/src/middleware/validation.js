@@ -155,7 +155,7 @@ const INSPECTION_OPTIONS = ['NOT_APPLICABLE', 'OK', 'ERROR'];
 
 const JOBCARD_COLUMN_IDS = [
   'jobNumber', 'company', 'customer', 'assignedTo',
-  'status', 'priority', 'dueDate', 'createdAt', 'actions'
+  'status', 'priority', 'dueDate', 'createdAt', 'updatedAt', 'actions'
 ];
 
 // =============================================================================

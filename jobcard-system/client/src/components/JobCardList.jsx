@@ -54,6 +54,29 @@ const PRIORITY_LABELS = { NONE: 'None', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'Hig
 
 const PAGE_SIZE = 20;
 
+const DEFAULT_COLUMN_ORDER = [
+  'jobNumber',
+  'company',
+  'customer',
+  'assignedTo',
+  'status',
+  'priority',
+  'dueDate',
+  'createdAt',
+  'updatedAt',
+  'actions'
+];
+
+const mergeColumnOrder = (saved) => {
+  if (!Array.isArray(saved) || saved.length === 0) return DEFAULT_COLUMN_ORDER;
+  const missing = DEFAULT_COLUMN_ORDER.filter(c => !saved.includes(c));
+  if (missing.length === 0) return saved;
+  // Insert any new columns just before 'actions' (or append if actions is absent)
+  const actionsIdx = saved.indexOf('actions');
+  if (actionsIdx === -1) return [...saved, ...missing];
+  return [...saved.slice(0, actionsIdx), ...missing, ...saved.slice(actionsIdx)];
+};
+
 export default function JobCardList() {
   const { user, updatePreferences } = useAuth();
   const isAdmin = user?.role === 'admin';
@@ -83,26 +106,11 @@ export default function JobCardList() {
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
   
-  const [columnOrder, setColumnOrder] = useState(() => {
-    if (user?.jobcardColumnOrder) {
-      return user.jobcardColumnOrder;
-    }
-    return [
-      'jobNumber',
-      'company',
-      'customer',
-      'assignedTo',
-      'status',
-      'priority',
-      'dueDate',
-      'createdAt',
-      'actions'
-    ];
-  });
+  const [columnOrder, setColumnOrder] = useState(() => mergeColumnOrder(user?.jobcardColumnOrder));
 
   useEffect(() => {
     if (user?.jobcardColumnOrder) {
-      setColumnOrder(user.jobcardColumnOrder);
+      setColumnOrder(mergeColumnOrder(user.jobcardColumnOrder));
     }
   }, [user?.jobcardColumnOrder]);
 
@@ -479,6 +487,15 @@ export default function JobCardList() {
       renderCell: (card) => (
         <td key="createdAt">
           {card.createdAt ? new Date(card.createdAt).toLocaleString() : '-'}
+        </td>
+      )
+    },
+    {
+      id: 'updatedAt',
+      label: 'Last Edited',
+      renderCell: (card) => (
+        <td key="updatedAt">
+          {card.updatedAt ? new Date(card.updatedAt).toLocaleString() : '-'}
         </td>
       )
     },
