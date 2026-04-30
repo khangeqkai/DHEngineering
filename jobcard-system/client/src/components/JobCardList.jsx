@@ -155,9 +155,10 @@ export default function JobCardList() {
     });
   };
 
+  const hasLoadedOnceRef = useRef(false);
   const loadJobcards = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!hasLoadedOnceRef.current) setLoading(true);
       const filters = {};
       if (showArchived) filters.archived = true;
       if (isAdmin && assigneeFilter !== 'all' && !showArchived) {
@@ -168,6 +169,7 @@ export default function JobCardList() {
     } catch (err) {
       toast.error(err.message || 'Failed to load job cards');
     } finally {
+      hasLoadedOnceRef.current = true;
       setLoading(false);
     }
   }, [showArchived, assigneeFilter, isAdmin]);
