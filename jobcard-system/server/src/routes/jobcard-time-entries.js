@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { validateStartTimer } = require('../middleware/validation');
-const { timeEntryQueries, jobItemQueries, recordHistory } = require('../db/database');
+const { timeEntryQueries, jobItemQueries, jobAssigneeQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
@@ -95,6 +95,25 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
       timer: { from: null, to: startTime },
       itemNumber: { from: null, to: itemNumber }
     }, null);
+
+    // Auto-assign the user to this job if they aren't already an assignee
+    const beforeAssignees = jobAssigneeQueries.getByJobcard.all(id);
+    const alreadyAssigned = beforeAssignees.some(a => a.user_id === req.user.userId);
+    if (!alreadyAssigned) {
+      try {
+        jobAssigneeQueries.create.run(`assignee:${uuidv4()}`, id, req.user.userId);
+        const afterAssignees = jobAssigneeQueries.getByJobcard.all(id);
+        const fromNames = beforeAssignees.map(a => a.user_name).join(', ') || 'none';
+        const toNames = afterAssignees.map(a => a.user_name).join(', ') || 'none';
+        recordHistory('jobcard', id, 'self_assign', req.user.userId, req.user.name || req.user.username, {
+          assignees: { from: fromNames, to: toNames }
+        });
+      } catch (e) {
+        if (!e || e.code !== 'SQLITE_CONSTRAINT_UNIQUE') {
+          logger.error({ err: e }, 'Auto-assign on start timer failed');
+        }
+      }
+    }
 
     res.status(201).json({
       id: entryId,

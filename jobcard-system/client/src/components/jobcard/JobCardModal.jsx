@@ -147,8 +147,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   const reloadTimeEntriesAndCosting = useCallback(async () => {
     await reloadTimeEntries();
-    if (costingHookRef.current) await costingHookRef.current();
-  }, [reloadTimeEntries]);
+    // Costing endpoint is admin-only; skip for non-admin to avoid 403 toast
+    if (isAdmin && costingHookRef.current) await costingHookRef.current();
+  }, [reloadTimeEntries, isAdmin]);
 
   const handleSubmitEntryForm = useCallback(async () => {
     await timer.submitEntryForm(reloadTimeEntriesAndCosting);
@@ -196,11 +197,22 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   }, [jobCardId, reloadTimeEntries, refreshCosting]);
 
+  const { setAssignees } = formHook;
   const handleStartItemTimer = useCallback(async (itemNumber) => {
     await timer.startTimerWithConflictCheck(itemNumber, showConfirm);
     await reloadTimeEntries();
+    // Server may have auto-assigned the user when starting the timer — refresh assignees
+    try {
+      const fresh = await api.getJobcard(jobCardId);
+      setAssignees((fresh.assignees || []).map(a => ({
+        userId: a.userId,
+        userName: a.userName || a.username
+      })));
+    } catch {
+      // Non-fatal — assignees will refresh next time the modal opens
+    }
     if (onTimerChange) onTimerChange();
-  }, [timer, showConfirm, reloadTimeEntries, onTimerChange]);
+  }, [timer, showConfirm, reloadTimeEntries, onTimerChange, jobCardId, setAssignees]);
 
   const handleStopItemTimer = useCallback(async () => {
     await timer.stopTimer();

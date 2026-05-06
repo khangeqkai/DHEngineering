@@ -109,7 +109,7 @@ Job card file endpoints (disk-first; one folder per category per job — no DB r
 
 QA level endpoints: `GET /qa-levels` (authenticated, non-admin sees active only), `GET /qa-levels/:id` (admin), `POST /qa-levels` (admin), `PUT /qa-levels/:id` (admin), `DELETE /qa-levels/:id` (admin, blocked if used by jobs), `POST /qa-levels/:id/templates` (admin, upload PDF), `GET /qa-levels/:id/templates` (admin), `DELETE /qa-levels/:id/templates/:tid` (admin)
 
-Timer endpoints: `GET /jobcards/active-timer` (authenticated), `POST /jobcards/:id/time-entries/start` (authenticated, body: `{ itemNumber }` — required, must match an existing line item), `POST /jobcards/:id/time-entries/:entryId/stop` (authenticated), `PATCH /jobcards/:id/time-entries/:entryId/toggle-special` (admin, toggle special labour flag)
+Timer endpoints: `GET /jobcards/active-timer` (authenticated), `POST /jobcards/:id/time-entries/start` (authenticated, body: `{ itemNumber }` — required, must match an existing line item; auto-assigns the user to the job if they aren't already an assignee, recorded as `self_assign`), `POST /jobcards/:id/time-entries/:entryId/stop` (authenticated), `PATCH /jobcards/:id/time-entries/:entryId/toggle-special` (admin, toggle special labour flag)
 
 Notes endpoints: `GET /jobcards/:id/notes` (assignee/admin), `POST /jobcards/:id/notes` (assignee/admin), `DELETE /jobcards/:id/notes/:noteId` (admin only)
 

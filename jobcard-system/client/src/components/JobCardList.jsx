@@ -808,7 +808,7 @@ export default function JobCardList() {
         onClose={() => setIsModalOpen(false)}
         jobCardId={editingCardId}
         onSuccess={handleModalSuccess}
-        onTimerChange={refreshTimer}
+        onTimerChange={() => { refreshTimer(); loadJobcards(); }}
       />
 
       <ConfirmDialog
