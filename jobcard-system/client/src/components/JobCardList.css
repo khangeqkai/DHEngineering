@@ -261,6 +261,15 @@
   box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.3);
 }
 
+.assignee-trigger {
+  cursor: pointer;
+  display: inline-block;
+}
+
+.assignee-trigger:hover {
+  opacity: 0.85;
+}
+
 .status-popover {
   position: absolute;
   top: calc(100% + 4px);

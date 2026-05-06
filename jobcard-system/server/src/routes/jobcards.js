@@ -472,6 +472,101 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
   }
 });
 
+// Self-assign current user to a job card (idempotent)
+router.post('/:id/assignees/self', authenticate, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.user;
+
+    const existing = jobcardQueries.getById.get(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Job card not found' });
+    }
+
+    const before = jobAssigneeQueries.getByJobcard.all(id);
+    const alreadyAssigned = before.some(a => a.user_id === userId);
+
+    if (alreadyAssigned) {
+      return res.status(200).json({
+        assignees: before.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
+      });
+    }
+
+    const assigneeId = `assignee:${uuidv4()}`;
+    let inserted = true;
+    try {
+      jobAssigneeQueries.create.run(assigneeId, id, userId);
+    } catch (e) {
+      if (e && e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        inserted = false;
+      } else {
+        throw e;
+      }
+    }
+
+    const after = jobAssigneeQueries.getByJobcard.all(id);
+
+    if (!inserted) {
+      return res.status(200).json({
+        assignees: after.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
+      });
+    }
+
+    const fromNames = before.map(a => a.user_name).join(', ') || 'none';
+    const toNames = after.map(a => a.user_name).join(', ') || 'none';
+
+    recordHistory('jobcard', id, 'self_assign', userId, req.user.name || req.user.username, {
+      assignees: { from: fromNames, to: toNames }
+    });
+
+    res.status(201).json({
+      assignees: after.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
+    });
+  } catch (err) {
+    logger.error({ err }, 'Self-assign error');
+    res.status(500).json({ error: 'Failed to self-assign' });
+  }
+});
+
+// Self-unassign current user from a job card (idempotent)
+router.delete('/:id/assignees/self', authenticate, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.user;
+
+    const existing = jobcardQueries.getById.get(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Job card not found' });
+    }
+
+    const before = jobAssigneeQueries.getByJobcard.all(id);
+    const wasAssigned = before.some(a => a.user_id === userId);
+
+    if (!wasAssigned) {
+      return res.status(200).json({
+        assignees: before.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
+      });
+    }
+
+    jobAssigneeQueries.deleteByJobcardAndUser.run(id, userId);
+
+    const after = jobAssigneeQueries.getByJobcard.all(id);
+    const fromNames = before.map(a => a.user_name).join(', ') || 'none';
+    const toNames = after.map(a => a.user_name).join(', ') || 'none';
+
+    recordHistory('jobcard', id, 'self_unassign', userId, req.user.name || req.user.username, {
+      assignees: { from: fromNames, to: toNames }
+    });
+
+    res.status(200).json({
+      assignees: after.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
+    });
+  } catch (err) {
+    logger.error({ err }, 'Self-unassign error');
+    res.status(500).json({ error: 'Failed to self-unassign' });
+  }
+});
+
 // Update job card status only
 router.patch('/:id/status', authenticate, (req, res) => {
   try {

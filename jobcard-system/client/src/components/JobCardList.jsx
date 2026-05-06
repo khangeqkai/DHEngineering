@@ -100,6 +100,8 @@ export default function JobCardList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [statusPopoverId, setStatusPopoverId] = useState(null);
   const popoverRef = useRef(null);
+  const [assignPopoverId, setAssignPopoverId] = useState(null);
+  const assignPopoverRef = useRef(null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   const [quickActionCard, setQuickActionCard] = useState(null);
   const [density, setDensity] = useJobCardListDensity();
@@ -263,6 +265,41 @@ export default function JobCardList() {
     };
   }, [statusPopoverId]);
 
+  // Close assignee popover on click-outside or Escape
+  useEffect(() => {
+    if (!assignPopoverId) return;
+    const handleClickOutside = (e) => {
+      if (assignPopoverRef.current && !assignPopoverRef.current.contains(e.target)) {
+        setAssignPopoverId(null);
+      }
+    };
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setAssignPopoverId(null);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [assignPopoverId]);
+
+  const handleSelfToggle = useCallback(async (card, isAssigned) => {
+    setAssignPopoverId(null);
+    try {
+      if (isAssigned) {
+        await api.selfUnassign(card.id);
+        toast.success('Removed yourself from job card');
+      } else {
+        await api.selfAssign(card.id);
+        toast.success('Assigned yourself to job card');
+      }
+      await loadJobcards();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update assignment');
+    }
+  }, [loadJobcards]);
+
   // Filter job cards based on status filter and search
   const filteredCards = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -377,44 +414,75 @@ export default function JobCardList() {
     {
       id: 'assignedTo',
       label: 'Assigned To',
-      adminOnly: true,
-      renderCell: (card) => (
-        <td key="assignedTo" className="assignee-cell">
-          {card.assignees?.length ? (() => {
-            const MAX_VISIBLE = 3;
-            const visible = card.assignees.slice(0, MAX_VISIBLE);
-            const overflow = card.assignees.length - visible.length;
-            return (
-              <span className="assignee-preview">
-                <span className="avatar-stack">
-                  {visible.map(a => {
-                    const c = getAvatarColor(a.userName || a.username || a.userId);
-                    return (
-                      <span
-                        key={a.userId}
-                        className="avatar-chip"
-                        style={{ backgroundColor: c.bg, color: c.fg }}
-                      >
-                        {getInitials(a.userName)}
-                      </span>
-                    );
-                  })}
-                  {overflow > 0 && (
-                    <span className="avatar-chip avatar-overflow">
-                      +{overflow}
+      renderCell: (card) => {
+        const isAssigned = !!card.assignees?.some(a => a.userId === user?.id);
+        const renderAvatars = () => card.assignees?.length ? (() => {
+          const MAX_VISIBLE = 3;
+          const visible = card.assignees.slice(0, MAX_VISIBLE);
+          const overflow = card.assignees.length - visible.length;
+          return (
+            <span className="assignee-preview">
+              <span className="avatar-stack">
+                {visible.map(a => {
+                  const c = getAvatarColor(a.userName || a.username || a.userId);
+                  return (
+                    <span
+                      key={a.userId}
+                      className="avatar-chip"
+                      style={{ backgroundColor: c.bg, color: c.fg }}
+                    >
+                      {getInitials(a.userName)}
                     </span>
-                  )}
-                </span>
-                <span className="assignee-tooltip">
-                  {card.assignees.map(a => (
-                    <span key={a.userId} className="assignee-tooltip-item">{a.userName}</span>
-                  ))}
-                </span>
+                  );
+                })}
+                {overflow > 0 && (
+                  <span className="avatar-chip avatar-overflow">
+                    +{overflow}
+                  </span>
+                )}
               </span>
-            );
-          })() : '-'}
-        </td>
-      )
+              <span className="assignee-tooltip">
+                {card.assignees.map(a => (
+                  <span key={a.userId} className="assignee-tooltip-item">{a.userName}</span>
+                ))}
+              </span>
+            </span>
+          );
+        })() : '-';
+
+        if (isAdmin) {
+          return <td key="assignedTo" className="assignee-cell">{renderAvatars()}</td>;
+        }
+
+        return (
+          <td key="assignedTo" className="assignee-cell">
+            <div className="status-popover-wrapper" ref={assignPopoverId === card.id ? assignPopoverRef : null}>
+              <span
+                className="assignee-trigger"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAssignPopoverId(assignPopoverId === card.id ? null : card.id);
+                }}
+              >
+                {renderAvatars()}
+              </span>
+              {assignPopoverId === card.id && (
+                <div className="status-popover">
+                  <button
+                    className="status-popover-item"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelfToggle(card, isAssigned);
+                    }}
+                  >
+                    {isAssigned ? 'Remove me' : 'Assign me'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </td>
+        );
+      }
     },
     {
       id: 'status',

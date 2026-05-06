@@ -134,6 +134,8 @@ class ApiService {
   // Job Assignees
   addAssignee(jobcardId, userId) { return this._post(`/jobcards/${jobcardId}/assignees`, { userId }); }
   removeAssignee(jobcardId, userId) { return this._del(`/jobcards/${jobcardId}/assignees/${userId}`); }
+  selfAssign(jobcardId) { return this._post(`/jobcards/${jobcardId}/assignees/self`); }
+  selfUnassign(jobcardId) { return this._del(`/jobcards/${jobcardId}/assignees/self`); }
 
   // Time Entries
   getTimeEntries(jobcardId) { return this.request(`/jobcards/${jobcardId}/time-entries`); }
