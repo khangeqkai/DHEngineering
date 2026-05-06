@@ -3,6 +3,16 @@ import {
   STATUS_OPTIONS
 } from '../constants';
 import { useTags } from '../../../hooks/useTags';
+import LineItemProgress from './LineItemProgress';
+
+function entriesForItem(entries, itemNumber) {
+  const target = String(itemNumber);
+  return entries.filter(e => {
+    if (!e.itemNumber) return false;
+    const nums = String(e.itemNumber).split(',').map(s => s.trim());
+    return nums.includes(target);
+  });
+}
 
 function StatusBadge({ status }) {
   const opt = STATUS_OPTIONS.find(s => s.value === status);
@@ -28,6 +38,7 @@ export default function DetailsReadOnlyView({
   formData,
   assignees,
   lineItems,
+  timeEntries = [],
   isOverdue,
   onStatusChange
 }) {
@@ -115,30 +126,37 @@ export default function DetailsReadOnlyView({
               const jobTypeLabel = item.jobType
                 ? (jobTypeTags.find(j => j.value === item.jobType)?.label || item.jobType)
                 : null;
+              const itemEntries = entriesForItem(timeEntries, item.itemNumber);
               return (
-                <div key={item.id || item.itemNumber} className="readonly-item">
-                  <span className="readonly-item-badge">#{item.itemNumber}</span>
-                  {jobTypeLabel && (
-                    <span className="readonly-badge job-type">{jobTypeLabel}</span>
-                  )}
-                  {item.qty && <span className="readonly-item-qty">Qty: {item.qty}</span>}
-                  <span className="readonly-item-desc">{item.description}</span>
-                  {materialLabel && (
-                    <span className="readonly-badge material">{materialLabel}</span>
-                  )}
-                  {treatments.length > 0 && (
-                    <span className="readonly-item-treatments">
-                      {treatments.map((t, i) => {
-                        const tName = t.value === 'OTHER'
-                          ? (t.otherText || 'Other')
-                          : (treatmentTags.find(tt => tt.value === t.value)?.label || t.value);
-                        const sName = t.supplierName || '(no supplier)';
-                        return (
-                          <span key={i} className="readonly-badge treatment">{tName} → {sName}</span>
-                        );
-                      })}
-                    </span>
-                  )}
+                <div key={item.id || item.itemNumber} className="readonly-item-row">
+                  <div className="readonly-item">
+                    <span className="readonly-item-badge">#{item.itemNumber}</span>
+                    {jobTypeLabel && (
+                      <span className="readonly-badge job-type">{jobTypeLabel}</span>
+                    )}
+                    {item.qty && <span className="readonly-item-qty">Qty: {item.qty}</span>}
+                    <span className="readonly-item-desc">{item.description}</span>
+                    {materialLabel && (
+                      <span className="readonly-badge material">{materialLabel}</span>
+                    )}
+                    {treatments.length > 0 && (
+                      <span className="readonly-item-treatments">
+                        {treatments.map((t, i) => {
+                          const tName = t.value === 'OTHER'
+                            ? (t.otherText || 'Other')
+                            : (treatmentTags.find(tt => tt.value === t.value)?.label || t.value);
+                          const sName = t.supplierName || '(no supplier)';
+                          return (
+                            <span key={i} className="readonly-badge treatment">{tName} → {sName}</span>
+                          );
+                        })}
+                      </span>
+                    )}
+                  </div>
+                  <LineItemProgress
+                    entries={itemEntries}
+                    lineItems={lineItems}
+                  />
                 </div>
               );
             })}

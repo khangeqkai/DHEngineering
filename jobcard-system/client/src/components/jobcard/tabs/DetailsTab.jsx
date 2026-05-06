@@ -53,7 +53,21 @@ export default function DetailsTab({
   setNewNote,
   onAddNote,
   onDeleteNote,
-  notesLoading
+  notesLoading,
+  // Time entry props
+  timeEntries = [],
+  machines = [],
+  showTimeEntryForm,
+  editingTimeEntryId,
+  timeEntryForm,
+  handleTimeEntryChange,
+  handleAddTimeEntry,
+  handleEditTimeEntry,
+  handleSaveTimeEntry,
+  handleDeleteTimeEntry,
+  handleStopActiveEntry,
+  resetTimeEntryForm,
+  onToggleSpecial
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const readOnly = isEdit && !isAdmin;
@@ -78,6 +92,7 @@ export default function DetailsTab({
           formData={formData}
           assignees={assignees}
           lineItems={lineItems}
+          timeEntries={timeEntries}
           isOverdue={isOverdue}
           onStatusChange={handleStatusChange}
         />
@@ -285,15 +300,28 @@ export default function DetailsTab({
         </div>
       </div>
 
-      {!isEdit && (
-        <ItemsTab
-          lineItems={lineItems}
-          addLineItem={addLineItem}
-          updateLineItem={updateLineItem}
-          removeLineItem={removeLineItem}
-          suppliers={suppliers}
-        />
-      )}
+      <ItemsTab
+        lineItems={lineItems}
+        addLineItem={addLineItem}
+        updateLineItem={updateLineItem}
+        removeLineItem={removeLineItem}
+        suppliers={suppliers}
+        timeEntries={timeEntries}
+        machines={machines}
+        isAdmin={isAdmin && isEdit}
+        showTimeEntryForm={showTimeEntryForm}
+        editingTimeEntryId={editingTimeEntryId}
+        timeEntryForm={timeEntryForm}
+        handleTimeEntryChange={handleTimeEntryChange}
+        handleAddTimeEntry={isEdit ? handleAddTimeEntry : undefined}
+        handleEditTimeEntry={handleEditTimeEntry}
+        handleSaveTimeEntry={handleSaveTimeEntry}
+        handleDeleteTimeEntry={handleDeleteTimeEntry}
+        handleStopActiveEntry={handleStopActiveEntry}
+        resetTimeEntryForm={resetTimeEntryForm}
+        onToggleSpecial={onToggleSpecial}
+      />
+
 
       {/* Customer Input */}
       <div className="form-section">

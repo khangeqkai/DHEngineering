@@ -9,7 +9,7 @@ Each task below is a self-contained brief. Hand one task at a time to a fresh ag
 | # | Decision | Notes |
 |---|---|---|
 | 1 | qty=0 on timer stop **records a real time entry** | Worker did the work, completed nothing — log it. |
-| 2 | Non-admin can **only** auto-record time entries (start/stop) | Manual `+ Add Entry` button stays admin-only on the new Progress tab. |
+| 2 | Non-admin can **only** auto-record time entries (start/stop) | Manual `+ Add Entry` button stays admin-only (renders inside the per-item Progress section on Details tab). |
 | 3 | Drop-down audit (#5) — defer; just rank/discover later | Don't convert anything yet. |
 | 4 | **Per-item timer** (each line item gets its own timer) | A jobcard can have a nut + bolt with very different processes. We don't want two jobcards. |
 | 5 | Per-item upload control: small **menu** with "Upload to {QA Forms / Job Files / Customer Property} / View Files / Mark NA" | Storage uses physical per-item subfolders (e.g. `/Job Files/Item-1/`). NA persists in `job_items` columns. |
@@ -74,7 +74,7 @@ A worker should be able to stop their timer and submit a time entry even if no u
 
 ---
 
-# Task 3 — User can self-assign via the Assignee column
+# Task 3 — User can self-assign via the Assignee column ✅ DONE
 
 **Effort:** ~2-3 hours. **Risk:** Low.
 
@@ -151,7 +151,11 @@ Already-known keepers (no need to re-list): see the table in Task 6's "Known fre
 
 ---
 
-# Task 5 — Split Costing tab → Progress tab + slim Costing tab
+# Task 5 — Collapse Items + Progress into Details (superseded brief)
+
+> **Note:** the original brief (kept below for history) split Costing into a separate Progress tab and a slim Costing tab. After implementation we restructured: line items + per-item progress now live directly on the **Details** tab for everyone, so the Items and Progress tabs were dropped entirely. Final tab layout: non-admin sees Details only; admin sees Details / Files / Costing / Activity. The Costing tab still slims down to pricing-only as originally intended.
+
+## Original brief — Split Costing tab → Progress tab + slim Costing tab
 
 **Effort:** ~5-6 hours. **Risk:** Medium. **Depends on:** Task 2 (qty=0).
 
@@ -201,7 +205,7 @@ Today the Costing tab mixes "what happened" (time entries) with "pricing" (rates
 
 # Task 6 — Replace QuickActionPanel with in-modal items workflow (per-item timer + per-item upload)
 
-**Effort:** ~1-2 days. **Risk:** High. **Depends on:** Task 2 (qty=0), Task 5 (Progress tab + non-admin tab visibility).
+**Effort:** ~1-2 days. **Risk:** High. **Depends on:** Task 2 (qty=0), Task 5 (line items + per-item progress now live on Details tab; Items/Progress tabs no longer exist).
 
 ### Goal
 Row click → opens JobCardModal directly (no separate panel). Each line item gets its own Start/Stop timer button and its own Files menu. Delete the QuickActionPanel entirely.
@@ -258,19 +262,16 @@ The hooks `useCamera.js`, `useQuickActionFiles.js`, and `useTimer.js` currently 
 #### 6F — Client: row click → modal directly + delete QuickActionPanel
 **Files:**
 - `jobcard-system/client/src/components/JobCardList.jsx`:
-  - Line 340-344: change `setQuickActionCard(card)` → `openEditModal(card.id)`.
-  - Line 96-104: remove `quickActionCard` state.
-  - Line 742-751: remove `<QuickActionPanel>` JSX.
-  - Line 11: remove `import QuickActionPanel`.
-  - Pass an `initialTab='items'` prop to `JobCardModal` (note: the new combined items workflow lives on the Items tab — make sure non-admin can see it).
+  - Replace the row-click `setQuickActionCard(card)` handler with `openEditModal(card.id)`.
+  - Remove `quickActionCard` state, the `<QuickActionPanel>` render, and the `import QuickActionPanel`.
+  - Modal opens on the Details tab (the current default; line items live there now, so no `initialTab` prop is needed).
 - `jobcard-system/client/src/components/jobcard/JobCardModal.jsx`:
-  - Drop `isAdmin &&` gate on the Items tab (line 418-421 and 473-481). Items tab visible to everyone.
-  - Drop `isAdmin &&` gate on Files tab if you want non-admin viewing (confirm with user before doing this — currently out of strict scope but logically follows from the QuickActionPanel deletion since QAP exposed file viewing to non-admin).
-  - For non-admin, `ItemsTab` must render line items as **read-only** (no add/remove items, no field editing — just the timer button, files menu, and per-item progress expand). Pass `readOnly={!isAdmin}` and gate the controls accordingly.
+  - The tab strip is currently rendered only for admin (`isEdit && isAdmin`). Non-admin sees the Details content directly (no tabs). Keep that — line items already live in Details, so no tab gating to "loosen". Decide separately whether non-admin needs Files-tab visibility (out of strict scope; confirm with user).
+  - Non-admin in edit mode currently renders via `DetailsReadOnlyView`. To get per-item Start/Stop and Files menu in there, either (a) extend `DetailsReadOnlyView` to render the same per-item controls, or (b) replace it with a non-admin variant of `ItemsTab` where field inputs are `readOnly` but the timer button, files menu, and per-item progress expand stay active. Recommend (b) to share the items rendering pipeline with admin.
 - **Delete:** `jobcard-system/client/src/components/jobcard/QuickActionPanel.jsx`, `QuickActionPanel.css`, `useQuickActionFiles.js` if no longer imported anywhere else, and any orphaned imports. Search the codebase for `QuickActionPanel` and remove all references.
 
 ### Behaviour
-- Click a row (any role) → JobCardModal opens on the Items tab.
+- Click a row (any role) → JobCardModal opens on the Details tab (line items live there now).
 - Each line item shows: badge, type/material/treatment (read-only for non-admin), `[Start Timer]` / `[Stop Timer]` button, `[Files ▼]` menu, expandable Progress section with that item's time entries.
 - Starting a timer with a conflict on another item/jobcard prompts the user (existing `startTimerWithConflictCheck` logic).
 - Stopping a timer opens a simplified StopTimerForm scoped to that one item (qty, machines, description).
@@ -282,7 +283,7 @@ The hooks `useCamera.js`, `useQuickActionFiles.js`, and `useTimer.js` currently 
 - No reference to `QuickActionPanel` anywhere in the client code (search returns 0 hits).
 - Row click goes straight to modal.
 - Non-admin can: see all items, start/stop timer per item, upload files to any item/category, mark items NA.
-- Non-admin cannot: edit item fields, add/remove items, see Costing tab, see Activity tab.
+- Non-admin cannot: edit item fields, add/remove items. The tab strip stays admin-only — Files / Costing / Activity remain hidden for non-admin; non-admin sees only the Details content with per-item controls inlined.
 - Per-item timer enforces "one active per user" — switching items triggers the conflict prompt.
 - Files uploaded to Item-2 appear under `View Files` only when viewing Item-2's menu, not Item-1's.
 - NA persists across reload.
@@ -314,4 +315,116 @@ Read CHANGE_BRIEFS.md → Task 1. Implement it. Run the dev server and verify th
 acceptance criteria before reporting back.
 ```
 
-Tasks 1, 2, 3, 4 can be done in parallel sessions if you want. Task 5 must precede Task 6. Don't skip Task 4 — its audit informs whether any of the dropdowns referenced in Task 6's read-only ItemsTab need work.
+Tasks 1, 2, 3, 4 can be done in parallel sessions if you want. Task 5 must precede Task 6. Don't skip Task 4 — its audit informs whether any of the dropdowns referenced in Task 6's read-only line-item renderer need work.
+
+---
+
+## Audit Results — Task 4
+
+Scope: every `<input>` (text-y types and no-type defaults) and `<textarea>` under `jobcard-system/client/src/` and `jobcard-system/worker-client/`. 77 `<input>` occurrences total; non-text types (checkbox/radio/file/number/date/datetime-local/email/password/tel/hidden) excluded from "candidate" analysis but listed below for completeness where they share a row with a text sibling.
+
+### TL;DR
+
+Only **two** real dropdown candidates surfaced. The rest are either narrative free-text, identity strings, numeric/reference values, search inputs, autocompletes already wired to a backing store, or filesystem paths.
+
+**Candidates worth converting:**
+1. `DetailsTab.jsx:342` — `repeatJobReference` should autocomplete to existing job numbers, not be free text. Placeholder `"JC-XXXXXXXX-XXX"` is also stale (job numbers are now `{prefix}{paddedNumber}` like `DH-00001`).
+2. `SearchPage.jsx:327` — "Field Changed" filter; placeholder hints at a fixed enum (`status`, `priority`, `labourRate`). Could become a select sourced from `history.changes` JSON keys.
+
+Everything else: keep as-is.
+
+### Audit Table
+
+Legend for **Recommend dropdown?**: **No (free-text)**, **No (numeric/ref)**, **No (already)**, **Yes** (with rationale).
+
+| File:line | Field | Current type | Recommend dropdown? | Proposed source | Notes |
+|---|---|---|---|---|---|
+| `client/src/components/Login.jsx:109` | `username` | text | No (numeric/ref) | — | Auth identifier; must be free typing. |
+| `client/src/components/Login.jsx:127` | `password` (PIN) | password | No (numeric/ref) | — | 4-digit PIN. |
+| `client/src/components/JobCardList.jsx:611` | `showArchived` | checkbox | No (already) | — | Toggle. |
+| `client/src/components/JobCardList.jsx:632` | list search | text | No (free-text) | — | Search query. |
+| `client/src/components/SearchPage.jsx:229` | global search `q` | text | No (free-text) | — | Search query. |
+| `client/src/components/SearchPage.jsx:327` | activity-filter `field` | text | **Yes** | Distinct keys from `history.changes` JSON, or hardcoded enum (`status`, `priority`, `labourRate`, `dueDate`, `assignees`, ...) | Placeholder already enumerates expected values. Free text currently lets users mistype. |
+| `client/src/components/SearchPage.jsx:346` | time-filter `jobNumber` | text | No (numeric/ref) | — | Partial-match filter; user wants to type fragments. |
+| `client/src/components/common/DataTable.jsx:145` | table search | text | No (free-text) | — | Generic table search box. |
+| `client/src/components/common/SearchableSupplierSelect.jsx:97` | supplier picker | text | No (already) | — | Already an autocomplete bound to suppliers. |
+| `client/src/components/ContactManagement.jsx:144` | `companyName` | text | No (free-text) | — | New-company input; identity. (DetailsTab uses an autocomplete variant.) |
+| `client/src/components/ContactManagement.jsx:162` | `contactName` | text | No (free-text) | — | Person name. |
+| `client/src/components/ContactManagement.jsx:181` | `phone` | tel | No (numeric/ref) | — | |
+| `client/src/components/ContactManagement.jsx:191` | `email` | email | No (already) | — | |
+| `client/src/components/ContactManagement.jsx:202` | `address` (textarea) | textarea | No (free-text) | — | Narrative. |
+| `client/src/components/ContactManagement.jsx:220` | `notes` (textarea) | textarea | No (free-text) | — | Narrative. |
+| `client/src/components/SupplierManagement.jsx:208` | supplier `name` | text | No (free-text) | — | Identity. |
+| `client/src/components/SupplierManagement.jsx:225` | `contactName` | text | No (free-text) | — | |
+| `client/src/components/SupplierManagement.jsx:243` | `contactPhone` | tel | No (numeric/ref) | — | |
+| `client/src/components/SupplierManagement.jsx:253` | `contactEmail` | email | No (already) | — | |
+| `client/src/components/SupplierManagement.jsx:264` | `address` (textarea) | textarea | No (free-text) | — | |
+| `client/src/components/SupplierManagement.jsx:316` | `customTagName` | text | No (free-text) | — | Used to create a *new* service-tag value; by definition not yet in the dropdown. |
+| `client/src/components/SupplierManagement.jsx:358` | supplier `notes` (textarea) | textarea | No (free-text) | — | |
+| `client/src/components/UserManagement.jsx:163` | `showInactive` | checkbox | No (already) | — | |
+| `client/src/components/UserManagement.jsx:197` | `username` | text | No (numeric/ref) | — | |
+| `client/src/components/UserManagement.jsx:211` | `password` (PIN) | password | No (numeric/ref) | — | |
+| `client/src/components/UserManagement.jsx:227` | display `name` | text | No (free-text) | — | |
+| `client/src/components/UserManagement.jsx:243` | `email` | email | No (already) | — | |
+| `client/src/components/Settings.jsx:26` | dark-mode toggle | checkbox | No (already) | — | |
+| `client/src/components/Settings.jsx:166` | inactivity timeout | number | No (numeric/ref) | — | |
+| `client/src/components/Settings.jsx:204` | `jobNumberPrefix` | text | No (free-text) | — | Admin-defined free format (e.g. `DH-`, `JC-2026-`). |
+| `client/src/components/Settings.jsx:215` | `jobNumberNext` | text | No (numeric/ref) | — | Filtered to digits client-side. |
+| `client/src/components/Settings.jsx:252` | `scannerFolder` | text | No (numeric/ref) | — | Filesystem path; folder picker handles input in Electron. |
+| `client/src/components/Settings.jsx:293` | `jobFoldersBase` | text | No (numeric/ref) | — | Filesystem path. |
+| `client/src/components/Settings.jsx:401/414/427` | PIN change x3 | password | No (numeric/ref) | — | |
+| `client/src/components/TagManagement.jsx:180` | category display | text (readOnly) | No (already) | — | Read-only label when editing. |
+| `client/src/components/TagManagement.jsx:194` | `machineNumber` | text | No (free-text) | — | Identifier (auto-uppercased). |
+| `client/src/components/TagManagement.jsx:201` | machine `name` | text | No (free-text) | — | Identity. |
+| `client/src/components/TagManagement.jsx:210` | `tagName` (new tag value) | text | No (free-text) | — | Used to create new tag values; by definition not yet in any dropdown. |
+| `client/src/components/QALevelManagement.jsx:214` | template upload | file | No (already) | — | |
+| `client/src/components/QALevelManagement.jsx:240` | QA level `name` | text | No (free-text) | — | Identity (e.g. "High Risk"). |
+| `client/src/components/jobcard/tabs/DetailsTab.jsx:118` | "Auto-generated" stub | text (readOnly) | No (already) | — | Display only; real value generated server-side. |
+| `client/src/components/jobcard/tabs/DetailsTab.jsx:150` | `companyName` (autocomplete) | text | No (already) | — | Autocompletes against `contacts`. Free-typing is required to create new contacts. |
+| `client/src/components/jobcard/tabs/DetailsTab.jsx:178` | `contactName` | text | No (free-text) | — | Person name. |
+| `client/src/components/jobcard/tabs/DetailsTab.jsx:190` | `phone` | text | No (numeric/ref) | — | (Note: should likely be `type="tel"` like ContactManagement; out of scope.) |
+| `client/src/components/jobcard/tabs/DetailsTab.jsx:199` | `email` | email | No (already) | — | |
+| `client/src/components/jobcard/tabs/DetailsTab.jsx:275` | job `description` (textarea) | textarea | No (free-text) | — | Narrative. |
+| `client/src/components/jobcard/tabs/DetailsTab.jsx:304` | `poNumber` | text | No (numeric/ref) | — | Customer reference; per Task 6 known-keepers list. |
+| `client/src/components/jobcard/tabs/DetailsTab.jsx:329` | `isRepeatJob` | checkbox | No (already) | — | |
+| `client/src/components/jobcard/tabs/DetailsTab.jsx:342` | `repeatJobReference` | text | **Yes** | Autocomplete against `jobcards.job_number` (existing rows) | Should be a referential pick, not free text. Placeholder `"JC-XXXXXXXX-XXX"` is also stale — job numbers now use the configurable prefix + padded counter (e.g. `DH-00001`). Strong UX win: typo-proof, surfaces history. Storing the resolved `jobNumber` string (current behaviour) is fine; no schema change needed. |
+| `client/src/components/jobcard/tabs/DetailsTab.jsx:359` | customer-property chips | checkbox | No (already) | — | Driven by `useTags('customer_property')`. |
+| `client/src/components/jobcard/tabs/DetailsTab.jsx:388` | drawings chips | checkbox | No (already) | — | Driven by `useTags('drawings')`. |
+| `client/src/components/jobcard/tabs/DetailsTab.jsx:450` | assignee chips | checkbox | No (already) | — | Driven by `users`. |
+| `client/src/components/jobcard/tabs/DetailsTab.jsx:466` | internal `notes` (textarea) | textarea | No (free-text) | — | Narrative. |
+| `client/src/components/jobcard/tabs/ItemsTab.jsx:43` | item `qty` | text | No (numeric/ref) | — | Stored as TEXT to allow empty/0 (post-Task 2). Per Task 6 known-keepers. |
+| `client/src/components/jobcard/tabs/ItemsTab.jsx:52` | item `description` | text | No (free-text) | — | Per Task 6 known-keepers. |
+| `client/src/components/jobcard/tabs/TreatmentChips.jsx:101` | treatment OTHER `otherText` | text | No (free-text) | — | Per Task 6 known-keepers. Only shown when treatment value is `'OTHER'`. |
+| `client/src/components/jobcard/StopTimerForm.jsx:166` | per-item completed `qty` | text | No (numeric/ref) | — | Numeric, but text-typed for empty support (Task 2). |
+| `client/src/components/jobcard/StopTimerForm.jsx:185` | machines used | checkbox | No (already) | — | Driven by `machines` table. |
+| `client/src/components/jobcard/StopTimerForm.jsx:202` | per-item `description` | text | No (free-text) | — | Per Task 6 known-keepers. |
+| `client/src/components/jobcard/tabs/CostingTab.jsx:82` | special-labour toggle | checkbox | No (already) | — | |
+| `client/src/components/jobcard/tabs/CostingTab.jsx:183` | manual entry `qty` | text | No (numeric/ref) | — | |
+| `client/src/components/jobcard/tabs/CostingTab.jsx:189` | manual entry `description` | text | No (free-text) | — | Narrative. |
+| `client/src/components/jobcard/tabs/CostingTab.jsx:206/210` | start/end time | datetime-local | No (already) | — | |
+| `client/src/components/jobcard/tabs/NotesSection.jsx:18` | new note (textarea) | textarea | No (free-text) | — | Narrative. |
+| `worker-client/setup.html:85` | server IP | text | No (numeric/ref) | — | IP address; free-typed. |
+
+### Drop-down candidates — implementation notes
+
+**1. `repeatJobReference` autocomplete (DetailsTab.jsx:342)**
+- Reuse the `SearchableSupplierSelect`-style pattern (`client/src/components/common/`) or the inline contact-autocomplete pattern in `DetailsTab.jsx:145-174`.
+- Source: `api.getJobcards()` — already loaded elsewhere; or a new lightweight `GET /jobcards?fields=jobNumber` endpoint if performance becomes an issue.
+- Match against `jobNumber` (and optionally `description` to help users find the right repeat).
+- Allow free-typing fallback for genuinely external references.
+- Update placeholder to match current numbering (e.g. read first chars from `job_number_prefix` setting, or just `"e.g. DH-00001"`).
+- Migration concern: none — column stays free-text TEXT.
+
+**2. Activity-log "Field Changed" filter (SearchPage.jsx:327)**
+- Two source options:
+  - **Static enum** in `client/src/components/jobcard/constants.js` — list of known `history.changes` keys (`status`, `priority`, `dueDate`, `assignees`, `labourRate`, `materialCost`, `qty`, `description`, `companyName`, `treatments`, `qaLevelId`, `notes`, etc.). Cheap; needs maintenance.
+  - **Dynamic** — server endpoint that runs `SELECT DISTINCT json_each.key FROM history, json_each(history.changes)`. More accurate; one-shot query, can be cached.
+- Allow free-typing fallback (admin search is power-user territory; enum + free-input combo box is best).
+- Migration concern: none.
+
+### Method footnote
+
+- Searched: `<input` and `<textarea` across `jobcard-system/client/src/` and `jobcard-system/worker-client/`.
+- Inputs without explicit `type=` default to text and are included.
+- "Already-known keepers" list in Task 6 was respected — those rows are still listed for completeness (marked free-text/numeric/ref).
+- Did not sample DB row values; classification was based on field semantics, surrounding labels, and placeholder hints. The two candidate rows do not need DB sampling to validate the recommendation.

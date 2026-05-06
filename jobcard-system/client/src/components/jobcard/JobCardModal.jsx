@@ -11,7 +11,6 @@ import { useTimeEntries } from './useTimeEntries';
 import { useContactSearch } from './useContactSearch';
 import { useJobCardForm } from './useJobCardForm';
 import DetailsTab from './tabs/DetailsTab';
-import ItemsTab from './tabs/ItemsTab';
 import CostingTab from './tabs/CostingTab';
 import FilesTab from './tabs/FilesTab';
 import ActivityLogTab from './tabs/ActivityLogTab';
@@ -397,7 +396,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const isOverdue = formHook.formData.dueDate?.trim() &&
     new Date(formHook.formData.dueDate + 'T00:00:00') < today &&
     !['DONE', 'INVOICED'].includes(formHook.formData.status);
-  const filledItemCount = formHook.lineItems.filter(i => i.description.trim()).length;
   const buildTitle = () => isEdit ? formHook.jobNumber : 'New Job Card';
 
   return (
@@ -409,22 +407,15 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT' && e.target.type !== 'submit') e.preventDefault(); }} style={{ display: 'contents' }}>
             <BottomSheet.Body>
               <div className="jc-zoom-root" data-zoom={zoom}>
-              {isEdit && (
+              {isEdit && isAdmin && (
                 <div className="modal-tabs">
                   <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>
                     Details
                     {jobNotes.notes.length > 0 && <span className="tab-badge">{jobNotes.notes.length}</span>}
                   </button>
-                  {isAdmin && <button type="button" className={`tab ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}>
-                    Items
-                    {filledItemCount > 0 && <span className="tab-badge">{filledItemCount}</span>}
-                  </button>}
-                  {isAdmin && <button type="button" className={`tab ${activeTab === 'files' ? 'active' : ''}`} onClick={() => setActiveTab('files')}>Files</button>}
-                  {isAdmin && <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>
-                    Costing
-                    {timeEntries.length > 0 && <span className="tab-badge">{timeEntries.length}</span>}
-                  </button>}
-                  {isAdmin && <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>}
+                  <button type="button" className={`tab ${activeTab === 'files' ? 'active' : ''}`} onClick={() => setActiveTab('files')}>Files</button>
+                  <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>
+                  <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>
                 </div>
               )}
 
@@ -467,27 +458,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   onAddNote={jobNotes.addNote}
                   onDeleteNote={jobNotes.deleteNote}
                   notesLoading={jobNotes.loading}
-                />
-              )}
-
-              {activeTab === 'items' && isEdit && isAdmin && (
-                <ItemsTab
-                  lineItems={formHook.lineItems}
-                  addLineItem={formHook.addLineItem}
-                  updateLineItem={formHook.updateLineItem}
-                  removeLineItem={formHook.removeLineItem}
-                  suppliers={suppliers || []}
-                />
-              )}
-
-              {activeTab === 'costing' && isEdit && isAdmin && (
-                <CostingTab
-                  costingForm={costingHook.costingForm}
-                  handleCostingChange={costingHook.handleCostingChange}
-                  calculateCostingTotals={costingHook.calculateCostingTotals}
-                  handleSaveCosting={costingHook.handleSaveCosting}
-                  savingCosting={costingHook.savingCosting}
                   timeEntries={timeEntries || []}
+                  machines={machines || []}
                   showTimeEntryForm={timeEntry.showTimeEntryForm}
                   editingTimeEntryId={timeEntry.editingTimeEntryId}
                   timeEntryForm={timeEntry.timeEntryForm}
@@ -499,8 +471,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   handleStopActiveEntry={timeEntry.handleStopActiveEntry}
                   resetTimeEntryForm={timeEntry.resetTimeEntryForm}
                   onToggleSpecial={handleToggleSpecial}
-                  lineItems={formHook.lineItems}
-                  machines={machines || []}
+                />
+              )}
+
+              {activeTab === 'costing' && isEdit && isAdmin && (
+                <CostingTab
+                  costingForm={costingHook.costingForm}
+                  handleCostingChange={costingHook.handleCostingChange}
+                  calculateCostingTotals={costingHook.calculateCostingTotals}
+                  handleSaveCosting={costingHook.handleSaveCosting}
+                  savingCosting={costingHook.savingCosting}
                 />
               )}
 

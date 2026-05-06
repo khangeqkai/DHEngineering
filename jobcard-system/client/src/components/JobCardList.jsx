@@ -450,10 +450,6 @@ export default function JobCardList() {
           );
         })() : '-';
 
-        if (isAdmin) {
-          return <td key="assignedTo" className="assignee-cell">{renderAvatars()}</td>;
-        }
-
         return (
           <td key="assignedTo" className="assignee-cell">
             <div className="status-popover-wrapper" ref={assignPopoverId === card.id ? assignPopoverRef : null}>

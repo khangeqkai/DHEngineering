@@ -859,6 +859,58 @@
   min-width: 280px;
 }
 
+.line-item-progress {
+  flex: 1 1 100%;
+  min-width: 0;
+  margin-top: 0.25rem;
+}
+
+.line-item-progress > summary {
+  cursor: pointer;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-tertiary);
+  padding: 0.25rem 0;
+  user-select: none;
+}
+
+.line-item-progress > summary:hover {
+  color: var(--text-secondary);
+}
+
+.line-item-progress[open] > summary {
+  margin-bottom: 0.5rem;
+}
+
+.line-item-progress .empty-message {
+  margin: 0.25rem 0 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+}
+
+.line-item-progress-active {
+  margin-left: 0.5rem;
+  font-size: var(--text-xs);
+  color: var(--success-color, #16a34a);
+  font-weight: var(--font-semibold);
+}
+
+.line-item-progress-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.readonly-item-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.readonly-item-row > .line-item-progress {
+  margin-left: 1.5rem;
+}
+
 /* Treatment chips: per-line-item treatment + supplier */
 .treatment-chips-wrapper {
   width: 100%;

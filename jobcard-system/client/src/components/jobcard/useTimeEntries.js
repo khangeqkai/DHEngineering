@@ -24,10 +24,11 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     }));
   }, []);
 
-  const handleAddTimeEntry = useCallback(() => {
+  const handleAddTimeEntry = useCallback((itemNumber = '') => {
     resetTimeEntryForm();
     setTimeEntryForm(prev => ({
       ...prev,
+      itemNumber: itemNumber !== '' && itemNumber != null ? String(itemNumber) : '',
       startTime: new Date().toISOString().slice(0, 16)
     }));
     setShowTimeEntryForm(true);
