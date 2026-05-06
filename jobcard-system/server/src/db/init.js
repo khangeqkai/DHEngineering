@@ -24,6 +24,18 @@ function runMigrations() {
     }
   }
 
+  // One-shot wipe of legacy time_entries (Task 6 — per-item timer rewrite).
+  // CSV item_number rows are no longer supported; rather than splitting them,
+  // we wipe and start fresh per the project's "no backward compat" rule.
+  const wipeFlagKey = 'time_entries_per_item_wiped_at';
+  const flag = db.prepare('SELECT value FROM settings WHERE key = ?').get(wipeFlagKey);
+  if (!flag) {
+    const result = db.prepare('DELETE FROM time_entries').run();
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
+      .run(wipeFlagKey, new Date().toISOString());
+    logger.info({ deleted: result.changes }, 'Migration: Wiped legacy time_entries for per-item timer');
+  }
+
   logger.info('Migrations complete');
 }
 

@@ -67,7 +67,13 @@ export default function DetailsTab({
   handleDeleteTimeEntry,
   handleStopActiveEntry,
   resetTimeEntryForm,
-  onToggleSpecial
+  onToggleSpecial,
+  // Per-item timer
+  activeTimer,
+  timerElapsed,
+  timerLoading,
+  onStartTimer,
+  onStopTimer
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const readOnly = isEdit && !isAdmin;
@@ -92,9 +98,17 @@ export default function DetailsTab({
           formData={formData}
           assignees={assignees}
           lineItems={lineItems}
+          updateLineItem={updateLineItem}
           timeEntries={timeEntries}
           isOverdue={isOverdue}
           onStatusChange={handleStatusChange}
+          jobCardId={jobCardId}
+          activeTimer={activeTimer}
+          timerElapsed={timerElapsed}
+          timerLoading={timerLoading}
+          onStartTimer={onStartTimer}
+          onStopTimer={onStopTimer}
+          handleStopActiveEntry={handleStopActiveEntry}
         />
         {isEdit && (
           <NotesSection
@@ -301,6 +315,7 @@ export default function DetailsTab({
       </div>
 
       <ItemsTab
+        jobCardId={jobCardId}
         lineItems={lineItems}
         addLineItem={addLineItem}
         updateLineItem={updateLineItem}
@@ -320,6 +335,11 @@ export default function DetailsTab({
         handleStopActiveEntry={handleStopActiveEntry}
         resetTimeEntryForm={resetTimeEntryForm}
         onToggleSpecial={onToggleSpecial}
+        activeTimer={isEdit ? activeTimer : null}
+        timerElapsed={timerElapsed}
+        timerLoading={timerLoading}
+        onStartTimer={isEdit ? onStartTimer : undefined}
+        onStopTimer={isEdit ? onStopTimer : undefined}
       />
 
 

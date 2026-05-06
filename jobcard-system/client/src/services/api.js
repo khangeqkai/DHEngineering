@@ -145,7 +145,7 @@ class ApiService {
 
   // Timer endpoints
   getActiveTimer() { return this.request('/jobcards/active-timer'); }
-  startTimer(jobcardId) { return this._post(`/jobcards/${jobcardId}/time-entries/start`); }
+  startTimer(jobcardId, itemNumber) { return this._post(`/jobcards/${jobcardId}/time-entries/start`, { itemNumber }); }
   stopTimer(jobcardId, entryId) { return this._post(`/jobcards/${jobcardId}/time-entries/${entryId}/stop`); }
   toggleSpecialLabour(jobcardId, entryId) { return this._patch(`/jobcards/${jobcardId}/time-entries/${entryId}/toggle-special`); }
 
@@ -158,50 +158,19 @@ class ApiService {
   getCosting(jobcardId) { return this.request(`/jobcards/${jobcardId}/costing`); }
   updateCosting(jobcardId, data) { return this._put(`/jobcards/${jobcardId}/costing`, data); }
 
-  // Documents
-  getDocuments(jobcardId) { return this.request(`/jobcards/${jobcardId}/documents`); }
-  uploadDocument(jobcardId, data) { return this._post(`/jobcards/${jobcardId}/documents`, data); }
-  getDocument(jobcardId, documentId) { return this.request(`/jobcards/${jobcardId}/documents/${documentId}`); }
-  deleteDocument(jobcardId, documentId) { return this._del(`/jobcards/${jobcardId}/documents/${documentId}`); }
-
-  // QA Forms
-  getQAForms(jobcardId) { return this.request(`/jobcards/${jobcardId}/qa-forms`); }
-  addQAForm(jobcardId, data) { return this._post(`/jobcards/${jobcardId}/qa-forms`, data); }
-  updateQAForm(jobcardId, formId, data) { return this._patch(`/jobcards/${jobcardId}/qa-forms/${formId}`, data); }
-  deleteQAForm(jobcardId, formId) { return this._del(`/jobcards/${jobcardId}/qa-forms/${formId}`); }
-
-  // Job files (from job folder on disk)
-  getJobFiles(jobcardId) {
-    return this.request(`/jobcards/${jobcardId}/job-files`);
+  // Job card files (disk-first; one folder per category per job).
+  // category: 'job-files' | 'qa-form-files' | 'customer-property-files'
+  listJobcardFiles(jobcardId, category) {
+    return this.request(`/jobcards/${jobcardId}/files/${category}`);
   }
-
-  getJobFileData(jobcardId, filename) {
-    return this.request(`/jobcards/${jobcardId}/job-files/${encodeURIComponent(filename)}`);
+  getJobcardFile(jobcardId, category, filename) {
+    return this.request(`/jobcards/${jobcardId}/files/${category}/${encodeURIComponent(filename)}`);
   }
-
-  // QA Form files (from job folder on disk)
-  getQaFormFiles(jobcardId) {
-    return this.request(`/jobcards/${jobcardId}/qa-form-files`);
+  scannerToJobcardFiles(jobcardId, category, filePath) {
+    return this._post(`/jobcards/${jobcardId}/files/${category}/from-scanner`, { filePath });
   }
-
-  getQaFormFileData(jobcardId, filename) {
-    return this.request(`/jobcards/${jobcardId}/qa-form-files/${encodeURIComponent(filename)}`);
-  }
-
-  // Scanner file → folder
-  scannerToJobFiles(jobcardId, filePath) { return this._post(`/jobcards/${jobcardId}/job-files/from-scanner`, { filePath }); }
-  scannerToQaFormFiles(jobcardId, filePath) { return this._post(`/jobcards/${jobcardId}/qa-form-files/from-scanner`, { filePath }); }
-  scannerToCustomerPropertyFiles(jobcardId, filePath) { return this._post(`/jobcards/${jobcardId}/customer-property-files/from-scanner`, { filePath }); }
-
-  // Upload base64 → folder
-  uploadToJobFiles(jobcardId, filename, fileData) { return this._post(`/jobcards/${jobcardId}/job-files/upload`, { filename, fileData }); }
-  uploadToQaFormFiles(jobcardId, filename, fileData) { return this._post(`/jobcards/${jobcardId}/qa-form-files/upload`, { filename, fileData }); }
-  uploadToCustomerPropertyFiles(jobcardId, filename, fileData) { return this._post(`/jobcards/${jobcardId}/customer-property-files/upload`, { filename, fileData }); }
-
-  // Customer Property files (from job folder on disk)
-  getCustomerPropertyFiles(jobcardId) { return this.request(`/jobcards/${jobcardId}/customer-property-files`); }
-  getCustomerPropertyFileData(jobcardId, filename) {
-    return this.request(`/jobcards/${jobcardId}/customer-property-files/${encodeURIComponent(filename)}`);
+  uploadToJobcardFiles(jobcardId, category, filename, fileData) {
+    return this._post(`/jobcards/${jobcardId}/files/${category}/upload`, { filename, fileData });
   }
 
   // Contact endpoints (phone contacts style)

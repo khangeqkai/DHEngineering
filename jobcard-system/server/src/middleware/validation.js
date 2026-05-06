@@ -151,7 +151,6 @@ const JOBCARD_STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', '
 
 const PRIORITY_OPTIONS = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
 
-const INSPECTION_OPTIONS = ['NOT_APPLICABLE', 'OK', 'ERROR'];
 
 const JOBCARD_COLUMN_IDS = [
   'jobNumber', 'company', 'customer', 'assignedTo',
@@ -319,11 +318,18 @@ const validateJobcardEnums = [
 ];
 
 /**
- * Time entry inspection field validation
+ * Start timer validation
+ * POST /jobcards/:id/time-entries/start
+ * itemNumber is required so the timer is bound to a specific line item.
  */
-const validateTimeEntryInspection = [
-  optionalEnum('firstOffInspection', 'First off inspection', INSPECTION_OPTIONS),
-  optionalEnum('inProcessValidation', 'In-process validation', INSPECTION_OPTIONS),
+const validateStartTimer = [
+  body('itemNumber')
+    .exists({ checkNull: true })
+    .withMessage('itemNumber is required')
+    .bail()
+    .isInt({ min: 1 })
+    .withMessage('itemNumber must be a positive integer')
+    .toInt(),
   handleValidationErrors
 ];
 
@@ -434,12 +440,11 @@ module.exports = {
   validateUpdateContact,
   validateJobcardListQuery,
   validateJobcardEnums,
-  validateTimeEntryInspection,
+  validateStartTimer,
   validateItemTreatments,
   validateItemMaterials,
   validateItemJobTypes,
 
   JOBCARD_STATUSES,
-  PRIORITY_OPTIONS,
-  INSPECTION_OPTIONS
+  PRIORITY_OPTIONS
 };

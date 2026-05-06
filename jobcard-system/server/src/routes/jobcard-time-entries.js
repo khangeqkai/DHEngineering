@@ -3,8 +3,8 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { validateTimeEntryInspection } = require('../middleware/validation');
-const { timeEntryQueries, recordHistory } = require('../db/database');
+const { validateStartTimer } = require('../middleware/validation');
+const { timeEntryQueries, jobItemQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
@@ -21,15 +21,6 @@ function toCamelCase(e) {
     description: e.description,
     startTime: e.start_time,
     endTime: e.end_time,
-    equipmentChecksDone: e.equipment_checks_done === 1,
-    measuringVerificationDone: e.measuring_verification_done === 1,
-    firstOffInspection: e.first_off_inspection,
-    firstOffInspectionNotes: e.first_off_inspection_notes,
-    inProcessValidation: e.in_process_validation,
-    inProcessValidationNotes: e.in_process_validation_notes,
-    scrapAllGood: e.scrap_all_good === 1,
-    scrapRecycleInhouseQty: e.scrap_recycle_inhouse_qty,
-    scrapRecycleBinQty: e.scrap_recycle_bin_qty,
     isSpecialLabour: e.is_special_labour === 1,
     createdAt: e.created_at
   };
@@ -46,6 +37,7 @@ router.get('/active-timer', authenticate, (req, res) => {
       id: active.id,
       jobcardId: active.jobcard_id,
       jobNumber: active.job_number,
+      itemNumber: active.item_number,
       userId: active.user_id,
       userName: active.user_name,
       startTime: active.start_time
@@ -57,22 +49,28 @@ router.get('/active-timer', authenticate, (req, res) => {
 });
 
 // Start timer (create entry with start_time only)
-router.post('/:id/time-entries/start', authenticate, (req, res) => {
+router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req, res) => {
   try {
     const { id } = req.params;
+    const { itemNumber } = req.body;
+
+    // Verify the item exists on this jobcard
+    const items = jobItemQueries.getByJobcard.all(id);
+    const itemExists = items.some(item => item.item_number === itemNumber);
+    if (!itemExists) {
+      return res.status(400).json({ error: `Item #${itemNumber} does not exist on this job card` });
+    }
 
     // Check for existing active timer
     const active = timeEntryQueries.getActiveByUser.get(req.user.userId);
     if (active) {
-      if (active.jobcard_id === id) {
-        return res.status(400).json({ error: 'Timer already running on this job' });
-      }
       return res.status(409).json({
         error: 'Timer running on another job',
         activeTimer: {
           id: active.id,
           jobcardId: active.jobcard_id,
           jobNumber: active.job_number,
+          itemNumber: active.item_number,
           startTime: active.start_time
         }
       });
@@ -85,30 +83,23 @@ router.post('/:id/time-entries/start', authenticate, (req, res) => {
       entryId,
       id,
       req.user.userId,
-      null, // itemNumber
+      itemNumber,
       null, // machineNumber
       null, // qty
       null, // description
       startTime,
-      null, // endTime
-      0, // equipmentChecksDone
-      0, // measuringVerificationDone
-      null, // firstOffInspection
-      null, // firstOffInspectionNotes
-      null, // inProcessValidation
-      null, // inProcessValidationNotes
-      1, // scrapAllGood
-      0, // scrapRecycleInhouseQty
-      0  // scrapRecycleBinQty
+      null  // endTime
     );
 
     recordHistory('jobcard', id, 'start_timer', req.user.userId, req.user.name || req.user.username, {
-      timer: { from: null, to: startTime }
+      timer: { from: null, to: startTime },
+      itemNumber: { from: null, to: itemNumber }
     }, null);
 
     res.status(201).json({
       id: entryId,
       jobcardId: id,
+      itemNumber,
       startTime
     });
   } catch (err) {
@@ -163,7 +154,7 @@ router.get('/:id/time-entries', authenticate, (req, res) => {
 });
 
 // Add time entry
-router.post('/:id/time-entries', authenticate, ...validateTimeEntryInspection, (req, res) => {
+router.post('/:id/time-entries', authenticate, (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -179,16 +170,7 @@ router.post('/:id/time-entries', authenticate, ...validateTimeEntryInspection, (
       data.qty || null,
       data.description || null,
       data.startTime,
-      data.endTime || null,
-      data.equipmentChecksDone ? 1 : 0,
-      data.measuringVerificationDone ? 1 : 0,
-      data.firstOffInspection || null,
-      data.firstOffInspectionNotes || null,
-      data.inProcessValidation || null,
-      data.inProcessValidationNotes || null,
-      data.scrapAllGood !== false ? 1 : 0,
-      data.scrapRecycleInhouseQty || 0,
-      data.scrapRecycleBinQty || 0
+      data.endTime || null
     );
 
     recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name || req.user.username, {
@@ -207,7 +189,7 @@ router.post('/:id/time-entries', authenticate, ...validateTimeEntryInspection, (
 });
 
 // Update time entry
-router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryInspection, (req, res) => {
+router.put('/:id/time-entries/:entryId', authenticate, (req, res) => {
   try {
     const { id, entryId } = req.params;
     const data = req.body;
@@ -224,15 +206,6 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryInspe
       data.description || null,
       data.startTime,
       data.endTime || null,
-      data.equipmentChecksDone ? 1 : 0,
-      data.measuringVerificationDone ? 1 : 0,
-      data.firstOffInspection || null,
-      data.firstOffInspectionNotes || null,
-      data.inProcessValidation || null,
-      data.inProcessValidationNotes || null,
-      data.scrapAllGood !== false ? 1 : 0,
-      data.scrapRecycleInhouseQty || 0,
-      data.scrapRecycleBinQty || 0,
       entryId
     );
 

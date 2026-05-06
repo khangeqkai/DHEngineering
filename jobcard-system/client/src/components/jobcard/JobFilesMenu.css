@@ -1,0 +1,412 @@
+.lif-menu-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.lif-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.lif-trigger-btn:hover {
+  background: var(--surface-elevated);
+}
+
+.lif-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  padding: 0.35rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.lif-menu-section-label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 0.35rem 0.6rem 0.2rem;
+}
+
+.lif-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  text-align: left;
+}
+
+.lif-menu-item:hover:not(:disabled) {
+  background: var(--surface-inset);
+}
+
+.lif-menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lif-menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 0.2rem 0.4rem;
+}
+
+.lif-pill {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  padding: 0.05rem 0.45rem;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.lif-pill-count {
+  background: var(--primary-accent);
+  color: #fff;
+}
+
+.lif-pill-empty {
+  background: var(--surface-inset);
+  color: var(--text-secondary);
+}
+
+.lif-pill-na {
+  background: var(--text-secondary);
+  color: var(--surface);
+}
+
+/* Overlay panel */
+.lif-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+.lif-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  width: 80vw;
+  max-width: 900px;
+  height: 80vh;
+  max-height: 800px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.lif-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.lif-back-btn,
+.lif-close-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+
+.lif-back-btn:hover,
+.lif-close-btn:hover {
+  background: var(--surface-inset);
+  color: var(--text-primary);
+}
+
+.lif-close-btn {
+  margin-left: auto;
+  padding: 0.35rem 0.5rem;
+}
+
+.lif-panel-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0.5rem;
+}
+
+.lif-panel-subtitle {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.lif-panel-body {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem 1.1rem;
+}
+
+.lif-loading,
+.lif-empty {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 2rem;
+}
+
+/* Source picker grid */
+.lif-source-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.lif-source-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.lif-source-btn small {
+  font-weight: 400;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.lif-source-btn:hover {
+  border-color: var(--primary-accent);
+  background: rgba(var(--accent-rgb), 0.05);
+}
+
+/* Scanner list */
+.lif-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lif-file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.lif-file-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lif-file-name {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lif-file-meta {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* Camera */
+.lif-camera {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.lif-video-wrap {
+  background: #000;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+}
+
+.lif-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.lif-camera-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.lif-photo-strip {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+}
+
+.lif-photo-thumb {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+}
+
+.lif-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.lif-photo-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* File grid */
+.lif-file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.lif-file-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.lif-file-card:hover {
+  border-color: var(--primary-accent);
+}
+
+.lif-file-card-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+}
+
+.lif-file-card-loading {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+}
+
+.lif-file-card-icon {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-inset);
+  color: var(--text-secondary);
+}
+
+.lif-file-card-name {
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Lightbox / iframe viewer */
+.lif-lightbox,
+.lif-doc-viewer {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lif-lightbox img {
+  max-width: 92vw;
+  max-height: 92vh;
+  object-fit: contain;
+}
+
+.lif-lightbox-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lif-doc-viewer-frame {
+  width: 92vw;
+  height: 92vh;
+  border: none;
+  background: #fff;
+  border-radius: var(--radius-md);
+}

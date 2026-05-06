@@ -3,6 +3,8 @@ import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
+const emptyEntryForm = () => ({ qty: '', machineNumbers: [], description: '' });
+
 export function useTimer(jobcardId, { onExternalStop } = {}) {
   const { registerBeforeLogout } = useAuth();
   const [activeTimer, setActiveTimer] = useState(null);
@@ -10,9 +12,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
   const [loading, setLoading] = useState(false);
   const [showEntryForm, setShowEntryForm] = useState(false);
   const [stoppedEntry, setStoppedEntry] = useState(null);
-  const [entryForm, setEntryForm] = useState({
-    items: {} // { [itemNumber]: { qty, machineNumbers, description } }
-  });
+  const [entryForm, setEntryForm] = useState(emptyEntryForm);
   const intervalRef = useRef(null);
   const selfStoppedRef = useRef(false);
   const onExternalStopRef = useRef(onExternalStop);
@@ -64,7 +64,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
         const current = await api.getActiveTimer();
         if (!current || current.id !== activeTimer.id) {
           if (!selfStoppedRef.current) {
-            toast('Your timer was stopped by an admin', { icon: '\u2139\uFE0F' });
+            toast('Your timer was stopped by an admin', { icon: 'ℹ️' });
             if (onExternalStopRef.current) onExternalStopRef.current();
           }
           selfStoppedRef.current = false;
@@ -79,62 +79,70 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     return () => clearInterval(poll);
   }, [activeTimer, jobcardId]);
 
-  const startTimer = useCallback(async () => {
+  const startTimer = useCallback(async (itemNumber) => {
+    if (!Number.isInteger(itemNumber) || itemNumber < 1) {
+      toast.error('Pick an item to start the timer');
+      return;
+    }
     setLoading(true);
     try {
-      const result = await api.startTimer(jobcardId);
+      const result = await api.startTimer(jobcardId, itemNumber);
       setActiveTimer({
         id: result.id,
         jobcardId: result.jobcardId,
+        itemNumber: result.itemNumber,
         startTime: result.startTime
       });
-      toast.success('Timer started');
+      toast.success(`Timer started on item #${itemNumber}`);
     } catch (err) {
-      if (err.message.includes('Timer running on another job')) {
-        // Parse the 409 response - need to handle via raw fetch
-        toast.error('Stop your timer on another job first');
-      } else {
-        toast.error(err.message || 'Failed to start timer');
-      }
+      toast.error(err.message || 'Failed to start timer');
     } finally {
       setLoading(false);
     }
   }, [jobcardId]);
 
-  const startTimerWithConflictCheck = useCallback(async (showConfirm) => {
+  const startTimerWithConflictCheck = useCallback(async (itemNumber, showConfirm) => {
+    if (!Number.isInteger(itemNumber) || itemNumber < 1) {
+      toast.error('Pick an item to start the timer');
+      return;
+    }
     setLoading(true);
     try {
-      const result = await api.startTimer(jobcardId);
+      const result = await api.startTimer(jobcardId, itemNumber);
       setActiveTimer({
         id: result.id,
         jobcardId: result.jobcardId,
+        itemNumber: result.itemNumber,
         startTime: result.startTime
       });
-      toast.success('Timer started');
+      toast.success(`Timer started on item #${itemNumber}`);
     } catch (err) {
-      // Check for 409 conflict
+      // Check for 409 conflict (timer running on another job/item)
       if (err.message.includes('Timer running on another job')) {
         try {
-          // Get active timer details
           const currentTimer = await api.getActiveTimer();
           if (currentTimer && showConfirm) {
+            const onSameJob = currentTimer.jobcardId === jobcardId;
+            const message = onSameJob
+              ? `Stop timer on item #${currentTimer.itemNumber} and start on item #${itemNumber}?`
+              : `Stop timer on ${currentTimer.jobNumber || 'another job'} and start here?`;
             const shouldSwitch = await showConfirm({
               title: 'Timer Running',
-              message: `Stop timer on ${currentTimer.jobNumber || 'another job'} and start here?`,
+              message,
               confirmLabel: 'Stop & Start',
               cancelLabel: 'Cancel',
               confirmVariant: 'primary'
             });
             if (shouldSwitch) {
               await api.stopTimer(currentTimer.jobcardId, currentTimer.id);
-              // Now start on this job
-              const result = await api.startTimer(jobcardId);
+              const result = await api.startTimer(jobcardId, itemNumber);
               setActiveTimer({
                 id: result.id,
                 jobcardId: result.jobcardId,
+                itemNumber: result.itemNumber,
                 startTime: result.startTime
               });
-              toast.success('Timer started');
+              toast.success(`Timer started on item #${itemNumber}`);
             }
           }
         } catch (innerErr) {
@@ -156,6 +164,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
       setStoppedEntry(entry);
       selfStoppedRef.current = true;
       setActiveTimer(null);
+      setEntryForm(emptyEntryForm());
       setShowEntryForm(true);
       toast.success('Timer stopped');
     } catch (err) {
@@ -165,66 +174,43 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     }
   }, [jobcardId, activeTimer]);
 
-  const handleItemFieldChange = useCallback((itemNumber, field, value) => {
-    setEntryForm(prev => {
-      const existing = prev.items[itemNumber] || { qty: '', machineNumbers: [], description: '' };
-      return {
-        ...prev,
-        items: { ...prev.items, [itemNumber]: { ...existing, [field]: value } }
-      };
-    });
+  const handleEntryFieldChange = useCallback((field, value) => {
+    setEntryForm(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  const handleItemMachineToggle = useCallback((itemNumber, machineNumber) => {
+  const handleEntryMachineToggle = useCallback((machineNumber) => {
     setEntryForm(prev => {
-      const item = prev.items[itemNumber] || { qty: '', machineNumbers: [], description: '' };
-      const current = item.machineNumbers || [];
+      const current = prev.machineNumbers || [];
       const next = current.includes(machineNumber)
         ? current.filter(m => m !== machineNumber)
         : [...current, machineNumber];
-      return {
-        ...prev,
-        items: { ...prev.items, [itemNumber]: { ...item, machineNumbers: next } }
-      };
+      return { ...prev, machineNumbers: next };
     });
   }, []);
 
   const submitEntryForm = useCallback(async (reloadEntries) => {
     if (!stoppedEntry) return;
 
-    // Collect items that have at least a machine or description (qty is optional)
-    const filledItems = Object.entries(entryForm.items)
-      .filter(([, item]) => (item.machineNumbers || []).length > 0 || (item.description && String(item.description).trim() !== ''))
-      .map(([itemNumber, item]) => ({
-        itemNumber: Number(itemNumber),
-        qty: String(item.qty || '0').trim() || '0',
-        machineNumbers: item.machineNumbers || [],
-        description: (item.description || '').trim()
-      }));
+    const hasMachines = (entryForm.machineNumbers || []).length > 0;
+    const hasDescription = entryForm.description && String(entryForm.description).trim() !== '';
+    if (!hasMachines && !hasDescription) return;
 
-    if (filledItems.length === 0) return;
-
-    // Combine into a single entry — one timer stop = one time entry
-    const allMachines = [...new Set(filledItems.flatMap(i => i.machineNumbers))];
-    const combinedItemNumber = filledItems.map(i => i.itemNumber).join(', ');
-    const combinedQty = filledItems.map(i => i.qty).join(', ');
-    const combinedDescription = filledItems.length === 1
-      ? filledItems[0].description
-      : filledItems.map(i => `#${i.itemNumber}: ${i.description}`).join('; ');
+    const qty = String(entryForm.qty || '0').trim() || '0';
+    const machines = (entryForm.machineNumbers || []).join(', ');
+    const description = (entryForm.description || '').trim();
 
     setLoading(true);
     try {
       await api.updateTimeEntry(jobcardId, stoppedEntry.id, {
         ...stoppedEntry,
-        itemNumber: combinedItemNumber,
-        qty: combinedQty,
-        machineNumber: allMachines.join(', '),
-        description: combinedDescription
+        qty,
+        machineNumber: machines,
+        description
       });
 
       setShowEntryForm(false);
       setStoppedEntry(null);
-      setEntryForm({ items: {} });
+      setEntryForm(emptyEntryForm());
       if (reloadEntries) await reloadEntries();
       toast.success('Time entry updated');
     } catch (err) {
@@ -246,11 +232,12 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
       setActiveTimer({
         id: stoppedEntry.id,
         jobcardId,
+        itemNumber: stoppedEntry.itemNumber,
         startTime: stoppedEntry.startTime
       });
       setShowEntryForm(false);
       setStoppedEntry(null);
-      setEntryForm({ items: {} });
+      setEntryForm(emptyEntryForm());
       if (reloadEntries) await reloadEntries();
       toast.success('Timer resumed');
     } catch (err) {
@@ -280,6 +267,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     setElapsed(0);
     setShowEntryForm(false);
     setStoppedEntry(null);
+    setEntryForm(emptyEntryForm());
   }, []);
 
   return {
@@ -292,8 +280,8 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     startTimer,
     startTimerWithConflictCheck,
     stopTimer,
-    handleItemFieldChange,
-    handleItemMachineToggle,
+    handleEntryFieldChange,
+    handleEntryMachineToggle,
     submitEntryForm,
     cancelEntryForm,
     loadActiveTimer,

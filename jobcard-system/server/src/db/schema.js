@@ -168,19 +168,6 @@ db.exec(`
     start_time TEXT NOT NULL,
     end_time TEXT,
 
-    -- Special Ops
-    equipment_checks_done INTEGER DEFAULT 0,
-    measuring_verification_done INTEGER DEFAULT 0,
-    first_off_inspection TEXT,
-    first_off_inspection_notes TEXT,
-    in_process_validation TEXT,
-    in_process_validation_notes TEXT,
-
-    -- Scrap Rate
-    scrap_all_good INTEGER DEFAULT 1,
-    scrap_recycle_inhouse_qty INTEGER DEFAULT 0,
-    scrap_recycle_bin_qty INTEGER DEFAULT 0,
-
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE,
@@ -213,37 +200,6 @@ db.exec(`
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE
-  );
-
-  -- Documents/Attachments
-  CREATE TABLE IF NOT EXISTS documents (
-    id TEXT PRIMARY KEY,
-    jobcard_id TEXT NOT NULL,
-    filename TEXT NOT NULL,
-    file_type TEXT,
-    file_size INTEGER,
-    file_data TEXT,
-    uploaded_by TEXT,
-    uploaded_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE,
-    FOREIGN KEY (uploaded_by) REFERENCES users(id)
-  );
-
-  -- QA Forms tracking
-  CREATE TABLE IF NOT EXISTS qa_forms (
-    id TEXT PRIMARY KEY,
-    jobcard_id TEXT NOT NULL,
-    form_code TEXT NOT NULL,
-    form_name TEXT NOT NULL,
-    status TEXT DEFAULT 'PENDING',
-    printed_at TEXT,
-    scanned_at TEXT,
-    scanned_document_id TEXT,
-    notes TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE,
-    FOREIGN KEY (scanned_document_id) REFERENCES documents(id)
   );
 
   -- Machines/Equipment list
@@ -288,8 +244,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_job_assignees_jobcard ON job_assignees(jobcard_id);
   CREATE INDEX IF NOT EXISTS idx_time_entries_jobcard ON time_entries(jobcard_id);
   CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id);
-  CREATE INDEX IF NOT EXISTS idx_documents_jobcard ON documents(jobcard_id);
-  CREATE INDEX IF NOT EXISTS idx_qa_forms_jobcard ON qa_forms(jobcard_id);
   CREATE INDEX IF NOT EXISTS idx_history_entity ON history(entity_type, entity_id);
   CREATE INDEX IF NOT EXISTS idx_history_user ON history(user_id);
   CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(contact_name);
@@ -363,8 +317,6 @@ const migrations = [
   { table: 'time_entries', column: '_device_id', type: 'TEXT' },
   { table: 'job_costings', column: '_version', type: 'INTEGER DEFAULT 1' },
   { table: 'job_costings', column: '_device_id', type: 'TEXT' },
-  { table: 'qa_forms', column: '_version', type: 'INTEGER DEFAULT 1' },
-  { table: 'qa_forms', column: '_device_id', type: 'TEXT' },
   { table: 'users', column: 'session_token', type: 'TEXT' },
   { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
   { table: 'time_entries', column: 'is_special_labour', type: 'INTEGER DEFAULT 0' },
@@ -457,6 +409,52 @@ try {
   }
 } catch (err) {
   logger.error({ err }, 'Migration: Failed to drop job_type from jobcards');
+}
+
+// Drop per-item files-status columns from job_items (no longer tracked)
+try {
+  const itemCols = db.prepare('PRAGMA table_info(job_items)').all();
+  for (const dead of ['qa_files_status', 'job_files_status', 'customer_property_status']) {
+    if (itemCols.some(c => c.name === dead)) {
+      db.exec(`ALTER TABLE job_items DROP COLUMN ${dead}`);
+      logger.info({ column: dead }, 'Migration: Dropped column from job_items');
+    }
+  }
+} catch (err) {
+  logger.error({ err }, 'Migration: Failed to drop files-status columns from job_items');
+}
+
+// Drop legacy qa_forms + documents tables (replaced by disk-first folders)
+try {
+  db.exec('DROP TABLE IF EXISTS qa_forms');
+  db.exec('DROP TABLE IF EXISTS documents');
+  logger.info('Migration: Dropped legacy qa_forms and documents tables');
+} catch (err) {
+  logger.error({ err }, 'Migration: Failed to drop qa_forms/documents tables');
+}
+
+// Drop legacy QA columns from time_entries (QA workflow moved to paper forms)
+try {
+  const teCols = db.prepare('PRAGMA table_info(time_entries)').all();
+  const deadCols = [
+    'equipment_checks_done',
+    'measuring_verification_done',
+    'first_off_inspection',
+    'first_off_inspection_notes',
+    'in_process_validation',
+    'in_process_validation_notes',
+    'scrap_all_good',
+    'scrap_recycle_inhouse_qty',
+    'scrap_recycle_bin_qty'
+  ];
+  for (const dead of deadCols) {
+    if (teCols.some(c => c.name === dead)) {
+      db.exec(`ALTER TABLE time_entries DROP COLUMN ${dead}`);
+      logger.info({ column: dead }, 'Migration: Dropped legacy QA column from time_entries');
+    }
+  }
+} catch (err) {
+  logger.error({ err }, 'Migration: Failed to drop legacy QA columns from time_entries');
 }
 
 for (const migration of migrations) {

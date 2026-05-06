@@ -71,8 +71,11 @@ function createCompanyFolder(companyName) {
   }
 }
 
+const FILE_CATEGORY_FOLDERS = ['Job Files', 'QA Forms', 'Customer Property'];
+
 /**
  * Create job card subfolders (Job Files/, QA Forms/, Customer Property/) under the company folder.
+ * Files live directly on disk inside each category folder.
  * Fire-and-forget: logs errors but never throws.
  */
 function createJobCardFolders(companyName, jobNumber) {
@@ -92,9 +95,9 @@ function createJobCardFolders(companyName, jobNumber) {
       return;
     }
 
-    fs.mkdirSync(path.join(jobPath, 'Job Files'), { recursive: true });
-    fs.mkdirSync(path.join(jobPath, 'QA Forms'), { recursive: true });
-    fs.mkdirSync(path.join(jobPath, 'Customer Property'), { recursive: true });
+    for (const category of FILE_CATEGORY_FOLDERS) {
+      fs.mkdirSync(path.join(jobPath, category), { recursive: true });
+    }
     logger.info({ jobPath }, 'Created job card folders');
   } catch (err) {
     logger.error({ err, companyName, jobNumber }, 'Failed to create job card folders');
@@ -137,5 +140,6 @@ module.exports = {
   isWithinBase,
   createCompanyFolder,
   createJobCardFolders,
-  deleteJobCardFolders
+  deleteJobCardFolders,
+  FILE_CATEGORY_FOLDERS
 };

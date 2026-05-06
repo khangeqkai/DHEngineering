@@ -19,10 +19,11 @@ import { useTimer } from './useTimer';
 import { useJobNotes } from './useJobNotes';
 import StopTimerForm from './StopTimerForm';
 import ZoomToggle, { useJobCardZoom } from './ZoomToggle';
+import JobFilesMenu from './JobFilesMenu';
 
 const mapTimeEntry = (t) => ({ id: t.id, userId: t.userId, userName: t.userName, itemNumber: t.itemNumber, machineNumber: t.machineNumber, qty: t.qty, description: t.description, startTime: t.startTime, endTime: t.endTime, isSpecialLabour: t.isSpecialLabour || false });
 
-export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, initialTab = null }) {
+export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, initialTab = null }) {
   const { user } = useAuth();
   const isEdit = Boolean(jobCardId);
   const isAdmin = user?.role === 'admin';
@@ -151,11 +152,13 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   const handleSubmitEntryForm = useCallback(async () => {
     await timer.submitEntryForm(reloadTimeEntriesAndCosting);
-  }, [timer, reloadTimeEntriesAndCosting]);
+    if (onTimerChange) onTimerChange();
+  }, [timer, reloadTimeEntriesAndCosting, onTimerChange]);
 
   const handleCancelEntryForm = useCallback(async () => {
     await timer.cancelEntryForm(reloadTimeEntriesAndCosting);
-  }, [timer, reloadTimeEntriesAndCosting]);
+    if (onTimerChange) onTimerChange();
+  }, [timer, reloadTimeEntriesAndCosting, onTimerChange]);
 
   const apiTimeEntryOperations = {
     addTimeEntry: async (data) => {
@@ -193,6 +196,18 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   }, [jobCardId, reloadTimeEntries, refreshCosting]);
 
+  const handleStartItemTimer = useCallback(async (itemNumber) => {
+    await timer.startTimerWithConflictCheck(itemNumber, showConfirm);
+    await reloadTimeEntries();
+    if (onTimerChange) onTimerChange();
+  }, [timer, showConfirm, reloadTimeEntries, onTimerChange]);
+
+  const handleStopItemTimer = useCallback(async () => {
+    await timer.stopTimer();
+    await reloadTimeEntries();
+    if (onTimerChange) onTimerChange();
+  }, [timer, reloadTimeEntries, onTimerChange]);
+
   const timeEntry = useTimeEntries(jobCardId, { ...apiTimeEntryOperations, showConfirm });
   const { resetTimeEntries } = timeEntry;
   const { resetCosting } = costingHook;
@@ -217,13 +232,21 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   const resetFormRef = useRef(resetForm);
   const loadJobCardRef = useRef(loadJobCard);
+  const loadActiveTimerRef = useRef(timer.loadActiveTimer);
   resetFormRef.current = resetForm;
   loadJobCardRef.current = loadJobCard;
+  loadActiveTimerRef.current = timer.loadActiveTimer;
 
   useEffect(() => {
     if (!isOpen) return;
     resetFormRef.current();
-    if (isEdit) loadJobCardRef.current();
+    if (isEdit) {
+      loadJobCardRef.current();
+      // Re-fetch active timer every time the modal opens — useTimer's own
+      // load effect only fires on jobcardId change, so reopening the same
+      // card after a close would otherwise keep activeTimer cleared by reset.
+      loadActiveTimerRef.current();
+    }
   }, [isOpen, isEdit, jobCardId]);
   const loadScannerFiles = async () => {
     formHook.setLoadingScannerFiles(true);
@@ -400,7 +423,19 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   return (
     <>
-      <BottomSheet isOpen={isOpen} onClose={onClose} title={buildTitle()} size="large" closeOnOverlayClick={false} headerActions={<ZoomToggle zoom={zoom} onChange={setZoom} />}>
+      <BottomSheet
+        isOpen={isOpen}
+        onClose={onClose}
+        title={buildTitle()}
+        size="large"
+        closeOnOverlayClick={false}
+        headerActions={
+          <>
+            {isEdit && jobCardId && <JobFilesMenu jobcardId={jobCardId} jobNumber={formHook.jobNumber} />}
+            <ZoomToggle zoom={zoom} onChange={setZoom} />
+          </>
+        }
+      >
         {loading ? (
           <div className="loading" style={{ padding: '2rem' }}>Loading...</div>
         ) : (
@@ -425,6 +460,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   isAdmin={isAdmin}
                   jobCardId={jobCardId}
                   jobNumber={formHook.jobNumber}
+                  activeTimer={timer.activeTimer}
+                  timerElapsed={timer.elapsed}
+                  timerLoading={timer.loading}
+                  onStartTimer={handleStartItemTimer}
+                  onStopTimer={handleStopItemTimer}
                   formData={formHook.formData}
                   setFormData={formHook.setFormData}
                   handleChange={formHook.handleChange}
@@ -512,9 +552,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       <StopTimerForm
         isOpen={timer.showEntryForm}
         jobCard={jobCardId ? { id: jobCardId, jobNumber: formHook.jobNumber } : null}
+        itemNumber={timer.stoppedEntry?.itemNumber}
         entryForm={timer.entryForm}
-        onItemFieldChange={timer.handleItemFieldChange}
-        onItemMachineToggle={timer.handleItemMachineToggle}
+        onFieldChange={timer.handleEntryFieldChange}
+        onMachineToggle={timer.handleEntryMachineToggle}
         onSubmit={handleSubmitEntryForm}
         onCancel={handleCancelEntryForm}
         loading={timer.loading}

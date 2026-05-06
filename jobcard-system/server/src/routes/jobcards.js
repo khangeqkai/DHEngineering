@@ -10,13 +10,12 @@ const {
   jobItemQueries,
   jobAssigneeQueries,
   getAssigneesForJobcards,
-  qaFormQueries,
   qaLevelQueries,
   historyQueries,
   userQueries,
   recordHistory
 } = require('../db/database');
-const { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, initQaForms, initQaFormsFromLevel } = require('./jobcard-helpers');
+const { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob } = require('./jobcard-helpers');
 const { generateAndIncrementJobNumber } = require('../db/helpers');
 
 const router = express.Router();
@@ -202,9 +201,9 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
 
     createRelatedRecords(id, data);
 
-    // Initialize QA forms from level templates
+    // Copy QA level templates (PDF) into the job's QA Forms folder
     if (qaLevelId) {
-      await initQaFormsFromLevel(id, qaLevelId, buildQaFillData(id, {
+      await copyQaTemplatesForJob(id, qaLevelId, buildQaFillData(id, {
         jobNumber: jobNumber,
         status: status,
         companyName: data.companyName || null,
@@ -410,10 +409,10 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       }
     }
 
-    // Handle QA level changes - create/remove QA forms and copy templates
+    // Handle QA level changes - copy new templates into job's QA Forms folder
     const newQaLevelId = data.qaLevelId !== undefined ? data.qaLevelId : existing.qa_level_id;
     if (data.qaLevelId !== undefined && (data.qaLevelId || null) !== (existing.qa_level_id || null)) {
-      // Validate new QA level exists before deleting old forms
+      // Validate new QA level exists
       if (newQaLevelId) {
         const newLevel = qaLevelQueries.getById.get(newQaLevelId);
         if (!newLevel) {
@@ -421,13 +420,10 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
         }
       }
 
-      // Remove old QA forms
-      qaFormQueries.deleteByJobcard.run(id);
-
-      // Initialize new QA forms from level templates
+      // Copy new QA level templates into the job's QA Forms folder
       if (newQaLevelId) {
         const current = jobcardQueries.getById.get(id);
-        await initQaFormsFromLevel(id, newQaLevelId, buildQaFillData(id, {
+        await copyQaTemplatesForJob(id, newQaLevelId, buildQaFillData(id, {
           jobNumber: current.job_number,
           status: current.status,
           companyName: current.company_name || data.companyName || null,
@@ -464,6 +460,13 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     const updated = jobcardQueries.getById.get(id);
     const items = jobItemQueries.getByJobcard.all(id);
     const assignees = jobAssigneeQueries.getByJobcard.all(id);
+
+    // Ensure category folders exist (idempotent). Useful if folders were added
+    // after the job was created (e.g. job_folders_base was set later).
+    const folderCompany = updated.company_name || data.companyName;
+    if (folderCompany) {
+      createJobCardFolders(folderCompany, updated.job_number);
+    }
 
     res.json(formatJobcard(updated, items, assignees, req.user.role));
   } catch (err) {

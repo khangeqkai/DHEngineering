@@ -1,40 +1,46 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ChevronDown, ChevronUp } from 'lucide-react';
+import { X } from 'lucide-react';
 import { api } from '../../services/api';
 import { capitalizeFirst } from '../../utils/formatters';
 import './StopTimerForm.css';
 
-export default function StopTimerForm({ isOpen, jobCard, entryForm, onItemFieldChange, onItemMachineToggle, onSubmit, onCancel, loading }) {
-  const [items, setItems] = useState([]);
+export default function StopTimerForm({
+  isOpen,
+  jobCard,
+  itemNumber,
+  entryForm,
+  onFieldChange,
+  onMachineToggle,
+  onSubmit,
+  onCancel,
+  loading
+}) {
+  const [item, setItem] = useState(null);
   const [machines, setMachines] = useState([]);
   const [dataLoading, setDataLoading] = useState(false);
-  const [expandedItems, setExpandedItems] = useState(new Set());
   const formRef = useRef(null);
   const firstInputRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen || !jobCard?.id) return;
     setDataLoading(true);
-    setExpandedItems(new Set());
     Promise.all([
       api.getJobcard(jobCard.id),
       api.getMachines()
     ]).then(([jobcardRes, machinesRes]) => {
-      const loadedItems = jobcardRes?.items || [];
-      setItems(loadedItems);
+      const items = jobcardRes?.items || [];
+      const target = itemNumber != null ? Number(itemNumber) : null;
+      const matched = target != null ? items.find(i => i.itemNumber === target) : null;
+      setItem(matched || null);
       setMachines((machinesRes || []).filter(m => m.active !== 0 && m.active !== false));
-      // Auto-expand first item
-      if (loadedItems.length > 0) {
-        setExpandedItems(new Set([loadedItems[0].itemNumber]));
-      }
     }).catch(() => {
-      setItems([]);
+      setItem(null);
       setMachines([]);
     }).finally(() => {
       setDataLoading(false);
     });
-  }, [isOpen, jobCard?.id]);
+  }, [isOpen, jobCard?.id, itemNumber]);
 
   useEffect(() => {
     if (isOpen && !dataLoading && firstInputRef.current) {
@@ -71,40 +77,20 @@ export default function StopTimerForm({ isOpen, jobCard, entryForm, onItemFieldC
 
   if (!isOpen) return null;
 
-  const itemsData = entryForm.items || {};
-  const filledItems = Object.entries(itemsData).filter(
-    ([, item]) => (item.machineNumbers || []).length > 0 || (item.description && String(item.description).trim() !== '')
-  );
-  const allFilledValid = filledItems.length > 0;
+  const hasMachines = (entryForm.machineNumbers || []).length > 0;
+  const hasDescription = entryForm.description && String(entryForm.description).trim() !== '';
+  const canSubmit = hasMachines || hasDescription;
 
-  const toggleExpand = (itemNumber) => {
-    setExpandedItems(prev => {
-      const next = new Set(prev);
-      if (next.has(itemNumber)) next.delete(itemNumber);
-      else next.add(itemNumber);
-      return next;
-    });
-  };
-
-  const handleDescriptionBlur = (itemNumber, e) => {
+  const handleDescriptionBlur = (e) => {
     const formatted = capitalizeFirst(e.target.value);
     if (formatted !== e.target.value) {
-      onItemFieldChange(itemNumber, 'description', formatted);
+      onFieldChange('description', formatted);
     }
   };
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
-    if (allFilledValid && !loading) onSubmit();
-  };
-
-  const getItemStatus = (itemNumber) => {
-    const item = itemsData[itemNumber];
-    if (!item) return 'empty';
-    const hasMachines = (item.machineNumbers || []).length > 0;
-    const hasDescription = item.description && String(item.description).trim() !== '';
-    if (!hasMachines && !hasDescription) return 'empty';
-    return 'complete';
+    if (canSubmit && !loading) onSubmit();
   };
 
   return createPortal(
@@ -112,7 +98,10 @@ export default function StopTimerForm({ isOpen, jobCard, entryForm, onItemFieldC
       <div className="stop-timer-form" ref={formRef}>
         <div className="stop-timer-header">
           <div className="stop-timer-header-top">
-            <h3 id="stop-timer-title">Timer Stopped — {jobCard?.jobNumber}</h3>
+            <h3 id="stop-timer-title">
+              Timer Stopped — {jobCard?.jobNumber}
+              {itemNumber != null && <span className="stop-timer-item-tag"> · Item #{itemNumber}</span>}
+            </h3>
             <button
               type="button"
               className="stop-timer-close-btn"
@@ -124,103 +113,76 @@ export default function StopTimerForm({ isOpen, jobCard, entryForm, onItemFieldC
               <X size={18} />
             </button>
           </div>
-          <p id="stop-timer-desc">Tell us what you worked on for each item</p>
+          <p id="stop-timer-desc">Tell us what you worked on</p>
         </div>
 
         {dataLoading ? (
           <div className="stop-timer-loading">Loading...</div>
         ) : (
           <form onSubmit={handleFormSubmit} className="stop-timer-form-body">
+            {item && (
+              <div className="stf-item-summary">
+                <span className="stf-item-num">#{item.itemNumber}</span>
+                <span className="stf-item-desc">{item.description}</span>
+                <span className="stf-item-total">Total qty: {item.qty || '-'}</span>
+              </div>
+            )}
             <div className="stop-timer-fields">
-              {items.map((item, idx) => {
-                const num = item.itemNumber;
-                const expanded = expandedItems.has(num);
-                const itemData = itemsData[num] || {};
-                const status = getItemStatus(num);
-                return (
-                  <div key={num} className={`stf-item-card stf-item-${status}`}>
-                    <button
-                      type="button"
-                      className="stf-item-card-header"
-                      onClick={() => toggleExpand(num)}
-                    >
-                      <div className="stf-item-card-title">
-                        <span className="stf-item-num">#{num}</span>
-                        <span className="stf-item-desc" title={item.description}>
-                          {item.description?.substring(0, 45)}{item.description?.length > 45 ? '...' : ''}
-                        </span>
-                        <span className="stf-item-total">Total: {item.qty}</span>
-                      </div>
-                      <div className="stf-item-card-right">
-                        {itemData.qty && String(itemData.qty).trim() && (
-                          <span className="stf-item-qty-badge">Qty: {itemData.qty}</span>
-                        )}
-                        {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      </div>
-                    </button>
+              <div className="stf-item-field">
+                <label>Qty Completed</label>
+                <input
+                  ref={firstInputRef}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={entryForm.qty || ''}
+                  onChange={(e) => onFieldChange('qty', e.target.value)}
+                  className="stf-qty-input"
+                />
+              </div>
 
-                    {expanded && (
-                      <div className="stf-item-card-body">
-                        <div className="stf-item-field">
-                          <label>Qty Completed</label>
+              {machines.length > 0 && (
+                <div className="stf-item-field">
+                  <label>Machines Used</label>
+                  <div className="stf-machine-grid">
+                    {machines.map(m => {
+                      const checked = (entryForm.machineNumbers || []).includes(m.machineNumber);
+                      return (
+                        <label key={m.id} className={`stf-machine-chip${checked ? ' stf-machine-chip-active' : ''}`}>
                           <input
-                            ref={idx === 0 ? firstInputRef : undefined}
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="0"
-                            value={itemData.qty || ''}
-                            onChange={(e) => onItemFieldChange(num, 'qty', e.target.value)}
-                            className="stf-qty-input"
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => onMachineToggle(m.machineNumber)}
                           />
-                        </div>
-
-                        {machines.length > 0 && (
-                          <div className="stf-item-field">
-                            <label>Machines Used</label>
-                            <div className="stf-machine-grid">
-                              {machines.map(m => {
-                                const checked = (itemData.machineNumbers || []).includes(m.machineNumber);
-                                return (
-                                  <label key={m.id} className={`stf-machine-chip${checked ? ' stf-machine-chip-active' : ''}`}>
-                                    <input
-                                      type="checkbox"
-                                      checked={checked}
-                                      onChange={() => onItemMachineToggle(num, m.machineNumber)}
-                                    />
-                                    <span className="stf-machine-label">
-                                      {m.machineNumber}{m.name ? ` - ${m.name}` : ''}
-                                    </span>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="stf-item-field">
-                          <label>Description</label>
-                          <input
-                            type="text"
-                            placeholder="What did you work on?"
-                            value={itemData.description || ''}
-                            onChange={(e) => onItemFieldChange(num, 'description', e.target.value)}
-                            onBlur={(e) => handleDescriptionBlur(num, e)}
-                          />
-                        </div>
-                      </div>
-                    )}
+                          <span className="stf-machine-label">
+                            {m.machineNumber}{m.name ? ` - ${m.name}` : ''}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </div>
+              )}
+
+              <div className="stf-item-field">
+                <label>Description</label>
+                <input
+                  type="text"
+                  placeholder="What did you work on?"
+                  value={entryForm.description || ''}
+                  onChange={(e) => onFieldChange('description', e.target.value)}
+                  onBlur={handleDescriptionBlur}
+                />
+              </div>
             </div>
 
             <div className="stop-timer-actions">
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!allFilledValid || loading}
+                disabled={!canSubmit || loading}
               >
-                {loading ? 'Saving...' : filledItems.length > 1 ? `Submit (${filledItems.length} items)` : 'Submit'}
+                {loading ? 'Saving...' : 'Submit'}
               </button>
             </div>
           </form>

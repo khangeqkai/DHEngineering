@@ -9,7 +9,6 @@ import ExportButton from './common/ExportButton';
 import { exportJobCardList, exportJobCardsFull } from '../utils/excelExport';
 import { getInitials, getAvatarColor } from '../utils/initials';
 import JobCardModal from './jobcard/JobCardModal';
-import QuickActionPanel from './jobcard/QuickActionPanel';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
@@ -103,7 +102,6 @@ export default function JobCardList() {
   const [assignPopoverId, setAssignPopoverId] = useState(null);
   const assignPopoverRef = useRef(null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
-  const [quickActionCard, setQuickActionCard] = useState(null);
   const [density, setDensity] = useJobCardListDensity();
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
@@ -376,7 +374,7 @@ export default function JobCardList() {
             href="#"
             onClick={(e) => {
               e.preventDefault();
-              setQuickActionCard(card);
+              openEditModal(card.id);
             }}
           >
             <strong>{card.jobNumber}</strong>
@@ -681,7 +679,7 @@ export default function JobCardList() {
         <div className="calendar-container" style={{ flex: 1, minHeight: '600px', marginBottom: '1rem' }}>
           <JobCardCalendarView
             jobcards={filteredCards}
-            onCardClick={(card) => setQuickActionCard(card)}
+            onCardClick={(card) => openEditModal(card.id)}
             getStatusBadgeClass={getStatusBadgeClass}
             STATUS_LABELS={STATUS_LABELS}
           />
@@ -803,22 +801,12 @@ export default function JobCardList() {
       </div>
       )}
 
-      <QuickActionPanel
-        isOpen={!!quickActionCard}
-        onClose={() => setQuickActionCard(null)}
-        jobCard={quickActionCard}
-        onViewDetails={(cardId) => {
-          setQuickActionCard(null);
-          openEditModal(cardId);
-        }}
-        onTimerChange={refreshTimer}
-      />
-
       <JobCardModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         jobCardId={editingCardId}
         onSuccess={handleModalSuccess}
+        onTimerChange={refreshTimer}
       />
 
       <ConfirmDialog

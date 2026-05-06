@@ -8,7 +8,6 @@ const { fillPdfTemplate } = require('../utils/pdfFiller');
 const {
   jobItemQueries,
   jobAssigneeQueries,
-  qaFormQueries,
   qaLevelQueries,
   qaLevelTemplateQueries,
   getSettings
@@ -116,7 +115,7 @@ function serializeTreatments(treatments) {
   return JSON.stringify(treatments);
 }
 
-// Build the data object passed to initQaFormsFromLevel for PDF pre-fill.
+// Build the data object passed to copyQaTemplatesForJob for PDF pre-fill.
 // Loads current items from DB and aggregates treatments/job types across them.
 function buildQaFillData(jobcardId, fields) {
   const items = jobItemQueries.getByJobcard.all(jobcardId);
@@ -167,49 +166,29 @@ function createRelatedRecords(jobcardId, data) {
   }
 }
 
-function initQaForms(jobcardId) {
-  const qaForms = [
-    { code: 'DHE-F39', name: 'Critical Parts Inspection & Test Plan' },
-    { code: 'DHE-F15', name: 'Inwards Goods Inspection Sticker' },
-    { code: 'DHE-F09', name: 'Inspection Report' },
-    { code: 'DHE-F43', name: 'Hazard, Incident, Non-Conformance & Customer Complaint' }
-  ];
-  for (const form of qaForms) {
-    const formId = `qaform:${uuidv4()}`;
-    qaFormQueries.create.run(formId, jobcardId, form.code, form.name, 'PENDING');
-  }
-}
-
 /**
- * Initialize QA forms from a QA level's templates.
- * Creates qa_forms records and copies template PDFs to the job's QA Forms folder.
+ * Copy a QA level's template PDFs into the job's QA Forms folder, filling
+ * in fillable fields from job data. Templates without fillable fields are
+ * copied as-is.
  * @param {string} jobcardId
  * @param {string} qaLevelId
  * @param {Object} jobData - Full job data for PDF pre-fill
  */
-async function initQaFormsFromLevel(jobcardId, qaLevelId, jobData) {
+async function copyQaTemplatesForJob(jobcardId, qaLevelId, jobData) {
   const level = qaLevelQueries.getById.get(qaLevelId);
   if (!level) return;
 
   const templates = qaLevelTemplateQueries.getByLevel.all(qaLevelId);
   if (templates.length === 0) return;
 
-  // Create QA form records for each template
-  for (const tmpl of templates) {
-    const formId = `qaform:${uuidv4()}`;
-    const formCode = path.parse(tmpl.file_name).name;
-    qaFormQueries.create.run(formId, jobcardId, formCode, tmpl.display_name, 'PENDING');
-  }
-
-  // Copy template PDFs to the job's QA Forms folder
-  await copyTemplatesToJobFolder(level, templates, jobData);
+  await copyTemplatesToJobFolder(jobcardId, level, templates, jobData);
 }
 
 /**
  * Copy template PDFs from QA Level folder to job's QA Forms folder.
  * Awaits PDF fill so files exist on disk before the API response is sent.
  */
-async function copyTemplatesToJobFolder(level, templates, jobData) {
+async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
   try {
     const settings = getSettings();
     const basePath = settings.job_folders_base;
@@ -269,4 +248,4 @@ async function copyTemplatesToJobFolder(level, templates, jobData) {
   }
 }
 
-module.exports = { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, initQaForms, initQaFormsFromLevel };
+module.exports = { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob };
