@@ -20,6 +20,7 @@ import { useJobNotes } from './useJobNotes';
 import StopTimerForm from './StopTimerForm';
 import ZoomToggle, { useJobCardZoom } from './ZoomToggle';
 import JobFilesMenu from './JobFilesMenu';
+import JobIdentityStrip from './JobIdentityStrip';
 
 const mapTimeEntry = (t) => ({ id: t.id, userId: t.userId, userName: t.userName, itemNumber: t.itemNumber, machineNumber: t.machineNumber, qty: t.qty, description: t.description, startTime: t.startTime, endTime: t.endTime, isSpecialLabour: t.isSpecialLabour || false });
 
@@ -430,14 +431,25 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const isOverdue = formHook.formData.dueDate?.trim() &&
     new Date(formHook.formData.dueDate + 'T00:00:00') < today &&
     !['DONE', 'INVOICED'].includes(formHook.formData.status);
-  const buildTitle = () => isEdit ? formHook.jobNumber : 'New Job Card';
+  const headerStrip = (
+    <JobIdentityStrip
+      isEdit={isEdit}
+      isAdmin={isAdmin}
+      jobCardId={jobCardId}
+      jobNumber={formHook.jobNumber}
+      formData={formHook.formData}
+      setFormData={formHook.setFormData}
+      isOverdue={isOverdue}
+      showConfirm={showConfirm}
+    />
+  );
 
   return (
     <>
       <BottomSheet
         isOpen={isOpen}
         onClose={onClose}
-        title={buildTitle()}
+        headerSlot={headerStrip}
         size="large"
         closeOnOverlayClick={false}
         headerActions={
@@ -501,7 +513,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   toggleScannerFiles={toggleScannerFiles}
                   scannerFiles={formHook.scannerFiles}
                   loadingScannerFiles={formHook.loadingScannerFiles}
-                  isOverdue={isOverdue}
                   qaLevels={qaLevels}
                   notes={jobNotes.notes}
                   newNote={jobNotes.newNote}

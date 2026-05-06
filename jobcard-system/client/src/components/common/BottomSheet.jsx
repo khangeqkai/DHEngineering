@@ -6,6 +6,7 @@ export default function BottomSheet({
   isOpen,
   onClose,
   title,
+  headerSlot,
   size = 'compact',
   closeOnOverlayClick = true,
   headerActions,
@@ -43,7 +44,11 @@ export default function BottomSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
-          <h2 id="modal-title">{title}</h2>
+          {headerSlot ? (
+            headerSlot
+          ) : (
+            <h2 id="modal-title">{title}</h2>
+          )}
           {headerActions && (
             <div className="modal-header-actions">{headerActions}</div>
           )}

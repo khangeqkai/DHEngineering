@@ -568,6 +568,7 @@ export default function JobCardList() {
     {
       id: 'actions',
       label: 'Actions',
+      adminOnly: true,
       renderCell: (card) => (
         <td key="actions">
           <div className="action-buttons">

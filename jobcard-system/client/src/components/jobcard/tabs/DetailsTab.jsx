@@ -1,15 +1,6 @@
-import { useState, useCallback } from 'react';
-import toast from 'react-hot-toast';
-import { api } from '../../../services/api';
-import { Calendar } from 'lucide-react';
-import {
-  PRIORITY_OPTIONS,
-  STATUS_OPTIONS
-} from '../constants';
 import { useTags } from '../../../hooks/useTags';
 import { formatFileSize, formatFileDate } from '../mappers';
-import { toTitleCase, capitalizeFirst, autoResize } from '../../../utils/formatters';
-import CalendarPicker from '../../common/CalendarPicker';
+import { toTitleCase } from '../../../utils/formatters';
 import ItemsTab from './ItemsTab';
 import DetailsReadOnlyView from './DetailsReadOnlyView';
 import NotesSection from './NotesSection';
@@ -44,7 +35,6 @@ export default function DetailsTab({
   toggleScannerFiles,
   scannerFiles,
   loadingScannerFiles,
-  isOverdue,
   // QA Levels
   qaLevels,
   // Notes props
@@ -75,20 +65,9 @@ export default function DetailsTab({
   onStartTimer,
   onStopTimer
 }) {
-  const [showCalendar, setShowCalendar] = useState(false);
   const readOnly = isEdit && !isAdmin;
   const { tags: customerPropertyTags } = useTags('customer_property');
   const { tags: drawingsTags } = useTags('drawings');
-
-  const handleStatusChange = useCallback(async (newStatus) => {
-    try {
-      await api.updateJobcardStatus(jobCardId, newStatus);
-      setFormData(prev => ({ ...prev, status: newStatus }));
-      toast.success('Status updated');
-    } catch (err) {
-      toast.error('Failed to update status');
-    }
-  }, [jobCardId, setFormData]);
 
   // Employee read-only view
   if (readOnly) {
@@ -100,8 +79,6 @@ export default function DetailsTab({
           lineItems={lineItems}
           updateLineItem={updateLineItem}
           timeEntries={timeEntries}
-          isOverdue={isOverdue}
-          onStatusChange={handleStatusChange}
           jobCardId={jobCardId}
           activeTimer={activeTimer}
           timerElapsed={timerElapsed}
@@ -130,39 +107,8 @@ export default function DetailsTab({
     if (formatted !== e.target.value) setter(field, formatted);
   };
 
-  const capitalizeBlur = (field) => (e) => {
-    const formatted = capitalizeFirst(e.target.value);
-    if (formatted !== e.target.value) setFormData(prev => ({ ...prev, [field]: formatted }));
-  };
-
   return (
     <div className="modal-form-grid">
-      {/* Classification: Job Number (create) | Status */}
-      <div className="form-section">
-        <h3 className="form-section-title">Classification</h3>
-        <div className="form-row">
-          {!isEdit && (
-            <div className="form-group">
-              <label>Job Card Number</label>
-              <input
-                type="text"
-                value="Auto-generated"
-                readOnly
-                className="input-disabled"
-              />
-            </div>
-          )}
-          <div className="form-group">
-            <label>Status</label>
-            <select name="status" value={formData.status} onChange={handleChange}>
-              {STATUS_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
       {/* Contact Section - Inline Autocomplete (admin only) */}
       {isAdmin && (
       <div className="form-section">
@@ -236,83 +182,6 @@ export default function DetailsTab({
         </div>
       </div>
       )}
-
-      {/* Scheduling: Priority + Due Date */}
-      <div className="form-section">
-        <h3 className="form-section-title">Scheduling</h3>
-        <div className="form-row">
-          <div className="form-group">
-            <label>Priority</label>
-            <div className="priority-tags">
-              {PRIORITY_OPTIONS.filter(p => p.value !== 'NONE').map(p => (
-                <button
-                  key={p.value}
-                  type="button"
-                  className={`priority-tag priority-tag-${p.value.toLowerCase()}${formData.priority === p.value ? ' active' : ''}`}
-                  onClick={() => setFormData(prev => ({ ...prev, priority: prev.priority === p.value ? 'NONE' : p.value }))}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Due Date</label>
-            <div
-              className={`due-date-display${isOverdue ? ' overdue' : ''}`}
-              onClick={() => setShowCalendar(true)}
-            >
-              <span className="due-date-value">
-                {formData.dueDate?.trim()
-                  ? new Date(formData.dueDate + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-                  : 'Select date...'}
-              </span>
-              <span className="due-date-icon"><Calendar size={16} /></span>
-            </div>
-            <div className="due-date-quick-picks">
-              {[2, 7, 14, 21, 30].map(days => {
-                const date = new Date();
-                date.setDate(date.getDate() + days);
-                const value = date.toISOString().split('T')[0];
-                return (
-                  <button
-                    key={days}
-                    type="button"
-                    className={`btn-quick-pick${!isEdit && formData.dueDate === value ? ' active' : ''}`}
-                    onClick={() => setFormData(prev => ({ ...prev, dueDate: value }))}
-                  >
-                    {days}d
-                  </button>
-                );
-              })}
-            </div>
-            {isOverdue && <span className="overdue-text">OVERDUE</span>}
-            <CalendarPicker
-              isOpen={showCalendar}
-              value={formData.dueDate}
-              onSelect={(dateStr) => setFormData(prev => ({ ...prev, dueDate: dateStr }))}
-              onClose={() => setShowCalendar(false)}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Job Description + Line Items */}
-      <div className="form-section">
-        <h3 className="form-section-title">Job Description <span className="required">*</span></h3>
-        <div className="form-group">
-          <textarea
-            ref={(el) => { if (el) autoResize(el); }}
-            onInput={(e) => autoResize(e.target)}
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            onBlur={capitalizeBlur('description')}
-            rows={3}
-            placeholder="Describe the work required..."
-          />
-        </div>
-      </div>
 
       <ItemsTab
         jobCardId={jobCardId}

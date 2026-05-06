@@ -1,20 +1,5 @@
-import {
-  PRIORITY_OPTIONS,
-  STATUS_OPTIONS
-} from '../constants';
 import { useTags } from '../../../hooks/useTags';
 import ItemsTab from './ItemsTab';
-
-function StatusBadge({ status }) {
-  const opt = STATUS_OPTIONS.find(s => s.value === status);
-  return <span className={`readonly-badge status-${(status || '').toLowerCase().replace('_', '-')}`}>{opt?.label || status}</span>;
-}
-
-function PriorityBadge({ priority }) {
-  if (!priority || priority === 'NONE') return <span className="readonly-value">None</span>;
-  const opt = PRIORITY_OPTIONS.find(p => p.value === priority);
-  return <span className={`readonly-badge priority-${priority.toLowerCase()}`}>{opt?.label || priority}</span>;
-}
 
 function LabelValue({ label, value, className }) {
   return (
@@ -31,8 +16,6 @@ export default function DetailsReadOnlyView({
   lineItems,
   updateLineItem,
   timeEntries = [],
-  isOverdue,
-  onStatusChange,
   jobCardId,
   activeTimer,
   timerElapsed,
@@ -60,55 +43,8 @@ export default function DetailsReadOnlyView({
       return opt ? opt.label : v;
     });
 
-  const dueDateDisplay = formData.dueDate?.trim()
-    ? new Date(formData.dueDate + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-    : '-';
-
   return (
     <div className="modal-form-grid readonly-view">
-      {/* Classification */}
-      <div className="form-section">
-        <h3 className="form-section-title">Classification</h3>
-        <div className="readonly-row">
-          <div className="readonly-field">
-            <span className="readonly-label">Status</span>
-            {onStatusChange ? (
-              <select
-                value={formData.status}
-                onChange={(e) => onStatusChange(e.target.value)}
-                className="readonly-status-select"
-              >
-                {STATUS_OPTIONS.filter(opt => opt.value !== 'INVOICED').map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            ) : (
-              <span className="readonly-value"><StatusBadge status={formData.status} /></span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Scheduling */}
-      <div className="form-section">
-        <h3 className="form-section-title">Scheduling</h3>
-        <div className="readonly-row">
-          <LabelValue label="Priority" value={<PriorityBadge priority={formData.priority} />} />
-          <div className={`readonly-field${isOverdue ? ' overdue' : ''}`}>
-            <span className="readonly-label">Due Date</span>
-            <span className="readonly-value">{dueDateDisplay}{isOverdue && <span className="overdue-text"> OVERDUE</span>}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Description */}
-      {formData.description && (
-        <div className="form-section">
-          <h3 className="form-section-title">Job Description</h3>
-          <p className="readonly-text">{formData.description}</p>
-        </div>
-      )}
-
       {/* Line Items — read-only field shells with active timer + files menu + per-item progress */}
       <ItemsTab
         jobCardId={jobCardId}
