@@ -398,7 +398,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     new Date(formHook.formData.dueDate + 'T00:00:00') < today &&
     !['DONE', 'INVOICED'].includes(formHook.formData.status);
   const filledItemCount = formHook.lineItems.filter(i => i.description.trim()).length;
-  const buildTitle = () => isEdit ? `Edit: ${formHook.jobNumber}` : 'New Job Card';
+  const buildTitle = () => isEdit ? formHook.jobNumber : 'New Job Card';
 
   return (
     <>
