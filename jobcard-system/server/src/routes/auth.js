@@ -486,7 +486,6 @@ router.delete('/users/:id', authenticate, requireRole('admin'), (req, res) => {
         userQueries.cleanupAssignees.run(id);
         userQueries.cleanupJobcardsCreatedBy.run(id);
         userQueries.cleanupJobcardsUpdatedBy.run(id);
-        userQueries.cleanupDocuments.run(id);
         userQueries.cleanupHistory.run(id);
         userQueries.cleanupJobNotes.run(id);
         userQueries.delete.run(id);

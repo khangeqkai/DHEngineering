@@ -240,7 +240,7 @@ export default function ItemsTab({
 
                   <LineItemProgress
                     entries={itemEntries}
-                    lineItems={lineItems}
+                    targetQty={item.qty}
                     isAdmin={isAdmin}
                     onAdd={isAdmin && handleAddTimeEntry ? () => handleAddTimeEntry(item.itemNumber) : undefined}
                     onEdit={isAdmin ? handleEditTimeEntry : undefined}

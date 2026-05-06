@@ -25,26 +25,21 @@ function LiveElapsed({ startTime }) {
   );
 }
 
+function formatNum(n) {
+  if (!Number.isFinite(n)) return '0';
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
+}
+
 export default function TimeEntryCard({
   entry,
-  lineItems = [],
+  cumulativeAfter,
+  target = null,
   readOnly = false,
   onEdit,
   onDelete,
   onStop,
   onToggleSpecial
 }) {
-  const itemNums = entry.itemNumber ? String(entry.itemNumber).split(',').map(s => s.trim()) : [];
-  const qtys = entry.qty ? String(entry.qty).split(',').map(s => s.trim()) : [];
-  const itemMap = new Map(lineItems.map(li => [String(li.itemNumber), li.description]));
-  const descMap = new Map();
-  if (entry.description && itemNums.length > 1) {
-    const pattern = /#(\d+):\s*(.*?)(?=;\s*#\d+:|$)/g;
-    let m;
-    while ((m = pattern.exec(entry.description)) !== null) {
-      descMap.set(m[1], m[2].trim());
-    }
-  }
   const isActive = !entry.endTime;
   const durationSec = entry.endTime
     ? Math.round((new Date(entry.endTime) - new Date(entry.startTime)) / 1000)
@@ -52,6 +47,15 @@ export default function TimeEntryCard({
   const machinesList = entry.machineNumber
     ? String(entry.machineNumber).split(',').map(s => s.trim()).filter(Boolean)
     : [];
+
+  const rawQty = entry.qty != null ? String(entry.qty).trim() : '';
+  const qtyNum = rawQty === '' ? null : parseFloat(rawQty);
+  const showQty = qtyNum !== null && Number.isFinite(qtyNum);
+  const showCumulative =
+    showQty && qtyNum > 0 && target != null && Number.isFinite(cumulativeAfter);
+  const isOverAtThisSession =
+    showCumulative && cumulativeAfter > target;
+  const noteText = entry.description ? entry.description.trim() : '';
 
   const showActions = !readOnly && (onEdit || onDelete || onStop || onToggleSpecial);
 
@@ -102,30 +106,60 @@ export default function TimeEntryCard({
         </div>
 
         <div className="te-work">
-          {machinesList.length > 0 && (
-            <div className="te-machines">
-              {machinesList.map((mn, i) => (
-                <span key={i} className="te-machine-tag">M{mn}</span>
-              ))}
+          {(machinesList.length > 0 || (!isActive && showQty)) && (
+            <div className="te-work-meta">
+              {machinesList.length > 0 && (
+                <div className="te-machines">
+                  {machinesList.map((mn, i) => (
+                    <span key={i} className="te-machine-tag">M{mn}</span>
+                  ))}
+                </div>
+              )}
+              {!isActive && showQty && (
+                <div
+                  className={
+                    'te-qty-done' +
+                    (qtyNum === 0 ? ' te-qty-done--zero' : '') +
+                    (isOverAtThisSession ? ' te-qty-done--over' : '')
+                  }
+                >
+                  {qtyNum > 0 ? (
+                    <>
+                      <span className="te-qty-delta">+{formatNum(qtyNum)}</span>
+                      {showCumulative && (
+                        <>
+                          <span className="te-qty-arrow" aria-hidden="true">→</span>
+                          <span className="te-qty-cumul">
+                            <span className="te-qty-cumul-num">{formatNum(cumulativeAfter)}</span>
+                            <span className="te-qty-cumul-divider">/</span>
+                            <span className="te-qty-cumul-target">{formatNum(target)}</span>
+                          </span>
+                        </>
+                      )}
+                      <span className="te-qty-unit">pcs</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="te-qty-num">0</span>
+                      <span className="te-qty-unit">pcs</span>
+                      <span className="te-qty-label">no output</span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )}
-          {itemNums.length > 0 ? (
-            <div className="te-items">
-              {itemNums.map((num, i) => {
-                const userDesc = descMap.get(num) || (itemNums.length === 1 ? entry.description : '');
-                return (
-                  <div key={i} className="te-item-row">
-                    <span className="te-item-num">#{num}</span>
-                    <span className="te-item-desc">{itemMap.get(num) || ''}</span>
-                    {qtys[i] && <span className="te-item-qty">{qtys[i]} pcs</span>}
-                    {userDesc && <span className="te-item-note">{userDesc}</span>}
-                  </div>
-                );
-              })}
-            </div>
-          ) : entry.description ? (
-            <div className="te-desc-only">{entry.description}</div>
-          ) : null}
+
+          {noteText && (
+            <figure className="te-item-note te-item-note--solo">
+              <span className="te-item-note-mark" aria-hidden="true">&ldquo;</span>
+              <blockquote className="te-item-note-text">{noteText}</blockquote>
+            </figure>
+          )}
+
+          {isActive && machinesList.length === 0 && (
+            <p className="te-active-hint">In progress…</p>
+          )}
         </div>
       </div>
     </div>
