@@ -192,12 +192,12 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
   const submitEntryForm = useCallback(async (reloadEntries) => {
     if (!stoppedEntry) return;
 
-    // Collect items with non-empty qty
+    // Collect items that have at least a machine or description (qty is optional)
     const filledItems = Object.entries(entryForm.items)
-      .filter(([, item]) => item.qty && String(item.qty).trim() !== '')
+      .filter(([, item]) => (item.machineNumbers || []).length > 0 || (item.description && String(item.description).trim() !== ''))
       .map(([itemNumber, item]) => ({
         itemNumber: Number(itemNumber),
-        qty: String(item.qty).trim(),
+        qty: String(item.qty || '0').trim() || '0',
         machineNumbers: item.machineNumbers || [],
         description: (item.description || '').trim()
       }));

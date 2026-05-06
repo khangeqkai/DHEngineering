@@ -41,7 +41,7 @@ const buildTitle = () => isEdit ? formHook.jobNumber : 'New Job Card';
 
 ---
 
-# Task 2 — Allow timer stop with qty 0 (or empty)
+# Task 2 — Allow timer stop with qty 0 (or empty) ✅ DONE
 
 **Effort:** ~30 minutes. **Risk:** Low.
 

@@ -73,11 +73,9 @@ export default function StopTimerForm({ isOpen, jobCard, entryForm, onItemFieldC
 
   const itemsData = entryForm.items || {};
   const filledItems = Object.entries(itemsData).filter(
-    ([, item]) => item.qty && String(item.qty).trim() !== ''
+    ([, item]) => (item.machineNumbers || []).length > 0 || (item.description && String(item.description).trim() !== '')
   );
-  const allFilledValid = filledItems.length > 0 && filledItems.every(
-    ([, item]) => (item.machineNumbers || []).length > 0
-  );
+  const allFilledValid = filledItems.length > 0;
 
   const toggleExpand = (itemNumber) => {
     setExpandedItems(prev => {
@@ -102,8 +100,10 @@ export default function StopTimerForm({ isOpen, jobCard, entryForm, onItemFieldC
 
   const getItemStatus = (itemNumber) => {
     const item = itemsData[itemNumber];
-    if (!item || !item.qty || !String(item.qty).trim()) return 'empty';
-    if ((item.machineNumbers || []).length === 0) return 'incomplete';
+    if (!item) return 'empty';
+    const hasMachines = (item.machineNumbers || []).length > 0;
+    const hasDescription = item.description && String(item.description).trim() !== '';
+    if (!hasMachines && !hasDescription) return 'empty';
     return 'complete';
   };
 
