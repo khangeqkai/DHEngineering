@@ -1097,7 +1097,7 @@
 .line-item-desc {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 240px;
   min-width: 0;
 }
 
@@ -1186,8 +1186,9 @@
 .line-item-treatment {
   display: flex;
   flex-direction: column;
-  flex: 1 1 240px;
-  min-width: 0;
+  flex: 0 1 auto;
+  min-width: 240px;
+  max-width: 100%;
 }
 
 .line-item-progress {
@@ -2725,6 +2726,41 @@
   display: flex;
   gap: 2rem;
   flex-wrap: wrap;
+}
+
+/* Customer Input — stacked label/value cells laid out in a row */
+.customer-input-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2.25rem;
+  padding: 0.85rem 1rem;
+  background: var(--surface-elevated, var(--surface));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.cis-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.cis-label {
+  font-size: 0.7rem;
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  line-height: 1;
+}
+
+.cis-value {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 .readonly-field {

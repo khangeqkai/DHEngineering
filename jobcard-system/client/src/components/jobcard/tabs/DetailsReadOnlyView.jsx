@@ -1,15 +1,6 @@
 import { useTags } from '../../../hooks/useTags';
 import ItemsTab from './ItemsTab';
 
-function LabelValue({ label, value, className }) {
-  return (
-    <div className={`readonly-field ${className || ''}`}>
-      <span className="readonly-label">{label}</span>
-      <span className="readonly-value">{value || '-'}</span>
-    </div>
-  );
-}
-
 export default function DetailsReadOnlyView({
   formData,
   assignees,
@@ -73,32 +64,39 @@ export default function DetailsReadOnlyView({
         </div>
       )}
 
-      {/* Customer Input */}
+      {/* Customer Input — inline strip */}
       <div className="form-section">
         <h3 className="form-section-title">Customer Input</h3>
-        <div className="readonly-row">
-          <LabelValue label="Quality Level" value={formData.qualityLevel || 'STANDARD'} />
+        <div className="customer-input-strip">
+          <div className="cis-item">
+            <span className="cis-label">Quality</span>
+            <span className="cis-value">{formData.qualityLevel || 'STANDARD'}</span>
+          </div>
+          {customerPropertyLabels.length > 0 && (
+            <div className="cis-item">
+              <span className="cis-label">Property</span>
+              <span className="cis-value">{customerPropertyLabels.join(', ')}</span>
+            </div>
+          )}
+          {drawingsLabels.length > 0 && (
+            <div className="cis-item">
+              <span className="cis-label">Drawings</span>
+              <span className="cis-value">{drawingsLabels.join(', ')}</span>
+            </div>
+          )}
+          {formData.poNumber && (
+            <div className="cis-item">
+              <span className="cis-label">PO#</span>
+              <span className="cis-value">{formData.poNumber}</span>
+            </div>
+          )}
+          {formData.isRepeatJob && (
+            <div className="cis-item">
+              <span className="cis-label">Repeat</span>
+              <span className="cis-value">{formData.repeatJobReference || 'Yes'}</span>
+            </div>
+          )}
         </div>
-        {customerPropertyLabels.length > 0 && (
-          <div className="readonly-row">
-            <LabelValue label="Customer Property" value={customerPropertyLabels.join(', ')} />
-          </div>
-        )}
-        {drawingsLabels.length > 0 && (
-          <div className="readonly-row">
-            <LabelValue label="Drawings" value={drawingsLabels.join(', ')} />
-          </div>
-        )}
-        {formData.poNumber && (
-          <div className="readonly-row">
-            <LabelValue label="Customer's PO Number" value={formData.poNumber} />
-          </div>
-        )}
-        {formData.isRepeatJob && (
-          <div className="readonly-row">
-            <LabelValue label="Repeat Job" value={formData.repeatJobReference || 'Yes'} />
-          </div>
-        )}
       </div>
 
     </div>
