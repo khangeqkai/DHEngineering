@@ -216,15 +216,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   }, [isOpen, initialTab]);
 
+  const resetFormRef = useRef(resetForm);
+  const loadJobCardRef = useRef(loadJobCard);
+  resetFormRef.current = resetForm;
+  loadJobCardRef.current = loadJobCard;
+
   useEffect(() => {
-    if (isOpen && !isEdit) {
-      resetForm();
-    }
-    if (isOpen && isEdit) {
-      resetForm();
-      loadJobCard();
-    }
-  }, [isOpen, isEdit, resetForm, loadJobCard]);
+    if (!isOpen) return;
+    resetFormRef.current();
+    if (isEdit) loadJobCardRef.current();
+  }, [isOpen, isEdit, jobCardId]);
   const loadScannerFiles = async () => {
     formHook.setLoadingScannerFiles(true);
     try {

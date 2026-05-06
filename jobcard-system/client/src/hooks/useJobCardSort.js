@@ -21,7 +21,8 @@ export const SORT_VALUE_GETTERS = {
   status: (c) => STATUS_SORT_ORDER[c.status] ?? 999,
   priority: (c) => PRIORITY_SORT_ORDER[c.priority] ?? 0,
   dueDate: (c) => (c.dueDate ? new Date(c.dueDate).getTime() : null),
-  createdAt: (c) => (c.createdAt ? new Date(c.createdAt).getTime() : null)
+  createdAt: (c) => (c.createdAt ? new Date(c.createdAt).getTime() : null),
+  updatedAt: (c) => (c.updatedAt ? new Date(c.updatedAt).getTime() : null)
 };
 
 export default function useJobCardSort(cards) {
