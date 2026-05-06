@@ -294,3 +294,13 @@ CLIENT_BUILD_PATH=/path      # Path to built React client for static serving (se
 - **Prepared statements**: All database queries use prepared statements (SQL injection protection)
 - **Auto-generated JWT secret**: On first run, a random 256-bit secret is generated via `crypto.randomBytes(32)` and persisted to `data/config.json`. Env var `JWT_SECRET` overrides if set.
 - **Electron server lifecycle**: In production builds, Electron loads the Express server in-process (via `require()`) and uses `Promise.race` between the server startup promise and `/health` polling to detect readiness or failure. `ELECTRON_MODE` env var prevents the server from calling `process.exit()` on failure, letting Electron show an error dialog instead. In dev mode, the server is started separately via `npm start`.
+
+## graphify
+
+This project has a graphify knowledge graph at graphify-out/.
+
+Rules:
+- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
+- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
+- For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
+- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)

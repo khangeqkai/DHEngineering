@@ -1,2 +1,7 @@
 # Claude Code
 .claude/
+
+# graphify - keep portable graph data, ignore machine-local + regenerable
+graphify-out/*
+!graphify-out/graph.json
+!graphify-out/GRAPH_REPORT.md
