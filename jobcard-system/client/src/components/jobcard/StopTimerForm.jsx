@@ -124,7 +124,7 @@ export default function StopTimerForm({ isOpen, jobCard, entryForm, onItemFieldC
               <X size={18} />
             </button>
           </div>
-          <p id="stop-timer-desc">Fill in qty and machines for each item you worked on</p>
+          <p id="stop-timer-desc">Tell us what you worked on for each item</p>
         </div>
 
         {dataLoading ? (

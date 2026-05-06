@@ -104,10 +104,6 @@
   border-color: var(--success-color);
 }
 
-.stf-item-card.stf-item-incomplete {
-  border-color: var(--warning-color);
-}
-
 .stf-item-card-header {
   display: flex;
   align-items: center;
