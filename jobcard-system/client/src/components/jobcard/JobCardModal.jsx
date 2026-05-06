@@ -379,7 +379,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         dueDate: formHook.formData.dueDate,
         isRepeatJob: formHook.formData.isRepeatJob,
         repeatJobReference: formHook.formData.repeatJobReference,
-        notes: formHook.formData.notes,
         assigneeIds: formHook.assignees.map(a => a.userId),
         items: validItems.map((item, idx) => ({
           itemNumber: item.itemNumber || idx + 1,

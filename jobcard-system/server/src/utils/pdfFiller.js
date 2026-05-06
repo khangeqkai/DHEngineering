@@ -63,9 +63,7 @@ const FIELD_MAPPINGS = {
   repeat_job_reference: 'repeatJobReference',
   repeatjobreference: 'repeatJobReference',
   repeat_ref: 'repeatJobReference',
-  repeatref: 'repeatJobReference',
-  // Notes
-  notes: 'notes'
+  repeatref: 'repeatJobReference'
 };
 
 // Regex for item fields: item_1_number, item_2_qty, item_3_description, item_1_job_type, item_1_material, item_1_treatment

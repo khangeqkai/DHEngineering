@@ -89,9 +89,9 @@ const jobcardQueries = {
       quality_level, priority, po_number, quote_reference,
       drawings_type, customer_property, description, due_date,
       is_repeat_job, repeat_job_reference,
-      notes, photos, created_by, updated_by, qa_level_id, created_at, updated_at
+      photos, created_by, updated_by, qa_level_id, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `),
 
   update: db.prepare(`
@@ -101,7 +101,7 @@ const jobcardQueries = {
       quality_level = ?, priority = ?, po_number = ?, quote_reference = ?,
       drawings_type = ?, customer_property = ?, description = ?, due_date = ?,
       is_repeat_job = ?, repeat_job_reference = ?,
-      notes = ?, photos = ?, updated_by = ?, qa_level_id = ?, updated_at = datetime('now')
+      photos = ?, updated_by = ?, qa_level_id = ?, updated_at = datetime('now')
     WHERE id = ?
   `),
 

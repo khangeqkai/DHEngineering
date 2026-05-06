@@ -95,8 +95,7 @@ export function getDefaultFormData() {
     description: '',
     dueDate: '',
     isRepeatJob: false,
-    repeatJobReference: '',
-    notes: ''
+    repeatJobReference: ''
   };
 }
 

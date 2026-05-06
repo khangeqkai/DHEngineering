@@ -507,24 +507,6 @@ export default function DetailsTab({
         </div>
       </div>
 
-      {/* Internal Comments (admin only) */}
-      <div className="form-section">
-        <h3 className="form-section-title">Internal Comments</h3>
-        <div className="form-group">
-          <textarea
-            ref={(el) => { if (el) autoResize(el); }}
-            onInput={(e) => autoResize(e.target)}
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-            onBlur={capitalizeBlur('notes')}
-            rows={2}
-            placeholder="Add internal notes..."
-          />
-          <span className="field-hint">Only visible to admin, not shown to staff or customer</span>
-        </div>
-      </div>
-
       {/* Job Comments (shared, append-only) */}
       {isEdit && (
         <NotesSection

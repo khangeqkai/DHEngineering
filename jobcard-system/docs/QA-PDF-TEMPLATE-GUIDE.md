@@ -33,7 +33,6 @@ Use any of these names when creating fillable text fields in your PDF form. Fiel
 | Treatment Required | `treatment`, `treatment_required`, `treatmentrequired` (formatted as `Treatment → Supplier, ...` across all items) |
 | Repeat Job (Yes/No) | `repeat_job`, `repeatjob` |
 | Repeat Job Reference | `repeat_job_reference`, `repeatjobreference`, `repeat_ref`, `repeatref` |
-| Notes | `notes` |
 
 ### Item Fields (Indexed)
 

@@ -49,7 +49,6 @@ function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
     dueDate: row.due_date,
     isRepeatJob: row.is_repeat_job === 1,
     repeatJobReference: row.repeat_job_reference,
-    notes: row.notes,
     photos: row.photos ? JSON.parse(row.photos) : [],
     invoicedDate: row.invoiced_date,
     archived: row.archived === 1,
@@ -94,7 +93,6 @@ function buildChanges(existing, data) {
     ['description', 'description'],
     ['is_repeat_job', 'isRepeatJob'],
     ['repeat_job_reference', 'repeatJobReference'],
-    ['notes', 'notes'],
     ['qa_level_id', 'qaLevelId'],
   ];
 

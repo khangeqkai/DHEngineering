@@ -483,7 +483,7 @@ export default function JobCardList() {
       label: 'Status',
       renderCell: (card) => (
         <td key="status">
-          {isAdmin && !showArchived ? (
+          {!showArchived ? (
             <div className="status-popover-wrapper" ref={statusPopoverId === card.id ? popoverRef : null}>
               <span
                 className={`badge ${getStatusBadgeClass(card.status)} badge-clickable`}
@@ -496,7 +496,9 @@ export default function JobCardList() {
               </span>
               {statusPopoverId === card.id && (
                 <div className="status-popover">
-                  {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                  {Object.entries(STATUS_LABELS)
+                    .filter(([value]) => isAdmin || value !== 'INVOICED')
+                    .map(([value, label]) => (
                     <button
                       key={value}
                       className={`status-popover-item ${card.status === value ? 'active' : ''}`}

@@ -107,9 +107,6 @@ db.exec(`
     is_repeat_job INTEGER DEFAULT 0,
     repeat_job_reference TEXT,
 
-    -- Internal Notes
-    notes TEXT,
-
     -- Photos stored as JSON array
     photos TEXT,
 

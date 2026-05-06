@@ -192,7 +192,6 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       data.dueDate || null,
       data.isRepeatJob ? 1 : 0,
       data.repeatJobReference || null,
-      data.notes || null,
       data.photos ? JSON.stringify(data.photos) : null,
       req.user.userId,
       req.user.userId,
@@ -217,8 +216,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
         drawingsType: data.drawingsType || null,
         customerProperty: data.customerProperty || null,
         repeatJob: data.isRepeatJob ? 'Yes' : 'No',
-        repeatJobReference: data.repeatJobReference || null,
-        notes: data.notes || null
+        repeatJobReference: data.repeatJobReference || null
       }));
     }
 
@@ -316,7 +314,6 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       data.dueDate !== undefined ? data.dueDate : existing.due_date,
       data.isRepeatJob !== undefined ? (data.isRepeatJob ? 1 : 0) : existing.is_repeat_job,
       data.repeatJobReference !== undefined ? data.repeatJobReference : existing.repeat_job_reference,
-      data.notes !== undefined ? data.notes : existing.notes,
       data.photos !== undefined ? JSON.stringify(data.photos) : existing.photos,
       req.user.userId,
       data.qaLevelId !== undefined ? data.qaLevelId : existing.qa_level_id,
@@ -437,8 +434,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
           drawingsType: current.drawings_type || data.drawingsType || null,
           customerProperty: current.customer_property || data.customerProperty || null,
           repeatJob: (data.isRepeatJob !== undefined ? data.isRepeatJob : current.is_repeat_job === 1) ? 'Yes' : 'No',
-          repeatJobReference: current.repeat_job_reference || data.repeatJobReference || null,
-          notes: current.notes || data.notes || null
+          repeatJobReference: current.repeat_job_reference || data.repeatJobReference || null
         }));
       }
     }
