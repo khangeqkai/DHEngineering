@@ -1510,10 +1510,28 @@
   font-size: var(--text-sm);
 }
 
-.line-item-progress-actions {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0.55rem 0.85rem 0;
+.lip-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  margin-left: 0.25rem;
+  background: var(--surface);
+  border: 1px dashed var(--border-color);
+  border-radius: 50%;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color var(--duration-fast) ease,
+              color var(--duration-fast) ease,
+              background var(--duration-fast) ease;
+}
+.lip-add:hover {
+  border-color: var(--primary-accent);
+  color: var(--primary-accent);
+  background: var(--surface-elevated);
 }
 
 .line-item-progress[open] > .te-list {

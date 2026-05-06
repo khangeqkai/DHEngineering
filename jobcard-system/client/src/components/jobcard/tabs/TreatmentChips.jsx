@@ -257,8 +257,10 @@ export default function TreatmentChips({ treatments = [], onChange, suppliers = 
             type="button"
             className="treatment-chip-add"
             onClick={() => setAdding(o => !o)}
+            aria-label="Add treatment"
+            title="Add treatment"
           >
-            <Plus size={12} /> Add treatment
+            <Plus size={14} />
           </button>
           {adding && (
             <AddTreatmentPopover

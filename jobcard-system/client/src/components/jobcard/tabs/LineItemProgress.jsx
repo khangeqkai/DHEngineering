@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { Plus } from 'lucide-react';
 import TimeEntryCard from './TimeEntryCard';
 
 function parseQty(v) {
@@ -166,16 +167,20 @@ export default function LineItemProgress({
           {progress.sessions} {progress.sessions === 1 ? 'session' : 'sessions'}
         </span>
 
+        {isAdmin && onAdd && (
+          <button
+            type="button"
+            className="lip-add"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(); }}
+            aria-label="Add time entry"
+            title="Add time entry"
+          >
+            <Plus size={14} />
+          </button>
+        )}
+
         <span className="lip-chevron" aria-hidden="true">▾</span>
       </summary>
-
-      {isAdmin && onAdd && (
-        <div className="line-item-progress-actions">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onAdd}>
-            + Add Entry
-          </button>
-        </div>
-      )}
 
       {entries.length === 0 ? (
         <p className="empty-message">No time entries for this item</p>
