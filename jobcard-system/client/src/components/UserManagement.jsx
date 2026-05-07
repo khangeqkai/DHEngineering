@@ -41,8 +41,7 @@ export default function UserManagement() {
       const data = await api.getUsers(showInactive);
       setUsers(data);
     } catch (err) {
-      console.error('Failed to load users:', err);
-      toast.error('Failed to load users');
+      toast.error(err.message || 'Failed to load users');
     } finally {
       setLoading(false);
     }
@@ -75,7 +74,6 @@ export default function UserManagement() {
       setActivityRefreshKey(k => k + 1);
       resetForm();
     } catch (err) {
-      console.error('Failed to save user:', err);
       toast.error(err.message || 'Failed to save user');
     } finally {
       setSaving(false);
@@ -108,7 +106,6 @@ export default function UserManagement() {
       await loadUsers();
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
-      console.error('Failed to deactivate user:', err);
       toast.error(err.message || 'Failed to deactivate user');
     }
   };
@@ -119,7 +116,6 @@ export default function UserManagement() {
       await loadUsers();
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
-      console.error('Failed to activate user:', err);
       toast.error(err.message || 'Failed to activate user');
     }
   };
@@ -138,7 +134,6 @@ export default function UserManagement() {
       await loadUsers();
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
-      console.error('Failed to delete user:', err);
       toast.error(err.message || 'Failed to delete user');
     }
   };

@@ -1,3 +1,5 @@
+import toast from 'react-hot-toast';
+
 class HardwareService {
   constructor() {
     this.isElectron = Boolean(window.electronAPI);
@@ -6,7 +8,6 @@ class HardwareService {
   // Check if running in Electron
   checkElectron() {
     if (!this.isElectron) {
-      console.warn('Hardware features require Electron environment');
       return false;
     }
     return true;
@@ -42,7 +43,7 @@ class HardwareService {
       const devices = await navigator.mediaDevices.enumerateDevices();
       return devices.filter(device => device.kind === 'videoinput');
     } catch (err) {
-      console.error('Failed to enumerate cameras:', err);
+      toast.error(err.message || 'Failed to enumerate cameras');
       return [];
     }
   }
@@ -61,7 +62,6 @@ class HardwareService {
       }
       return stream;
     } catch (err) {
-      console.error('Failed to open camera:', err);
       throw err;
     }
   }
@@ -89,12 +89,10 @@ class HardwareService {
 
   // Scanner functions (placeholder - requires native module)
   async getScanners() {
-    console.warn('Scanner integration requires additional native modules');
     return [];
   }
 
   async scan(options = {}) {
-    console.warn('Scanner integration requires additional native modules');
     throw new Error('Scanner not available');
   }
 

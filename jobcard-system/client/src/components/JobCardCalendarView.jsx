@@ -50,9 +50,9 @@ export default function JobCardCalendarView({ jobcards, onCardClick, getStatusBa
     <div className="calendar-view">
       <div className="calendar-header">
         <div className="calendar-nav">
-          <button className="btn btn-secondary btn-sm" onClick={prevMonth}><ChevronLeft size={16} /></button>
+          <button className="btn btn-secondary btn-sm" onClick={prevMonth} aria-label="Previous month"><ChevronLeft size={16} /></button>
           <button className="btn btn-secondary btn-sm" onClick={today}>Today</button>
-          <button className="btn btn-secondary btn-sm" onClick={nextMonth}><ChevronRight size={16} /></button>
+          <button className="btn btn-secondary btn-sm" onClick={nextMonth} aria-label="Next month"><ChevronRight size={16} /></button>
         </div>
         <h3 className="calendar-title">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
         <div style={{ width: '88px' }}></div> {/* Spacer for centering title */}

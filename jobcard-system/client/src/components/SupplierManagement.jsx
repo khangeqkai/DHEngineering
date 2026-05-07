@@ -44,7 +44,6 @@ export default function SupplierManagement() {
       setSuppliers(suppliersData);
       setServiceTags(tagsData);
     } catch (err) {
-      console.error('Failed to load data:', err);
       toast.error(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
@@ -71,7 +70,6 @@ export default function SupplierManagement() {
       setActivityRefreshKey(k => k + 1);
       resetForm();
     } catch (err) {
-      console.error('Failed to save supplier:', err);
       toast.error(err.message || 'Failed to save supplier');
     } finally {
       setSaving(false);
@@ -107,7 +105,6 @@ export default function SupplierManagement() {
       await loadData();
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
-      console.error('Failed to delete supplier:', err);
       toast.error(err.message || 'Failed to delete supplier');
     }
   };
@@ -135,7 +132,6 @@ export default function SupplierManagement() {
       setShowCustomTagInput(false);
       toast.success('Service tag created');
     } catch (err) {
-      console.error('Failed to create tag:', err);
       toast.error(err.message || 'Failed to create tag');
     }
   };

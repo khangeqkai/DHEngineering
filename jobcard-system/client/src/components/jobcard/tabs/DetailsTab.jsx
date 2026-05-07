@@ -261,7 +261,7 @@ export default function DetailsTab({
               name="repeatJobReference"
               value={formData.repeatJobReference}
               onChange={handleChange}
-              placeholder="JC-XXXXXXXX-XXX"
+              placeholder="DH-00001"
             />
           </div>
         )}

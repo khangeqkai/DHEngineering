@@ -127,11 +127,11 @@ export default function JobCardList() {
     try {
       await api.updateJobcardStatus(cardId, newStatus);
       toast.success(`Status updated to ${STATUS_LABELS[newStatus]}`);
-      await loadJobcards();
+      setJobcards(prev => prev.map(c => c.id === cardId ? { ...c, status: newStatus } : c));
     } catch (err) {
       toast.error(err.message || 'Failed to update status');
     }
-  }, [loadJobcards]);
+  }, []);
 
   useEffect(() => {
     if (!statusPopoverId) return;
@@ -170,20 +170,21 @@ export default function JobCardList() {
   }, [assignPopoverId]);
 
   const handleSelfToggle = useCallback(async (card, isAssigned) => {
+    if (!user?.id) return;
     setAssignPopoverId(null);
     try {
-      if (isAssigned) {
-        await api.selfUnassign(card.id);
-        toast.success('Removed yourself from job card');
-      } else {
-        await api.selfAssign(card.id);
-        toast.success('Assigned yourself to job card');
-      }
-      await loadJobcards();
+      const result = isAssigned
+        ? await api.selfUnassign(card.id)
+        : await api.selfAssign(card.id);
+      toast.success(isAssigned ? 'Removed yourself from job card' : 'Assigned yourself to job card');
+      setJobcards(prev => prev.map(c => c.id === card.id
+        ? { ...c, assignees: result.assignees }
+        : c
+      ));
     } catch (err) {
       toast.error(err.message || 'Failed to update assignment');
     }
-  }, [loadJobcards]);
+  }, [user]);
 
   const filteredCards = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];

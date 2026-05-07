@@ -64,7 +64,6 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
 
       resetTimeEntryForm();
     } catch (err) {
-      console.error('Failed to save time entry:', err);
       toast.error(err.message || 'Failed to save time entry');
     }
   }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry]);
@@ -86,7 +85,6 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     try {
       await deleteTimeEntry(entryId);
     } catch (err) {
-      console.error('Failed to delete time entry:', err);
       toast.error(err.message || 'Failed to delete time entry');
     }
   }, [jobCardId, deleteTimeEntry, showConfirm]);

@@ -62,6 +62,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     if (!activeTimer || !jobcardId) return;
 
     const poll = setInterval(async () => {
+      if (document.visibilityState === 'hidden') return;
       try {
         const current = await api.getActiveTimer();
         if (!current || current.id !== activeTimer.id) {

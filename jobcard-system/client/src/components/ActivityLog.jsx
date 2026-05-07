@@ -20,8 +20,7 @@ export default function ActivityLog() {
       const data = await api.getActivityHistory(limit);
       setActivities(data);
     } catch (err) {
-      console.error('Failed to load activities:', err);
-      toast.error('Failed to load activities');
+      toast.error(err.message || 'Failed to load activities');
     } finally {
       setLoading(false);
     }
