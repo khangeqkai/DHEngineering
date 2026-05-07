@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, ArchiveRestore, Check, Calendar, List, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Plus, Trash2, ArchiveRestore, Check, Calendar, List, ChevronUp, ChevronDown, ChevronsUpDown, User } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportJobCardList, exportJobCardsFull } from '../utils/excelExport';
@@ -87,6 +87,7 @@ export default function JobCardList() {
     return valid ? paramFilter : 'all';
   });
   const [search, setSearch] = useState('');
+  const [myJobsOnly, setMyJobsOnly] = useState(() => searchParams.get('mine') === '1');
   const [assigneeFilter, setAssigneeFilter] = useState(() => {
     return searchParams.get('assignee') || 'all';
   });
@@ -311,6 +312,7 @@ export default function JobCardList() {
       } else {
         matchesFilter = card.status === filter;
       }
+      const matchesMine = !myJobsOnly || showArchived || card.assignees?.some(a => a.userId === user?.id);
       const lowerSearch = search.toLowerCase();
       const matchesSearch =
         !search ||
@@ -319,11 +321,19 @@ export default function JobCardList() {
         (isAdmin && card.companyName?.toLowerCase().includes(lowerSearch)) ||
         (isAdmin && card.assignees?.some(a => a.userName?.toLowerCase().includes(lowerSearch))) ||
         card.description?.toLowerCase().includes(lowerSearch);
-      return matchesFilter && matchesSearch;
+      return matchesFilter && matchesMine && matchesSearch;
     });
-  }, [jobcards, filter, search, isAdmin]);
+  }, [jobcards, filter, myJobsOnly, showArchived, search, isAdmin, user?.id]);
 
   const { sortBy, sortDir, handleSort, sortedCards } = useJobCardSort(filteredCards);
+
+  const displayedCards = useMemo(() => {
+    if (!activeTimerJobcardId) return sortedCards;
+    const idx = sortedCards.findIndex(c => c.id === activeTimerJobcardId);
+    if (idx <= 0) return sortedCards;
+    const pinned = sortedCards[idx];
+    return [pinned, ...sortedCards.slice(0, idx), ...sortedCards.slice(idx + 1)];
+  }, [sortedCards, activeTimerJobcardId]);
 
   // Reset to page 1 when filters or sort change, sync filter to URL
   useEffect(() => {
@@ -339,13 +349,18 @@ export default function JobCardList() {
     } else {
       params.set('assignee', assigneeFilter);
     }
+    if (myJobsOnly) {
+      params.set('mine', '1');
+    } else {
+      params.delete('mine');
+    }
     setSearchParams(params, { replace: true });
-  }, [filter, search, showArchived, assigneeFilter, sortBy, sortDir, setSearchParams]);
+  }, [filter, search, showArchived, assigneeFilter, myJobsOnly, sortBy, sortDir, setSearchParams]);
 
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(sortedCards.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(displayedCards.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const paginatedCards = sortedCards.slice(
+  const paginatedCards = displayedCards.slice(
     (safeCurrentPage - 1) * PAGE_SIZE,
     safeCurrentPage * PAGE_SIZE
   );
@@ -614,7 +629,7 @@ export default function JobCardList() {
         </label>
         {isAdmin && (
           <ExportButton
-            onExportView={() => sortedCards.length ? exportJobCardList(sortedCards) : false}
+            onExportView={() => displayedCards.length ? exportJobCardList(displayedCards) : false}
             onExportAll={() => exportJobCardsFull()}
           />
         )}
@@ -647,17 +662,27 @@ export default function JobCardList() {
           </select>
         )}
         {!showArchived && (
-          <div className="filter-buttons">
-            {STATUS_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                className={`btn btn-sm ${filter === opt.value ? 'btn-primary' : 'btn-secondary'}${opt.value === 'OVERDUE' ? ' filter-btn-overdue' : ''}`}
-                onClick={() => setFilter(opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          <>
+            <button
+              className={`btn btn-sm filter-btn-mine ${myJobsOnly ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setMyJobsOnly(v => !v)}
+              aria-pressed={myJobsOnly}
+              title="Show only jobs assigned to me"
+            >
+              <User size={14} /> My Jobs
+            </button>
+            <div className="filter-buttons">
+              {STATUS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  className={`btn btn-sm ${filter === opt.value ? 'btn-primary' : 'btn-secondary'}${opt.value === 'OVERDUE' ? ' filter-btn-overdue' : ''}`}
+                  onClick={() => setFilter(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </>
         )}
         <div className="view-toggle">
           <button
@@ -744,9 +769,14 @@ export default function JobCardList() {
                   const isOverdue = card.dueDate &&
                     new Date(card.dueDate) < new Date() &&
                     !['DONE', 'INVOICED'].includes(card.status);
+                  const isPinnedTimer = card.id === activeTimerJobcardId;
+                  const rowClasses = [
+                    isOverdue ? 'overdue-row' : '',
+                    isPinnedTimer ? 'pinned-timer-row' : ''
+                  ].filter(Boolean).join(' ');
 
                   return (
-                    <tr key={card.id} className={isOverdue ? 'overdue-row' : ''}>
+                    <tr key={card.id} className={rowClasses}>
                       {visibleColumns.map(col => col.renderCell(card, isOverdue))}
                     </tr>
                   );
@@ -760,7 +790,7 @@ export default function JobCardList() {
         {totalPages > 1 && (
           <div className="pagination-bar">
             <span className="pagination-info">
-              {(safeCurrentPage - 1) * PAGE_SIZE + 1}–{Math.min(safeCurrentPage * PAGE_SIZE, sortedCards.length)} of {sortedCards.length}
+              {(safeCurrentPage - 1) * PAGE_SIZE + 1}–{Math.min(safeCurrentPage * PAGE_SIZE, displayedCards.length)} of {displayedCards.length}
             </span>
             <div className="pagination-buttons">
               <button

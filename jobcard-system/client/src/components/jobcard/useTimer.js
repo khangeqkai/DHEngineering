@@ -12,7 +12,9 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
   const [loading, setLoading] = useState(false);
   const [showEntryForm, setShowEntryForm] = useState(false);
   const [stoppedEntry, setStoppedEntry] = useState(null);
+  const [stoppedEntryJobCard, setStoppedEntryJobCard] = useState(null);
   const [entryForm, setEntryForm] = useState(emptyEntryForm);
+  const [pendingStartItem, setPendingStartItem] = useState(null);
   const intervalRef = useRef(null);
   const selfStoppedRef = useRef(false);
   const onExternalStopRef = useRef(onExternalStop);
@@ -134,15 +136,25 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
               confirmVariant: 'primary'
             });
             if (shouldSwitch) {
-              await api.stopTimer(currentTimer.jobcardId, currentTimer.id);
-              const result = await api.startTimer(jobcardId, itemNumber);
-              setActiveTimer({
-                id: result.id,
-                jobcardId: result.jobcardId,
-                itemNumber: result.itemNumber,
-                startTime: result.startTime
-              });
-              toast.success(`Timer started on item #${itemNumber}`);
+              if (onSameJob) {
+                selfStoppedRef.current = true;
+                const entry = await api.stopTimer(currentTimer.jobcardId, currentTimer.id);
+                setStoppedEntry(entry);
+                setActiveTimer(null);
+                setEntryForm(emptyEntryForm());
+                setShowEntryForm(true);
+                setPendingStartItem(itemNumber);
+              } else {
+                const entry = await api.stopTimer(currentTimer.jobcardId, currentTimer.id);
+                setStoppedEntry(entry);
+                setStoppedEntryJobCard({
+                  id: currentTimer.jobcardId,
+                  jobNumber: currentTimer.jobNumber
+                });
+                setEntryForm(emptyEntryForm());
+                setShowEntryForm(true);
+                setPendingStartItem(itemNumber);
+              }
             }
           }
         } catch (innerErr) {
@@ -160,9 +172,9 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     if (!activeTimer) return;
     setLoading(true);
     try {
+      selfStoppedRef.current = true;
       const entry = await api.stopTimer(jobcardId, activeTimer.id);
       setStoppedEntry(entry);
-      selfStoppedRef.current = true;
       setActiveTimer(null);
       setEntryForm(emptyEntryForm());
       setShowEntryForm(true);
@@ -199,9 +211,11 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     const machines = (entryForm.machineNumbers || []).join(', ');
     const description = (entryForm.description || '').trim();
 
+    const entryJobcardId = stoppedEntry.jobcardId || jobcardId;
+
     setLoading(true);
     try {
-      await api.updateTimeEntry(jobcardId, stoppedEntry.id, {
+      await api.updateTimeEntry(entryJobcardId, stoppedEntry.id, {
         ...stoppedEntry,
         qty,
         machineNumber: machines,
@@ -210,34 +224,60 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
 
       setShowEntryForm(false);
       setStoppedEntry(null);
+      setStoppedEntryJobCard(null);
       setEntryForm(emptyEntryForm());
+
+      if (pendingStartItem != null) {
+        const nextItem = pendingStartItem;
+        setPendingStartItem(null);
+        try {
+          const result = await api.startTimer(jobcardId, nextItem);
+          setActiveTimer({
+            id: result.id,
+            jobcardId: result.jobcardId,
+            itemNumber: result.itemNumber,
+            startTime: result.startTime
+          });
+          toast.success(`Timer started on item #${nextItem}`);
+        } catch (startErr) {
+          toast.error(startErr.message || 'Failed to start new timer');
+        }
+      } else {
+        toast.success('Time entry updated');
+      }
+
       if (reloadEntries) await reloadEntries();
-      toast.success('Time entry updated');
     } catch (err) {
       toast.error(err.message || 'Failed to update time entry');
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, stoppedEntry, entryForm]);
+  }, [jobcardId, stoppedEntry, entryForm, pendingStartItem]);
 
   const cancelEntryForm = useCallback(async (reloadEntries) => {
     if (!stoppedEntry) return;
+    const entryJobcardId = stoppedEntry.jobcardId || jobcardId;
+    const isSameJob = entryJobcardId === jobcardId;
     setLoading(true);
     try {
-      // Clear end_time to resume the original entry (preserves original startTime)
-      await api.updateTimeEntry(jobcardId, stoppedEntry.id, {
+      await api.updateTimeEntry(entryJobcardId, stoppedEntry.id, {
         ...stoppedEntry,
         endTime: null
       });
-      setActiveTimer({
-        id: stoppedEntry.id,
-        jobcardId,
-        itemNumber: stoppedEntry.itemNumber,
-        startTime: stoppedEntry.startTime
-      });
+      // Cross-job resume: the other job's timer stays running and re-attaches when that modal opens
+      if (isSameJob) {
+        setActiveTimer({
+          id: stoppedEntry.id,
+          jobcardId,
+          itemNumber: stoppedEntry.itemNumber,
+          startTime: stoppedEntry.startTime
+        });
+      }
       setShowEntryForm(false);
       setStoppedEntry(null);
+      setStoppedEntryJobCard(null);
       setEntryForm(emptyEntryForm());
+      setPendingStartItem(null);
       if (reloadEntries) await reloadEntries();
       toast.success('Timer resumed');
     } catch (err) {
@@ -257,8 +297,8 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     return registerBeforeLogout(() => {
       const entry = stoppedEntryRef.current;
       if (!entry) return;
-      // Fire-and-forget: clear end_time to resume the timer
-      api.updateTimeEntry(jobcardId, entry.id, { ...entry, endTime: null }).catch(() => {});
+      // Use entry.jobcardId (not jobcardId) so cross-job stops resume on the correct job
+      api.updateTimeEntry(entry.jobcardId || jobcardId, entry.id, { ...entry, endTime: null }).catch(() => {});
     });
   }, [showEntryForm, hasStoppedEntry, jobcardId, registerBeforeLogout]);
 
@@ -267,7 +307,9 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     setElapsed(0);
     setShowEntryForm(false);
     setStoppedEntry(null);
+    setStoppedEntryJobCard(null);
     setEntryForm(emptyEntryForm());
+    setPendingStartItem(null);
   }, []);
 
   return {
@@ -276,6 +318,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     loading,
     showEntryForm,
     stoppedEntry,
+    stoppedEntryJobCard,
     entryForm,
     startTimer,
     startTimerWithConflictCheck,

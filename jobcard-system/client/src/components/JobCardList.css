@@ -215,6 +215,26 @@
   flex-wrap: wrap;
 }
 
+.filter-btn-mine {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding-right: 0.65rem;
+}
+
+.pinned-timer-row > td:first-child {
+  box-shadow: inset 3px 0 0 0 #22c55e;
+}
+
+.pinned-timer-row {
+  background: rgba(34, 197, 94, 0.04);
+}
+
+.filter-btn-mine + .filter-buttons {
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--border-color);
+}
+
 .archive-toggle {
   display: flex;
   align-items: center;
