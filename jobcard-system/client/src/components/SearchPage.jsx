@@ -6,6 +6,7 @@ import useSearch from '../hooks/useSearch';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
 import JobCardModal from './jobcard/JobCardModal';
+import { ACTIVITY_FIELDS } from './searchFields';
 
 const STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'TREATMENT', 'ON_HOLD', 'DONE', 'INVOICED'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
@@ -324,8 +325,13 @@ export default function SearchPage() {
                 </div>
               </FilterRow>
               <FilterRow label="Field Changed">
-                <input type="text" className="search-field-input" value={filters.field}
-                  onChange={e => updateFilter('field', e.target.value)} placeholder='e.g. "status", "priority", "labourRate"' />
+                <select className="search-select" value={filters.field}
+                  onChange={e => updateFilter('field', e.target.value)}>
+                  <option value="">Any field</option>
+                  {ACTIVITY_FIELDS.map(f => (
+                    <option key={f.value} value={f.value}>{f.label}</option>
+                  ))}
+                </select>
               </FilterRow>
             </>}
 

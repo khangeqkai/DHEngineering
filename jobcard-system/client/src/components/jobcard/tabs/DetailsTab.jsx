@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { useTags } from '../../../hooks/useTags';
 import { formatFileSize, formatFileDate } from '../mappers';
 import { toTitleCase } from '../../../utils/formatters';
+import { useJobSearch } from '../useJobSearch';
 import ItemsTab from './ItemsTab';
 import DetailsReadOnlyView from './DetailsReadOnlyView';
 import NotesSection from './NotesSection';
@@ -68,6 +70,15 @@ export default function DetailsTab({
   const readOnly = isEdit && !isAdmin;
   const { tags: customerPropertyTags } = useTags('customer_property');
   const { tags: drawingsTags } = useTags('drawings');
+
+  const jobSearch = useJobSearch({ excludeJobNumber: jobNumber });
+  const { setQuery: setJobSearchQuery } = jobSearch;
+
+  useEffect(() => {
+    if (jobSearch.query !== (formData.repeatJobReference || '')) {
+      setJobSearchQuery(formData.repeatJobReference || '');
+    }
+  }, [formData.repeatJobReference, jobSearch.query, setJobSearchQuery]);
 
   // Employee read-only view
   if (readOnly) {
@@ -254,15 +265,42 @@ export default function DetailsTab({
           </div>
         </div>
         {formData.isRepeatJob && (
-          <div className="form-group">
+          <div className="form-group" ref={jobSearch.containerRef}>
             <label>Previous Job Reference</label>
-            <input
-              type="text"
-              name="repeatJobReference"
-              value={formData.repeatJobReference}
-              onChange={handleChange}
-              placeholder="DH-00001"
-            />
+            <div className="autocomplete-container">
+              <input
+                type="text"
+                name="repeatJobReference"
+                value={formData.repeatJobReference || ''}
+                onChange={(e) => {
+                  jobSearch.setQuery(e.target.value);
+                  handleChange(e);
+                }}
+                onFocus={jobSearch.handleFocus}
+                onBlur={jobSearch.handleBlur}
+                onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); e.target.blur(); } }}
+                placeholder="DH-00001"
+                autoComplete="off"
+              />
+              {jobSearch.showDropdown && jobSearch.focused && jobSearch.matches.length > 0 && (
+                <div className="customer-dropdown">
+                  {jobSearch.matches.map(j => (
+                    <div
+                      key={j.id}
+                      className="customer-option"
+                      onMouseDown={() => {
+                        setFormData(prev => ({ ...prev, repeatJobReference: j.jobNumber }));
+                        jobSearch.selectMatch(j.jobNumber);
+                      }}
+                    >
+                      <strong>{j.jobNumber}</strong>
+                      {j.companyName && <span className="contact-name"> — {j.companyName}</span>}
+                      {j.description && <span className="contact-name"> ({j.description})</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
         <div className="form-group">

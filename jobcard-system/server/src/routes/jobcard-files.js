@@ -47,6 +47,13 @@ const CATEGORY_FOLDER = {
 
 const CATEGORIES = Object.keys(CATEGORY_FOLDER);
 
+// Cap binary upload at 30 MB so a single phone-photo upload can't tie up the
+// request thread; the global express.json() ceiling of 50 MB is intentionally
+// looser to accommodate other JSON payloads. Base64 encoding inflates bytes by
+// ~4/3, so the raw-string ceiling is ceil(30 MB * 4 / 3).
+const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
+const MAX_FILE_DATA_CHARS = Math.ceil((MAX_UPLOAD_BYTES * 4) / 3);
+
 /**
  * Resolve the on-disk category folder for a job card.
  * Returns { folderPath, jobcard } on success, or { error, status } on failure.
@@ -162,7 +169,15 @@ const validateUploadBody = [
       }
       return true;
     }),
-  body('fileData').isString().notEmpty().withMessage('File data is required'),
+  body('fileData')
+    .isString().notEmpty().withMessage('File data is required')
+    .bail()
+    .custom((value) => {
+      if (value.length > MAX_FILE_DATA_CHARS) {
+        throw new Error('File too large (max 30 MB)');
+      }
+      return true;
+    }),
   handleValidationErrors
 ];
 

@@ -174,12 +174,16 @@ function createRelatedRecords(jobcardId, data) {
  */
 async function copyQaTemplatesForJob(jobcardId, qaLevelId, jobData) {
   const level = qaLevelQueries.getById.get(qaLevelId);
-  if (!level) return;
+  if (!level) {
+    return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'QA level not found' };
+  }
 
   const templates = qaLevelTemplateQueries.getByLevel.all(qaLevelId);
-  if (templates.length === 0) return;
+  if (templates.length === 0) {
+    return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'No templates configured for QA level' };
+  }
 
-  await copyTemplatesToJobFolder(jobcardId, level, templates, jobData);
+  return await copyTemplatesToJobFolder(jobcardId, level, templates, jobData);
 }
 
 /**
@@ -187,23 +191,32 @@ async function copyQaTemplatesForJob(jobcardId, qaLevelId, jobData) {
  * Awaits PDF fill so files exist on disk before the API response is sent.
  */
 async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
+  const totalTemplates = templates.length;
   try {
     const settings = getSettings();
     const basePath = settings.job_folders_base;
-    if (!basePath || !basePath.trim()) return;
+    if (!basePath || !basePath.trim()) {
+      return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'No job folders base configured' };
+    }
 
     const sanitizedCompany = sanitizeFolderName(jobData.companyName);
     const sanitizedJob = sanitizeFolderName(jobData.jobNumber);
-    if (!sanitizedCompany || !sanitizedJob) return;
+    if (!sanitizedCompany || !sanitizedJob) {
+      return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'Invalid company or job folder name' };
+    }
 
     const qaFormsFolder = path.join(basePath.trim(), sanitizedCompany, sanitizedJob, 'QA Forms');
-    if (!isWithinBase(basePath.trim(), qaFormsFolder)) return;
+    if (!isWithinBase(basePath.trim(), qaFormsFolder)) {
+      return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'QA Forms folder path outside base' };
+    }
 
     const qaLevelsBase = path.join(basePath.trim(), 'QA Levels');
     const sanitizedLevelName = sanitizeFolderName(level.name);
     const levelFolder = path.join(qaLevelsBase, sanitizedLevelName);
 
-    if (!fs.existsSync(levelFolder)) return;
+    if (!fs.existsSync(levelFolder)) {
+      return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'QA level folder not found' };
+    }
 
     fs.mkdirSync(qaFormsFolder, { recursive: true });
 
@@ -214,13 +227,21 @@ async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
       items: jobData.items || []
     };
 
+    const failed = [];
+    let succeeded = 0;
     const copyPromises = [];
     for (const tmpl of templates) {
       const srcPath = path.join(levelFolder, tmpl.file_name);
       const destPath = path.join(qaFormsFolder, tmpl.file_name);
 
-      if (!fs.existsSync(srcPath)) continue;
-      if (!isWithinBase(levelFolder, srcPath) || !isWithinBase(qaFormsFolder, destPath)) continue;
+      if (!fs.existsSync(srcPath)) {
+        failed.push({ fileName: tmpl.file_name, reason: 'Source template file not found' });
+        continue;
+      }
+      if (!isWithinBase(levelFolder, srcPath) || !isWithinBase(qaFormsFolder, destPath)) {
+        failed.push({ fileName: tmpl.file_name, reason: 'Path outside permitted base' });
+        continue;
+      }
 
       const sourceBuffer = fs.readFileSync(srcPath);
       copyPromises.push(
@@ -228,21 +249,31 @@ async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
           .then(filledBuffer => {
             fs.writeFileSync(destPath, filledBuffer);
             logger.info({ destPath }, 'Copied QA template to job folder');
+            succeeded += 1;
           })
           .catch(err => {
-            // Fallback: copy as-is
             try {
               fs.copyFileSync(srcPath, destPath);
+              succeeded += 1;
             } catch (copyErr) {
               logger.error({ err: copyErr, srcPath, destPath }, 'Failed to copy QA template');
+              failed.push({ fileName: tmpl.file_name, reason: copyErr.message || String(copyErr) });
             }
           })
       );
     }
 
     await Promise.all(copyPromises);
+
+    return { totalTemplates, succeeded, failed, skipped: false };
   } catch (err) {
     logger.error({ err }, 'Failed to copy templates to job folder');
+    return {
+      totalTemplates,
+      succeeded: 0,
+      failed: [{ fileName: '*', reason: err.message || String(err) }],
+      skipped: false
+    };
   }
 }
 
