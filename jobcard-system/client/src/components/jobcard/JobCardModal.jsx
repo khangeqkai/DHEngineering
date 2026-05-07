@@ -407,13 +407,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           }))
         }))
       };
-      if (isEdit) {
-        await api.updateJobcard(jobCardId, jobcardData);
-      } else {
-        await api.createJobcard(jobcardData);
-      }
+      const result = isEdit
+        ? await api.updateJobcard(jobCardId, jobcardData)
+        : await api.createJobcard(jobcardData);
 
       onSuccess?.();
+      if (result?.qaTemplateWarning) {
+        toast(result.qaTemplateWarning, { icon: '⚠️', duration: 8000 });
+      }
       if (isEdit) {
         toast.success('Job card updated');
       } else {

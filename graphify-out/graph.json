@@ -7341,9 +7341,9 @@
       "source_file": "client/src/components/jobcard/useJobSearch.js",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "client_src_components_jobcard_usejobsearch_js",
-      "target": "jobcard_usejobsearch_usejobsearch",
-      "confidence_score": 1.0
+      "target": "jobcard_usejobsearch_usejobsearch"
     },
     {
       "relation": "imports",
@@ -7352,9 +7352,9 @@
       "source_file": "client/src/components/jobcard/tabs/DetailsTab.jsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "client_src_components_jobcard_tabs_detailstab_jsx",
-      "target": "jobcard_usejobsearch_usejobsearch",
-      "confidence_score": 1.0
+      "target": "jobcard_usejobsearch_usejobsearch"
     },
     {
       "relation": "calls",
@@ -8019,9 +8019,9 @@
       "source_file": "client/src/components/settings/DataBackupCard.jsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "client_src_components_settings_databackupcard_jsx",
-      "target": "settings_databackupcard_databackupcard",
-      "confidence_score": 1.0
+      "target": "settings_databackupcard_databackupcard"
     },
     {
       "relation": "contains",
@@ -8029,9 +8029,9 @@
       "source_file": "client/src/components/settings/FoldersCard.jsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "client_src_components_settings_folderscard_jsx",
-      "target": "settings_folderscard_folderscard",
-      "confidence_score": 1.0
+      "target": "settings_folderscard_folderscard"
     },
     {
       "relation": "contains",
@@ -8039,9 +8039,9 @@
       "source_file": "client/src/components/settings/SecurityCard.jsx",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "client_src_components_settings_securitycard_jsx",
-      "target": "settings_securitycard_securitycard",
-      "confidence_score": 1.0
+      "target": "settings_securitycard_securitycard"
     },
     {
       "relation": "imports",
@@ -12335,9 +12335,9 @@
       "source_file": "server/src/routes/jobcard-mutations.js",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_src_routes_jobcard_mutations_js",
-      "target": "routes_jobcard_mutations_buildqatemplatewarning",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_mutations_buildqatemplatewarning"
     },
     {
       "relation": "contains",
@@ -12345,9 +12345,9 @@
       "source_file": "server/src/routes/jobcard-mutations.js",
       "source_location": "L266",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_src_routes_jobcard_mutations_js",
-      "target": "routes_jobcard_mutations_treatmentstotext",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_mutations_treatmentstotext"
     },
     {
       "relation": "contains",
@@ -12355,9 +12355,9 @@
       "source_file": "server/src/routes/jobcard-mutations.js",
       "source_location": "L273",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_src_routes_jobcard_mutations_js",
-      "target": "routes_jobcard_mutations_itemsummary",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_mutations_itemsummary"
     },
     {
       "relation": "calls",
@@ -12366,9 +12366,9 @@
       "source_file": "server/src/routes/jobcard-mutations.js",
       "source_location": "L274",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routes_jobcard_mutations_itemsummary",
-      "target": "routes_jobcard_mutations_treatmentstotext",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_mutations_treatmentstotext"
     },
     {
       "relation": "contains",

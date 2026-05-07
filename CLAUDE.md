@@ -2,6 +2,32 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## God Rule — Plain Language Always
+
+**When explaining EVERYTHING to the user, write in plain language.** This applies to every user-facing message without exception: explanations, audit results, recommendations, status updates, bug reports, fix descriptions, end-of-turn summaries, questions back to the user — everything.
+
+The user is not reading the code. They need to understand what's happening, not what it's called.
+
+**Never:**
+- Name functions, classes, files, components, hooks, variables, properties, fields, routes, endpoints, tables, or columns
+- Quote line numbers or file paths
+- Use technical jargon: "endpoint", "state", "props", "callback", "promise", "schema", "middleware", "render", "dispatch", "mount", "ref", "context", "response", "request", "payload", "API", "frontend", "backend", "server-side", "client-side"
+- Reference framework or library names: React, Express, SQLite, JWT, hooks, etc.
+
+**Always:**
+- Describe the experience as a flow: "the user clicks here → this happens → then this shows up"
+- For a bug: describe what the user expected to see vs. what actually happens
+- For a fix: describe the new behavior the user will experience
+- Use everyday words: "the screen", "the button", "the form", "the list", "the message", "the page", "saves", "shows", "remembers", "sends"
+
+**Example — wrong (technical):**
+> The `qaTemplateWarning` field is set on the response in `jobcard-mutations.js:157` but the form's submit handler doesn't consume it, so no toast fires.
+
+**Example — right (plain):**
+> When a job is created, if any quality forms fail to copy, the screen never shows a warning. So the user thinks everything worked when it didn't.
+
+The only exception is code comments and commit messages, where technical terms are appropriate because the audience is a future reader of the code itself.
+
 ## Project Overview
 
 DH Engineering Job Card System - A full-stack Electron/React/Express application for managing job cards, quotes, contacts, suppliers, and manufacturing operations. Designed for LAN-connected desktop use with a central server.
