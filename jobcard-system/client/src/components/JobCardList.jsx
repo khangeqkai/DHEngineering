@@ -1,86 +1,38 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { Plus } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, ArchiveRestore, Check, Calendar, List, ChevronUp, ChevronDown, ChevronsUpDown, User } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportJobCardList, exportJobCardsFull } from '../utils/excelExport';
-import { getInitials, getAvatarColor } from '../utils/initials';
 import JobCardModal from './jobcard/JobCardModal';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
-import useJobCardSort, { SORT_VALUE_GETTERS } from '../hooks/useJobCardSort';
+import useJobCardSort from '../hooks/useJobCardSort';
+import useJobCardColumnOrder from '../hooks/useJobCardColumnOrder';
 import EmptyState from './common/EmptyState';
-import JobCardListDensityToggle, { useJobCardListDensity } from './JobCardListDensity';
+import { useJobCardListDensity } from './JobCardListDensity';
 import JobCardCalendarView from './JobCardCalendarView';
+import JobCardListFilters from './JobCardListFilters';
+import JobCardListTable from './JobCardListTable';
+import JobCardListPagination from './JobCardListPagination';
+import { getJobCardColumns } from './JobCardListColumns';
+import {
+  STATUS_OPTIONS,
+  STATUS_LABELS,
+  PAGE_SIZE,
+  getStatusBadgeClass
+} from './JobCardList.constants';
 import './JobCardList.css';
 
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'All' },
-  { value: 'QUOTE', label: 'Quotes' },
-  { value: 'OPEN', label: 'Open' },
-  { value: 'AWAITING_MATERIAL', label: 'Awaiting Material' },
-  { value: 'IN_PROGRESS', label: 'In Progress' },
-  { value: 'TREATMENT', label: 'Treatment' },
-  { value: 'ON_HOLD', label: 'On Hold' },
-  { value: 'DONE', label: 'Done' },
-  { value: 'INVOICED', label: 'Invoiced' },
-  { value: 'OVERDUE', label: 'Overdue' }
-];
-
-const STATUS_LABELS = {
-  QUOTE: 'Quote',
-  OPEN: 'Open',
-  AWAITING_MATERIAL: 'Awaiting Material',
-  IN_PROGRESS: 'In Progress',
-  TREATMENT: 'Treatment',
-  ON_HOLD: 'On Hold',
-  DONE: 'Done',
-  INVOICED: 'Invoiced'
-};
-
-const PRIORITY_COLORS = {
-  NONE: 'var(--text-secondary)',
-  LOW: 'var(--badge-progress-text)',
-  MEDIUM: '#d97706',
-  HIGH: 'var(--danger-color)'
-};
-
-const PRIORITY_LABELS = { NONE: 'None', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' };
-
-const PAGE_SIZE = 20;
-
-const DEFAULT_COLUMN_ORDER = [
-  'jobNumber',
-  'company',
-  'customer',
-  'assignedTo',
-  'status',
-  'priority',
-  'dueDate',
-  'createdAt',
-  'updatedAt',
-  'actions'
-];
-
-const mergeColumnOrder = (saved) => {
-  if (!Array.isArray(saved) || saved.length === 0) return DEFAULT_COLUMN_ORDER;
-  const missing = DEFAULT_COLUMN_ORDER.filter(c => !saved.includes(c));
-  if (missing.length === 0) return saved;
-  // Insert any new columns just before 'actions' (or append if actions is absent)
-  const actionsIdx = saved.indexOf('actions');
-  if (actionsIdx === -1) return [...saved, ...missing];
-  return [...saved.slice(0, actionsIdx), ...missing, ...saved.slice(actionsIdx)];
-};
-
 export default function JobCardList() {
-  const { user, updatePreferences } = useAuth();
+  const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   const [filter, setFilter] = useState(() => {
     const paramFilter = searchParams.get('filter');
     const valid = STATUS_OPTIONS.some(o => o.value === paramFilter);
@@ -88,9 +40,7 @@ export default function JobCardList() {
   });
   const [search, setSearch] = useState('');
   const [myJobsOnly, setMyJobsOnly] = useState(() => searchParams.get('mine') === '1');
-  const [assigneeFilter, setAssigneeFilter] = useState(() => {
-    return searchParams.get('assignee') || 'all';
-  });
+  const [assigneeFilter, setAssigneeFilter] = useState(() => searchParams.get('assignee') || 'all');
   const [employees, setEmployees] = useState([]);
   const [showArchived, setShowArchived] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -104,57 +54,10 @@ export default function JobCardList() {
   const assignPopoverRef = useRef(null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   const [density, setDensity] = useJobCardListDensity();
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
+  const [viewMode, setViewMode] = useState('list');
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
-  
-  const [columnOrder, setColumnOrder] = useState(() => mergeColumnOrder(user?.jobcardColumnOrder));
 
-  useEffect(() => {
-    if (user?.jobcardColumnOrder) {
-      setColumnOrder(mergeColumnOrder(user.jobcardColumnOrder));
-    }
-  }, [user?.jobcardColumnOrder]);
-
-  const [draggedCol, setDraggedCol] = useState(null);
-
-  const handleDragStart = (e, colId) => {
-    setDraggedCol(colId);
-    e.dataTransfer.effectAllowed = 'move';
-    // Set a slight opacity to the dragged header
-    setTimeout(() => {
-      if (e.target) e.target.style.opacity = '0.5';
-    }, 0);
-  };
-
-  const handleDragEnd = (e) => {
-    if (e.target) e.target.style.opacity = '1';
-    setDraggedCol(null);
-  };
-
-  const handleDragOver = (e, colId) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e, targetColId) => {
-    e.preventDefault();
-    if (!draggedCol || draggedCol === targetColId) return;
-
-    const draggedIdx = columnOrder.indexOf(draggedCol);
-    const targetIdx = columnOrder.indexOf(targetColId);
-    if (draggedIdx === -1 || targetIdx === -1) return;
-
-    const newOrder = columnOrder.filter(c => c !== draggedCol);
-    const insertAt = draggedIdx < targetIdx
-      ? newOrder.indexOf(targetColId) + 1
-      : newOrder.indexOf(targetColId);
-    newOrder.splice(insertAt, 0, draggedCol);
-
-    setColumnOrder(newOrder);
-    updatePreferences({ jobcardColumnOrder: newOrder }).catch(() => {
-      toast.error('Failed to save column order preference');
-    });
-  };
+  const { columnOrder, handleDragStart, handleDragEnd, handleDragOver, handleDrop } = useJobCardColumnOrder();
 
   const hasLoadedOnceRef = useRef(false);
   const loadJobcards = useCallback(async () => {
@@ -179,7 +82,6 @@ export default function JobCardList() {
     loadJobcards();
   }, [loadJobcards]);
 
-  // Fetch employees for assignee filter (admin only)
   useEffect(() => {
     if (!isAdmin) return;
     api.getEmployees().then(setEmployees).catch(() => {});
@@ -220,20 +122,6 @@ export default function JobCardList() {
     }
   };
 
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'QUOTE': return 'badge-pending';
-      case 'OPEN': return 'badge-pending';
-      case 'IN_PROGRESS': return 'badge-in-progress';
-      case 'AWAITING_MATERIAL': return 'badge-awaiting-material';
-      case 'TREATMENT': return 'badge-treatment';
-      case 'ON_HOLD': return 'badge-cancelled';
-      case 'DONE': return 'badge-completed';
-      case 'INVOICED': return 'badge-completed';
-      default: return '';
-    }
-  };
-
   const handleQuickStatusChange = useCallback(async (cardId, newStatus) => {
     setStatusPopoverId(null);
     try {
@@ -245,7 +133,6 @@ export default function JobCardList() {
     }
   }, [loadJobcards]);
 
-  // Close status popover on click-outside or Escape
   useEffect(() => {
     if (!statusPopoverId) return;
     const handleClickOutside = (e) => {
@@ -264,7 +151,6 @@ export default function JobCardList() {
     };
   }, [statusPopoverId]);
 
-  // Close assignee popover on click-outside or Escape
   useEffect(() => {
     if (!assignPopoverId) return;
     const handleClickOutside = (e) => {
@@ -299,7 +185,6 @@ export default function JobCardList() {
     }
   }, [loadJobcards]);
 
-  // Filter job cards based on status filter and search
   const filteredCards = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     return jobcards.filter((card) => {
@@ -335,7 +220,6 @@ export default function JobCardList() {
     return [pinned, ...sortedCards.slice(0, idx), ...sortedCards.slice(idx + 1)];
   }, [sortedCards, activeTimerJobcardId]);
 
-  // Reset to page 1 when filters or sort change, sync filter to URL
   useEffect(() => {
     setCurrentPage(1);
     const params = new URLSearchParams(window.location.search);
@@ -357,7 +241,6 @@ export default function JobCardList() {
     setSearchParams(params, { replace: true });
   }, [filter, search, showArchived, assigneeFilter, myJobsOnly, sortBy, sortDir, setSearchParams]);
 
-  // Pagination
   const totalPages = Math.max(1, Math.ceil(displayedCards.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedCards = displayedCards.slice(
@@ -379,236 +262,27 @@ export default function JobCardList() {
     loadJobcards();
   };
 
-  const COLUMNS = [
-    {
-      id: 'jobNumber',
-      label: 'Job #',
-      renderCell: (card, isOverdue) => (
-        <td key="jobNumber">
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              openEditModal(card.id);
-            }}
-          >
-            <strong>{card.jobNumber}</strong>
-          </a>
-          {card.id === activeTimerJobcardId && (
-            <span className="timer-indicator">
-              <span className="timer-dot" />
-              {formattedElapsed}
-            </span>
-          )}
-          {card.qualityLevel === 'CRITICAL' && (
-            <span className="critical-badge">Critical QA</span>
-          )}
-          {card.description && (
-            <p className="description-preview">
-              {card.description.substring(0, 60)}
-              {card.description.length > 60 ? '...' : ''}
-            </p>
-          )}
-        </td>
-      )
-    },
-    {
-      id: 'company',
-      label: 'Company',
-      adminOnly: true,
-      renderCell: (card) => <td key="company">{card.companyName || '-'}</td>
-    },
-    {
-      id: 'customer',
-      label: 'Customer',
-      adminOnly: true,
-      renderCell: (card) => <td key="customer">{card.contactName || '-'}</td>
-    },
-    {
-      id: 'assignedTo',
-      label: 'Assigned To',
-      renderCell: (card) => {
-        const isAssigned = !!card.assignees?.some(a => a.userId === user?.id);
-        const renderAvatars = () => card.assignees?.length ? (() => {
-          const MAX_VISIBLE = 3;
-          const visible = card.assignees.slice(0, MAX_VISIBLE);
-          const overflow = card.assignees.length - visible.length;
-          return (
-            <span className="assignee-preview">
-              <span className="avatar-stack">
-                {visible.map(a => {
-                  const c = getAvatarColor(a.userName || a.username || a.userId);
-                  return (
-                    <span
-                      key={a.userId}
-                      className="avatar-chip"
-                      style={{ backgroundColor: c.bg, color: c.fg }}
-                    >
-                      {getInitials(a.userName)}
-                    </span>
-                  );
-                })}
-                {overflow > 0 && (
-                  <span className="avatar-chip avatar-overflow">
-                    +{overflow}
-                  </span>
-                )}
-              </span>
-              <span className="assignee-tooltip">
-                {card.assignees.map(a => (
-                  <span key={a.userId} className="assignee-tooltip-item">{a.userName}</span>
-                ))}
-              </span>
-            </span>
-          );
-        })() : '-';
-
-        return (
-          <td key="assignedTo" className="assignee-cell">
-            <div className="status-popover-wrapper" ref={assignPopoverId === card.id ? assignPopoverRef : null}>
-              <span
-                className="assignee-trigger"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAssignPopoverId(assignPopoverId === card.id ? null : card.id);
-                }}
-              >
-                {renderAvatars()}
-              </span>
-              {assignPopoverId === card.id && (
-                <div className="status-popover">
-                  <button
-                    className="status-popover-item"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelfToggle(card, isAssigned);
-                    }}
-                  >
-                    {isAssigned ? 'Remove me' : 'Assign me'}
-                  </button>
-                </div>
-              )}
-            </div>
-          </td>
-        );
-      }
-    },
-    {
-      id: 'status',
-      label: 'Status',
-      renderCell: (card) => (
-        <td key="status">
-          {!showArchived ? (
-            <div className="status-popover-wrapper" ref={statusPopoverId === card.id ? popoverRef : null}>
-              <span
-                className={`badge ${getStatusBadgeClass(card.status)} badge-clickable`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setStatusPopoverId(statusPopoverId === card.id ? null : card.id);
-                }}
-              >
-                {STATUS_LABELS[card.status] || card.status}
-              </span>
-              {statusPopoverId === card.id && (
-                <div className="status-popover">
-                  {Object.entries(STATUS_LABELS)
-                    .filter(([value]) => isAdmin || value !== 'INVOICED')
-                    .map(([value, label]) => (
-                    <button
-                      key={value}
-                      className={`status-popover-item ${card.status === value ? 'active' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (card.status !== value) {
-                          handleQuickStatusChange(card.id, value);
-                        } else {
-                          setStatusPopoverId(null);
-                        }
-                      }}
-                    >
-                      <span className={`badge ${getStatusBadgeClass(value)}`}>{label}</span>
-                      {card.status === value && <span className="status-check"><Check size={14} /></span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <span className={`badge ${getStatusBadgeClass(card.status)}`}>
-              {STATUS_LABELS[card.status] || card.status}
-            </span>
-          )}
-        </td>
-      )
-    },
-    {
-      id: 'priority',
-      label: 'Priority',
-      renderCell: (card) => (
-        <td key="priority">
-          <span style={{ color: PRIORITY_COLORS[card.priority] || PRIORITY_COLORS.NONE, fontWeight: 500 }}>
-            {PRIORITY_LABELS[card.priority] || 'None'}
-          </span>
-        </td>
-      )
-    },
-    {
-      id: 'dueDate',
-      label: 'Due Date',
-      renderCell: (card, isOverdue) => (
-        <td key="dueDate" className={isOverdue ? 'overdue-date' : ''}>
-          {card.dueDate ? new Date(card.dueDate).toLocaleDateString() : '-'}
-          {isOverdue && <span className="overdue-label">OVERDUE</span>}
-        </td>
-      )
-    },
-    {
-      id: 'createdAt',
-      label: 'Created At',
-      renderCell: (card) => (
-        <td key="createdAt">
-          {card.createdAt ? new Date(card.createdAt).toLocaleString() : '-'}
-        </td>
-      )
-    },
-    {
-      id: 'updatedAt',
-      label: 'Last Edited',
-      renderCell: (card) => (
-        <td key="updatedAt">
-          {card.updatedAt ? new Date(card.updatedAt).toLocaleString() : '-'}
-        </td>
-      )
-    },
-    {
-      id: 'actions',
-      label: 'Actions',
-      adminOnly: true,
-      renderCell: (card) => (
-        <td key="actions">
-          <div className="action-buttons">
-            {showArchived && card.archived && (
-              <button
-                className="btn btn-outline-warning btn-sm"
-                onClick={() => handleUnarchive(card.id)}
-              >
-                <ArchiveRestore size={14} /> Unarchive
-              </button>
-            )}
-            <button
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => handleDelete(card.id)}
-            >
-              <Trash2 size={14} /> Delete
-            </button>
-          </div>
-        </td>
-      )
-    }
-  ];
+  const columns = getJobCardColumns({
+    user,
+    isAdmin,
+    showArchived,
+    activeTimerJobcardId,
+    formattedElapsed,
+    statusPopoverId,
+    setStatusPopoverId,
+    popoverRef,
+    assignPopoverId,
+    setAssignPopoverId,
+    assignPopoverRef,
+    openEditModal,
+    handleQuickStatusChange,
+    handleSelfToggle,
+    handleDelete,
+    handleUnarchive
+  });
 
   const visibleColumns = columnOrder
-    .map(id => COLUMNS.find(c => c.id === id))
+    .map(id => columns.find(c => c.id === id))
     .filter(Boolean)
     .filter(col => !col.adminOnly || isAdmin);
 
@@ -640,68 +314,23 @@ export default function JobCardList() {
         )}
       </PageHeader>
 
-      <div className="filters">
-        <input
-          type="text"
-          placeholder={isAdmin ? "Search by job #, company, customer, assignee, or description..." : "Search by job # or description..."}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="search-input"
-        />
-        {isAdmin && !showArchived && (
-          <select
-            className="assignee-filter"
-            value={assigneeFilter}
-            onChange={(e) => setAssigneeFilter(e.target.value)}
-          >
-            <option value="all">All Employees</option>
-            <option value="UNASSIGNED">Unassigned</option>
-            {employees.map(emp => (
-              <option key={emp.id} value={emp.id}>{emp.name || emp.username}</option>
-            ))}
-          </select>
-        )}
-        {!showArchived && (
-          <>
-            <button
-              className={`btn btn-sm filter-btn-mine ${myJobsOnly ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setMyJobsOnly(v => !v)}
-              aria-pressed={myJobsOnly}
-              title="Show only jobs assigned to me"
-            >
-              <User size={14} /> My Jobs
-            </button>
-            <div className="filter-buttons">
-              {STATUS_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  className={`btn btn-sm ${filter === opt.value ? 'btn-primary' : 'btn-secondary'}${opt.value === 'OVERDUE' ? ' filter-btn-overdue' : ''}`}
-                  onClick={() => setFilter(opt.value)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-        <div className="view-toggle">
-          <button
-            className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setViewMode('list')}
-            title="List View"
-          >
-            <List size={16} />
-          </button>
-          <button
-            className={`btn btn-sm ${viewMode === 'calendar' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setViewMode('calendar')}
-            title="Calendar View"
-          >
-            <Calendar size={16} />
-          </button>
-        </div>
-        {viewMode === 'list' && <JobCardListDensityToggle density={density} onChange={setDensity} />}
-      </div>
+      <JobCardListFilters
+        isAdmin={isAdmin}
+        showArchived={showArchived}
+        search={search}
+        onSearchChange={setSearch}
+        assigneeFilter={assigneeFilter}
+        onAssigneeFilterChange={setAssigneeFilter}
+        employees={employees}
+        myJobsOnly={myJobsOnly}
+        onMyJobsOnlyChange={setMyJobsOnly}
+        filter={filter}
+        onFilterChange={setFilter}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        density={density}
+        onDensityChange={setDensity}
+      />
 
       {viewMode === 'calendar' ? (
         <div className="calendar-container" style={{ flex: 1, minHeight: '600px', marginBottom: '1rem' }}>
@@ -713,125 +342,48 @@ export default function JobCardList() {
           />
         </div>
       ) : (
-      <div className="card">
-        <div className="card-body" style={{ padding: 0 }}>
-          {filteredCards.length === 0 ? (
-            jobcards.length === 0 ? (
-              <EmptyState
-                icon="jobcards"
-                title="No job cards yet"
-                description="Create your first job card to get started."
-                actionLabel={isAdmin ? 'New Job Card' : undefined}
-                onAction={isAdmin ? openCreateModal : undefined}
-              />
+        <div className="card">
+          <div className="card-body" style={{ padding: 0 }}>
+            {filteredCards.length === 0 ? (
+              jobcards.length === 0 ? (
+                <EmptyState
+                  icon="jobcards"
+                  title="No job cards yet"
+                  description="Create your first job card to get started."
+                  actionLabel={isAdmin ? 'New Job Card' : undefined}
+                  onAction={isAdmin ? openCreateModal : undefined}
+                />
+              ) : (
+                <EmptyState
+                  icon="jobcards"
+                  title="No results"
+                  description="Try adjusting your search or filters."
+                />
+              )
             ) : (
-              <EmptyState
-                icon="jobcards"
-                title="No results"
-                description="Try adjusting your search or filters."
+              <JobCardListTable
+                visibleColumns={visibleColumns}
+                paginatedCards={paginatedCards}
+                density={density}
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onSort={handleSort}
+                activeTimerJobcardId={activeTimerJobcardId}
+                handleDragStart={handleDragStart}
+                handleDragEnd={handleDragEnd}
+                handleDragOver={handleDragOver}
+                handleDrop={handleDrop}
               />
-            )
-          ) : (
-            <table className="table" data-density={density}>
-              <thead>
-                <tr>
-                  {visibleColumns.map(col => {
-                    const sortable = !!SORT_VALUE_GETTERS[col.id];
-                    const active = sortable && sortBy === col.id;
-                    return (
-                      <th
-                        key={col.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, col.id)}
-                        onDragEnd={handleDragEnd}
-                        onDragOver={(e) => handleDragOver(e, col.id)}
-                        onDrop={(e) => handleDrop(e, col.id)}
-                        onClick={sortable ? () => handleSort(col.id) : undefined}
-                        className={`jc-th${sortable ? ' jc-th-sortable' : ''}${active ? ' jc-th-sorted' : ''}`}
-                        title={sortable ? 'Click to sort, drag to reorder' : 'Drag to reorder columns'}
-                        aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
-                      >
-                        <span className="jc-th-label">{col.label}</span>
-                        {sortable && (
-                          <span className="jc-sort-icon" aria-hidden="true">
-                            {!active && <ChevronsUpDown size={12} />}
-                            {active && sortDir === 'asc' && <ChevronUp size={14} />}
-                            {active && sortDir === 'desc' && <ChevronDown size={14} />}
-                          </span>
-                        )}
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedCards.map((card) => {
-                  const isOverdue = card.dueDate &&
-                    new Date(card.dueDate) < new Date() &&
-                    !['DONE', 'INVOICED'].includes(card.status);
-                  const isPinnedTimer = card.id === activeTimerJobcardId;
-                  const rowClasses = [
-                    isOverdue ? 'overdue-row' : '',
-                    isPinnedTimer ? 'pinned-timer-row' : ''
-                  ].filter(Boolean).join(' ');
-
-                  return (
-                    <tr key={card.id} className={rowClasses}>
-                      {visibleColumns.map(col => col.renderCell(card, isOverdue))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="pagination-bar">
-            <span className="pagination-info">
-              {(safeCurrentPage - 1) * PAGE_SIZE + 1}–{Math.min(safeCurrentPage * PAGE_SIZE, displayedCards.length)} of {displayedCards.length}
-            </span>
-            <div className="pagination-buttons">
-              <button
-                className="btn btn-secondary btn-sm"
-                disabled={safeCurrentPage <= 1}
-                onClick={() => setCurrentPage(safeCurrentPage - 1)}
-              >
-                Prev
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter((page) => {
-                  if (totalPages <= 7) return true;
-                  if (page === 1 || page === totalPages) return true;
-                  if (Math.abs(page - safeCurrentPage) <= 1) return true;
-                  return false;
-                })
-                .map((page, idx, arr) => {
-                  const showEllipsis = idx > 0 && page - arr[idx - 1] > 1;
-                  return (
-                    <span key={page} style={{ display: 'contents' }}>
-                      {showEllipsis && <span className="pagination-ellipsis">&hellip;</span>}
-                      <button
-                        className={`btn btn-sm ${page === safeCurrentPage ? 'btn-primary' : 'btn-secondary'}`}
-                        onClick={() => setCurrentPage(page)}
-                      >
-                        {page}
-                      </button>
-                    </span>
-                  );
-                })}
-              <button
-                className="btn btn-secondary btn-sm"
-                disabled={safeCurrentPage >= totalPages}
-                onClick={() => setCurrentPage(safeCurrentPage + 1)}
-              >
-                Next
-              </button>
-            </div>
+            )}
           </div>
-        )}
-      </div>
+
+          <JobCardListPagination
+            currentPage={safeCurrentPage}
+            totalPages={totalPages}
+            totalItems={displayedCards.length}
+            onPageChange={setCurrentPage}
+          />
+        </div>
       )}
 
       <JobCardModal
