@@ -4021,7 +4021,7 @@
       "label": "buildQaTemplateWarning()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-mutations.js",
-      "source_location": "L21",
+      "source_location": "L22",
       "id": "routes_jobcard_mutations_buildqatemplatewarning",
       "community": 6,
       "norm_label": "buildqatemplatewarning()"
@@ -4030,7 +4030,7 @@
       "label": "treatmentsToText()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-mutations.js",
-      "source_location": "L266",
+      "source_location": "L305",
       "id": "routes_jobcard_mutations_treatmentstotext",
       "community": 6,
       "norm_label": "treatmentstotext()"
@@ -4039,7 +4039,7 @@
       "label": "itemSummary()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-mutations.js",
-      "source_location": "L273",
+      "source_location": "L312",
       "id": "routes_jobcard_mutations_itemsummary",
       "community": 6,
       "norm_label": "itemsummary()"

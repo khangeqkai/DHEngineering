@@ -15,6 +15,7 @@ const {
 } = require('../db/database');
 const { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob } = require('./jobcard-helpers');
 const { generateAndIncrementJobNumber } = require('../db/helpers');
+const { db } = require('../db/connection');
 
 const router = express.Router();
 
@@ -210,30 +211,86 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
 
     const changes = buildChanges(existing, data);
 
-    jobcardQueries.update.run(
-      existing.card_type,
-      data.status !== undefined ? data.status : existing.status,
-      data.contactId !== undefined ? data.contactId : existing.contact_id,
-      data.contactName !== undefined ? data.contactName : existing.contact_name,
-      data.companyName !== undefined ? data.companyName : existing.company_name,
-      data.contactPhone !== undefined ? data.contactPhone : existing.contact_phone,
-      data.contactEmail !== undefined ? data.contactEmail : existing.contact_email,
-      data.qualityLevel !== undefined ? data.qualityLevel : existing.quality_level,
-      data.priority !== undefined ? data.priority : existing.priority,
-      data.poNumber !== undefined ? data.poNumber : existing.po_number,
-      data.quoteReference !== undefined ? data.quoteReference : existing.quote_reference,
-      data.drawingsType !== undefined ? data.drawingsType : existing.drawings_type,
-      data.customerProperty !== undefined ? data.customerProperty : existing.customer_property,
-      data.description !== undefined ? data.description : existing.description,
-      data.dueDate !== undefined ? data.dueDate : existing.due_date,
-      data.isRepeatJob !== undefined ? (data.isRepeatJob ? 1 : 0) : existing.is_repeat_job,
-      data.repeatJobReference !== undefined ? data.repeatJobReference : existing.repeat_job_reference,
-      data.photos !== undefined ? JSON.stringify(data.photos) : existing.photos,
-      req.user.userId,
-      data.qaLevelId !== undefined ? data.qaLevelId : existing.qa_level_id,
-      id
-    );
+    // Snapshot current items/assignees before any writes, for change tracking after commit
+    const existingItems = data.items !== undefined ? jobItemQueries.getByJobcard.all(id) : [];
+    const existingAssignees = data.assigneeIds !== undefined ? jobAssigneeQueries.getByJobcard.all(id) : [];
 
+    // Validate a changed QA level BEFORE touching the database, so an invalid
+    // selection can't leave a half-applied update committed.
+    const newQaLevelId = data.qaLevelId !== undefined ? data.qaLevelId : existing.qa_level_id;
+    const qaLevelChanged = data.qaLevelId !== undefined && (data.qaLevelId || null) !== (existing.qa_level_id || null);
+    if (qaLevelChanged && newQaLevelId) {
+      const newLevel = qaLevelQueries.getById.get(newQaLevelId);
+      if (!newLevel) {
+        return res.status(400).json({ error: 'Invalid QA level selected' });
+      }
+    }
+
+    const newStatus = data.status !== undefined ? data.status : existing.status;
+    const shouldArchive = newStatus === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
+    const invoicedDate = shouldArchive ? new Date().toISOString() : null;
+
+    // All database writes happen in one transaction: either every change lands,
+    // or none do. A failure partway through (e.g. a rejected line item) rolls the
+    // whole update back, so existing items/assignees are never lost.
+    const applyUpdate = db.transaction(() => {
+      jobcardQueries.update.run(
+        existing.card_type,
+        data.status !== undefined ? data.status : existing.status,
+        data.contactId !== undefined ? data.contactId : existing.contact_id,
+        data.contactName !== undefined ? data.contactName : existing.contact_name,
+        data.companyName !== undefined ? data.companyName : existing.company_name,
+        data.contactPhone !== undefined ? data.contactPhone : existing.contact_phone,
+        data.contactEmail !== undefined ? data.contactEmail : existing.contact_email,
+        data.qualityLevel !== undefined ? data.qualityLevel : existing.quality_level,
+        data.priority !== undefined ? data.priority : existing.priority,
+        data.poNumber !== undefined ? data.poNumber : existing.po_number,
+        data.quoteReference !== undefined ? data.quoteReference : existing.quote_reference,
+        data.drawingsType !== undefined ? data.drawingsType : existing.drawings_type,
+        data.customerProperty !== undefined ? data.customerProperty : existing.customer_property,
+        data.description !== undefined ? data.description : existing.description,
+        data.dueDate !== undefined ? data.dueDate : existing.due_date,
+        data.isRepeatJob !== undefined ? (data.isRepeatJob ? 1 : 0) : existing.is_repeat_job,
+        data.repeatJobReference !== undefined ? data.repeatJobReference : existing.repeat_job_reference,
+        data.photos !== undefined ? JSON.stringify(data.photos) : existing.photos,
+        req.user.userId,
+        data.qaLevelId !== undefined ? data.qaLevelId : existing.qa_level_id,
+        id
+      );
+
+      if (data.items !== undefined) {
+        jobItemQueries.deleteByJobcard.run(id);
+        for (let i = 0; i < data.items.length; i++) {
+          const item = data.items[i];
+          const itemId = item.id || `item:${uuidv4()}`;
+          jobItemQueries.create.run(
+            itemId, id, i + 1,
+            item.qty || null, item.description,
+            item.jobType || null, item.material || null,
+            serializeTreatments(item.treatments)
+          );
+        }
+      }
+
+      if (data.assigneeIds !== undefined) {
+        jobAssigneeQueries.deleteByJobcard.run(id);
+        for (const userId of data.assigneeIds) {
+          const assigneeId = `assignee:${uuidv4()}`;
+          try {
+            jobAssigneeQueries.create.run(assigneeId, id, userId);
+          } catch (e) {
+            // Swallow UNIQUE-constraint duplicates from repeated userId in payload
+          }
+        }
+      }
+
+      if (shouldArchive) {
+        jobcardQueries.archive.run(invoicedDate, req.user.userId, id);
+      }
+    });
+    applyUpdate();
+
+    // ---- Change tracking (pure computation; uses the snapshots captured above) ----
     if (data.photos !== undefined) {
       const newPhotos = JSON.stringify(data.photos);
       const oldPhotos = existing.photos || '[]';
@@ -241,24 +298,6 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
         const oldCount = existing.photos ? JSON.parse(existing.photos).length : 0;
         const newCount = data.photos.length;
         changes['photos'] = { from: `${oldCount} photos`, to: `${newCount} photos` };
-      }
-    }
-
-    // Snapshot before mutating so the change tracking below can diff old vs new
-    const existingItems = data.items !== undefined ? jobItemQueries.getByJobcard.all(id) : [];
-    const existingAssignees = data.assigneeIds !== undefined ? jobAssigneeQueries.getByJobcard.all(id) : [];
-
-    if (data.items !== undefined) {
-      jobItemQueries.deleteByJobcard.run(id);
-      for (let i = 0; i < data.items.length; i++) {
-        const item = data.items[i];
-        const itemId = item.id || `item:${uuidv4()}`;
-        jobItemQueries.create.run(
-          itemId, id, i + 1,
-          item.qty || null, item.description,
-          item.jobType || null, item.material || null,
-          serializeTreatments(item.treatments)
-        );
       }
     }
 
@@ -291,18 +330,6 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     }
 
     if (data.assigneeIds !== undefined) {
-      jobAssigneeQueries.deleteByJobcard.run(id);
-      for (const userId of data.assigneeIds) {
-        const assigneeId = `assignee:${uuidv4()}`;
-        try {
-          jobAssigneeQueries.create.run(assigneeId, id, userId);
-        } catch (e) {
-          // Swallow UNIQUE-constraint duplicates from repeated userId in payload
-        }
-      }
-    }
-
-    if (data.assigneeIds !== undefined) {
       const oldIds = existingAssignees.map(a => a.user_id).sort().join(',');
       const newIds = [...data.assigneeIds].sort().join(',');
       if (oldIds !== newIds) {
@@ -315,43 +342,31 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       }
     }
 
-    let qaResult = null;
-    const newQaLevelId = data.qaLevelId !== undefined ? data.qaLevelId : existing.qa_level_id;
-    if (data.qaLevelId !== undefined && (data.qaLevelId || null) !== (existing.qa_level_id || null)) {
-      if (newQaLevelId) {
-        const newLevel = qaLevelQueries.getById.get(newQaLevelId);
-        if (!newLevel) {
-          return res.status(400).json({ error: 'Invalid QA level selected' });
-        }
-      }
-
-      if (newQaLevelId) {
-        const current = jobcardQueries.getById.get(id);
-        qaResult = await copyQaTemplatesForJob(id, newQaLevelId, buildQaFillData(id, {
-          jobNumber: current.job_number,
-          status: current.status,
-          companyName: current.company_name || data.companyName || null,
-          contactName: current.contact_name || data.contactName || null,
-          description: current.description || data.description || null,
-          priority: current.priority || data.priority || 'NONE',
-          dueDate: current.due_date || data.dueDate || null,
-          qualityLevel: data.qualityLevel || existing.quality_level,
-          poNumber: current.po_number || data.poNumber || null,
-          quoteReference: current.quote_reference || data.quoteReference || null,
-          drawingsType: current.drawings_type || data.drawingsType || null,
-          customerProperty: current.customer_property || data.customerProperty || null,
-          repeatJob: (data.isRepeatJob !== undefined ? data.isRepeatJob : current.is_repeat_job === 1) ? 'Yes' : 'No',
-          repeatJobReference: current.repeat_job_reference || data.repeatJobReference || null
-        }));
-      }
-    }
-
-    const newStatus = data.status !== undefined ? data.status : existing.status;
-    if (newStatus === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0) {
-      const invoicedDate = new Date().toISOString();
-      jobcardQueries.archive.run(invoicedDate, req.user.userId, id);
+    if (shouldArchive) {
       changes.archived = { from: false, to: true };
       changes.invoicedDate = { from: null, to: invoicedDate };
+    }
+
+    // QA template copy is a disk operation, kept outside the database transaction.
+    let qaResult = null;
+    if (qaLevelChanged && newQaLevelId) {
+      const current = jobcardQueries.getById.get(id);
+      qaResult = await copyQaTemplatesForJob(id, newQaLevelId, buildQaFillData(id, {
+        jobNumber: current.job_number,
+        status: current.status,
+        companyName: current.company_name || data.companyName || null,
+        contactName: current.contact_name || data.contactName || null,
+        description: current.description || data.description || null,
+        priority: current.priority || data.priority || 'NONE',
+        dueDate: current.due_date || data.dueDate || null,
+        qualityLevel: data.qualityLevel || existing.quality_level,
+        poNumber: current.po_number || data.poNumber || null,
+        quoteReference: current.quote_reference || data.quoteReference || null,
+        drawingsType: current.drawings_type || data.drawingsType || null,
+        customerProperty: current.customer_property || data.customerProperty || null,
+        repeatJob: (data.isRepeatJob !== undefined ? data.isRepeatJob : current.is_repeat_job === 1) ? 'Yes' : 'No',
+        repeatJobReference: current.repeat_job_reference || data.repeatJobReference || null
+      }));
     }
 
     if (Object.keys(changes).length > 0) {
