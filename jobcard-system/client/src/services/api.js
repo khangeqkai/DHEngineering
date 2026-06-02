@@ -97,7 +97,6 @@ class ApiService {
   updateUser(id, userData) { return this._put(`/auth/users/${id}`, userData); }
   deactivateUser(id) { return this._post(`/auth/users/${id}/deactivate`); }
   activateUser(id) { return this._post(`/auth/users/${id}/activate`); }
-  deleteUser(id) { return this._del(`/auth/users/${id}`); }
 
   changePassword(currentPassword, newPassword) {
     return this._put('/auth/change-password', { currentPassword, newPassword });

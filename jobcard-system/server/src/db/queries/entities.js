@@ -32,15 +32,6 @@ const userQueries = {
     WHERE id = ?
   `),
 
-  delete: db.prepare('DELETE FROM users WHERE id = ?'),
-
-  // FK cleanup queries for permanent user deletion
-  cleanupAssignees: db.prepare('DELETE FROM job_assignees WHERE user_id = ?'),
-  cleanupJobcardsCreatedBy: db.prepare('UPDATE jobcards SET created_by = NULL WHERE created_by = ?'),
-  cleanupJobcardsUpdatedBy: db.prepare('UPDATE jobcards SET updated_by = NULL WHERE updated_by = ?'),
-  cleanupHistory: db.prepare('UPDATE history SET user_id = NULL WHERE user_id = ?'),
-  cleanupJobNotes: db.prepare('DELETE FROM job_notes WHERE user_id = ?'),
-
   updateSessionToken: db.prepare(`
     UPDATE users SET session_token = ?, updated_at = datetime('now')
     WHERE id = ?

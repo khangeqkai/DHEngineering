@@ -8,7 +8,7 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { validateLogin, validateCreateUser, validateUpdatePreferences } = require('../middleware/validation');
-const { db, userQueries, recordHistory } = require('../db/database');
+const { userQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
@@ -455,50 +455,6 @@ router.put('/change-password', authenticate, async (req, res) => {
   } catch (err) {
     logger.error({ err }, 'Change password error');
     res.status(500).json({ error: 'Failed to change password' });
-  }
-});
-
-// Delete user permanently (admin only) - hard delete
-router.delete('/users/:id', authenticate, requireRole('admin'), (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (req.user.userId === id) {
-      return res.status(400).json({ error: 'Cannot delete yourself' });
-    }
-
-    const user = userQueries.getById.get(id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Record before deleting
-    recordHistory('user', id, 'delete', req.user.userId, req.user.name || req.user.username, {
-      username: { from: user.username, to: null },
-      name: { from: user.name, to: null },
-      role: { from: user.role, to: null }
-    });
-
-    // Clean up all FK references and delete atomically
-    db.pragma('foreign_keys = OFF');
-    try {
-      const deleteUser = db.transaction(() => {
-        userQueries.cleanupAssignees.run(id);
-        userQueries.cleanupJobcardsCreatedBy.run(id);
-        userQueries.cleanupJobcardsUpdatedBy.run(id);
-        userQueries.cleanupHistory.run(id);
-        userQueries.cleanupJobNotes.run(id);
-        userQueries.delete.run(id);
-      });
-      deleteUser();
-    } finally {
-      db.pragma('foreign_keys = ON');
-    }
-
-    res.json({ success: true, message: 'User deleted permanently' });
-  } catch (err) {
-    logger.error({ err }, 'Delete user error');
-    res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 

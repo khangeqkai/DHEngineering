@@ -18,11 +18,12 @@ so they should be the first batch.
 - **After:** A bad value cancels the whole save cleanly; the job keeps exactly the items it had, and the user is told the save didn't go through.
 - **Status:** Fixed and verified hands-on — a save now succeeds completely or changes nothing at all, so a failed save can no longer cost you data. Bonus: picking an invalid quality level now stops the save before anything is written. (Confirmed live: with a failure forced in, all line items survived untouched.)
 
-### 2. Deleting a worker erases their logged hours
-- **Problem:** When you remove a worker, the system tidies up most of their footprint but forgets their time logs. Those logs are left pointing at a person who no longer exists, and the way time is displayed then hides them entirely — including from the cost totals.
-- **Solution:** When removing a worker, also deal with their time logs — either keep them attached to a "removed worker" label so the hours still show, or clear them on purpose. Either way, nothing should silently vanish.
+### 2. Deleting a worker erases their logged hours — ✅ RESOLVED
+- **Problem:** When you permanently remove a worker, the system tidies up most of their footprint but forgets their time logs. Those logs are left pointing at a person who no longer exists, and the way time is displayed then hides them entirely — including from the cost totals.
+- **Solution:** Remove the permanent-delete option for workers entirely. A worker can now only be archived (deactivated) or brought back (activated). An archived worker can't log in and drops out of the assign-a-worker picker, but their record stays, so every hour they logged stays visible and counted. With no way to erase a worker, their hours can never become orphaned.
 - **Before:** Delete a worker and real hours they logged quietly disappear from the job and from the costs.
-- **After:** Their hours stay visible and counted (or are removed deliberately, with a record of it) — no silent gaps.
+- **After:** A worker can only be archived, never erased, so their hours always stay visible and counted — no silent gaps possible.
+- **Status:** Fixed. The "Delete" button on the worker list is gone; only Archive (Deactivate) and Restore (Activate) remain. The archive/restore features and the worker list (which already shows archived workers so they can be restored) were left untouched.
 
 ### 3. Renaming a quality level strands its forms
 - **Problem:** A quality level's forms are kept in a folder named after that level. Renaming the level changes the name in the records but never renames the folder, so the old forms get left behind under the old name and the level looks empty.

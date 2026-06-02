@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { toTitleCase, validatePassword } from '../utils/formatters';
-import { Plus, Trash2, Save, UserMinus, UserCheck, History } from 'lucide-react';
+import { Plus, Save, UserMinus, UserCheck, History } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportUsers } from '../utils/excelExport';
@@ -117,24 +117,6 @@ export default function UserManagement() {
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
       toast.error(err.message || 'Failed to activate user');
-    }
-  };
-
-  const handleDelete = async (user) => {
-    const confirmed = await showConfirm({
-      title: 'Delete User Permanently',
-      message: `Are you sure you want to PERMANENTLY delete user "${user.username}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
-      confirmVariant: 'danger'
-    });
-    if (!confirmed) return;
-
-    try {
-      await api.deleteUser(user.id);
-      await loadUsers();
-      setActivityRefreshKey(k => k + 1);
-    } catch (err) {
-      toast.error(err.message || 'Failed to delete user');
     }
   };
 
@@ -327,9 +309,6 @@ export default function UserManagement() {
                             <UserCheck size={14} /> Activate
                           </button>
                         )}
-                        <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
-                          <Trash2 size={14} /> Delete
-                        </button>
                       </>
                     )}
                   </div>
