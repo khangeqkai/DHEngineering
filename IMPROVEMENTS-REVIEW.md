@@ -25,11 +25,12 @@ so they should be the first batch.
 - **After:** A worker can only be archived, never erased, so their hours always stay visible and counted — no silent gaps possible.
 - **Status:** Fixed. The "Delete" button on the worker list is gone; only Archive (Deactivate) and Restore (Activate) remain. The archive/restore features and the worker list (which already shows archived workers so they can be restored) were left untouched.
 
-### 3. Renaming a quality level strands its forms
+### 3. Renaming a quality level strands its forms — ✅ RESOLVED
 - **Problem:** A quality level's forms are kept in a folder named after that level. Renaming the level changes the name in the records but never renames the folder, so the old forms get left behind under the old name and the level looks empty.
-- **Solution:** When a level is renamed, rename its folder to match at the same time, so the forms stay with it.
+- **Solution:** Stop tying the forms folder to the changeable name. Each level's folder now carries a hidden marker holding the level's permanent ID, and the system always finds a level's forms by that marker — never by the name. Renaming still tidies up the folder's name to match, but that's now just cosmetic: even if the folder kept its old name, the forms would still be found, so they can never be stranded.
 - **Before:** Rename a level and its forms go missing; new jobs using that level come up with no forms and only a soft warning.
-- **After:** Rename a level and its forms follow along; jobs keep getting the right forms.
+- **After:** Rename a level and its forms follow along; jobs keep getting the right forms, no matter how many times the level is renamed.
+- **Status:** Fixed. The name stays fully editable because renaming is now safe. Two levels whose names would collapse to the same folder are kept apart automatically, and the hidden marker is never copied into a job's forms.
 
 ### 4. A failed job creation still uses up the number and leaves a half-made job
 - **Problem:** When you create a job, its number is claimed and the job saved *before* its quality forms are copied. If that last step fails, the user sees an error as if nothing happened — but the job number is gone forever and a stray, half-finished job is left behind.

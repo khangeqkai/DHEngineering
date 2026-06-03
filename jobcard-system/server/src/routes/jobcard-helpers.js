@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const logger = require('../utils/logger');
-const { sanitizeFolderName, isWithinBase } = require('../utils/folderCreation');
+const { sanitizeFolderName, isWithinBase, findQaLevelFolder } = require('../utils/folderCreation');
 const { fillPdfTemplate } = require('../utils/pdfFiller');
 const {
   jobItemQueries,
@@ -210,11 +210,12 @@ async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
       return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'QA Forms folder path outside base' };
     }
 
+    // Locate the level's template folder by its marker, not its name, so a
+    // renamed level still resolves to the right folder.
     const qaLevelsBase = path.join(basePath.trim(), 'QA Levels');
-    const sanitizedLevelName = sanitizeFolderName(level.name);
-    const levelFolder = path.join(qaLevelsBase, sanitizedLevelName);
+    const levelFolder = findQaLevelFolder(qaLevelsBase, level.id);
 
-    if (!fs.existsSync(levelFolder)) {
+    if (!levelFolder) {
       return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'QA level folder not found' };
     }
 

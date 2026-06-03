@@ -73,6 +73,99 @@ function createCompanyFolder(companyName) {
 
 const FILE_CATEGORY_FOLDERS = ['Job Files', 'QA Forms', 'Customer Property'];
 
+// Hidden marker file placed inside each QA level folder, holding the level's
+// permanent id. Folder lookups match by this marker, never by the (mutable)
+// level name — so renaming a level can never strand its template PDFs.
+const QA_LEVEL_MARKER = '.levelid';
+
+/**
+ * Read the level id stamped inside a folder's marker file.
+ * Returns the trimmed id, or null if the marker is absent/unreadable.
+ */
+function readQaLevelMarker(folderPath) {
+  try {
+    const markerPath = path.join(folderPath, QA_LEVEL_MARKER);
+    if (!fs.existsSync(markerPath)) return null;
+    return fs.readFileSync(markerPath, 'utf8').trim() || null;
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * Find a QA level's folder under the "QA Levels" base by reading each
+ * subfolder's marker file and matching the permanent level id — independent
+ * of the folder's display name. Returns the absolute path, or null if no
+ * folder carries this level's marker (or the base is missing/unreadable).
+ * @param {string} qaLevelsBase - the ".../QA Levels" directory
+ * @param {string} levelId
+ */
+function findQaLevelFolder(qaLevelsBase, levelId) {
+  try {
+    if (!qaLevelsBase || !levelId || !fs.existsSync(qaLevelsBase)) return null;
+
+    for (const entry of fs.readdirSync(qaLevelsBase, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const folderPath = path.join(qaLevelsBase, entry.name);
+      if (!isWithinBase(qaLevelsBase, folderPath)) continue;
+      if (readQaLevelMarker(folderPath) === levelId) return folderPath;
+    }
+    return null;
+  } catch (err) {
+    logger.error({ err, levelId }, 'Failed to find QA level folder');
+    return null;
+  }
+}
+
+/**
+ * Resolve a QA level's folder, creating it (with its marker) if needed.
+ * Returns the absolute folder path, or null if storage isn't configured or
+ * the operation fails. Fire-and-forget: logs errors but never throws.
+ *
+ * A folder is only reused if its marker is absent or already this level's id.
+ * If a folder with the same sanitized name exists but is owned by a DIFFERENT
+ * level (two display names can sanitize to the same folder), a disambiguated
+ * folder name is used instead so the levels never share a folder.
+ * @param {string} qaLevelsBase - the ".../QA Levels" directory
+ * @param {string} levelId
+ * @param {string} levelName
+ */
+function ensureQaLevelFolder(qaLevelsBase, levelId, levelName) {
+  try {
+    if (!qaLevelsBase || !levelId) return null;
+
+    const existing = findQaLevelFolder(qaLevelsBase, levelId);
+    if (existing) return existing;
+
+    const sanitized = sanitizeFolderName(levelName);
+    if (!sanitized) return null;
+
+    let target = path.join(qaLevelsBase, sanitized);
+    if (!isWithinBase(qaLevelsBase, target)) {
+      logger.error({ levelId, target }, 'QA level folder path escapes base directory');
+      return null;
+    }
+
+    // A same-name folder owned by another level → use a disambiguated name.
+    if (fs.existsSync(target)) {
+      const owner = readQaLevelMarker(target);
+      if (owner && owner !== levelId) {
+        const suffix = levelId.replace(/[^a-z0-9]/gi, '').slice(-6);
+        target = path.join(qaLevelsBase, `${sanitized} ${suffix}`);
+        if (!isWithinBase(qaLevelsBase, target)) return null;
+      }
+    }
+
+    fs.mkdirSync(target, { recursive: true });
+    fs.writeFileSync(path.join(target, QA_LEVEL_MARKER), `${levelId}\n`);
+    logger.info({ folderPath: target }, 'Ensured QA level folder');
+    return target;
+  } catch (err) {
+    logger.error({ err, levelId }, 'Failed to ensure QA level folder');
+    return null;
+  }
+}
+
 /**
  * Create job card subfolders (Job Files/, QA Forms/, Customer Property/) under the company folder.
  * Files live directly on disk inside each category folder.
@@ -141,5 +234,8 @@ module.exports = {
   createCompanyFolder,
   createJobCardFolders,
   deleteJobCardFolders,
+  findQaLevelFolder,
+  ensureQaLevelFolder,
+  QA_LEVEL_MARKER,
   FILE_CATEGORY_FOLDERS
 };

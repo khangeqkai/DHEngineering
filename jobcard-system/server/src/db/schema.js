@@ -269,7 +269,6 @@ db.exec(`
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     name_lower TEXT UNIQUE NOT NULL,
-    folder_path TEXT,
     is_active INTEGER DEFAULT 1,
     require_scanned_forms INTEGER DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,

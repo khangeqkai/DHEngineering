@@ -6,7 +6,12 @@ const path = require('path');
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
-const { sanitizeFolderName, isWithinBase } = require('../utils/folderCreation');
+const {
+  sanitizeFolderName,
+  isWithinBase,
+  findQaLevelFolder,
+  ensureQaLevelFolder
+} = require('../utils/folderCreation');
 const {
   qaLevelQueries,
   qaLevelTemplateQueries,
@@ -27,7 +32,6 @@ function formatLevel(row) {
   return {
     id: row.id,
     name: row.name,
-    folderPath: row.folder_path || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -110,29 +114,13 @@ router.post('/',
       }
 
       const id = `qa-level:${uuidv4()}`;
-      const sanitizedName = sanitizeFolderName(name.trim());
 
-      // Create folder on disk
-      let folderPath = null;
+      // Create the level's folder on disk with its permanent-id marker inside.
+      // Fire-and-forget: a storage error is logged and never blocks creation.
       const basePath = getQaLevelsBasePath();
-      if (basePath && sanitizedName) {
-        folderPath = path.join(basePath, sanitizedName);
-        if (isWithinBase(basePath, folderPath)) {
-          try {
-            fs.mkdirSync(folderPath, { recursive: true });
-            logger.info({ folderPath }, 'Created QA level folder');
-          } catch (err) {
-            logger.error({ err, folderPath }, 'Failed to create QA level folder');
-            folderPath = null;
-          }
-        } else {
-          folderPath = null;
-        }
-      }
+      if (basePath) ensureQaLevelFolder(basePath, id, name.trim());
 
-      qaLevelQueries.create.run(
-        id, name.trim(), nameLower, folderPath
-      );
+      qaLevelQueries.create.run(id, name.trim(), nameLower);
 
       recordHistory('qa_level', id, 'create', req.user.userId, req.user.name || req.user.username, {
         name: { from: null, to: name.trim() }
@@ -186,6 +174,31 @@ router.put('/:id',
         id
       );
 
+      // Best-effort cosmetic rename so the folder name tracks the level name.
+      // Lookups go by the hidden marker, so a failed/skipped rename never
+      // strands templates — the folder is still found by its id.
+      if (changes.name) {
+        try {
+          const basePath = getQaLevelsBasePath();
+          const current = basePath ? findQaLevelFolder(basePath, id) : null;
+          if (current) {
+            const sanitized = sanitizeFolderName(name.trim());
+            const target = sanitized ? path.join(basePath, sanitized) : null;
+            if (
+              target &&
+              target !== current &&
+              isWithinBase(basePath, target) &&
+              !fs.existsSync(target)
+            ) {
+              fs.renameSync(current, target);
+              logger.info({ from: current, to: target }, 'Renamed QA level folder');
+            }
+          }
+        } catch (err) {
+          logger.error({ err, id }, 'Failed to rename QA level folder (templates still resolve by marker)');
+        }
+      }
+
       if (Object.keys(changes).length > 0) {
         recordHistory('qa_level', id, 'update', req.user.userId, req.user.name || req.user.username, changes);
       }
@@ -222,14 +235,13 @@ router.delete('/:id', authenticate, requireAdmin, (req, res) => {
       });
     }
 
-    // Delete level folder from disk (with path validation)
+    // Delete level folder from disk, located by its marker (not its name).
     const basePath = getQaLevelsBasePath();
-    if (basePath && existing.folder_path && isWithinBase(basePath, existing.folder_path)) {
+    const levelFolder = basePath ? findQaLevelFolder(basePath, id) : null;
+    if (levelFolder && isWithinBase(basePath, levelFolder)) {
       try {
-        if (fs.existsSync(existing.folder_path)) {
-          fs.rmSync(existing.folder_path, { recursive: true, force: true });
-          logger.info({ folderPath: existing.folder_path }, 'Deleted QA level folder');
-        }
+        fs.rmSync(levelFolder, { recursive: true, force: true });
+        logger.info({ folderPath: levelFolder }, 'Deleted QA level folder');
       } catch (err) {
         logger.error({ err }, 'Failed to delete QA level folder');
       }
@@ -267,15 +279,13 @@ router.post('/:id/templates', authenticate, requireAdmin, (req, res) => {
     const sanitizedFileName = sanitizeFolderName(path.parse(fileName).name) + path.extname(fileName);
     const finalDisplayName = displayName || sanitizedFileName;
 
-    // Save file to disk if folder is configured
+    // Save file to disk if folder is configured. The folder is located (or
+    // created) by the level's marker, so it works regardless of the level name.
     const basePath = getQaLevelsBasePath();
     if (basePath) {
-      const sanitizedLevelName = sanitizeFolderName(level.name);
-      const levelFolder = path.join(basePath, sanitizedLevelName);
-
-      if (isWithinBase(basePath, levelFolder)) {
+      const levelFolder = ensureQaLevelFolder(basePath, level.id, level.name);
+      if (levelFolder) {
         try {
-          fs.mkdirSync(levelFolder, { recursive: true });
           const filePath = path.join(levelFolder, sanitizedFileName);
           if (isWithinBase(levelFolder, filePath)) {
             const buffer = Buffer.from(fileData, 'base64');
@@ -330,13 +340,13 @@ router.delete('/:id/templates/:tid', authenticate, requireAdmin, (req, res) => {
 
     const level = qaLevelQueries.getById.get(id);
 
-    // Delete file from disk
+    // Delete file from disk, locating the level folder by its marker.
     const basePath = getQaLevelsBasePath();
-    if (basePath && level) {
-      const sanitizedLevelName = sanitizeFolderName(level.name);
-      const filePath = path.join(basePath, sanitizedLevelName, template.file_name);
+    const levelFolder = basePath && level ? findQaLevelFolder(basePath, level.id) : null;
+    if (levelFolder) {
+      const filePath = path.join(levelFolder, template.file_name);
       try {
-        if (fs.existsSync(filePath)) {
+        if (isWithinBase(levelFolder, filePath) && fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
           logger.info({ filePath }, 'Deleted QA template file');
         }
