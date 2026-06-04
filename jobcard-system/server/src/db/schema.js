@@ -287,6 +287,32 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_qa_level_templates_level ON qa_level_templates(qa_level_id);
 `);
 
+// Enforce "at most one open (running) timer per user" at the database level, so a
+// rapid double-tap or two devices can never create a hidden second timer. Before
+// adding the unique index, close any pre-existing duplicate open timers left by
+// the old code path (keep the most recent per user, stamp the rest with their
+// own start time as the finish so they show zero duration). On a fresh database
+// this is a no-op.
+try {
+  db.exec(`
+    UPDATE time_entries
+    SET end_time = start_time, updated_at = datetime('now')
+    WHERE end_time IS NULL
+      AND id NOT IN (
+        SELECT id FROM (
+          SELECT id, ROW_NUMBER() OVER (
+            PARTITION BY user_id ORDER BY start_time DESC
+          ) AS rn
+          FROM time_entries WHERE end_time IS NULL
+        ) WHERE rn = 1
+      );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_time_entries_one_active
+      ON time_entries(user_id) WHERE end_time IS NULL;
+  `);
+} catch (err) {
+  logger.error({ err }, 'Migration: Failed to enforce one-active-timer-per-user');
+}
+
 // Migration: Add missing columns to existing tables
 // This handles the case where the database was created with an older schema
 const migrations = [

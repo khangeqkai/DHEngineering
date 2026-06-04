@@ -99,6 +99,28 @@ export function getDefaultFormData() {
   };
 }
 
+// Convert a stored full ISO timestamp (UTC, e.g. "2025-06-04T04:30:00.000Z")
+// into a value for a datetime-local input, shown in the browser's local time.
+// Returns '' for empty/invalid input.
+export function isoToLocalInput(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  // Shift by the local offset so slicing yields local wall-clock, not UTC.
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+// Convert a datetime-local input value (bare local wall-clock, e.g.
+// "2025-06-04T14:30") into a full ISO timestamp with time zone for storage.
+// Returns null for empty/invalid input.
+export function localInputToIso(localStr) {
+  if (!localStr) return null;
+  const d = new Date(localStr); // bare string is read as local time
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 export function getDefaultTimeEntryForm() {
   return {
     itemNumber: '',

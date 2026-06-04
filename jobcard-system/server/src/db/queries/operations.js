@@ -43,6 +43,8 @@ const timeEntryQueries = {
     JOIN users u ON te.user_id = u.id
     JOIN jobcards j ON te.jobcard_id = j.id
     WHERE te.user_id = ? AND te.end_time IS NULL
+    ORDER BY te.start_time DESC
+    LIMIT 1
   `),
 
   stop: db.prepare(`

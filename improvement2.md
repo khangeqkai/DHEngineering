@@ -59,7 +59,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **After:** Closing the job (or the camera menu) any way at all turns the camera off
   immediately.
 
-### 4. Hand-typed start/finish times can be calculated wrong — ⬜
+### 4. Hand-typed start/finish times can be calculated wrong — ✅
 - **Problem:** A time block created by the live timer is stored with full date, time,
   and time-zone information. A time block typed in by hand is stored with no time
   zone. As long as a block is *entirely* hand-typed (or *entirely* from the timer),
@@ -91,7 +91,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **After:** Only real image/PDF files from inside the scanner folder can be brought
   in; nothing else gets saved or becomes a way to reach other files on the machine.
 
-### 6. Two fast taps on "Start" can leave a timer running forever — ⬜
+### 6. Two fast taps on "Start" can leave a timer running forever — ✅
 - **Problem:** The "only one timer at a time" rule is enforced by checking for an
   existing timer and then starting a new one as two separate steps. If two start
   requests arrive almost together (a double-tap, or two devices), both can pass the

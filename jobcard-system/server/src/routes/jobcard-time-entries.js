@@ -4,9 +4,49 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { validateStartTimer, validateManualTimeEntry } = require('../middleware/validation');
-const { timeEntryQueries, jobItemQueries, jobAssigneeQueries, recordHistory } = require('../db/database');
+const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
+
+// Normalise a hand-entered time into a full ISO timestamp with time zone, so
+// every stored time block is in the same format (a block's start and finish can
+// never end up in mismatched formats, which would mis-calculate its duration).
+// Throws on an unparseable non-empty value so the caller can return a 400.
+function normalizeTime(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) {
+    const err = new Error('Invalid time value');
+    err.isBadTime = true;
+    throw err;
+  }
+  return d.toISOString();
+}
+
+// True when an error is the database rejecting a second open timer for one user
+// (the partial unique index idx_time_entries_one_active).
+function isOpenTimerConflict(e) {
+  return !!(e && typeof e.code === 'string' && e.code.startsWith('SQLITE_CONSTRAINT'));
+}
+
+// Send the standard "you already have a timer running" 409 from the user's
+// current open timer, so the screen can offer to stop & switch instead of
+// showing a generic failure. Returns true if it sent a response.
+function sendOpenTimerConflict(res, userId, knownActive) {
+  const active = knownActive || timeEntryQueries.getActiveByUser.get(userId);
+  if (!active) return false;
+  res.status(409).json({
+    error: 'Timer running on another job',
+    activeTimer: {
+      id: active.id,
+      jobcardId: active.jobcard_id,
+      jobNumber: active.job_number,
+      itemNumber: active.item_number,
+      startTime: active.start_time
+    }
+  });
+  return true;
+}
 
 // Convert database row (snake_case) to API response (camelCase)
 function toCamelCase(e) {
@@ -61,35 +101,42 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
       return res.status(400).json({ error: `Item #${itemNumber} does not exist on this job card` });
     }
 
-    // Check for existing active timer
-    const active = timeEntryQueries.getActiveByUser.get(req.user.userId);
-    if (active) {
-      return res.status(409).json({
-        error: 'Timer running on another job',
-        activeTimer: {
-          id: active.id,
-          jobcardId: active.jobcard_id,
-          jobNumber: active.job_number,
-          itemNumber: active.item_number,
-          startTime: active.start_time
-        }
-      });
-    }
-
     const entryId = `timeentry:${uuidv4()}`;
     const startTime = new Date().toISOString();
 
-    timeEntryQueries.create.run(
-      entryId,
-      id,
-      req.user.userId,
-      itemNumber,
-      null, // machineNumber
-      null, // qty
-      null, // description
-      startTime,
-      null  // endTime
-    );
+    // Check-for-existing + insert as one all-or-nothing step. The partial unique
+    // index (one open timer per user) is the real guard against a double-tap or
+    // two devices slipping a second timer through; the transaction keeps the
+    // check and insert atomic.
+    const startTimer = db.transaction(() => {
+      const active = timeEntryQueries.getActiveByUser.get(req.user.userId);
+      if (active) {
+        const e = new Error('Timer already running');
+        e.activeTimer = active;
+        throw e;
+      }
+      timeEntryQueries.create.run(
+        entryId,
+        id,
+        req.user.userId,
+        itemNumber,
+        null, // machineNumber
+        null, // qty
+        null, // description
+        startTime,
+        null  // endTime
+      );
+    });
+
+    try {
+      startTimer();
+    } catch (e) {
+      if ((e.activeTimer || isOpenTimerConflict(e)) &&
+          sendOpenTimerConflict(res, req.user.userId, e.activeTimer)) {
+        return;
+      }
+      throw e;
+    }
 
     recordHistory('jobcard', id, 'start_timer', req.user.userId, req.user.name || req.user.username, {
       timer: { from: null, to: startTime },
@@ -178,25 +225,40 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
     const { id } = req.params;
     const data = req.body;
 
+    let startTime, endTime;
+    try {
+      startTime = normalizeTime(data.startTime);
+      endTime = normalizeTime(data.endTime);
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid start or finish time' });
+    }
+
     const entryId = `timeentry:${uuidv4()}`;
 
-    timeEntryQueries.create.run(
-      entryId,
-      id,
-      req.user.userId,
-      data.itemNumber || null,
-      data.machineNumber || null,
-      data.qty || null,
-      data.description || null,
-      data.startTime,
-      data.endTime || null
-    );
+    try {
+      timeEntryQueries.create.run(
+        entryId,
+        id,
+        req.user.userId,
+        data.itemNumber || null,
+        data.machineNumber || null,
+        data.qty || null,
+        data.description || null,
+        startTime,
+        endTime
+      );
+    } catch (e) {
+      // A manual block with no finish time counts as an open timer; if this admin
+      // already has one running, the one-timer rule rejects it — tell them clearly.
+      if (isOpenTimerConflict(e) && sendOpenTimerConflict(res, req.user.userId)) return;
+      throw e;
+    }
 
     recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name || req.user.username, {
       timeEntryId: { from: null, to: entryId },
       machineNumber: { from: null, to: data.machineNumber || null },
       description: { from: null, to: data.description || null },
-      startTime: { from: null, to: data.startTime }
+      startTime: { from: null, to: startTime }
     });
 
     const entry = timeEntryQueries.getById.get(entryId);
@@ -233,15 +295,31 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       return res.status(400).json({ error: 'Stop the timer before editing this entry' });
     }
 
-    timeEntryQueries.update.run(
-      data.itemNumber || null,
-      data.machineNumber || null,
-      data.qty || null,
-      data.description || null,
-      data.startTime,
-      data.endTime || null,
-      entryId
-    );
+    let startTime, endTime;
+    try {
+      startTime = normalizeTime(data.startTime);
+      endTime = normalizeTime(data.endTime);
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid start or finish time' });
+    }
+
+    try {
+      timeEntryQueries.update.run(
+        data.itemNumber || null,
+        data.machineNumber || null,
+        data.qty || null,
+        data.description || null,
+        startTime,
+        endTime,
+        entryId
+      );
+    } catch (e) {
+      // Reopening an entry (clearing its finish time, e.g. resuming a timer) makes
+      // it an open timer; if the user already has one running elsewhere, the
+      // one-timer rule rejects it — surface the stop & switch prompt, not a 500.
+      if (isOpenTimerConflict(e) && sendOpenTimerConflict(res, existing.user_id)) return;
+      throw e;
+    }
 
     // Build proper diff of changed fields
     const changes = {};
@@ -250,8 +328,8 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       ['machine_number', 'machineNumber', data.machineNumber || null],
       ['qty', 'qty', data.qty || null],
       ['description', 'description', data.description || null],
-      ['start_time', 'startTime', data.startTime],
-      ['end_time', 'endTime', data.endTime || null],
+      ['start_time', 'startTime', startTime],
+      ['end_time', 'endTime', endTime],
     ];
     const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
     for (const [dbField, changeKey, newValue] of fieldsToTrack) {

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { getDefaultTimeEntryForm } from './mappers';
+import { getDefaultTimeEntryForm, isoToLocalInput, localInputToIso } from './mappers';
 
 export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, stopActiveEntry, showConfirm }) {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
@@ -10,7 +10,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   const resetTimeEntryForm = useCallback(() => {
     setTimeEntryForm({
       ...getDefaultTimeEntryForm(),
-      startTime: new Date().toISOString().slice(0, 16)
+      startTime: isoToLocalInput(new Date().toISOString())
     });
     setEditingTimeEntryId(null);
     setShowTimeEntryForm(false);
@@ -29,7 +29,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     setTimeEntryForm(prev => ({
       ...prev,
       itemNumber: itemNumber !== '' && itemNumber != null ? String(itemNumber) : '',
-      startTime: new Date().toISOString().slice(0, 16)
+      startTime: isoToLocalInput(new Date().toISOString())
     }));
     setShowTimeEntryForm(true);
   }, [resetTimeEntryForm]);
@@ -41,8 +41,8 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       machineNumber: entry.machineNumber || '',
       qty: entry.qty || '',
       description: entry.description || '',
-      startTime: entry.startTime ? entry.startTime.slice(0, 16) : '',
-      endTime: entry.endTime ? entry.endTime.slice(0, 16) : ''
+      startTime: isoToLocalInput(entry.startTime),
+      endTime: isoToLocalInput(entry.endTime)
     });
     setShowTimeEntryForm(true);
   }, []);
@@ -78,7 +78,11 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     try {
       const entryData = {
         ...timeEntryForm,
-        itemNumber: timeEntryForm.itemNumber ? parseInt(timeEntryForm.itemNumber) : null
+        itemNumber: timeEntryForm.itemNumber ? parseInt(timeEntryForm.itemNumber) : null,
+        // Store both ends with full time-zone info so a block's start and finish
+        // can never end up in mismatched formats (would mis-calculate duration).
+        startTime: localInputToIso(timeEntryForm.startTime),
+        endTime: localInputToIso(timeEntryForm.endTime)
       };
 
       if (editingTimeEntryId) {
