@@ -19,6 +19,29 @@ const { db } = require('../db/connection');
 
 const router = express.Router();
 
+// Render a line item's treatments as a compact "Treatment→Supplier" string for
+// the audit log. Shared by create (starting items) and update (item changes).
+function treatmentsToText(treatments) {
+  const arr = Array.isArray(treatments) ? treatments : parseTreatments(treatments);
+  return arr.map(t => {
+    const tName = t.value === 'OTHER' ? (t.otherText || 'Other') : t.value;
+    return `${tName}→${t.supplierName || t.supplierId || '?'}`;
+  }).join(', ');
+}
+
+function itemSummary(qty, description, jobType, material, treatments) {
+  const tStr = treatmentsToText(treatments);
+  return `${qty || ''}x ${description}${jobType ? ' <' + jobType + '>' : ''}${material ? ' (' + material + ')' : ''}${tStr ? ' [' + tStr + ']' : ''}`;
+}
+
+// Resolve a list of assignee user IDs to a comma-separated display name string.
+function assigneeNames(userIds) {
+  return userIds.map(userId => {
+    const user = userQueries.getById.get(userId);
+    return user ? (user.name || user.username) : userId;
+  }).join(', ');
+}
+
 function buildQaTemplateWarning(result) {
   if (!result || !Array.isArray(result.failed) || result.failed.length === 0) return null;
   const fatal = result.failed.find(f => f.fileName === '*');
@@ -137,12 +160,28 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       // Audit log is part of the same all-or-nothing save: if it can't be
       // written, the whole creation rolls back rather than reporting failure
       // for a job that actually got saved.
-      recordHistory('jobcard', id, 'create', req.user.userId, req.user.name || req.user.username, {
+      const createChanges = {
         jobNumber: { from: null, to: peek.jobNumber },
         status: { from: null, to: status },
         priority: { from: null, to: data.priority || 'NONE' },
         qualityLevel: { from: null, to: qualityLevelName || null }
-      });
+      };
+      // Record the line items the job started with, matching the per-item
+      // detail kept for later edits, so the original contents are recoverable.
+      if (Array.isArray(data.items)) {
+        data.items.forEach((i, idx) => {
+          const num = i.itemNumber || idx + 1;
+          createChanges[`item #${num} added`] = {
+            from: null,
+            to: itemSummary(i.qty, i.description, i.jobType, i.material, i.treatments)
+          };
+        });
+      }
+      // Record who was assigned at creation.
+      if (Array.isArray(data.assigneeIds) && data.assigneeIds.length > 0) {
+        createChanges['assignees'] = { from: null, to: assigneeNames(data.assigneeIds) };
+      }
+      recordHistory('jobcard', id, 'create', req.user.userId, req.user.name || req.user.username, createChanges);
 
       return peek.jobNumber;
     });
@@ -339,17 +378,6 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     }
 
     if (data.items !== undefined) {
-      const treatmentsToText = (treatments) => {
-        const arr = Array.isArray(treatments) ? treatments : parseTreatments(treatments);
-        return arr.map(t => {
-          const tName = t.value === 'OTHER' ? (t.otherText || 'Other') : t.value;
-          return `${tName}→${t.supplierName || t.supplierId || '?'}`;
-        }).join(', ');
-      };
-      const itemSummary = (qty, description, jobType, material, treatments) => {
-        const tStr = treatmentsToText(treatments);
-        return `${qty || ''}x ${description}${jobType ? ' <' + jobType + '>' : ''}${material ? ' (' + material + ')' : ''}${tStr ? ' [' + tStr + ']' : ''}`;
-      };
       const oldMap = new Map(existingItems.map(i => [i.item_number, itemSummary(i.qty, i.description, i.job_type, i.material, i.treatments)]));
       const newMap = new Map(data.items.map((i, idx) => [i.itemNumber || idx + 1, itemSummary(i.qty, i.description, i.jobType, i.material, i.treatments)]));
       for (const [num, desc] of newMap) {
@@ -371,10 +399,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       const newIds = [...data.assigneeIds].sort().join(',');
       if (oldIds !== newIds) {
         const oldNames = existingAssignees.map(a => a.user_name).join(', ') || 'none';
-        const newNames = data.assigneeIds.map(userId => {
-          const user = userQueries.getById.get(userId);
-          return user ? (user.name || user.username) : userId;
-        }).join(', ') || 'none';
+        const newNames = assigneeNames(data.assigneeIds) || 'none';
         changes['assignees'] = { from: oldNames, to: newNames };
       }
     }

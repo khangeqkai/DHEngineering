@@ -5,6 +5,7 @@ import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
 import ExportButton from './common/ExportButton';
 import { exportActivityLog } from '../utils/excelExport';
+import { formatHistoryValue } from '../utils/formatters';
 
 export default function ActivityLog() {
   const [activities, setActivities] = useState([]);
@@ -65,10 +66,10 @@ export default function ActivityLog() {
         ) : (
           <>
             <span style={{ textDecoration: 'line-through', color: 'var(--accent-caution)' }}>
-              {change.from != null && change.from !== '' ? String(change.from) : '(empty)'}
+              {formatHistoryValue(field, change.from) || '(empty)'}
             </span>
             {' → '}
-            <span style={{ color: 'var(--accent-ready)' }}>{change.to != null && change.to !== '' ? String(change.to) : '(empty)'}</span>
+            <span style={{ color: 'var(--accent-ready)' }}>{formatHistoryValue(field, change.to) || '(empty)'}</span>
           </>
         )}
       </div>

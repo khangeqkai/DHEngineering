@@ -41,6 +41,19 @@ export function useCamera() {
     }
   }, [cameraActive]);
 
+  // Always release the camera when this hook unmounts — e.g. the job window is
+  // closed while the camera view is still open, without backing out first. The
+  // explicit stopCamera() calls only fire on in-view actions, so without this
+  // the webcam (and its light) would stay on until the app is refreshed.
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, []);
+
   const startCamera = useCallback(async () => {
     setCameraError(null);
     try {

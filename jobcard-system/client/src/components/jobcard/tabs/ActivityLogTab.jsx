@@ -1,3 +1,5 @@
+import { formatHistoryValue } from '../../../utils/formatters';
+
 export default function ActivityLogTab({ history = [], loading, onRefresh }) {
   const formatAction = (action) => {
     const colors = {
@@ -39,10 +41,10 @@ export default function ActivityLogTab({ history = [], loading, onRefresh }) {
         ) : (
           <>
             <span style={{ textDecoration: 'line-through', color: 'var(--accent-caution)' }}>
-              {change.from != null && change.from !== '' ? change.from : '(empty)'}
+              {formatHistoryValue(field, change.from) || '(empty)'}
             </span>
             {' → '}
-            <span style={{ color: 'var(--accent-ready)' }}>{change.to != null && change.to !== '' ? change.to : '(empty)'}</span>
+            <span style={{ color: 'var(--accent-ready)' }}>{formatHistoryValue(field, change.to) || '(empty)'}</span>
           </>
         )}
       </div>

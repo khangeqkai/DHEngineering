@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { History } from 'lucide-react';
 import BottomSheet from './BottomSheet';
+import { formatHistoryValue } from '../../utils/formatters';
 
 const ACTION_COLORS = {
   create: 'var(--accent-ready)',
@@ -35,11 +36,11 @@ function formatChanges(changes) {
       ) : (
         <span className="eal-diff">
           <span className="eal-from">
-            {change.from != null && change.from !== '' ? change.from : '(empty)'}
+            {formatHistoryValue(field, change.from) || '(empty)'}
           </span>
           <span className="eal-arrow">&rarr;</span>
           <span className="eal-to">
-            {change.to != null && change.to !== '' ? change.to : '(empty)'}
+            {formatHistoryValue(field, change.to) || '(empty)'}
           </span>
         </span>
       )}

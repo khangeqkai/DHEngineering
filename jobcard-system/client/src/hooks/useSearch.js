@@ -38,15 +38,31 @@ export default function useSearch() {
   const [machines, setMachines] = useState([]);
   const [qaLevels, setQaLevels] = useState([]);
   const [jobTypes, setJobTypes] = useState([]);
+  const [filtersError, setFiltersError] = useState(false);
   const requestId = useRef(0);
 
-  // Load dropdown data once
-  useEffect(() => {
-    api.getEmployees().then(setEmployees).catch(() => {});
-    api.getMachines().then(setMachines).catch(() => {});
-    api.getQaLevels().then(setQaLevels).catch(() => {});
-    api.getTags('job_type').then(setJobTypes).catch(() => {});
+  // Load the filter dropdown options. If any of them fails (e.g. a brief
+  // network hiccup), flag the error so the screen can show it and offer a
+  // retry, instead of leaving the dropdowns silently blank for the session.
+  const loadFilterOptions = useCallback(async () => {
+    setFiltersError(false);
+    try {
+      const [emp, mach, qa, jt] = await Promise.all([
+        api.getEmployees(),
+        api.getMachines(),
+        api.getQaLevels(),
+        api.getTags('job_type'),
+      ]);
+      setEmployees(emp);
+      setMachines(mach);
+      setQaLevels(qa);
+      setJobTypes(jt);
+    } catch (err) {
+      setFiltersError(true);
+    }
   }, []);
+
+  useEffect(() => { loadFilterOptions(); }, [loadFilterOptions]);
 
   // Execute search on state change
   useEffect(() => {
@@ -143,6 +159,7 @@ export default function useSearch() {
     q, setQ, scope, changeScope,
     filters, updateFilter, toggleArrayFilter, clearFilters, hasActiveFilters,
     page, setPage, results, loading,
-    employees, machines, qaLevels, jobTypes
+    employees, machines, qaLevels, jobTypes,
+    filtersError, retryFilters: loadFilterOptions
   };
 }

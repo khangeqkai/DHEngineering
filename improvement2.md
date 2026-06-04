@@ -47,7 +47,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **After:** A regular worker's view of a job's history no longer shows any customer
   name, company, phone, or email.
 
-### 3. The camera can be left running after you close the job — ⬜
+### 3. The camera can be left running after you close the job — ✅
 - **Problem:** If a worker opens the camera to take a photo and then closes the whole
   job window (instead of first backing out of the camera view), the camera is never
   switched off. The webcam stays active and the camera light stays lit until the app
@@ -167,7 +167,7 @@ that's why they're held back from the first batch. Tell me which to do.
 - **Solution:** Make the failure harder to miss and record that it happened, so it can
   be noticed and re-tried rather than silently passed over.
 
-### 13. A new job's history doesn't record its line items or who was assigned — ⬜
+### 13. A new job's history doesn't record its line items or who was assigned — ✅
 - **Problem:** When a job is first created, its history only remembers the job number,
   status, priority, and quality level. It never records what line items the job
   started with or who was assigned at the start — even though later edits are tracked
@@ -175,7 +175,7 @@ that's why they're held back from the first batch. Tell me which to do.
 - **Solution:** Record the starting line items and assignees in the job's history at
   creation, matching the detail kept for later edits.
 
-### 14. Search filter dropdowns can silently stay empty — ⬜
+### 14. Search filter dropdowns can silently stay empty — ✅
 - **Problem:** The search screen's filter dropdowns (workers, machines, quality
   levels, job types) load once when the screen opens. If that one load fails (a brief
   network hiccup), the dropdowns stay empty for the whole session with no error shown
@@ -183,7 +183,7 @@ that's why they're held back from the first batch. Tell me which to do.
 - **Solution:** Show a problem and allow a retry when the filter options fail to load,
   instead of leaving them silently blank.
 
-### 15. The "repeat job" flag shows as 1/0 in the history instead of Yes/No — ⬜
+### 15. The "repeat job" flag shows as 1/0 in the history instead of Yes/No — ✅
 - **Problem:** In a job's history, a change to the "repeat job" setting shows raw
   values (1 and 0) instead of a friendly "Yes"/"No".
 - **Solution:** Show the repeat-job change as Yes/No in the history, like the other

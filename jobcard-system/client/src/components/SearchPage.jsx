@@ -7,6 +7,7 @@ import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
 import JobCardModal from './jobcard/JobCardModal';
 import { ACTIVITY_FIELDS } from './searchFields';
+import { formatHistoryValue } from '../utils/formatters';
 
 const STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'TREATMENT', 'ON_HOLD', 'DONE', 'INVOICED'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
@@ -114,6 +115,7 @@ export default function SearchPage() {
     filters, updateFilter, toggleArrayFilter, clearFilters, hasActiveFilters,
     page, setPage, results, loading,
     employees, machines, qaLevels, jobTypes,
+    filtersError, retryFilters,
   } = useSearch();
 
   // Job card modal state
@@ -198,7 +200,7 @@ export default function SearchPage() {
             <div key={f} className="search-change-line">
               <strong>{fmt(f)}:</strong>{' '}
               {c.changed ? <em style={{ color: 'var(--primary-accent)' }}>modified</em> : (
-                <><span className="search-from">{c.from != null && c.from !== '' ? String(c.from) : '(empty)'}</span> → <span className="search-to">{c.to != null && c.to !== '' ? String(c.to) : '(empty)'}</span></>
+                <><span className="search-from">{formatHistoryValue(f, c.from) || '(empty)'}</span> → <span className="search-to">{formatHistoryValue(f, c.to) || '(empty)'}</span></>
               )}
             </div>
           ))}</div>}
@@ -249,6 +251,13 @@ export default function SearchPage() {
               <span className="search-filters-title"><Filter size={14} /> Filters</span>
               {hasActiveFilters && <button type="button" className="btn btn-sm" onClick={clearFilters}>Clear</button>}
             </div>
+
+            {filtersError && (
+              <div className="search-filters-error">
+                <span>Couldn't load the filter options.</span>
+                <button type="button" className="btn btn-sm" onClick={retryFilters}>Retry</button>
+              </div>
+            )}
 
             {scope === 'jobs' && <>
               <FilterRow label="Status">
@@ -467,6 +476,7 @@ export default function SearchPage() {
         .search-filters { margin-bottom: 1rem; }
         .search-filters .card-body { padding: 0.75rem 1rem; }
         .search-filters-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+        .search-filters-error { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 6px; background: var(--accent-caution-bg, rgba(220, 80, 80, 0.1)); color: var(--accent-caution); font-size: 0.8125rem; }
         .search-filters-title { display: flex; align-items: center; gap: 0.375rem; font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
         .search-filter-row { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.5rem; }
         .search-filter-label { min-width: 5.5rem; padding-top: 0.375rem; font-size: 0.8125rem; font-weight: 500; color: var(--text-secondary); text-align: right; flex-shrink: 0; }
