@@ -127,32 +127,37 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 
 ---
 
-## Account & login security (pending your decision on how far to go)
+## Account & login security — ✅ done
 
-These three are real but may be acceptable trade-offs on a trusted local network —
-that's why they're held back from the first batch. Tell me which to do.
+These three were held back pending a decision on how far to go. Decision made and
+applied: cut sessions off immediately on the next action (reusing the existing
+single-session machinery), and grow the login wait on repeated failures rather than
+adding a hard lockout or longer PINs.
 
-### 9. A deactivated worker stays logged in — ⬜ (pending)
+### 9. A deactivated worker stays logged in — ✅
 - **Problem:** Turning off (deactivating) a worker's account blocks them from logging
   in again, but if they already have the app open, their current session keeps fully
   working until they close it on their own — potentially for days.
-- **Possible fix:** Check the account is still active on each action, and cut off the
-  session the moment the account is turned off.
+- **Fix:** Every action now re-checks that the account is still switched on. The moment
+  an admin turns an account off, that worker is signed out — within a few seconds even
+  if they're just sitting idle, or instantly on their next click — with a clear message.
 
-### 10. Resetting a PIN doesn't end the old session — ⬜ (pending)
+### 10. Resetting a PIN doesn't end the old session — ✅
 - **Problem:** If you reset a worker's PIN (say it was shared or leaked), anyone
   already logged in with the old PIN stays logged in. Changing the PIN doesn't kick
   out the existing session — only a fresh login replaces it.
-- **Possible fix:** End any existing session when a PIN is changed or reset, forcing a
-  new login.
+- **Fix:** Resetting someone's PIN now ends their open session, so a leaked PIN can no
+  longer keep someone signed in. When a worker changes their *own* PIN, they stay signed
+  in (only other devices with the old PIN get kicked).
 
-### 11. Weak resistance to PIN guessing — ⬜ (pending)
+### 11. Weak resistance to PIN guessing — ✅
 - **Problem:** A PIN is only 4 digits (10,000 possibilities). After 5 wrong guesses,
   each further wrong guess just forces a fixed 30-second wait — forever, with no
   escalation and no "too many attempts, locked" stop. Someone with time and access to
   the login screen could keep grinding guesses at a steady pace.
-- **Possible fix:** Add a real lockout after enough failures, and/or allow longer
-  PINs. (This is more of a policy choice than the other two.)
+- **Fix:** The wait now grows the more they fail — 30 seconds, then 1, 2, and 5 minutes —
+  so steady grinding gets slow fast. (No hard account lockout, by choice, so no one can
+  lock a coworker out by mistyping their PIN; longer PINs were also left out by choice.)
 
 ---
 

@@ -37,7 +37,7 @@ const userQueries = {
     WHERE id = ?
   `),
 
-  getSessionToken: db.prepare('SELECT session_token AS sessionToken FROM users WHERE id = ?'),
+  getAuthState: db.prepare('SELECT session_token AS sessionToken, active FROM users WHERE id = ?'),
 
   updateJobcardColumnOrder: db.prepare(`
     UPDATE users SET jobcard_column_order = ?, updated_at = datetime('now')

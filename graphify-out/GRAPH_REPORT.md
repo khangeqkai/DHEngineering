@@ -1,11 +1,11 @@
 # Graph Report - DHEngineering  (2026-06-04)
 
 ## Corpus Check
-- 132 files · ~91,400 words
+- 132 files · ~91,784 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 590 nodes · 837 edges · 25 communities detected
+- 591 nodes · 840 edges · 26 communities detected
 - Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 72 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
@@ -29,8 +29,9 @@
 - [[_COMMUNITY_Community 17|Community 17]]
 - [[_COMMUNITY_Community 18|Community 18]]
 - [[_COMMUNITY_Community 19|Community 19]]
-- [[_COMMUNITY_Community 21|Community 21]]
-- [[_COMMUNITY_Community 23|Community 23]]
+- [[_COMMUNITY_Community 20|Community 20]]
+- [[_COMMUNITY_Community 22|Community 22]]
+- [[_COMMUNITY_Community 24|Community 24]]
 - [[_COMMUNITY_Community 25|Community 25]]
 - [[_COMMUNITY_Community 27|Community 27]]
 - [[_COMMUNITY_Community 29|Community 29]]
@@ -67,8 +68,8 @@ Cohesion: 0.03
 Nodes (1): ApiService
 
 ### Community 1 - "Community 1"
-Cohesion: 0.07
-Nodes (32): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), UserManagement(), useConfirmDialog(), formatDueDate(), JobIdentityStrip() (+24 more)
+Cohesion: 0.06
+Nodes (22): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), useConfirmDialog(), invalidateTagCache(), useTags(), formatDueDate() (+14 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.08
@@ -83,16 +84,16 @@ Cohesion: 0.09
 Nodes (17): JobCardModal(), validateJobCardForm(), getDefaultCostingForm(), getDefaultFormData(), getDefaultTimeEntryForm(), isoToLocalInput(), localInputToIso(), mapLineItemFromApi() (+9 more)
 
 ### Community 5 - "Community 5"
+Cohesion: 0.16
+Nodes (16): UserManagement(), buildJobCardWorkbook(), buildSheet(), exportActivityLog(), exportContacts(), exportEquipment(), exportJobCardList(), exportJobCardsFull() (+8 more)
+
+### Community 6 - "Community 6"
 Cohesion: 0.12
 Nodes (10): JobFilesMenu(), LineItemFilesMenu(), formatElapsed(), QuickActionPanel(), useCamera(), useItemFiles(), useJobFiles(), useQuickActionFiles() (+2 more)
 
-### Community 6 - "Community 6"
+### Community 7 - "Community 7"
 Cohesion: 0.1
 Nodes (6): ActionBadge(), fmt(), SearchPage(), StatusBadge(), useSearch(), formatHistoryValue()
-
-### Community 7 - "Community 7"
-Cohesion: 0.12
-Nodes (6): invalidateTagCache(), useTags(), makeEmptyTreatment(), DetailsReadOnlyView(), ItemsTab(), TreatmentChips()
 
 ### Community 8 - "Community 8"
 Cohesion: 0.17
@@ -138,11 +139,15 @@ Nodes (3): isTopModal(), pushModal(), removeModal()
 Cohesion: 0.47
 Nodes (4): computeProgress(), formatNum(), LineItemProgress(), parseQty()
 
-### Community 21 - "Community 21"
+### Community 20 - "Community 20"
+Cohesion: 0.4
+Nodes (2): checkLoginRateLimit(), cooldownMsForCount()
+
+### Community 22 - "Community 22"
 Cohesion: 0.4
 Nodes (2): convertKeysToCamel(), snakeToCamel()
 
-### Community 23 - "Community 23"
+### Community 24 - "Community 24"
 Cohesion: 0.7
 Nodes (4): formatElapsed(), formatNum(), LiveElapsed(), TimeEntryCard()
 
@@ -169,7 +174,9 @@ Nodes (2): formatElapsed(), LineItemTimerButton()
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 11`** (11 nodes): `Waves.jsx`, `Grad`, `.constructor()`, `.dot2()`, `Noise`, `.constructor()`, `.fade()`, `.lerp()`, `.perlin2()`, `.seed()`, `Waves()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 21`** (6 nodes): `camelToSnake()`, `convertKeysToCamel()`, `copyDirRecursive()`, `getTableColumns()`, `snakeToCamel()`, `settings.js`
+- **Thin community `Community 20`** (6 nodes): `checkLoginRateLimit()`, `clearLoginFailures()`, `cooldownMsForCount()`, `normalizeEmpty()`, `recordLoginFailure()`, `auth.js`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 22`** (6 nodes): `camelToSnake()`, `convertKeysToCamel()`, `copyDirRecursive()`, `getTableColumns()`, `snakeToCamel()`, `settings.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 25`** (5 nodes): `CostingTab.jsx`, `CostingTab()`, `formatElapsed()`, `LiveElapsed()`, `TimeEntriesSection()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -183,9 +190,9 @@ Nodes (2): formatElapsed(), LineItemTimerButton()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `useAuth()` connect `Community 2` to `Community 1`, `Community 4`, `Community 5`, `Community 6`?**
+- **Why does `useAuth()` connect `Community 2` to `Community 4`, `Community 5`, `Community 6`, `Community 7`?**
   _High betweenness centrality (0.037) - this node is a cross-community bridge._
-- **Why does `useConfirmDialog()` connect `Community 1` to `Community 2`, `Community 4`, `Community 5`?**
+- **Why does `useConfirmDialog()` connect `Community 1` to `Community 2`, `Community 4`, `Community 5`, `Community 6`?**
   _High betweenness centrality (0.035) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 11 INFERRED edges - model-reasoned connections that need verification._
@@ -196,4 +203,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.03 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.07 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06 - nodes in this community are weakly interconnected._

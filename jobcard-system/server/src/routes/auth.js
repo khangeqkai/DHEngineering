@@ -12,13 +12,22 @@ const { userQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
-// Custom login rate limiter: first 5 FAILED attempts normal, then 30 second cooldown
-// Designed for workshop environments where a hard lockout would block all workers
-// Only failed attempts count — successful logins do not consume attempts
+// Custom login rate limiter: first 5 FAILED attempts normal, then an ESCALATING
+// cooldown that grows the more they fail. No hard account lockout (a workshop must
+// never let one person lock a coworker out), but the wait climbs to discourage
+// steady guessing. Only failed attempts count — successful logins do not consume them.
 const loginFailures = new Map(); // IP -> { count, lastFailure, windowStart }
 const LOGIN_FREE_ATTEMPTS = 5;
-const LOGIN_COOLDOWN_MS = 30 * 1000; // 30 seconds
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes - resets failure count after inactivity
+
+// Cooldown grows with the number of failures already recorded for this IP.
+// count 5-6 -> 30s, 7-8 -> 1m, 9-10 -> 2m, 11+ -> 5m (cap).
+const cooldownMsForCount = (count) => {
+  if (count <= 6) return 30 * 1000;
+  if (count <= 8) return 60 * 1000;
+  if (count <= 10) return 120 * 1000;
+  return 300 * 1000;
+};
 
 const checkLoginRateLimit = (ip) => {
   const now = Date.now();
@@ -34,10 +43,11 @@ const checkLoginRateLimit = (ip) => {
     return null; // allowed
   }
 
-  // Beyond free attempts - enforce 30 second cooldown
+  // Beyond free attempts - enforce an escalating cooldown
+  const cooldownMs = cooldownMsForCount(record.count);
   const timeSinceLastFailure = now - record.lastFailure;
-  if (timeSinceLastFailure < LOGIN_COOLDOWN_MS) {
-    const waitSeconds = Math.ceil((LOGIN_COOLDOWN_MS - timeSinceLastFailure) / 1000);
+  if (timeSinceLastFailure < cooldownMs) {
+    const waitSeconds = Math.ceil((cooldownMs - timeSinceLastFailure) / 1000);
     return waitSeconds; // blocked
   }
 
@@ -348,6 +358,8 @@ router.put('/users/:id', authenticate, async (req, res) => {
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
       userQueries.updatePassword.run(hashedPassword, id);
+      // A reset PIN must end whoever is currently signed in with the old one.
+      userQueries.updateSessionToken.run(null, id);
     }
 
     // Record in history
@@ -386,6 +398,9 @@ router.post('/users/:id/deactivate', authenticate, requireRole('admin'), (req, r
     }
 
     userQueries.deactivate.run(id);
+    // End any open session for this account so the cutoff is immediate, not just
+    // blocked at next login. (The per-request active check also covers this.)
+    userQueries.updateSessionToken.run(null, id);
 
     recordHistory('user', id, 'archive', req.user.userId, req.user.name || req.user.username, {
       status: { from: 'Active', to: 'Archived' }
@@ -447,11 +462,27 @@ router.put('/change-password', authenticate, async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     userQueries.updatePassword.run(hashedPassword, req.user.userId);
 
+    // Rotate the session so any OTHER device still signed in with the old PIN is
+    // kicked, while the person making the change stays logged in via a fresh token.
+    const sessionToken = uuidv4();
+    userQueries.updateSessionToken.run(sessionToken, req.user.userId);
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        username: user.username,
+        role: user.role,
+        name: user.name,
+        sessionToken
+      },
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn }
+    );
+
     recordHistory('user', req.user.userId, 'update', req.user.userId, req.user.name || req.user.username, {
       password: { from: '(hidden)', to: '(changed)' }
     }, { username: user.username, name: user.name });
 
-    res.json({ success: true, message: 'Password changed successfully' });
+    res.json({ success: true, message: 'Password changed successfully', token });
   } catch (err) {
     logger.error({ err }, 'Change password error');
     res.status(500).json({ error: 'Failed to change password' });

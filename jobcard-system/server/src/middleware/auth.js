@@ -20,10 +20,15 @@ function authenticate(req, res, next) {
   try {
     const decoded = jwt.verify(token, config.jwt.secret);
 
-    // Single-session enforcement: validate session token against DB
+    // Single-session enforcement + live account check against the DB.
+    // One lookup covers both: the account must still be active, and the
+    // session token must still match (latest login wins).
     if (decoded.sessionToken) {
-      const row = userQueries.getSessionToken.get(decoded.userId);
-      if (!row || row.sessionToken !== decoded.sessionToken) {
+      const row = userQueries.getAuthState.get(decoded.userId);
+      if (!row || row.active !== 1) {
+        return res.status(401).json({ error: 'Account deactivated', code: 'ACCOUNT_DEACTIVATED' });
+      }
+      if (row.sessionToken !== decoded.sessionToken) {
         return res.status(401).json({ error: 'Session invalidated', code: 'SESSION_REPLACED' });
       }
     }

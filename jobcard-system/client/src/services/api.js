@@ -33,14 +33,16 @@ class ApiService {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
 
-      // Handle session replaced by another login
-      if (response.status === 401 && errorData.code === 'SESSION_REPLACED') {
+      // Handle a forced sign-out from the server: session replaced by a newer
+      // login, or the account was turned off / its PIN reset.
+      if (response.status === 401 &&
+          (errorData.code === 'SESSION_REPLACED' || errorData.code === 'ACCOUNT_DEACTIVATED')) {
         if (this.onSessionInvalidated) {
           const handler = this.onSessionInvalidated;
           this.onSessionInvalidated = null;
-          handler();
+          handler(errorData.code);
         }
-        throw new Error('SESSION_REPLACED');
+        throw new Error(errorData.code);
       }
 
       const details = errorData.details?.join('. ') || '';
@@ -98,8 +100,14 @@ class ApiService {
   deactivateUser(id) { return this._post(`/auth/users/${id}/deactivate`); }
   activateUser(id) { return this._post(`/auth/users/${id}/activate`); }
 
-  changePassword(currentPassword, newPassword) {
-    return this._put('/auth/change-password', { currentPassword, newPassword });
+  async changePassword(currentPassword, newPassword) {
+    const result = await this._put('/auth/change-password', { currentPassword, newPassword });
+    // The server rotates the session on a PIN change; swap in the fresh token so
+    // changing your own PIN doesn't sign you out.
+    if (result && result.token) {
+      this.setToken(result.token);
+    }
+    return result;
   }
 
   // Jobcard endpoints

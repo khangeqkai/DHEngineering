@@ -31,11 +31,14 @@ export function AuthProvider({ children }) {
 
   // Register session invalidation handler
   useEffect(() => {
-    api.setOnSessionInvalidated(() => {
+    api.setOnSessionInvalidated((code) => {
       clearInterval(pollRef.current);
       api.setToken(null);
       setUser(null);
-      toast.error('You have been signed out because your account was logged in from another device.');
+      const message = code === 'ACCOUNT_DEACTIVATED'
+        ? 'You have been signed out because your account was turned off.'
+        : 'You have been signed out because your account was logged in from another device.';
+      toast.error(message);
     });
     return () => api.setOnSessionInvalidated(null);
   }, []);
