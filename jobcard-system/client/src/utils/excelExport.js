@@ -105,6 +105,7 @@ const SUPPLIER_COLS = [
   { label: 'Email', value: r => r.contactEmail },
   { label: 'Address', value: r => r.address },
   { label: 'Services', value: r => (r.serviceTags || []).map(t => t.name).join(', ') },
+  { label: 'Status', value: r => r.active ? 'Active' : 'Archived' },
   { label: 'Notes', value: r => r.notes },
 ];
 
@@ -119,7 +120,7 @@ const USER_COLS = [
   { label: 'Display Name', value: r => r.name },
   { label: 'Email', value: r => r.email },
   { label: 'Role', value: r => r.role },
-  { label: 'Status', value: r => r.active ? 'Active' : 'Inactive' },
+  { label: 'Status', value: r => r.active ? 'Active' : 'Archived' },
   { label: 'Created', value: r => fmtDateTime(r.createdAt) },
 ];
 

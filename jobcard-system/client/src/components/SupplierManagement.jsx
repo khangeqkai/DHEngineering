@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase, capitalizeFirst, autoResize } from '../utils/formatters';
-import { Plus, Trash2, Save, History, Check, X } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore, Save, History, Check, X } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportSuppliers } from '../utils/excelExport';
@@ -32,13 +32,14 @@ export default function SupplierManagement() {
   const [showActivityLog, setShowActivityLog] = useState(false);
   const [showCustomTagInput, setShowCustomTagInput] = useState(false);
   const [customTagName, setCustomTagName] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [suppliersData, tagsData] = await Promise.all([
-        api.getSuppliers(),
+        api.getSuppliers(showInactive),
         api.getTags('treatment')
       ]);
       setSuppliers(suppliersData);
@@ -48,7 +49,7 @@ export default function SupplierManagement() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showInactive]);
 
   useEffect(() => {
     loadData();
@@ -90,22 +91,33 @@ export default function SupplierManagement() {
     setShowForm(true);
   };
 
-  const handleDelete = async (supplier) => {
+  const handleArchive = async (supplier) => {
     const confirmed = await showConfirm({
-      title: 'Delete Supplier Permanently',
-      message: `Are you sure you want to PERMANENTLY delete "${supplier.name}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
-      confirmVariant: 'danger'
+      title: 'Archive Supplier',
+      message: `Archive "${supplier.name}"? It will no longer appear when picking a supplier for a job, but jobs that already use it keep their record. You can restore it any time.`,
+      confirmLabel: 'Archive',
+      confirmVariant: 'warning'
     });
     if (!confirmed) return;
 
     try {
-      await api.deleteSupplier(supplier.id);
-      toast.success('Supplier deleted');
+      await api.deactivateSupplier(supplier.id);
+      toast.success('Supplier archived');
       await loadData();
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
-      toast.error(err.message || 'Failed to delete supplier');
+      toast.error(err.message || 'Failed to archive supplier');
+    }
+  };
+
+  const handleRestore = async (supplier) => {
+    try {
+      await api.activateSupplier(supplier.id);
+      toast.success('Supplier restored');
+      await loadData();
+      setActivityRefreshKey(k => k + 1);
+    } catch (err) {
+      toast.error(err.message || 'Failed to restore supplier');
     }
   };
 
@@ -178,6 +190,14 @@ export default function SupplierManagement() {
   return (
     <div className="supplier-management page-suppliers page-scroll-layout page-enter">
       <PageHeader title="Suppliers">
+        <label className="show-inactive-label">
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+          />
+          Show archived
+        </label>
         <ExportButton
           onExportView={() => suppliers.length ? exportSuppliers(suppliers) : false}
         />
@@ -410,19 +430,36 @@ export default function SupplierManagement() {
                 )
               },
               {
+                key: 'active',
+                label: 'Status',
+                sortable: true,
+                render: (val) => (
+                  <span className={`badge ${val ? 'badge-completed' : 'badge-cancelled'}`}>
+                    {val ? 'Active' : 'Archived'}
+                  </span>
+                )
+              },
+              {
                 key: 'actions',
                 label: 'Actions',
                 render: (_, row) => (
                   <div className="action-buttons">
-                    <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
-                      <Trash2 size={14} /> Delete
-                    </button>
+                    {row.active ? (
+                      <button className="btn btn-warning btn-sm" onClick={(e) => { e.stopPropagation(); handleArchive(row); }}>
+                        <Archive size={14} /> Archive
+                      </button>
+                    ) : (
+                      <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleRestore(row); }}>
+                        <ArchiveRestore size={14} /> Restore
+                      </button>
+                    )}
                   </div>
                 )
               }
             ]}
             data={suppliers}
             loading={loading}
+            rowClassName={(row) => row.active ? '' : 'inactive-row'}
             searchable
             searchKeys={['name', 'contactName', 'contactPhone']}
             searchPlaceholder="Search suppliers..."
@@ -446,6 +483,14 @@ export default function SupplierManagement() {
       />
 
       <style>{`
+        .show-inactive-label {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.875rem;
+          cursor: pointer;
+        }
+
         .services-cell {
           max-width: 300px;
         }

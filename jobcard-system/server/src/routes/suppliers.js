@@ -41,7 +41,10 @@ function getSupplierWithTags(supplierId) {
 // GET /api/suppliers - Get all suppliers
 router.get('/', (req, res) => {
   try {
-    const suppliers = supplierQueries.getAll.all();
+    const includeInactive = req.query.includeInactive === 'true';
+    const suppliers = includeInactive
+      ? supplierQueries.getAllIncludeInactive.all()
+      : supplierQueries.getAll.all();
     // Convert each supplier to API format with service tags
     const result = suppliers.map(s => toApiFormat(s));
     res.json(result);
@@ -176,8 +179,11 @@ router.put('/:id', requireAdmin, (req, res) => {
   }
 });
 
-// DELETE /api/suppliers/:id - Delete supplier (admin only)
-router.delete('/:id', requireAdmin, (req, res) => {
+// POST /api/suppliers/:id/deactivate - Archive supplier (admin only)
+// Suppliers are never permanently deleted: jobs snapshot a supplier's id/name onto
+// their treatments, so erasing a supplier would leave those jobs pointing at nothing.
+// Archiving keeps the record (existing jobs stay valid) but drops it from the picker.
+router.post('/:id/deactivate', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
 
@@ -186,19 +192,39 @@ router.delete('/:id', requireAdmin, (req, res) => {
       return res.status(404).json({ error: 'Supplier not found' });
     }
 
-    // Clear service tags first (cascade should handle this, but be explicit)
-    tagQueries.clearSupplierTags.run(id);
-    supplierQueries.delete.run(id);
+    supplierQueries.deactivate.run(id);
 
-    recordHistory('supplier', id, 'delete', req.user.userId, req.user.name || req.user.username, {
-      name: { from: existing.name, to: null },
-      contactName: { from: existing.contactName, to: null }
-    });
+    recordHistory('supplier', id, 'archive', req.user.userId, req.user.name || req.user.username, {
+      status: { from: 'Active', to: 'Archived' }
+    }, { name: existing.name });
 
     res.json({ success: true });
   } catch (err) {
-    logger.error({ err }, 'Failed to delete supplier');
-    res.status(500).json({ error: 'Failed to delete supplier' });
+    logger.error({ err }, 'Failed to archive supplier');
+    res.status(500).json({ error: 'Failed to archive supplier' });
+  }
+});
+
+// POST /api/suppliers/:id/activate - Restore archived supplier (admin only)
+router.post('/:id/activate', requireAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existing = getSupplierWithTags(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Supplier not found' });
+    }
+
+    supplierQueries.activate.run(id);
+
+    recordHistory('supplier', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
+      status: { from: 'Archived', to: 'Active' }
+    }, { name: existing.name });
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, 'Failed to restore supplier');
+    res.status(500).json({ error: 'Failed to restore supplier' });
   }
 });
 

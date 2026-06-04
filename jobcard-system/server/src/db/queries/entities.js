@@ -89,7 +89,8 @@ const supplierQueries = {
     WHERE id = ?
   `),
 
-  delete: db.prepare('DELETE FROM suppliers WHERE id = ?')
+  deactivate: db.prepare(`UPDATE suppliers SET active = 0, updated_at = datetime('now') WHERE id = ?`),
+  activate: db.prepare(`UPDATE suppliers SET active = 1, updated_at = datetime('now') WHERE id = ?`)
 };
 
 // Tag queries

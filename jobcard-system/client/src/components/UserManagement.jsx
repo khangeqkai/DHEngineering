@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { toTitleCase, validatePassword } from '../utils/formatters';
-import { Plus, Save, UserMinus, UserCheck, History } from 'lucide-react';
+import { Plus, Save, Archive, ArchiveRestore, History } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportUsers } from '../utils/excelExport';
@@ -92,31 +92,33 @@ export default function UserManagement() {
     setShowForm(true);
   };
 
-  const handleDeactivate = async (user) => {
+  const handleArchive = async (user) => {
     const confirmed = await showConfirm({
-      title: 'Deactivate User',
-      message: `Are you sure you want to deactivate user "${user.username}"?`,
-      confirmLabel: 'Deactivate',
+      title: 'Archive User',
+      message: `Archive user "${user.username}"? They will no longer be able to log in, but all their records are kept. You can restore them any time.`,
+      confirmLabel: 'Archive',
       confirmVariant: 'warning'
     });
     if (!confirmed) return;
 
     try {
       await api.deactivateUser(user.id);
+      toast.success('User archived');
       await loadUsers();
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
-      toast.error(err.message || 'Failed to deactivate user');
+      toast.error(err.message || 'Failed to archive user');
     }
   };
 
-  const handleActivate = async (user) => {
+  const handleRestore = async (user) => {
     try {
       await api.activateUser(user.id);
+      toast.success('User restored');
       await loadUsers();
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
-      toast.error(err.message || 'Failed to activate user');
+      toast.error(err.message || 'Failed to restore user');
     }
   };
 
@@ -142,7 +144,7 @@ export default function UserManagement() {
             checked={showInactive}
             onChange={(e) => setShowInactive(e.target.checked)}
           />
-          Show inactive
+          Show archived
         </label>
         <ExportButton
           onExportView={() => users.length ? exportUsers(users) : false}
@@ -283,7 +285,7 @@ export default function UserManagement() {
                 sortable: true,
                 render: (val) => (
                   <span className={`badge ${val ? 'badge-completed' : 'badge-cancelled'}`}>
-                    {val ? 'Active' : 'Inactive'}
+                    {val ? 'Active' : 'Archived'}
                   </span>
                 )
               },
@@ -301,12 +303,12 @@ export default function UserManagement() {
                     {row.id !== currentUser?.id && (
                       <>
                         {row.active ? (
-                          <button className="btn btn-warning btn-sm" onClick={(e) => { e.stopPropagation(); handleDeactivate(row); }}>
-                            <UserMinus size={14} /> Deactivate
+                          <button className="btn btn-warning btn-sm" onClick={(e) => { e.stopPropagation(); handleArchive(row); }}>
+                            <Archive size={14} /> Archive
                           </button>
                         ) : (
-                          <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleActivate(row); }}>
-                            <UserCheck size={14} /> Activate
+                          <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleRestore(row); }}>
+                            <ArchiveRestore size={14} /> Restore
                           </button>
                         )}
                       </>

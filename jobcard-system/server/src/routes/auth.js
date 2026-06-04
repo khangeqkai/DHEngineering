@@ -88,9 +88,9 @@ router.post('/login', validateLogin, async (req, res) => {
     const user = userQueries.getByUsername.get(username);
     if (!user || !user.active) {
       recordLoginFailure(ip);
-      logger.warn({ username, reason: 'user_not_found_or_inactive' }, 'Failed login attempt');
+      logger.warn({ username, reason: 'user_not_found_or_archived' }, 'Failed login attempt');
       recordHistory('auth', 'login', 'login_failed', null, username, {
-        reason: { from: null, to: 'user_not_found_or_inactive' }
+        reason: { from: null, to: 'user_not_found_or_archived' }
       });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -371,13 +371,13 @@ router.put('/users/:id', authenticate, async (req, res) => {
   }
 });
 
-// Deactivate user (admin only) - soft delete
+// Archive user (admin only) - soft delete
 router.post('/users/:id/deactivate', authenticate, requireRole('admin'), (req, res) => {
   try {
     const { id } = req.params;
 
     if (req.user.userId === id) {
-      return res.status(400).json({ error: 'Cannot deactivate yourself' });
+      return res.status(400).json({ error: 'Cannot archive yourself' });
     }
 
     const user = userQueries.getById.get(id);
@@ -387,18 +387,18 @@ router.post('/users/:id/deactivate', authenticate, requireRole('admin'), (req, r
 
     userQueries.deactivate.run(id);
 
-    recordHistory('user', id, 'deactivate', req.user.userId, req.user.name || req.user.username, {
-      status: { from: 'Active', to: 'Inactive' }
+    recordHistory('user', id, 'archive', req.user.userId, req.user.name || req.user.username, {
+      status: { from: 'Active', to: 'Archived' }
     }, { username: user.username, name: user.name });
 
-    res.json({ success: true, message: 'User deactivated' });
+    res.json({ success: true, message: 'User archived' });
   } catch (err) {
-    logger.error({ err }, 'Deactivate user error');
-    res.status(500).json({ error: 'Failed to deactivate user' });
+    logger.error({ err }, 'Archive user error');
+    res.status(500).json({ error: 'Failed to archive user' });
   }
 });
 
-// Activate user (admin only)
+// Restore archived user (admin only)
 router.post('/users/:id/activate', authenticate, requireRole('admin'), (req, res) => {
   try {
     const { id } = req.params;
@@ -410,14 +410,14 @@ router.post('/users/:id/activate', authenticate, requireRole('admin'), (req, res
 
     userQueries.activate.run(id);
 
-    recordHistory('user', id, 'activate', req.user.userId, req.user.name || req.user.username, {
-      status: { from: 'Inactive', to: 'Active' }
+    recordHistory('user', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
+      status: { from: 'Archived', to: 'Active' }
     }, { username: user.username, name: user.name });
 
-    res.json({ success: true, message: 'User activated' });
+    res.json({ success: true, message: 'User restored' });
   } catch (err) {
-    logger.error({ err }, 'Activate user error');
-    res.status(500).json({ error: 'Failed to activate user' });
+    logger.error({ err }, 'Restore user error');
+    res.status(500).json({ error: 'Failed to restore user' });
   }
 });
 

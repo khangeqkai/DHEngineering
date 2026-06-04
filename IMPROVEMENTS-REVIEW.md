@@ -46,11 +46,12 @@ so they should be the first batch.
 - **After:** A bad time is rejected on the spot with a plain reason, so costs stay trustworthy. (The normal Start/Stop timer was already safe.)
 - **Status:** Fixed. The check runs in two places: the moment the admin tries to save (instant on-screen message) and again where the record is actually stored (so it holds no matter what). It guards the add-a-log and edit-a-log paths. The Start/Stop timer's own start and stop actions don't go through it, and the times it records (real elapsed time, or a log left open with no finish) satisfy the check anyway, so nothing in the timer flow breaks. A log left open with no finish time is still allowed (same as before); only a present finish time is required to come after the start. Note: this stops new bad entries; it does not clean up any backwards/nonsense logs already saved before the fix.
 
-### 6. Deleting a supplier leaves jobs pointing at a supplier that's gone
+### 6. Deleting a supplier leaves jobs pointing at a supplier that's gone — ✅ RESOLVED
 - **Problem:** Each treatment on a job remembers which supplier handles it, but only as loose text with no real link. Deleting that supplier doesn't touch those jobs, so they keep showing a supplier that no longer exists, with nothing to flag or fix it.
-- **Solution:** Before deleting a supplier, check whether any jobs still use it. Either block the delete and tell the admin which jobs to update first, or clear those references as part of the delete.
+- **Solution:** Remove the permanent-delete option for suppliers entirely — the same approach already used for workers. A supplier can now only be archived or restored. An archived supplier drops out of the supplier picker (so no new job can pick it), but its record stays, so every job that already names it still points at something real. With no way to erase a supplier, jobs can never be left pointing at a ghost.
 - **Before:** Delete a supplier and affected jobs silently keep naming a supplier that's gone.
-- **After:** The admin is warned which jobs still depend on the supplier, so nothing is left dangling.
+- **After:** A supplier can only be archived, never erased, so its record is always there for the jobs that reference it — nothing is left dangling.
+- **Status:** Fixed. The "Delete" button on the supplier list is gone; it's now "Archive" (and "Restore" for archived ones), with a status badge and a "Show archived" toggle so archived suppliers can be found and brought back. Archiving and restoring are both written to the activity log. The supplier picker on job cards keeps showing only active suppliers, so the change is invisible to normal job-card work.
 
 ---
 

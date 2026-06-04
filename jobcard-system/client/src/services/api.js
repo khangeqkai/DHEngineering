@@ -181,11 +181,12 @@ class ApiService {
   deleteContact(id) { return this._del(`/contacts/${id}`); }
 
   // Supplier endpoints
-  getSuppliers() { return this.request('/suppliers'); }
+  getSuppliers(includeInactive = false) { return this.request(`/suppliers${includeInactive ? '?includeInactive=true' : ''}`); }
   getSupplier(id) { return this.request(`/suppliers/${id}`); }
   createSupplier(data) { return this._post('/suppliers', data); }
   updateSupplier(id, data) { return this._put(`/suppliers/${id}`, data); }
-  deleteSupplier(id) { return this._del(`/suppliers/${id}`); }
+  deactivateSupplier(id) { return this._post(`/suppliers/${id}/deactivate`); }
+  activateSupplier(id) { return this._post(`/suppliers/${id}/activate`); }
 
   // Tag endpoints
   getTags(category) {

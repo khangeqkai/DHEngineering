@@ -9,8 +9,8 @@ const ACTION_COLORS = {
   update: 'var(--primary-accent)',
   delete: 'var(--accent-caution)',
   login: 'var(--accent-info)',
-  deactivate: 'var(--accent-safety)',
-  activate: 'var(--accent-ready)',
+  archive: 'var(--accent-safety)',
+  unarchive: 'var(--accent-ready)',
   add_photo: 'var(--accent-ready)',
   remove_photo: 'var(--accent-caution)'
 };
