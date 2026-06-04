@@ -172,8 +172,8 @@ router.get('/:id/time-entries', authenticate, (req, res) => {
   }
 });
 
-// Add time entry
-router.post('/:id/time-entries', authenticate, ...validateManualTimeEntry, (req, res) => {
+// Add time entry (admin only — manual time records affect labour hours and costs)
+router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTimeEntry, (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -207,7 +207,9 @@ router.post('/:id/time-entries', authenticate, ...validateManualTimeEntry, (req,
   }
 });
 
-// Update time entry
+// Update time entry (owner or admin — a worker may edit their own record, e.g.
+// filling in qty/machines/description after stopping their timer; editing anyone
+// else's stays admin-only since manual time records affect labour hours and costs)
 router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntry, (req, res) => {
   try {
     const { id, entryId } = req.params;
@@ -216,6 +218,19 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     const existing = timeEntryQueries.getById.get(entryId);
     if (!existing) {
       return res.status(404).json({ error: 'Time entry not found' });
+    }
+
+    if (existing.jobcard_id !== id) {
+      return res.status(403).json({ error: 'Time entry does not belong to this job card' });
+    }
+
+    // Only the owner or an admin may edit a time entry
+    if (existing.user_id !== req.user.userId && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'You can only edit your own time entries' });
+    }
+
+    if (!existing.end_time) {
+      return res.status(400).json({ error: 'Stop the timer before editing this entry' });
     }
 
     timeEntryQueries.update.run(
@@ -292,8 +307,8 @@ router.patch('/:id/time-entries/:entryId/toggle-special', authenticate, requireA
   }
 });
 
-// Delete time entry
-router.delete('/:id/time-entries/:entryId', authenticate, (req, res) => {
+// Delete time entry (admin only — manual time records affect labour hours and costs)
+router.delete('/:id/time-entries/:entryId', authenticate, requireAdmin, (req, res) => {
   try {
     const { id, entryId } = req.params;
 

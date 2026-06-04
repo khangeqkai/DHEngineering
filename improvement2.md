@@ -16,7 +16,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 
 ## Security & data integrity (do these first)
 
-### 1. Any worker can change or erase anyone's recorded work time — ⬜
+### 1. Any worker can change or erase anyone's recorded work time — ✅
 - **Problem:** When someone adds, edits, or deletes a finished block of logged work
   time, the system never checks whether that time belongs to them or whether they're
   an admin. So a regular worker can quietly rewrite the quantity, machine,
