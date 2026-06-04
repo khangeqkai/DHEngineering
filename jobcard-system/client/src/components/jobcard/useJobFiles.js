@@ -25,9 +25,8 @@ export function useJobFiles(jobcardId) {
   const [counts, setCounts] = useState(
     () => Object.fromEntries(CATEGORIES.map(c => [c, null]))
   );
-  const [files, setFiles] = useState([]);
-  const [filesCategory, setFilesCategory] = useState(null);
-  const [filesLoading, setFilesLoading] = useState(false);
+  const [filesByCategory, setFilesByCategory] = useState({});
+  const [loadingByCategory, setLoadingByCategory] = useState({});
 
   const [scannerFiles, setScannerFiles] = useState([]);
   const [scannerLoading, setScannerLoading] = useState(false);
@@ -39,7 +38,7 @@ export function useJobFiles(jobcardId) {
   const viewerUrlRef = useRef(null);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const [loadingFiles, setLoadingFiles] = useState(new Set());
-  const thumbnailGenRef = useRef(0);
+  const thumbnailGenRef = useRef({});
 
   const fetchList = useCallback((category) => {
     if (!jobcardId) return Promise.resolve([]);
@@ -68,26 +67,26 @@ export function useJobFiles(jobcardId) {
   const loadThumbnails = useCallback(async (fileList, category) => {
     const imageFiles = (fileList || []).filter(f => f.mimeType?.startsWith('image/'));
     if (imageFiles.length === 0) return;
-    const gen = ++thumbnailGenRef.current;
-
-    setThumbnails(new Map());
+    // Per-category generation so loading one folder doesn't cancel another's previews.
+    const gen = (thumbnailGenRef.current[category] || 0) + 1;
+    thumbnailGenRef.current[category] = gen;
 
     const concurrency = 4;
     for (let i = 0; i < imageFiles.length; i += concurrency) {
-      if (thumbnailGenRef.current !== gen) return;
+      if (thumbnailGenRef.current[category] !== gen) return;
       const batch = imageFiles.slice(i, i + concurrency);
       const results = await Promise.all(batch.map(async (file) => {
         try {
           const fileData = await api.getJobcardFile(jobcardId, category, file.name);
           if (fileData?.data) {
-            return [file.name, `data:${fileData.mimeType || 'image/jpeg'};base64,${fileData.data}`];
+            return [`${category}/${file.name}`, `data:${fileData.mimeType || 'image/jpeg'};base64,${fileData.data}`];
           }
         } catch {
           return null;
         }
         return null;
       }));
-      if (thumbnailGenRef.current !== gen) return;
+      if (thumbnailGenRef.current[category] !== gen) return;
       setThumbnails(prev => {
         const next = new Map(prev);
         for (const r of results) if (r) next.set(r[0], r[1]);
@@ -98,18 +97,17 @@ export function useJobFiles(jobcardId) {
 
   const loadFiles = useCallback(async (category) => {
     if (!jobcardId) return;
-    setFilesCategory(category);
-    setFilesLoading(true);
+    setLoadingByCategory(prev => ({ ...prev, [category]: true }));
     try {
       const list = await fetchList(category);
-      setFiles(list || []);
+      setFilesByCategory(prev => ({ ...prev, [category]: list || [] }));
       setCounts(prev => ({ ...prev, [category]: (list || []).length }));
       loadThumbnails(list, category);
     } catch (err) {
       toast.error(err.message || 'Failed to load files');
-      setFiles([]);
+      setFilesByCategory(prev => ({ ...prev, [category]: [] }));
     } finally {
-      setFilesLoading(false);
+      setLoadingByCategory(prev => ({ ...prev, [category]: false }));
     }
   }, [jobcardId, fetchList, loadThumbnails]);
 
@@ -165,7 +163,7 @@ export function useJobFiles(jobcardId) {
   }, [jobcardId, refreshCount]);
 
   const handleViewFile = useCallback(async (file, category) => {
-    const cachedThumb = file.mimeType?.startsWith('image/') ? thumbnails.get(file.name) : null;
+    const cachedThumb = file.mimeType?.startsWith('image/') ? thumbnails.get(`${category}/${file.name}`) : null;
     if (cachedThumb) {
       setLightboxPhoto(cachedThumb);
       return;
@@ -202,9 +200,13 @@ export function useJobFiles(jobcardId) {
   const closeLightbox = useCallback(() => setLightboxPhoto(null), []);
 
   const reset = useCallback(() => {
-    thumbnailGenRef.current++;
-    setFiles([]);
-    setFilesCategory(null);
+    // Bump every category's generation (rather than zeroing) so any in-flight
+    // thumbnail load is cancelled and can't collide with a later reload's gen.
+    for (const c of CATEGORIES) {
+      thumbnailGenRef.current[c] = (thumbnailGenRef.current[c] || 0) + 1;
+    }
+    setFilesByCategory({});
+    setLoadingByCategory({});
     setThumbnails(new Map());
     setLightboxPhoto(null);
     if (viewerUrlRef.current) URL.revokeObjectURL(viewerUrlRef.current);
@@ -225,7 +227,7 @@ export function useJobFiles(jobcardId) {
     counts,
     refreshAllCounts,
     refreshCount,
-    files, filesCategory, filesLoading, loadFiles,
+    filesByCategory, loadingByCategory, loadFiles,
     scannerFiles, scannerLoading, loadScannerFiles, attachingFile, saveScannerFile,
     savingPhotos, savePhotos,
     thumbnails, loadingFiles, handleViewFile,

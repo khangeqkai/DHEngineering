@@ -272,17 +272,19 @@ export default function JobFilesMenu({ jobcardId, jobNumber }) {
                 </div>
               )}
 
-              {view === 'viewing' && (
+              {view === 'viewing' && (() => {
+                const viewingFiles = files.filesByCategory[selectedCategory] || [];
+                return (
                 <div className="lif-viewing">
-                  {files.filesLoading ? (
+                  {files.loadingByCategory[selectedCategory] ? (
                     <p className="lif-loading">Loading files...</p>
-                  ) : files.files.length === 0 ? (
+                  ) : viewingFiles.length === 0 ? (
                     <p className="lif-empty">No files yet</p>
                   ) : (
                     <div className="lif-file-grid">
-                      {files.files.map(file => {
+                      {viewingFiles.map(file => {
                         const isImage = file.mimeType?.startsWith('image/');
-                        const thumb = files.thumbnails.get(file.name);
+                        const thumb = files.thumbnails.get(`${selectedCategory}/${file.name}`);
                         return (
                           <button
                             key={file.name}
@@ -308,7 +310,8 @@ export default function JobFilesMenu({ jobcardId, jobNumber }) {
                     </div>
                   )}
                 </div>
-              )}
+                );
+              })()}
             </div>
           </div>
 
