@@ -13,7 +13,7 @@ const {
   userQueries,
   recordHistory
 } = require('../db/database');
-const { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob } = require('./jobcard-helpers');
+const { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob, verifyQaTemplatesAvailable } = require('./jobcard-helpers');
 const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
 const { db } = require('../db/connection');
 
@@ -106,6 +106,13 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
         return res.status(400).json({ error: 'Invalid QA level selected' });
       }
       qualityLevelName = level.name.toUpperCase();
+
+      // Confirm the level's forms are actually on disk BEFORE consuming a job
+      // number, so a job is never saved believing it has forms that can't be made.
+      const qaCheck = verifyQaTemplatesAvailable(qaLevelId);
+      if (!qaCheck.ok) {
+        return res.status(400).json({ error: qaCheck.reason });
+      }
     }
 
     // Write the job record, its line items, and the number-bump as ONE
@@ -303,6 +310,12 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       const newLevel = qaLevelQueries.getById.get(newQaLevelId);
       if (!newLevel) {
         return res.status(400).json({ error: 'Invalid QA level selected' });
+      }
+      // Confirm the new level's forms are on disk BEFORE writing the update, so
+      // the job is never saved expecting forms that can't be made.
+      const qaCheck = verifyQaTemplatesAvailable(newQaLevelId);
+      if (!qaCheck.ok) {
+        return res.status(400).json({ error: qaCheck.reason });
       }
     }
 

@@ -1,12 +1,12 @@
 # Graph Report - DHEngineering  (2026-06-04)
 
 ## Corpus Check
-- 132 files · ~91,784 words
+- 132 files · ~92,324 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 591 nodes · 840 edges · 26 communities detected
-- Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 72 edges (avg confidence: 0.8)
+- 592 nodes · 843 edges · 26 communities detected
+- Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 74 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -42,8 +42,8 @@
 2. `useAuth()` - 22 edges
 3. `useConfirmDialog()` - 17 edges
 4. `HardwareService` - 13 edges
-5. `JobCardModal()` - 11 edges
-6. `isWithinBase()` - 11 edges
+5. `isWithinBase()` - 12 edges
+6. `JobCardModal()` - 11 edges
 7. `capitalizeFirst()` - 10 edges
 8. `useTags()` - 9 edges
 9. `sanitizeFolderName()` - 9 edges
@@ -77,19 +77,19 @@ Nodes (22): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardLi
 
 ### Community 3 - "Community 3"
 Cohesion: 0.11
-Nodes (24): buildStorageFilename(), resolveCategoryFolder(), resolveCustomerPropertyPath(), resolveJobFilesPath(), resolveJobSubfolder(), resolveQaFormsPath(), saveFile(), copyQaTemplatesForJob() (+16 more)
+Nodes (25): buildStorageFilename(), resolveCategoryFolder(), resolveCustomerPropertyPath(), resolveJobFilesPath(), resolveJobSubfolder(), resolveQaFormsPath(), saveFile(), copyQaTemplatesForJob() (+17 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.09
 Nodes (17): JobCardModal(), validateJobCardForm(), getDefaultCostingForm(), getDefaultFormData(), getDefaultTimeEntryForm(), isoToLocalInput(), localInputToIso(), mapLineItemFromApi() (+9 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.16
-Nodes (16): UserManagement(), buildJobCardWorkbook(), buildSheet(), exportActivityLog(), exportContacts(), exportEquipment(), exportJobCardList(), exportJobCardsFull() (+8 more)
-
-### Community 6 - "Community 6"
 Cohesion: 0.12
 Nodes (10): JobFilesMenu(), LineItemFilesMenu(), formatElapsed(), QuickActionPanel(), useCamera(), useItemFiles(), useJobFiles(), useQuickActionFiles() (+2 more)
+
+### Community 6 - "Community 6"
+Cohesion: 0.16
+Nodes (16): UserManagement(), buildJobCardWorkbook(), buildSheet(), exportActivityLog(), exportContacts(), exportEquipment(), exportJobCardList(), exportJobCardsFull() (+8 more)
 
 ### Community 7 - "Community 7"
 Cohesion: 0.1
@@ -198,8 +198,8 @@ _Questions this graph is uniquely positioned to answer:_
   _`useAuth()` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 8 inferred relationships involving `useConfirmDialog()` (e.g. with `ContactManagement()` and `JobCardList()`) actually correct?**
   _`useConfirmDialog()` has 8 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 10 inferred relationships involving `JobCardModal()` (e.g. with `useAuth()` and `useJobCardZoom()`) actually correct?**
-  _`JobCardModal()` has 10 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 5 inferred relationships involving `isWithinBase()` (e.g. with `resolveCategoryFolder()` and `saveFile()`) actually correct?**
+  _`isWithinBase()` has 5 INFERRED edges - model-reasoned connections that need verification._
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.03 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**

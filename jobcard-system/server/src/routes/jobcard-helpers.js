@@ -309,4 +309,58 @@ async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
   }
 }
 
-module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob };
+/**
+ * Pre-save check: confirm a QA level's template files are present and readable
+ * BEFORE the job is written, so a job can never be saved believing it has
+ * inspection forms that were never created. Mirrors the source-side checks in
+ * copyTemplatesToJobFolder (level folder found, each source file exists + is
+ * within base) — these are the only failures that are predictable before the
+ * copy runs.
+ *
+ * Returns { ok: true } when there is nothing that could fail, including the
+ * cases where the copy would be legitimately skipped (no storage configured, or
+ * the level has no templates). Returns { ok: false, reason } with a plain
+ * message when a form file is missing. Rare runtime errors (full disk, locked
+ * file) can't be foreseen here; the post-save warning still covers those.
+ */
+function verifyQaTemplatesAvailable(qaLevelId) {
+  if (!qaLevelId) return { ok: true };
+
+  const level = qaLevelQueries.getById.get(qaLevelId);
+  if (!level) return { ok: false, reason: 'The selected quality level no longer exists.' };
+
+  const templates = qaLevelTemplateQueries.getByLevel.all(qaLevelId);
+  if (templates.length === 0) return { ok: true };
+
+  const settings = getSettings();
+  const basePath = settings.job_folders_base;
+  if (!basePath || !basePath.trim()) return { ok: true };
+
+  const qaLevelsBase = path.join(basePath.trim(), 'QA Levels');
+  const levelFolder = findQaLevelFolder(qaLevelsBase, level.id);
+  if (!levelFolder) {
+    return {
+      ok: false,
+      reason: `Quality level "${level.name}" has forms listed but its folder is missing. Re-upload its forms under Quality Levels, then try again.`
+    };
+  }
+
+  const missing = [];
+  for (const tmpl of templates) {
+    const srcPath = path.join(levelFolder, tmpl.file_name);
+    if (!isWithinBase(levelFolder, srcPath) || !fs.existsSync(srcPath)) {
+      missing.push(tmpl.file_name);
+    }
+  }
+  if (missing.length > 0) {
+    const plural = missing.length > 1;
+    return {
+      ok: false,
+      reason: `Quality level "${level.name}" is missing ${missing.length} form file${plural ? 's' : ''} (${missing.join(', ')}). Re-upload ${plural ? 'them' : 'it'} under Quality Levels, then try again.`
+    };
+  }
+
+  return { ok: true };
+}
+
+module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob, verifyQaTemplatesAvailable };

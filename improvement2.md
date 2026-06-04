@@ -103,7 +103,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **After:** A worker can only ever have one running timer; rapid taps or two devices
   can't create a hidden second one.
 
-### 7. Restoring a backup wipes everything before the files are safely in place — ⬜
+### 7. Restoring a backup wipes everything before the files are safely in place — ⏸️ not decided yet
 - **Problem:** Restoring from a backup first erases all existing records and puts the
   backup's records in, and only *then* copies the saved files back into the job
   folders. If that file copy fails partway through (disk full, a locked file, a
@@ -163,14 +163,24 @@ adding a hard lockout or longer PINs.
 
 ## Smaller polish fixes
 
-### 12. A failed quality-form copy only shows a small warning — ⬜
+### 12. A failed quality-form copy only shows a small warning — ✅
 - **Problem:** When a job is created (or its quality level changes), the quality
   inspection forms are copied onto disk afterward. If that copy fails (template
   missing, disk error), the job still saves and the screen shows only a small,
   easy-to-miss warning. The worker may print or scan expecting forms that were never
   made, and there's no record it failed and no retry.
-- **Solution:** Make the failure harder to miss and record that it happened, so it can
-  be noticed and re-tried rather than silently passed over.
+- **Solution (prevention, not louder alarms):** Catch the failure *before* the job is
+  saved instead of complaining after. When a job is saved with a quality level, the
+  system now first confirms that level's forms are really present on disk. If a form
+  file is missing, the save is refused with a clear, fixable message ("Quality level X
+  is missing these form files — re-upload them, then try again") — pointing the admin
+  to the fix at the one moment they can act on it, rather than letting a worker
+  discover empty folders later. Picking no quality level, or a level with no forms, is
+  unaffected. The brief post-save warning is kept only as a backstop for the rare,
+  unforeseeable case (full disk, locked file) that can't be checked ahead of time.
+- **After:** A job can no longer be saved believing it has inspection forms that were
+  never created; the missing-forms problem surfaces to the admin at save time, while
+  it's still fixable.
 
 ### 13. A new job's history doesn't record its line items or who was assigned — ✅
 - **Problem:** When a job is first created, its history only remembers the job number,
