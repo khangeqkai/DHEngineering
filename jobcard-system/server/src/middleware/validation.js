@@ -420,6 +420,24 @@ function validateItemJobTypes(items) {
   return null;
 }
 
+/**
+ * Validate description field on line items array.
+ * The job_items.description column is NOT NULL, so every line item must carry a
+ * non-empty description. The create screen already strips blank rows, but the
+ * server cannot rely on that for non-standard requests.
+ * Returns error string or null if valid.
+ */
+function validateItemDescriptions(items) {
+  if (!Array.isArray(items)) return null;
+  for (let i = 0; i < items.length; i++) {
+    const value = items[i].description ? String(items[i].description).trim() : '';
+    if (!value) {
+      return `Item #${i + 1} is missing a description`;
+    }
+  }
+  return null;
+}
+
 module.exports = {
   // Error handler
   handleValidationErrors,
@@ -444,6 +462,7 @@ module.exports = {
   validateItemTreatments,
   validateItemMaterials,
   validateItemJobTypes,
+  validateItemDescriptions,
 
   JOBCARD_STATUSES,
   PRIORITY_OPTIONS

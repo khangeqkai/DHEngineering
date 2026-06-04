@@ -32,11 +32,12 @@ so they should be the first batch.
 - **After:** Rename a level and its forms follow along; jobs keep getting the right forms, no matter how many times the level is renamed.
 - **Status:** Fixed. The name stays fully editable because renaming is now safe. Two levels whose names would collapse to the same folder are kept apart automatically, and the hidden marker is never copied into a job's forms.
 
-### 4. A failed job creation still uses up the number and leaves a half-made job
-- **Problem:** When you create a job, its number is claimed and the job saved *before* its quality forms are copied. If that last step fails, the user sees an error as if nothing happened — but the job number is gone forever and a stray, half-finished job is left behind.
-- **Solution:** Don't commit the job until the whole creation finishes. If the form copy fails, undo the job and release the number, or treat the form copy as a non-blocking step that can be retried without failing the whole creation.
-- **Before:** A failure at the final step shows "couldn't create," yet a phantom job and a wasted number are left behind.
+### 4. A failed job creation still uses up the number and leaves a half-made job — ✅ RESOLVED
+- **Problem:** When you create a job, the next number was claimed and the counter bumped *first*, then the job and its line items were saved as separate steps, with a couple of final checks running afterward. So if anything failed once the number was taken, the user saw "couldn't create" — but a number was used up, and sometimes a stray half-finished job was left behind.
+- **Solution:** Check everything first, then save the job, its line items, and the number-bump as one all-or-nothing action with the number-bump done **last**. If any part fails, nothing is saved and the number is never used up. The quality-form copy and folder creation stay as gentle follow-ups that only warn on failure. A missing line-item description is now also caught up front instead of blowing up mid-save.
+- **Before:** A failure after the number was taken showed "couldn't create," yet a phantom job and a wasted number could be left behind.
 - **After:** A failure means truly nothing was created — no phantom job, no skipped number — and a success means everything is in place.
+- **Status:** Fixed. The clean-up also closes two smaller number-waste paths for free: picking a quality level that was just deleted, and a clash with an existing number, now both reject *before* a number is consumed. The form-copy step was already non-blocking, so it was left as-is.
 
 ### 5. Hand-entered time logs aren't sanity-checked
 - **Problem:** When an admin types in or edits a time log by hand, nothing checks that the finish time comes after the start time, or that the times are even real. A backwards or garbled entry turns into negative or nonsense hours that flow straight into the job's costs.

@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { createJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { validateJobcardEnums, validateItemTreatments, validateItemMaterials, validateItemJobTypes } = require('../middleware/validation');
+const { validateJobcardEnums, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDescriptions } = require('../middleware/validation');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -14,7 +14,7 @@ const {
   recordHistory
 } = require('../db/database');
 const { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob } = require('./jobcard-helpers');
-const { generateAndIncrementJobNumber } = require('../db/helpers');
+const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
 const { db } = require('../db/connection');
 
 const router = express.Router();
@@ -41,7 +41,8 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       delete data.contactEmail;
     }
 
-    // Validate before consuming a job number from the auto-increment counter
+    // Validate everything BEFORE any database write, so a rejection can never
+    // consume a job number or leave a half-made record behind.
     if (!data.customerProperty || data.customerProperty === 'NONE') {
       return res.status(400).json({ error: 'Customer Property is required' });
     }
@@ -64,15 +65,9 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       return res.status(400).json({ error: jobTypeError });
     }
 
-    const { jobNumber, error: jobNumError } = generateAndIncrementJobNumber();
-    if (jobNumError) {
-      return res.status(400).json({ error: jobNumError });
-    }
-
-    // Guard against manual DB edits that desync the auto-increment counter
-    const existing = jobcardQueries.getByJobNumber.get(jobNumber);
-    if (existing) {
-      return res.status(409).json({ error: `Job number ${jobNumber} already exists. Please update the starting number in Settings.` });
+    const descriptionError = validateItemDescriptions(data.items);
+    if (descriptionError) {
+      return res.status(400).json({ error: descriptionError });
     }
 
     const id = `jobcard:${uuidv4()}`;
@@ -81,6 +76,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
     const qaLevelId = data.qaLevelId || null;
     let qualityLevelName = null;
 
+    // QA level validity is a read — check it before touching the number.
     if (qaLevelId) {
       const level = qaLevelQueries.getById.get(qaLevelId);
       if (!level) {
@@ -89,33 +85,77 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       qualityLevelName = level.name.toUpperCase();
     }
 
-    jobcardQueries.create.run(
-      id,
-      jobNumber,
-      'JOB_CARD',
-      status,
-      data.contactId || null,
-      data.contactName || null,
-      data.companyName || null,
-      data.contactPhone || null,
-      data.contactEmail || null,
-      qualityLevelName,
-      data.priority || 'NONE',
-      data.poNumber || null,
-      data.quoteReference || null,
-      data.drawingsType || null,
-      data.customerProperty || null,
-      data.description || null,
-      data.dueDate || null,
-      data.isRepeatJob ? 1 : 0,
-      data.repeatJobReference || null,
-      data.photos ? JSON.stringify(data.photos) : null,
-      req.user.userId,
-      req.user.userId,
-      qaLevelId
-    );
+    // Write the job record, its line items, and the number-bump as ONE
+    // all-or-nothing step. The counter advances LAST, so any failure rolls the
+    // whole thing back and the number is never wasted. Tagged errors carry the
+    // HTTP status to surface after the transaction unwinds.
+    const createJobcard = db.transaction(() => {
+      const peek = peekNextJobNumber();
+      if (peek.error) {
+        const e = new Error(peek.error);
+        e.httpStatus = 400;
+        throw e;
+      }
 
-    createRelatedRecords(id, data);
+      // Guard against manual DB edits that desync the auto-increment counter
+      if (jobcardQueries.getByJobNumber.get(peek.jobNumber)) {
+        const e = new Error(`Job number ${peek.jobNumber} already exists. Please update the starting number in Settings.`);
+        e.httpStatus = 409;
+        throw e;
+      }
+
+      jobcardQueries.create.run(
+        id,
+        peek.jobNumber,
+        'JOB_CARD',
+        status,
+        data.contactId || null,
+        data.contactName || null,
+        data.companyName || null,
+        data.contactPhone || null,
+        data.contactEmail || null,
+        qualityLevelName,
+        data.priority || 'NONE',
+        data.poNumber || null,
+        data.quoteReference || null,
+        data.drawingsType || null,
+        data.customerProperty || null,
+        data.description || null,
+        data.dueDate || null,
+        data.isRepeatJob ? 1 : 0,
+        data.repeatJobReference || null,
+        data.photos ? JSON.stringify(data.photos) : null,
+        req.user.userId,
+        req.user.userId,
+        qaLevelId
+      );
+
+      createRelatedRecords(id, data);
+
+      bumpJobNumber(peek.nextNum, peek.width);
+
+      // Audit log is part of the same all-or-nothing save: if it can't be
+      // written, the whole creation rolls back rather than reporting failure
+      // for a job that actually got saved.
+      recordHistory('jobcard', id, 'create', req.user.userId, req.user.name || req.user.username, {
+        jobNumber: { from: null, to: peek.jobNumber },
+        status: { from: null, to: status },
+        priority: { from: null, to: data.priority || 'NONE' },
+        qualityLevel: { from: null, to: qualityLevelName || null }
+      });
+
+      return peek.jobNumber;
+    });
+
+    let jobNumber;
+    try {
+      jobNumber = createJobcard();
+    } catch (txErr) {
+      if (txErr.httpStatus) {
+        return res.status(txErr.httpStatus).json({ error: txErr.message });
+      }
+      throw txErr;
+    }
 
     let qaResult = null;
     if (qaLevelId) {
@@ -145,13 +185,6 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
     if (folderCompany) {
       createJobCardFolders(folderCompany, jobNumber);
     }
-
-    recordHistory('jobcard', id, 'create', req.user.userId, req.user.name || req.user.username, {
-      jobNumber: { from: null, to: jobNumber },
-      status: { from: null, to: status },
-      priority: { from: null, to: data.priority || 'NONE' },
-      qualityLevel: { from: null, to: qualityLevelName || null }
-    });
 
     const response = formatJobcard(jobcard, items, assignees, req.user.role);
     const warning = buildQaTemplateWarning(qaResult);
@@ -206,6 +239,10 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       const jobTypeError = validateItemJobTypes(data.items);
       if (jobTypeError) {
         return res.status(400).json({ error: jobTypeError });
+      }
+      const descriptionError = validateItemDescriptions(data.items);
+      if (descriptionError) {
+        return res.status(400).json({ error: descriptionError });
       }
     }
 

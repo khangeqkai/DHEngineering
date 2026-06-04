@@ -18,10 +18,11 @@ function recordHistory(entityType, entityId, action, userId, userName, changes, 
   );
 }
 
-// Atomically generate the next job number and increment the counter.
-// Returns { jobNumber, error } - error if not configured.
-// Uses a transaction so concurrent creates cannot get the same number.
-const generateAndIncrementJobNumber = db.transaction(() => {
+// Compute the next job number WITHOUT touching the counter.
+// Returns { jobNumber, nextNum, width, error } - error if not configured.
+// The caller commits the bump (bumpJobNumber) only after the job record has been
+// written, inside the same transaction, so a failed create never wastes a number.
+function peekNextJobNumber() {
   const settings = getSettings();
   const prefix = settings.job_number_prefix || '';
   const nextStr = settings.job_number_next || '';
@@ -37,15 +38,15 @@ const generateAndIncrementJobNumber = db.transaction(() => {
     return { jobNumber: null, error: 'Invalid job number sequence value.' };
   }
 
-  const paddedNum = String(nextNum).padStart(width, '0');
-  const jobNumber = prefix + paddedNum;
+  const jobNumber = prefix + String(nextNum).padStart(width, '0');
+  return { jobNumber, nextNum, width, error: null };
+}
 
-  // Increment immediately within the same transaction
-  const newValue = String(nextNum + 1).padStart(width, '0');
-  settingsQueries.upsert.run('job_number_next', newValue);
-
-  return { jobNumber, error: null };
-});
+// Advance the job-number counter. Call this LAST inside the create transaction
+// so the number is only consumed once the job record is safely written.
+function bumpJobNumber(nextNum, width) {
+  settingsQueries.upsert.run('job_number_next', String(nextNum + 1).padStart(width, '0'));
+}
 
 // Settings helper functions
 function getSettings() {
@@ -68,7 +69,8 @@ function updateSettings(settingsObj) {
 
 module.exports = {
   recordHistory,
-  generateAndIncrementJobNumber,
+  peekNextJobNumber,
+  bumpJobNumber,
   getSettings,
   updateSettings
 };
