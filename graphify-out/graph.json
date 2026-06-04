@@ -4345,7 +4345,7 @@
       "label": "toApiFormat()",
       "file_type": "code",
       "source_file": "server/src/routes/suppliers.js",
-      "source_location": "L13",
+      "source_location": "L16",
       "id": "routes_suppliers_toapiformat",
       "community": 26,
       "norm_label": "toapiformat()"
@@ -4354,7 +4354,7 @@
       "label": "getSupplierWithTags()",
       "file_type": "code",
       "source_file": "server/src/routes/suppliers.js",
-      "source_location": "L36",
+      "source_location": "L39",
       "id": "routes_suppliers_getsupplierwithtags",
       "community": 26,
       "norm_label": "getsupplierwithtags()"
@@ -4363,7 +4363,7 @@
       "label": "normalizeEmpty()",
       "file_type": "code",
       "source_file": "server/src/routes/suppliers.js",
-      "source_location": "L133",
+      "source_location": "L137",
       "id": "routes_suppliers_normalizeempty",
       "community": 26,
       "norm_label": "normalizeempty()"

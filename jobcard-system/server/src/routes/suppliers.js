@@ -9,16 +9,19 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticate);
 
-// Convert supplier from snake_case (DB) to camelCase (API)
-function toApiFormat(supplier) {
+// Convert supplier from snake_case (DB) to camelCase (API).
+// Non-admins must not receive a supplier's private phone/email (same privacy
+// rule already applied to customer contact details), so blank them out unless
+// the requester is an admin.
+function toApiFormat(supplier, isAdmin = true) {
   if (!supplier) return null;
   const tags = tagQueries.getForSupplier.all(supplier.id);
   return {
     id: supplier.id,
     name: supplier.name,
     contactName: supplier.contact_name,
-    contactPhone: supplier.contact_phone,
-    contactEmail: supplier.contact_email,
+    contactPhone: isAdmin ? supplier.contact_phone : null,
+    contactEmail: isAdmin ? supplier.contact_email : null,
     address: supplier.address,
     services: supplier.services,
     approved: supplier.approved,
@@ -33,20 +36,21 @@ function toApiFormat(supplier) {
 }
 
 // Helper to get supplier with its service tags (in API format)
-function getSupplierWithTags(supplierId) {
+function getSupplierWithTags(supplierId, isAdmin = true) {
   const supplier = supplierQueries.getById.get(supplierId);
-  return toApiFormat(supplier);
+  return toApiFormat(supplier, isAdmin);
 }
 
 // GET /api/suppliers - Get all suppliers
 router.get('/', (req, res) => {
   try {
+    const isAdmin = req.user.role === 'admin';
     const includeInactive = req.query.includeInactive === 'true';
     const suppliers = includeInactive
       ? supplierQueries.getAllIncludeInactive.all()
       : supplierQueries.getAll.all();
     // Convert each supplier to API format with service tags
-    const result = suppliers.map(s => toApiFormat(s));
+    const result = suppliers.map(s => toApiFormat(s, isAdmin));
     res.json(result);
   } catch (err) {
     logger.error({ err }, 'Failed to get suppliers');
@@ -57,7 +61,7 @@ router.get('/', (req, res) => {
 // GET /api/suppliers/:id - Get single supplier
 router.get('/:id', (req, res) => {
   try {
-    const supplier = getSupplierWithTags(req.params.id);
+    const supplier = getSupplierWithTags(req.params.id, req.user.role === 'admin');
     if (!supplier) {
       return res.status(404).json({ error: 'Supplier not found' });
     }
