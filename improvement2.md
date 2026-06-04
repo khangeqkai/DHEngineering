@@ -31,7 +31,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **After:** A regular worker can no longer touch anyone's finished time records;
   only admins can add, edit, or delete them.
 
-### 2. Customer name, phone, and email leak to regular workers through a job's history — ⬜
+### 2. Customer name, phone, and email leak to regular workers through a job's history — ✅
 - **Problem:** Customer details are supposed to be completely hidden from regular
   workers. The live customer section of a job *is* blanked out for them — but a job's
   **history list** is not. Whenever an admin changes a customer's name, company,

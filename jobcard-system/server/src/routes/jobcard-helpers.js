@@ -13,6 +13,19 @@ const {
   getSettings
 } = require('../db/database');
 
+// Customer/contact fields hidden from non-admins. Used both when formatting a
+// job card and when sanitizing a job card's history so the two protections stay
+// in sync (see formatJobcard + sanitizeHistoryForRole).
+const CUSTOMER_HISTORY_FIELDS = [
+  'contactId',
+  'contactName',
+  'companyName',
+  'contactPhone',
+  'contactEmail',
+  'storedContactName',
+  'storedCompanyName'
+];
+
 function parseTreatments(raw) {
   if (!raw) return [];
   try {
@@ -25,19 +38,23 @@ function parseTreatments(raw) {
 
 function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
   const isAdmin = userRole === 'admin';
+  // Customer fields are hidden from non-admins — same set as CUSTOMER_HISTORY_FIELDS.
+  const contactFields = isAdmin ? {
+    contactId: row.contact_id,
+    contactName: row.contact_name,
+    companyName: row.company_name,
+    contactPhone: row.contact_phone,
+    contactEmail: row.contact_email,
+    storedContactName: row.stored_contact_name,
+    storedCompanyName: row.stored_company_name
+  } : Object.fromEntries(CUSTOMER_HISTORY_FIELDS.map(f => [f, null]));
   return {
     _id: row.id,
     id: row.id,
     jobNumber: row.job_number,
     cardType: row.card_type,
     status: row.status,
-    contactId: isAdmin ? row.contact_id : null,
-    contactName: isAdmin ? row.contact_name : null,
-    companyName: isAdmin ? row.company_name : null,
-    contactPhone: isAdmin ? row.contact_phone : null,
-    contactEmail: isAdmin ? row.contact_email : null,
-    storedContactName: isAdmin ? row.stored_contact_name : null,
-    storedCompanyName: isAdmin ? row.stored_company_name : null,
+    ...contactFields,
     qualityLevel: row.quality_level,
     qaLevelId: row.qa_level_id || null,
     priority: row.priority,
@@ -106,6 +123,20 @@ function buildChanges(existing, data) {
   }
 
   return changes;
+}
+
+// Strip customer/contact fields out of a single history record for non-admins,
+// mirroring how formatJobcard hides those same fields on the live job card. The
+// record stays in the database with full from/to values for admins; this only
+// filters the copy handed back to a non-admin. Non-customer fields (status,
+// priority, etc.) are left intact so the rest of the history still shows.
+function sanitizeHistoryForRole(record, userRole) {
+  if (userRole === 'admin') return record;
+  for (const field of CUSTOMER_HISTORY_FIELDS) {
+    if (record.changes) delete record.changes[field];
+    if (record.snapshot) delete record.snapshot[field];
+  }
+  return record;
 }
 
 function serializeTreatments(treatments) {
@@ -278,4 +309,4 @@ async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
   }
 }
 
-module.exports = { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob };
+module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob };

@@ -13,7 +13,7 @@ const {
   historyQueries,
   recordHistory
 } = require('../db/database');
-const { formatJobcard } = require('./jobcard-helpers');
+const { formatJobcard, sanitizeHistoryForRole } = require('./jobcard-helpers');
 const jobcardMutationsRoutes = require('./jobcard-mutations');
 
 const router = express.Router();
@@ -87,7 +87,7 @@ router.get('/:id/history', authenticate, (req, res) => {
   try {
     const history = historyQueries.getByEntity.all('jobcard', req.params.id);
 
-    res.json(history.map(h => ({
+    res.json(history.map(h => sanitizeHistoryForRole({
       id: h.id,
       action: h.action,
       userId: h.user_id,
@@ -95,7 +95,7 @@ router.get('/:id/history', authenticate, (req, res) => {
       changes: h.changes ? JSON.parse(h.changes) : null,
       snapshot: h.snapshot ? JSON.parse(h.snapshot) : null,
       createdAt: h.created_at
-    })));
+    }, req.user.role)));
   } catch (err) {
     logger.error({ err }, 'Get jobcard history error');
     res.status(500).json({ error: 'Failed to get job card history' });
