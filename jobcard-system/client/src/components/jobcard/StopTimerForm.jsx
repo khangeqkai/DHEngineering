@@ -177,6 +177,9 @@ export default function StopTimerForm({
             </div>
 
             <div className="stop-timer-actions">
+              {!canSubmit && !loading && (
+                <span className="stop-timer-hint">Add a machine or a description to finish.</span>
+              )}
               <button
                 type="submit"
                 className="btn btn-primary"

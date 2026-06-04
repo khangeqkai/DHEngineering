@@ -220,3 +220,10 @@
 .stop-timer-actions .btn {
   min-width: 120px;
 }
+
+.stop-timer-hint {
+  margin-right: auto;
+  align-self: center;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}

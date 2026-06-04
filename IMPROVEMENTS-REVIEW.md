@@ -57,13 +57,14 @@ so they should be the first batch.
 
 ## Behaviour fixes (decided during review)
 
-### 7. Workers can see supplier phone numbers and emails
+### 7. Workers can see supplier phone numbers and emails — ✅ RESOLVED
 - **Problem:** Customer phone and email are hidden from workers, but supplier phone and email are not — any worker can read them.
 - **Solution:** Hide supplier contact details from workers too, the same way customer details are hidden, so the two are treated alike.
 - **Before:** A worker opens supplier info and sees phone and email they shouldn't.
 - **After:** A worker sees the supplier's name and services but not the private contact details — admins still see everything.
+- **Status:** Fixed. Supplier phone and email are now blanked out for non-admin workers, matching the existing customer-contact privacy rule. The supplier's name, services, and address stay visible; admins still see everything.
 
-### 8. There's no plain "upload a file" option
+### 8. There's no plain "upload a file" option — ⏸️ NOT YET DECIDED
 - **Problem:** The Files menu only offers Scanner and Camera. There's no way to pick an existing file from the computer, even though the system is capable of accepting one.
 - **Solution:** Add an "upload a file" choice to the Files menu, next to Scanner and Camera.
 - **Before:** To attach a file you already have, there's no path — only scan or photograph.
