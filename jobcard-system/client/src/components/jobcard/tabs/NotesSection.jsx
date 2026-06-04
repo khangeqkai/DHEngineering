@@ -7,6 +7,8 @@ export default function NotesSection({
   onAddNote,
   onDeleteNote,
   loading,
+  loadError,
+  onRetry,
   isAdmin
 }) {
   return (
@@ -37,7 +39,21 @@ export default function NotesSection({
       </div>
 
       {/* Notes list */}
-      {notes.length === 0 ? (
+      {loadError ? (
+        <p className="empty-message">
+          Couldn't load comments.{' '}
+          {onRetry && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={onRetry}
+              disabled={loading}
+            >
+              Retry
+            </button>
+          )}
+        </p>
+      ) : notes.length === 0 ? (
         <p className="empty-message">No comments yet</p>
       ) : (
         <div className="notes-list">

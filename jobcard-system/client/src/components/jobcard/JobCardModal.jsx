@@ -21,6 +21,7 @@ import StopTimerForm from './StopTimerForm';
 import ZoomToggle, { useJobCardZoom } from './ZoomToggle';
 import JobFilesMenu from './JobFilesMenu';
 import JobIdentityStrip from './JobIdentityStrip';
+import { validateJobCardForm } from './jobCardValidation';
 
 const mapTimeEntry = (t) => ({ id: t.id, userId: t.userId, userName: t.userName, itemNumber: t.itemNumber, machineNumber: t.machineNumber, qty: t.qty, description: t.description, startTime: t.startTime, endTime: t.endTime, isSpecialLabour: t.isSpecialLabour || false });
 
@@ -287,44 +288,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (!isAdmin && isEdit) return;
 
     // Validation
-    const errors = [];
-    if (isAdmin && !formHook.formData.contactId && !contactHook.contactFormData.companyName.trim()) {
-      errors.push('Company name is required');
-    }
-    if (!formHook.formData.description?.trim()) {
-      errors.push('Job description is required');
-    }
-    const validItems = formHook.lineItems.filter(item => item.description.trim());
-    if (validItems.length === 0) {
-      errors.push('Add at least one line item');
-    }
-    const itemMissingJobType = validItems.findIndex(item => !item.jobType);
-    if (itemMissingJobType !== -1) {
-      errors.push(`Job type is required on item #${itemMissingJobType + 1}`);
-    }
-    // Each treatment must have a value and supplier
-    for (let i = 0; i < validItems.length; i++) {
-      const item = validItems[i];
-      const treatments = Array.isArray(item.treatments) ? item.treatments : [];
-      for (let t = 0; t < treatments.length; t++) {
-        const tr = treatments[t];
-        if (!tr.value) {
-          errors.push(`Item #${i + 1} treatment ${t + 1} is missing a treatment`);
-        }
-        if (tr.value === 'OTHER' && !(tr.otherText || '').trim()) {
-          errors.push(`Item #${i + 1} treatment ${t + 1} (Other) needs text`);
-        }
-        if (!tr.supplierId) {
-          errors.push(`Item #${i + 1} treatment ${t + 1} is missing a supplier`);
-        }
-      }
-    }
-    if (!formHook.formData.customerProperty || formHook.formData.customerProperty === 'NONE') {
-      errors.push('Customer Property is required');
-    }
-    if (!formHook.formData.drawingsType || formHook.formData.drawingsType === 'NONE') {
-      errors.push('Drawings type is required');
-    }
+    const { errors, validItems } = validateJobCardForm({
+      isAdmin,
+      formData: formHook.formData,
+      contactFormData: contactHook.contactFormData,
+      lineItems: formHook.lineItems
+    });
 
     if (errors.length > 0) {
       toast.dismiss();
@@ -521,6 +490,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   onAddNote={jobNotes.addNote}
                   onDeleteNote={jobNotes.deleteNote}
                   notesLoading={jobNotes.loading}
+                  notesLoadError={jobNotes.loadError}
+                  onRetryNotes={jobNotes.loadNotes}
                   timeEntries={timeEntries || []}
                   machines={machines || []}
                   showTimeEntryForm={timeEntry.showTimeEntryForm}

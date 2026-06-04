@@ -46,6 +46,8 @@ export default function DetailsTab({
   onAddNote,
   onDeleteNote,
   notesLoading,
+  notesLoadError,
+  onRetryNotes,
   // Time entry props
   timeEntries = [],
   machines = [],
@@ -106,6 +108,8 @@ export default function DetailsTab({
             onAddNote={onAddNote}
             onDeleteNote={onDeleteNote}
             loading={notesLoading}
+            loadError={notesLoadError}
+            onRetry={onRetryNotes}
             isAdmin={isAdmin}
           />
         )}
@@ -423,6 +427,8 @@ export default function DetailsTab({
           onAddNote={onAddNote}
           onDeleteNote={onDeleteNote}
           loading={notesLoading}
+          loadError={notesLoadError}
+          onRetry={onRetryNotes}
           isAdmin={isAdmin}
         />
       )}

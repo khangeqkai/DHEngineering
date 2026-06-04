@@ -6,14 +6,21 @@ export function useJobNotes(jobcardId) {
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const loadNotes = useCallback(async () => {
     if (!jobcardId) return;
+    setLoading(true);
     try {
       const result = await api.getJobNotes(jobcardId);
       setNotes(result || []);
+      setLoadError(false);
     } catch (err) {
-      // Silently fail
+      // Surface the failure instead of looking like an empty list
+      setLoadError(true);
+      toast.error(err.message || 'Failed to load comments');
+    } finally {
+      setLoading(false);
     }
   }, [jobcardId]);
 
@@ -46,6 +53,7 @@ export function useJobNotes(jobcardId) {
   const resetNotes = useCallback(() => {
     setNotes([]);
     setNewNote('');
+    setLoadError(false);
   }, []);
 
   return {
@@ -53,6 +61,7 @@ export function useJobNotes(jobcardId) {
     newNote,
     setNewNote,
     loading,
+    loadError,
     loadNotes,
     addNote,
     deleteNote,
