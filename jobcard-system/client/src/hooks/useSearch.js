@@ -39,7 +39,12 @@ export default function useSearch() {
   const [qaLevels, setQaLevels] = useState([]);
   const [jobTypes, setJobTypes] = useState([]);
   const [filtersError, setFiltersError] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const requestId = useRef(0);
+
+  // Manually re-run the current search (e.g. after a job's status changes
+  // in the open popup) without altering the query or filters.
+  const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
 
   // Load the filter dropdown options. If any of them fails (e.g. a brief
   // network hiccup), flag the error so the screen can show it and offer a
@@ -120,7 +125,7 @@ export default function useSearch() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [q, scope, JSON.stringify(filters), page]);
+  }, [q, scope, JSON.stringify(filters), page, refreshKey]);
 
   const changeScope = useCallback((newScope, filterOverrides = null) => {
     setScope(newScope);
@@ -160,6 +165,6 @@ export default function useSearch() {
     filters, updateFilter, toggleArrayFilter, clearFilters, hasActiveFilters,
     page, setPage, results, loading,
     employees, machines, qaLevels, jobTypes,
-    filtersError, retryFilters: loadFilterOptions
+    filtersError, retryFilters: loadFilterOptions, refresh
   };
 }

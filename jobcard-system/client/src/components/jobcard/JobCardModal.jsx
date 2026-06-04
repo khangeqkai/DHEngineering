@@ -422,6 +422,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       setFormData={formHook.setFormData}
       isOverdue={isOverdue}
       showConfirm={showConfirm}
+      onSuccess={onSuccess}
     />
   );
 

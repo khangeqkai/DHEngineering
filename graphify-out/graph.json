@@ -12893,9 +12893,9 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L326",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_src_routes_jobcard_helpers_js",
-      "target": "routes_jobcard_helpers_verifyqatemplatesavailable",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_helpers_verifyqatemplatesavailable"
     },
     {
       "relation": "contains",

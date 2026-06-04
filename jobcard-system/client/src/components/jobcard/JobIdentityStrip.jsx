@@ -29,7 +29,8 @@ export default function JobIdentityStrip({
   formData,
   setFormData,
   isOverdue,
-  showConfirm
+  showConfirm,
+  onSuccess
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
@@ -99,6 +100,7 @@ export default function JobIdentityStrip({
     try {
       await api.updateJobcardStatus(jobCardId, newStatus);
       setField('status', newStatus);
+      onSuccess?.();
       toast.success('Status updated');
     } catch (err) {
       toast.error('Failed to update status');

@@ -115,7 +115,7 @@ export default function SearchPage() {
     filters, updateFilter, toggleArrayFilter, clearFilters, hasActiveFilters,
     page, setPage, results, loading,
     employees, machines, qaLevels, jobTypes,
-    filtersError, retryFilters,
+    filtersError, retryFilters, refresh,
   } = useSearch();
 
   // Job card modal state
@@ -458,7 +458,7 @@ export default function SearchPage() {
         onClose={() => setModalJobId(null)}
         jobCardId={modalJobId}
         initialTab={modalTab}
-        onSuccess={() => setModalJobId(null)}
+        onSuccess={refresh}
       />
 
       <style>{`
