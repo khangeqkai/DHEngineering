@@ -962,26 +962,57 @@
   background: var(--accent-caution);
 }
 
-.badge-treatment {
-  background: rgba(249, 115, 22, 0.1);
-  color: #ea580c;
-  border-color: rgba(249, 115, 22, 0.2);
+/* ========================================
+   JOB STATUS COLORS — single source of truth
+   One class per status, fed by the --status-* palette in index.css.
+   Sets the --s-* custom props (consumed by the job-card pill and
+   calendar cards) and the direct paint props (consumed by .badge,
+   whose dot follows currentColor). Used everywhere a job status shows.
+   ======================================== */
+.status-quote,
+.status-open,
+.status-awaiting-material,
+.status-in-progress,
+.status-treatment,
+.status-on-hold,
+.status-done,
+.status-invoiced {
+  background: var(--s-bg);
+  color: var(--s-color);
+  border-color: var(--s-border);
 }
 
-.badge-treatment::before {
-  background: #f97316;
-  box-shadow: 0 0 6px #f97316;
+.status-quote {
+  --s-bg: var(--status-quote-bg); --s-color: var(--status-quote-text);
+  --s-border: var(--status-quote-border); --s-dot: var(--status-quote-dot);
 }
-
-.badge-awaiting-material {
-  background: rgba(139, 92, 246, 0.1);
-  color: #7c3aed;
-  border-color: rgba(139, 92, 246, 0.2);
+.status-open {
+  --s-bg: var(--status-open-bg); --s-color: var(--status-open-text);
+  --s-border: var(--status-open-border); --s-dot: var(--status-open-dot);
 }
-
-.badge-awaiting-material::before {
-  background: #8b5cf6;
-  box-shadow: 0 0 6px #8b5cf6;
+.status-awaiting-material {
+  --s-bg: var(--status-awaiting-material-bg); --s-color: var(--status-awaiting-material-text);
+  --s-border: var(--status-awaiting-material-border); --s-dot: var(--status-awaiting-material-dot);
+}
+.status-in-progress {
+  --s-bg: var(--status-in-progress-bg); --s-color: var(--status-in-progress-text);
+  --s-border: var(--status-in-progress-border); --s-dot: var(--status-in-progress-dot);
+}
+.status-treatment {
+  --s-bg: var(--status-treatment-bg); --s-color: var(--status-treatment-text);
+  --s-border: var(--status-treatment-border); --s-dot: var(--status-treatment-dot);
+}
+.status-on-hold {
+  --s-bg: var(--status-on-hold-bg); --s-color: var(--status-on-hold-text);
+  --s-border: var(--status-on-hold-border); --s-dot: var(--status-on-hold-dot);
+}
+.status-done {
+  --s-bg: var(--status-done-bg); --s-color: var(--status-done-text);
+  --s-border: var(--status-done-border); --s-dot: var(--status-done-dot);
+}
+.status-invoiced {
+  --s-bg: var(--status-invoiced-bg); --s-color: var(--status-invoiced-text);
+  --s-border: var(--status-invoiced-border); --s-dot: var(--status-invoiced-dot);
 }
 
 /* Priority badges */

@@ -121,39 +121,6 @@
   opacity: 0.9;
 }
 
-/* Reuse badge colors for calendar cards */
-.calendar-card.badge-pending {
-  background-color: var(--badge-pending-bg);
-  color: var(--badge-pending-text);
-  border-color: rgba(var(--badge-pending-text-rgb), 0.2);
-}
-
-.calendar-card.badge-in-progress {
-  background-color: var(--badge-progress-bg);
-  color: var(--badge-progress-text);
-  border-color: rgba(var(--badge-progress-text-rgb), 0.2);
-}
-
-.calendar-card.badge-awaiting-material {
-  background-color: var(--badge-awaiting-bg);
-  color: var(--badge-awaiting-text);
-  border-color: rgba(var(--badge-awaiting-text-rgb), 0.2);
-}
-
-.calendar-card.badge-treatment {
-  background-color: var(--badge-treatment-bg);
-  color: var(--badge-treatment-text);
-  border-color: rgba(var(--badge-treatment-text-rgb), 0.2);
-}
-
-.calendar-card.badge-completed {
-  background-color: var(--badge-completed-bg);
-  color: var(--badge-completed-text);
-  border-color: rgba(var(--badge-completed-text-rgb), 0.2);
-}
-
-.calendar-card.badge-cancelled {
-  background-color: var(--badge-cancelled-bg);
-  color: var(--badge-cancelled-text);
-  border-color: rgba(var(--badge-cancelled-text-rgb), 0.2);
-}
+/* Status colors come from the shared .status-* classes (App.css),
+   which set background/color/border-color from the --status-* palette.
+   getStatusBadgeClass() adds the matching .status-<token> class to each card. */

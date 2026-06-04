@@ -288,64 +288,9 @@
   pointer-events: none;
 }
 
-/* Status color mapping — soft tinted pills */
-.jc-strip-status-quote {
-  --s-bg: rgba(100, 116, 139, 0.10);
-  --s-color: #475569;
-  --s-border: rgba(100, 116, 139, 0.35);
-  --s-dot: #64748b;
-}
-.jc-strip-status-open {
-  --s-bg: rgba(59, 130, 246, 0.10);
-  --s-color: #1d4ed8;
-  --s-border: rgba(59, 130, 246, 0.35);
-  --s-dot: #3b82f6;
-}
-.jc-strip-status-awaiting-material {
-  --s-bg: rgba(168, 85, 247, 0.10);
-  --s-color: #6b21a8;
-  --s-border: rgba(168, 85, 247, 0.35);
-  --s-dot: #a855f7;
-}
-.jc-strip-status-in-progress {
-  --s-bg: rgba(20, 184, 166, 0.12);
-  --s-color: #0f766e;
-  --s-border: rgba(20, 184, 166, 0.40);
-  --s-dot: #14b8a6;
-}
-.jc-strip-status-treatment {
-  --s-bg: rgba(236, 72, 153, 0.10);
-  --s-color: #9d174d;
-  --s-border: rgba(236, 72, 153, 0.35);
-  --s-dot: #ec4899;
-}
-.jc-strip-status-on-hold {
-  --s-bg: rgba(217, 119, 6, 0.12);
-  --s-color: #b45309;
-  --s-border: rgba(217, 119, 6, 0.40);
-  --s-dot: #d97706;
-}
-.jc-strip-status-done {
-  --s-bg: rgba(34, 197, 94, 0.12);
-  --s-color: #15803d;
-  --s-border: rgba(34, 197, 94, 0.40);
-  --s-dot: #22c55e;
-}
-.jc-strip-status-invoiced {
-  --s-bg: rgba(15, 23, 42, 0.10);
-  --s-color: #0f172a;
-  --s-border: rgba(15, 23, 42, 0.35);
-  --s-dot: #0f172a;
-}
-
-.dark-mode .jc-strip-status-quote { --s-color: #cbd5e1; --s-bg: rgba(100, 116, 139, 0.20); }
-.dark-mode .jc-strip-status-open { --s-color: #93c5fd; --s-bg: rgba(59, 130, 246, 0.20); }
-.dark-mode .jc-strip-status-awaiting-material { --s-color: #d8b4fe; --s-bg: rgba(168, 85, 247, 0.22); }
-.dark-mode .jc-strip-status-in-progress { --s-color: #5eead4; --s-bg: rgba(20, 184, 166, 0.20); }
-.dark-mode .jc-strip-status-treatment { --s-color: #f9a8d4; --s-bg: rgba(236, 72, 153, 0.20); }
-.dark-mode .jc-strip-status-on-hold { --s-color: #fcd34d; --s-bg: rgba(217, 119, 6, 0.22); }
-.dark-mode .jc-strip-status-done { --s-color: #86efac; --s-bg: rgba(34, 197, 94, 0.22); }
-.dark-mode .jc-strip-status-invoiced { --s-color: #cbd5e1; --s-bg: rgba(15, 23, 42, 0.45); }
+/* Status colors come from the shared .status-* classes (App.css),
+   fed by the --status-* palette in index.css. The .jc-strip-status base
+   above consumes the --s-* custom props those classes set. */
 
 /* Due date — right-aligned pill */
 .jc-strip-duedate {

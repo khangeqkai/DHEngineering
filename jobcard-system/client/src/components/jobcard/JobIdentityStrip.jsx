@@ -5,12 +5,9 @@ import CalendarPicker from '../common/CalendarPicker';
 import { capitalizeFirst } from '../../utils/formatters';
 import { api } from '../../services/api';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from './constants';
+import { statusToken } from '../JobCardList.constants';
 
 const PRIORITY_VALUES = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
-
-function statusToken(status) {
-  return (status || '').toLowerCase().replace(/_/g, '-');
-}
 
 function formatDueDate(value) {
   if (!value?.trim()) return null;
@@ -78,7 +75,7 @@ export default function JobIdentityStrip({
           disabled: true
         }
       ];
-  const statusClass = `jc-strip-status jc-strip-status-${statusToken(status)}`;
+  const statusClass = `jc-strip-status status-${statusToken(status)}`;
 
   const setField = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
 

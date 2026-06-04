@@ -8,6 +8,7 @@ import DataTable from './common/DataTable';
 import JobCardModal from './jobcard/JobCardModal';
 import { ACTIVITY_FIELDS } from './searchFields';
 import { formatHistoryValue } from '../utils/formatters';
+import { statusToken } from './JobCardList.constants';
 
 const STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'TREATMENT', 'ON_HOLD', 'DONE', 'INVOICED'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
@@ -26,12 +27,6 @@ const GROUP_TO_SCOPE = { jobs: 'jobs', contacts: 'people', suppliers: 'people', 
 const fmt = (s) => (s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 const fmtDate = (d) => d ? new Date(d).toLocaleString() : '-';
 const fmtDateShort = (d) => d ? new Date(d).toLocaleDateString() : '-';
-
-const STATUS_COLORS = {
-  QUOTE: 'var(--accent-info)', OPEN: 'var(--primary-accent)', AWAITING_MATERIAL: 'var(--accent-safety)',
-  IN_PROGRESS: 'var(--accent-info)', TREATMENT: '#8b5cf6', ON_HOLD: 'var(--accent-safety)',
-  DONE: 'var(--accent-ready)', INVOICED: 'var(--text-secondary)'
-};
 
 const ACTION_COLORS = {
   create: 'var(--accent-ready)', update: 'var(--primary-accent)', delete: 'var(--accent-caution)',
@@ -72,7 +67,7 @@ function FilterRow({ label, children }) {
 }
 
 function StatusBadge({ status }) {
-  return <span className="search-badge" style={{ color: STATUS_COLORS[status] || 'var(--text-secondary)' }}>{fmt(status)}</span>;
+  return <span className={`search-badge status-${statusToken(status)}`}>{fmt(status)}</span>;
 }
 
 function ActionBadge({ action }) {
@@ -505,7 +500,8 @@ export default function SearchPage() {
         .search-preview-item.clickable:hover { background: var(--background); }
         .search-preview-detail { color: var(--text-secondary); }
         .search-preview-meta { color: var(--text-secondary); font-size: 0.75rem; margin-left: auto; }
-        .search-badge { font-size: 0.75rem; font-weight: 500; }
+        /* Status color comes from the shared .status-* class (text only here) */
+        .search-badge { font-size: 0.75rem; font-weight: 500; background: none; border: none; padding: 0; }
         .search-entity-id { font-size: 0.6875rem; background: var(--background); padding: 0.0625rem 0.375rem; border-radius: 0.25rem; }
         .search-changes { margin-top: 0.25rem; }
         .search-change-line { font-size: 0.6875rem; color: var(--text-secondary); }

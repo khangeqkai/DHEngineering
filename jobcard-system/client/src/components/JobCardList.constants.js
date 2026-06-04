@@ -55,16 +55,8 @@ export const mergeColumnOrder = (saved) => {
   return [...saved.slice(0, actionsIdx), ...missing, ...saved.slice(actionsIdx)];
 };
 
-export const getStatusBadgeClass = (status) => {
-  switch (status) {
-    case 'QUOTE': return 'badge-pending';
-    case 'OPEN': return 'badge-pending';
-    case 'IN_PROGRESS': return 'badge-in-progress';
-    case 'AWAITING_MATERIAL': return 'badge-awaiting-material';
-    case 'TREATMENT': return 'badge-treatment';
-    case 'ON_HOLD': return 'badge-cancelled';
-    case 'DONE': return 'badge-completed';
-    case 'INVOICED': return 'badge-completed';
-    default: return '';
-  }
-};
+// Normalize a status value (e.g. 'AWAITING_MATERIAL') into its color-class token
+// (e.g. 'awaiting-material'). Shared by every screen that colors a job status.
+export const statusToken = (status) => (status || '').toLowerCase().replace(/_/g, '-');
+
+export const getStatusBadgeClass = (status) => (status ? `status-${statusToken(status)}` : '');
