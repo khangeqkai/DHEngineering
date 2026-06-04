@@ -26,6 +26,7 @@ export default function ContactManagement() {
     notes: ''
   });
   const [saving, setSaving] = useState(false);
+  const [pendingId, setPendingId] = useState(null);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [showActivityLog, setShowActivityLog] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
@@ -81,6 +82,7 @@ export default function ContactManagement() {
   };
 
   const handleDelete = async (contact) => {
+    if (pendingId !== null) return;
     const displayName = contact.contactName
       ? `${contact.companyName} (${contact.contactName})`
       : contact.companyName;
@@ -92,12 +94,15 @@ export default function ContactManagement() {
     });
     if (!confirmed) return;
 
+    setPendingId(contact.id);
     try {
       await api.deleteContact(contact.id);
       await loadContacts();
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
       toast.error(err.message || 'Failed to delete contact');
+    } finally {
+      setPendingId(null);
     }
   };
 
@@ -268,8 +273,8 @@ export default function ContactManagement() {
                 label: 'Actions',
                 render: (_, row) => (
                   <div className="action-buttons">
-                    <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
-                      <Trash2 size={14} /> Delete
+                    <button className="btn btn-danger btn-sm" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
+                      <Trash2 size={14} /> {pendingId === row.id ? 'Deleting…' : 'Delete'}
                     </button>
                   </div>
                 )

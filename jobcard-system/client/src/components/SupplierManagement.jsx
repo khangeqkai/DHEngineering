@@ -28,6 +28,7 @@ export default function SupplierManagement() {
     serviceTagIds: []
   });
   const [saving, setSaving] = useState(false);
+  const [pendingId, setPendingId] = useState(null);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [showActivityLog, setShowActivityLog] = useState(false);
   const [showCustomTagInput, setShowCustomTagInput] = useState(false);
@@ -92,6 +93,7 @@ export default function SupplierManagement() {
   };
 
   const handleArchive = async (supplier) => {
+    if (pendingId !== null) return;
     const confirmed = await showConfirm({
       title: 'Archive Supplier',
       message: `Archive "${supplier.name}"? It will no longer appear when picking a supplier for a job, but jobs that already use it keep their record. You can restore it any time.`,
@@ -100,6 +102,7 @@ export default function SupplierManagement() {
     });
     if (!confirmed) return;
 
+    setPendingId(supplier.id);
     try {
       await api.deactivateSupplier(supplier.id);
       toast.success('Supplier archived');
@@ -107,10 +110,14 @@ export default function SupplierManagement() {
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
       toast.error(err.message || 'Failed to archive supplier');
+    } finally {
+      setPendingId(null);
     }
   };
 
   const handleRestore = async (supplier) => {
+    if (pendingId !== null) return;
+    setPendingId(supplier.id);
     try {
       await api.activateSupplier(supplier.id);
       toast.success('Supplier restored');
@@ -118,6 +125,8 @@ export default function SupplierManagement() {
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
       toast.error(err.message || 'Failed to restore supplier');
+    } finally {
+      setPendingId(null);
     }
   };
 
@@ -445,12 +454,12 @@ export default function SupplierManagement() {
                 render: (_, row) => (
                   <div className="action-buttons">
                     {row.active ? (
-                      <button className="btn btn-warning btn-sm" onClick={(e) => { e.stopPropagation(); handleArchive(row); }}>
-                        <Archive size={14} /> Archive
+                      <button className="btn btn-warning btn-sm" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); handleArchive(row); }}>
+                        <Archive size={14} /> {pendingId === row.id ? 'Archiving…' : 'Archive'}
                       </button>
                     ) : (
-                      <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleRestore(row); }}>
-                        <ArchiveRestore size={14} /> Restore
+                      <button className="btn btn-success btn-sm" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); handleRestore(row); }}>
+                        <ArchiveRestore size={14} /> {pendingId === row.id ? 'Restoring…' : 'Restore'}
                       </button>
                     )}
                   </div>

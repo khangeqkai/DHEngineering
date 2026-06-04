@@ -297,7 +297,18 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
     if (errors.length > 0) {
       toast.dismiss();
-      errors.forEach(msg => toast.error(msg));
+      if (errors.length === 1) {
+        toast.error(errors[0]);
+      } else {
+        toast.error(
+          <div>
+            <strong>Please fix the following:</strong>
+            <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem' }}>
+              {errors.map((msg, i) => <li key={i}>{msg}</li>)}
+            </ul>
+          </div>
+        );
+      }
       return;
     }
 

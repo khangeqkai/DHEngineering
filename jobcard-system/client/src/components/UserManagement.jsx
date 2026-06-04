@@ -28,6 +28,7 @@ export default function UserManagement() {
     role: 'user'
   });
   const [saving, setSaving] = useState(false);
+  const [pendingId, setPendingId] = useState(null);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [showActivityLog, setShowActivityLog] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
@@ -93,6 +94,7 @@ export default function UserManagement() {
   };
 
   const handleArchive = async (user) => {
+    if (pendingId !== null) return;
     const confirmed = await showConfirm({
       title: 'Archive User',
       message: `Archive user "${user.username}"? They will no longer be able to log in, but all their records are kept. You can restore them any time.`,
@@ -101,6 +103,7 @@ export default function UserManagement() {
     });
     if (!confirmed) return;
 
+    setPendingId(user.id);
     try {
       await api.deactivateUser(user.id);
       toast.success('User archived');
@@ -108,10 +111,14 @@ export default function UserManagement() {
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
       toast.error(err.message || 'Failed to archive user');
+    } finally {
+      setPendingId(null);
     }
   };
 
   const handleRestore = async (user) => {
+    if (pendingId !== null) return;
+    setPendingId(user.id);
     try {
       await api.activateUser(user.id);
       toast.success('User restored');
@@ -119,6 +126,8 @@ export default function UserManagement() {
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
       toast.error(err.message || 'Failed to restore user');
+    } finally {
+      setPendingId(null);
     }
   };
 
@@ -303,12 +312,12 @@ export default function UserManagement() {
                     {row.id !== currentUser?.id && (
                       <>
                         {row.active ? (
-                          <button className="btn btn-warning btn-sm" onClick={(e) => { e.stopPropagation(); handleArchive(row); }}>
-                            <Archive size={14} /> Archive
+                          <button className="btn btn-warning btn-sm" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); handleArchive(row); }}>
+                            <Archive size={14} /> {pendingId === row.id ? 'Archiving…' : 'Archive'}
                           </button>
                         ) : (
-                          <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleRestore(row); }}>
-                            <ArchiveRestore size={14} /> Restore
+                          <button className="btn btn-success btn-sm" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); handleRestore(row); }}>
+                            <ArchiveRestore size={14} /> {pendingId === row.id ? 'Restoring…' : 'Restore'}
                           </button>
                         )}
                       </>
