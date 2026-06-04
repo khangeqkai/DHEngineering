@@ -274,6 +274,20 @@ router.post('/:id/files/:category/from-scanner', authenticate, validateCategory,
       return res.status(404).json({ error: 'File not found in scanner folder' });
     }
 
+    // Only image/PDF files may be brought in — match the upload path's allowlist.
+    const ext = path.extname(filePath).toLowerCase();
+    if (!VALID_EXTENSIONS.includes(ext)) {
+      return res.status(400).json({ error: 'Only image and PDF files can be brought in from the scanner' });
+    }
+
+    // Guard against shortcuts (symlinks) inside the scanner folder whose real
+    // target lives outside it — isWithinBase above only checks the path string.
+    const realBase = fs.realpathSync(settings.scanner_folder);
+    const realTarget = fs.realpathSync(filePath);
+    if (!isWithinBase(realBase, realTarget)) {
+      return res.status(403).json({ error: 'That file points outside the scanner folder' });
+    }
+
     const buffer = fs.readFileSync(filePath);
     return saveFile({
       jobcardId: id,

@@ -75,7 +75,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **After:** Durations are correct whether a block came from the timer, was typed by
   hand, or was started one way and edited the other.
 
-### 5. Scanned-in files aren't checked for type, and can reach outside the scanner folder — ⬜
+### 5. Scanned-in files aren't checked for type, and can reach outside the scanner folder — ✅
 - **Problem (two parts):**
   1. A file pulled in from the scanner is saved no matter what kind of file it is. The
      regular upload path checks that a file is an image or PDF; the scanner path
@@ -115,7 +115,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **After:** A failed restore can no longer leave you with wiped data and missing
   files.
 
-### 8. A treatment can be sent to a supplier that doesn't offer it — ⬜
+### 8. A treatment can be sent to a supplier that doesn't offer it — ✅
 - **Problem:** When a job line needs a treatment, the person picks a supplier for it.
   The system only checks that *some* supplier was picked — it never checks that the
   chosen supplier actually performs that treatment (or that the supplier even exists).

@@ -266,8 +266,12 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       return res.status(403).json({ error: 'Only admins can change job card status' });
     }
 
+    // Items already saved on this job — used to grandfather unchanged treatment
+    // lines past the supplier-active/offers checks, and reused for change tracking.
+    const existingItems = data.items !== undefined ? jobItemQueries.getByJobcard.all(id) : [];
+
     if (data.items !== undefined) {
-      const treatmentError = validateItemTreatments(data.items);
+      const treatmentError = validateItemTreatments(data.items, existingItems);
       if (treatmentError) {
         return res.status(400).json({ error: treatmentError });
       }
@@ -287,8 +291,8 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
 
     const changes = buildChanges(existing, data);
 
-    // Snapshot current items/assignees before any writes, for change tracking after commit
-    const existingItems = data.items !== undefined ? jobItemQueries.getByJobcard.all(id) : [];
+    // Snapshot current assignees before any writes, for change tracking after commit
+    // (existingItems was fetched above, before validation).
     const existingAssignees = data.assigneeIds !== undefined ? jobAssigneeQueries.getByJobcard.all(id) : [];
 
     // Validate a changed QA level BEFORE touching the database, so an invalid
