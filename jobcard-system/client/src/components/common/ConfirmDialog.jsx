@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
+import { pushModal, removeModal, isTopModal } from './modalStack';
 
 export default function ConfirmDialog({
   isOpen,
@@ -13,14 +14,20 @@ export default function ConfirmDialog({
 }) {
   const confirmButtonRef = useRef(null);
   const cancelButtonRef = useRef(null);
+  const modalId = useId();
 
   useEffect(() => {
     if (!isOpen) return;
 
+    // Register as the (now) top-most dialog while open.
+    pushModal(modalId);
     // Focus the cancel button when modal opens (safer default)
     cancelButtonRef.current?.focus();
 
     const handleKeyDown = (e) => {
+      // Only the top-most open dialog reacts to global keys.
+      if (!isTopModal(modalId)) return;
+
       if (e.key === 'Escape') {
         e.preventDefault();
         onCancel();
@@ -47,10 +54,11 @@ export default function ConfirmDialog({
     document.body.style.overflow = 'hidden';
 
     return () => {
+      removeModal(modalId);
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [isOpen, onCancel]);
+  }, [isOpen, onCancel, modalId]);
 
   if (!isOpen) return null;
 
