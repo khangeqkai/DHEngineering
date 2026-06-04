@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { validateStartTimer } = require('../middleware/validation');
+const { validateStartTimer, validateManualTimeEntry } = require('../middleware/validation');
 const { timeEntryQueries, jobItemQueries, jobAssigneeQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
@@ -173,7 +173,7 @@ router.get('/:id/time-entries', authenticate, (req, res) => {
 });
 
 // Add time entry
-router.post('/:id/time-entries', authenticate, (req, res) => {
+router.post('/:id/time-entries', authenticate, ...validateManualTimeEntry, (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -208,7 +208,7 @@ router.post('/:id/time-entries', authenticate, (req, res) => {
 });
 
 // Update time entry
-router.put('/:id/time-entries/:entryId', authenticate, (req, res) => {
+router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntry, (req, res) => {
   try {
     const { id, entryId } = req.params;
     const data = req.body;

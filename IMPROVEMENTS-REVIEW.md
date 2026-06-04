@@ -39,11 +39,12 @@ so they should be the first batch.
 - **After:** A failure means truly nothing was created — no phantom job, no skipped number — and a success means everything is in place.
 - **Status:** Fixed. The clean-up also closes two smaller number-waste paths for free: picking a quality level that was just deleted, and a clash with an existing number, now both reject *before* a number is consumed. The form-copy step was already non-blocking, so it was left as-is.
 
-### 5. Hand-entered time logs aren't sanity-checked
+### 5. Hand-entered time logs aren't sanity-checked — ✅ RESOLVED
 - **Problem:** When an admin types in or edits a time log by hand, nothing checks that the finish time comes after the start time, or that the times are even real. A backwards or garbled entry turns into negative or nonsense hours that flow straight into the job's costs.
 - **Solution:** Check hand-entered times before saving — the finish must be after the start, and both must be valid — and refuse the entry with a clear message if not.
 - **Before:** An admin can save a finish-before-start time, quietly poisoning the cost totals.
 - **After:** A bad time is rejected on the spot with a plain reason, so costs stay trustworthy. (The normal Start/Stop timer was already safe.)
+- **Status:** Fixed. The check runs in two places: the moment the admin tries to save (instant on-screen message) and again where the record is actually stored (so it holds no matter what). It guards the add-a-log and edit-a-log paths. The Start/Stop timer's own start and stop actions don't go through it, and the times it records (real elapsed time, or a log left open with no finish) satisfy the check anyway, so nothing in the timer flow breaks. A log left open with no finish time is still allowed (same as before); only a present finish time is required to come after the start. Note: this stops new bad entries; it does not clean up any backwards/nonsense logs already saved before the fix.
 
 ### 6. Deleting a supplier leaves jobs pointing at a supplier that's gone
 - **Problem:** Each treatment on a job remembers which supplier handles it, but only as loose text with no real link. Deleting that supplier doesn't touch those jobs, so they keep showing a supplier that no longer exists, with nothing to flag or fix it.

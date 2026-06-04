@@ -3769,7 +3769,7 @@
       "label": "validateItemTreatments()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L342",
+      "source_location": "L365",
       "id": "middleware_validation_validateitemtreatments",
       "community": 7,
       "norm_label": "validateitemtreatments()"
@@ -3778,7 +3778,7 @@
       "label": "validateItemMaterials()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L386",
+      "source_location": "L409",
       "id": "middleware_validation_validateitemmaterials",
       "community": 7,
       "norm_label": "validateitemmaterials()"
@@ -3787,7 +3787,7 @@
       "label": "validateItemJobTypes()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L407",
+      "source_location": "L430",
       "id": "middleware_validation_validateitemjobtypes",
       "community": 7,
       "norm_label": "validateitemjobtypes()"
@@ -3796,7 +3796,7 @@
       "label": "validateItemDescriptions()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L430",
+      "source_location": "L453",
       "id": "middleware_validation_validateitemdescriptions",
       "community": 7,
       "norm_label": "validateitemdescriptions()"

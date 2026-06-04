@@ -50,6 +50,31 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   const handleSaveTimeEntry = useCallback(async () => {
     if (!jobCardId) return;
 
+    // Sanity-check hand-entered times before saving: both must be real,
+    // and the finish must come after the start, so bad times can't poison
+    // the job's labour hours and cost totals.
+    const { startTime, endTime } = timeEntryForm;
+    if (!startTime) {
+      toast.error('Please enter a start time');
+      return;
+    }
+    const start = new Date(startTime).getTime();
+    if (isNaN(start)) {
+      toast.error('Start time is not a valid date');
+      return;
+    }
+    if (endTime) {
+      const end = new Date(endTime).getTime();
+      if (isNaN(end)) {
+        toast.error('Finish time is not a valid date');
+        return;
+      }
+      if (end <= start) {
+        toast.error('Finish time must be after the start time');
+        return;
+      }
+    }
+
     try {
       const entryData = {
         ...timeEntryForm,

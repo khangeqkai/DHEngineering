@@ -333,6 +333,29 @@ const validateStartTimer = [
   handleValidationErrors
 ];
 
+// Validate the start/finish on the time-log add + edit routes.
+// Guards against backwards or garbled hand-entered times poisoning the
+// labour-hour totals. The Start/Stop timer's own start/stop routes are
+// separate and skip this; its stop-form save and resume/cancel reuse the
+// edit route and pass it (real elapsed time, or a cleared finish time).
+const validateManualTimeEntry = [
+  body('startTime')
+    .exists({ checkNull: true })
+    .withMessage('Start time is required')
+    .bail()
+    .custom(v => !isNaN(new Date(v).getTime()))
+    .withMessage('Start time is not a valid date'),
+  body('endTime')
+    .optional({ nullable: true, checkFalsy: true })
+    .custom(v => !isNaN(new Date(v).getTime()))
+    .withMessage('Finish time is not a valid date'),
+  body('endTime')
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((v, { req }) => new Date(v).getTime() > new Date(req.body.startTime).getTime())
+    .withMessage('Finish time must be after the start time'),
+  handleValidationErrors
+];
+
 /**
  * Validate treatments array on line items.
  * Each item.treatments is an array of objects: { value, otherText, supplierId, supplierName }
@@ -459,6 +482,7 @@ module.exports = {
   validateJobcardListQuery,
   validateJobcardEnums,
   validateStartTimer,
+  validateManualTimeEntry,
   validateItemTreatments,
   validateItemMaterials,
   validateItemJobTypes,
