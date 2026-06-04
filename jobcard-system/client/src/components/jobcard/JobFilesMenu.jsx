@@ -227,7 +227,22 @@ export default function JobFilesMenu({ jobcardId, jobNumber }) {
                 </div>
               )}
 
-              {view === 'camera' && (
+              {view === 'camera' && camera.cameraError && (
+                <div className="lif-camera-error">
+                  <Camera size={32} />
+                  <p className="lif-camera-error-msg">{camera.cameraError}</p>
+                  <div className="lif-camera-error-actions">
+                    <button className="btn btn-secondary" onClick={() => { camera.stopCamera(); setView('upload-source'); }}>
+                      <ArrowLeft size={16} /> Go back
+                    </button>
+                    <button className="btn btn-primary" onClick={() => camera.startCamera()}>
+                      Try again
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {view === 'camera' && !camera.cameraError && (
                 <div className="lif-camera">
                   <div className="lif-video-wrap">
                     <video ref={camera.videoRef} autoPlay playsInline className="lif-video" />

@@ -70,7 +70,7 @@ so they should be the first batch.
 - **Before:** To attach a file you already have, there's no path — only scan or photograph.
 - **After:** You can choose a file from the computer and attach it straight to the job.
 
-### 9. The stop-timer button gives no reason when it's greyed out
+### 9. The stop-timer button gives no reason when it's greyed out — ✅ RESOLVED
 - **Problem:** When a worker stops their timer, Submit stays disabled unless they pick a machine or type a description. (This requirement is intended.) The trouble is there's no explanation — a worker who only filled in the quantity is left staring at a dead button.
 - **Solution:** Keep the requirement, but show a short line saying what's still needed (e.g. "add a machine or a description to finish").
 - **Before:** The button is greyed out with no hint, and the worker feels stuck.
@@ -80,23 +80,24 @@ so they should be the first batch.
 
 ## Polish
 
-### 10. The main edit pop-up lets the keyboard wander behind it
+### 10. The main edit pop-up lets the keyboard wander behind it — ✅ RESOLVED
 - **Problem:** The main pop-up for editing jobs, people, suppliers and quality levels doesn't grab the keyboard when it opens, and pressing Tab can walk onto the hidden page behind it. The smaller dialogs already do this correctly.
 - **Solution:** Make the pop-up focus itself on open and keep Tab cycling inside it, matching the smaller dialogs.
 - **Before:** Tabbing through a form can drift onto the page underneath, which is disorienting and bad for keyboard/accessibility use.
 - **After:** Focus stays inside the pop-up until it's closed.
 
-### 11. Comment-loading failures look like "no comments"
+### 11. Comment-loading failures look like "no comments" — ✅ RESOLVED
 - **Problem:** If a job's team comments fail to load, the area just says "no comments yet," so the user assumes there are none when there may be several. Adding and deleting comments already show errors — only loading stays silent.
 - **Solution:** Show an error when comments fail to load, like the other comment actions already do.
 - **Before:** A loading hiccup quietly hides real comments.
 - **After:** The user sees "couldn't load comments" and knows to retry instead of assuming it's empty.
 
-### 12. The camera leaves a dead black box on failure
+### 12. The camera leaves a dead black box on failure — ✅ RESOLVED
 - **Problem:** If the camera is denied, missing, or already in use, the only feedback is a brief message. The camera panel stays open showing an empty black area and a dead Capture button, with no in-panel explanation.
 - **Solution:** Show a clear message inside the camera panel when it can't open, with a way to back out.
 - **Before:** The worker is left in a non-working camera view with no guidance.
 - **After:** The panel itself says the camera couldn't start and offers a way out.
+- **Status:** Fixed. When the camera can't start, the panel now replaces the black box with a plain message that says *why* — access was blocked, no camera was found, or it's already in use by another program — plus two buttons: "Go back" to return to the source picker and "Try again" to retry on the spot. The brief pop-up message still appears as well. Once the camera starts normally, the view is unchanged.
 
 ### 13. Two separate screens show the same files
 - **Problem:** The Files button in the header and the Files tab are two independent builds that both list and preview the same job files, with duplicated logic that can drift apart over time.

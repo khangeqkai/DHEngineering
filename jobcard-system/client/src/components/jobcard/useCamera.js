@@ -1,9 +1,27 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 
+// Map a getUserMedia failure to a plain explanation the worker can act on
+function describeCameraError(err) {
+  switch (err?.name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'Camera access was blocked. Allow camera permission for this app, then try again.';
+    case 'NotFoundError':
+    case 'DevicesNotFoundError':
+      return 'No camera was found on this computer.';
+    case 'NotReadableError':
+    case 'TrackStartError':
+      return 'The camera is already in use by another program. Close it and try again.';
+    default:
+      return 'The camera could not be started.';
+  }
+}
+
 export function useCamera() {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const videoRef = useRef(null);
@@ -24,6 +42,7 @@ export function useCamera() {
   }, [cameraActive]);
 
   const startCamera = useCallback(async () => {
+    setCameraError(null);
     try {
       // Stop any existing stream before starting a new one
       if (streamRef.current) {
@@ -34,7 +53,9 @@ export function useCamera() {
       streamRef.current = stream;
       setCameraActive(true);
     } catch (err) {
-      toast.error('Could not access camera: ' + err.message);
+      const message = describeCameraError(err);
+      setCameraError(message);
+      toast.error(message);
     }
   }, []);
 
@@ -45,6 +66,7 @@ export function useCamera() {
     }
     setCameraActive(false);
     setCameraReady(false);
+    setCameraError(null);
   }, []);
 
   const capturePhoto = useCallback(() => {
@@ -65,6 +87,7 @@ export function useCamera() {
   return {
     cameraActive,
     cameraReady,
+    cameraError,
     photos,
     setPhotos,
     selectedPhoto,
