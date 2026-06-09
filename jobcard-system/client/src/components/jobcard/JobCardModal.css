@@ -1417,6 +1417,49 @@
   letter-spacing: 0.06em;
 }
 
+/* Scrap pieces + scrap rate for the line item */
+.lip-scrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(220, 38, 38, 0.12);
+  border: 1px solid rgba(220, 38, 38, 0.32);
+  flex-shrink: 0;
+}
+
+.lip-scrap-glyph {
+  font-size: var(--text-xs);
+  color: #b91c1c;
+  align-self: center;
+}
+
+.lip-scrap-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: #b91c1c;
+  letter-spacing: -0.01em;
+}
+
+.lip-scrap-unit {
+  font-size: var(--text-xs);
+  color: #b91c1c;
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.lip-scrap-rate {
+  font-size: var(--text-xs);
+  color: #b91c1c;
+  font-weight: var(--font-semibold);
+  padding-left: 0.2rem;
+  border-left: 1px solid rgba(220, 38, 38, 0.32);
+}
+
 /* When over, tint the cumulative-completed number to amber so the digits match the pill */
 .lip-counts-num--over {
   color: #b45309 !important;

@@ -21,15 +21,15 @@ const timeEntryQueries = {
     INSERT INTO time_entries (
       id, jobcard_id, user_id, item_number, machine_number, qty, description,
       start_time, end_time,
-      is_special_labour,
+      is_special_labour, scrap_qty,
       created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, datetime('now'), datetime('now'))
   `),
 
   update: db.prepare(`
     UPDATE time_entries SET
-      item_number = ?, machine_number = ?, qty = ?, description = ?,
+      item_number = ?, machine_number = ?, qty = ?, description = ?, scrap_qty = ?,
       start_time = ?, end_time = ?,
       updated_at = datetime('now')
     WHERE id = ?

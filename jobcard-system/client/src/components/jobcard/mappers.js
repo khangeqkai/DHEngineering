@@ -9,6 +9,7 @@ export function mapTimeEntryFromApi(e) {
     itemNumber: e.itemNumber,
     machineNumber: e.machineNumber,
     qty: e.qty,
+    scrapQty: e.scrapQty != null ? e.scrapQty : 0,
     description: e.description,
     startTime: e.startTime,
     endTime: e.endTime,

@@ -1141,7 +1141,7 @@
       "label": "mapQaFormFromApi()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
-      "source_location": "L19",
+      "source_location": "L20",
       "id": "jobcard_mappers_mapqaformfromapi",
       "community": 4,
       "norm_label": "mapqaformfromapi()"
@@ -1150,7 +1150,7 @@
       "label": "mapAssigneeFromApi()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
-      "source_location": "L31",
+      "source_location": "L32",
       "id": "jobcard_mappers_mapassigneefromapi",
       "community": 4,
       "norm_label": "mapassigneefromapi()"
@@ -1159,7 +1159,7 @@
       "label": "mapLineItemFromApi()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
-      "source_location": "L38",
+      "source_location": "L39",
       "id": "jobcard_mappers_maplineitemfromapi",
       "community": 4,
       "norm_label": "maplineitemfromapi()"
@@ -1168,7 +1168,7 @@
       "label": "mapTreatmentFromApi()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
-      "source_location": "L50",
+      "source_location": "L51",
       "id": "jobcard_mappers_maptreatmentfromapi",
       "community": 4,
       "norm_label": "maptreatmentfromapi()"
@@ -1177,7 +1177,7 @@
       "label": "makeEmptyTreatment()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
-      "source_location": "L59",
+      "source_location": "L60",
       "id": "jobcard_mappers_makeemptytreatment",
       "community": 7,
       "norm_label": "makeemptytreatment()"
@@ -1186,7 +1186,7 @@
       "label": "formatFileSize()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
-      "source_location": "L68",
+      "source_location": "L69",
       "id": "jobcard_mappers_formatfilesize",
       "community": 1,
       "norm_label": "formatfilesize()"
@@ -1195,7 +1195,7 @@
       "label": "formatFileDate()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
-      "source_location": "L74",
+      "source_location": "L75",
       "id": "jobcard_mappers_formatfiledate",
       "community": 1,
       "norm_label": "formatfiledate()"
@@ -1204,7 +1204,7 @@
       "label": "getDefaultFormData()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
-      "source_location": "L79",
+      "source_location": "L80",
       "id": "jobcard_mappers_getdefaultformdata",
       "community": 4,
       "norm_label": "getdefaultformdata()"
@@ -1213,7 +1213,7 @@
       "label": "isoToLocalInput()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
-      "source_location": "L105",
+      "source_location": "L106",
       "id": "jobcard_mappers_isotolocalinput",
       "community": 4,
       "norm_label": "isotolocalinput()"
@@ -1222,7 +1222,7 @@
       "label": "localInputToIso()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
-      "source_location": "L117",
+      "source_location": "L118",
       "id": "jobcard_mappers_localinputtoiso",
       "community": 4,
       "norm_label": "localinputtoiso()"
@@ -1231,7 +1231,7 @@
       "label": "getDefaultTimeEntryForm()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
-      "source_location": "L124",
+      "source_location": "L125",
       "id": "jobcard_mappers_getdefaulttimeentryform",
       "community": 4,
       "norm_label": "getdefaulttimeentryform()"
@@ -1240,7 +1240,7 @@
       "label": "getDefaultCostingForm()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
-      "source_location": "L135",
+      "source_location": "L136",
       "id": "jobcard_mappers_getdefaultcostingform",
       "community": 4,
       "norm_label": "getdefaultcostingform()"
@@ -1672,7 +1672,7 @@
       "label": "formatNum()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/LineItemProgress.jsx",
-      "source_location": "L54",
+      "source_location": "L60",
       "id": "tabs_lineitemprogress_formatnum",
       "community": 21,
       "norm_label": "formatnum()"
@@ -1681,7 +1681,7 @@
       "label": "StatusPill()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/LineItemProgress.jsx",
-      "source_location": "L59",
+      "source_location": "L65",
       "id": "tabs_lineitemprogress_statuspill",
       "community": 21,
       "norm_label": "statuspill()"
@@ -1690,7 +1690,7 @@
       "label": "LineItemProgress()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/LineItemProgress.jsx",
-      "source_location": "L77",
+      "source_location": "L83",
       "id": "tabs_lineitemprogress_lineitemprogress",
       "community": 21,
       "norm_label": "lineitemprogress()"
@@ -4363,7 +4363,7 @@
       "label": "normalizeEmpty()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-time-entries.js",
-      "source_location": "L334",
+      "source_location": "L343",
       "id": "routes_jobcard_time_entries_normalizeempty",
       "community": 23,
       "norm_label": "normalizeempty()"

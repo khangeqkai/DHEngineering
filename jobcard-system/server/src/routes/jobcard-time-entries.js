@@ -59,6 +59,7 @@ function toCamelCase(e) {
     machineNumber: e.machine_number,
     qty: e.qty,
     description: e.description,
+    scrapQty: e.scrap_qty != null ? e.scrap_qty : 0,
     startTime: e.start_time,
     endTime: e.end_time,
     isSpecialLabour: e.is_special_labour === 1,
@@ -303,12 +304,19 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       return res.status(400).json({ error: 'Invalid start or finish time' });
     }
 
+    // Scrap is only set by the worker's stop-timer form. The admin manual edit
+    // form omits it, so preserve the existing value when no scrap was sent.
+    const scrapQty = data.scrapQty !== undefined
+      ? Math.max(0, parseInt(data.scrapQty, 10) || 0)
+      : (existing.scrap_qty || 0);
+
     try {
       timeEntryQueries.update.run(
         data.itemNumber || null,
         data.machineNumber || null,
         data.qty || null,
         data.description || null,
+        scrapQty,
         startTime,
         endTime,
         entryId
@@ -328,6 +336,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       ['machine_number', 'machineNumber', data.machineNumber || null],
       ['qty', 'qty', data.qty || null],
       ['description', 'description', data.description || null],
+      ['scrap_qty', 'scrapQty', scrapQty],
       ['start_time', 'startTime', startTime],
       ['end_time', 'endTime', endTime],
     ];

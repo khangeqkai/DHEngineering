@@ -160,6 +160,11 @@
   box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2);
 }
 
+.stf-qty-row {
+  display: flex;
+  gap: 1.25rem;
+}
+
 .stf-qty-input {
   width: 90px;
   text-align: center;

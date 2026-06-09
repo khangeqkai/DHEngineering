@@ -16,11 +16,15 @@ function computeProgress(entries, targetQty) {
   );
   const cumulativeMap = new Map();
   let running = 0;
+  let scrapTotal = 0;
   for (const e of oldestFirst) {
     running += parseQty(e.qty);
+    scrapTotal += parseQty(e.scrapQty);
     cumulativeMap.set(e.id, running);
   }
   const completedQty = running;
+  const scrapDenom = completedQty + scrapTotal;
+  const scrapRate = scrapDenom > 0 ? (scrapTotal / scrapDenom) * 100 : 0;
 
   const target = parseFloat(targetQty);
   const hasTarget = Number.isFinite(target) && target > 0;
@@ -41,6 +45,8 @@ function computeProgress(entries, targetQty) {
     target: hasTarget ? target : null,
     hasTarget,
     completed: completedQty,
+    scrapTotal,
+    scrapRate,
     remaining,
     overage,
     percent,
@@ -160,6 +166,15 @@ export default function LineItemProgress({
           <span className="lip-overage" title="Completed quantity exceeds target">
             <span className="lip-overage-num">+{formatNum(progress.overage)}</span>
             <span className="lip-overage-unit">over</span>
+          </span>
+        )}
+
+        {progress.scrapTotal > 0 && (
+          <span className="lip-scrap" title="Scrap pieces and scrap rate for this item">
+            <span className="lip-scrap-glyph">⚠</span>
+            <span className="lip-scrap-num">{formatNum(progress.scrapTotal)}</span>
+            <span className="lip-scrap-unit">scrap</span>
+            <span className="lip-scrap-rate">{Math.round(progress.scrapRate)}%</span>
           </span>
         )}
 

@@ -164,6 +164,7 @@ db.exec(`
     description TEXT,
     start_time TEXT NOT NULL,
     end_time TEXT,
+    scrap_qty INTEGER DEFAULT 0,
 
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -342,6 +343,7 @@ const migrations = [
   { table: 'users', column: 'session_token', type: 'TEXT' },
   { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
   { table: 'time_entries', column: 'is_special_labour', type: 'INTEGER DEFAULT 0' },
+  { table: 'time_entries', column: 'scrap_qty', type: 'INTEGER DEFAULT 0' },
   { table: 'job_items', column: 'material', type: 'TEXT' },
   { table: 'job_items', column: 'job_type', type: 'TEXT' },
   { table: 'users', column: 'jobcard_column_order', type: 'TEXT' },

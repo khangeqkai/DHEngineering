@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
-const emptyEntryForm = () => ({ qty: '', machineNumbers: [], description: '' });
+const emptyEntryForm = () => ({ qty: '', scrapQty: '', machineNumbers: [], description: '' });
 
 export function useTimer(jobcardId, { onExternalStop } = {}) {
   const { registerBeforeLogout } = useAuth();
@@ -206,9 +206,12 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
 
     const hasMachines = (entryForm.machineNumbers || []).length > 0;
     const hasDescription = entryForm.description && String(entryForm.description).trim() !== '';
-    if (!hasMachines && !hasDescription) return;
+    const hasQty = parseFloat(entryForm.qty) > 0;
+    const hasScrap = parseInt(entryForm.scrapQty, 10) > 0;
+    if (!hasMachines && !hasDescription && !hasQty && !hasScrap) return;
 
     const qty = String(entryForm.qty || '0').trim() || '0';
+    const scrapQty = Math.max(0, parseInt(entryForm.scrapQty, 10) || 0);
     const machines = (entryForm.machineNumbers || []).join(', ');
     const description = (entryForm.description || '').trim();
 
@@ -219,6 +222,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
       await api.updateTimeEntry(entryJobcardId, stoppedEntry.id, {
         ...stoppedEntry,
         qty,
+        scrapQty,
         machineNumber: machines,
         description
       });

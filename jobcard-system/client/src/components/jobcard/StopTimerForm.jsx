@@ -79,7 +79,9 @@ export default function StopTimerForm({
 
   const hasMachines = (entryForm.machineNumbers || []).length > 0;
   const hasDescription = entryForm.description && String(entryForm.description).trim() !== '';
-  const canSubmit = hasMachines || hasDescription;
+  const hasQty = parseFloat(entryForm.qty) > 0;
+  const hasScrap = parseInt(entryForm.scrapQty, 10) > 0;
+  const canSubmit = hasMachines || hasDescription || hasQty || hasScrap;
 
   const handleDescriptionBlur = (e) => {
     const formatted = capitalizeFirst(e.target.value);
@@ -128,17 +130,31 @@ export default function StopTimerForm({
               </div>
             )}
             <div className="stop-timer-fields">
-              <div className="stf-item-field">
-                <label>Qty Completed</label>
-                <input
-                  ref={firstInputRef}
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={entryForm.qty || ''}
-                  onChange={(e) => onFieldChange('qty', e.target.value)}
-                  className="stf-qty-input"
-                />
+              <div className="stf-qty-row">
+                <div className="stf-item-field">
+                  <label>Qty Completed</label>
+                  <input
+                    ref={firstInputRef}
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={entryForm.qty || ''}
+                    onChange={(e) => onFieldChange('qty', e.target.value)}
+                    className="stf-qty-input"
+                  />
+                </div>
+
+                <div className="stf-item-field">
+                  <label>Scrap Pieces</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={entryForm.scrapQty || ''}
+                    onChange={(e) => onFieldChange('scrapQty', e.target.value)}
+                    className="stf-qty-input"
+                  />
+                </div>
               </div>
 
               {machines.length > 0 && (
@@ -178,7 +194,7 @@ export default function StopTimerForm({
 
             <div className="stop-timer-actions">
               {!canSubmit && !loading && (
-                <span className="stop-timer-hint">Add a machine or a description to finish.</span>
+                <span className="stop-timer-hint">Enter a quantity, scrap, machine, or description to finish.</span>
               )}
               <button
                 type="submit"
