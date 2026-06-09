@@ -580,45 +580,6 @@
   letter-spacing: normal;
 }
 
-/* Checkbox Grid - Chip Style */
-.checkbox-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.checkbox-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  cursor: pointer;
-  transition: all var(--duration-fast) ease;
-}
-
-.checkbox-chip input {
-  display: none;
-}
-
-.checkbox-chip:hover {
-  border-color: var(--primary-accent);
-  background: rgba(37, 99, 235, 0.05);
-}
-
-.checkbox-chip.selected {
-  background: var(--primary-accent);
-  border-color: var(--primary-accent);
-  color: var(--text-inverse);
-}
-
-.checkbox-chip:active {
-  transform: scale(0.97);
-}
-
 /* Checkbox Inline */
 .checkbox-inline {
   display: flex;
@@ -867,41 +828,6 @@
 .calendar-cell.today.selected {
   background: var(--primary-accent);
   border: 2px solid var(--primary-accent);
-  color: var(--text-inverse);
-}
-
-/* Assignees Grid */
-.assignees-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0 1rem 0.75rem 1rem;
-}
-
-.assignee-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  cursor: pointer;
-  transition: all var(--duration-fast) ease;
-}
-
-.assignee-chip input {
-  display: none;
-}
-
-.assignee-chip:hover {
-  border-color: var(--primary-accent);
-}
-
-.assignee-chip.selected {
-  background: var(--primary-accent);
-  border-color: var(--primary-accent);
   color: var(--text-inverse);
 }
 

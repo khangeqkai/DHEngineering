@@ -191,75 +191,7 @@
   align-self: center;
 }
 
-/* Machine selection — uniform touch-friendly toggle tiles in an aligned grid */
-.stf-machine-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-  gap: 0.5rem;
-}
-
-.stf-machine-tile {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.15rem;
-  min-height: 66px;
-  padding: 0.5rem 0.4rem;
-  border: 1.5px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--text-primary);
-  cursor: pointer;
-  text-align: center;
-  user-select: none;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
-}
-
-.stf-machine-tile:hover {
-  border-color: var(--primary-accent);
-  background: var(--surface-elevated);
-}
-
-.stf-machine-tile-active {
-  border-color: var(--primary-accent);
-  background: rgba(var(--accent-rgb), 0.1);
-  box-shadow: inset 0 0 0 1px var(--primary-accent);
-}
-
-.stf-machine-number {
-  font-size: var(--text-base);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-  line-height: 1.2;
-}
-
-.stf-machine-tile-active .stf-machine-number {
-  color: var(--accent-text);
-}
-
-.stf-machine-name {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  line-height: 1.2;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
-}
-
-.stf-machine-check {
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--accent-text);
-}
+/* Machine selection uses the shared ToggleTiles component (common/ToggleTiles). */
 
 /* Actions */
 .stop-timer-actions {

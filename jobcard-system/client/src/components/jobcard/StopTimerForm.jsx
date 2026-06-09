@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { api } from '../../services/api';
 import { capitalizeFirst } from '../../utils/formatters';
+import ToggleTiles from '../common/ToggleTiles';
 import './StopTimerForm.css';
 
 export default function StopTimerForm({
@@ -160,24 +161,16 @@ export default function StopTimerForm({
               {machines.length > 0 && (
                 <div className="stf-item-field">
                   <label>Machines Used</label>
-                  <div className="stf-machine-grid">
-                    {machines.map(m => {
-                      const checked = (entryForm.machineNumbers || []).includes(m.machineNumber);
-                      return (
-                        <button
-                          type="button"
-                          key={m.id}
-                          className={`stf-machine-tile${checked ? ' stf-machine-tile-active' : ''}`}
-                          onClick={() => onMachineToggle(m.machineNumber)}
-                          aria-pressed={checked}
-                        >
-                          {checked && <span className="stf-machine-check" aria-hidden="true">✓</span>}
-                          <span className="stf-machine-number">{m.machineNumber}</span>
-                          {m.name && <span className="stf-machine-name">{m.name}</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <ToggleTiles
+                    ariaLabel="Machines used"
+                    options={machines.map(m => ({
+                      value: m.machineNumber,
+                      label: String(m.machineNumber),
+                      sublabel: m.name || undefined
+                    }))}
+                    selectedValues={entryForm.machineNumbers || []}
+                    onToggle={onMachineToggle}
+                  />
                 </div>
               )}
 

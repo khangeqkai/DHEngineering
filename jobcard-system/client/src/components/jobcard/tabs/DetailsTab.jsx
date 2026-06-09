@@ -6,6 +6,7 @@ import { useJobSearch } from '../useJobSearch';
 import ItemsTab from './ItemsTab';
 import DetailsReadOnlyView from './DetailsReadOnlyView';
 import NotesSection from './NotesSection';
+import ToggleTiles from '../../common/ToggleTiles';
 
 export default function DetailsTab({
   isEdit,
@@ -309,57 +310,40 @@ export default function DetailsTab({
         )}
         <div className="form-group">
           <label>Customer Property <span className="required">*</span></label>
-          <div className={`checkbox-grid${!formData.customerProperty || formData.customerProperty === 'NONE' ? ' field-required' : ''}`}>
-            {customerPropertyTags.map(opt => {
+          <ToggleTiles
+            ariaLabel="Customer property"
+            className={!formData.customerProperty || formData.customerProperty === 'NONE' ? 'field-required' : ''}
+            options={customerPropertyTags.map(o => ({ value: o.value, label: o.label }))}
+            selectedValues={formData.customerProperty ? formData.customerProperty.split(',') : []}
+            onToggle={(val) => {
               const values = formData.customerProperty ? formData.customerProperty.split(',') : [];
-              const isChecked = values.includes(opt.value);
-              return (
-                <label key={opt.value} className={`checkbox-chip ${isChecked ? 'selected' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={(e) => {
-                      if (opt.value === 'NA') {
-                        setFormData(prev => ({ ...prev, customerProperty: e.target.checked ? 'NA' : '' }));
-                      } else {
-                        const current = formData.customerProperty ? formData.customerProperty.split(',').filter(v => v && v !== 'NA') : [];
-                        const updated = e.target.checked
-                          ? [...current, opt.value]
-                          : current.filter(v => v !== opt.value);
-                        setFormData(prev => ({ ...prev, customerProperty: updated.join(',') }));
-                      }
-                    }}
-                  />
-                  {opt.label}
-                </label>
-              );
-            })}
-          </div>
+              if (val === 'N_A') {
+                setFormData(prev => ({ ...prev, customerProperty: values.includes('N_A') ? '' : 'N_A' }));
+              } else {
+                const current = values.filter(v => v && v !== 'N_A');
+                const updated = current.includes(val)
+                  ? current.filter(v => v !== val)
+                  : [...current, val];
+                setFormData(prev => ({ ...prev, customerProperty: updated.join(',') }));
+              }
+            }}
+          />
         </div>
         <div className="form-group">
           <label>Drawings <span className="required">*</span></label>
-          <div className={`checkbox-grid${!formData.drawingsType || formData.drawingsType === 'NONE' ? ' field-required' : ''}`}>
-            {drawingsTags.map(opt => {
-              const values = formData.drawingsType ? formData.drawingsType.split(',') : [];
-              const isChecked = values.includes(opt.value);
-              return (
-                <label key={opt.value} className={`checkbox-chip ${isChecked ? 'selected' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={(e) => {
-                      const current = formData.drawingsType ? formData.drawingsType.split(',').filter(v => v && v !== 'NONE') : [];
-                      const updated = e.target.checked
-                        ? [...current, opt.value]
-                        : current.filter(v => v !== opt.value);
-                      setFormData(prev => ({ ...prev, drawingsType: updated.length ? updated.join(',') : 'NONE' }));
-                    }}
-                  />
-                  {opt.label}
-                </label>
-              );
-            })}
-          </div>
+          <ToggleTiles
+            ariaLabel="Drawings"
+            className={!formData.drawingsType || formData.drawingsType === 'NONE' ? 'field-required' : ''}
+            options={drawingsTags.map(o => ({ value: o.value, label: o.label }))}
+            selectedValues={formData.drawingsType ? formData.drawingsType.split(',') : []}
+            onToggle={(val) => {
+              const current = (formData.drawingsType ? formData.drawingsType.split(',') : []).filter(v => v && v !== 'NONE');
+              const updated = current.includes(val)
+                ? current.filter(v => v !== val)
+                : [...current, val];
+              setFormData(prev => ({ ...prev, drawingsType: updated.length ? updated.join(',') : 'NONE' }));
+            }}
+          />
         </div>
         <div className="form-group">
           <label>Scanner Files</label>
@@ -401,21 +385,16 @@ export default function DetailsTab({
       {/* Assignees */}
       <div className="form-section">
         <h3 className="form-section-title">Assignees</h3>
-        <div className="assignees-grid">
-          {employees.map(emp => {
-            const isAssigned = assignees.some(a => a.userId === emp.id);
-            return (
-              <label key={emp.id} className={`assignee-chip ${isAssigned ? 'selected' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={isAssigned}
-                  onChange={() => toggleAssignee(emp)}
-                />
-                {emp.name || emp.username}
-              </label>
-            );
-          })}
-        </div>
+        <ToggleTiles
+          ariaLabel="Assignees"
+          minTileWidth={130}
+          options={employees.map(emp => ({ value: emp.id, label: emp.name || emp.username }))}
+          selectedValues={assignees.map(a => a.userId)}
+          onToggle={(empId) => {
+            const emp = employees.find(e => e.id === empId);
+            if (emp) toggleAssignee(emp);
+          }}
+        />
       </div>
 
       {/* Job Comments (shared, append-only) */}
