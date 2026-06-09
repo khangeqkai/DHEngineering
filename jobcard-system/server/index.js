@@ -22,6 +22,7 @@ const settingsRoutes = require('./src/routes/settings');
 const qaLevelsRoutes = require('./src/routes/qa-levels');
 const searchRoutes = require('./src/routes/search');
 const { initializeDatabase } = require('./src/db/init');
+const { maintenanceGuard } = require('./src/middleware/maintenance');
 
 const app = express();
 
@@ -41,6 +42,9 @@ app.get('/health', (req, res) => {
     version: require('./package.json').version
   });
 });
+
+// Turn away mutating requests from other clients while a restore is in progress
+app.use(maintenanceGuard);
 
 // API routes
 app.use('/api/auth', authRoutes);

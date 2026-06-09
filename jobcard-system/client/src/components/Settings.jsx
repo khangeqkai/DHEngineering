@@ -256,6 +256,9 @@ export default function Settings() {
             <li>All database records (job cards, contacts, users, etc.)</li>
             <li>All job folder files (scanned documents, QA forms, etc.)</li>
           </ul>
+          <p style={{ marginBottom: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+            Everyone will be signed out and the app will reload when it finishes.
+          </p>
           <p style={{ color: 'var(--danger)', fontWeight: 500 }}>
             This cannot be undone.
           </p>
@@ -278,7 +281,46 @@ export default function Settings() {
         </BottomSheet.Footer>
       </BottomSheet>
 
+      {s.importing && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-label="Restoring backup"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '1rem',
+            color: '#fff',
+            textAlign: 'center',
+            padding: '2rem'
+          }}
+        >
+          <div className="restore-spinner" aria-hidden="true" />
+          <h2 style={{ margin: 0, color: '#fff' }}>Restoring…</h2>
+          <p style={{ margin: 0, maxWidth: '24rem', opacity: 0.85 }}>
+            Please wait and don't close the app. The screen will return to the login page when it's done.
+          </p>
+        </div>
+      )}
+
       <style>{`
+        .restore-spinner {
+          width: 48px;
+          height: 48px;
+          border: 4px solid rgba(255, 255, 255, 0.25);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: restore-spin 0.9s linear infinite;
+        }
+        @keyframes restore-spin {
+          to { transform: rotate(360deg); }
+        }
         .settings-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);

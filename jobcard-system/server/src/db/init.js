@@ -1,4 +1,6 @@
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const {
@@ -39,11 +41,34 @@ function runMigrations() {
   logger.info('Migrations complete');
 }
 
+// If a backup restore was interrupted, leftover "__restore_staging" / "__restore_old"
+// folders may sit beside the job folders. Surface this so an admin can review them.
+function checkInterruptedRestore() {
+  try {
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('job_folders_base');
+    const base = row && row.value;
+    if (!base) return;
+    const staging = path.join(path.dirname(base), `${path.basename(base)}__restore_staging`);
+    const old = path.join(path.dirname(base), `${path.basename(base)}__restore_old`);
+    if (fs.existsSync(staging) || fs.existsSync(old)) {
+      logger.warn(
+        { staging, old },
+        'A previous backup restore may have been interrupted — leftover restore folders found beside the job folders. Review them manually.'
+      );
+    }
+  } catch (err) {
+    logger.error({ err }, 'Failed to check for interrupted restore');
+  }
+}
+
 async function initializeDatabase() {
   logger.info('Initializing database...');
 
   // Run migrations for existing databases
   runMigrations();
+
+  // Warn if a previous restore was left half-finished
+  checkInterruptedRestore();
 
   // Check if admin user exists
   const adminUser = userQueries.getByUsername.get('admin');

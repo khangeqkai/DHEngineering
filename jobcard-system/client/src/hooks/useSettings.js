@@ -210,7 +210,11 @@ export function useSettings() {
     try {
       const result = await api.exportBackup(outputPath);
       const sizeMB = result?.size ? (result.size / 1024 / 1024).toFixed(1) : null;
-      toast.success(sizeMB ? `Backup exported successfully (${sizeMB} MB)` : 'Backup exported successfully');
+      if (result?.filesSkipped > 0) {
+        toast.error(`Backup saved, but ${result.filesSkipped} file(s) couldn't be read and were left out. Check those files and back up again.`);
+      } else {
+        toast.success(sizeMB ? `Backup exported successfully (${sizeMB} MB)` : 'Backup exported successfully');
+      }
     } catch (err) {
       toast.error(err.message || 'Failed to export backup');
     } finally {
@@ -241,11 +245,13 @@ export function useSettings() {
     setImporting(true);
     try {
       await api.importBackup(pendingImportPath);
-      toast.success('Backup imported successfully. Reloading...');
+      toast.success('Restore complete. Returning to the login screen...');
+      // No saved login survives a reload, so this lands on the login screen —
+      // exactly the intended end state after a full rewind.
       setTimeout(() => window.location.reload(), 1500);
+      // Leave the "Restoring..." overlay up until the reload happens.
     } catch (err) {
       toast.error(err.message || 'Failed to import backup');
-    } finally {
       setImporting(false);
       setPendingImportPath(null);
     }

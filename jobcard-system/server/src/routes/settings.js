@@ -3,14 +3,22 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const archiver = require('archiver');
 const extractZip = require('extract-zip');
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const db = require('../db/database');
 const { recordHistory } = require('../db/helpers');
+const { setMaintenance } = require('../middleware/maintenance');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
 const { version: appVersion } = require('../../package.json');
+const {
+  listFilesRecursive,
+  verifyStagedFiles,
+  copyDirRecursive,
+  bestEffortRemove,
+  partitionReadableFiles,
+  archiveBackupWithRetry
+} = require('./backup-helpers');
 
 // All settings routes require authentication
 router.use(authenticate);
@@ -227,40 +235,60 @@ router.post('/export-backup', requireAdmin, [
   try {
     const settings = db.getSettings();
 
-    const dbData = {
-      _metadata: {
-        exportedAt: new Date().toISOString(),
-        appVersion,
-        schemaVersion: SCHEMA_VERSION
+    // Read every table inside one transaction so the snapshot is internally
+    // consistent even if someone saves while the export is running.
+    const readAllTables = db.db.transaction(() => {
+      const out = {};
+      for (const table of TABLE_ORDER) {
+        out[table] = db.db.prepare(`SELECT * FROM ${table}`).all();
       }
-    };
-    for (const table of TABLE_ORDER) {
-      dbData[table] = db.db.prepare(`SELECT * FROM ${table}`).all();
+      return out;
+    });
+
+    // Walk the job folders first to build a candidate list of files to archive.
+    // The final manifest is built later from only the files that actually land
+    // in the zip, so a restore can confirm every listed file unpacked.
+    const jobBase = settings.job_folders_base;
+    const collected = [];
+    let walkSkipped = 0;
+    if (jobBase && fs.existsSync(jobBase)) {
+      const files = [];
+      listFilesRecursive(jobBase, jobBase, files);
+      for (const f of files) {
+        try {
+          const { size } = fs.statSync(f.abs);
+          collected.push({ abs: f.abs, relPath: f.rel, size });
+        } catch (err) {
+          walkSkipped++;
+          logger.warn({ err, file: f.abs }, 'File skipped during backup export');
+        }
+      }
     }
 
-    const output = fs.createWriteStream(outputPath);
-    const archive = archiver('zip', { zlib: { level: 5 } });
+    // Pre-flight: drop any file that exists but can't be opened for reading
+    // (exclusively locked or permission-denied). archiver would otherwise emit
+    // a fatal error on the first such file and abort the whole backup.
+    const { readable, unreadable } = partitionReadableFiles(collected);
+    const readableFiles = readable;
+    const preSkipped = unreadable.length;
 
-    await new Promise((resolve, reject) => {
-      output.on('close', resolve);
-      archive.on('error', reject);
-      archive.on('warning', (err) => {
-        if (err.code === 'ENOENT') {
-          logger.warn({ err }, 'File skipped during backup export');
-        } else {
-          reject(err);
-        }
-      });
-      archive.pipe(output);
+    const tables = readAllTables();
+    const metadata = {
+      exportedAt: new Date().toISOString(),
+      appVersion,
+      schemaVersion: SCHEMA_VERSION
+    };
 
-      archive.append(JSON.stringify(dbData, null, 2), { name: 'database.json' });
-
-      const jobBase = settings.job_folders_base;
-      if (jobBase && fs.existsSync(jobBase)) {
-        archive.directory(jobBase, 'files');
-      }
-
-      archive.finalize();
+    // Delegate packing + manifest assembly so the manifest and the reported
+    // skipped count always match exactly what made it into the archive. The
+    // retry wrapper drops any file that becomes locked after the pre-flight.
+    const skipped = await archiveBackupWithRetry({
+      metadata,
+      tables,
+      collected: readableFiles,
+      outputPath,
+      walkSkipped,
+      preSkipped
     });
 
     const stats = fs.statSync(outputPath);
@@ -275,7 +303,7 @@ router.post('/export-backup', requireAdmin, [
       logger.error({ err: histErr }, 'Failed to record export history');
     }
 
-    res.json({ success: true, size: stats.size });
+    res.json({ success: true, size: stats.size, filesSkipped: skipped });
   } catch (err) {
     try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch (_) { /* ignore */ }
     logger.error({ err }, 'Error exporting backup');
@@ -294,51 +322,104 @@ router.post('/import-backup', requireAdmin, [
     return res.status(400).json({ error: 'Backup file not found' });
   }
 
-  try {
-    const currentSettings = db.getSettings();
-    const currentJobBase = currentSettings.job_folders_base;
-    const currentScannerFolder = currentSettings.scanner_folder;
+  const currentSettings = db.getSettings();
+  const currentJobBase = currentSettings.job_folders_base;
+  const currentScannerFolder = currentSettings.scanner_folder;
 
-    if (!currentJobBase) {
-      return res.status(400).json({
-        error: 'Please configure the Job Folders Base path in Settings before importing a backup'
-      });
+  if (!currentJobBase) {
+    return res.status(400).json({
+      error: 'Please configure the Job Folders Base path in Settings before importing a backup'
+    });
+  }
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dh-backup-'));
+  // Staging + "old" folders sit beside the live job folders (same volume), so
+  // the final switch is an instant rename rather than a slow, failure-prone copy.
+  const parentDir = path.dirname(currentJobBase);
+  const baseName = path.basename(currentJobBase);
+  const stagingDir = path.join(parentDir, `${baseName}__restore_staging`);
+  const oldDir = path.join(parentDir, `${baseName}__restore_old`);
+
+  let maintenanceOn = false;
+  let filesSwapped = false;
+  // Set if an automatic rollback could not put the original files back, leaving
+  // the files on disk and the database records out of sync — admin must review.
+  let filesUnrecoverable = false;
+
+  try {
+    await extractZip(inputPath, { dir: tempDir });
+
+    const dbJsonPath = path.join(tempDir, 'database.json');
+    if (!fs.existsSync(dbJsonPath)) {
+      return res.status(400).json({ error: 'Invalid backup: missing database.json' });
     }
 
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dh-backup-'));
-    try {
-      await extractZip(inputPath, { dir: tempDir });
+    const data = JSON.parse(fs.readFileSync(dbJsonPath, 'utf-8'));
 
-      const dbJsonPath = path.join(tempDir, 'database.json');
-      if (!fs.existsSync(dbJsonPath)) {
-        return res.status(400).json({ error: 'Invalid backup: missing database.json' });
+    if (!data._metadata) {
+      return res.status(400).json({ error: 'Invalid backup: missing _metadata' });
+    }
+    if (data._metadata.schemaVersion !== SCHEMA_VERSION) {
+      return res.status(400).json({
+        error: `Incompatible backup schema version ${data._metadata.schemaVersion} (expected ${SCHEMA_VERSION})`
+      });
+    }
+    for (const table of TABLE_ORDER) {
+      if (!Array.isArray(data[table])) {
+        return res.status(400).json({ error: `Invalid backup: missing table "${table}"` });
       }
+    }
 
-      const data = JSON.parse(fs.readFileSync(dbJsonPath, 'utf-8'));
+    // Everything past here touches real data — block other clients' writes for
+    // the duration so nothing can be saved against half-restored data.
+    setMaintenance(true);
+    maintenanceOn = true;
 
-      if (!data._metadata) {
-        return res.status(400).json({ error: 'Invalid backup: missing _metadata' });
-      }
+    // Clear leftovers from any previously interrupted restore.
+    bestEffortRemove(stagingDir);
+    bestEffortRemove(oldDir);
 
-      if (data._metadata.schemaVersion !== SCHEMA_VERSION) {
-        return res.status(400).json({
-          error: `Incompatible backup schema version ${data._metadata.schemaVersion} (expected ${SCHEMA_VERSION})`
-        });
-      }
+    // 1. Stage the backup's files off to the side (non-destructive), then confirm
+    //    every file in the manifest unpacked correctly before committing.
+    const filesDir = path.join(tempDir, 'files');
+    const hasFiles = fs.existsSync(filesDir);
+    if (hasFiles) {
+      copyDirRecursive(filesDir, stagingDir);
+      verifyStagedFiles(stagingDir, data._metadata.fileManifest);
+    }
 
-      for (const table of TABLE_ORDER) {
-        if (!Array.isArray(data[table])) {
-          return res.status(400).json({ error: `Invalid backup: missing table "${table}"` });
+    // 2. Swap the staged files into place with instant renames. If a rename
+    //    fails, undo it and abort with the live folders untouched.
+    if (hasFiles) {
+      fs.renameSync(currentJobBase, oldDir);
+      try {
+        fs.renameSync(stagingDir, currentJobBase);
+      } catch (swapErr) {
+        // Restoring the originals failed too — the live folder is now empty and
+        // the originals are stranded in __restore_old. Surface it, but still
+        // throw the real cause (swapErr) rather than masking it.
+        try {
+          fs.renameSync(oldDir, currentJobBase);
+        } catch (revertErr) {
+          filesUnrecoverable = true;
+          logger.error(
+            { err: revertErr, from: oldDir, to: currentJobBase, step: 'swap-revert' },
+            'Backup restore swap revert failed: original files left in __restore_old, live folder empty — manual review required'
+          );
         }
+        throw swapErr;
       }
+      filesSwapped = true;
+    }
 
-      // FK pragma must be set OUTSIDE the transaction to take effect
-      // Pre-compute valid columns for all tables before the transaction
-      const tableColumns = {};
-      for (const table of TABLE_ORDER) {
-        tableColumns[table] = getTableColumns(table);
-      }
+    // 3. Reload the records as one all-or-nothing step. If it throws, the records
+    //    roll back automatically and we reverse the file swap.
+    const tableColumns = {};
+    for (const table of TABLE_ORDER) {
+      tableColumns[table] = getTableColumns(table);
+    }
 
+    try {
       db.db.pragma('foreign_keys = OFF');
       try {
         const importTransaction = db.db.transaction(() => {
@@ -369,65 +450,101 @@ router.post('/import-backup', requireAdmin, [
             const maxId = data.history.reduce((max, r) => r.id > max ? r.id : max, 0);
             db.db.prepare(`UPDATE sqlite_sequence SET seq = ? WHERE name = 'history'`).run(maxId);
           }
+
+          // End every restored session so no one stays signed in across a rewind.
+          db.db.prepare('UPDATE users SET session_token = NULL').run();
+
+          // Keep THIS machine's folder locations (the backup may carry another
+          // machine's paths). Done inside the transaction so the live paths never
+          // briefly point at the backup machine's folders.
+          const upsertSetting = db.db.prepare(
+            `INSERT INTO settings (key, value) VALUES (?, ?)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+          );
+          upsertSetting.run('job_folders_base', currentJobBase || '');
+          upsertSetting.run('scanner_folder', currentScannerFolder || '');
         });
 
         importTransaction();
       } finally {
         db.db.pragma('foreign_keys = ON');
       }
-
-      // Restore current machine's path settings (backup may have different paths)
-      db.updateSettings({
-        job_folders_base: currentJobBase || '',
-        scanner_folder: currentScannerFolder || ''
-      });
-
-      // Restore job folder files using the CURRENT machine's path
-      const filesDir = path.join(tempDir, 'files');
-      if (fs.existsSync(filesDir) && currentJobBase) {
-        copyDirRecursive(filesDir, currentJobBase);
-        logger.info({ from: filesDir, to: currentJobBase }, 'Job folder files restored');
+    } catch (dbErr) {
+      // Records rolled back on their own; put the original files back too.
+      if (filesSwapped) {
+        // Move the restored files out of the live folder first; only restore the
+        // originals if that actually cleared the live folder, so we never try to
+        // rename onto a folder that's still occupied. Log every failure so a
+        // mixed state (new files on disk, old records in the database) is visible.
+        let movedNewAside = false;
+        try {
+          fs.renameSync(currentJobBase, stagingDir);
+          movedNewAside = true;
+        } catch (rbErr) {
+          filesUnrecoverable = true;
+          logger.error(
+            { err: rbErr, from: currentJobBase, to: stagingDir, step: 'rollback-move-new-aside' },
+            'Backup restore rollback failed: could not move restored files out of live folder; disk holds NEW files while database holds OLD records — manual review required'
+          );
+        }
+        if (movedNewAside) {
+          try {
+            fs.renameSync(oldDir, currentJobBase);
+          } catch (rbErr) {
+            filesUnrecoverable = true;
+            logger.error(
+              { err: rbErr, from: oldDir, to: currentJobBase, step: 'rollback-restore-original' },
+              'Backup restore rollback failed: original files could not be restored to live folder (left in __restore_old); database holds OLD records — manual review required'
+            );
+          }
+        }
+        filesSwapped = false;
       }
-
-      // Record import in history (wrap in try-catch since the importing user
-      // may not exist in the restored data, which would cause an FK violation)
-      try {
-        recordHistory('system', 'backup', 'data_import', req.user.userId, req.user.name || req.user.username, {
-          source: { from: null, to: data._metadata.exportedAt },
-          tables: { from: null, to: TABLE_ORDER.length + ' tables restored' },
-          filesRestored: { from: null, to: fs.existsSync(filesDir) ? 'yes' : 'no' }
-        }, null);
-      } catch (histErr) {
-        logger.error({ err: histErr }, 'Failed to record import history (user may not exist in restored data)');
-      }
-
-      res.json({ success: true, message: 'Backup imported successfully' });
-    } finally {
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      throw dbErr;
     }
+
+    // 4. Success — discard the old files and any staging leftovers. The restore
+    //    has already committed, so a leftover-folder lock must never report failure.
+    bestEffortRemove(oldDir);
+    bestEffortRemove(stagingDir);
+    logger.info({ jobBase: currentJobBase, filesRestored: hasFiles }, 'Backup restored successfully');
+
+    // Record import in history (wrap in try-catch since the importing user
+    // may not exist in the restored data, which would cause an FK violation)
+    try {
+      recordHistory('system', 'backup', 'data_import', req.user.userId, req.user.name || req.user.username, {
+        source: { from: null, to: data._metadata.exportedAt },
+        tables: { from: null, to: TABLE_ORDER.length + ' tables restored' },
+        filesRestored: { from: null, to: hasFiles ? 'yes' : 'no' }
+      }, null);
+    } catch (histErr) {
+      logger.error({ err: histErr }, 'Failed to record import history (user may not exist in restored data)');
+    }
+
+    res.json({ success: true, message: 'Backup imported successfully' });
   } catch (err) {
     try { db.db.pragma('foreign_keys = ON'); } catch (_) { /* ignore */ }
+    // If we staged files but never swapped them in, remove the staging copy.
+    try {
+      if (!filesSwapped && fs.existsSync(stagingDir)) {
+        fs.rmSync(stagingDir, { recursive: true, force: true });
+      }
+    } catch (_) { /* ignore */ }
     logger.error({ err }, 'Error importing backup');
-    res.status(500).json({ error: 'Failed to import backup: ' + err.message });
+    if (filesUnrecoverable) {
+      res.status(500).json({
+        error: 'Failed to import backup, and the automatic undo could not put the original files back. '
+          + 'The files on disk and the database records may now be out of sync. '
+          + 'Check the server logs and the leftover restore folders, and review the data manually before continuing. '
+          + 'Details: ' + err.message
+      });
+    } else {
+      res.status(500).json({ error: 'Failed to import backup: ' + err.message });
+    }
+  } finally {
+    if (maintenanceOn) setMaintenance(false);
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) { /* ignore */ }
   }
 });
-
-// Helper: recursively copy directory contents (merge, overwrite existing files)
-function copyDirRecursive(src, dest) {
-  if (!fs.existsSync(dest)) {
-    fs.mkdirSync(dest, { recursive: true });
-  }
-
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-
-    if (entry.isDirectory()) {
-      copyDirRecursive(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
-}
 
 module.exports = router;
