@@ -1078,13 +1078,21 @@
 
 .lip-summary {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.65rem;
   padding: 0.5rem 0.7rem 0.5rem 0.85rem;
   background: var(--surface-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   transition: border-color 0.15s, background 0.15s;
+}
+
+/* Non-text items stay vertically centred; text items (% and stats) baseline-align */
+.lip-summary > .lip-pill,
+.lip-summary > .lip-bar,
+.lip-summary > .lip-add,
+.lip-summary > .lip-chevron {
+  align-self: center;
 }
 
 .line-item-progress > summary:hover .lip-summary {
@@ -1110,15 +1118,6 @@
 .lip--active .lip-summary { border-left-color: var(--success-color); }
 .lip--partial .lip-summary { border-left-color: var(--primary-accent); }
 .lip--done .lip-summary { border-left-color: var(--success-color); background: color-mix(in srgb, var(--success-color) 5%, var(--surface-elevated)); }
-
-.lip-label {
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  flex-shrink: 0;
-}
 
 /* Status pill */
 .lip-pill {
@@ -1181,19 +1180,18 @@
   border-color: color-mix(in srgb, var(--success-color) 36%, transparent);
 }
 
-/* Progress bar */
+/* Completion bar — good pieces vs required. Fill caps at full track, but the % label
+   is uncapped so over-production reads as e.g. 110% (and the bar turns amber). */
 .lip-bar {
-  flex: 1 1 auto;
-  min-width: 80px;
   display: flex;
-  align-items: center;
-  gap: 0.55rem;
+  flex: 1 1 auto;
+  min-width: 130px;
 }
 
 .lip-bar-track {
   position: relative;
   flex: 1;
-  height: 6px;
+  height: 7px;
   background: color-mix(in srgb, var(--text-tertiary) 22%, transparent);
   border-radius: 999px;
   overflow: hidden;
@@ -1201,167 +1199,93 @@
 
 .lip-bar-fill {
   height: 100%;
-  background: var(--primary-accent);
+  background: var(--success-color);
   border-radius: inherit;
-  transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s;
 }
 
 .lip--idle .lip-bar-fill,
-.lip--started .lip-bar-fill,
-.lip--logged .lip-bar-fill {
-  background: color-mix(in srgb, var(--text-tertiary) 60%, transparent);
+.lip--started .lip-bar-fill {
+  background: color-mix(in srgb, var(--text-tertiary) 55%, transparent);
 }
-.lip--active .lip-bar-fill {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--success-color) 65%, transparent),
-    var(--success-color)
-  );
-}
-.lip--done .lip-bar-fill { background: var(--success-color); }
 
 .lip-bar-percent {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   color: var(--text-secondary);
-  min-width: 2.6em;
+  min-width: 3.2em;
   text-align: right;
 }
 
-/* Counts: 45 / 100 done */
-.lip-counts {
-  display: inline-flex;
+/* Four plain labelled stats with divider lines between them */
+.lip-stats {
+  display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
+  gap: 0.3rem 0;
+  flex: 0 0 auto;
 }
 
-.lip-counts-num {
+.lip-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0 1.1rem;
+  border-left: 1px solid var(--border-color);
+}
+
+.lip-stat:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.lip-stat-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+}
+
+.lip-stat-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 
-.lip-counts-divider {
-  color: var(--text-tertiary);
-  font-weight: 400;
+.lip-stat--scrap .lip-stat-label {
+  color: color-mix(in srgb, #b91c1c 60%, var(--text-tertiary));
 }
 
-.lip-counts-target {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  font-weight: 500;
+.lip-stat--scrap .lip-stat-value {
+  color: #b91c1c;
 }
 
-.lip-counts-unit {
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-left: 0.18rem;
-}
-
-/* Remaining — the "how many left" callout */
-.lip-remaining {
+/* === Scrap readout (shared: per-worker entry, per-item progress, whole job) === */
+/* Compact: "⚠ 9 scrap 29%". Full breakdown is in the hover tooltip. */
+.scrap-stat {
   display: inline-flex;
   align-items: baseline;
   gap: 0.3rem;
-  padding: 0.18rem 0.5rem;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--primary-accent) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--primary-accent) 24%, transparent);
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
+  background: rgba(220, 38, 38, 0.10);
+  border: 1px solid rgba(220, 38, 38, 0.28);
   flex-shrink: 0;
 }
 
-.lip-remaining-num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
-  color: var(--primary-accent);
-  letter-spacing: -0.01em;
-}
-
-.lip-remaining-unit {
-  font-size: var(--text-xs);
-  color: var(--primary-accent);
-  font-weight: var(--font-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.lip--active .lip-remaining {
-  background: color-mix(in srgb, var(--success-color) 11%, transparent);
-  border-color: color-mix(in srgb, var(--success-color) 28%, transparent);
-}
-.lip--active .lip-remaining-num,
-.lip--active .lip-remaining-unit {
-  color: var(--success-color);
-}
-
-.lip--started .lip-remaining {
-  background: rgba(245, 158, 11, 0.10);
-  border-color: rgba(245, 158, 11, 0.28);
-}
-.lip--started .lip-remaining-num,
-.lip--started .lip-remaining-unit {
-  color: #b45309;
-}
-
-/* Over-delivery pill — shown when completed exceeds target */
-.lip-overage {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.3rem;
-  padding: 0.18rem 0.5rem;
-  border-radius: 4px;
-  background: rgba(245, 158, 11, 0.13);
-  border: 1px solid rgba(245, 158, 11, 0.32);
-  flex-shrink: 0;
-}
-
-.lip-overage-num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
-  color: #b45309;
-  letter-spacing: -0.01em;
-}
-
-.lip-overage-unit {
-  font-size: var(--text-xs);
-  color: #b45309;
-  font-weight: var(--font-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-/* Scrap pieces + scrap rate for the line item */
-.lip-scrap {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.3rem;
-  padding: 0.18rem 0.5rem;
-  border-radius: 4px;
-  background: rgba(220, 38, 38, 0.12);
-  border: 1px solid rgba(220, 38, 38, 0.32);
-  flex-shrink: 0;
-}
-
-.lip-scrap-glyph {
+.scrap-stat-glyph {
   font-size: var(--text-xs);
   color: #b91c1c;
   align-self: center;
 }
 
-.lip-scrap-num {
+.scrap-stat-num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
@@ -1370,161 +1294,18 @@
   letter-spacing: -0.01em;
 }
 
-.lip-scrap-unit {
+.scrap-stat-unit {
   font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
   color: #b91c1c;
-  font-weight: var(--font-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.lip-scrap-rate {
-  font-size: var(--text-xs);
-  color: #b91c1c;
-  font-weight: var(--font-semibold);
-  padding-left: 0.2rem;
-  border-left: 1px solid rgba(220, 38, 38, 0.32);
-}
-
-/* === Job-level scrap roll-up (sum across all line items) === */
-.job-scrap-summary {
-  flex: 1 1 100%;
-  min-width: 0;
-  margin-bottom: 0.85rem;
-}
-.job-scrap-summary > summary {
-  list-style: none;
-  cursor: pointer;
-  user-select: none;
-}
-.job-scrap-summary > summary::-webkit-details-marker { display: none; }
-
-.jss-summary {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.5rem 0.7rem 0.5rem 0.85rem;
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-color);
-  border-left-width: 3px;
-  border-radius: var(--radius-md);
-  transition: border-color 0.15s, background 0.15s;
-}
-.jss--has-scrap .jss-summary { border-left-color: #dc2626; }
-.jss--clean .jss-summary { border-left-color: var(--success-color); }
-.job-scrap-summary > summary:hover .jss-summary { border-color: var(--text-tertiary); }
-.job-scrap-summary[open] .jss-summary {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-.jss-clean-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.18rem 0.5rem;
-  border-radius: 4px;
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
-  color: var(--success-color);
-  background: color-mix(in srgb, var(--success-color) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--success-color) 32%, transparent);
-}
-.jss-clean-glyph { font-weight: 700; }
-
-.jss-good {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  font-weight: var(--font-semibold);
-}
-
-.jss-toggle {
-  margin-left: auto;
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-tertiary);
-}
-
-.job-scrap-summary .lip-chevron {
-  flex-shrink: 0;
-  color: var(--text-tertiary);
-  transition: transform 0.15s;
-}
-.job-scrap-summary[open] .lip-chevron { transform: rotate(180deg); }
-
-.jss-breakdown {
-  border: 1px solid var(--border-color);
-  border-top: none;
-  border-bottom-left-radius: var(--radius-md);
-  border-bottom-right-radius: var(--radius-md);
-  background: var(--surface);
-  overflow: hidden;
-}
-.jss-row {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.45rem 0.85rem;
-  border-top: 1px solid var(--border-color);
-  font-size: var(--text-sm);
-}
-.jss-row:first-child { border-top: none; }
-
-.jss-row-num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--font-semibold);
-  color: var(--primary-accent);
-  flex-shrink: 0;
-}
-.jss-row-desc {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-primary);
-}
-.jss-row-scrap {
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--font-semibold);
-  color: var(--text-tertiary);
-}
-.jss-row--flag .jss-row-scrap { color: #b91c1c; }
-.jss-row-good {
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
-}
-.jss-row-unit {
-  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-tertiary);
-  font-weight: var(--font-semibold);
 }
 
-/* When over, tint the cumulative-completed number to amber so the digits match the pill */
-.lip-counts-num--over {
-  color: #b45309 !important;
-}
-
-/* When over, the bar's left stripe & background shift to amber so the whole row reads "watch" */
+/* When the worker made more than required, gently tint the row amber as a heads-up */
 .lip--over .lip-summary {
   border-left-color: #f59e0b;
   background: color-mix(in srgb, #f59e0b 5%, var(--surface-elevated));
-}
-
-/* Sessions count — pushed to the right */
-.lip-sessions {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  flex-shrink: 0;
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
 }
 
 /* Chevron */
@@ -1581,8 +1362,6 @@
     flex-wrap: wrap;
     row-gap: 0.4rem;
   }
-  .lip-bar { order: 10; flex-basis: 100%; min-width: 0; }
-  .lip-sessions { margin-left: 0; }
 }
 
 .readonly-item-row {
@@ -1871,8 +1650,7 @@
   background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  overflow: hidden;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .te-card:hover {
@@ -1885,8 +1663,9 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--success-color) 15%, transparent);
 }
 
+/* Special labour — red tab on the left edge */
 .te-card--special {
-  border-left: 3px solid var(--primary-accent);
+  border-left: 3px solid var(--danger-color, #ef4444);
 }
 
 /* Top bar: duration + actions */
@@ -1894,15 +1673,30 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
   padding: 0.4rem 0.75rem;
   background: var(--surface-elevated);
   border-bottom: 1px solid var(--border-color);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   min-height: 36px;
+}
+
+/* Right side of the top line: the data tags, then any admin actions */
+.te-topbar-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem 0.65rem;
+  margin-left: auto;
 }
 
 .te-duration-zone {
   display: flex;
-  align-items: center;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.7rem;
 }
 
 .te-duration-badge {
@@ -1944,17 +1738,6 @@
   border-color: var(--text-secondary);
 }
 
-.te-btn--del {
-  color: var(--danger-color, #ef4444);
-  border-color: color-mix(in srgb, var(--danger-color, #ef4444) 30%, var(--border-color));
-}
-
-.te-btn--del:hover {
-  background: color-mix(in srgb, var(--danger-color, #ef4444) 10%, var(--surface));
-  color: var(--danger-color, #ef4444);
-  border-color: var(--danger-color, #ef4444);
-}
-
 .te-btn--stop {
   color: var(--text-inverse);
   background: var(--danger-color, #ef4444);
@@ -1966,59 +1749,105 @@
   color: var(--text-inverse);
 }
 
-/* Special labour toggle in topbar */
-.te-special-toggle {
+/* Options menu (kebab → dropdown) */
+.te-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.te-menu-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  cursor: pointer;
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  color: var(--text-secondary);
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
   border: 1px solid var(--border-color);
   background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
   transition: all 0.12s;
 }
-
-.te-special-toggle:has(input:checked) {
-  color: var(--primary-accent);
-  border-color: var(--primary-accent);
-  background: color-mix(in srgb, var(--primary-accent) 8%, var(--surface));
+.te-menu-btn:hover {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
 }
 
-.te-special-toggle input[type="checkbox"] {
-  width: 12px;
-  height: 12px;
-  cursor: pointer;
-  accent-color: var(--primary-accent);
-}
-
-/* Body: meta + work details */
-.te-body {
-  display: flex;
-  gap: 0.75rem;
-  padding: 0.6rem 0.75rem;
-  align-items: flex-start;
-}
-
-/* Left column: worker, date, time */
-.te-meta {
+.te-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  min-width: 168px;
+  padding: 0.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  min-width: 90px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--border-color);
-  padding-right: 0.75rem;
+  gap: 0.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
 }
 
+.te-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.42rem 0.55rem;
+  border: none;
+  background: transparent;
+  border-radius: 5px;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium, 500);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.te-menu-item:hover {
+  background: var(--surface-elevated);
+}
+
+.te-menu-item--del {
+  color: var(--danger-color, #ef4444);
+}
+.te-menu-item--del:hover {
+  background: color-mix(in srgb, var(--danger-color, #ef4444) 10%, transparent);
+}
+
+/* Special toggle row — check is hidden until on, then red */
+.te-menu-item--special .te-menu-check {
+  opacity: 0;
+}
+.te-menu-item--special.is-on {
+  color: var(--danger-color, #ef4444);
+}
+.te-menu-item--special.is-on .te-menu-check {
+  opacity: 1;
+  color: var(--danger-color, #ef4444);
+}
+
+/* Body: just the worker's comment */
+.te-body {
+  padding: 0.55rem 0.75rem 0.65rem;
+}
+
+/* Worker name — the lead item on the top line */
 .te-worker {
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-bold);
   font-size: var(--text-sm);
   color: var(--text-primary);
   line-height: 1.2;
+}
+
+/* Thin divider between the worker name and the time info */
+.te-meta-divider {
+  width: 1px;
+  height: 0.95em;
+  background: var(--border-color);
+  align-self: center;
 }
 
 .te-date {
@@ -2037,15 +1866,6 @@
   line-height: 1.3;
 }
 
-/* Right column: machines + items */
-.te-work {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
 .te-machines {
   display: flex;
   flex-wrap: wrap;
@@ -2053,15 +1873,18 @@
 }
 
 .te-machine-tag {
+  display: inline-flex;
+  align-items: baseline;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  padding: 0.1rem 0.4rem;
-  border-radius: 3px;
-  background: var(--primary-accent);
-  color: var(--text-inverse);
-  letter-spacing: var(--tracking-wide);
+  letter-spacing: -0.01em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--primary-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary-accent) 30%, transparent);
+  color: var(--primary-accent);
 }
 
 /* Per-session output: machines used + qty completed for this entry */
@@ -2075,9 +1898,9 @@
 .te-qty-done {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.4rem;
-  padding: 0.22rem 0.65rem;
-  border-radius: var(--radius-md);
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
   background: color-mix(in srgb, var(--success-color) 10%, var(--surface-elevated));
   border: 1px solid color-mix(in srgb, var(--success-color) 28%, transparent);
   font-family: var(--font-mono);
@@ -2089,22 +1912,13 @@
   border-color: var(--border-color);
 }
 
-.te-qty-done--over {
-  background: rgba(245, 158, 11, 0.10);
-  border-color: rgba(245, 158, 11, 0.32);
-}
-
 /* Delta: "+12" — this session's contribution */
 .te-qty-delta {
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   color: var(--success-color);
   letter-spacing: -0.01em;
   line-height: 1;
-}
-
-.te-qty-done--over .te-qty-delta {
-  color: #b45309;
 }
 
 /* Arrow connecting delta to running total */
@@ -2130,10 +1944,6 @@
   line-height: 1;
 }
 
-.te-qty-done--over .te-qty-cumul-num {
-  color: #b45309;
-}
-
 .te-qty-cumul-divider {
   color: var(--text-tertiary);
   font-weight: 400;
@@ -2147,7 +1957,7 @@
 
 /* Zero-output fallback fields */
 .te-qty-num {
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   color: var(--success-color);
   letter-spacing: -0.01em;
@@ -2171,10 +1981,6 @@
   color: var(--text-tertiary);
 }
 
-.te-qty-done--over .te-qty-unit {
-  color: #b45309;
-}
-
 .te-qty-label {
   font-family: var(--font-sans);
   font-size: var(--text-xs);
@@ -2193,32 +1999,32 @@
 }
 
 /* Field-note callout — worker's remark on the entry */
+/* Worker's comment — a readable, accented quote that fills the body width */
 .te-item-note {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.55rem;
-  align-items: start;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
   margin: 0;
-  padding: 0.45rem 0.7rem 0.5rem 0.6rem;
+  padding: 0.5rem 0.75rem 0.55rem 0.65rem;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border-left: 3px solid color-mix(in srgb, var(--primary-accent) 60%, transparent);
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--primary-accent) 7%, var(--surface-elevated)),
-    var(--surface-elevated) 70%
+    color-mix(in srgb, var(--primary-accent) 9%, var(--surface-elevated)),
+    color-mix(in srgb, var(--primary-accent) 4%, var(--surface-elevated))
   );
-  border-left: 3px solid color-mix(in srgb, var(--primary-accent) 55%, transparent);
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
 
 .te-item-note-mark {
   font-family: 'Georgia', 'Times New Roman', serif;
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  line-height: 0.85;
+  line-height: 0.7;
   color: color-mix(in srgb, var(--primary-accent) 75%, var(--text-primary));
   user-select: none;
   letter-spacing: -0.05em;
-  align-self: start;
-  margin-top: 0.05em;
+  align-self: flex-start;
+  margin-top: 0.12em;
 }
 
 .te-item-note-text {
@@ -2228,30 +2034,26 @@
   color: var(--text-primary);
   white-space: pre-wrap;
   word-break: break-word;
-  font-weight: var(--font-normal, 400);
 }
 
-/* Active card variant — shift the accent to success green for cohesion */
+/* Active card — shift the comment accent to green to match the live card */
 .te-card--active .te-item-note {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--success-color) 9%, var(--surface-elevated)),
-    var(--surface-elevated) 70%
-  );
   border-left-color: color-mix(in srgb, var(--success-color) 60%, transparent);
-}
-
-.te-card--active .te-item-note-mark {
-  color: color-mix(in srgb, var(--success-color) 80%, var(--text-primary));
-}
-
-/* Special-labour variant — purple-leaning accent matches the card stripe */
-.te-card--special .te-item-note {
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--primary-accent) 10%, var(--surface-elevated)),
-    var(--surface-elevated) 70%
+    color-mix(in srgb, var(--success-color) 10%, var(--surface-elevated)),
+    color-mix(in srgb, var(--success-color) 4%, var(--surface-elevated))
   );
+}
+.te-card--active .te-item-note-mark {
+  color: color-mix(in srgb, var(--success-color) 78%, var(--text-primary));
+}
+
+.te-no-note {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-style: italic;
 }
 
 /* Keep legacy badge class for other uses */

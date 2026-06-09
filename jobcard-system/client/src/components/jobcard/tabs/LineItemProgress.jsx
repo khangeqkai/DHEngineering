@@ -23,15 +23,12 @@ function computeProgress(entries, targetQty) {
     cumulativeMap.set(e.id, running);
   }
   const completedQty = running;
-  // Scrap rate is scrap relative to the good pieces actually produced (can exceed 100%).
-  // With no good pieces yet, the ratio is undefined — leave it blank rather than divide by zero.
-  const scrapRate = completedQty > 0 ? (scrapTotal / completedQty) * 100 : null;
-
   const target = parseFloat(targetQty);
   const hasTarget = Number.isFinite(target) && target > 0;
-  const remaining = hasTarget ? Math.max(0, target - completedQty) : null;
   const overage = hasTarget ? Math.max(0, completedQty - target) : 0;
-  const percent = hasTarget ? Math.min(100, (completedQty / target) * 100) : 0;
+  // Completion = GOOD pieces vs required. Uncapped, so over-production reads as 110%, not a flat 100%.
+  // (qty is good-only; scrap is tracked separately, so it's already excluded here.)
+  const percent = hasTarget ? (completedQty / target) * 100 : 0;
   const hasActive = entries.some(e => !e.endTime);
   const sessions = entries.length;
 
@@ -47,11 +44,8 @@ function computeProgress(entries, targetQty) {
     hasTarget,
     completed: completedQty,
     scrapTotal,
-    scrapRate,
-    remaining,
     overage,
     percent,
-    sessions,
     state,
     hasActive,
     cumulativeMap
@@ -93,6 +87,11 @@ export default function LineItemProgress({
 }) {
   const progress = useMemo(() => computeProgress(entries, targetQty), [entries, targetQty]);
 
+  // Total made = good pieces + scrap. Scrap rate divides into it, so every number on the
+  // line ties together: scrap of total made = the percentage shown.
+  const totalMade = progress.completed + progress.scrapTotal;
+  const scrapRate = totalMade > 0 ? Math.round((progress.scrapTotal / totalMade) * 100) : 0;
+
   const [open, setOpen] = useState(progress.hasActive);
   const prevHasActive = useRef(progress.hasActive);
 
@@ -126,63 +125,42 @@ export default function LineItemProgress({
       onToggle={(e) => setOpen(e.currentTarget.open)}
     >
       <summary className="lip-summary">
-        <span className="lip-label">Progress</span>
         <StatusPill state={progress.state} />
 
         {progress.hasTarget && (
-          <div className="lip-bar" aria-hidden="true">
-            <div className="lip-bar-track">
-              <div className="lip-bar-fill" style={{ width: `${progress.percent}%` }} />
+          <>
+            <div
+              className="lip-bar"
+              title={`${formatNum(progress.completed)} good of ${formatNum(progress.target)} required`}
+            >
+              <div className="lip-bar-track">
+                <div className="lip-bar-fill" style={{ width: `${Math.min(100, progress.percent)}%` }} />
+              </div>
             </div>
             <span className="lip-bar-percent">{Math.round(progress.percent)}%</span>
-          </div>
+          </>
         )}
 
-        <span className="lip-counts">
-          {progress.hasTarget ? (
-            <>
-              <span className={`lip-counts-num${progress.overage > 0 ? ' lip-counts-num--over' : ''}`}>
-                {formatNum(progress.completed)}
-              </span>
-              <span className="lip-counts-divider">/</span>
-              <span className="lip-counts-target">{formatNum(progress.target)}</span>
-              <span className="lip-counts-unit">done</span>
-            </>
-          ) : (
-            <>
-              <span className="lip-counts-num">{formatNum(progress.completed)}</span>
-              <span className="lip-counts-unit">done</span>
-            </>
-          )}
-        </span>
-
-        {progress.hasTarget && progress.remaining > 0 && (
-          <span className="lip-remaining">
-            <span className="lip-remaining-num">{formatNum(progress.remaining)}</span>
-            <span className="lip-remaining-unit">left</span>
+        <span className="lip-stats">
+          <span className="lip-stat">
+            <span className="lip-stat-label">Required</span>
+            <span className="lip-stat-value">{progress.hasTarget ? formatNum(progress.target) : '—'}</span>
           </span>
-        )}
-
-        {progress.overage > 0 && (
-          <span className="lip-overage" title="Completed quantity exceeds target">
-            <span className="lip-overage-num">+{formatNum(progress.overage)}</span>
-            <span className="lip-overage-unit">over</span>
+          <span className="lip-stat">
+            <span className="lip-stat-label">Total made</span>
+            <span className="lip-stat-value">{formatNum(totalMade)}</span>
           </span>
-        )}
-
-        {progress.scrapTotal > 0 && (
-          <span className="lip-scrap" title="Scrap pieces and scrap as a share of good pieces made">
-            <span className="lip-scrap-glyph">⚠</span>
-            <span className="lip-scrap-num">{formatNum(progress.scrapTotal)}</span>
-            <span className="lip-scrap-unit">scrap</span>
-            {progress.scrapRate != null && (
-              <span className="lip-scrap-rate">{Math.round(progress.scrapRate)}%</span>
-            )}
+          <span className="lip-stat lip-stat--scrap">
+            <span className="lip-stat-label">Scrap</span>
+            <span className="lip-stat-value">{formatNum(progress.scrapTotal)}</span>
           </span>
-        )}
-
-        <span className="lip-sessions">
-          {progress.sessions} {progress.sessions === 1 ? 'session' : 'sessions'}
+          <span
+            className="lip-stat lip-stat--scrap"
+            title={totalMade > 0 ? `${formatNum(progress.scrapTotal)} scrap out of ${formatNum(totalMade)} made` : 'Nothing made yet'}
+          >
+            <span className="lip-stat-label">Scrap rate</span>
+            <span className="lip-stat-value">{totalMade > 0 ? `${scrapRate}%` : '—'}</span>
+          </span>
         </span>
 
         {isAdmin && onAdd && (

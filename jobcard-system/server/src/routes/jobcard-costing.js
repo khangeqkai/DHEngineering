@@ -12,8 +12,10 @@ router.get('/:id/costing', authenticate, requireAdmin, (req, res) => {
   try {
     const costing = jobCostingQueries.getByJobcard.get(req.params.id);
     const hours = timeEntryQueries.getHoursByJobcard.get(req.params.id) || { labour_hours: 0, labour_special_hours: 0 };
-    const labourHours = Math.round(hours.labour_hours * 100) / 100;
-    const labourSpecialHours = Math.round(hours.labour_special_hours * 100) / 100;
+    // Round to thousandths of an hour (~3.6 s) so short entries still register instead of
+    // rounding away to zero. Costs are derived from this, so tiny durations keep a tiny cost.
+    const labourHours = Math.round(hours.labour_hours * 1000) / 1000;
+    const labourSpecialHours = Math.round(hours.labour_special_hours * 1000) / 1000;
 
     if (!costing) {
       return res.json({
@@ -73,8 +75,10 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
     const existing = jobCostingQueries.getByJobcard.get(id);
 
     const hours = timeEntryQueries.getHoursByJobcard.get(id) || { labour_hours: 0, labour_special_hours: 0 };
-    const labourHours = Math.round(hours.labour_hours * 100) / 100;
-    const labourSpecialHours = Math.round(hours.labour_special_hours * 100) / 100;
+    // Round to thousandths of an hour (~3.6 s) so short entries still register instead of
+    // rounding away to zero. Costs are derived from this, so tiny durations keep a tiny cost.
+    const labourHours = Math.round(hours.labour_hours * 1000) / 1000;
+    const labourSpecialHours = Math.round(hours.labour_special_hours * 1000) / 1000;
 
     // Calculate totals
     const labourTotal = labourHours * (data.labourRate || 0);

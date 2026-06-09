@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { MoreVertical, Pencil, Trash2, Check } from 'lucide-react';
+import ScrapStat from './ScrapStat';
 
 function formatElapsed(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -51,51 +53,39 @@ export default function TimeEntryCard({
   const rawQty = entry.qty != null ? String(entry.qty).trim() : '';
   const qtyNum = rawQty === '' ? null : parseFloat(rawQty);
   const showQty = qtyNum !== null && Number.isFinite(qtyNum);
+
+  const rawScrap = entry.scrapQty != null ? String(entry.scrapQty).trim() : '';
+  const scrapNum = rawScrap === '' ? null : parseFloat(rawScrap);
+  const showScrap = !isActive;
+  const goodNum = qtyNum !== null && Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 0;
   const showCumulative =
     showQty && qtyNum > 0 && target != null && Number.isFinite(cumulativeAfter);
-  const isOverAtThisSession =
-    showCumulative && cumulativeAfter > target;
   const noteText = entry.description ? entry.description.trim() : '';
 
   const showActions = !readOnly && (onEdit || onDelete || onStop || onToggleSpecial);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
 
   return (
     <div className={`te-card${isActive ? ' te-card--active' : ''}${entry.isSpecialLabour ? ' te-card--special' : ''}`}>
       <div className="te-topbar">
         <div className="te-duration-zone">
+          <span className="te-worker">{entry.userName}</span>
+          <span className="te-meta-divider" aria-hidden="true" />
           {isActive ? (
             <LiveElapsed startTime={entry.startTime} />
           ) : (
             <span className="te-duration-badge">{formatElapsed(durationSec)}</span>
           )}
-        </div>
-        {showActions && (
-          <div className="te-actions">
-            {entry.endTime && onToggleSpecial && (
-              <label className="te-special-toggle" title="Mark as special labour">
-                <input
-                  type="checkbox"
-                  checked={entry.isSpecialLabour || false}
-                  onChange={() => onToggleSpecial(entry.id)}
-                />
-                <span>Special</span>
-              </label>
-            )}
-            {entry.endTime ? (
-              <>
-                {onEdit && <button type="button" className="te-btn te-btn--edit" onClick={() => onEdit(entry)}>Edit</button>}
-                {onDelete && <button type="button" className="te-btn te-btn--del" onClick={() => onDelete(entry.id)}>Delete</button>}
-              </>
-            ) : (
-              onStop && <button type="button" className="te-btn te-btn--stop" onClick={() => onStop(entry)}>Stop Timer</button>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="te-body">
-        <div className="te-meta">
-          <span className="te-worker">{entry.userName}</span>
           <span className="te-date">{new Date(entry.startTime).toLocaleDateString([], { day: '2-digit', month: 'short' })}</span>
           <span className="te-timerange">
             {new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -105,8 +95,8 @@ export default function TimeEntryCard({
           </span>
         </div>
 
-        <div className="te-work">
-          {(machinesList.length > 0 || (!isActive && showQty)) && (
+        <div className="te-topbar-right">
+          {(machinesList.length > 0 || (!isActive && showQty) || showScrap) && (
             <div className="te-work-meta">
               {machinesList.length > 0 && (
                 <div className="te-machines">
@@ -117,11 +107,7 @@ export default function TimeEntryCard({
               )}
               {!isActive && showQty && (
                 <div
-                  className={
-                    'te-qty-done' +
-                    (qtyNum === 0 ? ' te-qty-done--zero' : '') +
-                    (isOverAtThisSession ? ' te-qty-done--over' : '')
-                  }
+                  className={'te-qty-done' + (qtyNum === 0 ? ' te-qty-done--zero' : '')}
                 >
                   {qtyNum > 0 ? (
                     <>
@@ -147,20 +133,81 @@ export default function TimeEntryCard({
                   )}
                 </div>
               )}
+              {showScrap && <ScrapStat scrap={scrapNum} good={goodNum} />}
             </div>
           )}
 
-          {noteText && (
-            <figure className="te-item-note te-item-note--solo">
-              <span className="te-item-note-mark" aria-hidden="true">&ldquo;</span>
-              <blockquote className="te-item-note-text">{noteText}</blockquote>
-            </figure>
-          )}
-
-          {isActive && machinesList.length === 0 && (
-            <p className="te-active-hint">In progress…</p>
+          {showActions && (
+            entry.endTime ? (
+              <div className="te-menu" ref={menuRef}>
+                <button
+                  type="button"
+                  className="te-menu-btn"
+                  onClick={() => setMenuOpen((o) => !o)}
+                  aria-haspopup="true"
+                  aria-expanded={menuOpen}
+                  aria-label="Entry options"
+                  title="Options"
+                >
+                  <MoreVertical size={16} />
+                </button>
+                {menuOpen && (
+                  <div className="te-menu-dropdown" role="menu">
+                    {onEdit && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="te-menu-item"
+                        onClick={() => { setMenuOpen(false); onEdit(entry); }}
+                      >
+                        <Pencil size={14} /> Edit
+                      </button>
+                    )}
+                    {onToggleSpecial && (
+                      <button
+                        type="button"
+                        role="menuitemcheckbox"
+                        aria-checked={!!entry.isSpecialLabour}
+                        className={`te-menu-item te-menu-item--special${entry.isSpecialLabour ? ' is-on' : ''}`}
+                        onClick={() => { setMenuOpen(false); onToggleSpecial(entry.id); }}
+                      >
+                        <Check size={14} className="te-menu-check" />
+                        {entry.isSpecialLabour ? 'Special labour' : 'Mark as special'}
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="te-menu-item te-menu-item--del"
+                        onClick={() => { setMenuOpen(false); onDelete(entry.id); }}
+                      >
+                        <Trash2 size={14} /> Delete
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              onStop && <button type="button" className="te-btn te-btn--stop" onClick={() => onStop(entry)}>Stop Timer</button>
+            )
           )}
         </div>
+      </div>
+
+      <div className="te-body">
+        {noteText ? (
+          <figure className="te-item-note">
+            <span className="te-item-note-mark" aria-hidden="true">&ldquo;</span>
+            <blockquote className="te-item-note-text">{noteText}</blockquote>
+          </figure>
+        ) : (
+          isActive ? (
+            <p className="te-active-hint">In progress…</p>
+          ) : (
+            <p className="te-no-note">No comment left</p>
+          )
+        )}
       </div>
     </div>
   );
