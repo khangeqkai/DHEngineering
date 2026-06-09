@@ -112,6 +112,18 @@ const tagQueries = {
   getMaxSortOrder: db.prepare('SELECT MAX(sort_order) as max_sort FROM tags WHERE category = ?'),
   updateSortOrder: db.prepare('UPDATE tags SET sort_order = ? WHERE id = ?'),
 
+  // Count line items still referencing a treatment tag value. Each item's
+  // treatments column is a JSON array of objects keyed by `value`, so we walk
+  // the array with json_each and match on the treatment's value.
+  countItemsByTreatmentValue: db.prepare(`
+    SELECT COUNT(*) as count FROM job_items
+    WHERE treatments IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM json_each(job_items.treatments)
+        WHERE json_extract(json_each.value, '$.value') = ?
+      )
+  `),
+
   // Supplier tag operations (treatment tags for suppliers)
   getForSupplier: db.prepare(`
     SELECT t.* FROM tags t

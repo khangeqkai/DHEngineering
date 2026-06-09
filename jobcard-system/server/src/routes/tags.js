@@ -135,6 +135,18 @@ router.put('/:id', requireAdmin, (req, res) => {
       return res.status(400).json({ error: 'Another tag with this name already exists in this category' });
     }
 
+    // Jobs reference a treatment by its value, which is derived from the name.
+    // A rename that changes the value would strand it on jobs already using it,
+    // so block that — but allow display-only tweaks that map to the same value.
+    if (existing.category === 'treatment' && value !== existing.value) {
+      const usage = tagQueries.countItemsByTreatmentValue.get(existing.value);
+      if (usage.count > 0) {
+        return res.status(400).json({
+          error: `Cannot rename: ${usage.count} job line item(s) still use the "${existing.name}" treatment`
+        });
+      }
+    }
+
     tagQueries.update.run(trimmedName, value, id);
 
     const changes = {};
@@ -161,6 +173,18 @@ router.delete('/:id', requireAdmin, (req, res) => {
     const existing = tagQueries.getById.get(id);
     if (!existing) {
       return res.status(404).json({ error: 'Tag not found' });
+    }
+
+    // Treatments are referenced by value inside each job's line items. Deleting
+    // one that's still in use would strand it on those jobs (unrecognised
+    // treatment + lost supplier link), so block it — same guard QA levels use.
+    if (existing.category === 'treatment') {
+      const usage = tagQueries.countItemsByTreatmentValue.get(existing.value);
+      if (usage.count > 0) {
+        return res.status(400).json({
+          error: `Cannot delete: ${usage.count} job line item(s) still use the "${existing.name}" treatment`
+        });
+      }
     }
 
     tagQueries.delete.run(id);

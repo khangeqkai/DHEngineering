@@ -4,10 +4,18 @@ class ApiService {
   constructor() {
     this.token = null;
     this.onSessionInvalidated = null;
+    // Guards against firing the forced sign-out handler multiple times for the
+    // burst of 401s that arrives at once. Re-armed on each fresh login.
+    this.sessionInvalidated = false;
   }
 
   setToken(token) {
     this.token = token;
+    // A real token means a fresh login — re-arm the forced sign-out handler so
+    // it works again on this workstation, not just the first time.
+    if (token) {
+      this.sessionInvalidated = false;
+    }
   }
 
   setOnSessionInvalidated(callback) {
@@ -37,10 +45,9 @@ class ApiService {
       // login, or the account was turned off / its PIN reset.
       if (response.status === 401 &&
           (errorData.code === 'SESSION_REPLACED' || errorData.code === 'ACCOUNT_DEACTIVATED')) {
-        if (this.onSessionInvalidated) {
-          const handler = this.onSessionInvalidated;
-          this.onSessionInvalidated = null;
-          handler(errorData.code);
+        if (this.onSessionInvalidated && !this.sessionInvalidated) {
+          this.sessionInvalidated = true;
+          this.onSessionInvalidated(errorData.code);
         }
         throw new Error(errorData.code);
       }
