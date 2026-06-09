@@ -177,10 +177,11 @@ console.log('Creating job cards...');
 
 const insertJobcard = db.prepare(`INSERT INTO jobcards (
   id, job_number, card_type, status, contact_id, contact_name, company_name,
+  contact_phone, contact_email,
   quality_level, qa_level_id, priority, drawings_type, customer_property,
   description, due_date, is_repeat_job, created_by, updated_by, created_at,
   archived, invoiced_date
-) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
 const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
@@ -472,6 +473,7 @@ const createJobs = db.transaction(() => {
 
     insertJobcard.run(
       jobId, jobNumber, s.status, s.contact.id, s.contact.contactName, s.contact.companyName,
+      s.contact.phone, s.contact.email,
       s.qaLevel.name.toUpperCase(), s.qaLevel.id, s.priority,
       s.drawingsType, s.customerProperty,
       s.description, dueDate, 0,
