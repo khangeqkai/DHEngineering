@@ -15,7 +15,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 
 ## Real problems (fix these first)
 
-### 1. The "you've been signed out" message only works once — ⬜
+### 1. The "you've been signed out" message only works once — ✅
 - **Problem:** Sometimes the system needs to force someone out — because an admin
   turned their account off, or because they signed in from another computer. When
   that happens the person is meant to see a clear message and be sent back to the
@@ -38,7 +38,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
   login screen work every time a forced sign-out happens, no matter how many times
   the same computer has been used during the session.
 
-### 2. Deleting or renaming a treatment breaks jobs that already used it — ⬜
+### 2. Deleting or renaming a treatment breaks jobs that already used it — ✅
 - **Problem:** Each treatment on a job remembers which treatment type it is by name.
   When an admin removes a treatment from the master list — or renames it — the system
   doesn't check whether any jobs are still using it, and gives no warning. Jobs that
