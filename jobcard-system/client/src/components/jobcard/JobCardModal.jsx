@@ -22,8 +22,7 @@ import ZoomToggle, { useJobCardZoom } from './ZoomToggle';
 import JobFilesMenu from './JobFilesMenu';
 import JobIdentityStrip from './JobIdentityStrip';
 import { validateJobCardForm } from './jobCardValidation';
-
-const mapTimeEntry = (t) => ({ id: t.id, userId: t.userId, userName: t.userName, itemNumber: t.itemNumber, machineNumber: t.machineNumber, qty: t.qty, description: t.description, startTime: t.startTime, endTime: t.endTime, isSpecialLabour: t.isSpecialLabour || false });
+import { mapTimeEntryFromApi } from './mappers';
 
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, initialTab = null }) {
   const { user } = useAuth();
@@ -92,7 +91,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       const jobcardData = jobcardRes;
       setFormDataFromJobCard(jobcardData);
       setContactFromJobCard(jobcardData);
-      setTimeEntries((timeEntriesRes || []).map(mapTimeEntry));
+      setTimeEntries((timeEntriesRes || []).map(mapTimeEntryFromApi));
 
       loadNotes();
 
@@ -143,7 +142,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   const reloadTimeEntries = useCallback(async () => {
     const res = await api.getTimeEntries(jobCardId);
-    setTimeEntries((res || []).map(mapTimeEntry));
+    setTimeEntries((res || []).map(mapTimeEntryFromApi));
   }, [jobCardId]);
   reloadTimeEntriesRef.current = reloadTimeEntries;
 

@@ -101,12 +101,13 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
       grandTotal
     );
 
-    // Build proper diff of changed fields
+    // Build proper diff of changed fields.
+    // Labour hours and special hours are auto-calculated from time entries, not
+    // edited by the admin saving this screen — exclude them so the audit trail
+    // doesn't attribute an automatic recalculation to whoever opened and saved.
     const changes = {};
     const fieldsToTrack = [
-      ['labour_hours', 'labourHours', labourHours],
       ['labour_rate', 'labourRate', data.labourRate || 0],
-      ['labour_special_hours', 'labourSpecialHours', labourSpecialHours],
       ['labour_special_rate', 'labourSpecialRate', data.labourSpecialRate || 0],
       ['materials_cost', 'materialsCost', data.materialsCost || 0],
       ['materials_profit_percent', 'materialsProfitPercent', data.materialsProfitPercent ?? 100],

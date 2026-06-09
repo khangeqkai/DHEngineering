@@ -1021,19 +1021,10 @@
       "norm_label": "jobcardmodal.jsx"
     },
     {
-      "label": "mapTimeEntry()",
-      "file_type": "code",
-      "source_file": "client/src/components/jobcard/JobCardModal.jsx",
-      "source_location": "L26",
-      "id": "jobcard_jobcardmodal_maptimeentry",
-      "community": 5,
-      "norm_label": "maptimeentry()"
-    },
-    {
       "label": "JobCardModal()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/JobCardModal.jsx",
-      "source_location": "L28",
+      "source_location": "L27",
       "id": "jobcard_jobcardmodal_jobcardmodal",
       "community": 5,
       "norm_label": "jobcardmodal()"
@@ -2025,7 +2016,7 @@
       "source_file": "client/src/hooks/useSettings.js",
       "source_location": "L1",
       "id": "client_src_hooks_usesettings_js",
-      "community": 2,
+      "community": 1,
       "norm_label": "usesettings.js"
     },
     {
@@ -4783,6 +4774,15 @@
       "norm_label": "preload.js"
     },
     {
+      "label": "mapTimeEntry()",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/JobCardModal.jsx",
+      "source_location": "L26",
+      "community": 5,
+      "norm_label": "maptimeentry()",
+      "id": "jobcard_jobcardmodal_maptimeentry"
+    },
+    {
       "label": "statusToken()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/JobIdentityStrip.jsx",
@@ -7086,14 +7086,15 @@
       "target": "jobcard_jobcardvalidation_validatejobcardform"
     },
     {
-      "relation": "contains",
+      "relation": "imports",
+      "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "client/src/components/jobcard/JobCardModal.jsx",
-      "source_location": "L24",
+      "source_location": "L25",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "client_src_components_jobcard_jobcardmodal_jsx",
-      "target": "jobcard_jobcardmodal_maptimeentry"
+      "target": "jobcard_mappers_maptimeentryfromapi"
     },
     {
       "relation": "contains",
@@ -7104,6 +7105,16 @@
       "confidence_score": 1.0,
       "source": "client_src_components_jobcard_jobcardmodal_jsx",
       "target": "jobcard_jobcardmodal_jobcardmodal"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/JobCardModal.jsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_jobcardmodal_jsx",
+      "target": "jobcard_jobcardmodal_maptimeentry"
     },
     {
       "relation": "calls",
