@@ -159,6 +159,10 @@ export default function SearchPage() {
       changeScope(targetScope, { peopleType: 'contacts' });
     } else if (groupKey === 'suppliers') {
       changeScope(targetScope, { peopleType: 'suppliers' });
+    } else if (groupKey === 'jobs') {
+      // Carry the combined view's archived choice into the full job list so the
+      // set previewed matches the set shown.
+      changeScope(targetScope, filters.includeArchived ? { includeArchived: true } : null);
     } else {
       changeScope(targetScope);
     }
@@ -237,6 +241,16 @@ export default function SearchPage() {
           </button>
         ))}
       </div>
+
+      {/* Combined-view options */}
+      {scope === 'all' && (
+        <div className="search-all-options">
+          <label className="search-checkbox">
+            <input type="checkbox" checked={filters.includeArchived} onChange={e => updateFilter('includeArchived', e.target.checked)} />
+            Include archived jobs
+          </label>
+        </div>
+      )}
 
       {/* Filters */}
       {scope !== 'all' && (
@@ -468,6 +482,7 @@ export default function SearchPage() {
         .search-scope-tab { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 0.875rem; border: 1px solid var(--border-color); border-radius: 0.375rem; background: var(--surface); color: var(--text-secondary); font-size: 0.8125rem; font-weight: 500; cursor: pointer; transition: all 0.15s; }
         .search-scope-tab:hover { border-color: var(--primary-accent); color: var(--text-primary); }
         .search-scope-tab.active { background: var(--primary-accent); color: white; border-color: var(--primary-accent); }
+        .search-all-options { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; padding: 0 0.25rem; }
         .search-filters { margin-bottom: 1rem; }
         .search-filters .card-body { padding: 0.75rem 1rem; }
         .search-filters-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }

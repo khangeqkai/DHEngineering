@@ -4399,7 +4399,7 @@
       "label": "searchJobs()",
       "file_type": "code",
       "source_file": "server/src/routes/search.js",
-      "source_location": "L158",
+      "source_location": "L162",
       "id": "routes_search_searchjobs",
       "community": 10,
       "norm_label": "searchjobs()"
@@ -4408,7 +4408,7 @@
       "label": "searchPeople()",
       "file_type": "code",
       "source_file": "server/src/routes/search.js",
-      "source_location": "L206",
+      "source_location": "L210",
       "id": "routes_search_searchpeople",
       "community": 10,
       "norm_label": "searchpeople()"
@@ -4417,7 +4417,7 @@
       "label": "searchActivity()",
       "file_type": "code",
       "source_file": "server/src/routes/search.js",
-      "source_location": "L229",
+      "source_location": "L233",
       "id": "routes_search_searchactivity",
       "community": 10,
       "norm_label": "searchactivity()"
@@ -4426,7 +4426,7 @@
       "label": "searchTime()",
       "file_type": "code",
       "source_file": "server/src/routes/search.js",
-      "source_location": "L258",
+      "source_location": "L262",
       "id": "routes_search_searchtime",
       "community": 10,
       "norm_label": "searchtime()"

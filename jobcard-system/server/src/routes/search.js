@@ -115,10 +115,14 @@ function searchAll(req, res, isAdmin) {
   const like = `%${q}%`;
   const groups = {};
 
-  // Jobs
-  const jobWhere = isAdmin
+  // Jobs — hide archived by default so the combined preview's count and rows match
+  // the dedicated Jobs search. The combined view has its own "include archived"
+  // toggle that flips this, and that choice is carried through on "see all".
+  const includeArchived = req.query.includeArchived === 'true';
+  const jobMatch = isAdmin
     ? '(j.job_number LIKE ? OR j.description LIKE ? OR c.company_name LIKE ? OR c.contact_name LIKE ? OR j.po_number LIKE ?)'
     : '(j.job_number LIKE ? OR j.description LIKE ?)';
+  const jobWhere = includeArchived ? jobMatch : `${jobMatch} AND j.archived = 0`;
   const jobParams = isAdmin ? [like, like, like, like, like] : [like, like];
   const jobFrom = 'FROM jobcards j LEFT JOIN contacts c ON j.contact_id = c.id';
 

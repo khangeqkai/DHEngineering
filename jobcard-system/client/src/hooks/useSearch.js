@@ -87,7 +87,9 @@ export default function useSearch() {
         if (q.trim()) params.q = q.trim();
 
         // Scope-specific filters
-        if (scope === 'jobs') {
+        if (scope === 'all') {
+          if (filters.includeArchived) params.includeArchived = 'true';
+        } else if (scope === 'jobs') {
           if (filters.status.length) params.status = filters.status.join(',');
           if (filters.assigneeId) params.assigneeId = filters.assigneeId;
           if (filters.priority) params.priority = filters.priority;
