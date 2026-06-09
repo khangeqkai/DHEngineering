@@ -1,5 +1,6 @@
 import { useTags } from '../../../hooks/useTags';
 import ItemsTab from './ItemsTab';
+import ToggleTiles from '../../common/ToggleTiles';
 
 export default function DetailsReadOnlyView({
   formData,
@@ -56,11 +57,13 @@ export default function DetailsReadOnlyView({
       {assignees && assignees.length > 0 && (
         <div className="form-section">
           <h3 className="form-section-title">Assignees</h3>
-          <div className="readonly-badges">
-            {assignees.map(a => (
-              <span key={a.userId} className="readonly-badge assignee">{a.userName || a.username}</span>
-            ))}
-          </div>
+          <ToggleTiles
+            ariaLabel="Assignees"
+            readOnly
+            minTileWidth={130}
+            options={assignees.map(a => ({ value: a.userId, label: a.userName || a.username }))}
+            selectedValues={assignees.map(a => a.userId)}
+          />
         </div>
       )}
 

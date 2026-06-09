@@ -916,7 +916,7 @@
       "label": "ToggleTiles()",
       "file_type": "code",
       "source_file": "client/src/components/common/ToggleTiles.jsx",
-      "source_location": "L7",
+      "source_location": "L9",
       "id": "common_toggletiles_toggletiles",
       "community": 48,
       "norm_label": "toggletiles()"
@@ -1591,7 +1591,7 @@
       "label": "DetailsReadOnlyView()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/DetailsReadOnlyView.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "id": "tabs_detailsreadonlyview_detailsreadonlyview",
       "community": 1,
       "norm_label": "detailsreadonlyview()"

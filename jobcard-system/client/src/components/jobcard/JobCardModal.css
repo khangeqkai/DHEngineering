@@ -2834,11 +2834,6 @@
   color: var(--text-secondary);
 }
 
-.readonly-badge.assignee {
-  background: var(--primary-accent);
-  color: white;
-}
-
 .readonly-badge.treatment {
   background: #ede9fe;
   color: #7c3aed;
@@ -2852,12 +2847,6 @@
 .readonly-badge.job-type {
   background: #fef3c7;
   color: #92400e;
-}
-
-.readonly-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
 }
 
 .readonly-items-list {
