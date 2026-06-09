@@ -1460,6 +1460,127 @@
   border-left: 1px solid rgba(220, 38, 38, 0.32);
 }
 
+/* === Job-level scrap roll-up (sum across all line items) === */
+.job-scrap-summary {
+  flex: 1 1 100%;
+  min-width: 0;
+  margin-bottom: 0.85rem;
+}
+.job-scrap-summary > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+.job-scrap-summary > summary::-webkit-details-marker { display: none; }
+
+.jss-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.7rem 0.5rem 0.85rem;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-color);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s, background 0.15s;
+}
+.jss--has-scrap .jss-summary { border-left-color: #dc2626; }
+.jss--clean .jss-summary { border-left-color: var(--success-color); }
+.job-scrap-summary > summary:hover .jss-summary { border-color: var(--text-tertiary); }
+.job-scrap-summary[open] .jss-summary {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.jss-clean-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 4px;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--success-color);
+  background: color-mix(in srgb, var(--success-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success-color) 32%, transparent);
+}
+.jss-clean-glyph { font-weight: 700; }
+
+.jss-good {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-semibold);
+}
+
+.jss-toggle {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+}
+
+.job-scrap-summary .lip-chevron {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: transform 0.15s;
+}
+.job-scrap-summary[open] .lip-chevron { transform: rotate(180deg); }
+
+.jss-breakdown {
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-bottom-left-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+.jss-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.85rem;
+  border-top: 1px solid var(--border-color);
+  font-size: var(--text-sm);
+}
+.jss-row:first-child { border-top: none; }
+
+.jss-row-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-semibold);
+  color: var(--primary-accent);
+  flex-shrink: 0;
+}
+.jss-row-desc {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+.jss-row-scrap {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-semibold);
+  color: var(--text-tertiary);
+}
+.jss-row--flag .jss-row-scrap { color: #b91c1c; }
+.jss-row-good {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.jss-row-unit {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  font-weight: var(--font-semibold);
+}
+
 /* When over, tint the cumulative-completed number to amber so the digits match the pill */
 .lip-counts-num--over {
   color: #b45309 !important;

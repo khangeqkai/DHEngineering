@@ -1,11 +1,11 @@
 # Graph Report - DHEngineering  (2026-06-09)
 
 ## Corpus Check
-- 134 files · ~96,886 words
+- 135 files · ~97,214 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 608 nodes · 864 edges · 26 communities detected
+- 612 nodes · 868 edges · 28 communities detected
 - Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 76 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
@@ -33,9 +33,11 @@
 - [[_COMMUNITY_Community 21|Community 21]]
 - [[_COMMUNITY_Community 22|Community 22]]
 - [[_COMMUNITY_Community 25|Community 25]]
-- [[_COMMUNITY_Community 28|Community 28]]
-- [[_COMMUNITY_Community 29|Community 29]]
+- [[_COMMUNITY_Community 26|Community 26]]
+- [[_COMMUNITY_Community 27|Community 27]]
 - [[_COMMUNITY_Community 30|Community 30]]
+- [[_COMMUNITY_Community 31|Community 31]]
+- [[_COMMUNITY_Community 32|Community 32]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `ApiService` - 115 edges
@@ -68,8 +70,8 @@ Cohesion: 0.03
 Nodes (1): ApiService
 
 ### Community 1 - "Community 1"
-Cohesion: 0.07
-Nodes (30): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), useConfirmDialog(), formatFileDate(), formatFileSize(), useJobSearch() (+22 more)
+Cohesion: 0.08
+Nodes (28): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), useConfirmDialog(), formatFileDate(), formatFileSize(), useJobSearch() (+20 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.08
@@ -152,18 +154,26 @@ Cohesion: 0.4
 Nodes (2): checkLoginRateLimit(), cooldownMsForCount()
 
 ### Community 25 - "Community 25"
+Cohesion: 0.5
+Nodes (2): formatElapsed(), LiveElapsed()
+
+### Community 26 - "Community 26"
 Cohesion: 0.7
 Nodes (4): formatElapsed(), formatNum(), LiveElapsed(), TimeEntryCard()
 
-### Community 28 - "Community 28"
+### Community 27 - "Community 27"
+Cohesion: 0.67
+Nodes (2): formatNum(), JobScrapSummary()
+
+### Community 30 - "Community 30"
 Cohesion: 0.67
 Nodes (2): getSupplierWithTags(), toApiFormat()
 
-### Community 29 - "Community 29"
+### Community 31 - "Community 31"
 Cohesion: 1.0
 Nodes (2): CalendarPicker(), toDateString()
 
-### Community 30 - "Community 30"
+### Community 32 - "Community 32"
 Cohesion: 1.0
 Nodes (2): formatElapsed(), LineItemTimerButton()
 
@@ -178,11 +188,15 @@ Nodes (2): formatElapsed(), LineItemTimerButton()
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 22`** (6 nodes): `checkLoginRateLimit()`, `clearLoginFailures()`, `cooldownMsForCount()`, `normalizeEmpty()`, `recordLoginFailure()`, `auth.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 28`** (4 nodes): `getSupplierWithTags()`, `normalizeEmpty()`, `toApiFormat()`, `suppliers.js`
+- **Thin community `Community 25`** (5 nodes): `CostingTab.jsx`, `CostingTab()`, `formatElapsed()`, `LiveElapsed()`, `TimeEntriesSection()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 29`** (3 nodes): `CalendarPicker.jsx`, `CalendarPicker()`, `toDateString()`
+- **Thin community `Community 27`** (4 nodes): `JobScrapSummary.jsx`, `formatNum()`, `JobScrapSummary()`, `parseQty()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 30`** (3 nodes): `LineItemTimerButton.jsx`, `formatElapsed()`, `LineItemTimerButton()`
+- **Thin community `Community 30`** (4 nodes): `getSupplierWithTags()`, `normalizeEmpty()`, `toApiFormat()`, `suppliers.js`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 31`** (3 nodes): `CalendarPicker.jsx`, `CalendarPicker()`, `toDateString()`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 32`** (3 nodes): `LineItemTimerButton.jsx`, `formatElapsed()`, `LineItemTimerButton()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
@@ -191,7 +205,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `useAuth()` connect `Community 2` to `Community 4`, `Community 5`, `Community 6`?**
   _High betweenness centrality (0.038) - this node is a cross-community bridge._
 - **Why does `useConfirmDialog()` connect `Community 1` to `Community 2`, `Community 4`, `Community 6`?**
-  _High betweenness centrality (0.033) - this node is a cross-community bridge._
+  _High betweenness centrality (0.032) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 8 inferred relationships involving `useConfirmDialog()` (e.g. with `ContactManagement()` and `JobCardList()`) actually correct?**
@@ -201,4 +215,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.03 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.07 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08 - nodes in this community are weakly interconnected._

@@ -204,11 +204,8 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
   const submitEntryForm = useCallback(async (reloadEntries) => {
     if (!stoppedEntry) return;
 
-    const hasMachines = (entryForm.machineNumbers || []).length > 0;
     const hasDescription = entryForm.description && String(entryForm.description).trim() !== '';
-    const hasQty = parseFloat(entryForm.qty) > 0;
-    const hasScrap = parseInt(entryForm.scrapQty, 10) > 0;
-    if (!hasMachines && !hasDescription && !hasQty && !hasScrap) return;
+    if (!hasDescription) return;
 
     const qty = String(entryForm.qty || '0').trim() || '0';
     const scrapQty = Math.max(0, parseInt(entryForm.scrapQty, 10) || 0);

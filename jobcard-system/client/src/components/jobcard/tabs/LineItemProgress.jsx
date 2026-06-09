@@ -23,8 +23,9 @@ function computeProgress(entries, targetQty) {
     cumulativeMap.set(e.id, running);
   }
   const completedQty = running;
-  const scrapDenom = completedQty + scrapTotal;
-  const scrapRate = scrapDenom > 0 ? (scrapTotal / scrapDenom) * 100 : 0;
+  // Scrap rate is scrap relative to the good pieces actually produced (can exceed 100%).
+  // With no good pieces yet, the ratio is undefined — leave it blank rather than divide by zero.
+  const scrapRate = completedQty > 0 ? (scrapTotal / completedQty) * 100 : null;
 
   const target = parseFloat(targetQty);
   const hasTarget = Number.isFinite(target) && target > 0;
@@ -170,11 +171,13 @@ export default function LineItemProgress({
         )}
 
         {progress.scrapTotal > 0 && (
-          <span className="lip-scrap" title="Scrap pieces and scrap rate for this item">
+          <span className="lip-scrap" title="Scrap pieces and scrap as a share of good pieces made">
             <span className="lip-scrap-glyph">⚠</span>
             <span className="lip-scrap-num">{formatNum(progress.scrapTotal)}</span>
             <span className="lip-scrap-unit">scrap</span>
-            <span className="lip-scrap-rate">{Math.round(progress.scrapRate)}%</span>
+            {progress.scrapRate != null && (
+              <span className="lip-scrap-rate">{Math.round(progress.scrapRate)}%</span>
+            )}
           </span>
         )}
 

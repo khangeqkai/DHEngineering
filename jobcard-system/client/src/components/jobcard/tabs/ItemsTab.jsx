@@ -3,6 +3,7 @@ import { capitalizeFirst } from '../../../utils/formatters';
 import { useTags } from '../../../hooks/useTags';
 import TreatmentChips from './TreatmentChips';
 import LineItemProgress from './LineItemProgress';
+import JobScrapSummary from './JobScrapSummary';
 import LineItemTimerButton from '../LineItemTimerButton';
 
 function entriesForItem(entries, itemNumber) {
@@ -57,6 +58,8 @@ export default function ItemsTab({
             </button>
           )}
         </div>
+
+        <JobScrapSummary lineItems={lineItems} timeEntries={timeEntries} />
 
         {isAdmin && showTimeEntryForm && timeEntryForm && (
           <div className="time-entry-form costing-entry-form">
