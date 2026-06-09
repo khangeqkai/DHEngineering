@@ -62,7 +62,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 
 ## Smaller fixes
 
-### 3. The cost screen records a worked-hours "change" against the admin who only opened it — ⬜
+### 3. The cost screen records a worked-hours "change" against the admin who only opened it — ✅
 - **Problem:** The worked hours on a job are added up automatically from the workers'
   timers. Whenever an admin opens and saves the pricing screen — even without touching
   the hours — the system notices the stored hours total has moved (because workers
@@ -77,7 +77,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **After:** The history no longer implies an admin hand-edited the worked hours when
   they only opened and saved the pricing screen.
 
-### 4. Two separate copies of the logic that lists a job's time entries — ⬜
+### 4. Two separate copies of the logic that lists a job's time entries — ✅
 - **Problem:** The main job window has its own private copy of the logic that decides
   how a job's time entries are shown, instead of using the shared one that's meant to
   be the single source. The two copies are identical today, so nothing is visibly
