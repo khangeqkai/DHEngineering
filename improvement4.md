@@ -94,18 +94,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **After:** Every saved option has a usable internal key, and symbol-only names are
   refused up front with a helpful message.
 
-### 5. Saving the assigned-people list hides real errors — ⬜
-- **Problem:** When an admin sets who's assigned to a job, the save step is meant to
-  quietly ignore the harmless case of the same person being listed twice. But it actually
-  ignores **every** kind of failure. If something genuinely goes wrong while adding a
-  person, that person is silently dropped and the save still reports success.
-- **Why it matters:** An admin can believe they've assigned someone when that person was
-  quietly left off, with no error to alert them.
-- **Solution:** Only ignore the genuine duplicate case; let any other failure surface as
-  a real error, the way the self-assign action already does.
-- **After:** A failed assignment shows an error instead of pretending to have worked.
-
-### 6. Admins can't fix a scrap count after a worker submits it — ⬜
+### 5. Admins can't fix a scrap count after a worker submits it — ⬜
 - **Problem:** When a worker stops their timer they enter how many pieces were scrapped.
   If they mistype it, there's no way to correct it: the admin's edit form for a time
   entry has no scrap field at all.
@@ -115,7 +104,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
   can be corrected.
 - **After:** Admins can fix a scrap count that was entered wrong.
 
-### 7. Entering "0 completed" is treated as blank and discarded — ⬜
+### 6. Entering "0 completed" is treated as blank and discarded — ⬜
 - **Problem:** A genuine "0 pieces completed" (for example, a run where everything was
   scrapped) is treated the same as leaving the field empty, and isn't recorded.
 - **Why it matters:** A real and meaningful result — zero good pieces — is silently lost,
@@ -123,7 +112,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **Solution:** Treat a typed-in zero as a real value rather than as "nothing entered."
 - **After:** "0 completed" is recorded as the real outcome it is.
 
-### 8. A quality form that can't be pre-filled is reported as if it filled fine — ⬜
+### 7. A quality form that can't be pre-filled is reported as if it filled fine — ⬜
 - **Problem:** When a job is given a quality level, its inspection forms are copied into
   the job's folder with the job's details already filled in. If one of those form files is
   faulty and can't be filled, the system quietly copies a **blank** version instead and
@@ -135,7 +124,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
   needs filling in by hand, instead of reporting it as a clean success.
 - **After:** Workers are warned when a quality form came out blank rather than pre-filled.
 
-### 9. An unused "quote reference" is carried around but appears nowhere — ⬜
+### 8. An unused "quote reference" is carried around but appears nowhere — ⬜
 - **Problem:** Each job quietly carries a "quote reference" value that is loaded and held
   in memory, but it appears on no screen and can never be viewed or edited. It's leftover,
   dead detail.
@@ -145,7 +134,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
   it's unused, removing it is the cleaner choice.
 - **After:** The job form only carries details that are actually used.
 
-### 10. Housekeeping — small waste and dead code — ⬜
+### 9. Housekeeping — small waste and dead code — ⬜
 - **Problem:** A handful of minor inefficiencies and leftovers: opening any job fetches
   its three file folders straight away just to show small count badges, even if no one
   opens the files menu; the camera preview can keep checking forever on a device that
@@ -194,3 +183,13 @@ They're recorded here so it's clear they were considered.
   operation. It could only re-fire in the unusual case where a restore brought back time
   records without that marker. Worth being aware of, but **no change** unless that
   restore edge case ever proves to be a real risk.
+
+### Saving the assigned-people list hides real errors — not reachable in practice
+- The concern was that the save step for a job's assigned people ignores every kind of
+  failure (not just the harmless duplicate case), so a person could be silently dropped
+  while the save still reports success. On closer look, the assignment screen builds the
+  list with tap-to-toggle tiles — tapping a person who's already chosen removes them — so
+  the same person can never be listed twice, and the only people offered are current
+  employees. That leaves no realistic way to trigger a genuine failure through the screen;
+  the broad error-swallow only matters for an abnormal, direct request, not normal use.
+  **No change.**
