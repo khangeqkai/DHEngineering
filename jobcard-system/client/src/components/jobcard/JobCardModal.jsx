@@ -373,6 +373,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         repeatJobReference: formHook.formData.repeatJobReference,
         assigneeIds: formHook.assignees.map(a => a.userId),
         items: validItems.map((item, idx) => ({
+          // Send the line's saved id (only real, already-saved lines have an
+          // "item:" id) so the server keeps each line's identity across the edit
+          // and a worker's recorded time/scrap stays with the right line. New lines
+          // have a temporary local id and are left without one so the server makes one.
+          ...(typeof item.id === 'string' && item.id.startsWith('item:') ? { id: item.id } : {}),
           itemNumber: item.itemNumber || idx + 1,
           qty: item.qty,
           description: item.description,

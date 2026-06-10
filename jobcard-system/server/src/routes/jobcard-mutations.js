@@ -11,6 +11,7 @@ const {
   jobAssigneeQueries,
   qaLevelQueries,
   userQueries,
+  timeEntryQueries,
   recordHistory
 } = require('../db/database');
 const { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob, verifyQaTemplatesAvailable } = require('./jobcard-helpers');
@@ -294,6 +295,25 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       if (descriptionError) {
         return res.status(400).json({ error: descriptionError });
       }
+
+      // Block removing a line that already has recorded work. Each line has a stable
+      // id and recorded work points to that id, so a line carrying time can't be
+      // deleted out from under it (mirrors how QA levels protect themselves).
+      const keptIds = new Set(
+        data.items
+          .map(it => it.id)
+          .filter(itemId => typeof itemId === 'string' && itemId.startsWith('item:'))
+      );
+      const blockedLines = existingItems
+        .filter(it => !keptIds.has(it.id) && timeEntryQueries.countByItemId.get(it.id).count > 0)
+        .map(it => it.item_number)
+        .sort((a, b) => a - b);
+      if (blockedLines.length > 0) {
+        const many = blockedLines.length > 1;
+        return res.status(400).json({
+          error: `Cannot remove line${many ? 's' : ''} ${blockedLines.join(', ')} — time is logged against ${many ? 'them' : 'it'}. Clear that time first.`
+        });
+      }
     }
 
     const changes = buildChanges(existing, data);
@@ -352,16 +372,38 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       );
 
       if (data.items !== undefined) {
-        jobItemQueries.deleteByJobcard.run(id);
+        // Reconcile lines in place by their stable id so recorded work follows its
+        // line: update kept lines (including their new position number), insert new
+        // ones, and delete only removed lines that carry no recorded work (the
+        // delete-guard above already rejected removing any line that has time logged).
+        const keptIds = new Set();
         for (let i = 0; i < data.items.length; i++) {
           const item = data.items[i];
-          const itemId = item.id || `item:${uuidv4()}`;
-          jobItemQueries.create.run(
-            itemId, id, i + 1,
-            item.qty || null, item.description,
-            item.jobType || null, item.material || null,
-            serializeTreatments(item.treatments)
-          );
+          const isExisting = typeof item.id === 'string'
+            && item.id.startsWith('item:')
+            && existingItems.some(ei => ei.id === item.id);
+          if (isExisting) {
+            jobItemQueries.updateById.run(
+              i + 1,
+              item.qty || null, item.description,
+              item.jobType || null, item.material || null,
+              serializeTreatments(item.treatments),
+              item.id
+            );
+            keptIds.add(item.id);
+          } else {
+            jobItemQueries.create.run(
+              `item:${uuidv4()}`, id, i + 1,
+              item.qty || null, item.description,
+              item.jobType || null, item.material || null,
+              serializeTreatments(item.treatments)
+            );
+          }
+        }
+        for (const ei of existingItems) {
+          if (!keptIds.has(ei.id)) {
+            jobItemQueries.deleteById.run(ei.id);
+          }
         }
       }
 

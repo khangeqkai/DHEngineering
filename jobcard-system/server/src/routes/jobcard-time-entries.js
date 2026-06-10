@@ -23,6 +23,26 @@ function normalizeTime(value) {
   return d.toISOString();
 }
 
+// Resolve a line's position number to its stable id for the given job card, so a
+// manually entered or edited time record links to the line itself (and follows it
+// through later edits), not to a fragile position number. Returns { itemId: null }
+// when no line number was given (a record may legitimately have no line), but
+// returns { error } when a number WAS typed that matches no current line — so a
+// manual record can never silently attach to nothing.
+function resolveItemId(jobcardId, itemNumber) {
+  if (itemNumber === null || itemNumber === undefined || itemNumber === '') {
+    return { itemId: null };
+  }
+  const num = parseInt(itemNumber, 10);
+  const match = isNaN(num)
+    ? undefined
+    : jobItemQueries.getByJobcard.all(jobcardId).find(it => it.item_number === num);
+  if (!match) {
+    return { error: `Item #${itemNumber} does not exist on this job card` };
+  }
+  return { itemId: match.id };
+}
+
 // True when an error is the database rejecting a second open timer for one user
 // (the partial unique index idx_time_entries_one_active).
 function isOpenTimerConflict(e) {
@@ -95,10 +115,12 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
     const { id } = req.params;
     const { itemNumber } = req.body;
 
-    // Verify the item exists on this jobcard
+    // Verify the item exists on this jobcard, and bind the timer to the line's
+    // stable id so it keeps pointing at the same line even if the lines are later
+    // edited or reordered.
     const items = jobItemQueries.getByJobcard.all(id);
-    const itemExists = items.some(item => item.item_number === itemNumber);
-    if (!itemExists) {
+    const targetItem = items.find(item => item.item_number === itemNumber);
+    if (!targetItem) {
       return res.status(400).json({ error: `Item #${itemNumber} does not exist on this job card` });
     }
 
@@ -120,7 +142,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
         entryId,
         id,
         req.user.userId,
-        itemNumber,
+        targetItem.id,
         null, // machineNumber
         null, // qty
         null, // description
@@ -234,6 +256,11 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
       return res.status(400).json({ error: 'Invalid start or finish time' });
     }
 
+    const { itemId, error: itemError } = resolveItemId(id, data.itemNumber);
+    if (itemError) {
+      return res.status(400).json({ error: itemError });
+    }
+
     const entryId = `timeentry:${uuidv4()}`;
 
     try {
@@ -241,7 +268,7 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
         entryId,
         id,
         req.user.userId,
-        data.itemNumber || null,
+        itemId,
         data.machineNumber || null,
         data.qty || null,
         data.description || null,
@@ -310,9 +337,14 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       ? Math.max(0, parseInt(data.scrapQty, 10) || 0)
       : (existing.scrap_qty || 0);
 
+    const { itemId, error: itemError } = resolveItemId(id, data.itemNumber);
+    if (itemError) {
+      return res.status(400).json({ error: itemError });
+    }
+
     try {
       timeEntryQueries.update.run(
-        data.itemNumber || null,
+        itemId,
         data.machineNumber || null,
         data.qty || null,
         data.description || null,
@@ -332,7 +364,6 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     // Build proper diff of changed fields
     const changes = {};
     const fieldsToTrack = [
-      ['item_number', 'itemNumber', data.itemNumber || null],
       ['machine_number', 'machineNumber', data.machineNumber || null],
       ['qty', 'qty', data.qty || null],
       ['description', 'description', data.description || null],
@@ -345,6 +376,13 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       if (normalizeEmpty(newValue) !== normalizeEmpty(existing[dbField])) {
         changes[changeKey] = { from: existing[dbField], to: newValue };
       }
+    }
+
+    // The entry's line is decided by its stable id, not its position number, so only
+    // log a line change when it actually points at a different line. Display the
+    // human-friendly position numbers (old → new) so the activity log stays readable.
+    if (normalizeEmpty(itemId) !== normalizeEmpty(existing.item_id)) {
+      changes.itemNumber = { from: existing.item_number, to: data.itemNumber || null };
     }
 
     if (Object.keys(changes).length > 0) {

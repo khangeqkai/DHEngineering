@@ -2,24 +2,28 @@ const { db } = require('../connection');
 
 // Time entry queries
 const timeEntryQueries = {
+  // item_number is derived from the line's CURRENT position via its stable id, so
+  // it always reflects where the line sits now (or null if the line was removed).
   getByJobcard: db.prepare(`
-    SELECT te.*, u.name as user_name
+    SELECT te.*, u.name as user_name, ji.item_number as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
+    LEFT JOIN job_items ji ON te.item_id = ji.id
     WHERE te.jobcard_id = ?
     ORDER BY te.start_time DESC
   `),
 
   getById: db.prepare(`
-    SELECT te.*, u.name as user_name
+    SELECT te.*, u.name as user_name, ji.item_number as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
+    LEFT JOIN job_items ji ON te.item_id = ji.id
     WHERE te.id = ?
   `),
 
   create: db.prepare(`
     INSERT INTO time_entries (
-      id, jobcard_id, user_id, item_number, machine_number, qty, description,
+      id, jobcard_id, user_id, item_id, machine_number, qty, description,
       start_time, end_time,
       is_special_labour, scrap_qty,
       created_at, updated_at
@@ -29,7 +33,7 @@ const timeEntryQueries = {
 
   update: db.prepare(`
     UPDATE time_entries SET
-      item_number = ?, machine_number = ?, qty = ?, description = ?, scrap_qty = ?,
+      item_id = ?, machine_number = ?, qty = ?, description = ?, scrap_qty = ?,
       start_time = ?, end_time = ?,
       updated_at = datetime('now')
     WHERE id = ?
@@ -37,11 +41,16 @@ const timeEntryQueries = {
 
   delete: db.prepare('DELETE FROM time_entries WHERE id = ?'),
 
+  // How many time entries are logged against a given line — used to block removing
+  // a line that already carries recorded work.
+  countByItemId: db.prepare('SELECT COUNT(*) as count FROM time_entries WHERE item_id = ?'),
+
   getActiveByUser: db.prepare(`
-    SELECT te.*, u.name as user_name, j.job_number
+    SELECT te.*, u.name as user_name, j.job_number, ji.item_number as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
     JOIN jobcards j ON te.jobcard_id = j.id
+    LEFT JOIN job_items ji ON te.item_id = ji.id
     WHERE te.user_id = ? AND te.end_time IS NULL
     ORDER BY te.start_time DESC
     LIMIT 1

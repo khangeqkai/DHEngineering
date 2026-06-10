@@ -132,7 +132,16 @@ const jobItemQueries = {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `),
 
-  deleteByJobcard: db.prepare('DELETE FROM job_items WHERE jobcard_id = ?')
+  // Update a line in place by its stable id, so the line keeps its identity (and the
+  // recorded work pointing at it) across edits and reorders.
+  updateById: db.prepare(`
+    UPDATE job_items SET
+      item_number = ?, qty = ?, description = ?, job_type = ?, material = ?, treatments = ?,
+      updated_at = datetime('now')
+    WHERE id = ?
+  `),
+
+  deleteById: db.prepare('DELETE FROM job_items WHERE id = ?')
 };
 
 // Job assignees queries

@@ -269,7 +269,7 @@ function searchTime(req, res, isAdmin) {
 
   if (q) {
     const like = `%${q.trim()}%`;
-    conditions.push('(u.name LIKE ? OR te.description LIKE ? OR te.item_number LIKE ? OR te.machine_number LIKE ?)');
+    conditions.push('(u.name LIKE ? OR te.description LIKE ? OR ji.item_number LIKE ? OR te.machine_number LIKE ?)');
     params.push(like, like, like, like);
   }
   if (workerId) { conditions.push('te.user_id = ?'); params.push(workerId); }
@@ -279,7 +279,7 @@ function searchTime(req, res, isAdmin) {
   if (dateFrom) { conditions.push('te.start_time >= ?'); params.push(dateFrom); }
   if (dateTo) { conditions.push('te.start_time <= ?'); params.push(dateTo + 'T23:59:59'); }
 
-  const from = 'FROM time_entries te JOIN users u ON te.user_id = u.id JOIN jobcards j ON te.jobcard_id = j.id';
+  const from = 'FROM time_entries te JOIN users u ON te.user_id = u.id JOIN jobcards j ON te.jobcard_id = j.id LEFT JOIN job_items ji ON te.item_id = ji.id';
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const total = db.prepare(`SELECT COUNT(*) as count ${from} ${where}`).get(...params).count;
@@ -289,7 +289,7 @@ function searchTime(req, res, isAdmin) {
 
   const offset = (page - 1) * PAGE_SIZE;
   const rows = db.prepare(
-    `SELECT te.*, u.name as user_name, j.job_number, CASE WHEN te.end_time IS NOT NULL THEN (julianday(te.end_time) - julianday(te.start_time)) * 24 ELSE NULL END as duration_hours ${from} ${where} ORDER BY te.start_time DESC LIMIT ? OFFSET ?`
+    `SELECT te.*, u.name as user_name, j.job_number, ji.item_number as item_number, CASE WHEN te.end_time IS NOT NULL THEN (julianday(te.end_time) - julianday(te.start_time)) * 24 ELSE NULL END as duration_hours ${from} ${where} ORDER BY te.start_time DESC LIMIT ? OFFSET ?`
   ).all(...params, PAGE_SIZE, offset);
 
   res.json({

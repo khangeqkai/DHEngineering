@@ -158,7 +158,9 @@ db.exec(`
     id TEXT PRIMARY KEY,
     jobcard_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
-    item_number INTEGER,
+    -- Recorded work points to a line by its stable id, not its position number,
+    -- so editing/reordering a job's lines never moves the work onto another line.
+    item_id TEXT,
     machine_number TEXT,
     qty TEXT,
     description TEXT,
@@ -169,7 +171,8 @@ db.exec(`
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (item_id) REFERENCES job_items(id) ON DELETE SET NULL
   );
 
   -- Job costings (admin only)
@@ -344,6 +347,7 @@ const migrations = [
   { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
   { table: 'time_entries', column: 'is_special_labour', type: 'INTEGER DEFAULT 0' },
   { table: 'time_entries', column: 'scrap_qty', type: 'INTEGER DEFAULT 0' },
+  { table: 'time_entries', column: 'item_id', type: 'TEXT' },
   { table: 'job_items', column: 'material', type: 'TEXT' },
   { table: 'job_items', column: 'job_type', type: 'TEXT' },
   { table: 'users', column: 'jobcard_column_order', type: 'TEXT' },

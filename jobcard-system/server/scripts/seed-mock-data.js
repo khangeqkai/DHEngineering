@@ -186,7 +186,7 @@ const insertJobcard = db.prepare(`INSERT INTO jobcards (
 const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
 const insertNote = db.prepare('INSERT INTO job_notes (id, jobcard_id, user_id, user_name, text, created_at) VALUES (?, ?, ?, ?, ?, ?)');
-const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, user_id, item_number, machine_number, qty, description, start_time, end_time, is_special_labour) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, user_id, item_id, machine_number, qty, description, start_time, end_time, is_special_labour) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
 const workers = users.filter(u => u.role === 'user'); // 0=sipho, 1=thabo, 2=pieter, 3=mandla, 4=johan
 const now = new Date();
@@ -481,8 +481,13 @@ const createJobs = db.transaction(() => {
       archived, invoicedDate
     );
 
+    // Remember each line's id by its position number, so time entries can link to
+    // the line itself rather than its fragile position number.
+    const itemIdByNumber = {};
     s.items.forEach((item, idx) => {
-      insertItem.run(uid('item'), jobId, idx + 1, item.qty, item.desc, item.jobType, item.material, buildTreatments(item.treatment));
+      const itemId = uid('item');
+      itemIdByNumber[idx + 1] = itemId;
+      insertItem.run(itemId, jobId, idx + 1, item.qty, item.desc, item.jobType, item.material, buildTreatments(item.treatment));
     });
 
     for (const wIdx of s.assignees) {
@@ -506,7 +511,7 @@ const createJobs = db.transaction(() => {
       }
       insertTimeEntry.run(
         uid('timeentry'), jobId, workers[e.worker].id,
-        e.item, e.machine, e.qty, e.desc,
+        itemIdByNumber[parseInt(e.item, 10)] || null, e.machine, e.qty, e.desc,
         start.toISOString(), endIso,
         e.special ? 1 : 0
       );
