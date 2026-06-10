@@ -130,7 +130,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **After:** Admins can record a quote reference, employees can see it, and the search
   filter and quality-form auto-fill finally have a value to work with.
 
-### 8. Housekeeping — small waste and dead code — ⬜
+### 8. Housekeeping — small waste and dead code — ✅
 - **Problem:** A handful of minor inefficiencies and leftovers: opening any job fetches
   its three file folders straight away just to show small count badges, even if no one
   opens the files menu; the camera preview can keep checking forever on a device that
