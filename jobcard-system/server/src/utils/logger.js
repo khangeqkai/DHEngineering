@@ -46,15 +46,6 @@ if (isDevelopment) {
 const logger = pino(options, transport ? pino.transport(transport) : undefined);
 
 /**
- * Create a child logger with additional context
- * Useful for request-scoped logging
- *
- * @param {Object} context - Additional context to include in logs
- * @returns {Object} Child logger instance
- */
-logger.child = logger.child.bind(logger);
-
-/**
  * Express request logging middleware
  * Logs each incoming request with method, URL, and response time
  */

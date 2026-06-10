@@ -60,10 +60,6 @@ export function useJobFiles(jobcardId) {
     await Promise.all(CATEGORIES.map(refreshCount));
   }, [jobcardId, refreshCount]);
 
-  useEffect(() => {
-    refreshAllCounts();
-  }, [refreshAllCounts]);
-
   const loadThumbnails = useCallback(async (fileList, category) => {
     const imageFiles = (fileList || []).filter(f => f.mimeType?.startsWith('image/'));
     if (imageFiles.length === 0) return;

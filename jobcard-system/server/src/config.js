@@ -49,11 +49,6 @@ module.exports = {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d'
   },
 
-  // Database settings
-  db: {
-    path: path.join(__dirname, '..', '..', 'data', 'db')
-  },
-
   // Hardware settings
   hardware: {
     // Default printer (can be overridden per-machine)

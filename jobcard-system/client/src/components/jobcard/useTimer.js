@@ -82,28 +82,6 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     return () => clearInterval(poll);
   }, [activeTimer, jobcardId]);
 
-  const startTimer = useCallback(async (itemNumber) => {
-    if (!Number.isInteger(itemNumber) || itemNumber < 1) {
-      toast.error('Pick an item to start the timer');
-      return;
-    }
-    setLoading(true);
-    try {
-      const result = await api.startTimer(jobcardId, itemNumber);
-      setActiveTimer({
-        id: result.id,
-        jobcardId: result.jobcardId,
-        itemNumber: result.itemNumber,
-        startTime: result.startTime
-      });
-      toast.success(`Timer started on item #${itemNumber}`);
-    } catch (err) {
-      toast.error(err.message || 'Failed to start timer');
-    } finally {
-      setLoading(false);
-    }
-  }, [jobcardId]);
-
   const startTimerWithConflictCheck = useCallback(async (itemNumber, showConfirm) => {
     if (!Number.isInteger(itemNumber) || itemNumber < 1) {
       toast.error('Pick an item to start the timer');
@@ -322,7 +300,6 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     stoppedEntry,
     stoppedEntryJobCard,
     entryForm,
-    startTimer,
     startTimerWithConflictCheck,
     stopTimer,
     handleEntryFieldChange,

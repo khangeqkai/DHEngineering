@@ -31,10 +31,21 @@ export function useCamera() {
   useEffect(() => {
     if (cameraActive && streamRef.current && videoRef.current) {
       videoRef.current.srcObject = streamRef.current;
+      // Poll until the first frame arrives, but give up after ~10s so a stalled
+      // device doesn't keep the check running forever — surface the error UI instead.
+      let attempts = 0;
       const checkVideo = setInterval(() => {
         if (videoRef.current?.videoWidth > 0) {
           setCameraReady(true);
           clearInterval(checkVideo);
+        } else if (++attempts >= 100) {
+          clearInterval(checkVideo);
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+          }
+          setCameraActive(false);
+          setCameraError('The camera did not start in time. Try again.');
         }
       }, 100);
       return () => clearInterval(checkVideo);

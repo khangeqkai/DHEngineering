@@ -13,19 +13,6 @@ const {
 function runMigrations() {
   logger.info('Running migrations...');
 
-  // Get existing columns in jobcards table
-  const tableInfo = db.prepare("PRAGMA table_info(jobcards)").all();
-  const existingColumns = tableInfo.map(col => col.name);
-
-  // Migration: Add contact override fields to jobcards
-  const contactColumns = ['contact_name', 'company_name', 'contact_phone', 'contact_email'];
-  for (const col of contactColumns) {
-    if (!existingColumns.includes(col)) {
-      logger.info({ column: col }, 'Adding column to jobcards');
-      db.exec(`ALTER TABLE jobcards ADD COLUMN ${col} TEXT`);
-    }
-  }
-
   // One-shot wipe of legacy time_entries (Task 6 — per-item timer rewrite).
   // CSV item_number rows are no longer supported; rather than splitting them,
   // we wipe and start fresh per the project's "no backward compat" rule.

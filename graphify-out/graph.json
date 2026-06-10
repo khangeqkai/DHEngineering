@@ -3679,7 +3679,7 @@
       "label": "checkInterruptedRestore()",
       "file_type": "code",
       "source_file": "server/src/db/init.js",
-      "source_location": "L46",
+      "source_location": "L33",
       "id": "db_init_checkinterruptedrestore",
       "community": 11,
       "norm_label": "checkinterruptedrestore()"
@@ -3688,7 +3688,7 @@
       "label": "initializeDatabase()",
       "file_type": "code",
       "source_file": "server/src/db/init.js",
-      "source_location": "L64",
+      "source_location": "L51",
       "id": "db_init_initializedatabase",
       "community": 11,
       "norm_label": "initializedatabase()"
@@ -4813,7 +4813,7 @@
       "label": "requestLogger()",
       "file_type": "code",
       "source_file": "server/src/utils/logger.js",
-      "source_location": "L61",
+      "source_location": "L52",
       "id": "utils_logger_requestlogger",
       "community": 57,
       "norm_label": "requestlogger()"

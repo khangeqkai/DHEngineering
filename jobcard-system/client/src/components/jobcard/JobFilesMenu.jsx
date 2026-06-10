@@ -24,6 +24,16 @@ export default function JobFilesMenu({ jobcardId, jobNumber }) {
   const camera = useCamera();
   const files = useJobFiles(jobcardId);
 
+  // Fetch the folder count badges lazily — only the first time the menu is opened,
+  // so simply opening a job card doesn't fire three file-list requests up front.
+  const countsLoadedRef = useRef(false);
+  useEffect(() => {
+    if (menuOpen && !countsLoadedRef.current) {
+      countsLoadedRef.current = true;
+      files.refreshAllCounts();
+    }
+  }, [menuOpen, files]);
+
   // Click outside / Escape closes the dropdown menu (not the overlay)
   useEffect(() => {
     if (!menuOpen) return;
