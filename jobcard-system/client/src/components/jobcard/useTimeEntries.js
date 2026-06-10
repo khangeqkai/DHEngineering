@@ -40,6 +40,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       itemNumber: entry.itemNumber || '',
       machineNumber: entry.machineNumber || '',
       qty: entry.qty || '',
+      scrapQty: entry.scrapQty ?? '',
       description: entry.description || '',
       startTime: isoToLocalInput(entry.startTime),
       endTime: isoToLocalInput(entry.endTime)

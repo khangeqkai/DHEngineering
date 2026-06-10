@@ -94,6 +94,10 @@ export default function ItemsTab({
                 <label>Qty</label>
                 <input type="text" name="qty" value={timeEntryForm.qty} onChange={handleTimeEntryChange} />
               </div>
+              <div className="form-group">
+                <label>Scrap</label>
+                <input type="text" inputMode="numeric" name="scrapQty" value={timeEntryForm.scrapQty} onChange={handleTimeEntryChange} />
+              </div>
             </div>
 
             <div className="form-group">

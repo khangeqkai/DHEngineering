@@ -127,6 +127,7 @@ export function getDefaultTimeEntryForm() {
     itemNumber: '',
     machineNumber: '',
     qty: '',
+    scrapQty: '',
     description: '',
     startTime: '',
     endTime: ''

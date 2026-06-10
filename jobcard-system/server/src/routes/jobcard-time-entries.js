@@ -147,7 +147,8 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
         null, // qty
         null, // description
         startTime,
-        null  // endTime
+        null, // endTime
+        0     // scrapQty — recorded by the worker when they stop the timer
       );
     });
 
@@ -263,6 +264,10 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
 
     const entryId = `timeentry:${uuidv4()}`;
 
+    // Scrap is normally entered by the worker's stop-timer form, but an admin adding
+    // a block by hand can record it too. Clamp blank/garbage to 0, same as the edit route.
+    const scrapQty = Math.max(0, parseInt(data.scrapQty, 10) || 0);
+
     try {
       timeEntryQueries.create.run(
         entryId,
@@ -273,7 +278,8 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
         data.qty || null,
         data.description || null,
         startTime,
-        endTime
+        endTime,
+        scrapQty
       );
     } catch (e) {
       // A manual block with no finish time counts as an open timer; if this admin
@@ -286,6 +292,7 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
       timeEntryId: { from: null, to: entryId },
       machineNumber: { from: null, to: data.machineNumber || null },
       description: { from: null, to: data.description || null },
+      scrapQty: { from: null, to: scrapQty },
       startTime: { from: null, to: startTime }
     });
 

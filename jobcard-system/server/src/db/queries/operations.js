@@ -28,7 +28,7 @@ const timeEntryQueries = {
       is_special_labour, scrap_qty,
       created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, datetime('now'), datetime('now'))
   `),
 
   update: db.prepare(`
