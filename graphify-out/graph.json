@@ -1258,7 +1258,7 @@
       "label": "getDefaultCostingForm()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
-      "source_location": "L136",
+      "source_location": "L137",
       "id": "jobcard_mappers_getdefaultcostingform",
       "community": 4,
       "norm_label": "getdefaultcostingform()"
@@ -4426,7 +4426,7 @@
       "label": "normalizeEmpty()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-time-entries.js",
-      "source_location": "L374",
+      "source_location": "L381",
       "id": "routes_jobcard_time_entries_normalizeempty",
       "community": 21,
       "norm_label": "normalizeempty()"
@@ -9875,9 +9875,9 @@
       "source_file": "client/src/services/api.js",
       "source_location": "L225",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_api_apiservice",
-      "target": "services_api_apiservice_archivemachine",
-      "confidence_score": 1.0
+      "target": "services_api_apiservice_archivemachine"
     },
     {
       "relation": "method",
@@ -9885,9 +9885,9 @@
       "source_file": "client/src/services/api.js",
       "source_location": "L226",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_api_apiservice",
-      "target": "services_api_apiservice_activatemachine",
-      "confidence_score": 1.0
+      "target": "services_api_apiservice_activatemachine"
     },
     {
       "relation": "method",
@@ -11064,9 +11064,9 @@
       "source_file": "client/src/services/api.js",
       "source_location": "L226",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_api_apiservice_activatemachine",
-      "target": "services_api_apiservice_post",
-      "confidence_score": 1.0
+      "target": "services_api_apiservice_post"
     },
     {
       "relation": "calls",
@@ -11460,9 +11460,9 @@
       "source_file": "client/src/services/api.js",
       "source_location": "L225",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_api_apiservice_archivemachine",
-      "target": "services_api_apiservice_del",
-      "confidence_score": 1.0
+      "target": "services_api_apiservice_del"
     },
     {
       "relation": "calls",
