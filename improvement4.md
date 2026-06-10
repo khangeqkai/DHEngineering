@@ -94,7 +94,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **After:** Every saved option has a usable internal key, and symbol-only names are
   refused up front with a helpful message.
 
-### 5. Admins can't fix a scrap count after a worker submits it — ⬜
+### 5. Admins can't fix a scrap count after a worker submits it — ✅
 - **Problem:** When a worker stops their timer they enter how many pieces were scrapped.
   If they mistype it, there's no way to correct it: the admin's edit form for a time
   entry has no scrap field at all.

@@ -338,8 +338,9 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       return res.status(400).json({ error: 'Invalid start or finish time' });
     }
 
-    // Scrap is only set by the worker's stop-timer form. The admin manual edit
-    // form omits it, so preserve the existing value when no scrap was sent.
+    // Scrap comes from the worker's stop-timer form or the admin's time-entry
+    // form (which has a Scrap field when editing too). If an update omits it
+    // entirely, keep the existing value.
     const scrapQty = data.scrapQty !== undefined
       ? Math.max(0, parseInt(data.scrapQty, 10) || 0)
       : (existing.scrap_qty || 0);
