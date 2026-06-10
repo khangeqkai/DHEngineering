@@ -12,6 +12,8 @@ process.env.DATA_DIR = path.join(__dirname, '..', '..', 'data');
 const { db } = require('../src/db/connection');
 require('../src/db/schema'); // run migrations so new columns exist before prepare
 const { settingsQueries } = require('../src/db/queries/support');
+const { seedHistory } = require('./seed-history');
+const { buildScenarios } = require('./seed-scenarios');
 
 const uid = (prefix) => `${prefix}:${uuidv4()}`;
 
@@ -163,12 +165,12 @@ console.log('Settings configured (prefix: DH-, starting: 00001).');
 // ─── QA LEVELS ───
 console.log('Creating QA levels...');
 const qaLevels = [
-  { id: uid('qalevel'), name: 'Standard', nameLower: 'standard', isActive: 1 },
-  { id: uid('qalevel'), name: 'Critical', nameLower: 'critical', isActive: 1 },
+  { id: uid('qalevel'), name: 'Standard', nameLower: 'standard', isActive: 1, requireScannedForms: 0 },
+  { id: uid('qalevel'), name: 'Critical', nameLower: 'critical', isActive: 1, requireScannedForms: 1 },
 ];
-const insertQALevel = db.prepare('INSERT INTO qa_levels (id, name, name_lower, is_active) VALUES (?, ?, ?, ?)');
+const insertQALevel = db.prepare('INSERT INTO qa_levels (id, name, name_lower, is_active, require_scanned_forms) VALUES (?, ?, ?, ?, ?)');
 for (const q of qaLevels) {
-  insertQALevel.run(q.id, q.name, q.nameLower, q.isActive);
+  insertQALevel.run(q.id, q.name, q.nameLower, q.isActive, q.requireScannedForms);
 }
 console.log(`Created ${qaLevels.length} QA levels.`);
 
@@ -179,14 +181,23 @@ const insertJobcard = db.prepare(`INSERT INTO jobcards (
   id, job_number, card_type, status, contact_id, contact_name, company_name,
   contact_phone, contact_email,
   quality_level, qa_level_id, priority, drawings_type, customer_property,
+  quote_reference, po_number,
   description, due_date, is_repeat_job, created_by, updated_by, created_at,
   archived, invoiced_date
-) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
 const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
 const insertNote = db.prepare('INSERT INTO job_notes (id, jobcard_id, user_id, user_name, text, created_at) VALUES (?, ?, ?, ?, ?, ?)');
-const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, user_id, item_id, machine_number, qty, description, start_time, end_time, is_special_labour) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, user_id, item_id, machine_number, qty, scrap_qty, description, start_time, end_time, is_special_labour) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+const insertCosting = db.prepare(`INSERT INTO job_costings (
+  id, jobcard_id,
+  labour_hours, labour_rate, labour_total,
+  labour_special_hours, labour_special_rate, labour_special_total,
+  materials_cost, materials_profit_percent, materials_total,
+  subcontractor_cost, subcontractor_profit_percent, subcontractor_total,
+  grand_total
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
 const workers = users.filter(u => u.role === 'user'); // 0=sipho, 1=thabo, 2=pieter, 3=mandla, 4=johan
 const now = new Date();
@@ -219,240 +230,12 @@ function buildTreatments(treatmentStr) {
   }));
 }
 
-// 9 scenarios covering the full status progression with distinct line-item states.
-const scenarios = [
-  // 1 — Fresh quote: no assignees, no notes, no time entries (empty-state rendering).
-  {
-    description: 'Quote: manufacture replacement gearbox housing assembly per DWG GB-2024-117',
-    status: 'QUOTE',
-    priority: 'MEDIUM',
-    contact: contacts[0], // Sasol
-    qaLevel: qaLevels[0],
-    drawingsType: 'CUSTOMER_CAD',
-    customerProperty: 'NA',
-    daysAgoCreated: 2,
-    daysFromNowDue: 21,
-    items: [
-      { qty: '1', desc: 'Gearbox housing CI per DWG GB-2024-117', jobType: 'MANUFACTURE', material: 'CAST_IRON', treatment: null },
-      { qty: '2', desc: 'Bearing cap to match housing', jobType: 'MANUFACTURE', material: 'CAST_IRON', treatment: null },
-      { qty: '4', desc: 'Custom socket head bolt M16x80 grade 12.9', jobType: 'MANUFACTURE', material: 'STEEL', treatment: 'HEAT_TREATMENT' },
-    ],
-    assignees: [],
-    notes: [],
-    timeEntries: [],
-  },
+// 9 scenarios covering the full status progression — see seed-scenarios.js.
+const scenarios = buildScenarios(contacts, qaLevels);
 
-  // 2 — OPEN: job approved and assigned, ready to start but zero work logged yet (0/qty all items).
-  {
-    description: 'Manufacture flange adapters for new steam line — drawing approved, scheduled for Monday',
-    status: 'OPEN',
-    priority: 'MEDIUM',
-    contact: contacts[8], // Denel
-    qaLevel: qaLevels[0],
-    drawingsType: 'CUSTOMER_CAD',
-    customerProperty: 'NA',
-    daysAgoCreated: 1,
-    daysFromNowDue: 14,
-    items: [
-      { qty: '6', desc: 'Flange adapter 4" 150# 316SS', jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null },
-      { qty: '6', desc: 'Reducing bush 4"-3" mating',   jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null },
-    ],
-    assignees: [0, 3],
-    notes: [
-      { worker: 0, text: 'Drawing approved this morning. Setting up tooling list, will start first thing Monday.', daysAgo: 0 },
-    ],
-    timeEntries: [],
-  },
-
-  // 3 — AWAITING_MATERIAL: assigned but waiting on bar stock from supplier.
-  {
-    description: 'Manufacture replacement bearing housings — awaiting EN24T bar from supplier',
-    status: 'AWAITING_MATERIAL',
-    priority: 'MEDIUM',
-    contact: contacts[4], // Anglo American Platinum
-    qaLevel: qaLevels[0],
-    drawingsType: 'CUSTOMER_CAD',
-    customerProperty: 'NA',
-    daysAgoCreated: 6,
-    daysFromNowDue: 18,
-    items: [
-      { qty: '4', desc: 'Bearing housing EN24T Ø150x80mm',     jobType: 'MANUFACTURE', material: 'STEEL',           treatment: 'HEAT_TREATMENT' },
-      { qty: '8', desc: 'Bearing locking ring 316SS Ø160x10mm', jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null },
-    ],
-    assignees: [1, 2],
-    notes: [
-      { worker: 1, text: 'EN24T bar ordered from Bohler. Expected 5 working days.', daysAgo: 5 },
-    ],
-    timeEntries: [],
-  },
-
-  // 4 — Mixed per-item progress: item1 fully done, item2 partial, item3 untouched.
-  {
-    description: 'Manufacture pump impellers, shafts, and couplings — cooling water plant batch',
-    status: 'IN_PROGRESS',
-    priority: 'HIGH',
-    contact: contacts[3], // Eskom
-    qaLevel: qaLevels[1], // Critical
-    drawingsType: 'CUSTOMER_CAD',
-    customerProperty: 'MATERIAL_SUPPLIED',
-    daysAgoCreated: 12,
-    daysFromNowDue: 7,
-    items: [
-      { qty: '4',  desc: 'Pump impeller Ø180mm CF8M cast',      jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null },
-      { qty: '6',  desc: 'Pump shaft EN24T Ø50x350mm',           jobType: 'MANUFACTURE', material: 'STEEL',           treatment: 'HEAT_TREATMENT' },
-      { qty: '12', desc: 'Coupling adapter PB1 Ø80x50mm',        jobType: 'MANUFACTURE', material: 'BRONZE',          treatment: null },
-    ],
-    assignees: [0, 1, 2],
-    notes: [
-      { worker: 0, text: 'Material from Eskom received. Starting impellers on CNC-03.', daysAgo: 10 },
-      { worker: 1, text: 'All 4 impellers machined. First-off inspection passed.',       daysAgo: 6 },
-      { worker: 2, text: 'Started shafts on LATHE-01. Heat treatment booked for next week.', daysAgo: 4 },
-    ],
-    timeEntries: [
-      // Item 1 → 4/4 DONE
-      { worker: 0, item: '1', machine: 'CNC-03',   qty: '2', desc: 'Pump impeller Ø180mm CF8M cast', daysAgo: 10, startHour: 8, hours: 5 },
-      { worker: 1, item: '1', machine: 'CNC-03',   qty: '2', desc: 'Pump impeller Ø180mm CF8M cast', daysAgo: 9,  startHour: 7, hours: 6 },
-      // Item 2 → 3/6 PARTIAL
-      { worker: 2, item: '2', machine: 'LATHE-01', qty: '2', desc: 'Pump shaft EN24T Ø50x350mm',     daysAgo: 4,  startHour: 8,  hours: 4 },
-      { worker: 2, item: '2', machine: 'LATHE-01', qty: '1', desc: 'Pump shaft EN24T Ø50x350mm',     daysAgo: 3,  startHour: 13, hours: 3 },
-      // Item 3 → untouched
-    ],
-  },
-
-  // 5 — Active timer running right now (no end_time) on item 2 while item 1 is done.
-  {
-    description: 'Emergency repair: cracked exhaust manifold — weld crack and re-machine flange face',
-    status: 'IN_PROGRESS',
-    priority: 'HIGH',
-    contact: contacts[6], // ArcelorMittal
-    qaLevel: qaLevels[0],
-    drawingsType: 'CUSTOMER_SKETCH',
-    customerProperty: 'PART_FOR_REPAIR',
-    daysAgoCreated: 2,
-    daysFromNowDue: 1,
-    items: [
-      { qty: '1', desc: 'Manifold crack repair — TIG weld preheat 250°C', jobType: 'REPAIR', material: 'CAST_IRON', treatment: null },
-      { qty: '1', desc: 'Re-machine flange face flat to 0.05mm',          jobType: 'MODIFY', material: 'CAST_IRON', treatment: null },
-    ],
-    assignees: [3, 4],
-    notes: [
-      { worker: 3, text: 'Weld done. Cooled slowly under blanket — no re-cracking.', daysAgo: 1 },
-      { worker: 4, text: 'Setup on Bridgeport. Indicating face now.',                 daysAgo: 0 },
-    ],
-    timeEntries: [
-      { worker: 3, item: '1', machine: 'WELD-01', qty: '1', desc: 'Manifold crack repair — TIG weld preheat 250°C', daysAgo: 1, startHour: 9, hours: 4 },
-      // Active — started 90 minutes ago, no end_time.
-      { worker: 4, item: '2', machine: 'MILL-01', qty: '0', desc: 'Re-machine flange face',                          active: true, startMinutesAgo: 90 },
-    ],
-  },
-
-  // 6 — Two-item job: item 1 fully done, item 2 partial across two workers (5/8).
-  {
-    description: 'Fabricate conveyor mounting brackets and matched locator pins',
-    status: 'IN_PROGRESS',
-    priority: 'MEDIUM',
-    contact: contacts[7], // Transnet
-    qaLevel: qaLevels[0],
-    drawingsType: 'DH_CAD',
-    customerProperty: 'NA',
-    daysAgoCreated: 8,
-    daysFromNowDue: 14,
-    items: [
-      { qty: '8', desc: 'Mounting bracket 150x100x12 MS welded', jobType: 'FABRICATE',   material: 'STEEL', treatment: 'GALVANISE' },
-      { qty: '8', desc: 'Locator pin Ø20m6 x 60mm hardened',     jobType: 'MANUFACTURE', material: 'STEEL', treatment: 'HEAT_TREATMENT' },
-    ],
-    assignees: [0, 4],
-    notes: [
-      { worker: 0, text: 'Welded all brackets in the morning, switched to CNC-02 for pins after lunch.', daysAgo: 5 },
-    ],
-    timeEntries: [
-      // Item 1 → 8/8 DONE
-      { worker: 0, item: '1', machine: 'WELD-01', qty: '8', desc: 'Welded all 8 brackets',              daysAgo: 5, startHour: 7,  hours: 4 },
-      // Item 2 → 3 + 2 = 5/8 PARTIAL
-      { worker: 0, item: '2', machine: 'CNC-02',  qty: '3', desc: 'Turned first 3 locator pins',        daysAgo: 5, startHour: 11, hours: 3 },
-      { worker: 4, item: '2', machine: 'CNC-02',  qty: '2', desc: 'Locator pin Ø20m6 x 60mm hardened',  daysAgo: 3, startHour: 8,  hours: 4 },
-    ],
-  },
-
-  // 7 — TREATMENT: machining done in-house, plates shipped out for galvanising.
-  {
-    description: 'Manufacture wear plates — machined and out at Robor for galvanising',
-    status: 'TREATMENT',
-    priority: 'MEDIUM',
-    contact: contacts[5], // Mondi
-    qaLevel: qaLevels[0],
-    drawingsType: 'DH_CAD',
-    customerProperty: 'NA',
-    daysAgoCreated: 18,
-    daysFromNowDue: 10,
-    items: [
-      { qty: '6', desc: 'Wear plate 400BHN 300x200x25mm drilled', jobType: 'MANUFACTURE', material: 'STEEL', treatment: 'GALVANISE' },
-    ],
-    assignees: [0, 4],
-    notes: [
-      { worker: 0, text: 'All 6 plates profiled and drilled. Ready for galvanising.', daysAgo: 8 },
-      { worker: 4, text: 'Dropped off at Robor. ETA back is 4 working days.',         daysAgo: 6 },
-    ],
-    timeEntries: [
-      // Item 1 → 6/6 machining done; awaiting return from Robor.
-      { worker: 0, item: '1', machine: 'CNC-01',   qty: '3', desc: 'Wear plate — profile cut', daysAgo: 12, startHour: 7, hours: 6 },
-      { worker: 4, item: '1', machine: 'DRILL-01', qty: '3', desc: 'Wear plate — drilling',     daysAgo: 8,  startHour: 8, hours: 5 },
-    ],
-  },
-
-  // 8 — DONE: all items complete, QC signed off, awaiting customer collection / invoice.
-  {
-    description: 'Manufacture coupling adapters — complete, awaiting customer collection',
-    status: 'DONE',
-    priority: 'LOW',
-    contact: contacts[9], // South32
-    qaLevel: qaLevels[0],
-    drawingsType: 'CUSTOMER_CAD',
-    customerProperty: 'NA',
-    daysAgoCreated: 22,
-    daysFromNowDue: 2,
-    items: [
-      { qty: '2', desc: 'Coupling adapter EN8 Ø150x120mm', jobType: 'MANUFACTURE', material: 'STEEL', treatment: null },
-    ],
-    assignees: [2, 3],
-    notes: [
-      { worker: 2, text: 'First adapter complete and inspected.',                       daysAgo: 14 },
-      { worker: 3, text: 'Both adapters done. QC signed off. Ready for collection.',    daysAgo: 5 },
-    ],
-    timeEntries: [
-      { worker: 2, item: '1', machine: 'LATHE-01', qty: '1', desc: 'Coupling adapter EN8 Ø150x120mm', daysAgo: 14, startHour: 8, hours: 6 },
-      { worker: 3, item: '1', machine: 'LATHE-01', qty: '1', desc: 'Coupling adapter EN8 Ø150x120mm', daysAgo: 5,  startHour: 9, hours: 5 },
-    ],
-  },
-
-  // 9 — Fully done + INVOICED (archived) + Saturday special labour entry.
-  {
-    description: 'Chrome plate worn roller shafts — printer plant rush',
-    status: 'INVOICED',
-    priority: 'HIGH',
-    contact: contacts[1], // Sappi
-    qaLevel: qaLevels[0],
-    drawingsType: 'CUSTOMER_SKETCH',
-    customerProperty: 'PART_FOR_REPAIR',
-    daysAgoCreated: 30,
-    daysFromNowDue: -10,
-    invoicedDaysAgo: 12,
-    items: [
-      { qty: '2', desc: 'Roller shaft Ø80mm — strip chrome, re-plate, grind to size', jobType: 'REPAIR', material: 'STEEL', treatment: 'ELECTROPLATE,PRECISION_GRINDING' },
-    ],
-    assignees: [2, 3],
-    notes: [
-      { worker: 2, text: 'Stripped old chrome. Sent to SA Anodisers for re-plating.', daysAgo: 25 },
-      { worker: 3, text: 'Back from platers. Grinding to nominal Ø80h6.',             daysAgo: 18 },
-      { worker: 2, text: 'Both shafts within tolerance. Customer collected.',          daysAgo: 14 },
-    ],
-    timeEntries: [
-      { worker: 2, item: '1', machine: 'LATHE-02', qty: '0', desc: 'Strip old chrome from both shafts',                  daysAgo: 25, startHour: 8, hours: 6 },
-      { worker: 3, item: '1', machine: 'GRIND-01', qty: '0', desc: 'Saturday overtime — pre-grind both shafts before plating', daysAgo: 22, startHour: 7, hours: 8, special: true },
-      { worker: 3, item: '1', machine: 'GRIND-01', qty: '2', desc: 'Roller shaft — final grind to Ø80h6',                daysAgo: 18, startHour: 8, hours: 5 },
-    ],
-  },
-];
+// Collected per-job metadata, handed to the activity-trail generator after all
+// jobs are written so the seeded history matches the data exactly.
+const jobsForHistory = [];
 
 const createJobs = db.transaction(() => {
   let jobNum = 1;
@@ -476,6 +259,7 @@ const createJobs = db.transaction(() => {
       s.contact.phone, s.contact.email,
       s.qaLevel.name.toUpperCase(), s.qaLevel.id, s.priority,
       s.drawingsType, s.customerProperty,
+      s.quoteReference || null, s.poNumber || null,
       s.description, dueDate, 0,
       adminId, adminId, createdAt,
       archived, invoicedDate
@@ -494,10 +278,18 @@ const createJobs = db.transaction(() => {
       insertAssignee.run(uid('assignee'), jobId, workers[wIdx].id);
     }
 
+    const noteHistory = [];
     for (const n of s.notes) {
-      insertNote.run(uid('note'), jobId, workers[n.worker].id, workers[n.worker].name, n.text, makeDate(n.daysAgo, 14, 0).toISOString());
+      const noteAt = makeDate(n.daysAgo, 14, 0).toISOString();
+      insertNote.run(uid('note'), jobId, workers[n.worker].id, workers[n.worker].name, n.text, noteAt);
+      noteHistory.push({ workerId: workers[n.worker].id, workerName: workers[n.worker].name, text: n.text, at: noteAt });
     }
 
+    // Sum completed labour hours (split regular/special) so seeded costing totals
+    // line up with the read endpoint's live recompute.
+    let regularHours = 0;
+    let specialHours = 0;
+    const timerHistory = [];
     for (const e of s.timeEntries) {
       let start, endIso;
       if (e.active) {
@@ -508,14 +300,46 @@ const createJobs = db.transaction(() => {
         const end = new Date(start);
         end.setHours(end.getHours() + e.hours);
         endIso = end.toISOString();
+        if (e.special) specialHours += e.hours; else regularHours += e.hours;
       }
       insertTimeEntry.run(
         uid('timeentry'), jobId, workers[e.worker].id,
-        itemIdByNumber[parseInt(e.item, 10)] || null, e.machine, e.qty, e.desc,
+        itemIdByNumber[parseInt(e.item, 10)] || null, e.machine, e.qty, e.scrap || 0, e.desc,
         start.toISOString(), endIso,
         e.special ? 1 : 0
       );
+      if (endIso) {
+        timerHistory.push({ workerId: workers[e.worker].id, workerName: workers[e.worker].name, desc: e.desc, at: endIso });
+      }
     }
+
+    if (s.costing) {
+      const c = s.costing;
+      const labourRate = c.labourRate || 0;
+      const labourTotal = regularHours * labourRate;
+      const labourSpecialRate = c.labourSpecialRate || 0;
+      const labourSpecialTotal = specialHours * labourSpecialRate;
+      const materialsCost = c.materialsCost || 0;
+      const materialsProfit = c.materialsProfitPercent || 0;
+      const materialsTotal = materialsCost * (1 + materialsProfit / 100);
+      const subcontractorCost = c.subcontractorCost || 0;
+      const subcontractorProfit = c.subcontractorProfitPercent || 0;
+      const subcontractorTotal = subcontractorCost * (1 + subcontractorProfit / 100);
+      const grandTotal = labourTotal + labourSpecialTotal + materialsTotal + subcontractorTotal;
+      insertCosting.run(
+        uid('costing'), jobId,
+        regularHours, labourRate, labourTotal,
+        specialHours, labourSpecialRate, labourSpecialTotal,
+        materialsCost, materialsProfit, materialsTotal,
+        subcontractorCost, subcontractorProfit, subcontractorTotal,
+        grandTotal
+      );
+    }
+
+    jobsForHistory.push({
+      id: jobId, jobNumber, status: s.status, description: s.description,
+      createdAt, invoicedDate, notes: noteHistory, timers: timerHistory,
+    });
   }
 
   settingsQueries.upsert.run('job_number_next', String(jobNum).padStart(5, '0'));
@@ -523,6 +347,16 @@ const createJobs = db.transaction(() => {
 
 createJobs();
 console.log(`Created ${scenarios.length} job cards covering QUOTE → OPEN → AWAITING_MATERIAL → IN_PROGRESS (mixed/active/two-item) → TREATMENT → DONE → INVOICED.`);
+
+// ─── ACTIVITY HISTORY TRAIL ───
+console.log('Generating activity history...');
+const historyRows = seedHistory({
+  db, adminId, adminName: users[0].name,
+  users, contacts, suppliers, machines, qaLevels,
+  jobs: jobsForHistory,
+  setupAt: makeDate(40, 8, 0).toISOString(),
+});
+console.log(`Created ${historyRows} activity log entries.`);
 
 // ─── SUPPLIER SERVICE TAGS ───
 console.log('Linking suppliers to treatment tags...');
@@ -547,6 +381,10 @@ console.log('  - 7 users (admin/1234, jaco/1234, sipho/1234, thabo/1234, pieter/
 console.log('  - 10 contacts (SA industrial companies)');
 console.log('  - 5 suppliers');
 console.log('  - 10 machines');
-console.log('  - 2 QA levels (Standard, Critical)');
+console.log('  - 2 QA levels (Standard, Critical — Critical requires scanned forms)');
 console.log('  - 9 job cards: quote, open, awaiting-material, mixed-progress, active-timer, two-item-progress, treatment, done, invoiced+special');
+console.log('  - Quote references on all jobs; PO numbers on post-quote jobs');
+console.log('  - Scrap pieces recorded on several time entries');
+console.log('  - Pricing on 4 jobs (in-progress, treatment, done, invoiced)');
+console.log('  - Activity history backfilled for setup, jobs, notes, and timers');
 console.log('  - Job numbering: DH-00001 to DH-00009, next: DH-00010');
