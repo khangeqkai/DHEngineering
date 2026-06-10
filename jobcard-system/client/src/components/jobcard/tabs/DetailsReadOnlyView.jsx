@@ -93,6 +93,12 @@ export default function DetailsReadOnlyView({
               <span className="cis-value">{formData.poNumber}</span>
             </div>
           )}
+          {formData.quoteReference && (
+            <div className="cis-item">
+              <span className="cis-label">Quote Ref</span>
+              <span className="cis-value">{formData.quoteReference}</span>
+            </div>
+          )}
           {formData.isRepeatJob && (
             <div className="cis-item">
               <span className="cis-label">Repeat</span>

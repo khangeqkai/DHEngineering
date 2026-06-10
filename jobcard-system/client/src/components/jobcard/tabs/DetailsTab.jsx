@@ -237,6 +237,10 @@ export default function DetailsTab({
             <input type="text" name="poNumber" value={formData.poNumber} onChange={handleChange} />
           </div>
           <div className="form-group">
+            <label>Quote Reference</label>
+            <input type="text" name="quoteReference" value={formData.quoteReference} onChange={handleChange} />
+          </div>
+          <div className="form-group">
             <label>Quality Level</label>
             <select
               name="qaLevelId"

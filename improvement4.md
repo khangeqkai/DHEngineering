@@ -8,7 +8,7 @@ survived that check; the false alarms are listed at the bottom so the record is
 honest about what was looked at.
 
 **Fix order:** Items 1–3 are real, user-facing problems and should be the first
-batch — item 1 in particular can quietly corrupt records, so it leads. Items 4–10
+batch — item 1 in particular can quietly corrupt records, so it leads. Items 4–8
 are smaller — edge cases, accuracy quirks, and housekeeping.
 
 Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
@@ -104,15 +104,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
   can be corrected.
 - **After:** Admins can fix a scrap count that was entered wrong.
 
-### 6. Entering "0 completed" is treated as blank and discarded — ⬜
-- **Problem:** A genuine "0 pieces completed" (for example, a run where everything was
-  scrapped) is treated the same as leaving the field empty, and isn't recorded.
-- **Why it matters:** A real and meaningful result — zero good pieces — is silently lost,
-  which understates what actually happened on the job.
-- **Solution:** Treat a typed-in zero as a real value rather than as "nothing entered."
-- **After:** "0 completed" is recorded as the real outcome it is.
-
-### 7. A quality form that can't be pre-filled is reported as if it filled fine — ⬜
+### 6. A quality form that can't be pre-filled is reported as if it filled fine — ⏸️ (decide later)
 - **Problem:** When a job is given a quality level, its inspection forms are copied into
   the job's folder with the job's details already filled in. If one of those form files is
   faulty and can't be filled, the system quietly copies a **blank** version instead and
@@ -124,17 +116,21 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
   needs filling in by hand, instead of reporting it as a clean success.
 - **After:** Workers are warned when a quality form came out blank rather than pre-filled.
 
-### 8. An unused "quote reference" is carried around but appears nowhere — ⬜
+### 7. An unused "quote reference" is carried around but appears nowhere — ✅
 - **Problem:** Each job quietly carries a "quote reference" value that is loaded and held
   in memory, but it appears on no screen and can never be viewed or edited. It's leftover,
   dead detail.
 - **Why it matters:** No harm today, but it's confusing leftover baggage that suggests a
   feature exists when it doesn't.
-- **Solution:** Either show and let people edit the quote reference, or remove it. Given
-  it's unused, removing it is the cleaner choice.
-- **After:** The job form only carries details that are actually used.
+- **Solution:** It turned out the quote reference is the orphaned twin of the customer's
+  PO number — already saved, already searchable, and already wired to auto-fill onto
+  quality forms; it simply had no box to type it in and nowhere to show. So it was given
+  a proper editable box on the job's Details screen next to the PO number, with a
+  read-only display for employees — mirroring how the PO number already works.
+- **After:** Admins can record a quote reference, employees can see it, and the search
+  filter and quality-form auto-fill finally have a value to work with.
 
-### 9. Housekeeping — small waste and dead code — ⬜
+### 8. Housekeeping — small waste and dead code — ⬜
 - **Problem:** A handful of minor inefficiencies and leftovers: opening any job fetches
   its three file folders straight away just to show small count badges, even if no one
   opens the files menu; the camera preview can keep checking forever on a device that
@@ -183,6 +179,15 @@ They're recorded here so it's clear they were considered.
   operation. It could only re-fire in the unusual case where a restore brought back time
   records without that marker. Worth being aware of, but **no change** unless that
   restore edge case ever proves to be a real risk.
+
+### Entering "0 completed" being treated as blank and discarded — not a bug
+- The concern was that typing "0 pieces completed" (a run where everything was scrapped)
+  would be treated like an empty field and never recorded. On closer look, the completed
+  count is carried as text the whole way from the stop-timer screen to the database, and
+  the text "0" counts as a real, filled-in value at every step — so it is stored correctly,
+  not dropped. The finished entry even shows a dedicated "0 pcs — no output" label for it.
+  If anything, a left-blank field is also recorded as 0, which is the opposite of the
+  worry. **No change.**
 
 ### Saving the assigned-people list hides real errors — not reachable in practice
 - The concern was that the save step for a job's assigned people ignores every kind of
