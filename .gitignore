@@ -5,3 +5,7 @@
 graphify-out/*
 !graphify-out/graph.json
 !graphify-out/GRAPH_REPORT.md
+# graphify graph living inside the jobcard-system project
+jobcard-system/graphify-out/*
+!jobcard-system/graphify-out/graph.json
+!jobcard-system/graphify-out/GRAPH_REPORT.md
