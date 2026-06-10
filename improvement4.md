@@ -41,7 +41,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **After:** Editing a job's lines never silently moves a worker's recorded hours or
   scrap onto a different line.
 
-### 2. Typing a new search while past the first page shows "no results" — ⬜
+### 2. Typing a new search while past the first page shows "no results" — ✅
 - **Problem:** On the search screen, results past the first page are split into pages.
   Every time you change a filter, the screen sensibly jumps back to page 1 — but typing
   a new search in the box does **not**. So if you've paged through to, say, page 3 of one

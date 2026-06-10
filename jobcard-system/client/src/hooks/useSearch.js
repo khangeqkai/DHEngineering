@@ -129,6 +129,14 @@ export default function useSearch() {
     return () => clearTimeout(timer);
   }, [q, scope, JSON.stringify(filters), page, refreshKey]);
 
+  // Typing a new search must jump back to the first page, the same way
+  // changing a filter does — otherwise a fresh search runs against whatever
+  // page you were on and can show a misleading empty results screen.
+  const changeQuery = useCallback((value) => {
+    setQ(value);
+    setPage(1);
+  }, []);
+
   const changeScope = useCallback((newScope, filterOverrides = null) => {
     setScope(newScope);
     setFilters(filterOverrides ? { ...INITIAL_FILTERS, ...filterOverrides } : INITIAL_FILTERS);
@@ -163,7 +171,7 @@ export default function useSearch() {
   });
 
   return {
-    q, setQ, scope, changeScope,
+    q, setQ: changeQuery, scope, changeScope,
     filters, updateFilter, toggleArrayFilter, clearFilters, hasActiveFilters,
     page, setPage, results, loading,
     employees, machines, qaLevels, jobTypes,
