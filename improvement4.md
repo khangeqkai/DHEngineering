@@ -79,7 +79,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 
 ## Smaller fixes
 
-### 4. A tag named only with symbols or emoji breaks silently — ⬜
+### 4. A tag named only with symbols or emoji breaks silently — ✅
 - **Problem:** When an admin adds a new option to a dropdown list (a treatment, material,
   job type, and so on), the system only checks that the name isn't blank. But behind the
   scenes it strips the name down to plain letters and numbers to use as its internal key.

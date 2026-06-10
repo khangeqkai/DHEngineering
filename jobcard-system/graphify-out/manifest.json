@@ -1,0 +1,570 @@
+{
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/run": {
+    "mtime": 1772079501.9233003,
+    "hash": "7cc129a02401d441ca997ba96662dd86"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/vite.config.js": {
+    "mtime": 1772079407.0182087,
+    "hash": "e0604f5cb1290e14ec1e1252753bbc6d"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/electron/main.js": {
+    "mtime": 1772096655.0140917,
+    "hash": "28993f462c78d4875e621dca41daa71b"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/electron/preload.js": {
+    "mtime": 1772096660.5106885,
+    "hash": "ff9204996fd52817c163b92535e26635"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/scripts/rebuild-native.js": {
+    "mtime": 1771931407.7509146,
+    "hash": "d97af334a57a7ae2a34a06793b853d97"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/App.jsx": {
+    "mtime": 1777459187.7215505,
+    "hash": "1a4b025c3d9291bd6480b1e2dcc72f52"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/main.jsx": {
+    "mtime": 1772103493.1962721,
+    "hash": "33f0b0537c3006f5a952a64484829504"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/ActivityLog.jsx": {
+    "mtime": 1780568902.0779636,
+    "hash": "95a95a189315a18497e6302bb4e5a558"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/ContactManagement.jsx": {
+    "mtime": 1780559975.1258361,
+    "hash": "1f946a59bb34706ce5a191abbc2f1260"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/JobCardCalendarView.jsx": {
+    "mtime": 1778127241.3874655,
+    "hash": "2952ba18224b7252d3140016d6900e95"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/JobCardList.constants.js": {
+    "mtime": 1780575301.7111957,
+    "hash": "7d336dbf542b094a545ee2f0b8777559"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/JobCardList.jsx": {
+    "mtime": 1778128065.7397816,
+    "hash": "d4a47e732261ee7059d7133a9bcf70f1"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/JobCardListColumns.jsx": {
+    "mtime": 1778113298.8693964,
+    "hash": "4608ae0ff53cc2815d3316f921eeb781"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/JobCardListDensity.jsx": {
+    "mtime": 1777461852.9890387,
+    "hash": "b7a66924fc902b98a9b5dc560e4a4417"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/JobCardListFilters.jsx": {
+    "mtime": 1778113312.3261707,
+    "hash": "8f791a6dcdaa7b9020850e0f2aeebfe2"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/JobCardListPagination.jsx": {
+    "mtime": 1778113333.6532779,
+    "hash": "0c3a8543a2bc4ca2e943f8ab3d531e2a"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/JobCardListTable.jsx": {
+    "mtime": 1778113324.8753068,
+    "hash": "cec7e2df8de3c354788b53496e43da12"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/Layout.jsx": {
+    "mtime": 1777462672.289574,
+    "hash": "b820ae0f340c54e74e781b080118a1dd"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/Login.jsx": {
+    "mtime": 1774421314.3667226,
+    "hash": "6cdf4e1acf656354fff15e89ff3cfccc"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/QALevelManagement.jsx": {
+    "mtime": 1772079406.5433393,
+    "hash": "14b513d36374f2c75cc93096d6f09f48"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/searchFields.js": {
+    "mtime": 1780986111.4419117,
+    "hash": "ff3d994cf669e0c51b312cbaa8fbddf9"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/SearchPage.jsx": {
+    "mtime": 1780987830.2093506,
+    "hash": "b9ff678711986e035fdd7f2b8a5ec804"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/Settings.jsx": {
+    "mtime": 1780990297.6003187,
+    "hash": "b3c7c0829864fdc5c68c4fb4d3f03d64"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/SupplierManagement.jsx": {
+    "mtime": 1780560012.5593073,
+    "hash": "742cf35a568e463fc3c3718164e15ce1"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/TagManagement.jsx": {
+    "mtime": 1781080429.0406027,
+    "hash": "e11d1f4b7cf99780c2ead46bc64e0e2c"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/UserManagement.jsx": {
+    "mtime": 1780560040.6400774,
+    "hash": "fe684bcb878a6e448e6b5ada60da6f3d"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/BottomSheet.jsx": {
+    "mtime": 1780551714.7957602,
+    "hash": "24542b6481b64fb3c635ab9efa92aa72"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/CalendarPicker.jsx": {
+    "mtime": 1774348636.1209586,
+    "hash": "398f39f8604ff1fcf451eca57eefce69"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/ClickSpark.jsx": {
+    "mtime": 1774421260.5753043,
+    "hash": "c8896c78959851e3b971a25562c088dc"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/ConfirmDialog.jsx": {
+    "mtime": 1780551738.5632324,
+    "hash": "8913749055c3f043f9039f9c75f4bcd6"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/DataTable.jsx": {
+    "mtime": 1772079406.6056426,
+    "hash": "3dd750cf4d63fef3feee19c24153c20e"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/EmptyState.jsx": {
+    "mtime": 1772079406.6284134,
+    "hash": "ad9e67259c43ec78f25f4d2af32afc01"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/EntityActivityLog.jsx": {
+    "mtime": 1780568910.927468,
+    "hash": "289a6501fc466cf912eecc571e531f26"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/ExportButton.jsx": {
+    "mtime": 1772079406.661351,
+    "hash": "437dfa67b62e2f39fd5b4cfe8c1db271"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/GradientText.jsx": {
+    "mtime": 1774413778.2759068,
+    "hash": "264dd07913ee0cfc2113fb2b9d6197b3"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/InactivityWarningModal.jsx": {
+    "mtime": 1772079406.671455,
+    "hash": "11ffe23acc119061358ac48b90afb727"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/modalStack.js": {
+    "mtime": 1780551685.0265744,
+    "hash": "a5fe944f2c49217c1b1a0eba92636bde"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/PageHeader.jsx": {
+    "mtime": 1774415632.6491785,
+    "hash": "78d723935c7f1a95a5be313ee54f0bc2"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/SearchableSupplierSelect.jsx": {
+    "mtime": 1774348634.2878854,
+    "hash": "6b0b858746aa1936505034bc6cf20eb7"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/ShinyText.jsx": {
+    "mtime": 1774413772.1351657,
+    "hash": "91d576728290e7563e105f76f3c4f948"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/ToggleTiles.jsx": {
+    "mtime": 1781001148.3745735,
+    "hash": "5e451050d81c7d893953aa5f7b717c84"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/common/Waves.jsx": {
+    "mtime": 1777463040.7779553,
+    "hash": "d5f3580450c32680b8577567c14db318"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/constants.js": {
+    "mtime": 1774353336.780733,
+    "hash": "2e3bb873d0c99fd5124a826678ed4c1f"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/JobCardModal.jsx": {
+    "mtime": 1781075329.7092898,
+    "hash": "9563dd3515361aece966eadc1e7627fc"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/jobCardValidation.js": {
+    "mtime": 1780553825.5713265,
+    "hash": "e7e6d8e58ec51146a8331e9198b41237"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/JobFilesMenu.jsx": {
+    "mtime": 1780556906.629951,
+    "hash": "4ef38bf02f5c10360c4497044758aca5"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/JobIdentityStrip.jsx": {
+    "mtime": 1780575326.7249303,
+    "hash": "62f09a4a7371f58c2549c828d4b074eb"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/LineItemTimerButton.jsx": {
+    "mtime": 1778063175.777204,
+    "hash": "5d915c50829ffeeea2b49ff0b2216e6f"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/mappers.js": {
+    "mtime": 1780997579.6383832,
+    "hash": "2781f86c12d7f2a513d8057041b15f46"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/StopTimerForm.jsx": {
+    "mtime": 1781000112.809546,
+    "hash": "2cfa1c2ae06f85436d3c8b52619ea076"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/useActivityLog.js": {
+    "mtime": 1772079406.8929415,
+    "hash": "ba3902813f28b3e057f97ff91f8009c3"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/useCamera.js": {
+    "mtime": 1780568865.9225917,
+    "hash": "75f3fe12fb2ec5bb5db4d94f4ab41aa6"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/useContactSearch.js": {
+    "mtime": 1774427499.9438758,
+    "hash": "65eedffdd72c0261494ca966da136bc9"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/useCosting.js": {
+    "mtime": 1774428855.4751127,
+    "hash": "f05d3bd0a7f21a24c6e8f94e8d9d5425"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/useJobCardForm.js": {
+    "mtime": 1778108707.7600193,
+    "hash": "d72d4502ab25d2c2e41d3c0bb1c90fc8"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/useJobFiles.js": {
+    "mtime": 1780557232.4835222,
+    "hash": "6b0e27bbd66dc8813332d06935b6279b"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/useJobNotes.js": {
+    "mtime": 1780553782.7640443,
+    "hash": "3d30d074cf79d2bb059984813bbf86aa"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/useJobSearch.js": {
+    "mtime": 1778136152.4484231,
+    "hash": "1c04acd378836c8c4d78061ef8a1dbb9"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/useTimeEntries.js": {
+    "mtime": 1780569819.0227273,
+    "hash": "b22231bf0f450c61cd351c517174e04c"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/useTimer.js": {
+    "mtime": 1780998940.7288222,
+    "hash": "fbd602ba7e27882dfd1f69c6000b6863"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/ZoomToggle.jsx": {
+    "mtime": 1777461245.7384965,
+    "hash": "9664786f9ab52d1b1d38808ce29a93da"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/tabs/ActivityLogTab.jsx": {
+    "mtime": 1780568926.6037836,
+    "hash": "43ade933e3c5e75b17456c35b29f0318"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/tabs/CostingTab.jsx": {
+    "mtime": 1778052745.486801,
+    "hash": "b5325576328217e85b165884eaf52edb"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/tabs/DetailsReadOnlyView.jsx": {
+    "mtime": 1781001174.2723017,
+    "hash": "4bbac867c26a02bc2cfcdcdbc0a34b30"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/tabs/DetailsTab.jsx": {
+    "mtime": 1781000844.0132139,
+    "hash": "e98c1c898659a4aa49a9f5b6d6e948d1"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/tabs/FilesTab.jsx": {
+    "mtime": 1780556932.5964797,
+    "hash": "3eb28c5108090605e4df7e5d67f4dae9"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/tabs/ItemsTab.jsx": {
+    "mtime": 1781005182.1653972,
+    "hash": "4fa7f094280b210162ccbc0ef9c05fed"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/tabs/LineItemProgress.jsx": {
+    "mtime": 1781007400.6207325,
+    "hash": "590fbb38b1977280fd9790250dad1492"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/tabs/NotesSection.jsx": {
+    "mtime": 1780552916.0766098,
+    "hash": "6878c84f4892af9920978f3803331966"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/tabs/ScrapStat.jsx": {
+    "mtime": 1781006286.8796594,
+    "hash": "eac8bb3cc9a05601c610743f2daaa3b0"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/tabs/TimeEntryCard.jsx": {
+    "mtime": 1781006543.0989203,
+    "hash": "ba010cfc02288dfc7b7026bb1d258864"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/tabs/TreatmentChips.jsx": {
+    "mtime": 1778111217.1752827,
+    "hash": "0991ade04f185ae137192717ecdfa03c"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/settings/DataBackupCard.jsx": {
+    "mtime": 1778129491.3438303,
+    "hash": "e12dac755d57e92123534cdfc9f3b16b"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/settings/FoldersCard.jsx": {
+    "mtime": 1778129482.1990237,
+    "hash": "0ee0f6f084c70ba5d4d96a56154df682"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/settings/SecurityCard.jsx": {
+    "mtime": 1778129469.8889754,
+    "hash": "ff8d1ccafce8b6085f094f1029dd504e"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/context/AuthContext.jsx": {
+    "mtime": 1780572029.250737,
+    "hash": "59bc68fe123a130af5df1e3f1cb1341b"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/hooks/useActiveTimerIndicator.js": {
+    "mtime": 1774428851.457916,
+    "hash": "bf2e6d232054ed3ac9a1da5a4fe1d9a5"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/hooks/useConfirmDialog.js": {
+    "mtime": 1771218039.7575018,
+    "hash": "9c87d13a21587849b6c36fece76aa55c"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/hooks/useInactivityTimer.js": {
+    "mtime": 1770975413.6144755,
+    "hash": "d09c05d05f052810a18ca738e7d21a4d"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/hooks/useJobCardColumnOrder.js": {
+    "mtime": 1778113270.9111648,
+    "hash": "86fcaf1a0d72f5dee6cf2e7b5d098328"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/hooks/useJobCardSort.js": {
+    "mtime": 1778044196.216682,
+    "hash": "03150b2cf1524847d442b44480b658f9"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/hooks/useSearch.js": {
+    "mtime": 1781079159.9902365,
+    "hash": "3d511a213022d9b5b0918cfc8c5edb14"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/hooks/useSettings.js": {
+    "mtime": 1780990274.307106,
+    "hash": "75da9e03cb6ef9416aa7f55d806fb30c"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/hooks/useTableFilter.js": {
+    "mtime": 1771243192.2084901,
+    "hash": "eed8925ef1048696b5edea8c203cae2c"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/hooks/useTableResize.js": {
+    "mtime": 1771243956.776696,
+    "hash": "9b65db57c49843aa2bfe07ca9bdcdf93"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/hooks/useTableSort.js": {
+    "mtime": 1774428872.2670062,
+    "hash": "9077158674bfd49376e7de0609bb3451"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/hooks/useTags.js": {
+    "mtime": 1777438414.960538,
+    "hash": "860e5703f744036a4d89b395e96f43b4"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/services/api.js": {
+    "mtime": 1781080375.419657,
+    "hash": "82014f844dc30a313475ecbf60340db3"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/services/hardware.js": {
+    "mtime": 1778127280.3243535,
+    "hash": "66963c084b3f5111e03f825673ac6ab6"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/utils/excelExport.js": {
+    "mtime": 1780547948.321148,
+    "hash": "a0dff10f6719fe1570c5704170a44ba3"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/utils/formatters.js": {
+    "mtime": 1780568873.1664093,
+    "hash": "de0f7aa012f83e37f1cb97302b7d8968"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/utils/initials.js": {
+    "mtime": 1777459972.6124992,
+    "hash": "0b2d20afff560ea2f883f2afd88af5f4"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/scripts/setup.js": {
+    "mtime": 1771574486.399408,
+    "hash": "35bbf5f7f27ceecb01279003e1865f5f"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/index.js": {
+    "mtime": 1780989997.1666658,
+    "hash": "4d863948f0b4f5a8f00bd159bd24a76e"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/scripts/backfill-folders.js": {
+    "mtime": 1771570158.5195413,
+    "hash": "32df58da95bdc7bd4b8a83d6ddd43dac"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/scripts/generate-job-card-template.js": {
+    "mtime": 1777456320.3236437,
+    "hash": "6fb9d6f2fa31b32eeb68a8cc2dd4724d"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/scripts/seed-mock-data.js": {
+    "mtime": 1781075367.4285984,
+    "hash": "fc97220d552110d3a3ef2f4265138704"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/config.js": {
+    "mtime": 1771929888.0055957,
+    "hash": "936858677843b891f3833b1e4fa6f79f"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/db/connection.js": {
+    "mtime": 1771929875.7232244,
+    "hash": "2e4061e089eb495996c9c882e345fd67"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/db/database.js": {
+    "mtime": 1780545403.2483618,
+    "hash": "1d977ec44c3657ffdfe5659dbbc93f7b"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/db/helpers.js": {
+    "mtime": 1780545356.1882906,
+    "hash": "118b19a18b04ddf02148bd306b93b581"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/db/init.js": {
+    "mtime": 1780990225.1829255,
+    "hash": "faf1588f99652396ae662b75f94bb8cf"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/db/schema.js": {
+    "mtime": 1781080904.714568,
+    "hash": "a23cfc187977a83622239934501b3289"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/db/seed-tags.js": {
+    "mtime": 1777437189.316008,
+    "hash": "c6b24409ca617d288b234674228e0d5e"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/db/queries/entities.js": {
+    "mtime": 1781080913.4926105,
+    "hash": "3ec818275b7663d5c7abc3624d8d27b4"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/db/queries/index.js": {
+    "mtime": 1771664192.0501416,
+    "hash": "96f366695611883a268fe6c3fb240ff2"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/db/queries/jobcard.js": {
+    "mtime": 1781076512.602217,
+    "hash": "e11039ab390c5d5a83f28edd89ec305b"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/db/queries/operations.js": {
+    "mtime": 1781075201.5432837,
+    "hash": "18ea4e3e6d8ae7de43c2fa24d0f7ed07"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/db/queries/qa-levels.js": {
+    "mtime": 1780468760.8083248,
+    "hash": "4b345b20be197c7f7e651be2ade7c110"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/db/queries/support.js": {
+    "mtime": 1778069146.1394954,
+    "hash": "33bc80871ff0da0dbf049ad843aba31c"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/middleware/auth.js": {
+    "mtime": 1780571980.6999304,
+    "hash": "500406ed7659afd421532d5b79fb2872"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/middleware/maintenance.js": {
+    "mtime": 1780991473.7710004,
+    "hash": "7f7289933b798f0b9a6f7f30f845df52"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/middleware/validation.js": {
+    "mtime": 1780571424.3115575,
+    "hash": "8d5087e3abc5e1698233a28b501f1a2c"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/auth.js": {
+    "mtime": 1780572015.362254,
+    "hash": "b0d283a2c9d00167c564efd06f961459"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/backup-helpers.js": {
+    "mtime": 1780993659.0379615,
+    "hash": "b55368bf3663bf1033c836e89115120c"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/contacts.js": {
+    "mtime": 1774431416.4575524,
+    "hash": "7886a978d5e0e144c20efe21fd27da9b"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/hardware.js": {
+    "mtime": 1770897790.8360343,
+    "hash": "35e096ed1608be0cc58b010cd13f904b"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/history.js": {
+    "mtime": 1771922895.1294267,
+    "hash": "8f1f881755c590158b4d5ee4fe068566"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/jobcard-costing.js": {
+    "mtime": 1781007108.8253353,
+    "hash": "8debf6c16284d1d2f06271d6a34de08c"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/jobcard-files.js": {
+    "mtime": 1780570999.866279,
+    "hash": "e3e53f65d6b0217b2b9f92e59c278099"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/jobcard-helpers.js": {
+    "mtime": 1781009339.851662,
+    "hash": "cc6cad19a367ad92495f7eb315080c07"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/jobcard-mutations.js": {
+    "mtime": 1781075280.1915586,
+    "hash": "c7197a129a9e75666c80cb57f41b77a7"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/jobcard-notes.js": {
+    "mtime": 1777505608.5800557,
+    "hash": "42b80853bdca9a810732dfa104667993"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/jobcard-time-entries.js": {
+    "mtime": 1781077513.2396524,
+    "hash": "721a6346265e84ee4ce3cbf3cc28c31e"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/jobcards.js": {
+    "mtime": 1780568147.2355156,
+    "hash": "6952a16b11c111912fbe4fa06dac779c"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/machines.js": {
+    "mtime": 1781080363.9985602,
+    "hash": "107ad3db1d3645fa55dd6d277d3998ca"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/qa-levels.js": {
+    "mtime": 1780468775.051463,
+    "hash": "407587cd07962ed97c306fd0ed8e19e0"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/search.js": {
+    "mtime": 1781075405.7147877,
+    "hash": "90d09b4b91ac98e9ada75fb7fa4f758b"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/settings.js": {
+    "mtime": 1780993690.9385564,
+    "hash": "7de9ca7b49b7d77177e6787b7ea3919a"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/suppliers.js": {
+    "mtime": 1780548959.7039473,
+    "hash": "4f218a628ad42a61f069cf05e7890fdc"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/routes/tags.js": {
+    "mtime": 1781081625.9630904,
+    "hash": "61591120100b28e32c08b34e967611b7"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/utils/folderCreation.js": {
+    "mtime": 1780464340.4337656,
+    "hash": "7c717395495f8609f8a5dc8c06c352e0"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/utils/logger.js": {
+    "mtime": 1770897520.3578672,
+    "hash": "9d88a3850cdf1824e71c2d044759262a"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/src/utils/pdfFiller.js": {
+    "mtime": 1778108759.7300196,
+    "hash": "c0cc5268dbd0e7255b45ec3e67aa3732"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/worker-client/main.js": {
+    "mtime": 1771990865.9974458,
+    "hash": "f142d74b0f9cd55d39502864e632f5c0"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/worker-client/preload.js": {
+    "mtime": 1771986844.2970743,
+    "hash": "10b704473e6bd8cad0d920e2534283d2"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/field_requiements.txt": {
+    "mtime": 1770805528.2765157,
+    "hash": "e916d3d1f4b1f3670e16db7494313395"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/index.html": {
+    "mtime": 1772079496.7166133,
+    "hash": "64a284f0af3af6c6cc7ee4189d3ac932"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/docs/QA-PDF-TEMPLATE-GUIDE.md": {
+    "mtime": 1778108767.4127,
+    "hash": "0bbb41ae51f7fed8acd8594452899d75"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/worker-client/setup.html": {
+    "mtime": 1771986886.7940948,
+    "hash": "7b0c743b93966f8d59fe6cb0358a354f"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/server/Job-Card-Info.pdf": {
+    "mtime": 1771925308.0135806,
+    "hash": "4d2695a997cedaf5d051348b9029b838"
+  },
+  "/mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/assets/dh-logo.png": {
+    "mtime": 1772080418.1684284,
+    "hash": "825c1b0fbed26678e9cab7124c090d42"
+  }
+}

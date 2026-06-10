@@ -86,6 +86,12 @@ router.post('/', requireAdmin, (req, res) => {
     const trimmedName = name.trim();
     const value = nameToValue(trimmedName);
 
+    // Symbol/emoji-only names strip down to an empty internal key, which would
+    // collide with any other empty-key tag and never match a job line. Reject up front.
+    if (!value) {
+      return res.status(400).json({ error: 'Tag name must include at least one letter or number' });
+    }
+
     // Check if tag already exists in this category
     const existing = tagQueries.getByValue.get(category, value);
     if (existing) {
@@ -128,6 +134,12 @@ router.put('/:id', requireAdmin, (req, res) => {
 
     const trimmedName = name.trim();
     const value = nameToValue(trimmedName);
+
+    // Symbol/emoji-only names strip down to an empty internal key, which would
+    // collide with any other empty-key tag and never match a job line. Reject up front.
+    if (!value) {
+      return res.status(400).json({ error: 'Tag name must include at least one letter or number' });
+    }
 
     // Check for duplicate value in same category (different id)
     const duplicate = tagQueries.getByValue.get(existing.category, value);
