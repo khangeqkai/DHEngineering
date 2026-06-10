@@ -219,10 +219,11 @@ class ApiService {
   getEntityHistory(entityType, page = 1) { return this.request(`/history/entity/${entityType}?page=${page}`); }
 
   // Machines
-  getMachines() { return this.request('/machines'); }
+  getMachines(includeInactive = false) { return this.request(`/machines${includeInactive ? '?includeInactive=true' : ''}`); }
   createMachine(data) { return this._post('/machines', data); }
   updateMachine(id, data) { return this._put(`/machines/${id}`, data); }
-  deleteMachine(id) { return this._del(`/machines/${id}`); }
+  archiveMachine(id) { return this._del(`/machines/${id}`); }
+  activateMachine(id) { return this._post(`/machines/${id}/activate`); }
 
   // Hardware endpoints
   getPrinters() { return this.request('/hardware/printers'); }

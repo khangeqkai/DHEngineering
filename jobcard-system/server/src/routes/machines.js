@@ -25,7 +25,10 @@ function toResponseFormat(m) {
 // Get all machines
 router.get('/', (req, res) => {
   try {
-    const machines = machineQueries.getAll.all();
+    const includeInactive = req.query.includeInactive === 'true';
+    const machines = includeInactive
+      ? machineQueries.getAllIncludeInactive.all()
+      : machineQueries.getAll.all();
     res.json(machines.map(toResponseFormat));
   } catch (err) {
     logger.error({ err }, 'Failed to get machines');
@@ -46,8 +49,8 @@ router.post('/', (req, res) => {
   }
 
   try {
-    // Check if machine number already exists
-    const existing = machineQueries.getByNumber.get(machineNumber);
+    // Check if an active machine already uses this number (archived ones don't count)
+    const existing = machineQueries.getActiveByNumber.get(machineNumber);
     if (existing) {
       return res.status(400).json({ error: 'Machine number already exists' });
     }
@@ -85,9 +88,9 @@ router.put('/:id', (req, res) => {
       return res.status(404).json({ error: 'Machine not found' });
     }
 
-    // Check for duplicate machine number
+    // Check for duplicate machine number among active machines (archived ones don't count)
     if (machineNumber !== existing.machine_number) {
-      const duplicate = machineQueries.getByNumber.get(machineNumber);
+      const duplicate = machineQueries.getActiveByNumber.get(machineNumber);
       if (duplicate) {
         return res.status(400).json({ error: 'Machine number already exists' });
       }
@@ -123,7 +126,10 @@ router.put('/:id', (req, res) => {
   }
 });
 
-// Delete machine (admin only)
+// Archive machine (admin only)
+// Machines are never permanently deleted: time entries record which machine ran a
+// job, so erasing one would leave that history pointing at nothing. Archiving keeps
+// the record (existing time entries stay valid) and frees its number for reuse.
 router.delete('/:id', (req, res) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
@@ -139,15 +145,49 @@ router.delete('/:id', (req, res) => {
 
     machineQueries.deactivate.run(id);
 
-    recordHistory('machine', id, 'delete', req.user.userId, req.user.name || req.user.username, {
-      machineNumber: { from: existing.machine_number, to: null },
-      name: { from: existing.name, to: null }
+    recordHistory('machine', id, 'archive', req.user.userId, req.user.name || req.user.username, {
+      status: { from: 'Active', to: 'Archived' }
     }, toResponseFormat(existing));
 
     res.json({ success: true });
   } catch (err) {
-    logger.error({ err }, 'Failed to delete machine');
-    res.status(500).json({ error: 'Failed to delete machine' });
+    logger.error({ err }, 'Failed to archive machine');
+    res.status(500).json({ error: 'Failed to archive machine' });
+  }
+});
+
+// Restore archived machine (admin only)
+router.post('/:id/activate', (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const { id } = req.params;
+
+  try {
+    const existing = machineQueries.getById.get(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Machine not found' });
+    }
+
+    // Block restore if an active machine has since claimed this number
+    const conflict = machineQueries.getActiveByNumber.get(existing.machine_number);
+    if (conflict && conflict.id !== id) {
+      return res.status(400).json({
+        error: `Machine number "${existing.machine_number}" is already in use. Rename or archive the other machine first.`
+      });
+    }
+
+    machineQueries.activate.run(id);
+
+    recordHistory('machine', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
+      status: { from: 'Archived', to: 'Active' }
+    }, toResponseFormat(existing));
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, 'Failed to restore machine');
+    res.status(500).json({ error: 'Failed to restore machine' });
   }
 });
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase } from '../utils/formatters';
-import { Plus, Trash2, Edit2, Save } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, Archive, ArchiveRestore } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -31,6 +31,8 @@ export default function TagManagement() {
   // Equipment state
   const [machines, setMachines] = useState([]);
   const [equipLoading, setEquipLoading] = useState(true);
+  const [showInactiveMachines, setShowInactiveMachines] = useState(false);
+  const [pendingMachineId, setPendingMachineId] = useState(null);
 
   // Shared form state
   const [showForm, setShowForm] = useState(false);
@@ -62,14 +64,14 @@ export default function TagManagement() {
   const loadMachines = useCallback(async () => {
     try {
       setEquipLoading(true);
-      const data = await api.getMachines();
+      const data = await api.getMachines(showInactiveMachines);
       setMachines(data);
     } catch (err) {
       toast.error('Failed to load machines');
     } finally {
       setEquipLoading(false);
     }
-  }, []);
+  }, [showInactiveMachines]);
 
   useEffect(() => { if (isEquipment) loadMachines(); }, [isEquipment, loadMachines]);
 
@@ -144,16 +146,29 @@ export default function TagManagement() {
     setShowForm(true);
   };
 
-  const handleDeleteMachine = async (m) => {
+  const handleArchiveMachine = async (m) => {
+    if (pendingMachineId !== null) return;
     const displayName = m.name ? `${m.machineNumber} - ${m.name}` : m.machineNumber;
-    const confirmed = await showConfirm({ title: 'Delete Machine', message: `Delete "${displayName}"? This cannot be undone.`, confirmLabel: 'Delete', confirmVariant: 'danger' });
+    const confirmed = await showConfirm({
+      title: 'Archive Machine',
+      message: `Archive "${displayName}"? It will no longer appear when logging time, but existing time records keep it. Its number becomes free to reuse, and you can restore it any time.`,
+      confirmLabel: 'Archive',
+      confirmVariant: 'warning'
+    });
     if (!confirmed) return;
-    try { await api.deleteMachine(m.id); toast.success('Machine deleted'); await loadMachines(); }
-    catch (err) { toast.error(err.message || 'Failed to delete machine'); }
+    setPendingMachineId(m.id);
+    try { await api.archiveMachine(m.id); toast.success('Machine archived'); await loadMachines(); }
+    catch (err) { toast.error(err.message || 'Failed to archive machine'); }
+    finally { setPendingMachineId(null); }
   };
 
-  // --- Derived ---
-  const activeMachines = machines.filter(m => m.active);
+  const handleRestoreMachine = async (m) => {
+    if (pendingMachineId !== null) return;
+    setPendingMachineId(m.id);
+    try { await api.activateMachine(m.id); toast.success('Machine restored'); await loadMachines(); }
+    catch (err) { toast.error(err.message || 'Failed to restore machine'); }
+    finally { setPendingMachineId(null); }
+  };
 
   const formTitle = editingItem
     ? (isFormEquipment ? 'Edit Machine' : 'Edit Tag')
@@ -165,6 +180,16 @@ export default function TagManagement() {
   return (
     <div className="tag-management page-scroll-layout page-enter">
       <PageHeader title="Tags &amp; Equipment">
+        {isEquipment && (
+          <label className="show-inactive-label">
+            <input
+              type="checkbox"
+              checked={showInactiveMachines}
+              onChange={(e) => setShowInactiveMachines(e.target.checked)}
+            />
+            Show archived
+          </label>
+        )}
         <button className="btn btn-primary" onClick={openAddForm}>
           <Plus size={16} /> {isEquipment ? 'Add Machine' : 'Add Tag'}
         </button>
@@ -243,16 +268,25 @@ export default function TagManagement() {
           {isEquipment ? (
             equipLoading ? (
               <div className="loading">Loading machines...</div>
-            ) : activeMachines.length === 0 ? (
+            ) : machines.length === 0 ? (
               <p className="tag-empty-text">No machines yet. Click "Add Machine" to create one.</p>
             ) : (
               <div className="tag-chips-grid">
-                {activeMachines.map(m => (
-                  <div key={m.id} className="tag-chip-card">
-                    <span className="tag-chip-name">{m.machineNumber}{m.name ? ` - ${m.name}` : ''}</span>
+                {machines.map(m => (
+                  <div key={m.id} className={`tag-chip-card${m.active ? '' : ' archived'}`}>
+                    <span className="tag-chip-name">
+                      {m.machineNumber}{m.name ? ` - ${m.name}` : ''}
+                      {!m.active && <span className="tag-archived-badge">Archived</span>}
+                    </span>
                     <div className="tag-chip-actions">
-                      <button className="tag-action-btn" onClick={() => handleEditMachine(m)} title="Edit"><Edit2 size={13} /></button>
-                      <button className="tag-action-btn danger" onClick={() => handleDeleteMachine(m)} title="Delete"><Trash2 size={13} /></button>
+                      {m.active ? (
+                        <>
+                          <button className="tag-action-btn" onClick={() => handleEditMachine(m)} title="Edit"><Edit2 size={13} /></button>
+                          <button className="tag-action-btn danger" disabled={pendingMachineId === m.id} onClick={() => handleArchiveMachine(m)} title="Archive"><Archive size={13} /></button>
+                        </>
+                      ) : (
+                        <button className="tag-action-btn restore" disabled={pendingMachineId === m.id} onClick={() => handleRestoreMachine(m)} title="Restore"><ArchiveRestore size={13} /></button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -312,6 +346,14 @@ export default function TagManagement() {
         }
         .tag-action-btn:hover { background: var(--surface-inset); color: var(--text-primary); }
         .tag-action-btn.danger:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger-color); }
+        .tag-action-btn.restore:hover { background: rgba(34, 197, 94, 0.12); color: var(--success-color); }
+        .show-inactive-label { display: flex; align-items: center; gap: 0.5rem; font-size: var(--text-sm); cursor: pointer; }
+        .tag-chip-card.archived { opacity: 0.65; border-style: dashed; }
+        .tag-archived-badge {
+          margin-left: 0.5rem; padding: 0.05rem 0.4rem; border-radius: 10px;
+          font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.02em;
+          background: var(--surface-inset); color: var(--text-tertiary);
+        }
       `}</style>
     </div>
   );

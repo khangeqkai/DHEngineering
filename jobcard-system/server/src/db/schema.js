@@ -206,7 +206,10 @@ db.exec(`
   -- Machines/Equipment list
   CREATE TABLE IF NOT EXISTS machines (
     id TEXT PRIMARY KEY,
-    machine_number TEXT UNIQUE NOT NULL,
+    -- Uniqueness is enforced in the route layer among ACTIVE machines only, so an
+    -- archived machine keeps its number for history while that number is free to
+    -- reuse on a new active machine. A DB-wide UNIQUE here would block that reuse.
+    machine_number TEXT NOT NULL,
     name TEXT,
     description TEXT,
     active INTEGER DEFAULT 1,

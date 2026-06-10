@@ -157,7 +157,10 @@ const tagQueries = {
 const machineQueries = {
   getById: db.prepare('SELECT * FROM machines WHERE id = ?'),
   getAll: db.prepare('SELECT * FROM machines WHERE active = 1 ORDER BY machine_number ASC'),
-  getByNumber: db.prepare('SELECT * FROM machines WHERE machine_number = ?'),
+  getAllIncludeInactive: db.prepare('SELECT * FROM machines ORDER BY machine_number ASC'),
+  // Uniqueness only matters among active machines: an archived machine keeps its
+  // number for history, but that number is free to reuse on a new active machine.
+  getActiveByNumber: db.prepare('SELECT * FROM machines WHERE machine_number = ? AND active = 1'),
 
   create: db.prepare(`
     INSERT INTO machines (id, machine_number, name, description, created_at)
@@ -170,7 +173,7 @@ const machineQueries = {
   `),
 
   deactivate: db.prepare(`UPDATE machines SET active = 0 WHERE id = ?`),
-  delete: db.prepare('DELETE FROM machines WHERE id = ?')
+  activate: db.prepare(`UPDATE machines SET active = 1 WHERE id = ?`)
 };
 
 module.exports = {

@@ -57,7 +57,7 @@ Status key: ⬜ = not started · 🔵 = in progress · ✅ = done
 - **After:** Typing a new search always starts from the first page, so results show up
   instead of a misleading empty page.
 
-### 3. A deleted piece of equipment's number can never be used again — ⬜
+### 3. A deleted piece of equipment's number can never be used again — ✅
 - **Problem:** Deleting a piece of equipment doesn't truly remove it — it just hides it
   from the list. But its number stays reserved behind the scenes. So if you later try to
   add a new piece of equipment with that same number, you're blocked with "already
