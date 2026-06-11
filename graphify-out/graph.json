@@ -12489,9 +12489,9 @@
       "source_file": "server/scripts/seed-history.js",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_scripts_seed_history_js",
-      "target": "scripts_seed_history_seedhistory",
-      "confidence_score": 1.0
+      "target": "scripts_seed_history_seedhistory"
     },
     {
       "relation": "contains",
@@ -12579,9 +12579,9 @@
       "source_file": "server/scripts/seed-scenarios.js",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_scripts_seed_scenarios_js",
-      "target": "scripts_seed_scenarios_buildscenarios",
-      "confidence_score": 1.0
+      "target": "scripts_seed_scenarios_buildscenarios"
     },
     {
       "relation": "contains",

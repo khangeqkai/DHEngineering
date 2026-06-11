@@ -242,16 +242,18 @@ export default function ItemsTab({
                     </div>
                   )}
 
-                  <LineItemProgress
-                    entries={itemEntries}
-                    targetQty={item.qty}
-                    isAdmin={isAdmin}
-                    onAdd={isAdmin && handleAddTimeEntry ? () => handleAddTimeEntry(item.itemNumber) : undefined}
-                    onEdit={isAdmin ? handleEditTimeEntry : undefined}
-                    onDelete={isAdmin ? handleDeleteTimeEntry : undefined}
-                    onStop={handleStopActiveEntry}
-                    onToggleSpecial={isAdmin ? onToggleSpecial : undefined}
-                  />
+                  {jobCardId && (
+                    <LineItemProgress
+                      entries={itemEntries}
+                      targetQty={item.qty}
+                      isAdmin={isAdmin}
+                      onAdd={isAdmin && handleAddTimeEntry ? () => handleAddTimeEntry(item.itemNumber) : undefined}
+                      onEdit={isAdmin ? handleEditTimeEntry : undefined}
+                      onDelete={isAdmin ? handleDeleteTimeEntry : undefined}
+                      onStop={handleStopActiveEntry}
+                      onToggleSpecial={isAdmin ? onToggleSpecial : undefined}
+                    />
+                  )}
                 </div>
                 {!fieldsLocked && lineItems.length > 1 && (
                   <button type="button" className="line-item-remove" onClick={() => removeLineItem(item.id)} title="Remove item">
