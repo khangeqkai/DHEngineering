@@ -14,7 +14,7 @@ const {
   timeEntryQueries,
   recordHistory
 } = require('../db/database');
-const { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob, verifyQaTemplatesAvailable } = require('./jobcard-helpers');
+const { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob, verifyQaTemplatesAvailable, computeAttachmentWarnings } = require('./jobcard-helpers');
 const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
 const { db } = require('../db/connection');
 
@@ -352,6 +352,18 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     const shouldArchive = newStatus === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
     const invoicedDate = shouldArchive ? new Date().toISOString() : null;
 
+    // Soft close-out checkpoint: when this update would invoice (and archive) the
+    // job but files were declared and never attached, stop before any write and
+    // report the gaps — unless the caller already confirmed "invoice anyway".
+    // Uses the items being saved (or the current ones if items aren't changing).
+    if (shouldArchive && data.confirmMissingAttachments !== true) {
+      const itemsForCheck = data.items !== undefined ? data.items : jobItemQueries.getByJobcard.all(id);
+      const warnings = computeAttachmentWarnings(id, itemsForCheck, newQaLevelId);
+      if (warnings.hasAny) {
+        return res.status(409).json({ error: 'MISSING_ATTACHMENTS', attachmentWarnings: warnings });
+      }
+    }
+
     // All database writes happen in one transaction: either every change lands,
     // or none do. A failure partway through (e.g. a rejected line item) rolls the
     // whole update back, so existing items/assignees are never lost.
@@ -514,6 +526,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     const response = formatJobcard(updated, items, assignees, req.user.role);
     const warning = buildQaTemplateWarning(qaResult);
     if (warning) response.qaTemplateWarning = warning;
+    response.attachmentWarnings = computeAttachmentWarnings(id, items, updated.qa_level_id);
     res.json(response);
   } catch (err) {
     logger.error({ err }, 'Update jobcard error');

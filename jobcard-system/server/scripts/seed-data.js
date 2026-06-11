@@ -85,11 +85,12 @@ const machines = [
   { number: 'WJET-01',  name: 'Flow Mach 200',         description: 'Waterjet Cutter' },
 ];
 
-// ─── QA LEVELS: 3 active (Commercial = light, Standard, Critical = scanned forms) ───
+// ─── QA LEVELS: 3 active. Whether a job needs a form is decided by whether the
+// level has a form attached, not by any per-level flag. ───
 const qaLevels = [
-  { name: 'Commercial', nameLower: 'commercial', isActive: 1, requireScannedForms: 0 },
-  { name: 'Standard',   nameLower: 'standard',   isActive: 1, requireScannedForms: 0 },
-  { name: 'Critical',   nameLower: 'critical',   isActive: 1, requireScannedForms: 1 },
+  { name: 'Commercial', nameLower: 'commercial', isActive: 1 },
+  { name: 'Standard',   nameLower: 'standard',   isActive: 1 },
+  { name: 'Critical',   nameLower: 'critical',   isActive: 1 },
 ];
 
 // ─── TAGS: every dropdown/multi-select option the app supports ───

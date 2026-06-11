@@ -13,7 +13,7 @@ const {
   historyQueries,
   recordHistory
 } = require('../db/database');
-const { formatJobcard, sanitizeHistoryForRole } = require('./jobcard-helpers');
+const { formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings } = require('./jobcard-helpers');
 const jobcardMutationsRoutes = require('./jobcard-mutations');
 
 const router = express.Router();
@@ -64,6 +64,35 @@ router.get('/overdue', authenticate, (req, res) => {
   }
 });
 
+// Batched "missing files" scan for the job list. Returns one entry per active
+// (non-archived) job that has at least one declared-but-not-attached gap, so the
+// list can show a marker without scanning folders per row on every render. This
+// is registered before '/:id' so the literal path isn't swallowed by it.
+router.get('/attachment-warnings', authenticate, (req, res) => {
+  try {
+    const jobcards = jobcardQueries.getAll.all();
+    const result = [];
+    for (const jc of jobcards) {
+      const items = jobItemQueries.getByJobcard.all(jc.id);
+      const w = computeAttachmentWarnings(jc.id, items, jc.qa_level_id);
+      if (w.hasAny) {
+        // Carry the per-item detail (which line items, which gap) and the
+        // QA-forms flag through to the list so the row can name exactly what's
+        // missing instead of a generic note.
+        result.push({
+          jobcardId: jc.id,
+          items: w.items,
+          missingQaForms: w.missingQaForms
+        });
+      }
+    }
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, 'Attachment-warnings scan error');
+    res.status(500).json({ error: 'Failed to scan for missing files' });
+  }
+});
+
 // Get single job card with all related data
 router.get('/:id', authenticate, (req, res) => {
   try {
@@ -75,7 +104,9 @@ router.get('/:id', authenticate, (req, res) => {
     const items = jobItemQueries.getByJobcard.all(req.params.id);
     const assignees = jobAssigneeQueries.getByJobcard.all(req.params.id);
 
-    res.json(formatJobcard(jobcard, items, assignees, req.user.role));
+    const response = formatJobcard(jobcard, items, assignees, req.user.role);
+    response.attachmentWarnings = computeAttachmentWarnings(req.params.id, items, jobcard.qa_level_id);
+    res.json(response);
   } catch (err) {
     logger.error({ err }, 'Get jobcard error');
     res.status(500).json({ error: 'Failed to get job card' });
@@ -216,11 +247,24 @@ router.patch('/:id/status', authenticate, (req, res) => {
       return res.status(404).json({ error: 'Job card not found' });
     }
 
+    const isInvoicingTransition = status === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
+
+    // Soft close-out checkpoint: when invoicing (which also archives) and files
+    // were declared but never attached, stop and report the gaps instead of
+    // writing — unless the caller has already confirmed "invoice anyway".
+    if (isInvoicingTransition && req.body.confirmMissingAttachments !== true) {
+      const items = jobItemQueries.getByJobcard.all(id);
+      const warnings = computeAttachmentWarnings(id, items, existing.qa_level_id);
+      if (warnings.hasAny) {
+        return res.status(409).json({ error: 'MISSING_ATTACHMENTS', attachmentWarnings: warnings });
+      }
+    }
+
     const changes = { status: { from: existing.status, to: status } };
 
     jobcardQueries.updateStatus.run(status, req.user.userId, id);
 
-    if (status === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0) {
+    if (isInvoicingTransition) {
       const invoicedDate = new Date().toISOString();
       jobcardQueries.archive.run(invoicedDate, req.user.userId, id);
       changes.archived = { from: false, to: true };
@@ -230,7 +274,10 @@ router.patch('/:id/status', authenticate, (req, res) => {
     recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, changes, null);
 
     const updated = jobcardQueries.getById.get(id);
-    res.json(formatJobcard(updated, [], [], req.user.role));
+    const items = jobItemQueries.getByJobcard.all(id);
+    const response = formatJobcard(updated, items, [], req.user.role);
+    response.attachmentWarnings = computeAttachmentWarnings(id, items, updated.qa_level_id);
+    res.json(response);
   } catch (err) {
     logger.error({ err }, 'Update status error');
     res.status(500).json({ error: 'Failed to update status' });

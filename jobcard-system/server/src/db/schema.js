@@ -276,7 +276,6 @@ db.exec(`
     name TEXT NOT NULL,
     name_lower TEXT UNIQUE NOT NULL,
     is_active INTEGER DEFAULT 1,
-    require_scanned_forms INTEGER DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
@@ -392,6 +391,17 @@ try {
   }
 } catch (err) {
   logger.error({ err }, 'Migration: Failed to drop files-status columns from job_items');
+}
+
+// Drop require_scanned_forms from qa_levels (no longer tracked)
+try {
+  const qaCols = db.prepare('PRAGMA table_info(qa_levels)').all();
+  if (qaCols.some(c => c.name === 'require_scanned_forms')) {
+    db.exec('ALTER TABLE qa_levels DROP COLUMN require_scanned_forms');
+    logger.info('Migration: Dropped require_scanned_forms column from qa_levels');
+  }
+} catch (err) {
+  logger.error({ err }, 'Migration: Failed to drop require_scanned_forms from qa_levels');
 }
 
 // Drop legacy qa_forms + documents tables (replaced by disk-first folders)

@@ -23,6 +23,17 @@ import JobFilesMenu from './JobFilesMenu';
 import JobIdentityStrip from './JobIdentityStrip';
 import { validateJobCardForm } from './jobCardValidation';
 import { mapTimeEntryFromApi } from './mappers';
+import { describeAttachmentGaps } from '../../utils/attachmentWarnings';
+
+// Read a picked file into the base64 string the upload route expects.
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || '').replace(/^data:[^;]*;base64,/, ''));
+    reader.onerror = () => reject(reader.error || new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, initialTab = null }) {
   const { user } = useAuth();
@@ -38,6 +49,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const [timeEntries, setTimeEntries] = useState([]);
   const [qaLevels, setQaLevels] = useState([]);
   const [costing, setCostingData] = useState(null);
+  const [attachmentWarnings, setAttachmentWarnings] = useState(null);
   const contactHook = useContactSearch();
   const formHook = useJobCardForm();
   const activityLog = useActivityLog(jobCardId);
@@ -91,6 +103,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       const jobcardData = jobcardRes;
       setFormDataFromJobCard(jobcardData);
       setContactFromJobCard(jobcardData);
+      setAttachmentWarnings(jobcardData.attachmentWarnings || null);
       setTimeEntries((timeEntriesRes || []).map(mapTimeEntryFromApi));
 
       loadNotes();
@@ -114,6 +127,33 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       setLoading(false);
     }
   }, [isEdit, jobCardId, isAdmin, setFormDataFromJobCard, setContactFromJobCard, loadNotes, onClose]);
+
+  // Re-read just the "declared but no file" flags after a file is added, so the
+  // per-item hints and the QA-forms note clear without reopening the job.
+  const refreshAttachmentWarnings = useCallback(async () => {
+    if (!jobCardId) return;
+    try {
+      const fresh = await api.getJobcard(jobCardId);
+      setAttachmentWarnings(fresh.attachmentWarnings || null);
+    } catch {
+      // Non-fatal — hints refresh next time the job card opens
+    }
+  }, [jobCardId]);
+
+  // Attach a picked file to a specific part: uploads it tagged with the part's
+  // permanent id (so it's named for that part on disk and stays matched even if
+  // the parts are re-numbered) and refreshes the nudges.
+  const handleAttachItemFile = useCallback(async (itemId, category, file) => {
+    if (!jobCardId || !file) return;
+    try {
+      const raw = await fileToBase64(file);
+      await api.uploadToJobcardFiles(jobCardId, category, file.name, raw, itemId);
+      toast.success('File attached');
+      await refreshAttachmentWarnings();
+    } catch (err) {
+      toast.error(err.message || 'Failed to attach file');
+    }
+  }, [jobCardId, refreshAttachmentWarnings]);
 
   useEffect(() => {
     if (isOpen && isEdit && activeTab === 'activity') {
@@ -231,6 +271,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     resetContact();
     setTimeEntries([]);
     setCostingData(null);
+    setAttachmentWarnings(null);
     resetTimeEntries();
     resetCosting();
     resetTimer();
@@ -372,14 +413,46 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           customerProperty: item.customerProperty || null
         }))
       };
-      const result = isEdit
-        ? await api.updateJobcard(jobCardId, jobcardData)
-        : await api.createJobcard(jobcardData);
+      // Send the save; on an edit that would invoice with files still missing,
+      // the server replies 409 with the gaps instead of saving. We then ask the
+      // user to confirm and resend with an explicit "invoice anyway" flag.
+      const submit = (confirmMissing) => isEdit
+        ? api.updateJobcard(jobCardId, confirmMissing ? { ...jobcardData, confirmMissingAttachments: true } : jobcardData)
+        : api.createJobcard(jobcardData);
+
+      let result;
+      try {
+        result = await submit(false);
+      } catch (err) {
+        if (isEdit && err.status === 409 && err.data?.attachmentWarnings) {
+          const gaps = describeAttachmentGaps(err.data.attachmentWarnings);
+          const proceed = await showConfirm({
+            title: 'Files not attached',
+            message: (
+              <span>
+                This job was marked as having the following, but no file is attached yet:
+                <br />
+                {gaps.map((g, i) => <span key={i}>• {g}<br /></span>)}
+                <br />
+                Invoice anyway?
+              </span>
+            ),
+            confirmLabel: 'Invoice anyway',
+            cancelLabel: 'Go back',
+            confirmVariant: 'warning'
+          });
+          if (!proceed) { setSaving(false); return; }
+          result = await submit(true);
+        } else {
+          throw err;
+        }
+      }
 
       onSuccess?.();
       if (result?.qaTemplateWarning) {
         toast(result.qaTemplateWarning, { icon: '⚠️', duration: 8000 });
       }
+      setAttachmentWarnings(result?.attachmentWarnings || null);
       if (isEdit) {
         toast.success('Job card updated');
       } else {
@@ -421,7 +494,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         closeOnOverlayClick={false}
         headerActions={
           <>
-            {isEdit && jobCardId && <JobFilesMenu jobcardId={jobCardId} jobNumber={formHook.jobNumber} />}
+            {isEdit && jobCardId && <JobFilesMenu jobcardId={jobCardId} jobNumber={formHook.jobNumber} onFilesChanged={refreshAttachmentWarnings} />}
             <ZoomToggle zoom={zoom} onChange={setZoom} />
           </>
         }
@@ -476,6 +549,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   updateLineItem={formHook.updateLineItem}
                   removeLineItem={formHook.removeLineItem}
                   suppliers={suppliers || []}
+                  attachmentWarnings={attachmentWarnings}
+                  onAttachItemFile={isEdit ? handleAttachItemFile : undefined}
                   qaLevels={qaLevels}
                   notes={jobNotes.notes}
                   newNote={jobNotes.newNote}
@@ -512,7 +587,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               )}
 
               {activeTab === 'files' && isEdit && isAdmin && (
-                <FilesTab jobCardId={jobCardId} />
+                <FilesTab jobCardId={jobCardId} attachmentWarnings={attachmentWarnings} />
               )}
 
               {activeTab === 'activity' && isEdit && isAdmin && (

@@ -11,6 +11,8 @@ import JobCardModal from './jobcard/JobCardModal';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
+import { useMissingFilesIndicator } from '../hooks/useMissingFilesIndicator';
+import { describeAttachmentGaps } from '../utils/attachmentWarnings';
 import useJobCardSort from '../hooks/useJobCardSort';
 import useJobCardColumnOrder from '../hooks/useJobCardColumnOrder';
 import EmptyState from './common/EmptyState';
@@ -56,6 +58,7 @@ export default function JobCardList() {
   const [density, setDensity] = useJobCardListDensity();
   const [viewMode, setViewMode] = useState('list');
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
+  const { flaggedIds: missingFilesIds, refresh: refreshMissingFiles } = useMissingFilesIndicator();
 
   const { columnOrder, handleDragStart, handleDragEnd, handleDragOver, handleDrop } = useJobCardColumnOrder();
 
@@ -124,14 +127,45 @@ export default function JobCardList() {
 
   const handleQuickStatusChange = useCallback(async (cardId, newStatus) => {
     setStatusPopoverId(null);
-    try {
-      await api.updateJobcardStatus(cardId, newStatus);
+    const applyLocally = () => {
       toast.success(`Status updated to ${STATUS_LABELS[newStatus]}`);
       setJobcards(prev => prev.map(c => c.id === cardId ? { ...c, status: newStatus } : c));
+      refreshMissingFiles();
+    };
+    try {
+      await api.updateJobcardStatus(cardId, newStatus);
+      applyLocally();
     } catch (err) {
+      // Invoicing with declared-but-missing files: confirm, then resend.
+      if (err.status === 409 && err.data?.attachmentWarnings) {
+        const gaps = describeAttachmentGaps(err.data.attachmentWarnings);
+        const proceed = await showConfirm({
+          title: 'Files not attached',
+          message: (
+            <span>
+              This job was marked as having the following, but no file is attached yet:
+              <br />
+              {gaps.map((g, i) => <span key={i}>• {g}<br /></span>)}
+              <br />
+              Invoice anyway?
+            </span>
+          ),
+          confirmLabel: 'Invoice anyway',
+          cancelLabel: 'Go back',
+          confirmVariant: 'warning'
+        });
+        if (!proceed) return;
+        try {
+          await api.updateJobcardStatus(cardId, newStatus, true);
+          applyLocally();
+        } catch (e2) {
+          toast.error(e2.message || 'Failed to update status');
+        }
+        return;
+      }
       toast.error(err.message || 'Failed to update status');
     }
-  }, []);
+  }, [showConfirm, refreshMissingFiles]);
 
   useEffect(() => {
     if (!statusPopoverId) return;
@@ -261,6 +295,7 @@ export default function JobCardList() {
 
   const handleModalSuccess = () => {
     loadJobcards();
+    refreshMissingFiles();
   };
 
   const columns = getJobCardColumns({
@@ -269,6 +304,7 @@ export default function JobCardList() {
     showArchived,
     activeTimerJobcardId,
     formattedElapsed,
+    missingFilesIds,
     statusPopoverId,
     setStatusPopoverId,
     popoverRef,
@@ -389,7 +425,7 @@ export default function JobCardList() {
 
       <JobCardModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); refreshMissingFiles(); }}
         jobCardId={editingCardId}
         onSuccess={handleModalSuccess}
         onTimerChange={() => { refreshTimer(); loadJobcards(); }}

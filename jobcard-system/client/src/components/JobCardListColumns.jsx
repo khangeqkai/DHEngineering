@@ -1,5 +1,6 @@
 import { Trash2, ArchiveRestore, Check } from 'lucide-react';
 import { getInitials, getAvatarColor } from '../utils/initials';
+import { describeAttachmentGaps } from '../utils/attachmentWarnings';
 import {
   STATUS_LABELS,
   PRIORITY_COLORS,
@@ -13,6 +14,7 @@ export function getJobCardColumns({
   showArchived,
   activeTimerJobcardId,
   formattedElapsed,
+  missingFilesIds,
   statusPopoverId,
   setStatusPopoverId,
   popoverRef,
@@ -49,6 +51,27 @@ export function getJobCardColumns({
           {card.qualityLevel === 'CRITICAL' && (
             <span className="critical-badge">Critical QA</span>
           )}
+          {missingFilesIds?.get(card.id) && (() => {
+            const gaps = describeAttachmentGaps(missingFilesIds.get(card.id));
+            return (
+              <span
+                className="missing-files-indicator"
+                tabIndex={0}
+                aria-label={`Not attached yet: ${gaps.join(', ')}`}
+              >
+                ⚠
+                <span className="mf-tooltip" role="tooltip">
+                  <span className="mf-tooltip-title">Not attached yet</span>
+                  {gaps.map((g, i) => (
+                    <span key={i} className="mf-tooltip-item">
+                      <span className="mf-tooltip-dot" />
+                      {g}
+                    </span>
+                  ))}
+                </span>
+              </span>
+            );
+          })()}
           {card.description && (
             <p className="description-preview">
               {card.description.substring(0, 60)}

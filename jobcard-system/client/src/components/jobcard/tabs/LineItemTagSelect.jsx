@@ -15,9 +15,31 @@ export default function LineItemTagSelect({
   value = '',
   options = [],
   naValue,
-  onChange
+  onChange,
+  warning = false,
+  onAttach
 }) {
   const selected = value ? value.split(',').filter(Boolean) : [];
+  // "Declares something" = a real value picked, not the explicit N/A answer.
+  const isDeclared = selected.some(v => v && v !== naValue);
+  // When the parent supplies an attach handler and this field declares something,
+  // show an actionable button: amber "Attach file" while missing, green "✓ Attached"
+  // once a file for this part exists (still clickable to add another). Without an
+  // attach handler (e.g. the create form), fall back to a passive nudge.
+  let warningPill = null;
+  if (onAttach && isDeclared) {
+    warningPill = warning ? (
+      <button type="button" className="lit-attach lit-attach--missing" onClick={onAttach} title="Attach a file for this part">
+        ⚠ Attach file
+      </button>
+    ) : (
+      <button type="button" className="lit-attach lit-attach--done" onClick={onAttach} title="Attached — click to add another">
+        ✓ Attached
+      </button>
+    );
+  } else if (warning) {
+    warningPill = <span className="lit-missing-file" title="No file attached yet">⚠ No file yet</span>;
+  }
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -49,6 +71,7 @@ export default function LineItemTagSelect({
       <div className="line-item-tagselect">
         <label>{label}</label>
         <div className="readonly-value">{summary || '-'}</div>
+        {warningPill}
       </div>
     );
   }
@@ -67,7 +90,7 @@ export default function LineItemTagSelect({
 
   return (
     <div className="line-item-tagselect" ref={ref}>
-      <label>{label} {required && <span className="required">*</span>}</label>
+      <label>{label} {required && <span className="required">*</span>} {warningPill}</label>
       <div className="lit-select">
         <button
           type="button"

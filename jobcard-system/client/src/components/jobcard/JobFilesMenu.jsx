@@ -14,7 +14,7 @@ const CATEGORY_ICONS = {
   'customer-property-files': Package
 };
 
-export default function JobFilesMenu({ jobcardId, jobNumber }) {
+export default function JobFilesMenu({ jobcardId, jobNumber, onFilesChanged }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [view, setView] = useState('menu'); // menu | upload-source | camera | viewing
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -109,6 +109,7 @@ export default function JobFilesMenu({ jobcardId, jobNumber }) {
       // Allow re-picking the same file again later
       if (fileInputRef.current) fileInputRef.current.value = '';
     });
+    onFilesChanged?.();
     closeAll();
   };
 
@@ -120,6 +121,7 @@ export default function JobFilesMenu({ jobcardId, jobNumber }) {
   const handleSavePhotos = async () => {
     if (camera.photos.length === 0) return;
     await files.savePhotos(camera.photos, selectedCategory, () => camera.setPhotos([]));
+    onFilesChanged?.();
   };
 
   const totalCount = CATEGORIES.reduce((sum, c) => sum + (files.counts[c] || 0), 0);

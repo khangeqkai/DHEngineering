@@ -96,17 +96,38 @@ function resolveCategoryFolder(jobcardId, category) {
 }
 
 /**
- * Build a unique on-disk filename. Prefix with a timestamp so two uploads
- * of the same name don't collide.
+ * Derive a short, stable code from a line item's permanent id (e.g.
+ * "item:550e8400-..." → "p550e8400"). Files for that part are named with this
+ * code, so a part's attachments survive any re-numbering of the parts (the
+ * visible item number can change; the id never does). Returns null for a value
+ * that isn't a persisted item id.
  */
-function buildStorageFilename(folderPath, displayName) {
+function partFileCode(itemId) {
+  if (!itemId || typeof itemId !== 'string' || !itemId.startsWith('item:')) return null;
+  const hex = itemId.slice('item:'.length).replace(/[^a-zA-Z0-9]/g, '');
+  return hex ? `p${hex.slice(0, 8)}` : null;
+}
+
+/**
+ * Build a unique on-disk filename.
+ * - Per-part files (a drawing / customer property attached to a specific line)
+ *   are named "p{code}_{name}" using the part's stable id code, so each part's
+ *   file is identifiable on disk and the missing-file check can match per part
+ *   even after the parts are re-numbered.
+ * - Job-level files keep a timestamp prefix so two uploads of the same name
+ *   don't collide. (The returned-QA-form check relies on this timestamp shape.)
+ * In both cases a numeric suffix is appended if the name already exists.
+ */
+function buildStorageFilename(folderPath, displayName, partCode) {
   const ext = path.extname(displayName);
   const base = path.basename(displayName, ext);
-  const stamp = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
-  let candidate = `${stamp}_${base}${ext}`;
+  const prefix = partCode
+    ? `${partCode}_`
+    : `${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}_`;
+  let candidate = `${prefix}${base}${ext}`;
   let counter = 1;
   while (fs.existsSync(path.join(folderPath, candidate))) {
-    candidate = `${stamp}_${base}_${counter}${ext}`;
+    candidate = `${prefix}${base}_${counter}${ext}`;
     counter += 1;
   }
   return candidate;
@@ -135,6 +156,16 @@ function listFolderFiles(folderPath) {
     })
     .filter(Boolean)
     .sort((a, b) => b.modified.localeCompare(a.modified));
+}
+
+// List just the on-disk filenames in a job's category folder. Returns [] when
+// storage isn't configured, the job/company can't be resolved, or the folder is
+// empty/missing. Used by the attachment-warnings detector to tell whether a
+// declared drawing / customer property / returned QA form actually has a file.
+function listCategoryFileNames(jobcardId, category) {
+  const folderRes = resolveCategoryFolder(jobcardId, category);
+  if (folderRes.error) return [];
+  return listFolderFiles(folderRes.folderPath).map(f => f.name);
 }
 
 const validateCategory = [
@@ -178,6 +209,13 @@ const validateUploadBody = [
       }
       return true;
     }),
+  // Optional: when a file is attached to a specific line item, that part's
+  // permanent id is baked (as a short code) into the stored filename so the
+  // missing-file check can match per part even after the parts are re-numbered.
+  body('itemId')
+    .optional({ nullable: true })
+    .isString().bail()
+    .matches(/^item:[A-Za-z0-9:-]+$/).withMessage('itemId must be a valid item reference'),
   handleValidationErrors
 ];
 
@@ -223,7 +261,7 @@ router.get('/:id/files/:category/:filename', authenticate, validateCategory, val
 });
 
 // ─── Save a file (shared by file-upload + camera flows) ───
-function saveFile({ jobcardId, category, displayName, buffer, source, req, res }) {
+function saveFile({ jobcardId, category, displayName, buffer, source, itemId, req, res }) {
   const folderRes = resolveCategoryFolder(jobcardId, category);
   if (folderRes.error) return res.status(folderRes.status).json({ error: folderRes.error });
 
@@ -231,7 +269,7 @@ function saveFile({ jobcardId, category, displayName, buffer, source, req, res }
     fs.mkdirSync(folderRes.folderPath, { recursive: true });
   }
 
-  const storageFilename = buildStorageFilename(folderRes.folderPath, displayName);
+  const storageFilename = buildStorageFilename(folderRes.folderPath, displayName, partFileCode(itemId));
   const targetPath = path.join(folderRes.folderPath, storageFilename);
   if (!isWithinBase(folderRes.folderPath, targetPath)) {
     return res.status(403).json({ error: 'Path traversal detected' });
@@ -241,7 +279,7 @@ function saveFile({ jobcardId, category, displayName, buffer, source, req, res }
 
   recordHistory('jobcard', jobcardId, 'upload_file', req.user.userId, req.user.name || req.user.username,
     { file: { from: null, to: displayName } },
-    { destination: CATEGORY_FOLDER[category], source }
+    { destination: CATEGORY_FOLDER[category], source, itemId: itemId ?? null }
   );
 
   const stat = fs.statSync(targetPath);
@@ -258,7 +296,7 @@ function saveFile({ jobcardId, category, displayName, buffer, source, req, res }
 router.post('/:id/files/:category/upload', authenticate, validateCategory, validateUploadBody, (req, res) => {
   try {
     const { id, category } = req.params;
-    const { filename, fileData } = req.body;
+    const { filename, fileData, itemId } = req.body;
 
     return saveFile({
       jobcardId: id,
@@ -266,6 +304,7 @@ router.post('/:id/files/:category/upload', authenticate, validateCategory, valid
       displayName: filename,
       buffer: Buffer.from(fileData, 'base64'),
       source: 'upload',
+      itemId,
       req,
       res
     });
@@ -276,3 +315,5 @@ router.post('/:id/files/:category/upload', authenticate, validateCategory, valid
 });
 
 module.exports = router;
+module.exports.listCategoryFileNames = listCategoryFileNames;
+module.exports.partFileCode = partFileCode;

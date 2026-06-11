@@ -32,6 +32,8 @@ export default function DetailsTab({
   updateLineItem,
   removeLineItem,
   suppliers,
+  attachmentWarnings,
+  onAttachItemFile,
   // QA Levels
   qaLevels,
   // Notes props
@@ -84,6 +86,8 @@ export default function DetailsTab({
           assignees={assignees}
           lineItems={lineItems}
           updateLineItem={updateLineItem}
+          attachmentWarnings={attachmentWarnings}
+          onAttachItemFile={onAttachItemFile}
           timeEntries={timeEntries}
           jobCardId={jobCardId}
           activeTimer={activeTimer}
@@ -198,6 +202,8 @@ export default function DetailsTab({
         updateLineItem={updateLineItem}
         removeLineItem={removeLineItem}
         suppliers={suppliers}
+        attachmentWarnings={attachmentWarnings}
+        onAttachItemFile={onAttachItemFile}
         timeEntries={timeEntries}
         machines={machines}
         isAdmin={isAdmin && isEdit}

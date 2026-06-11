@@ -54,7 +54,12 @@ class ApiService {
 
       const details = errorData.details?.join('. ') || '';
       const message = details || errorData.error || 'Request failed';
-      throw new Error(message);
+      // Carry the status and parsed body on the error so callers can react to
+      // specific cases (e.g. a 409 close-out warning that includes the gaps).
+      const error = new Error(message);
+      error.status = response.status;
+      error.data = errorData;
+      throw error;
     }
 
     return response.json();
@@ -137,7 +142,14 @@ class ApiService {
 
   createJobcard(jobcardData) { return this._post('/jobcards', jobcardData); }
   updateJobcard(id, jobcardData) { return this._put(`/jobcards/${id}`, jobcardData); }
-  updateJobcardStatus(id, status) { return this._patch(`/jobcards/${id}/status`, { status }); }
+  updateJobcardStatus(id, status, confirmMissingAttachments = false) {
+    const body = { status };
+    if (confirmMissingAttachments) body.confirmMissingAttachments = true;
+    return this._patch(`/jobcards/${id}/status`, body);
+  }
+  // Active jobs that declared a drawing / customer property / quality forms but
+  // have no matching file attached — used to flag rows in the job list.
+  getAttachmentWarnings() { return this.request('/jobcards/attachment-warnings'); }
   unarchiveJobcard(id) { return this._post(`/jobcards/${id}/unarchive`); }
   deleteJobcard(id) { return this._del(`/jobcards/${id}`); }
 
@@ -180,8 +192,10 @@ class ApiService {
   getJobcardFile(jobcardId, category, filename) {
     return this.request(`/jobcards/${jobcardId}/files/${category}/${encodeURIComponent(filename)}`);
   }
-  uploadToJobcardFiles(jobcardId, category, filename, fileData) {
-    return this._post(`/jobcards/${jobcardId}/files/${category}/upload`, { filename, fileData });
+  uploadToJobcardFiles(jobcardId, category, filename, fileData, itemId) {
+    const body = { filename, fileData };
+    if (itemId != null) body.itemId = itemId;
+    return this._post(`/jobcards/${jobcardId}/files/${category}/upload`, body);
   }
 
   // Contact endpoints (phone contacts style)

@@ -36,6 +36,82 @@ function parseTreatments(raw) {
   }
 }
 
+// A drawings / customer-property field "declares" something when it carries a
+// real value — anything other than empty or the explicit "N/A" answer (stored
+// as the slug N_A). Values are comma-separated tag slugs.
+function declaresValue(raw) {
+  if (!raw) return false;
+  return String(raw).split(',').map(v => v.trim()).filter(Boolean).some(v => v !== 'N_A');
+}
+
+// A per-part file is stored as "p{code}_{name}" by the upload route, where the
+// code is derived from the part's permanent id. Matching by that code (not the
+// visible item number) keeps a part's files attached even after re-numbering.
+function hasItemFile(names, itemId) {
+  const { partFileCode } = require('./jobcard-files');
+  const code = partFileCode(itemId);
+  if (!code) return false;
+  const prefix = `${code}_`;
+  return names.some(name => name.startsWith(prefix));
+}
+
+// Detect "declared but no file" gaps for one job by comparing each line item's
+// declarations against what's actually on disk:
+//   - a drawing declared but no file named for that part in Job Files
+//   - customer property declared but no file named for that part in Customer Property
+//   - a QA level set but no returned (timestamp-named) form in QA Forms
+// Items may be DB rows (snake_case) or formatted/request items (camelCase).
+// No-ops safely (hasAny:false) when job-folders storage isn't configured.
+function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null) {
+  const { listCategoryFileNames, partFileCode } = require('./jobcard-files');
+  const settings = getSettings();
+  if (!settings.job_folders_base || !settings.job_folders_base.trim()) {
+    return { items: [], missingQaForms: false, hasAny: false };
+  }
+
+  const jobFileNames = listCategoryFileNames(jobcardId, 'job-files');
+  const customerPropertyNames = listCategoryFileNames(jobcardId, 'customer-property-files');
+
+  const flagged = [];
+  items.forEach((it, idx) => {
+    const itemNumber = it.itemNumber != null ? it.itemNumber
+      : (it.item_number != null ? it.item_number : idx + 1);
+    // Only a saved part has a permanent "item:" id; an unsaved part (just added
+    // in this same edit) can't have a file attached yet, so flagging it would be
+    // a dead end — there's no part to attach to until it's saved. Skip it; it'll
+    // be checked normally on the next save/scan once it has an id.
+    if (!partFileCode(it.id)) return;
+    const drawings = it.drawingsType !== undefined ? it.drawingsType : it.drawings_type;
+    const customerProperty = it.customerProperty !== undefined ? it.customerProperty : it.customer_property;
+    // Match files by the part's permanent id; the itemNumber is only carried
+    // back for the UI to line warnings up with the rows it's showing.
+    const missingDrawing = declaresValue(drawings) && !hasItemFile(jobFileNames, it.id);
+    const missingCustomerProperty = declaresValue(customerProperty) && !hasItemFile(customerPropertyNames, it.id);
+    if (missingDrawing || missingCustomerProperty) {
+      flagged.push({ itemNumber, missingDrawing, missingCustomerProperty });
+    }
+  });
+
+  // A job needs a quality form only if its QA level actually has one attached.
+  // The blank templates are copied (bare-named) into the QA Forms folder when the
+  // job is created; a completed form is brought back in via upload and stored
+  // with a timestamp prefix, so it never matches a bare template name. The real
+  // gap is therefore "no completed form returned yet" — the folder holds nothing
+  // beyond the blank templates. Levels with no form attached are never flagged.
+  let missingQaForms = false;
+  if (qaLevelId) {
+    const templates = qaLevelTemplateQueries.getByLevel.all(qaLevelId);
+    if (templates.length > 0) {
+      const templateNames = new Set(templates.map(t => t.file_name));
+      const qaNames = listCategoryFileNames(jobcardId, 'qa-form-files');
+      const hasReturnedForm = qaNames.some(name => !templateNames.has(name));
+      missingQaForms = !hasReturnedForm;
+    }
+  }
+
+  return { items: flagged, missingQaForms, hasAny: flagged.length > 0 || missingQaForms };
+}
+
 function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
   const isAdmin = userRole === 'admin';
   // Customer fields are hidden from non-admins — same set as CUSTOMER_HISTORY_FIELDS.
@@ -371,4 +447,4 @@ function verifyQaTemplatesAvailable(qaLevelId) {
   return { ok: true };
 }
 
-module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob, verifyQaTemplatesAvailable };
+module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob, verifyQaTemplatesAvailable, computeAttachmentWarnings };

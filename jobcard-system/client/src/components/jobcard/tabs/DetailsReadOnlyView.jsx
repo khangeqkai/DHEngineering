@@ -6,6 +6,8 @@ export default function DetailsReadOnlyView({
   assignees,
   lineItems,
   updateLineItem,
+  attachmentWarnings,
+  onAttachItemFile,
   timeEntries = [],
   jobCardId,
   activeTimer,
@@ -25,6 +27,8 @@ export default function DetailsReadOnlyView({
         timeEntries={timeEntries}
         isAdmin={false}
         readOnly={true}
+        attachmentWarnings={attachmentWarnings}
+        onAttachItemFile={onAttachItemFile}
         activeTimer={activeTimer}
         timerElapsed={timerElapsed}
         timerLoading={timerLoading}

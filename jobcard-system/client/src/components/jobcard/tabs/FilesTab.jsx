@@ -4,7 +4,7 @@ import { FolderOpen, FolderClosed, FileText, Image, ChevronRight, X } from 'luci
 import { useJobFiles, CATEGORIES, CATEGORY_LABELS } from '../useJobFiles';
 import './FilesTab.css';
 
-export default function FilesTab({ jobCardId }) {
+export default function FilesTab({ jobCardId, attachmentWarnings = null }) {
   const [expandedFolders, setExpandedFolders] = useState(new Set(['qa-form-files']));
   const files = useJobFiles(jobCardId);
 
@@ -46,6 +46,11 @@ export default function FilesTab({ jobCardId }) {
           <span className="files-folder-name">{CATEGORY_LABELS[category]}</span>
           {!isExpanded && count > 0 && (
             <span className="files-folder-badge">{count}</span>
+          )}
+          {category === 'qa-form-files' && attachmentWarnings?.missingQaForms && (
+            <span className="files-folder-warning" title="This job's quality form hasn't been generated into this folder yet">
+              ⚠ Quality form missing
+            </span>
           )}
         </button>
 

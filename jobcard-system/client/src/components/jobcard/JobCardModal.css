@@ -1119,6 +1119,60 @@
   position: relative;
 }
 
+/* Amber "no file yet" nudge shown beside a Drawings / Customer Property field
+   that declares something is supplied but has no attached file. */
+.lit-missing-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(var(--warning-rgb), 0.14);
+  color: var(--warning-color);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* Per-part "Attach file" button shown beside a Drawings / Customer Property
+   field. Amber while the part's file is missing, green once one is attached. */
+.lit-attach {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.lit-attach--missing {
+  background: rgba(var(--warning-rgb), 0.14);
+  color: var(--warning-color);
+  border-color: rgba(var(--warning-rgb), 0.35);
+}
+
+.lit-attach--missing:hover {
+  background: rgba(var(--warning-rgb), 0.24);
+}
+
+.lit-attach--done {
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.lit-attach--done:hover {
+  background: rgba(34, 197, 94, 0.24);
+}
+
 .lit-select-btn {
   display: flex;
   align-items: center;

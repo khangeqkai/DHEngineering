@@ -123,9 +123,9 @@ console.log(`Settings configured (prefix: ${refData.settings.job_number_prefix},
 
 // ─── QA LEVELS ───
 console.log('Creating QA levels...');
-const insertQALevel = db.prepare('INSERT INTO qa_levels (id, name, name_lower, is_active, require_scanned_forms) VALUES (?, ?, ?, ?, ?)');
+const insertQALevel = db.prepare('INSERT INTO qa_levels (id, name, name_lower, is_active) VALUES (?, ?, ?, ?)');
 for (const q of qaLevels) {
-  insertQALevel.run(q.id, q.name, q.nameLower, q.isActive, q.requireScannedForms);
+  insertQALevel.run(q.id, q.name, q.nameLower, q.isActive);
 }
 console.log(`Created ${qaLevels.length} QA levels.`);
 
@@ -341,7 +341,7 @@ console.log(`  - ${users.length} users (all PIN 1234): ${users.map(u => u.userna
 console.log(`  - ${contacts.length} contacts (Australian industrial companies across WA/NSW/VIC/QLD)`);
 console.log(`  - ${suppliers.length} suppliers covering every treatment type`);
 console.log(`  - ${machines.length} machines`);
-console.log(`  - ${qaLevels.length} QA levels (${qaLevels.map(q => q.name).join(', ')} — Critical requires scanned forms)`);
+console.log(`  - ${qaLevels.length} QA levels (${qaLevels.map(q => q.name).join(', ')})`);
 console.log(`  - ${scenarios.length} job cards covering every status, job type, material, treatment, drawing, and customer-property value`);
 console.log('  - Repeat-job flag, every priority (incl. None), and a free-text "Other" treatment all represented');
 console.log('  - Quote references on all jobs; PO numbers on post-quote jobs');

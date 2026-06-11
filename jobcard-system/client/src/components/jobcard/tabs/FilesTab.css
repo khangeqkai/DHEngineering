@@ -63,6 +63,18 @@
   min-width: 0;
 }
 
+/* Amber note when completed quality forms haven't been returned yet. */
+.files-folder-warning {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(var(--warning-rgb), 0.14);
+  color: var(--warning-color);
+  white-space: nowrap;
+}
+
 /* Badge (collapsed file count) */
 .files-folder-badge {
   font-size: var(--text-xs);

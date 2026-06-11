@@ -1,10 +1,13 @@
+import { useRef } from 'react';
 import { X, Plus } from 'lucide-react';
 import { capitalizeFirst } from '../../../utils/formatters';
+import { ACCEPT_ATTR } from '../useJobFiles';
 import { useTags } from '../../../hooks/useTags';
 import LineItemTreatment from './LineItemTreatment';
 import LineItemProgress from './LineItemProgress';
 import LineItemTimerButton from '../LineItemTimerButton';
 import LineItemTagSelect from './LineItemTagSelect';
+import { itemWarningMap } from '../../../utils/attachmentWarnings';
 
 function entriesForItem(entries, itemNumber) {
   const target = String(itemNumber);
@@ -24,6 +27,8 @@ export default function ItemsTab({
   timeEntries = [],
   isAdmin = false,
   readOnly = false,
+  attachmentWarnings = null,
+  onAttachItemFile,
   showTimeEntryForm = false,
   editingTimeEntryId = null,
   timeEntryForm,
@@ -48,9 +53,43 @@ export default function ItemsTab({
   const { tags: drawingsTags } = useTags('drawings');
   const { tags: customerPropertyTags } = useTags('customer_property');
   const fieldsLocked = readOnly;
+  const warningByItem = itemWarningMap(attachmentWarnings);
+
+  // Only saved parts (which carry a permanent "item:" id) can take attachments;
+  // a part added but not yet saved has no stable id to tie a file to.
+  const isPersisted = (it) => typeof it.id === 'string' && it.id.startsWith('item:');
+
+  // One shared hidden file picker drives every per-part "Attach" button. The
+  // pending target (which part + which bucket) is held on a ref until the user
+  // picks a file, then handed to the parent's upload handler.
+  const attachInputRef = useRef(null);
+  const pendingAttachRef = useRef(null);
+  const triggerAttach = (itemId, category) => {
+    if (!onAttachItemFile) return;
+    pendingAttachRef.current = { itemId, category };
+    attachInputRef.current?.click();
+  };
+  const handleAttachChosen = (e) => {
+    const file = e.target.files?.[0];
+    const target = pendingAttachRef.current;
+    e.target.value = '';
+    pendingAttachRef.current = null;
+    if (file && target && onAttachItemFile) {
+      onAttachItemFile(target.itemId, target.category, file);
+    }
+  };
 
   return (
     <div className="modal-form-grid">
+      {onAttachItemFile && (
+        <input
+          type="file"
+          ref={attachInputRef}
+          accept={ACCEPT_ATTR}
+          style={{ display: 'none' }}
+          onChange={handleAttachChosen}
+        />
+      )}
       <div className="form-section">
         <div className="form-section-header">
           <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
@@ -242,6 +281,8 @@ export default function ItemsTab({
                     options={drawingsTags.map(o => ({ value: o.value, label: o.label }))}
                     naValue="N_A"
                     onChange={(v) => updateLineItem(item.id, 'drawingsType', v)}
+                    warning={!!warningByItem[item.itemNumber]?.missingDrawing}
+                    onAttach={onAttachItemFile && isPersisted(item) ? () => triggerAttach(item.id, 'job-files') : undefined}
                   />
 
                   <LineItemTagSelect
@@ -252,6 +293,8 @@ export default function ItemsTab({
                     options={customerPropertyTags.map(o => ({ value: o.value, label: o.label }))}
                     naValue="N_A"
                     onChange={(v) => updateLineItem(item.id, 'customerProperty', v)}
+                    warning={!!warningByItem[item.itemNumber]?.missingCustomerProperty}
+                    onAttach={onAttachItemFile && isPersisted(item) ? () => triggerAttach(item.id, 'customer-property-files') : undefined}
                   />
                   </div>
 
