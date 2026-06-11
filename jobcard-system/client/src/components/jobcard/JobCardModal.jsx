@@ -365,8 +365,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         qaLevelId: formHook.formData.qaLevelId || null,
         priority: formHook.formData.priority,
         poNumber: formHook.formData.poNumber,
-        drawingsType: formHook.formData.drawingsType,
-        customerProperty: formHook.formData.customerProperty,
         description: formHook.formData.description,
         dueDate: formHook.formData.dueDate,
         isRepeatJob: formHook.formData.isRepeatJob,
@@ -388,7 +386,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
             otherText: t.otherText || '',
             supplierId: t.supplierId,
             supplierName: t.supplierName || ''
-          }))
+          })),
+          drawingsType: item.drawingsType || null,
+          customerProperty: item.customerProperty || null
         }))
       };
       const result = isEdit

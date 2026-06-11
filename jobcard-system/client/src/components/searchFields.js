@@ -10,8 +10,6 @@ export const ACTIVITY_FIELDS = [
   { value: 'description', label: 'Description' },
   { value: 'poNumber', label: 'PO Number' },
   { value: 'quoteReference', label: 'Quote Reference' },
-  { value: 'drawingsType', label: 'Drawings Type' },
-  { value: 'customerProperty', label: 'Customer Property' },
   { value: 'isRepeatJob', label: 'Repeat Job' },
   { value: 'repeatJobReference', label: 'Repeat Job Reference' },
   { value: 'contactId', label: 'Contact (ID)' },

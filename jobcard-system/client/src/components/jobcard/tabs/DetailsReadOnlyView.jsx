@@ -1,4 +1,3 @@
-import { useTags } from '../../../hooks/useTags';
 import ItemsTab from './ItemsTab';
 import ToggleTiles from '../../common/ToggleTiles';
 
@@ -16,25 +15,6 @@ export default function DetailsReadOnlyView({
   onStopTimer,
   handleStopActiveEntry
 }) {
-  const { tags: drawingsTags } = useTags('drawings');
-  const { tags: customerPropertyTags } = useTags('customer_property');
-
-  const drawingsLabels = (formData.drawingsType || '')
-    .split(',')
-    .filter(v => v && v !== 'NONE')
-    .map(v => {
-      const opt = drawingsTags.find(d => d.value === v);
-      return opt ? opt.label : v;
-    });
-
-  const customerPropertyLabels = (formData.customerProperty || '')
-    .split(',')
-    .filter(v => v && v !== 'NONE')
-    .map(v => {
-      const opt = customerPropertyTags.find(c => c.value === v);
-      return opt ? opt.label : v;
-    });
-
   return (
     <div className="modal-form-grid readonly-view">
       {/* Line Items — read-only field shells with active timer + files menu + per-item progress */}
@@ -75,18 +55,6 @@ export default function DetailsReadOnlyView({
             <span className="cis-label">Quality</span>
             <span className="cis-value">{formData.qualityLevel || 'STANDARD'}</span>
           </div>
-          {customerPropertyLabels.length > 0 && (
-            <div className="cis-item">
-              <span className="cis-label">Property</span>
-              <span className="cis-value">{customerPropertyLabels.join(', ')}</span>
-            </div>
-          )}
-          {drawingsLabels.length > 0 && (
-            <div className="cis-item">
-              <span className="cis-label">Drawings</span>
-              <span className="cis-value">{drawingsLabels.join(', ')}</span>
-            </div>
-          )}
           {formData.poNumber && (
             <div className="cis-item">
               <span className="cis-label">PO#</span>

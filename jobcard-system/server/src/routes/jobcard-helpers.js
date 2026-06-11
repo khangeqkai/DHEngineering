@@ -60,8 +60,6 @@ function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
     priority: row.priority,
     poNumber: row.po_number,
     quoteReference: row.quote_reference,
-    drawingsType: row.drawings_type,
-    customerProperty: row.customer_property,
     description: row.description,
     dueDate: row.due_date,
     isRepeatJob: row.is_repeat_job === 1,
@@ -80,7 +78,9 @@ function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
       description: item.description,
       jobType: item.job_type || null,
       material: item.material || null,
-      treatments: parseTreatments(item.treatments)
+      treatments: parseTreatments(item.treatments),
+      drawingsType: item.drawings_type || null,
+      customerProperty: item.customer_property || null
     })),
     assignees: assignees.map(a => ({
       id: a.id,
@@ -105,8 +105,6 @@ function buildChanges(existing, data) {
     ['contact_email', 'contactEmail'],
     ['po_number', 'poNumber'],
     ['quote_reference', 'quoteReference'],
-    ['drawings_type', 'drawingsType'],
-    ['customer_property', 'customerProperty'],
     ['description', 'description'],
     ['is_repeat_job', 'isRepeatJob'],
     ['repeat_job_reference', 'repeatJobReference'],
@@ -154,17 +152,26 @@ function buildQaFillData(jobcardId, fields) {
     description: i.description,
     jobType: i.job_type,
     material: i.material,
-    treatments: parseTreatments(i.treatments)
+    treatments: parseTreatments(i.treatments),
+    drawingsType: i.drawings_type,
+    customerProperty: i.customer_property
   }));
   const allTreatments = itemsForPdf.flatMap(i => i.treatments).map(t => {
     const name = t.value === 'OTHER' ? (t.otherText || 'Other') : t.value;
     return t.supplierName ? `${name} → ${t.supplierName}` : name;
   });
   const allJobTypes = [...new Set(items.map(i => i.job_type).filter(Boolean))];
+  // Drawings + customer property now live per line item; aggregate (de-duped)
+  // across the job so the job-level PDF fields still fill.
+  const splitValues = raw => (raw ? String(raw) : '').split(',').map(v => v.trim()).filter(Boolean);
+  const allDrawings = [...new Set(items.flatMap(i => splitValues(i.drawings_type)))];
+  const allProperty = [...new Set(items.flatMap(i => splitValues(i.customer_property)))];
   return {
     ...fields,
     jobType: allJobTypes.join(',') || null,
     treatmentRequired: allTreatments.join(', ') || null,
+    drawingsType: allDrawings.join(',') || null,
+    customerProperty: allProperty.join(',') || null,
     items: itemsForPdf
   };
 }
@@ -178,7 +185,8 @@ function createRelatedRecords(jobcardId, data) {
         itemId, jobcardId, i + 1,
         item.qty || null, item.description,
         item.jobType || null, item.material || null,
-        serializeTreatments(item.treatments)
+        serializeTreatments(item.treatments),
+        item.drawingsType || null, item.customerProperty || null
       );
     }
   }

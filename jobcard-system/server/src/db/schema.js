@@ -93,10 +93,6 @@ db.exec(`
     po_number TEXT,
     quote_reference TEXT,
 
-    -- Drawings & Property
-    drawings_type TEXT,
-    customer_property TEXT,
-
     -- Job Details
     description TEXT,
 
@@ -128,6 +124,7 @@ db.exec(`
   -- Job line items
   -- treatments column: JSON array of objects with shape:
   --   { value, otherText, supplierId, supplierName, dateSent, dateExpected, dateReceived, status, notes }
+  -- drawings_type / customer_property: comma-separated tag values per line item
   CREATE TABLE IF NOT EXISTS job_items (
     id TEXT PRIMARY KEY,
     jobcard_id TEXT NOT NULL,
@@ -137,6 +134,8 @@ db.exec(`
     job_type TEXT,
     material TEXT,
     treatments TEXT,
+    drawings_type TEXT,
+    customer_property TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE
@@ -353,8 +352,23 @@ const migrations = [
   { table: 'time_entries', column: 'item_id', type: 'TEXT' },
   { table: 'job_items', column: 'material', type: 'TEXT' },
   { table: 'job_items', column: 'job_type', type: 'TEXT' },
+  { table: 'job_items', column: 'drawings_type', type: 'TEXT' },
+  { table: 'job_items', column: 'customer_property', type: 'TEXT' },
   { table: 'users', column: 'jobcard_column_order', type: 'TEXT' },
 ];
+
+// Drop drawings_type / customer_property from jobcards (now live on job_items)
+try {
+  const jcCols = db.prepare('PRAGMA table_info(jobcards)').all();
+  for (const dead of ['drawings_type', 'customer_property']) {
+    if (jcCols.some(c => c.name === dead)) {
+      db.exec(`ALTER TABLE jobcards DROP COLUMN ${dead}`);
+      logger.info({ column: dead }, 'Migration: Dropped column from jobcards (moved to job_items)');
+    }
+  }
+} catch (err) {
+  logger.error({ err }, 'Migration: Failed to drop drawings/property columns from jobcards');
+}
 
 // Drop job_type column from jobcards (now lives on job_items)
 try {

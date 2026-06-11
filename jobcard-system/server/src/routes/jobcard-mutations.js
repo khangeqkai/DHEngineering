@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { createJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { validateJobcardEnums, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDescriptions } = require('../middleware/validation');
+const { validateJobcardEnums, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions } = require('../middleware/validation');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -30,9 +30,11 @@ function treatmentsToText(treatments) {
   }).join(', ');
 }
 
-function itemSummary(qty, description, jobType, material, treatments) {
+function itemSummary(qty, description, jobType, material, treatments, drawingsType, customerProperty) {
   const tStr = treatmentsToText(treatments);
-  return `${qty || ''}x ${description}${jobType ? ' <' + jobType + '>' : ''}${material ? ' (' + material + ')' : ''}${tStr ? ' [' + tStr + ']' : ''}`;
+  const draw = drawingsType ? ` {draw: ${drawingsType}}` : '';
+  const prop = customerProperty ? ` {prop: ${customerProperty}}` : '';
+  return `${qty || ''}x ${description}${jobType ? ' <' + jobType + '>' : ''}${material ? ' (' + material + ')' : ''}${tStr ? ' [' + tStr + ']' : ''}${draw}${prop}`;
 }
 
 // Resolve a list of assignee user IDs to a comma-separated display name string.
@@ -67,13 +69,6 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
 
     // Validate everything BEFORE any database write, so a rejection can never
     // consume a job number or leave a half-made record behind.
-    if (!data.customerProperty || data.customerProperty === 'NONE') {
-      return res.status(400).json({ error: 'Customer Property is required' });
-    }
-    if (!data.drawingsType || data.drawingsType === 'NONE') {
-      return res.status(400).json({ error: 'Drawings type is required' });
-    }
-
     const treatmentError = validateItemTreatments(data.items);
     if (treatmentError) {
       return res.status(400).json({ error: treatmentError });
@@ -87,6 +82,16 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
     const jobTypeError = validateItemJobTypes(data.items);
     if (jobTypeError) {
       return res.status(400).json({ error: jobTypeError });
+    }
+
+    const drawingsError = validateItemDrawings(data.items);
+    if (drawingsError) {
+      return res.status(400).json({ error: drawingsError });
+    }
+
+    const propertyError = validateItemCustomerProperty(data.items);
+    if (propertyError) {
+      return res.status(400).json({ error: propertyError });
     }
 
     const descriptionError = validateItemDescriptions(data.items);
@@ -149,8 +154,6 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
         data.priority || 'NONE',
         data.poNumber || null,
         data.quoteReference || null,
-        data.drawingsType || null,
-        data.customerProperty || null,
         data.description || null,
         data.dueDate || null,
         data.isRepeatJob ? 1 : 0,
@@ -181,7 +184,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
           const num = i.itemNumber || idx + 1;
           createChanges[`item #${num} added`] = {
             from: null,
-            to: itemSummary(i.qty, i.description, i.jobType, i.material, i.treatments)
+            to: itemSummary(i.qty, i.description, i.jobType, i.material, i.treatments, i.drawingsType, i.customerProperty)
           };
         });
       }
@@ -217,8 +220,6 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
         qualityLevel: qualityLevelName,
         poNumber: data.poNumber || null,
         quoteReference: data.quoteReference || null,
-        drawingsType: data.drawingsType || null,
-        customerProperty: data.customerProperty || null,
         repeatJob: data.isRepeatJob ? 'Yes' : 'No',
         repeatJobReference: data.repeatJobReference || null
       }));
@@ -291,6 +292,14 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       if (jobTypeError) {
         return res.status(400).json({ error: jobTypeError });
       }
+      const drawingsError = validateItemDrawings(data.items);
+      if (drawingsError) {
+        return res.status(400).json({ error: drawingsError });
+      }
+      const propertyError = validateItemCustomerProperty(data.items);
+      if (propertyError) {
+        return res.status(400).json({ error: propertyError });
+      }
       const descriptionError = validateItemDescriptions(data.items);
       if (descriptionError) {
         return res.status(400).json({ error: descriptionError });
@@ -359,8 +368,6 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
         data.priority !== undefined ? data.priority : existing.priority,
         data.poNumber !== undefined ? data.poNumber : existing.po_number,
         data.quoteReference !== undefined ? data.quoteReference : existing.quote_reference,
-        data.drawingsType !== undefined ? data.drawingsType : existing.drawings_type,
-        data.customerProperty !== undefined ? data.customerProperty : existing.customer_property,
         data.description !== undefined ? data.description : existing.description,
         data.dueDate !== undefined ? data.dueDate : existing.due_date,
         data.isRepeatJob !== undefined ? (data.isRepeatJob ? 1 : 0) : existing.is_repeat_job,
@@ -388,6 +395,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
               item.qty || null, item.description,
               item.jobType || null, item.material || null,
               serializeTreatments(item.treatments),
+              item.drawingsType || null, item.customerProperty || null,
               item.id
             );
             keptIds.add(item.id);
@@ -396,7 +404,8 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
               `item:${uuidv4()}`, id, i + 1,
               item.qty || null, item.description,
               item.jobType || null, item.material || null,
-              serializeTreatments(item.treatments)
+              serializeTreatments(item.treatments),
+              item.drawingsType || null, item.customerProperty || null
             );
           }
         }
@@ -437,8 +446,8 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     }
 
     if (data.items !== undefined) {
-      const oldMap = new Map(existingItems.map(i => [i.item_number, itemSummary(i.qty, i.description, i.job_type, i.material, i.treatments)]));
-      const newMap = new Map(data.items.map((i, idx) => [i.itemNumber || idx + 1, itemSummary(i.qty, i.description, i.jobType, i.material, i.treatments)]));
+      const oldMap = new Map(existingItems.map(i => [i.item_number, itemSummary(i.qty, i.description, i.job_type, i.material, i.treatments, i.drawings_type, i.customer_property)]));
+      const newMap = new Map(data.items.map((i, idx) => [i.itemNumber || idx + 1, itemSummary(i.qty, i.description, i.jobType, i.material, i.treatments, i.drawingsType, i.customerProperty)]));
       for (const [num, desc] of newMap) {
         if (!oldMap.has(num)) {
           changes[`item #${num} added`] = { from: null, to: desc };
@@ -483,8 +492,6 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
         qualityLevel: data.qualityLevel || existing.quality_level,
         poNumber: current.po_number || data.poNumber || null,
         quoteReference: current.quote_reference || data.quoteReference || null,
-        drawingsType: current.drawings_type || data.drawingsType || null,
-        customerProperty: current.customer_property || data.customerProperty || null,
         repeatJob: (data.isRepeatJob !== undefined ? data.isRepeatJob : current.is_repeat_job === 1) ? 'Yes' : 'No',
         repeatJobReference: current.repeat_job_reference || data.repeatJobReference || null
       }));

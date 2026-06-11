@@ -27,6 +27,7 @@ const seedTags = [
   { category: 'customer_property', name: 'Part for Repair' },
   { category: 'customer_property', name: 'Part for Modification' },
 
+  { category: 'drawings', name: 'N/A' },
   { category: 'drawings', name: 'Customer CAD' },
   { category: 'drawings', name: 'Customer Sketch' },
   { category: 'drawings', name: 'DH CAD' },

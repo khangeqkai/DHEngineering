@@ -83,9 +83,16 @@ function fmtCodeList(val) {
   return val.split(',').map(v => valueToLabel(v.trim())).join(', ');
 }
 
-function fmtDrawings(val) { return fmtCodeList(val); }
 function fmtMaterial(val) { return fmtCodeList(val); }
-function fmtCustomerProperty(val) { return fmtCodeList(val); }
+
+// Collect a comma-separated, per-line-item tag field across all items on a job,
+// de-duped, for a single export cell (used for drawings + customer property).
+function fmtItemTagList(items, field) {
+  const all = [...new Set(
+    (items || []).flatMap(i => (i[field] || '').split(',').map(v => v.trim()).filter(Boolean))
+  )];
+  return fmtCodeList(all.join(','));
+}
 
 // ── Column definitions per entity ────────────────────────────────────────────
 
@@ -163,7 +170,7 @@ const JOBCARD_SUMMARY_COLS = [
     const all = [...new Set(items.map(i => i.jobType).filter(Boolean))];
     return fmtCodeList(all.join(','));
   }},
-  { label: 'Drawings', value: r => fmtDrawings(r.drawingsType) },
+  { label: 'Drawings', value: r => fmtItemTagList(r.items, 'drawingsType') },
   { label: 'Material', value: r => {
     const items = r.items || [];
     const all = [...new Set(items.map(i => i.material).filter(Boolean))];
@@ -181,7 +188,7 @@ const JOBCARD_SUMMARY_COLS = [
     }
     return parts.join(', ');
   }},
-  { label: 'Customer Property', value: r => fmtCustomerProperty(r.customerProperty) },
+  { label: 'Customer Property', value: r => fmtItemTagList(r.items, 'customerProperty') },
   { label: 'Notes', value: r => (r._notes || []).map(n => n.text).join(' | ') },
   { label: 'Repeat Job', value: r => r.isRepeatJob ? 'Yes' : 'No' },
   { label: 'Repeat Job Ref', value: r => r.repeatJobReference },

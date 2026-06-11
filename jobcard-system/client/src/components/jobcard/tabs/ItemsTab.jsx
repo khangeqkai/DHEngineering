@@ -1,9 +1,10 @@
 import { X, Plus } from 'lucide-react';
 import { capitalizeFirst } from '../../../utils/formatters';
 import { useTags } from '../../../hooks/useTags';
-import TreatmentChips from './TreatmentChips';
+import LineItemTreatment from './LineItemTreatment';
 import LineItemProgress from './LineItemProgress';
 import LineItemTimerButton from '../LineItemTimerButton';
+import LineItemTagSelect from './LineItemTagSelect';
 
 function entriesForItem(entries, itemNumber) {
   const target = String(itemNumber);
@@ -44,6 +45,8 @@ export default function ItemsTab({
 }) {
   const { tags: materialTags } = useTags('material');
   const { tags: jobTypeTags } = useTags('job_type');
+  const { tags: drawingsTags } = useTags('drawings');
+  const { tags: customerPropertyTags } = useTags('customer_property');
   const fieldsLocked = readOnly;
 
   return (
@@ -140,6 +143,7 @@ export default function ItemsTab({
               <div key={item.id} className="line-item-card">
                 <div className="line-item-badge">#{item.itemNumber}</div>
                 <div className="line-item-fields">
+                  <div className="line-item-row line-item-row-primary">
                   <div className="line-item-job-type">
                     <label>Job Type {!fieldsLocked && <span className="required">*</span>}</label>
                     {fieldsLocked ? (
@@ -150,7 +154,6 @@ export default function ItemsTab({
                       <select
                         value={item.jobType || ''}
                         onChange={(e) => updateLineItem(item.id, 'jobType', e.target.value)}
-                        className={!item.jobType ? 'field-required' : ''}
                       >
                         <option value="">Select...</option>
                         {jobTypeTags.map(opt => (
@@ -191,6 +194,8 @@ export default function ItemsTab({
                       />
                     )}
                   </div>
+                  </div>
+                  <div className="line-item-row line-item-row-secondary">
                   <div className="line-item-material">
                     <label>Material</label>
                     {fieldsLocked ? (
@@ -209,9 +214,9 @@ export default function ItemsTab({
                       </select>
                     )}
                   </div>
-                  <div className="line-item-treatment">
-                    <label>Treatment &amp; Supplier</label>
-                    {fieldsLocked ? (
+                  {fieldsLocked ? (
+                    <div className="line-item-treatment">
+                      <label>Treatment &amp; Supplier</label>
                       <div className="readonly-value">
                         {(Array.isArray(item.treatments) && item.treatments.length > 0)
                           ? item.treatments.map((t, i) => {
@@ -220,13 +225,34 @@ export default function ItemsTab({
                             })
                           : '-'}
                       </div>
-                    ) : (
-                      <TreatmentChips
-                        treatments={Array.isArray(item.treatments) ? item.treatments : []}
-                        suppliers={suppliers}
-                        onChange={(arr) => updateLineItem(item.id, 'treatments', arr)}
-                      />
-                    )}
+                    </div>
+                  ) : (
+                    <LineItemTreatment
+                      treatments={Array.isArray(item.treatments) ? item.treatments : []}
+                      suppliers={suppliers}
+                      onChange={(arr) => updateLineItem(item.id, 'treatments', arr)}
+                    />
+                  )}
+
+                  <LineItemTagSelect
+                    label="Drawings"
+                    required={!fieldsLocked}
+                    readOnly={fieldsLocked}
+                    value={item.drawingsType || ''}
+                    options={drawingsTags.map(o => ({ value: o.value, label: o.label }))}
+                    naValue="N_A"
+                    onChange={(v) => updateLineItem(item.id, 'drawingsType', v)}
+                  />
+
+                  <LineItemTagSelect
+                    label="Customer Property"
+                    required={!fieldsLocked}
+                    readOnly={fieldsLocked}
+                    value={item.customerProperty || ''}
+                    options={customerPropertyTags.map(o => ({ value: o.value, label: o.label }))}
+                    naValue="N_A"
+                    onChange={(v) => updateLineItem(item.id, 'customerProperty', v)}
+                  />
                   </div>
 
                   {jobCardId && (onStartTimer || onStopTimer) && (

@@ -8,7 +8,9 @@ const makeEmptyLineItem = (itemNumber = 1) => ({
   description: '',
   jobType: '',
   material: '',
-  treatments: []
+  treatments: [],
+  drawingsType: '',
+  customerProperty: ''
 });
 
 /**
@@ -89,8 +91,6 @@ export function useJobCardForm() {
       priority: jobcardData.priority || 'NONE',
       poNumber: jobcardData.poNumber || '',
       quoteReference: jobcardData.quoteReference || '',
-      drawingsType: jobcardData.drawingsType || 'NONE',
-      customerProperty: jobcardData.customerProperty || '',
       description: jobcardData.description || '',
       dueDate: jobcardData.dueDate || '',
       isRepeatJob: jobcardData.isRepeatJob || false,

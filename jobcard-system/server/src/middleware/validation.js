@@ -287,42 +287,8 @@ const validateJobcardEnums = [
     .optional()
     .isString()
     .withMessage('Quality level must be a string'),
-  // Drawings type validated dynamically against tags table
-  body('drawingsType')
-    .customSanitizer(value => (value === '' || value === null) ? undefined : value)
-    .optional()
-    .custom((value) => {
-      if (typeof value !== 'string') {
-        throw new Error('Drawings type must be a comma-separated string');
-      }
-      const allowed = getTagValues('drawings');
-      if (allowed.length > 0) {
-        const values = value.split(',').map(v => v.trim());
-        const invalid = values.filter(v => v && !allowed.includes(v));
-        if (invalid.length > 0) {
-          throw new Error(`Drawings type contains invalid values: ${invalid.join(', ')}`);
-        }
-      }
-      return true;
-    }),
-  // Customer property validated dynamically against tags table
-  body('customerProperty')
-    .customSanitizer(value => (value === '' || value === null) ? undefined : value)
-    .optional()
-    .custom((value) => {
-      if (typeof value !== 'string') {
-        throw new Error('Customer property must be a comma-separated string');
-      }
-      const allowed = getTagValues('customer_property');
-      if (allowed.length > 0) {
-        const values = value.split(',').map(v => v.trim());
-        const invalid = values.filter(v => v && !allowed.includes(v));
-        if (invalid.length > 0) {
-          throw new Error(`Customer property contains invalid values: ${invalid.join(', ')}`);
-        }
-      }
-      return true;
-    }),
+  // drawings + customer property are now per-line-item (see validateItemDrawings /
+  // validateItemCustomerProperty), so they are no longer validated at job level.
   handleValidationErrors
 ];
 
@@ -501,6 +467,44 @@ function validateItemJobTypes(items) {
 }
 
 /**
+ * Validate a required, comma-separated, tag-backed multi-select field on each
+ * line item (used for drawings and customer property). Every line must carry at
+ * least one value, and every value must be a known tag in the given category.
+ * The "N/A" option is itself a tag value, so picking it satisfies the requirement.
+ * @param {Array} items - line items
+ * @param {string} field - the camelCase item field name (e.g. 'drawingsType')
+ * @param {string} category - the tag category to validate against
+ * @param {string} label - human-readable label for error messages
+ * @returns {string|null} error string or null if valid
+ */
+function validateItemTagList(items, field, category, label) {
+  if (!Array.isArray(items)) return null;
+  const allowed = getTagValues(category);
+  for (let i = 0; i < items.length; i++) {
+    const raw = items[i][field];
+    const values = (raw ? String(raw) : '').split(',').map(v => v.trim()).filter(Boolean);
+    if (values.length === 0) {
+      return `Item #${i + 1} is missing ${label}`;
+    }
+    if (allowed.length > 0) {
+      const invalid = values.filter(v => !allowed.includes(v));
+      if (invalid.length > 0) {
+        return `Item #${i + 1} has invalid ${label} values: ${invalid.join(', ')}`;
+      }
+    }
+  }
+  return null;
+}
+
+function validateItemDrawings(items) {
+  return validateItemTagList(items, 'drawingsType', 'drawings', 'drawings');
+}
+
+function validateItemCustomerProperty(items) {
+  return validateItemTagList(items, 'customerProperty', 'customer_property', 'customer property');
+}
+
+/**
  * Validate description field on line items array.
  * The job_items.description column is NOT NULL, so every line item must carry a
  * non-empty description. The create screen already strips blank rows, but the
@@ -543,6 +547,8 @@ module.exports = {
   validateItemTreatments,
   validateItemMaterials,
   validateItemJobTypes,
+  validateItemDrawings,
+  validateItemCustomerProperty,
   validateItemDescriptions,
 
   JOBCARD_STATUSES,

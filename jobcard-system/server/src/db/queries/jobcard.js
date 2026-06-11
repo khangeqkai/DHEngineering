@@ -87,11 +87,11 @@ const jobcardQueries = {
       id, job_number, card_type, status, contact_id,
       contact_name, company_name, contact_phone, contact_email,
       quality_level, priority, po_number, quote_reference,
-      drawings_type, customer_property, description, due_date,
+      description, due_date,
       is_repeat_job, repeat_job_reference,
       photos, created_by, updated_by, qa_level_id, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `),
 
   update: db.prepare(`
@@ -99,7 +99,7 @@ const jobcardQueries = {
       card_type = ?, status = ?, contact_id = ?,
       contact_name = ?, company_name = ?, contact_phone = ?, contact_email = ?,
       quality_level = ?, priority = ?, po_number = ?, quote_reference = ?,
-      drawings_type = ?, customer_property = ?, description = ?, due_date = ?,
+      description = ?, due_date = ?,
       is_repeat_job = ?, repeat_job_reference = ?,
       photos = ?, updated_by = ?, qa_level_id = ?, updated_at = datetime('now')
     WHERE id = ?
@@ -128,8 +128,8 @@ const jobItemQueries = {
   getByJobcard: db.prepare('SELECT * FROM job_items WHERE jobcard_id = ? ORDER BY item_number ASC'),
 
   create: db.prepare(`
-    INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments, drawings_type, customer_property, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `),
 
   // Update a line in place by its stable id, so the line keeps its identity (and the
@@ -137,6 +137,7 @@ const jobItemQueries = {
   updateById: db.prepare(`
     UPDATE job_items SET
       item_number = ?, qty = ?, description = ?, job_type = ?, material = ?, treatments = ?,
+      drawings_type = ?, customer_property = ?,
       updated_at = datetime('now')
     WHERE id = ?
   `),

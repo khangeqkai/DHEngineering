@@ -12,6 +12,8 @@
  *   costing — optional { labourRate, labourSpecialRate?, materialsCost,
  *             materialsProfitPercent, subcontractorCost, subcontractorProfitPercent }
  *   items[].treatment — comma-separated treatment tag values (or null)
+ *   items[].drawings — comma-separated drawings tag values (per line item, required)
+ *   items[].customerProperty — comma-separated customer_property tag values (per line item, required)
  *   notes[].worker / timeEntries[].worker — index into the worker users
  *   timeEntries[].scrap — pieces scrapped on that entry (defaults to 0)
  *   timeEntries[].special — marks a special-labour (overtime) entry
@@ -28,14 +30,12 @@ function buildScenarios(contacts, qaLevels) {
       priority: 'MEDIUM',
       contact: contacts[0], // Sasol
       qaLevel: qaLevels[0],
-      drawingsType: 'CUSTOMER_CAD',
-      customerProperty: 'N_A',
       daysAgoCreated: 2,
       daysFromNowDue: 21,
       items: [
-        { qty: '1', desc: 'Gearbox housing CI per DWG GB-2024-117', jobType: 'MANUFACTURE', material: 'CAST_IRON', treatment: null },
-        { qty: '2', desc: 'Bearing cap to match housing', jobType: 'MANUFACTURE', material: 'CAST_IRON', treatment: null },
-        { qty: '4', desc: 'Custom socket head bolt M16x80 grade 12.9', jobType: 'MANUFACTURE', material: 'STEEL', treatment: 'HEAT_TREATMENT' },
+        { qty: '1', desc: 'Gearbox housing CI per DWG GB-2024-117', jobType: 'MANUFACTURE', material: 'CAST_IRON', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
+        { qty: '2', desc: 'Bearing cap to match housing', jobType: 'MANUFACTURE', material: 'CAST_IRON', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
+        { qty: '4', desc: 'Custom socket head bolt M16x80 grade 12.9', jobType: 'MANUFACTURE', material: 'STEEL', treatment: 'HEAT_TREATMENT', drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
       ],
       assignees: [],
       notes: [],
@@ -51,13 +51,11 @@ function buildScenarios(contacts, qaLevels) {
       priority: 'MEDIUM',
       contact: contacts[8], // Denel
       qaLevel: qaLevels[0],
-      drawingsType: 'CUSTOMER_CAD',
-      customerProperty: 'N_A',
       daysAgoCreated: 1,
       daysFromNowDue: 14,
       items: [
-        { qty: '6', desc: 'Flange adapter 4" 150# 316SS', jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null },
-        { qty: '6', desc: 'Reducing bush 4"-3" mating',   jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null },
+        { qty: '6', desc: 'Flange adapter 4" 150# 316SS', jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
+        { qty: '6', desc: 'Reducing bush 4"-3" mating',   jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
       ],
       assignees: [0, 3],
       notes: [
@@ -75,13 +73,11 @@ function buildScenarios(contacts, qaLevels) {
       priority: 'MEDIUM',
       contact: contacts[4], // Anglo American Platinum
       qaLevel: qaLevels[0],
-      drawingsType: 'CUSTOMER_CAD',
-      customerProperty: 'N_A',
       daysAgoCreated: 6,
       daysFromNowDue: 18,
       items: [
-        { qty: '4', desc: 'Bearing housing EN24T Ø150x80mm',     jobType: 'MANUFACTURE', material: 'STEEL',           treatment: 'HEAT_TREATMENT' },
-        { qty: '8', desc: 'Bearing locking ring 316SS Ø160x10mm', jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null },
+        { qty: '4', desc: 'Bearing housing EN24T Ø150x80mm',     jobType: 'MANUFACTURE', material: 'STEEL',           treatment: 'HEAT_TREATMENT', drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
+        { qty: '8', desc: 'Bearing locking ring 316SS Ø160x10mm', jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
       ],
       assignees: [1, 2],
       notes: [
@@ -91,6 +87,7 @@ function buildScenarios(contacts, qaLevels) {
     },
 
     // 4 — Mixed per-item progress: item1 fully done, item2 partial, item3 untouched.
+    //     Customer supplied castings for the impellers and shafts; couplings are off our own stock (per-item property varies).
     {
       description: 'Manufacture pump impellers, shafts, and couplings — cooling water plant batch',
       quoteReference: 'QT-2026-0091',
@@ -100,14 +97,12 @@ function buildScenarios(contacts, qaLevels) {
       priority: 'HIGH',
       contact: contacts[3], // Eskom
       qaLevel: qaLevels[1], // Critical
-      drawingsType: 'CUSTOMER_CAD',
-      customerProperty: 'MATERIAL_SUPPLIED',
       daysAgoCreated: 12,
       daysFromNowDue: 7,
       items: [
-        { qty: '4',  desc: 'Pump impeller Ø180mm CF8M cast',      jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null },
-        { qty: '6',  desc: 'Pump shaft EN24T Ø50x350mm',           jobType: 'MANUFACTURE', material: 'STEEL',           treatment: 'HEAT_TREATMENT' },
-        { qty: '12', desc: 'Coupling adapter PB1 Ø80x50mm',        jobType: 'MANUFACTURE', material: 'BRONZE',          treatment: null },
+        { qty: '4',  desc: 'Pump impeller Ø180mm CF8M cast',      jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'MATERIAL_SUPPLIED' },
+        { qty: '6',  desc: 'Pump shaft EN24T Ø50x350mm',           jobType: 'MANUFACTURE', material: 'STEEL',           treatment: 'HEAT_TREATMENT', drawings: 'CUSTOMER_CAD', customerProperty: 'MATERIAL_SUPPLIED' },
+        { qty: '12', desc: 'Coupling adapter PB1 Ø80x50mm',        jobType: 'MANUFACTURE', material: 'BRONZE',          treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
       ],
       assignees: [0, 1, 2],
       notes: [
@@ -127,6 +122,7 @@ function buildScenarios(contacts, qaLevels) {
     },
 
     // 5 — Active timer running right now (no end_time) on item 2 while item 1 is done.
+    //     Both parts are the customer's own manifold, sent in for repair.
     {
       description: 'Emergency repair: cracked exhaust manifold — weld crack and re-machine flange face',
       quoteReference: 'QT-2026-0156',
@@ -135,13 +131,11 @@ function buildScenarios(contacts, qaLevels) {
       priority: 'HIGH',
       contact: contacts[6], // ArcelorMittal
       qaLevel: qaLevels[0],
-      drawingsType: 'CUSTOMER_SKETCH',
-      customerProperty: 'PART_FOR_REPAIR',
       daysAgoCreated: 2,
       daysFromNowDue: 1,
       items: [
-        { qty: '1', desc: 'Manifold crack repair — TIG weld preheat 250°C', jobType: 'REPAIR', material: 'CAST_IRON', treatment: null },
-        { qty: '1', desc: 'Re-machine flange face flat to 0.05mm',          jobType: 'MODIFY', material: 'CAST_IRON', treatment: null },
+        { qty: '1', desc: 'Manifold crack repair — TIG weld preheat 250°C', jobType: 'REPAIR', material: 'CAST_IRON', treatment: null, drawings: 'CUSTOMER_SKETCH', customerProperty: 'PART_FOR_REPAIR' },
+        { qty: '1', desc: 'Re-machine flange face flat to 0.05mm',          jobType: 'MODIFY', material: 'CAST_IRON', treatment: null, drawings: 'CUSTOMER_SKETCH', customerProperty: 'PART_FOR_REPAIR' },
       ],
       assignees: [3, 4],
       notes: [
@@ -164,13 +158,11 @@ function buildScenarios(contacts, qaLevels) {
       priority: 'MEDIUM',
       contact: contacts[7], // Transnet
       qaLevel: qaLevels[0],
-      drawingsType: 'DH_CAD',
-      customerProperty: 'N_A',
       daysAgoCreated: 8,
       daysFromNowDue: 14,
       items: [
-        { qty: '8', desc: 'Mounting bracket 150x100x12 MS welded', jobType: 'FABRICATE',   material: 'STEEL', treatment: 'GALVANISE' },
-        { qty: '8', desc: 'Locator pin Ø20m6 x 60mm hardened',     jobType: 'MANUFACTURE', material: 'STEEL', treatment: 'HEAT_TREATMENT' },
+        { qty: '8', desc: 'Mounting bracket 150x100x12 MS welded', jobType: 'FABRICATE',   material: 'STEEL', treatment: 'GALVANISE', drawings: 'DH_CAD', customerProperty: 'N_A' },
+        { qty: '8', desc: 'Locator pin Ø20m6 x 60mm hardened',     jobType: 'MANUFACTURE', material: 'STEEL', treatment: 'HEAT_TREATMENT', drawings: 'DH_CAD', customerProperty: 'N_A' },
       ],
       assignees: [0, 4],
       notes: [
@@ -195,12 +187,10 @@ function buildScenarios(contacts, qaLevels) {
       priority: 'MEDIUM',
       contact: contacts[5], // Mondi
       qaLevel: qaLevels[0],
-      drawingsType: 'DH_CAD',
-      customerProperty: 'N_A',
       daysAgoCreated: 18,
       daysFromNowDue: 10,
       items: [
-        { qty: '6', desc: 'Wear plate 400BHN 300x200x25mm drilled', jobType: 'MANUFACTURE', material: 'STEEL', treatment: 'GALVANISE' },
+        { qty: '6', desc: 'Wear plate 400BHN 300x200x25mm drilled', jobType: 'MANUFACTURE', material: 'STEEL', treatment: 'GALVANISE', drawings: 'DH_CAD', customerProperty: 'N_A' },
       ],
       assignees: [0, 4],
       notes: [
@@ -224,12 +214,10 @@ function buildScenarios(contacts, qaLevels) {
       priority: 'LOW',
       contact: contacts[9], // South32
       qaLevel: qaLevels[0],
-      drawingsType: 'CUSTOMER_CAD',
-      customerProperty: 'N_A',
       daysAgoCreated: 22,
       daysFromNowDue: 2,
       items: [
-        { qty: '2', desc: 'Coupling adapter EN8 Ø150x120mm', jobType: 'MANUFACTURE', material: 'STEEL', treatment: null },
+        { qty: '2', desc: 'Coupling adapter EN8 Ø150x120mm', jobType: 'MANUFACTURE', material: 'STEEL', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
       ],
       assignees: [2, 3],
       notes: [
@@ -252,13 +240,11 @@ function buildScenarios(contacts, qaLevels) {
       priority: 'HIGH',
       contact: contacts[1], // Sappi
       qaLevel: qaLevels[0],
-      drawingsType: 'CUSTOMER_SKETCH',
-      customerProperty: 'PART_FOR_REPAIR',
       daysAgoCreated: 30,
       daysFromNowDue: -10,
       invoicedDaysAgo: 12,
       items: [
-        { qty: '2', desc: 'Roller shaft Ø80mm — strip chrome, re-plate, grind to size', jobType: 'REPAIR', material: 'STEEL', treatment: 'ELECTROPLATE,PRECISION_GRINDING' },
+        { qty: '2', desc: 'Roller shaft Ø80mm — strip chrome, re-plate, grind to size', jobType: 'REPAIR', material: 'STEEL', treatment: 'ELECTROPLATE,PRECISION_GRINDING', drawings: 'CUSTOMER_SKETCH', customerProperty: 'PART_FOR_REPAIR' },
       ],
       assignees: [2, 3],
       notes: [

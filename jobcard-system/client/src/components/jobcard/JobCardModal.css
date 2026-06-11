@@ -887,6 +887,20 @@
   line-height: 1.5;
 }
 
+/* Deliberate two-row layout per part, so the arrangement stays predictable
+   regardless of the item view-size (zoom) control. Row 1 = what the part is
+   (job type, qty, description); row 2 = its attributes (material, supplier,
+   treatment, drawings, customer property). Each row spans the full width so it
+   always breaks onto its own line. */
+.line-item-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
 .line-item-actions {
   display: flex;
   align-items: center;
@@ -1053,13 +1067,141 @@
   border-color: var(--primary-accent);
 }
 
-/* Treatment chip column (per line item) — inline with the other fields */
+/* Treatment + Supplier: two native dropdowns that match the Job Type / Material
+   boxes, so each part reads as one uniform row of controls. */
+.line-item-treatment-field {
+  display: flex;
+  flex-direction: column;
+  width: 175px;
+  flex-shrink: 0;
+}
+
+.line-item-treatment-field select,
+.line-item-treatment-field input {
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface);
+  font-size: var(--text-sm);
+}
+
+.line-item-treatment-field select:focus,
+.line-item-treatment-field input:focus {
+  outline: none;
+  border-color: var(--primary-accent);
+}
+
+.line-item-treatment-field select.field-required {
+  border-color: var(--danger-color, #ef4444);
+}
+
+/* Treatment read-only column (per line item) — inline with the other fields */
 .line-item-treatment {
   display: flex;
   flex-direction: column;
   flex: 0 1 auto;
   min-width: 240px;
   max-width: 100%;
+}
+
+/* Per-line-item multi-select (drawings, customer property) — a compact dropdown
+   whose closed state matches the Job Type / Material boxes, so it sits on one
+   line beside the other line-item fields instead of spreading out. */
+.line-item-tagselect {
+  display: flex;
+  flex-direction: column;
+  width: 190px;
+  flex-shrink: 0;
+}
+
+.lit-select {
+  position: relative;
+}
+
+.lit-select-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.lit-select-btn:hover {
+  border-color: var(--primary-accent);
+}
+
+.lit-select-btn--empty .lit-select-text {
+  color: var(--text-tertiary);
+}
+
+.lit-select-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lit-select-caret {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.lit-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  max-width: 240px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.15));
+  z-index: 200;
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.lit-select-option {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  text-align: left;
+  padding: 0.375rem 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm, 4px);
+  white-space: nowrap;
+}
+
+.lit-select-option:hover {
+  background: var(--surface-inset);
+}
+
+.lit-select-option.selected {
+  background: rgba(var(--accent-rgb, 2, 132, 199), 0.08);
+  font-weight: var(--font-medium);
+}
+
+.lit-select-check {
+  width: 0.875rem;
+  flex-shrink: 0;
+  color: var(--primary-accent);
+  font-size: var(--text-xs);
 }
 
 .line-item-progress {
@@ -1372,223 +1514,6 @@
 
 .readonly-item-row > .line-item-progress {
   margin-left: 1.5rem;
-}
-
-/* Treatment chips: per-line-item treatment + supplier */
-.treatment-chips-wrapper {
-  width: 100%;
-}
-
-.treatment-chips-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-  align-items: center;
-}
-
-.treatment-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.375rem 0.25rem 0.5rem;
-  background: rgba(var(--accent-rgb, 2, 132, 199), 0.06);
-  border: 1px solid var(--border-color);
-  border-radius: 999px;
-  font-size: var(--text-xs);
-  color: var(--text-primary);
-}
-
-.treatment-chip--invalid {
-  background: rgba(239, 68, 68, 0.06);
-  border-color: rgba(239, 68, 68, 0.4);
-}
-
-.treatment-chip-label {
-  font-weight: var(--font-medium);
-}
-
-.treatment-chip-arrow {
-  color: var(--text-tertiary);
-  font-size: 0.875rem;
-}
-
-.treatment-chip-supplier {
-  position: relative;
-}
-
-.treatment-chip-supplier-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.125rem;
-  padding: 0.125rem 0.375rem;
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: 999px;
-  font-size: var(--text-xs);
-  color: var(--text-primary);
-  cursor: pointer;
-  max-width: 14rem;
-}
-
-.treatment-chip-supplier-btn:hover {
-  border-color: var(--primary-accent);
-}
-
-.treatment-chip-supplier-btn--missing {
-  color: rgb(239, 68, 68);
-  border-color: rgba(239, 68, 68, 0.4);
-}
-
-.treatment-chip-supplier-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.treatment-chip-supplier-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  min-width: 200px;
-  max-height: 240px;
-  overflow-y: auto;
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.15));
-  z-index: 200;
-  padding: 0.25rem;
-}
-
-.treatment-chip-remove {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0 0.125rem;
-  color: var(--text-tertiary);
-  display: inline-flex;
-  align-items: center;
-}
-
-.treatment-chip-remove:hover {
-  color: rgb(239, 68, 68);
-}
-
-.treatment-chip-add-wrapper {
-  position: relative;
-}
-
-.treatment-chip-add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  padding: 0;
-  background: var(--surface);
-  border: 1px dashed var(--border-color);
-  border-radius: 50%;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: border-color var(--duration-fast) ease,
-              color var(--duration-fast) ease,
-              background var(--duration-fast) ease;
-}
-
-.treatment-chip-add:hover {
-  border-color: var(--primary-accent);
-  color: var(--text-primary);
-}
-
-.treatment-add-popover {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  min-width: 240px;
-  max-height: 320px;
-  overflow-y: auto;
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.15));
-  z-index: 200;
-  padding: 0.5rem;
-}
-
-.treatment-add-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 0.375rem;
-}
-
-.treatment-add-back {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--primary-accent);
-  font-size: var(--text-xs);
-  padding: 0;
-}
-
-.treatment-add-back:hover {
-  text-decoration: underline;
-}
-
-.treatment-add-empty {
-  padding: 0.5rem;
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-}
-
-.treatment-add-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-
-.treatment-add-option {
-  text-align: left;
-  padding: 0.375rem 0.5rem;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-  border-radius: var(--radius-sm, 4px);
-}
-
-.treatment-add-option:hover {
-  background: var(--surface-inset);
-}
-
-.treatment-add-option.selected {
-  background: rgba(var(--accent-rgb, 2, 132, 199), 0.08);
-  font-weight: var(--font-medium);
-}
-
-.treatment-add-option:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.treatment-add-other-input {
-  width: 100%;
-  padding: 0.375rem 0.5rem;
-  margin-bottom: 0.375rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm, 4px);
-  background: var(--surface);
-  font-size: var(--text-sm);
-}
-
-.treatment-add-other-input:focus {
-  outline: none;
-  border-color: var(--primary-accent);
 }
 
 .empty-state {

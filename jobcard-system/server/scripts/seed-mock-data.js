@@ -180,13 +180,13 @@ console.log('Creating job cards...');
 const insertJobcard = db.prepare(`INSERT INTO jobcards (
   id, job_number, card_type, status, contact_id, contact_name, company_name,
   contact_phone, contact_email,
-  quality_level, qa_level_id, priority, drawings_type, customer_property,
+  quality_level, qa_level_id, priority,
   quote_reference, po_number,
   description, due_date, is_repeat_job, created_by, updated_by, created_at,
   archived, invoiced_date
-) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
-const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments, drawings_type, customer_property) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
 const insertNote = db.prepare('INSERT INTO job_notes (id, jobcard_id, user_id, user_name, text, created_at) VALUES (?, ?, ?, ?, ?, ?)');
 const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, user_id, item_id, machine_number, qty, scrap_qty, description, start_time, end_time, is_special_labour) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
@@ -258,7 +258,6 @@ const createJobs = db.transaction(() => {
       jobId, jobNumber, s.status, s.contact.id, s.contact.contactName, s.contact.companyName,
       s.contact.phone, s.contact.email,
       s.qaLevel.name.toUpperCase(), s.qaLevel.id, s.priority,
-      s.drawingsType, s.customerProperty,
       s.quoteReference || null, s.poNumber || null,
       s.description, dueDate, 0,
       adminId, adminId, createdAt,
@@ -271,7 +270,7 @@ const createJobs = db.transaction(() => {
     s.items.forEach((item, idx) => {
       const itemId = uid('item');
       itemIdByNumber[idx + 1] = itemId;
-      insertItem.run(itemId, jobId, idx + 1, item.qty, item.desc, item.jobType, item.material, buildTreatments(item.treatment));
+      insertItem.run(itemId, jobId, idx + 1, item.qty, item.desc, item.jobType, item.material, buildTreatments(item.treatment), item.drawings || 'N_A', item.customerProperty || 'N_A');
     });
 
     for (const wIdx of s.assignees) {

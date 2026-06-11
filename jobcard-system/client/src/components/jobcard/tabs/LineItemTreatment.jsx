@@ -1,0 +1,144 @@
+import { useMemo } from 'react';
+import { useTags } from '../../../hooks/useTags';
+import { capitalizeFirst } from '../../../utils/formatters';
+
+const OTHER = 'OTHER';
+
+function isActive(s) {
+  return s.active === 1 || s.active === true;
+}
+
+// Whether a supplier offers a given treatment. 'Other' (free-text) works with any
+// supplier, so it always matches.
+function supplierOffers(supplier, treatmentValue) {
+  if (!treatmentValue || treatmentValue === OTHER) return true;
+  return (supplier.serviceTags || []).some(t => t.value === treatmentValue);
+}
+
+// Per-line-item Treatment + Supplier as two native dropdowns that filter each
+// other: pick a treatment and the supplier list narrows to those who do it; pick
+// a supplier first and the treatment list narrows to what they offer. One pair
+// per part. Stored as the line item's `treatments` array (length 0 or 1) so the
+// rest of the system (costing, PDF fill, history) is unchanged.
+export default function LineItemTreatment({ treatments = [], suppliers = [], onChange }) {
+  const { tags: treatmentTags } = useTags('treatment');
+
+  const current = (Array.isArray(treatments) && treatments[0]) || null;
+  const value = current?.value || '';
+  const supplierId = current?.supplierId || '';
+  const otherText = current?.otherText || '';
+
+  const activeSuppliers = useMemo(() => suppliers.filter(isActive), [suppliers]);
+
+  // Treatment list: filtered by the chosen supplier (what they offer), or — when no
+  // supplier is chosen — only treatments that at least one active supplier does.
+  // 'Other' is always offered, and the current pick is always kept visible.
+  const treatmentOptions = useMemo(() => {
+    const chosenSupplier = suppliers.find(s => s.id === supplierId);
+    const base = chosenSupplier
+      ? treatmentTags.filter(t => supplierOffers(chosenSupplier, t.value))
+      : treatmentTags.filter(t => activeSuppliers.some(s => supplierOffers(s, t.value)));
+    const list = base.map(t => ({ value: t.value, label: t.label || t.name }));
+    list.push({ value: OTHER, label: 'Other' });
+    if (value && value !== OTHER && !list.some(o => o.value === value)) {
+      const tag = treatmentTags.find(t => t.value === value);
+      list.unshift({ value, label: tag ? (tag.label || tag.name) : value });
+    }
+    return list;
+  }, [treatmentTags, activeSuppliers, suppliers, supplierId, value]);
+
+  // Supplier list: filtered by the chosen treatment (who offers it), or all active
+  // suppliers when none / 'Other' is chosen. The current pick is always kept.
+  const supplierOptions = useMemo(() => {
+    const base = (value && value !== OTHER)
+      ? activeSuppliers.filter(s => supplierOffers(s, value))
+      : activeSuppliers;
+    const list = base.map(s => ({ value: s.id, label: s.name }));
+    if (supplierId && !list.some(o => o.value === supplierId)) {
+      const s = suppliers.find(x => x.id === supplierId);
+      list.unshift({ value: supplierId, label: s ? `${s.name}${isActive(s) ? '' : ' (removed)'}` : (current?.supplierName || 'Unknown') });
+    }
+    return list;
+  }, [activeSuppliers, suppliers, value, supplierId, current]);
+
+  const emit = (next) => {
+    const v = next.value !== undefined ? next.value : value;
+    const sid = next.supplierId !== undefined ? next.supplierId : supplierId;
+    const ot = next.otherText !== undefined ? next.otherText : otherText;
+    if (!v && !sid) {
+      onChange([]);
+      return;
+    }
+    const supplier = suppliers.find(s => s.id === sid) || null;
+    onChange([{
+      value: v,
+      otherText: v === OTHER ? ot : '',
+      supplierId: sid,
+      supplierName: supplier ? supplier.name : (sid ? (current?.supplierName || '') : '')
+    }]);
+  };
+
+  const handleTreatmentChange = (newVal) => {
+    // Drop the supplier if it doesn't offer the newly chosen treatment.
+    let sid = supplierId;
+    if (newVal && newVal !== OTHER && sid) {
+      const s = suppliers.find(x => x.id === sid);
+      if (s && !supplierOffers(s, newVal)) sid = '';
+    }
+    emit({ value: newVal, supplierId: sid });
+  };
+
+  const handleSupplierChange = (newSid) => {
+    // Drop the treatment if the newly chosen supplier doesn't offer it.
+    let v = value;
+    if (newSid && v && v !== OTHER) {
+      const s = suppliers.find(x => x.id === newSid);
+      if (s && !supplierOffers(s, v)) v = '';
+    }
+    emit({ value: v, supplierId: newSid });
+  };
+
+  return (
+    <>
+      <div className="line-item-treatment-field">
+        <label>Supplier {value && <span className="required">*</span>}</label>
+        <select
+          value={supplierId}
+          onChange={(e) => handleSupplierChange(e.target.value)}
+          className={value && !supplierId ? 'field-required' : ''}
+        >
+          <option value="">No supplier</option>
+          {supplierOptions.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="line-item-treatment-field">
+        <label>Treatment</label>
+        <select value={value} onChange={(e) => handleTreatmentChange(e.target.value)}>
+          <option value="">No treatment</option>
+          {treatmentOptions.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {value === OTHER && (
+        <div className="line-item-treatment-field">
+          <label>Specify</label>
+          <input
+            type="text"
+            value={otherText}
+            placeholder="Treatment name…"
+            onChange={(e) => emit({ otherText: e.target.value })}
+            onBlur={(e) => {
+              const f = capitalizeFirst(e.target.value);
+              if (f !== e.target.value) emit({ otherText: f });
+            }}
+          />
+        </div>
+      )}
+    </>
+  );
+}

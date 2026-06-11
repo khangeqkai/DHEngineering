@@ -22,29 +22,35 @@ export function validateJobCardForm({ isAdmin, formData, contactFormData, lineIt
     errors.push(`Job type is required on item #${itemMissingJobType + 1}`);
   }
 
-  // Each treatment must have a value and supplier
+  const itemMissingDrawings = validItems.findIndex(item => !item.drawingsType);
+  if (itemMissingDrawings !== -1) {
+    errors.push(`Drawings is required on item #${itemMissingDrawings + 1}`);
+  }
+
+  const itemMissingProperty = validItems.findIndex(item => !item.customerProperty);
+  if (itemMissingProperty !== -1) {
+    errors.push(`Customer property is required on item #${itemMissingProperty + 1}`);
+  }
+
+  // One treatment + supplier per part. Both must be set together (or both left
+  // blank). A half-picked pair — supplier without a treatment, or the reverse —
+  // is flagged so nothing incomplete is saved.
   for (let i = 0; i < validItems.length; i++) {
     const item = validItems[i];
     const treatments = Array.isArray(item.treatments) ? item.treatments : [];
-    for (let t = 0; t < treatments.length; t++) {
-      const tr = treatments[t];
+    for (const tr of treatments) {
+      if (!tr.value && !tr.supplierId) continue; // no treatment on this part — fine
       if (!tr.value) {
-        errors.push(`Item #${i + 1} treatment ${t + 1} is missing a treatment`);
+        errors.push(`Item #${i + 1}: pick a treatment for the chosen supplier`);
+        continue;
       }
       if (tr.value === 'OTHER' && !(tr.otherText || '').trim()) {
-        errors.push(`Item #${i + 1} treatment ${t + 1} (Other) needs text`);
+        errors.push(`Item #${i + 1}: type the "Other" treatment name`);
       }
       if (!tr.supplierId) {
-        errors.push(`Item #${i + 1} treatment ${t + 1} is missing a supplier`);
+        errors.push(`Item #${i + 1}: pick a supplier for the chosen treatment`);
       }
     }
-  }
-
-  if (!formData.customerProperty || formData.customerProperty === 'NONE') {
-    errors.push('Customer Property is required');
-  }
-  if (!formData.drawingsType || formData.drawingsType === 'NONE') {
-    errors.push('Drawings type is required');
   }
 
   return { errors, validItems };

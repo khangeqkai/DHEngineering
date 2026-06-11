@@ -44,7 +44,9 @@ export function mapLineItemFromApi(item) {
     description: item.description || '',
     jobType: item.jobType || '',
     material: item.material || '',
-    treatments: Array.isArray(item.treatments) ? item.treatments.map(mapTreatmentFromApi) : []
+    treatments: Array.isArray(item.treatments) ? item.treatments.map(mapTreatmentFromApi) : [],
+    drawingsType: item.drawingsType || '',
+    customerProperty: item.customerProperty || ''
   };
 }
 
@@ -54,15 +56,6 @@ export function mapTreatmentFromApi(t) {
     otherText: t.otherText || '',
     supplierId: t.supplierId || '',
     supplierName: t.supplierName || ''
-  };
-}
-
-export function makeEmptyTreatment(value = '', supplier = null) {
-  return {
-    value,
-    otherText: '',
-    supplierId: supplier ? supplier.id : '',
-    supplierName: supplier ? supplier.name : ''
   };
 }
 
@@ -91,8 +84,6 @@ export function getDefaultFormData() {
     priority: 'NONE',
     poNumber: '',
     quoteReference: '',
-    drawingsType: 'NONE',
-    customerProperty: '',
     description: '',
     dueDate: '',
     isRepeatJob: false,

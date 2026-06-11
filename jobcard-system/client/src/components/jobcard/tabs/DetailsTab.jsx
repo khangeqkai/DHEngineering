@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { useTags } from '../../../hooks/useTags';
 import { formatFileSize, formatFileDate } from '../mappers';
 import { toTitleCase } from '../../../utils/formatters';
 import { useJobSearch } from '../useJobSearch';
@@ -71,8 +70,6 @@ export default function DetailsTab({
   onStopTimer
 }) {
   const readOnly = isEdit && !isAdmin;
-  const { tags: customerPropertyTags } = useTags('customer_property');
-  const { tags: drawingsTags } = useTags('drawings');
 
   const jobSearch = useJobSearch({ excludeJobNumber: jobNumber });
   const { setQuery: setJobSearchQuery } = jobSearch;
@@ -312,43 +309,6 @@ export default function DetailsTab({
             </div>
           </div>
         )}
-        <div className="form-group">
-          <label>Customer Property <span className="required">*</span></label>
-          <ToggleTiles
-            ariaLabel="Customer property"
-            className={!formData.customerProperty || formData.customerProperty === 'NONE' ? 'field-required' : ''}
-            options={customerPropertyTags.map(o => ({ value: o.value, label: o.label }))}
-            selectedValues={formData.customerProperty ? formData.customerProperty.split(',') : []}
-            onToggle={(val) => {
-              const values = formData.customerProperty ? formData.customerProperty.split(',') : [];
-              if (val === 'N_A') {
-                setFormData(prev => ({ ...prev, customerProperty: values.includes('N_A') ? '' : 'N_A' }));
-              } else {
-                const current = values.filter(v => v && v !== 'N_A');
-                const updated = current.includes(val)
-                  ? current.filter(v => v !== val)
-                  : [...current, val];
-                setFormData(prev => ({ ...prev, customerProperty: updated.join(',') }));
-              }
-            }}
-          />
-        </div>
-        <div className="form-group">
-          <label>Drawings <span className="required">*</span></label>
-          <ToggleTiles
-            ariaLabel="Drawings"
-            className={!formData.drawingsType || formData.drawingsType === 'NONE' ? 'field-required' : ''}
-            options={drawingsTags.map(o => ({ value: o.value, label: o.label }))}
-            selectedValues={formData.drawingsType ? formData.drawingsType.split(',') : []}
-            onToggle={(val) => {
-              const current = (formData.drawingsType ? formData.drawingsType.split(',') : []).filter(v => v && v !== 'NONE');
-              const updated = current.includes(val)
-                ? current.filter(v => v !== val)
-                : [...current, val];
-              setFormData(prev => ({ ...prev, drawingsType: updated.length ? updated.join(',') : 'NONE' }));
-            }}
-          />
-        </div>
         <div className="form-group">
           <label>Scanner Files</label>
           <button
