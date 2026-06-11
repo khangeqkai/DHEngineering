@@ -1,264 +1,235 @@
 /**
- * Job-card scenarios for the seed script, kept separate to hold the main script
- * under the file-size limit. Each scenario maps to one demo job and is written to
- * exercise a distinct state: empty-state rendering, mixed per-item progress, an
- * active running timer, out-for-treatment, completed, and invoiced + special labour.
+ * Job-card generator for the seed script.
  *
- * Indices into `contacts` / `qaLevels` are resolved by the caller, so this module
- * takes those arrays and returns the fully-built scenario list.
+ * Replaces the old hand-written nine-scenario list with a deterministic generator
+ * that walks coverage counters across every axis the app supports, so the demo
+ * data exercises ALL of: each status (incl. On Hold), each job type, each
+ * material, each treatment (incl. the free-text "Other"), each drawing type,
+ * each customer-property value, the repeat-job flag, and every priority.
  *
- * Field reference (consumed by server/scripts/seed-mock-data.js):
- *   quoteReference / poNumber — strings written to the job card (PO only once ordered)
- *   costing — optional { labourRate, labourSpecialRate?, materialsCost,
- *             materialsProfitPercent, subcontractorCost, subcontractorProfitPercent }
- *   items[].treatment — comma-separated treatment tag values (or null)
- *   items[].drawings — comma-separated drawings tag values (per line item, required)
- *   items[].customerProperty — comma-separated customer_property tag values (per line item, required)
- *   notes[].worker / timeEntries[].worker — index into the worker users
- *   timeEntries[].scrap — pieces scrapped on that entry (defaults to 0)
- *   timeEntries[].special — marks a special-labour (overtime) entry
- *   timeEntries[].active — a still-running timer (no end time)
+ * It is deterministic (no randomness) so re-seeding always yields the same set.
+ *
+ * Output shape per job (consumed by server/scripts/seed-mock-data.js):
+ *   description, quoteReference, poNumber?, status, priority, isRepeat,
+ *   contact, qaLevel, daysAgoCreated, daysFromNowDue, invoicedDaysAgo?,
+ *   costing?, items[], assignees[], notes[], timeEntries[]
+ *   items[].treatment       — comma-separated treatment values, or null
+ *   items[].treatmentOther   — free text when treatment === 'OTHER'
+ *   items[].drawings / .customerProperty — single tag value (per line item)
  */
 
-function buildScenarios(contacts, qaLevels) {
-  return [
-    // 1 — Fresh quote: no assignees, no notes, no time entries (empty-state rendering).
-    {
-      description: 'Quote: manufacture replacement gearbox housing assembly per DWG GB-2024-117',
-      quoteReference: 'QT-2026-0142',
-      status: 'QUOTE',
-      priority: 'MEDIUM',
-      contact: contacts[0], // Sasol
-      qaLevel: qaLevels[0],
-      daysAgoCreated: 2,
-      daysFromNowDue: 21,
-      items: [
-        { qty: '1', desc: 'Gearbox housing CI per DWG GB-2024-117', jobType: 'MANUFACTURE', material: 'CAST_IRON', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
-        { qty: '2', desc: 'Bearing cap to match housing', jobType: 'MANUFACTURE', material: 'CAST_IRON', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
-        { qty: '4', desc: 'Custom socket head bolt M16x80 grade 12.9', jobType: 'MANUFACTURE', material: 'STEEL', treatment: 'HEAT_TREATMENT', drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
-      ],
-      assignees: [],
-      notes: [],
-      timeEntries: [],
-    },
+// ── Coverage axes (tag VALUES, matching seed-data tagValue output) ──
+const STATUS_PLAN = [
+  'QUOTE', 'QUOTE', 'QUOTE', 'QUOTE',
+  'OPEN', 'OPEN', 'OPEN', 'OPEN',
+  'AWAITING_MATERIAL', 'AWAITING_MATERIAL', 'AWAITING_MATERIAL',
+  'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS',
+  'TREATMENT', 'TREATMENT', 'TREATMENT',
+  'ON_HOLD', 'ON_HOLD',
+  'DONE', 'DONE', 'DONE', 'DONE',
+  'INVOICED', 'INVOICED', 'INVOICED', 'INVOICED',
+];
 
-    // 2 — OPEN: job approved and assigned, ready to start but zero work logged yet (0/qty all items).
-    {
-      description: 'Manufacture flange adapters for new steam line — drawing approved, scheduled for Monday',
-      quoteReference: 'QT-2026-0118',
-      poNumber: 'PO-44821',
-      status: 'OPEN',
-      priority: 'MEDIUM',
-      contact: contacts[8], // Denel
-      qaLevel: qaLevels[0],
-      daysAgoCreated: 1,
-      daysFromNowDue: 14,
-      items: [
-        { qty: '6', desc: 'Flange adapter 4" 150# 316SS', jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
-        { qty: '6', desc: 'Reducing bush 4"-3" mating',   jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
-      ],
-      assignees: [0, 3],
-      notes: [
-        { worker: 0, text: 'Drawing approved this morning. Setting up tooling list, will start first thing Monday.', daysAgo: 0 },
-      ],
-      timeEntries: [],
-    },
+const JOB_TYPES = ['MANUFACTURE', 'REPAIR', 'MODIFY', 'FABRICATE', 'SUPPLY', 'REVERSE_ENGINEER', 'INSPECTION', 'CAD_DRAWINGS', 'CONSULTATION', 'ONSITE'];
+const MATERIALS = ['STEEL', 'STAINLESS_STEEL', 'ALUMINIUM', 'BRASS', 'COPPER', 'BRONZE', 'CAST_IRON', 'TITANIUM', 'PLASTIC'];
+// null entries leave a line item untreated; every treatment value (incl. OTHER) appears.
+const TREATMENTS = [null, 'HEAT_TREATMENT', null, 'PRECISION_GRINDING', 'ANODISE', null, 'ELECTROPLATE', 'BLASTING', null, 'POWDERCOAT', 'SPRAYPAINT', 'GALVANISE', 'SPECIALISED_COATING', 'OTHER', null];
+const DRAWINGS = ['CUSTOMER_CAD', 'CUSTOMER_SKETCH', 'DH_CAD', 'DH_SKETCH', 'PREPARE_SKETCH', 'PREPARE_CAD'];
+const CUSTOMER_PROPERTY = ['N_A', 'MATERIAL_SUPPLIED', 'N_A', 'DAMAGED_OR_WORN_SAMPLE', 'GOOD_SAMPLE', 'N_A', 'PART_FOR_REPAIR', 'PART_FOR_MODIFICATION'];
+const PRIORITIES = ['MEDIUM', 'HIGH', 'LOW', 'MEDIUM', 'HIGH', 'NONE', 'MEDIUM', 'LOW'];
 
-    // 3 — AWAITING_MATERIAL: assigned but waiting on bar stock from supplier.
-    {
-      description: 'Manufacture replacement bearing housings — awaiting EN24T bar from supplier',
-      quoteReference: 'QT-2026-0103',
-      poNumber: 'PO-44790',
-      status: 'AWAITING_MATERIAL',
-      priority: 'MEDIUM',
-      contact: contacts[4], // Anglo American Platinum
-      qaLevel: qaLevels[0],
-      daysAgoCreated: 6,
-      daysFromNowDue: 18,
-      items: [
-        { qty: '4', desc: 'Bearing housing EN24T Ø150x80mm',     jobType: 'MANUFACTURE', material: 'STEEL',           treatment: 'HEAT_TREATMENT', drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
-        { qty: '8', desc: 'Bearing locking ring 316SS Ø160x10mm', jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
-      ],
-      assignees: [1, 2],
-      notes: [
-        { worker: 1, text: 'EN24T bar ordered from Bohler. Expected 5 working days.', daysAgo: 5 },
-      ],
-      timeEntries: [],
-    },
+// ── Realistic part vocabulary ──
+const VERB = {
+  MANUFACTURE: 'Manufacture', REPAIR: 'Repair', MODIFY: 'Modify', FABRICATE: 'Fabricate',
+  SUPPLY: 'Supply', REVERSE_ENGINEER: 'Reverse engineer', INSPECTION: 'Inspect',
+  CAD_DRAWINGS: 'Produce drawings for', CONSULTATION: 'Consult on', ONSITE: 'On-site work on',
+};
+const PARTS = {
+  MANUFACTURE: ['drive shaft', 'bearing housing', 'flange adapter', 'pump impeller', 'coupling hub', 'gland sleeve', 'spacer ring', 'locator pin', 'thrust collar', 'wear ring'],
+  REPAIR: ['gearbox housing', 'hydraulic ram', 'pump shaft', 'roller shaft', 'crusher toggle', 'conveyor pulley'],
+  MODIFY: ['mounting bracket', 'pulley bore', 'shaft keyway', 'flange face', 'adapter plate'],
+  FABRICATE: ['support frame', 'conveyor chute', 'skid base', 'guard panel', 'walkway grating', 'pipe spool'],
+  SUPPLY: ['hex bolt set', 'bearing kit', 'gasket set', 'bar stock offcut'],
+  REVERSE_ENGINEER: ['obsolete gear', 'sample casting', 'legacy coupling', 'worn sprocket'],
+  INSPECTION: ['incoming casting batch', 'weld seam', 'machined batch'],
+  CAD_DRAWINGS: ['assembly drawing pack', 'part detail set', 'general arrangement'],
+  CONSULTATION: ['failure analysis', 'material selection review', 'fitment study'],
+  ONSITE: ['line bore', 'flange facing', 'breakdown machining'],
+};
+const GRADE = {
+  STEEL: 'EN24T', STAINLESS_STEEL: '316', ALUMINIUM: '6061-T6', BRASS: 'CZ121', COPPER: 'C101',
+  BRONZE: 'PB1', CAST_IRON: 'Grade 250', TITANIUM: 'Grade 5', PLASTIC: 'Acetal',
+};
+// Job types where dimensions don't make sense in the part description.
+const NO_DIMS = new Set(['INSPECTION', 'CAD_DRAWINGS', 'CONSULTATION', 'SUPPLY']);
 
-    // 4 — Mixed per-item progress: item1 fully done, item2 partial, item3 untouched.
-    //     Customer supplied castings for the impellers and shafts; couplings are off our own stock (per-item property varies).
-    {
-      description: 'Manufacture pump impellers, shafts, and couplings — cooling water plant batch',
-      quoteReference: 'QT-2026-0091',
-      poNumber: 'PO-44712',
-      costing: { labourRate: 650, materialsCost: 18500, materialsProfitPercent: 30, subcontractorCost: 4200, subcontractorProfitPercent: 15 },
-      status: 'IN_PROGRESS',
-      priority: 'HIGH',
-      contact: contacts[3], // Eskom
-      qaLevel: qaLevels[1], // Critical
-      daysAgoCreated: 12,
-      daysFromNowDue: 7,
-      items: [
-        { qty: '4',  desc: 'Pump impeller Ø180mm CF8M cast',      jobType: 'MANUFACTURE', material: 'STAINLESS_STEEL', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'MATERIAL_SUPPLIED' },
-        { qty: '6',  desc: 'Pump shaft EN24T Ø50x350mm',           jobType: 'MANUFACTURE', material: 'STEEL',           treatment: 'HEAT_TREATMENT', drawings: 'CUSTOMER_CAD', customerProperty: 'MATERIAL_SUPPLIED' },
-        { qty: '12', desc: 'Coupling adapter PB1 Ø80x50mm',        jobType: 'MANUFACTURE', material: 'BRONZE',          treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
-      ],
-      assignees: [0, 1, 2],
-      notes: [
-        { worker: 0, text: 'Material from Eskom received. Starting impellers on CNC-03.', daysAgo: 10 },
-        { worker: 1, text: 'All 4 impellers machined. First-off inspection passed.',       daysAgo: 6 },
-        { worker: 2, text: 'Started shafts on LATHE-01. Heat treatment booked for next week.', daysAgo: 4 },
-      ],
-      timeEntries: [
-        // Item 1 → 4/4 DONE
-        { worker: 0, item: '1', machine: 'CNC-03',   qty: '2', desc: 'Pump impeller Ø180mm CF8M cast', daysAgo: 10, startHour: 8, hours: 5 },
-        { worker: 1, item: '1', machine: 'CNC-03',   qty: '2', desc: 'Pump impeller Ø180mm CF8M cast', daysAgo: 9,  startHour: 7, hours: 6 },
-        // Item 2 → 3/6 PARTIAL
-        { worker: 2, item: '2', machine: 'LATHE-01', qty: '2', scrap: 1, desc: 'Pump shaft EN24T Ø50x350mm',     daysAgo: 4,  startHour: 8,  hours: 4 },
-        { worker: 2, item: '2', machine: 'LATHE-01', qty: '1', desc: 'Pump shaft EN24T Ø50x350mm',     daysAgo: 3,  startHour: 13, hours: 3 },
-        // Item 3 → untouched
-      ],
-    },
+const CONTEXT = {
+  QUOTE: 'quote pending customer approval',
+  OPEN: 'approved, scheduled to start',
+  AWAITING_MATERIAL: 'awaiting material from supplier',
+  IN_PROGRESS: 'machining underway',
+  TREATMENT: 'machined, out for treatment',
+  ON_HOLD: 'on hold pending customer decision',
+  DONE: 'complete, awaiting collection',
+  INVOICED: 'completed and invoiced',
+};
+const NOTES = {
+  OPEN: ['Drawing approved, tooling list prepared.', 'Scheduled to start next shift.'],
+  AWAITING_MATERIAL: ['Bar stock ordered — ETA 5 working days.', 'Waiting on casting from the foundry.'],
+  IN_PROGRESS: ['First item machined, first-off inspection passed.', 'Setup complete, running on the CNC now.'],
+  TREATMENT: ['Machining finished, parts sent out for treatment.', 'Dropped at the coater — ETA back is 4 days.'],
+  ON_HOLD: ['On hold — customer reviewing a revised drawing.', 'Paused pending a PO amendment.'],
+  DONE: ['All items complete, QC signed off.', 'Finished and ready for customer collection.'],
+  INVOICED: ['Completed, collected, and invoiced.', 'Final inspection passed — invoiced.'],
+};
+const OTHER_TEXT = ['Passivation per ASTM A967', 'Dry-film lubricant coating', 'Phosphate & oil finish', 'Nitrocarburising'];
 
-    // 5 — Active timer running right now (no end_time) on item 2 while item 1 is done.
-    //     Both parts are the customer's own manifold, sent in for repair.
-    {
-      description: 'Emergency repair: cracked exhaust manifold — weld crack and re-machine flange face',
-      quoteReference: 'QT-2026-0156',
-      poNumber: 'PO-44903',
-      status: 'IN_PROGRESS',
-      priority: 'HIGH',
-      contact: contacts[6], // ArcelorMittal
-      qaLevel: qaLevels[0],
-      daysAgoCreated: 2,
-      daysFromNowDue: 1,
-      items: [
-        { qty: '1', desc: 'Manifold crack repair — TIG weld preheat 250°C', jobType: 'REPAIR', material: 'CAST_IRON', treatment: null, drawings: 'CUSTOMER_SKETCH', customerProperty: 'PART_FOR_REPAIR' },
-        { qty: '1', desc: 'Re-machine flange face flat to 0.05mm',          jobType: 'MODIFY', material: 'CAST_IRON', treatment: null, drawings: 'CUSTOMER_SKETCH', customerProperty: 'PART_FOR_REPAIR' },
-      ],
-      assignees: [3, 4],
-      notes: [
-        { worker: 3, text: 'Weld done. Cooled slowly under blanket — no re-cracking.', daysAgo: 1 },
-        { worker: 4, text: 'Setup on Bridgeport. Indicating face now.',                 daysAgo: 0 },
-      ],
-      timeEntries: [
-        { worker: 3, item: '1', machine: 'WELD-01', qty: '1', desc: 'Manifold crack repair — TIG weld preheat 250°C', daysAgo: 1, startHour: 9, hours: 4 },
-        // Active — started 90 minutes ago, no end_time.
-        { worker: 4, item: '2', machine: 'MILL-01', qty: '0', desc: 'Re-machine flange face',                          active: true, startMinutesAgo: 90 },
-      ],
-    },
+const STARTED = new Set(['IN_PROGRESS', 'TREATMENT', 'ON_HOLD', 'DONE', 'INVOICED']);
+const FULLY_MACHINED = new Set(['TREATMENT', 'DONE', 'INVOICED']);
+const COSTED = new Set(['IN_PROGRESS', 'TREATMENT', 'DONE', 'INVOICED']);
+// Base age (days ago created) per status — terminal jobs are older than fresh ones.
+const BASE_AGE = { QUOTE: 2, OPEN: 3, AWAITING_MATERIAL: 6, IN_PROGRESS: 9, TREATMENT: 16, ON_HOLD: 11, DONE: 22, INVOICED: 32 };
+const BASE_DUE = { QUOTE: 21, OPEN: 14, AWAITING_MATERIAL: 18, IN_PROGRESS: 8, TREATMENT: 10, ON_HOLD: 20, DONE: 3, INVOICED: -8 };
 
-    // 6 — Two-item job: item 1 fully done, item 2 partial across two workers (5/8).
-    {
-      description: 'Fabricate conveyor mounting brackets and matched locator pins',
-      quoteReference: 'QT-2026-0077',
-      poNumber: 'PO-44688',
-      status: 'IN_PROGRESS',
-      priority: 'MEDIUM',
-      contact: contacts[7], // Transnet
-      qaLevel: qaLevels[0],
-      daysAgoCreated: 8,
-      daysFromNowDue: 14,
-      items: [
-        { qty: '8', desc: 'Mounting bracket 150x100x12 MS welded', jobType: 'FABRICATE',   material: 'STEEL', treatment: 'GALVANISE', drawings: 'DH_CAD', customerProperty: 'N_A' },
-        { qty: '8', desc: 'Locator pin Ø20m6 x 60mm hardened',     jobType: 'MANUFACTURE', material: 'STEEL', treatment: 'HEAT_TREATMENT', drawings: 'DH_CAD', customerProperty: 'N_A' },
-      ],
-      assignees: [0, 4],
-      notes: [
-        { worker: 0, text: 'Welded all brackets in the morning, switched to CNC-02 for pins after lunch.', daysAgo: 5 },
-      ],
-      timeEntries: [
-        // Item 1 → 8/8 DONE
-        { worker: 0, item: '1', machine: 'WELD-01', qty: '8', desc: 'Welded all 8 brackets',              daysAgo: 5, startHour: 7,  hours: 4 },
-        // Item 2 → 3 + 2 = 5/8 PARTIAL
-        { worker: 0, item: '2', machine: 'CNC-02',  qty: '3', desc: 'Turned first 3 locator pins',        daysAgo: 5, startHour: 11, hours: 3 },
-        { worker: 4, item: '2', machine: 'CNC-02',  qty: '2', scrap: 1, desc: 'Locator pin Ø20m6 x 60mm hardened',  daysAgo: 3, startHour: 8,  hours: 4 },
-      ],
-    },
+function buildScenarios(contacts, qaLevels, opts = {}) {
+  const workerCount = opts.workerCount || 5;
+  const machineNumbers = opts.machineNumbers || ['CNC-01'];
+  // Machines that suit metal removal vs. fabrication — keeps time entries believable.
+  const machiningMachines = machineNumbers.filter(m => !m.startsWith('WELD'));
 
-    // 7 — TREATMENT: machining done in-house, plates shipped out for galvanising.
-    {
-      description: 'Manufacture wear plates — machined and out at Robor for galvanising',
-      quoteReference: 'QT-2026-0064',
-      poNumber: 'PO-44651',
-      costing: { labourRate: 650, materialsCost: 9200, materialsProfitPercent: 25, subcontractorCost: 2800, subcontractorProfitPercent: 20 },
-      status: 'TREATMENT',
-      priority: 'MEDIUM',
-      contact: contacts[5], // Mondi
-      qaLevel: qaLevels[0],
-      daysAgoCreated: 18,
-      daysFromNowDue: 10,
-      items: [
-        { qty: '6', desc: 'Wear plate 400BHN 300x200x25mm drilled', jobType: 'MANUFACTURE', material: 'STEEL', treatment: 'GALVANISE', drawings: 'DH_CAD', customerProperty: 'N_A' },
-      ],
-      assignees: [0, 4],
-      notes: [
-        { worker: 0, text: 'All 6 plates profiled and drilled. Ready for galvanising.', daysAgo: 8 },
-        { worker: 4, text: 'Dropped off at Robor. ETA back is 4 working days.',         daysAgo: 6 },
-      ],
-      timeEntries: [
-        // Item 1 → 6/6 machining done; awaiting return from Robor.
-        { worker: 0, item: '1', machine: 'CNC-01',   qty: '3', desc: 'Wear plate — profile cut', daysAgo: 12, startHour: 7, hours: 6 },
-        { worker: 4, item: '1', machine: 'DRILL-01', qty: '3', desc: 'Wear plate — drilling',     daysAgo: 8,  startHour: 8, hours: 5 },
-      ],
-    },
+  // Rotating counters guarantee every axis value is used at least once.
+  const c = { type: 0, mat: 0, treat: 0, draw: 0, prop: 0, prio: 0, contact: 0, qa: 0, worker: 0, machine: 0, note: 0, other: 0 };
+  const rot = (arr, key) => arr[c[key]++ % arr.length];
+  const nextWorker = () => c.worker++ % workerCount;
 
-    // 8 — DONE: all items complete, QC signed off, awaiting customer collection / invoice.
-    {
-      description: 'Manufacture coupling adapters — complete, awaiting customer collection',
-      quoteReference: 'QT-2026-0029',
-      poNumber: 'PO-44503',
-      costing: { labourRate: 650, materialsCost: 3400, materialsProfitPercent: 35, subcontractorCost: 0, subcontractorProfitPercent: 0 },
-      status: 'DONE',
-      priority: 'LOW',
-      contact: contacts[9], // South32
-      qaLevel: qaLevels[0],
-      daysAgoCreated: 22,
-      daysFromNowDue: 2,
-      items: [
-        { qty: '2', desc: 'Coupling adapter EN8 Ø150x120mm', jobType: 'MANUFACTURE', material: 'STEEL', treatment: null, drawings: 'CUSTOMER_CAD', customerProperty: 'N_A' },
-      ],
-      assignees: [2, 3],
-      notes: [
-        { worker: 2, text: 'First adapter complete and inspected.',                       daysAgo: 14 },
-        { worker: 3, text: 'Both adapters done. QC signed off. Ready for collection.',    daysAgo: 5 },
-      ],
-      timeEntries: [
-        { worker: 2, item: '1', machine: 'LATHE-01', qty: '1', scrap: 1, desc: 'Coupling adapter EN8 Ø150x120mm', daysAgo: 14, startHour: 8, hours: 6 },
-        { worker: 3, item: '1', machine: 'LATHE-01', qty: '1', desc: 'Coupling adapter EN8 Ø150x120mm', daysAgo: 5,  startHour: 9, hours: 5 },
-      ],
-    },
+  let qtNum = 142;   // quote refs count DOWN from here as jobs get older
+  let poNum = 44950; // PO numbers likewise
 
-    // 9 — Fully done + INVOICED (archived) + Saturday special labour entry.
-    {
-      description: 'Chrome plate worn roller shafts — printer plant rush',
-      quoteReference: 'QT-2026-0012',
-      poNumber: 'PO-44388',
-      costing: { labourRate: 650, labourSpecialRate: 975, materialsCost: 1200, materialsProfitPercent: 40, subcontractorCost: 5600, subcontractorProfitPercent: 15 },
-      status: 'INVOICED',
-      priority: 'HIGH',
-      contact: contacts[1], // Sappi
-      qaLevel: qaLevels[0],
-      daysAgoCreated: 30,
-      daysFromNowDue: -10,
-      invoicedDaysAgo: 12,
-      items: [
-        { qty: '2', desc: 'Roller shaft Ø80mm — strip chrome, re-plate, grind to size', jobType: 'REPAIR', material: 'STEEL', treatment: 'ELECTROPLATE,PRECISION_GRINDING', drawings: 'CUSTOMER_SKETCH', customerProperty: 'PART_FOR_REPAIR' },
-      ],
-      assignees: [2, 3],
-      notes: [
-        { worker: 2, text: 'Stripped old chrome. Sent to SA Anodisers for re-plating.', daysAgo: 25 },
-        { worker: 3, text: 'Back from platers. Grinding to nominal Ø80h6.',             daysAgo: 18 },
-        { worker: 2, text: 'Both shafts within tolerance. Customer collected.',          daysAgo: 14 },
-      ],
-      timeEntries: [
-        { worker: 2, item: '1', machine: 'LATHE-02', qty: '0', desc: 'Strip old chrome from both shafts',                  daysAgo: 25, startHour: 8, hours: 6 },
-        { worker: 3, item: '1', machine: 'GRIND-01', qty: '0', desc: 'Saturday overtime — pre-grind both shafts before plating', daysAgo: 22, startHour: 7, hours: 8, special: true },
-        { worker: 3, item: '1', machine: 'GRIND-01', qty: '2', scrap: 1, desc: 'Roller shaft — final grind to Ø80h6',                daysAgo: 18, startHour: 8, hours: 5 },
-      ],
-    },
-  ];
+  const jobs = [];
+  STATUS_PLAN.forEach((status, jobIdx) => {
+    const itemCount = status === 'QUOTE' ? (1 + (jobIdx % 3)) : (1 + (jobIdx % 2)); // quotes 1-3 items, others 1-2
+    const items = [];
+    for (let n = 0; n < itemCount; n++) {
+      const jobType = rot(JOB_TYPES, 'type');
+      const material = rot(MATERIALS, 'mat');
+      const treatment = rot(TREATMENTS, 'treat');
+      const part = PARTS[jobType][(jobIdx + n) % PARTS[jobType].length];
+      const dims = NO_DIMS.has(jobType) ? '' : ` Ø${40 + ((jobIdx + n) % 9) * 8}x${60 + ((jobIdx + n) % 7) * 40}mm`;
+      const grade = NO_DIMS.has(jobType) ? '' : ` ${GRADE[material]}`;
+      const qty = jobType === 'SUPPLY' ? String(10 + (n * 6)) : String(1 + ((jobIdx + n) % 6));
+      items.push({
+        qty,
+        desc: `${part.charAt(0).toUpperCase()}${part.slice(1)}${grade}${dims}`.trim(),
+        jobType,
+        material,
+        treatment,
+        treatmentOther: treatment === 'OTHER' ? rot(OTHER_TEXT, 'other') : undefined,
+        drawings: rot(DRAWINGS, 'draw'),
+        customerProperty: rot(CUSTOMER_PROPERTY, 'prop'),
+      });
+    }
+
+    const contact = contacts[c.contact++ % contacts.length];
+    const qaLevel = qaLevels[c.qa++ % qaLevels.length];
+    const priority = rot(PRIORITIES, 'prio');
+    const isRepeat = jobIdx % 5 === 0;
+    const daysAgoCreated = BASE_AGE[status] + (jobIdx % 4);
+    const daysFromNowDue = BASE_DUE[status] - (jobIdx % 3);
+    const hasTreatment = items.some(it => it.treatment);
+
+    // Assignees: 1-3 distinct workers (QUOTE jobs are unassigned).
+    const assignees = [];
+    if (status !== 'QUOTE') {
+      const count = 1 + (jobIdx % 3);
+      for (let a = 0; a < count; a++) {
+        const w = nextWorker();
+        if (!assignees.includes(w)) assignees.push(w);
+      }
+    }
+
+    // Notes: one or two, except fresh quotes which have none.
+    const notes = [];
+    if (status !== 'QUOTE' && assignees.length) {
+      const pool = NOTES[status] || [];
+      const noteCount = Math.min(pool.length, 1 + (jobIdx % 2));
+      for (let k = 0; k < noteCount; k++) {
+        notes.push({ worker: assignees[k % assignees.length], text: pool[k], daysAgo: Math.max(0, daysAgoCreated - 2 - k * 2) });
+      }
+    }
+
+    // Time entries, scaled to how far the job has progressed.
+    const timeEntries = [];
+    if (STARTED.has(status)) {
+      const fullyDone = FULLY_MACHINED.has(status);
+      // One IN_PROGRESS job carries a live (still-running) timer; one INVOICED job a Saturday special-labour entry.
+      const liveTimer = status === 'IN_PROGRESS' && jobIdx === 12;
+      const withSpecial = status === 'INVOICED' && jobIdx === 27;
+
+      items.forEach((it, idx) => {
+        const itemNo = String(idx + 1);
+        const target = parseInt(it.qty, 10) || 1;
+        const worker = assignees[idx % assignees.length] ?? nextWorker();
+        const machine = rot(machiningMachines, 'machine');
+        const entered = Math.max(1, daysAgoCreated - 2 - idx * 2);
+
+        if (fullyDone) {
+          timeEntries.push({ worker, item: itemNo, machine, qty: String(target), scrap: idx === 0 ? 1 : 0, desc: it.desc, daysAgo: entered, startHour: 8, hours: 4 + (idx % 3) });
+        } else if (status === 'IN_PROGRESS') {
+          if (idx === 0) {
+            timeEntries.push({ worker, item: itemNo, machine, qty: String(target), desc: it.desc, daysAgo: entered, startHour: 7, hours: 5 });
+          } else if (idx === 1) {
+            const partial = Math.max(1, Math.floor(target / 2));
+            timeEntries.push({ worker, item: itemNo, machine, qty: String(partial), scrap: 1, desc: it.desc, daysAgo: entered, startHour: 8, hours: 4 });
+          }
+        } else if (status === 'ON_HOLD' && idx === 0) {
+          const partial = Math.max(1, Math.floor(target / 3));
+          timeEntries.push({ worker, item: itemNo, machine, qty: String(partial), desc: it.desc, daysAgo: entered, startHour: 8, hours: 3 });
+        }
+      });
+
+      if (liveTimer) {
+        timeEntries.push({ worker: assignees[0], item: String(items.length), machine: rot(machiningMachines, 'machine'), qty: '0', desc: `${items[items.length - 1].desc} — in progress`, active: true, startMinutesAgo: 75 });
+      }
+      if (withSpecial) {
+        timeEntries.push({ worker: assignees[0], item: '1', machine: 'GRIND-01', qty: '0', desc: 'Saturday overtime — pre-grind before plating', daysAgo: daysAgoCreated - 4, startHour: 7, hours: 8, special: true });
+      }
+    }
+
+    // Pricing on anything past quoting/opening.
+    let costing;
+    if (COSTED.has(status)) {
+      costing = {
+        labourRate: 115,
+        labourSpecialRate: status === 'INVOICED' ? 172 : 0,
+        materialsCost: 1500 + (jobIdx % 6) * 2600,
+        materialsProfitPercent: 25 + (jobIdx % 4) * 5,
+        subcontractorCost: hasTreatment ? 1800 + (jobIdx % 5) * 900 : 0,
+        subcontractorProfitPercent: hasTreatment ? 15 : 0,
+      };
+    }
+
+    const firstPart = items[0].desc.split(' — ')[0].toLowerCase();
+    jobs.push({
+      description: `${VERB[items[0].jobType]} ${firstPart} — ${CONTEXT[status]}`,
+      quoteReference: `QT-2026-${String(qtNum--).padStart(4, '0')}`,
+      poNumber: status === 'QUOTE' ? null : `PO-${poNum--}`,
+      status,
+      priority,
+      isRepeat,
+      contact,
+      qaLevel,
+      daysAgoCreated,
+      daysFromNowDue,
+      invoicedDaysAgo: status === 'INVOICED' ? Math.max(1, Math.floor(daysAgoCreated / 3)) : undefined,
+      costing,
+      items,
+      assignees,
+      notes,
+      timeEntries,
+    });
+  });
+
+  return jobs;
 }
 
 module.exports = { buildScenarios };

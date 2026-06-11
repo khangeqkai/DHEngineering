@@ -1,11 +1,11 @@
 # Graph Report - DHEngineering  (2026-06-11)
 
 ## Corpus Check
-- 139 files · ~102,575 words
+- 140 files · ~103,051 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 634 nodes · 894 edges · 28 communities detected
+- 635 nodes · 894 edges · 28 communities detected
 - Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 77 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
@@ -203,7 +203,7 @@ Nodes (2): formatNum(), ScrapStat()
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `useAuth()` connect `Community 1` to `Community 5`, `Community 6`, `Community 7`?**
-  _High betweenness centrality (0.036) - this node is a cross-community bridge._
+  _High betweenness centrality (0.035) - this node is a cross-community bridge._
 - **Why does `useConfirmDialog()` connect `Community 2` to `Community 1`, `Community 5`, `Community 7`?**
   _High betweenness centrality (0.032) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**

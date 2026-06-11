@@ -15,11 +15,12 @@ function supplierOffers(supplier, treatmentValue) {
   return (supplier.serviceTags || []).some(t => t.value === treatmentValue);
 }
 
-// Per-line-item Treatment + Supplier as two native dropdowns that filter each
-// other: pick a treatment and the supplier list narrows to those who do it; pick
-// a supplier first and the treatment list narrows to what they offer. One pair
-// per part. Stored as the line item's `treatments` array (length 0 or 1) so the
-// rest of the system (costing, PDF fill, history) is unchanged.
+// Per-line-item Treatment + Supplier. Treatment is the primary choice and is
+// shown first; the Supplier dropdown only appears once a treatment is picked
+// (no treatment → no supplier needed), narrowed to suppliers who offer that
+// treatment, with a supplier then required. One pair per part. Stored as the
+// line item's `treatments` array (length 0 or 1) so the rest of the system
+// (costing, PDF fill, history) is unchanged.
 export default function LineItemTreatment({ treatments = [], suppliers = [], onChange }) {
   const { tags: treatmentTags } = useTags('treatment');
 
@@ -30,14 +31,10 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
 
   const activeSuppliers = useMemo(() => suppliers.filter(isActive), [suppliers]);
 
-  // Treatment list: filtered by the chosen supplier (what they offer), or — when no
-  // supplier is chosen — only treatments that at least one active supplier does.
+  // Treatment list: only treatments that at least one active supplier offers.
   // 'Other' is always offered, and the current pick is always kept visible.
   const treatmentOptions = useMemo(() => {
-    const chosenSupplier = suppliers.find(s => s.id === supplierId);
-    const base = chosenSupplier
-      ? treatmentTags.filter(t => supplierOffers(chosenSupplier, t.value))
-      : treatmentTags.filter(t => activeSuppliers.some(s => supplierOffers(s, t.value)));
+    const base = treatmentTags.filter(t => activeSuppliers.some(s => supplierOffers(s, t.value)));
     const list = base.map(t => ({ value: t.value, label: t.label || t.name }));
     list.push({ value: OTHER, label: 'Other' });
     if (value && value !== OTHER && !list.some(o => o.value === value)) {
@@ -45,7 +42,7 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
       list.unshift({ value, label: tag ? (tag.label || tag.name) : value });
     }
     return list;
-  }, [treatmentTags, activeSuppliers, suppliers, supplierId, value]);
+  }, [treatmentTags, activeSuppliers, value]);
 
   // Supplier list: filtered by the chosen treatment (who offers it), or all active
   // suppliers when none / 'Other' is chosen. The current pick is always kept.
@@ -89,31 +86,13 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
   };
 
   const handleSupplierChange = (newSid) => {
-    // Drop the treatment if the newly chosen supplier doesn't offer it.
-    let v = value;
-    if (newSid && v && v !== OTHER) {
-      const s = suppliers.find(x => x.id === newSid);
-      if (s && !supplierOffers(s, v)) v = '';
-    }
-    emit({ value: v, supplierId: newSid });
+    // The supplier list is already filtered to suppliers that offer the chosen
+    // treatment, so the picked supplier always matches the current treatment.
+    emit({ supplierId: newSid });
   };
 
   return (
     <>
-      <div className="line-item-treatment-field">
-        <label>Supplier {value && <span className="required">*</span>}</label>
-        <select
-          value={supplierId}
-          onChange={(e) => handleSupplierChange(e.target.value)}
-          className={value && !supplierId ? 'field-required' : ''}
-        >
-          <option value="">No supplier</option>
-          {supplierOptions.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </div>
-
       <div className="line-item-treatment-field">
         <label>Treatment</label>
         <select value={value} onChange={(e) => handleTreatmentChange(e.target.value)}>
@@ -123,6 +102,22 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
           ))}
         </select>
       </div>
+
+      {value && (
+        <div className="line-item-treatment-field">
+          <label>Supplier <span className="required">*</span></label>
+          <select
+            value={supplierId}
+            onChange={(e) => handleSupplierChange(e.target.value)}
+            className={!supplierId ? 'field-required' : ''}
+          >
+            <option value="">No supplier</option>
+            {supplierOptions.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {value === OTHER && (
         <div className="line-item-treatment-field">

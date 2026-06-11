@@ -14,8 +14,17 @@ require('../src/db/schema'); // run migrations so new columns exist before prepa
 const { settingsQueries } = require('../src/db/queries/support');
 const { seedHistory } = require('./seed-history');
 const { buildScenarios } = require('./seed-scenarios');
+const refData = require('./seed-data');
 
 const uid = (prefix) => `${prefix}:${uuidv4()}`;
+
+// Give every reference record an id up front so the rest of the script can wire
+// relationships (assignees, supplier links, treatment→supplier defaults) by id.
+const users = refData.users.map(u => ({ ...u, id: uid('user') }));
+const contacts = refData.contacts.map(c => ({ ...c, id: uid('contact') }));
+const suppliers = refData.suppliers.map(s => ({ ...s, id: uid('supplier') }));
+const machines = refData.machines.map(m => ({ ...m, id: uid('machine') }));
+const qaLevels = refData.qaLevels.map(q => ({ ...q, id: uid('qalevel') }));
 
 // ─── WIPE ALL TABLES ───
 console.log('Wiping all data...');
@@ -51,16 +60,6 @@ console.log('All tables wiped.');
 console.log('Creating users...');
 const hashedPin = bcrypt.hashSync('1234', 10);
 
-const users = [
-  { id: uid('user'), username: 'admin', role: 'admin', name: 'David Henderson', email: 'david@dhengineering.co.za', employeeId: 'EMP001' },
-  { id: uid('user'), username: 'jaco', role: 'admin', name: 'Jaco Van Der Merwe', email: 'jaco@dhengineering.co.za', employeeId: 'EMP002' },
-  { id: uid('user'), username: 'sipho', role: 'user', name: 'Sipho Mkhize', email: null, employeeId: 'EMP003' },
-  { id: uid('user'), username: 'thabo', role: 'user', name: 'Thabo Nkosi', email: null, employeeId: 'EMP004' },
-  { id: uid('user'), username: 'pieter', role: 'user', name: 'Pieter Botha', email: null, employeeId: 'EMP005' },
-  { id: uid('user'), username: 'mandla', role: 'user', name: 'Mandla Dlamini', email: null, employeeId: 'EMP006' },
-  { id: uid('user'), username: 'johan', role: 'user', name: 'Johan Pretorius', email: null, employeeId: 'EMP007' },
-];
-
 const insertUser = db.prepare('INSERT INTO users (id, username, password, role, name, email, phone, employee_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
 for (const u of users) {
   insertUser.run(u.id, u.username, hashedPin, u.role, u.name, u.email, null, u.employeeId);
@@ -70,19 +69,6 @@ console.log(`Created ${users.length} users.`);
 
 // ─── CONTACTS ───
 console.log('Creating contacts...');
-const contacts = [
-  { id: uid('contact'), contactName: 'Mark Thompson', companyName: 'Sasol Synfuels', phone: '011 441 3111', email: 'mark.t@sasol.co.za', address: 'Secunda, Mpumalanga' },
-  { id: uid('contact'), contactName: 'Linda Govender', companyName: 'Sappi Southern Africa', phone: '011 407 8111', email: 'linda.g@sappi.com', address: 'Braamfontein, Johannesburg' },
-  { id: uid('contact'), contactName: 'André Wessels', companyName: 'Barloworld Equipment', phone: '011 929 0000', email: 'andre.w@barloworld.com', address: 'Isando, Johannesburg' },
-  { id: uid('contact'), contactName: 'Nomsa Dube', companyName: 'Eskom Holdings', phone: '011 800 8111', email: 'nomsa.d@eskom.co.za', address: 'Megawatt Park, Sunninghill' },
-  { id: uid('contact'), contactName: 'Francois Du Plessis', companyName: 'Anglo American Platinum', phone: '011 638 9111', email: 'francois.dp@angloamerican.com', address: 'Marshalltown, Johannesburg' },
-  { id: uid('contact'), contactName: 'Rachel Naidoo', companyName: 'Mondi Group', phone: '011 994 5400', email: 'rachel.n@mondigroup.com', address: 'Rivonia, Sandton' },
-  { id: uid('contact'), contactName: 'Willem Joubert', companyName: 'ArcelorMittal SA', phone: '016 889 9111', email: 'willem.j@arcelormittal.com', address: 'Vanderbijlpark, Gauteng' },
-  { id: uid('contact'), contactName: 'Precious Mokoena', companyName: 'Transnet SOC', phone: '011 308 3000', email: 'precious.m@transnet.net', address: 'Carlton Centre, Johannesburg' },
-  { id: uid('contact'), contactName: 'Gerhard Steyn', companyName: 'Denel SOC', phone: '012 671 2700', email: 'gerhard.s@denel.co.za', address: 'Centurion, Pretoria' },
-  { id: uid('contact'), contactName: 'Busisiwe Khumalo', companyName: 'South32 Hillside Aluminium', phone: '035 901 3111', email: 'busi.k@south32.net', address: 'Richards Bay, KwaZulu-Natal' },
-];
-
 const insertContact = db.prepare('INSERT INTO contacts (id, contact_name, company_name, phone, email, address) VALUES (?, ?, ?, ?, ?, ?)');
 for (const c of contacts) {
   insertContact.run(c.id, c.contactName, c.companyName, c.phone, c.email, c.address);
@@ -91,14 +77,6 @@ console.log(`Created ${contacts.length} contacts.`);
 
 // ─── SUPPLIERS ───
 console.log('Creating suppliers...');
-const suppliers = [
-  { id: uid('supplier'), name: 'Bohler Uddeholm Africa', contactName: 'Stefan Kruger', phone: '011 571 2500', email: 'stefan@bohler.co.za', services: 'Heat treatment, tool steel supply' },
-  { id: uid('supplier'), name: 'Robor Galvanizers', contactName: 'James Pillay', phone: '011 971 1600', email: 'james@robor.co.za', services: 'Hot-dip galvanizing' },
-  { id: uid('supplier'), name: 'SA Anodisers', contactName: 'Chris Van Zyl', phone: '011 474 1555', email: 'chris@saanodisers.co.za', services: 'Anodising, hard anodising' },
-  { id: uid('supplier'), name: 'Spray Tech Coatings', contactName: 'Mike Richards', phone: '011 824 3500', email: 'mike@spraytech.co.za', services: 'Powder coating, spray painting' },
-  { id: uid('supplier'), name: 'Precision Grinding SA', contactName: 'Henk Smit', phone: '011 614 2000', email: 'henk@precisiongrinding.co.za', services: 'Surface grinding, cylindrical grinding' },
-];
-
 const insertSupplier = db.prepare('INSERT INTO suppliers (id, name, contact_name, contact_phone, contact_email, services) VALUES (?, ?, ?, ?, ?, ?)');
 for (const s of suppliers) {
   insertSupplier.run(s.id, s.name, s.contactName, s.phone, s.email, s.services);
@@ -107,19 +85,6 @@ console.log(`Created ${suppliers.length} suppliers.`);
 
 // ─── MACHINES ───
 console.log('Creating machines...');
-const machines = [
-  { id: uid('machine'), number: 'CNC-01', name: 'Haas VF-2SS', description: 'CNC Vertical Mill' },
-  { id: uid('machine'), number: 'CNC-02', name: 'Haas ST-20Y', description: 'CNC Lathe with Y-axis' },
-  { id: uid('machine'), number: 'CNC-03', name: 'DMG Mori CMX 600V', description: 'CNC Vertical Machining Centre' },
-  { id: uid('machine'), number: 'MILL-01', name: 'Bridgeport Series 1', description: 'Manual Milling Machine' },
-  { id: uid('machine'), number: 'LATHE-01', name: 'Colchester Master 2500', description: 'Manual Lathe' },
-  { id: uid('machine'), number: 'LATHE-02', name: 'Pinacho SE 200', description: 'Manual Lathe' },
-  { id: uid('machine'), number: 'GRIND-01', name: 'Jones & Shipman 540', description: 'Surface Grinder' },
-  { id: uid('machine'), number: 'WELD-01', name: 'Fronius TPS 320i', description: 'MIG/TIG Welder' },
-  { id: uid('machine'), number: 'SAW-01', name: 'Bomar Ergonomic 320', description: 'Bandsaw' },
-  { id: uid('machine'), number: 'DRILL-01', name: 'Alzmetall AB 40', description: 'Pillar Drill Press' },
-];
-
 const insertMachine = db.prepare('INSERT INTO machines (id, machine_number, name, description) VALUES (?, ?, ?, ?)');
 for (const m of machines) {
   insertMachine.run(m.id, m.number, m.name, m.description);
@@ -131,16 +96,11 @@ const tagValue = (name) => name.toUpperCase().replace(/[\s/]+/g, '_').replace(/[
 
 // ─── TAGS ───
 console.log('Creating tags...');
-const tagData = {
-  treatment: ['Heat Treatment', 'Precision Grinding', 'Anodise', 'Electroplate', 'Blasting', 'Powdercoat', 'Spraypaint', 'Galvanise', 'Specialised Coating'],
-  material: ['Steel', 'Stainless Steel', 'Aluminium', 'Brass', 'Copper', 'Bronze', 'Cast Iron', 'Titanium', 'Plastic'],
-  customer_property: ['N/A', 'Material Supplied', 'Damaged Or Worn Sample', 'Good Sample', 'Part For Repair', 'Part For Modification'],
-  drawings: ['Customer CAD', 'Customer Sketch', 'DH CAD', 'DH Sketch', 'Prepare Sketch', 'Prepare CAD'],
-  job_type: ['Manufacture', 'Repair', 'Modify', 'Fabricate', 'Supply', 'Reverse Engineer', 'Inspection', 'CAD Drawings', 'Consultation', 'On-Site'],
-};
+const tagData = refData.tagData;
 
 const insertTag = db.prepare('INSERT INTO tags (id, category, name, value, sort_order) VALUES (?, ?, ?, ?, ?)');
 const tagIds = {};
+const treatmentTagIdByValue = {}; // treatment value → tag id, for supplier service links
 let sortOrder = 0;
 for (const [category, names] of Object.entries(tagData)) {
   tagIds[category] = [];
@@ -149,25 +109,20 @@ for (const [category, names] of Object.entries(tagData)) {
     const value = tagValue(name);
     insertTag.run(id, category, name, value, sortOrder++);
     tagIds[category].push(id);
+    if (category === 'treatment') treatmentTagIdByValue[value] = id;
   }
 }
 console.log('Created tags.');
 
 // ─── SETTINGS ───
 console.log('Configuring settings...');
-settingsQueries.upsert.run('company_name', 'DH Engineering');
-settingsQueries.upsert.run('timezone', 'Africa/Johannesburg');
-settingsQueries.upsert.run('job_number_prefix', 'DH-');
-settingsQueries.upsert.run('job_number_next', '00001');
-settingsQueries.upsert.run('inactivity_timeout_minutes', '5');
-console.log('Settings configured (prefix: DH-, starting: 00001).');
+for (const [key, val] of Object.entries(refData.settings)) {
+  settingsQueries.upsert.run(key, val);
+}
+console.log(`Settings configured (prefix: ${refData.settings.job_number_prefix}, starting: ${refData.settings.job_number_next}).`);
 
 // ─── QA LEVELS ───
 console.log('Creating QA levels...');
-const qaLevels = [
-  { id: uid('qalevel'), name: 'Standard', nameLower: 'standard', isActive: 1, requireScannedForms: 0 },
-  { id: uid('qalevel'), name: 'Critical', nameLower: 'critical', isActive: 1, requireScannedForms: 1 },
-];
 const insertQALevel = db.prepare('INSERT INTO qa_levels (id, name, name_lower, is_active, require_scanned_forms) VALUES (?, ?, ?, ?, ?)');
 for (const q of qaLevels) {
   insertQALevel.run(q.id, q.name, q.nameLower, q.isActive, q.requireScannedForms);
@@ -199,7 +154,7 @@ const insertCosting = db.prepare(`INSERT INTO job_costings (
   grand_total
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
-const workers = users.filter(u => u.role === 'user'); // 0=sipho, 1=thabo, 2=pieter, 3=mandla, 4=johan
+const workers = users.filter(u => u.role === 'user'); // floor staff, referenced by index in scenarios
 const now = new Date();
 
 function makeDate(daysAgo, hour = 8, minute = 0) {
@@ -209,29 +164,39 @@ function makeDate(daysAgo, hour = 8, minute = 0) {
   return d;
 }
 
-const treatmentSupplierMap = {
-  HEAT_TREATMENT: suppliers[0],     // Bohler
-  PRECISION_GRINDING: suppliers[4], // Precision Grinding SA
-  ANODISE: suppliers[2],            // SA Anodisers
-  ELECTROPLATE: suppliers[2],
-  BLASTING: suppliers[3],
-  POWDERCOAT: suppliers[3],
-  SPRAYPAINT: suppliers[3],
-  GALVANISE: suppliers[1]           // Robor
-};
+// Default supplier for each treatment = the first supplier whose `offers` lists it.
+// Derived from one source of truth so it can never disagree with the service-tag links.
+const treatmentSupplierMap = {};
+for (const s of suppliers) {
+  for (const t of s.offers || []) {
+    if (!treatmentSupplierMap[t]) treatmentSupplierMap[t] = s;
+  }
+}
+// Free-text "Other" treatments still need a supplier; use a specialised-coating shop.
+const otherSupplier = treatmentSupplierMap.SPECIALISED_COATING || suppliers[0];
 
-function buildTreatments(treatmentStr) {
+function buildTreatments(treatmentStr, otherText) {
   if (!treatmentStr) return null;
   const values = treatmentStr.split(',').map(v => v.trim()).filter(Boolean);
   if (values.length === 0) return null;
   return JSON.stringify(values.map(value => {
-    const sup = treatmentSupplierMap[value] || suppliers[0];
-    return { value, otherText: '', supplierId: sup.id, supplierName: sup.name };
+    const isOther = value === 'OTHER';
+    const sup = isOther ? otherSupplier : (treatmentSupplierMap[value] || suppliers[0]);
+    return {
+      value,
+      otherText: isOther ? (otherText || 'Special process per customer spec') : '',
+      supplierId: sup.id,
+      supplierName: sup.name,
+    };
   }));
 }
 
-// 9 scenarios covering the full status progression — see seed-scenarios.js.
-const scenarios = buildScenarios(contacts, qaLevels);
+// Generated job set covering every status, job type, material, treatment, drawing,
+// customer-property value, the repeat flag, and every priority — see seed-scenarios.js.
+const scenarios = buildScenarios(contacts, qaLevels, {
+  workerCount: workers.length,
+  machineNumbers: machines.map(m => m.number),
+});
 
 // Collected per-job metadata, handed to the activity-trail generator after all
 // jobs are written so the seeded history matches the data exactly.
@@ -259,7 +224,7 @@ const createJobs = db.transaction(() => {
       s.contact.phone, s.contact.email,
       s.qaLevel.name.toUpperCase(), s.qaLevel.id, s.priority,
       s.quoteReference || null, s.poNumber || null,
-      s.description, dueDate, 0,
+      s.description, dueDate, s.isRepeat ? 1 : 0,
       adminId, adminId, createdAt,
       archived, invoicedDate
     );
@@ -270,7 +235,7 @@ const createJobs = db.transaction(() => {
     s.items.forEach((item, idx) => {
       const itemId = uid('item');
       itemIdByNumber[idx + 1] = itemId;
-      insertItem.run(itemId, jobId, idx + 1, item.qty, item.desc, item.jobType, item.material, buildTreatments(item.treatment), item.drawings || 'N_A', item.customerProperty || 'N_A');
+      insertItem.run(itemId, jobId, idx + 1, item.qty, item.desc, item.jobType, item.material, buildTreatments(item.treatment, item.treatmentOther), item.drawings || 'N_A', item.customerProperty || 'N_A');
     });
 
     for (const wIdx of s.assignees) {
@@ -345,7 +310,7 @@ const createJobs = db.transaction(() => {
 });
 
 createJobs();
-console.log(`Created ${scenarios.length} job cards covering QUOTE → OPEN → AWAITING_MATERIAL → IN_PROGRESS (mixed/active/two-item) → TREATMENT → DONE → INVOICED.`);
+console.log(`Created ${scenarios.length} job cards covering every status, job type, material, treatment, drawing, and customer-property value.`);
 
 // ─── ACTIVITY HISTORY TRAIL ───
 console.log('Generating activity history...');
@@ -360,30 +325,27 @@ console.log(`Created ${historyRows} activity log entries.`);
 // ─── SUPPLIER SERVICE TAGS ───
 console.log('Linking suppliers to treatment tags...');
 const insertServiceTag = db.prepare('INSERT OR IGNORE INTO supplier_service_tags (supplier_id, service_tag_id) VALUES (?, ?)');
-// Bohler → Heat Treatment
-insertServiceTag.run(suppliers[0].id, tagIds.treatment[0]);
-// Robor → Galvanise
-insertServiceTag.run(suppliers[1].id, tagIds.treatment[7]);
-// SA Anodisers → Anodise, Electroplate
-insertServiceTag.run(suppliers[2].id, tagIds.treatment[2]);
-insertServiceTag.run(suppliers[2].id, tagIds.treatment[3]);
-// Spray Tech → Blasting, Powdercoat, Spraypaint
-insertServiceTag.run(suppliers[3].id, tagIds.treatment[4]);
-insertServiceTag.run(suppliers[3].id, tagIds.treatment[5]);
-insertServiceTag.run(suppliers[3].id, tagIds.treatment[6]);
-// Precision Grinding → Precision Grinding
-insertServiceTag.run(suppliers[4].id, tagIds.treatment[1]);
+// Each supplier is linked to every treatment value listed in its `offers`.
+for (const s of suppliers) {
+  for (const t of s.offers || []) {
+    const tagId = treatmentTagIdByValue[t];
+    if (tagId) insertServiceTag.run(s.id, tagId);
+  }
+}
 console.log('Supplier tags linked.');
 
+const lastJob = `DH-${String(scenarios.length).padStart(5, '0')}`;
+const nextJob = `DH-${String(scenarios.length + 1).padStart(5, '0')}`;
 console.log('\n✓ Mock data seeded successfully!');
-console.log('  - 7 users (admin/1234, jaco/1234, sipho/1234, thabo/1234, pieter/1234, mandla/1234, johan/1234)');
-console.log('  - 10 contacts (SA industrial companies)');
-console.log('  - 5 suppliers');
-console.log('  - 10 machines');
-console.log('  - 2 QA levels (Standard, Critical — Critical requires scanned forms)');
-console.log('  - 9 job cards: quote, open, awaiting-material, mixed-progress, active-timer, two-item-progress, treatment, done, invoiced+special');
+console.log(`  - ${users.length} users (all PIN 1234): ${users.map(u => u.username).join(', ')}`);
+console.log(`  - ${contacts.length} contacts (Australian industrial companies across WA/NSW/VIC/QLD)`);
+console.log(`  - ${suppliers.length} suppliers covering every treatment type`);
+console.log(`  - ${machines.length} machines`);
+console.log(`  - ${qaLevels.length} QA levels (${qaLevels.map(q => q.name).join(', ')} — Critical requires scanned forms)`);
+console.log(`  - ${scenarios.length} job cards covering every status, job type, material, treatment, drawing, and customer-property value`);
+console.log('  - Repeat-job flag, every priority (incl. None), and a free-text "Other" treatment all represented');
 console.log('  - Quote references on all jobs; PO numbers on post-quote jobs');
-console.log('  - Scrap pieces recorded on several time entries');
-console.log('  - Pricing on 4 jobs (in-progress, treatment, done, invoiced)');
+console.log('  - Scrap pieces, a live running timer, and Saturday special labour recorded');
+console.log('  - Pricing on in-progress, treatment, done, and invoiced jobs');
 console.log('  - Activity history backfilled for setup, jobs, notes, and timers');
-console.log('  - Job numbering: DH-00001 to DH-00009, next: DH-00010');
+console.log(`  - Job numbering: DH-00001 to ${lastJob}, next: ${nextJob}`);
