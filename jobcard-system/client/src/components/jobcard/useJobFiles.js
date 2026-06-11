@@ -10,11 +10,37 @@ export const CATEGORY_LABELS = {
   'customer-property-files': 'Customer Property'
 };
 
+// Mirror the server's upload allowlist so the picker only offers (and only
+// accepts) the file types the server will keep.
+export const ACCEPTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp', '.gif'];
+export const ACCEPT_ATTR = ACCEPTED_EXTENSIONS.join(',');
+const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
+
 function base64ToBlob(base64, mimeType = 'application/pdf') {
   const bytes = atob(base64);
   const arr = new Uint8Array(bytes.length);
   for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
   return new Blob([arr], { type: mimeType });
+}
+
+// Extract a lower-cased extension only when the name has a real base before
+// the dot (so dotfile-style names like ".pdf" count as having no extension,
+// matching the server's path.extname check).
+function fileExtension(name) {
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(dot).toLowerCase() : '';
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result || '';
+      resolve(String(result).replace(/^data:[^;]*;base64,/, ''));
+    };
+    reader.onerror = () => reject(reader.error || new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
 }
 
 /**
@@ -28,10 +54,8 @@ export function useJobFiles(jobcardId) {
   const [filesByCategory, setFilesByCategory] = useState({});
   const [loadingByCategory, setLoadingByCategory] = useState({});
 
-  const [scannerFiles, setScannerFiles] = useState([]);
-  const [scannerLoading, setScannerLoading] = useState(false);
-  const [attachingFile, setAttachingFile] = useState(null);
   const [savingPhotos, setSavingPhotos] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const [thumbnails, setThumbnails] = useState(new Map());
   const [viewerUrl, setViewerUrl] = useState(null);
@@ -107,33 +131,42 @@ export function useJobFiles(jobcardId) {
     }
   }, [jobcardId, fetchList, loadThumbnails]);
 
-  const loadScannerFiles = useCallback(async () => {
-    setScannerLoading(true);
-    try {
-      const result = await api.getScannerFiles(10);
-      setScannerFiles(result.files || []);
-    } catch {
-      toast.error('Failed to load scanner files');
-      setScannerFiles([]);
-    } finally {
-      setScannerLoading(false);
-    }
-  }, []);
+  const uploadPickedFiles = useCallback(async (fileList, category, onDone) => {
+    if (!jobcardId || !fileList || fileList.length === 0) return;
+    const chosen = Array.from(fileList);
 
-  const saveScannerFile = useCallback(async (file, category) => {
-    if (!jobcardId || !file) return;
-    setAttachingFile(file.name);
+    const tooBig = chosen.filter(f => f.size > MAX_UPLOAD_BYTES);
+    const badType = chosen.filter(f => !ACCEPTED_EXTENSIONS.includes(fileExtension(f.name)));
+    const valid = chosen.filter(f => !tooBig.includes(f) && !badType.includes(f));
+
+    if (badType.length) toast.error(`Skipped (unsupported type): ${badType.map(f => f.name).join(', ')}`);
+    if (tooBig.length) toast.error(`Skipped (over 30 MB): ${tooBig.map(f => f.name).join(', ')}`);
+    if (valid.length === 0) { if (onDone) onDone(); return; }
+
+    setUploading(true);
     try {
-      await api.scannerToJobcardFiles(jobcardId, category, file.path);
-      toast.success(`Saved to ${CATEGORY_LABELS[category]}: ${file.name}`);
-      loadScannerFiles();
-      refreshCount(category);
-    } catch (err) {
-      toast.error(err.message || 'Failed to save file');
+      let saved = 0;
+      const failed = [];
+      // Upload each file independently so one failure doesn't abandon the rest.
+      for (const file of valid) {
+        try {
+          const raw = await readFileAsBase64(file);
+          await api.uploadToJobcardFiles(jobcardId, category, file.name, raw);
+          saved++;
+        } catch (err) {
+          failed.push(file.name);
+        }
+      }
+      if (saved > 0) {
+        toast.success(`${saved} file(s) saved to ${CATEGORY_LABELS[category]}`);
+        refreshCount(category);
+      }
+      if (failed.length) toast.error(`Failed to upload: ${failed.join(', ')}`);
     } finally {
-      setAttachingFile(null);
+      setUploading(false);
+      if (onDone) onDone();
     }
-  }, [jobcardId, loadScannerFiles, refreshCount]);
+  }, [jobcardId, refreshCount]);
 
   const savePhotos = useCallback(async (photos, category, clearPhotos) => {
     if (!jobcardId || !photos || photos.length === 0) return;
@@ -224,7 +257,7 @@ export function useJobFiles(jobcardId) {
     refreshAllCounts,
     refreshCount,
     filesByCategory, loadingByCategory, loadFiles,
-    scannerFiles, scannerLoading, loadScannerFiles, attachingFile, saveScannerFile,
+    uploading, uploadPickedFiles,
     savingPhotos, savePhotos,
     thumbnails, loadingFiles, handleViewFile,
     viewerUrl, closeViewer,

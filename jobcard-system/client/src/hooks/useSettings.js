@@ -17,12 +17,10 @@ export function useSettings() {
     return localStorage.getItem('darkMode') === 'true';
   });
 
-  const [scannerFolder, setScannerFolder] = useState('');
   const [jobFoldersBase, setJobFoldersBase] = useState('');
   const [inactivityTimeout, setInactivityTimeout] = useState(5);
   const [jobNumberPrefix, setJobNumberPrefix] = useState('');
   const [jobNumberNext, setJobNumberNext] = useState('');
-  const [savingSettings, setSavingSettings] = useState(false);
   const [savingJobFolders, setSavingJobFolders] = useState(false);
   const [savingTimeout, setSavingTimeout] = useState(false);
   const [savingJobNumber, setSavingJobNumber] = useState(false);
@@ -47,7 +45,6 @@ export function useSettings() {
       const data = await api.getSettings();
       setSettings(data);
       if (data) {
-        setScannerFolder(data.scannerFolder || '');
         setJobFoldersBase(data.jobFoldersBase || '');
         setInactivityTimeout(parseInt(data.inactivityTimeoutMinutes, 10) || 5);
         setJobNumberPrefix(data.jobNumberPrefix || '');
@@ -83,29 +80,6 @@ export function useSettings() {
     }
     localStorage.setItem('darkMode', darkMode);
   }, [darkMode]);
-
-  const handleSelectScannerFolder = useCallback(async () => {
-    if (window.electronAPI?.selectFolder) {
-      const folder = await window.electronAPI.selectFolder();
-      if (folder) setScannerFolder(folder);
-    } else {
-      const folder = prompt('Enter scanner folder path:', scannerFolder);
-      if (folder !== null) setScannerFolder(folder);
-    }
-  }, [scannerFolder]);
-
-  const handleSaveScannerFolder = useCallback(async () => {
-    setSavingSettings(true);
-    try {
-      await api.updateSettings({ scannerFolder });
-      await loadSettings();
-      toast.success('Settings saved successfully');
-    } catch (err) {
-      toast.error(err.message || 'Failed to save settings');
-    } finally {
-      setSavingSettings(false);
-    }
-  }, [scannerFolder, loadSettings]);
 
   const handleSelectJobFolders = useCallback(async () => {
     if (window.electronAPI?.selectFolder) {
@@ -266,7 +240,6 @@ export function useSettings() {
     user, isAdmin,
     settings, loading, appInfo, printers, loadingPrinters,
     darkMode, toggleDarkMode,
-    scannerFolder, setScannerFolder, handleSelectScannerFolder, handleSaveScannerFolder, savingSettings,
     jobFoldersBase, setJobFoldersBase, handleSelectJobFolders, handleSaveJobFolders, savingJobFolders,
     inactivityTimeout, setInactivityTimeout, handleSaveInactivityTimeout, savingTimeout,
     jobNumberPrefix, setJobNumberPrefix, jobNumberNext, setJobNumberNext, handleSaveJobNumber, savingJobNumber,

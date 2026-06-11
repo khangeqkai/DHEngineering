@@ -15,7 +15,7 @@ const makeEmptyLineItem = (itemNumber = 1) => ({
 
 /**
  * Custom hook for job card form state management
- * Handles form data, line items, assignees, and scanner files
+ * Handles form data, line items, and assignees
  */
 export function useJobCardForm() {
   // Core form data
@@ -25,11 +25,6 @@ export function useJobCardForm() {
   // Related data (locally managed for create mode, from API for edit mode)
   const [assignees, setAssignees] = useState([]);
   const [lineItems, setLineItems] = useState([makeEmptyLineItem(1)]);
-
-  // Scanner files state
-  const [scannerFiles, setScannerFiles] = useState([]);
-  const [loadingScannerFiles, setLoadingScannerFiles] = useState(false);
-  const [showScannerFiles, setShowScannerFiles] = useState(false);
 
   const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
@@ -115,8 +110,6 @@ export function useJobCardForm() {
     setJobNumber('');
     setAssignees([]);
     setLineItems([makeEmptyLineItem(1)]);
-    setScannerFiles([]);
-    setShowScannerFiles(false);
   }, []);
 
   return {
@@ -130,13 +123,6 @@ export function useJobCardForm() {
     setAssignees,
     lineItems,
     setLineItems,
-    // Scanner files
-    scannerFiles,
-    setScannerFiles,
-    loadingScannerFiles,
-    setLoadingScannerFiles,
-    showScannerFiles,
-    setShowScannerFiles,
     // Handlers
     handleChange,
     addLineItem,

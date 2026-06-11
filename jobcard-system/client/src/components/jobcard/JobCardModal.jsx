@@ -261,25 +261,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       loadActiveTimerRef.current();
     }
   }, [isOpen, isEdit, jobCardId]);
-  const loadScannerFiles = async () => {
-    formHook.setLoadingScannerFiles(true);
-    try {
-      const result = await api.getScannerFiles(10);
-      formHook.setScannerFiles(result.files || []);
-    } catch (err) {
-      toast.error('Failed to load scanner files');
-      formHook.setScannerFiles([]);
-    } finally {
-      formHook.setLoadingScannerFiles(false);
-    }
-  };
-
-  const toggleScannerFiles = () => {
-    if (!formHook.showScannerFiles) {
-      loadScannerFiles();
-    }
-    formHook.setShowScannerFiles(!formHook.showScannerFiles);
-  };
   const selectContact = (cont) => contactHook.selectContact(cont, formHook.setFormData);
   const handleContactFieldChange = (field, value) => contactHook.handleContactFieldChange(field, value, formHook.setFormData);
   const handleSubmit = async (e) => {
@@ -495,10 +476,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   updateLineItem={formHook.updateLineItem}
                   removeLineItem={formHook.removeLineItem}
                   suppliers={suppliers || []}
-                  showScannerFiles={formHook.showScannerFiles}
-                  toggleScannerFiles={toggleScannerFiles}
-                  scannerFiles={formHook.scannerFiles}
-                  loadingScannerFiles={formHook.loadingScannerFiles}
                   qaLevels={qaLevels}
                   notes={jobNotes.notes}
                   newNote={jobNotes.newNote}

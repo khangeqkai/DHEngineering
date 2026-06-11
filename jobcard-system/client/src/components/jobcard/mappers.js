@@ -17,18 +17,6 @@ export function mapTimeEntryFromApi(e) {
   };
 }
 
-export function mapQaFormFromApi(f) {
-  return {
-    id: f.id,
-    formCode: f.formCode,
-    formName: f.formName,
-    status: f.status,
-    printedAt: f.printedAt,
-    scannedAt: f.scannedAt,
-    notes: f.notes
-  };
-}
-
 export function mapAssigneeFromApi(a) {
   return {
     userId: a.userId,
@@ -57,17 +45,6 @@ export function mapTreatmentFromApi(t) {
     supplierId: t.supplierId || '',
     supplierName: t.supplierName || ''
   };
-}
-
-export function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-export function formatFileDate(dateStr) {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 export function getDefaultFormData() {

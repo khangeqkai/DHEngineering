@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { formatFileSize, formatFileDate } from '../mappers';
 import { toTitleCase } from '../../../utils/formatters';
 import { useJobSearch } from '../useJobSearch';
 import ItemsTab from './ItemsTab';
@@ -33,10 +32,6 @@ export default function DetailsTab({
   updateLineItem,
   removeLineItem,
   suppliers,
-  showScannerFiles,
-  toggleScannerFiles,
-  scannerFiles,
-  loadingScannerFiles,
   // QA Levels
   qaLevels,
   // Notes props
@@ -309,41 +304,6 @@ export default function DetailsTab({
             </div>
           </div>
         )}
-        <div className="form-group">
-          <label>Scanner Files</label>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={toggleScannerFiles}
-          >
-            {showScannerFiles ? 'Hide Scanner Files' : 'Browse Scanner Files'}
-          </button>
-          {showScannerFiles && (
-            <div className="scanner-files-container" style={{ marginTop: '0.5rem' }}>
-              {loadingScannerFiles ? (
-                <p className="scanner-files-loading">Loading files...</p>
-              ) : scannerFiles.length === 0 ? (
-                <p className="scanner-files-empty">No scanned files found. Configure scanner folder in Settings.</p>
-              ) : (
-                <div className="scanner-files-list">
-                  {scannerFiles.map((file, idx) => (
-                    <div key={idx} className="scanner-file-item">
-                      <div className="scanner-file-icon">
-                        {file.name.toLowerCase().endsWith('.pdf') ? 'PDF' : 'IMG'}
-                      </div>
-                      <div className="scanner-file-info">
-                        <div className="scanner-file-name" title={file.name}>{file.name}</div>
-                        <div className="scanner-file-meta">
-                          {formatFileSize(file.size)} - {formatFileDate(file.modified)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Assignees */}

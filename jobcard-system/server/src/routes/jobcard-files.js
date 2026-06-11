@@ -11,7 +11,7 @@ const {
   recordHistory
 } = require('../db/database');
 const { sanitizeFolderName, isWithinBase } = require('../utils/folderCreation');
-const { handleValidationErrors, requiredString } = require('../middleware/validation');
+const { handleValidationErrors } = require('../middleware/validation');
 const { body, param } = require('express-validator');
 
 const router = express.Router();
@@ -222,7 +222,7 @@ router.get('/:id/files/:category/:filename', authenticate, validateCategory, val
   }
 });
 
-// ─── Save a file (shared by scanner + camera flows) ───
+// ─── Save a file (shared by file-upload + camera flows) ───
 function saveFile({ jobcardId, category, displayName, buffer, source, req, res }) {
   const folderRes = resolveCategoryFolder(jobcardId, category);
   if (folderRes.error) return res.status(folderRes.status).json({ error: folderRes.error });
@@ -254,56 +254,6 @@ function saveFile({ jobcardId, category, displayName, buffer, source, req, res }
   });
 }
 
-// ─── Scanner → category folder ───
-router.post('/:id/files/:category/from-scanner', authenticate, validateCategory, [
-  requiredString('filePath', 'File path'),
-  handleValidationErrors
-], (req, res) => {
-  try {
-    const { id, category } = req.params;
-    const { filePath } = req.body;
-
-    const settings = getSettings();
-    if (!settings.scanner_folder) {
-      return res.status(400).json({ error: 'Scanner folder not configured' });
-    }
-    if (!isWithinBase(settings.scanner_folder, filePath)) {
-      return res.status(403).json({ error: 'File must be within the configured scanner folder' });
-    }
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'File not found in scanner folder' });
-    }
-
-    // Only image/PDF files may be brought in — match the upload path's allowlist.
-    const ext = path.extname(filePath).toLowerCase();
-    if (!VALID_EXTENSIONS.includes(ext)) {
-      return res.status(400).json({ error: 'Only image and PDF files can be brought in from the scanner' });
-    }
-
-    // Guard against shortcuts (symlinks) inside the scanner folder whose real
-    // target lives outside it — isWithinBase above only checks the path string.
-    const realBase = fs.realpathSync(settings.scanner_folder);
-    const realTarget = fs.realpathSync(filePath);
-    if (!isWithinBase(realBase, realTarget)) {
-      return res.status(403).json({ error: 'That file points outside the scanner folder' });
-    }
-
-    const buffer = fs.readFileSync(filePath);
-    return saveFile({
-      jobcardId: id,
-      category,
-      displayName: path.basename(filePath),
-      buffer,
-      source: 'scanner',
-      req,
-      res
-    });
-  } catch (err) {
-    logger.error({ err }, 'Scanner-to-files error');
-    res.status(500).json({ error: 'Failed to copy scanner file' });
-  }
-});
-
 // ─── Upload (base64) → category folder ───
 router.post('/:id/files/:category/upload', authenticate, validateCategory, validateUploadBody, (req, res) => {
   try {
@@ -315,7 +265,7 @@ router.post('/:id/files/:category/upload', authenticate, validateCategory, valid
       category,
       displayName: filename,
       buffer: Buffer.from(fileData, 'base64'),
-      source: 'camera',
+      source: 'upload',
       req,
       res
     });

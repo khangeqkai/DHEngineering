@@ -54,12 +54,6 @@ module.exports = {
     // Default printer (can be overridden per-machine)
     defaultPrinter: process.env.DEFAULT_PRINTER || null,
 
-    // Scanner settings
-    scanner: {
-      resolution: 300,
-      format: 'jpeg'
-    },
-
     // Camera settings
     camera: {
       width: 1280,

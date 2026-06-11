@@ -214,43 +214,6 @@
   background: rgba(var(--accent-rgb), 0.05);
 }
 
-/* Scanner list */
-.lif-file-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.lif-file-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-}
-
-.lif-file-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.lif-file-name {
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.lif-file-meta {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-}
-
 /* Camera */
 .lif-camera {
   display: flex;

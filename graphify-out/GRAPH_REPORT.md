@@ -1,11 +1,11 @@
 # Graph Report - DHEngineering  (2026-06-11)
 
 ## Corpus Check
-- 140 files · ~103,051 words
+- 140 files · ~102,203 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 635 nodes · 894 edges · 28 communities detected
+- 637 nodes · 896 edges · 28 communities detected
 - Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 77 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
@@ -70,12 +70,12 @@ Cohesion: 0.03
 Nodes (1): ApiService
 
 ### Community 1 - "Community 1"
-Cohesion: 0.08
-Nodes (23): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), UserManagement() (+15 more)
+Cohesion: 0.09
+Nodes (26): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), UserManagement(), useConfirmDialog(), invalidateTagCache(), buildJobCardWorkbook() (+18 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.1
-Nodes (25): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), useConfirmDialog(), invalidateTagCache(), buildJobCardWorkbook(), buildSheet() (+17 more)
+Cohesion: 0.08
+Nodes (22): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), AuthProvider() (+14 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.07
@@ -94,7 +94,7 @@ Cohesion: 0.08
 Nodes (11): getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), SearchPage(), StatusBadge(), useSearch(), formatDueDate() (+3 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.12
+Cohesion: 0.11
 Nodes (10): JobFilesMenu(), LineItemFilesMenu(), formatElapsed(), QuickActionPanel(), useCamera(), useItemFiles(), useJobFiles(), useQuickActionFiles() (+2 more)
 
 ### Community 8 - "Community 8"
@@ -202,10 +202,10 @@ Nodes (2): formatNum(), ScrapStat()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `useAuth()` connect `Community 1` to `Community 5`, `Community 6`, `Community 7`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
-- **Why does `useConfirmDialog()` connect `Community 2` to `Community 1`, `Community 5`, `Community 7`?**
-  _High betweenness centrality (0.032) - this node is a cross-community bridge._
+- **Why does `useAuth()` connect `Community 2` to `Community 1`, `Community 5`, `Community 6`, `Community 7`?**
+  _High betweenness centrality (0.036) - this node is a cross-community bridge._
+- **Why does `useConfirmDialog()` connect `Community 1` to `Community 2`, `Community 5`, `Community 7`?**
+  _High betweenness centrality (0.033) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 8 inferred relationships involving `useConfirmDialog()` (e.g. with `ContactManagement()` and `JobCardList()`) actually correct?**
@@ -215,4 +215,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.03 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.08 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09 - nodes in this community are weakly interconnected._

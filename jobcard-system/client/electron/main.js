@@ -16,7 +16,6 @@ const logger = {
 
 // Hardware integration modules
 let printerModule = null;
-let scannerModule = null;
 
 const isDev = !app.isPackaged;
 
@@ -343,7 +342,7 @@ ipcMain.handle('select-folder', async () => {
   const window = BrowserWindow.getAllWindows()[0];
   const result = await dialog.showOpenDialog(window, {
     properties: ['openDirectory'],
-    title: 'Select Scanner Folder'
+    title: 'Select Folder'
   });
 
   if (result.canceled || result.filePaths.length === 0) {

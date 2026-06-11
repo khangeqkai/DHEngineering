@@ -180,9 +180,6 @@ class ApiService {
   getJobcardFile(jobcardId, category, filename) {
     return this.request(`/jobcards/${jobcardId}/files/${category}/${encodeURIComponent(filename)}`);
   }
-  scannerToJobcardFiles(jobcardId, category, filePath) {
-    return this._post(`/jobcards/${jobcardId}/files/${category}/from-scanner`, { filePath });
-  }
   uploadToJobcardFiles(jobcardId, category, filename, fileData) {
     return this._post(`/jobcards/${jobcardId}/files/${category}/upload`, { filename, fileData });
   }
@@ -227,14 +224,12 @@ class ApiService {
 
   // Hardware endpoints
   getPrinters() { return this.request('/hardware/printers'); }
-  getScanners() { return this.request('/hardware/scanners'); }
   getHardwareStatus() { return this.request('/hardware/status'); }
 
   // Settings (admin only)
   getSettings() { return this.request('/settings'); }
   updateSettings(data) { return this._put('/settings', data); }
   getInactivityTimeout() { return this.request('/settings/inactivity-timeout'); }
-  getScannerFiles(limit = 10) { return this.request(`/settings/files?limit=${limit}`); }
   exportBackup(outputPath) { return this._post('/settings/export-backup', { outputPath }); }
   importBackup(inputPath) { return this._post('/settings/import-backup', { inputPath }); }
 

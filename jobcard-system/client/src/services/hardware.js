@@ -87,15 +87,6 @@ class HardwareService {
     return canvas.toDataURL('image/jpeg', quality);
   }
 
-  // Scanner functions (placeholder - requires native module)
-  async getScanners() {
-    return [];
-  }
-
-  async scan(options = {}) {
-    throw new Error('Scanner not available');
-  }
-
   // App info
   async getAppInfo() {
     if (!this.checkElectron()) {

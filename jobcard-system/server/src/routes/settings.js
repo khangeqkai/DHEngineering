@@ -58,28 +58,9 @@ router.get('/', requireAdmin, (req, res) => {
 // Update settings (admin only)
 router.put('/', requireAdmin, (req, res) => {
   try {
-    // Accept both camelCase and snake_case for backwards compatibility
-    const scannerFolder = req.body.scannerFolder ?? req.body.scanner_folder;
     const jobFoldersBase = req.body.jobFoldersBase ?? req.body.job_folders_base;
     const inactivityTimeoutMinutes = req.body.inactivityTimeoutMinutes ?? req.body.inactivity_timeout_minutes;
     const updates = {};
-
-    // Validate scanner folder if provided
-    if (scannerFolder !== undefined) {
-      if (scannerFolder && scannerFolder.trim()) {
-        // Check if the folder exists
-        if (!fs.existsSync(scannerFolder)) {
-          return res.status(400).json({ error: 'Scanner folder does not exist' });
-        }
-
-        // Check if it's a directory
-        const stats = fs.statSync(scannerFolder);
-        if (!stats.isDirectory()) {
-          return res.status(400).json({ error: 'Path is not a directory' });
-        }
-      }
-      updates.scanner_folder = scannerFolder || '';
-    }
 
     // Validate job folders base path if provided
     if (jobFoldersBase !== undefined) {
@@ -164,49 +145,6 @@ router.get('/inactivity-timeout', (req, res) => {
   } catch (err) {
     logger.error({ err }, 'Error getting inactivity timeout');
     res.status(500).json({ error: 'Failed to get inactivity timeout' });
-  }
-});
-
-// Get scanner files (mounted at /api/scanner/files)
-router.get('/files', authenticate, (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 10;
-    const settings = db.getSettings();
-
-    if (!settings.scanner_folder) {
-      return res.json({ files: [], message: 'Scanner folder not configured' });
-    }
-
-    if (!fs.existsSync(settings.scanner_folder)) {
-      return res.json({ files: [], message: 'Scanner folder does not exist' });
-    }
-
-    // Get files from the scanner folder
-    const files = fs.readdirSync(settings.scanner_folder)
-      .map(filename => {
-        const filePath = path.join(settings.scanner_folder, filename);
-        try {
-          const stats = fs.statSync(filePath);
-          if (!stats.isFile()) return null;
-
-          return {
-            name: filename,
-            path: filePath,
-            size: stats.size,
-            modified: stats.mtime
-          };
-        } catch (err) {
-          return null;
-        }
-      })
-      .filter(f => f !== null)
-      .sort((a, b) => new Date(b.modified) - new Date(a.modified)) // Most recent first
-      .slice(0, limit);
-
-    res.json({ files, folder: settings.scanner_folder });
-  } catch (err) {
-    logger.error({ err }, 'Error getting scanner files');
-    res.status(500).json({ error: 'Failed to get scanner files' });
   }
 });
 
@@ -324,7 +262,6 @@ router.post('/import-backup', requireAdmin, [
 
   const currentSettings = db.getSettings();
   const currentJobBase = currentSettings.job_folders_base;
-  const currentScannerFolder = currentSettings.scanner_folder;
 
   if (!currentJobBase) {
     return res.status(400).json({
@@ -462,7 +399,6 @@ router.post('/import-backup', requireAdmin, [
              ON CONFLICT(key) DO UPDATE SET value = excluded.value`
           );
           upsertSetting.run('job_folders_base', currentJobBase || '');
-          upsertSetting.run('scanner_folder', currentScannerFolder || '');
         });
 
         importTransaction();

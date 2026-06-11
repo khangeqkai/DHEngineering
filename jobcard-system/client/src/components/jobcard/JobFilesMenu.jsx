@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ScanLine, Camera, Upload, FolderOpen, X, ArrowLeft, ChevronDown, FileText,
+  Camera, Upload, FolderOpen, X, ArrowLeft, ChevronDown, FileText,
   ClipboardCheck, Package, FileText as JobFileIcon, Check
 } from 'lucide-react';
 import { useCamera } from './useCamera';
-import { useJobFiles, CATEGORIES, CATEGORY_LABELS } from './useJobFiles';
+import { useJobFiles, CATEGORIES, CATEGORY_LABELS, ACCEPT_ATTR } from './useJobFiles';
 import './JobFilesMenu.css';
 
 const CATEGORY_ICONS = {
@@ -16,10 +16,11 @@ const CATEGORY_ICONS = {
 
 export default function JobFilesMenu({ jobcardId, jobNumber }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [view, setView] = useState('menu'); // menu | upload-source | scanner | camera | viewing
+  const [view, setView] = useState('menu'); // menu | upload-source | camera | viewing
   const [selectedCategory, setSelectedCategory] = useState(null);
   const menuRef = useRef(null);
   const overlayRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const camera = useCamera();
   const files = useJobFiles(jobcardId);
@@ -60,8 +61,8 @@ export default function JobFilesMenu({ jobcardId, jobNumber }) {
       if (e.key !== 'Escape') return;
       if (files.viewerUrl) { files.closeViewer(); return; }
       if (files.lightboxPhoto) { files.closeLightbox(); return; }
-      if (view === 'scanner' || view === 'camera') {
-        if (view === 'camera') camera.stopCamera();
+      if (view === 'camera') {
+        camera.stopCamera();
         setView('upload-source');
       } else if (view === 'upload-source') {
         setSelectedCategory(null);
@@ -97,18 +98,23 @@ export default function JobFilesMenu({ jobcardId, jobNumber }) {
     files.loadFiles(category);
   };
 
-  const handleScannerView = () => {
-    setView('scanner');
-    files.loadScannerFiles();
+  const handlePickFiles = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFilesChosen = async (e) => {
+    const chosen = e.target.files;
+    const category = selectedCategory;
+    await files.uploadPickedFiles(chosen, category, () => {
+      // Allow re-picking the same file again later
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    });
+    closeAll();
   };
 
   const handleCameraView = () => {
     setView('camera');
     camera.startCamera();
-  };
-
-  const handleAttachFile = async (file) => {
-    await files.saveScannerFile(file, selectedCategory);
   };
 
   const handleSavePhotos = async () => {
@@ -127,6 +133,14 @@ export default function JobFilesMenu({ jobcardId, jobNumber }) {
 
   return (
     <>
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept={ACCEPT_ATTR}
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleFilesChosen}
+      />
       <div className="lif-menu-wrapper" ref={menuRef}>
         <button
           type="button"
@@ -170,8 +184,8 @@ export default function JobFilesMenu({ jobcardId, jobNumber }) {
               <button
                 className="lif-back-btn"
                 onClick={() => {
-                  if (view === 'scanner' || view === 'camera') {
-                    if (view === 'camera') camera.stopCamera();
+                  if (view === 'camera') {
+                    camera.stopCamera();
                     setView('upload-source');
                   } else {
                     closeAll();
@@ -192,48 +206,16 @@ export default function JobFilesMenu({ jobcardId, jobNumber }) {
             <div className="lif-panel-body">
               {view === 'upload-source' && (
                 <div className="lif-source-grid">
-                  <button className="lif-source-btn" onClick={handleScannerView}>
-                    <ScanLine size={28} />
-                    <span>Scanner</span>
-                    <small>Pick from scanned files</small>
+                  <button className="lif-source-btn" onClick={handlePickFiles} disabled={files.uploading}>
+                    <Upload size={28} />
+                    <span>{files.uploading ? 'Uploading…' : 'Choose File'}</span>
+                    <small>Browse and pick a file</small>
                   </button>
                   <button className="lif-source-btn" onClick={handleCameraView}>
                     <Camera size={28} />
                     <span>Camera</span>
                     <small>Take a photo</small>
                   </button>
-                </div>
-              )}
-
-              {view === 'scanner' && (
-                <div className="lif-scanner">
-                  {files.scannerLoading ? (
-                    <p className="lif-loading">Loading files...</p>
-                  ) : files.scannerFiles.length === 0 ? (
-                    <p className="lif-empty">No scanner files found</p>
-                  ) : (
-                    <div className="lif-file-list">
-                      {files.scannerFiles.map(file => (
-                        <div key={file.name} className="lif-file-row">
-                          <div className="lif-file-info">
-                            <span className="lif-file-name">{file.name}</span>
-                            <span className="lif-file-meta">
-                              {(file.size / 1024).toFixed(0)} KB
-                              {' · '}
-                              {new Date(file.modified).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <button
-                            className="btn btn-primary btn-sm"
-                            onClick={() => handleAttachFile(file)}
-                            disabled={files.attachingFile === file.name}
-                          >
-                            {files.attachingFile === file.name ? 'Saving...' : 'Attach'}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
 
