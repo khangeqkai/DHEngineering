@@ -196,7 +196,7 @@
       "label": "mergeColumnOrder()",
       "file_type": "code",
       "source_file": "client/src/components/JobCardList.constants.js",
-      "source_location": "L49",
+      "source_location": "L50",
       "id": "components_jobcardlist_constants_mergecolumnorder",
       "community": 6,
       "norm_label": "mergecolumnorder()"
@@ -205,7 +205,7 @@
       "label": "statusToken()",
       "file_type": "code",
       "source_file": "client/src/components/JobCardList.constants.js",
-      "source_location": "L60",
+      "source_location": "L61",
       "id": "components_jobcardlist_constants_statustoken",
       "community": 6,
       "norm_label": "statustoken()"
@@ -214,7 +214,7 @@
       "label": "getStatusBadgeClass()",
       "file_type": "code",
       "source_file": "client/src/components/JobCardList.constants.js",
-      "source_location": "L62",
+      "source_location": "L63",
       "id": "components_jobcardlist_constants_getstatusbadgeclass",
       "community": 6,
       "norm_label": "getstatusbadgeclass()"

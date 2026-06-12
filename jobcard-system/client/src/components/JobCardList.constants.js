@@ -40,6 +40,7 @@ export const DEFAULT_COLUMN_ORDER = [
   'assignedTo',
   'status',
   'priority',
+  'attachments',
   'dueDate',
   'createdAt',
   'updatedAt',

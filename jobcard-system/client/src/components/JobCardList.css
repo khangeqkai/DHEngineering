@@ -45,7 +45,6 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: 8px;
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -56,6 +55,27 @@
   line-height: 1;
   vertical-align: middle;
   cursor: help;
+}
+
+/* Attachments column: center the status indicator and keep the column tight. */
+.attachment-cell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* "Everything attached" counterpart to .missing-files-indicator, in success green. */
+.attachment-ok {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(var(--success-rgb), 0.16);
+  color: var(--success-color);
+  line-height: 1;
+  vertical-align: middle;
 }
 
 /* Themed hover card replacing the plain browser tooltip. Appears below the

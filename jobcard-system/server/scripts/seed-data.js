@@ -85,10 +85,9 @@ const machines = [
   { number: 'WJET-01',  name: 'Flow Mach 200',         description: 'Waterjet Cutter' },
 ];
 
-// ─── QA LEVELS: 3 active. Whether a job needs a form is decided by whether the
+// ─── QA LEVELS: 2 active. Whether a job needs a form is decided by whether the
 // level has a form attached, not by any per-level flag. ───
 const qaLevels = [
-  { name: 'Commercial', nameLower: 'commercial', isActive: 1 },
   { name: 'Standard',   nameLower: 'standard',   isActive: 1 },
   { name: 'Critical',   nameLower: 'critical',   isActive: 1 },
 ];
