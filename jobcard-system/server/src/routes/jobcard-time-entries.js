@@ -306,7 +306,9 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
 
 // Update time entry (owner or admin — a worker may edit their own record, e.g.
 // filling in qty/machines/description after stopping their timer; editing anyone
-// else's stays admin-only since manual time records affect labour hours and costs)
+// else's stays admin-only since manual time records affect labour hours and costs).
+// A non-admin owner can never hand-edit the start/finish times (only an admin may
+// correct the clock) — see the role guard below.
 router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntry, (req, res) => {
   try {
     const { id, entryId } = req.params;
@@ -336,6 +338,17 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       endTime = normalizeTime(data.endTime);
     } catch (e) {
       return res.status(400).json({ error: 'Invalid start or finish time' });
+    }
+
+    // Start/finish times are the raw measurement of how long the job took and feed
+    // directly into labour hours and cost, so a non-admin owner may never hand-edit
+    // them — they may only fill in qty/scrap/machine/description on their own record.
+    // Keep their stored start time as-is, and honour a finish-time change only when it
+    // clears the field (resuming/reopening their own timer), never a different time.
+    // Only admins may set an arbitrary start/finish time (manual corrections).
+    if (req.user.role !== 'admin') {
+      startTime = existing.start_time;
+      endTime = endTime === null ? null : existing.end_time;
     }
 
     // Scrap comes from the worker's stop-timer form or the admin's time-entry

@@ -1105,7 +1105,7 @@
       "label": "formatDueDate()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/JobIdentityStrip.jsx",
-      "source_location": "L12",
+      "source_location": "L13",
       "id": "jobcard_jobidentitystrip_formatduedate",
       "community": 6,
       "norm_label": "formatduedate()"
@@ -1114,7 +1114,7 @@
       "label": "JobIdentityStrip()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/JobIdentityStrip.jsx",
-      "source_location": "L21",
+      "source_location": "L22",
       "id": "jobcard_jobidentitystrip_jobidentitystrip",
       "community": 6,
       "norm_label": "jobidentitystrip()"
@@ -1476,7 +1476,7 @@
       "source_file": "client/src/components/jobcard/useTimer.js",
       "source_location": "L1",
       "id": "client_src_components_jobcard_usetimer_js",
-      "community": 7,
+      "community": 1,
       "norm_label": "usetimer.js"
     },
     {
@@ -1485,7 +1485,7 @@
       "source_file": "client/src/components/jobcard/useTimer.js",
       "source_location": "L6",
       "id": "jobcard_usetimer_emptyentryform",
-      "community": 7,
+      "community": 1,
       "norm_label": "emptyentryform()"
     },
     {
@@ -4543,7 +4543,7 @@
       "label": "normalizeEmpty()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-time-entries.js",
-      "source_location": "L382",
+      "source_location": "L395",
       "id": "routes_jobcard_time_entries_normalizeempty",
       "community": 21,
       "norm_label": "normalizeempty()"
@@ -6440,9 +6440,9 @@
       "source_file": "client/src/components/JobCardListColumns.jsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "client_src_components_jobcardlistcolumns_jsx",
-      "target": "utils_attachmentwarnings_attachmentseverity",
-      "confidence_score": 1.0
+      "target": "utils_attachmentwarnings_attachmentseverity"
     },
     {
       "relation": "contains",
@@ -7899,6 +7899,17 @@
       "confidence_score": 1.0,
       "source": "client_src_components_jobcard_jobidentitystrip_jsx",
       "target": "utils_formatters_capitalizefirst"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/JobIdentityStrip.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "client_src_components_jobcard_jobidentitystrip_jsx",
+      "target": "utils_attachmentwarnings_describeattachmentgaps",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -12151,9 +12162,9 @@
       "source_file": "client/src/utils/attachmentWarnings.js",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "client_src_utils_attachmentwarnings_js",
-      "target": "utils_attachmentwarnings_attachmentseverity",
-      "confidence_score": 1.0
+      "target": "utils_attachmentwarnings_attachmentseverity"
     },
     {
       "relation": "contains",

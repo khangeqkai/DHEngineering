@@ -1,11 +1,11 @@
 # Graph Report - DHEngineering  (2026-06-12)
 
 ## Corpus Check
-- 142 files · ~105,209 words
+- 142 files · ~97,186 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 650 nodes · 921 edges · 28 communities detected
+- 650 nodes · 922 edges · 28 communities detected
 - Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 81 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
@@ -94,7 +94,7 @@ Cohesion: 0.08
 Nodes (11): getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), SearchPage(), StatusBadge(), useSearch(), formatDueDate() (+3 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (10): JobFilesMenu(), LineItemFilesMenu(), formatElapsed(), QuickActionPanel(), useCamera(), useItemFiles(), useJobFiles(), useQuickActionFiles() (+2 more)
 
 ### Community 8 - "Community 8"
@@ -205,7 +205,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `useAuth()` connect `Community 1` to `Community 2`, `Community 5`, `Community 6`, `Community 7`?**
   _High betweenness centrality (0.035) - this node is a cross-community bridge._
 - **Why does `useConfirmDialog()` connect `Community 2` to `Community 1`, `Community 5`, `Community 7`?**
-  _High betweenness centrality (0.032) - this node is a cross-community bridge._
+  _High betweenness centrality (0.030) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 8 inferred relationships involving `useConfirmDialog()` (e.g. with `ContactManagement()` and `JobCardList()`) actually correct?**

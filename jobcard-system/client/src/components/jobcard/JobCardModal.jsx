@@ -387,6 +387,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         qaLevelId: formHook.formData.qaLevelId || null,
         priority: formHook.formData.priority,
         poNumber: formHook.formData.poNumber,
+        quoteReference: formHook.formData.quoteReference,
         description: formHook.formData.description,
         dueDate: formHook.formData.dueDate,
         isRepeatJob: formHook.formData.isRepeatJob,

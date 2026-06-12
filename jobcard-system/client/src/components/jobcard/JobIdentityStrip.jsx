@@ -6,6 +6,7 @@ import { capitalizeFirst } from '../../utils/formatters';
 import { api } from '../../services/api';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from './constants';
 import { statusToken } from '../JobCardList.constants';
+import { describeAttachmentGaps } from '../../utils/attachmentWarnings';
 
 const PRIORITY_VALUES = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
 
@@ -94,13 +95,43 @@ export default function JobIdentityStrip({
       });
       if (!ok) return;
     }
-    try {
-      await api.updateJobcardStatus(jobCardId, newStatus);
+    const applyLocally = () => {
       setField('status', newStatus);
       onSuccess?.();
       toast.success('Status updated');
+    };
+    try {
+      await api.updateJobcardStatus(jobCardId, newStatus);
+      applyLocally();
     } catch (err) {
-      toast.error('Failed to update status');
+      // Invoicing with declared-but-missing files: confirm, then resend.
+      if (err.status === 409 && err.data?.attachmentWarnings) {
+        const gaps = describeAttachmentGaps(err.data.attachmentWarnings);
+        const proceed = await showConfirm?.({
+          title: 'Files not attached',
+          message: (
+            <span>
+              This job was marked as having the following, but no file is attached yet:
+              <br />
+              {gaps.map((g, i) => <span key={i}>• {g}<br /></span>)}
+              <br />
+              Invoice anyway?
+            </span>
+          ),
+          confirmLabel: 'Invoice anyway',
+          cancelLabel: 'Go back',
+          confirmVariant: 'warning'
+        });
+        if (!proceed) return;
+        try {
+          await api.updateJobcardStatus(jobCardId, newStatus, true);
+          applyLocally();
+        } catch (e2) {
+          toast.error(e2.message || 'Failed to update status');
+        }
+        return;
+      }
+      toast.error(err.message || 'Failed to update status');
     }
   };
 
