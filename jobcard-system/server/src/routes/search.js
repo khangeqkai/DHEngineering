@@ -134,8 +134,8 @@ function searchAll(req, res, isAdmin) {
   groups.jobs = { count: jobCount, results: jobRows.map(j => formatJob(j, assigneeMap[j.id], isAdmin)) };
 
   if (isAdmin) {
-    // Contacts
-    const cWhere = '(company_name LIKE ? OR contact_name LIKE ? OR phone LIKE ? OR email LIKE ?)';
+    // Contacts (archived customers are hidden from search, like suppliers)
+    const cWhere = 'archived = 0 AND (company_name LIKE ? OR contact_name LIKE ? OR phone LIKE ? OR email LIKE ?)';
     groups.contacts = {
       count: db.prepare(`SELECT COUNT(*) as count FROM contacts WHERE ${cWhere}`).get(like, like, like, like).count,
       results: db.prepare(`SELECT * FROM contacts WHERE ${cWhere} ORDER BY company_name ASC LIMIT ?`).all(like, like, like, like, PREVIEW_LIMIT).map(formatContact)
@@ -214,10 +214,9 @@ function searchPeople(req, res) {
   let all = [];
 
   if (peopleType !== 'suppliers') {
-    const cond = []; const p = [];
+    const cond = ['archived = 0']; const p = [];
     if (like) { cond.push('(company_name LIKE ? OR contact_name LIKE ? OR phone LIKE ? OR email LIKE ?)'); p.push(like, like, like, like); }
-    const w = cond.length ? `WHERE ${cond.join(' AND ')}` : '';
-    all.push(...db.prepare(`SELECT * FROM contacts ${w} ORDER BY company_name ASC`).all(...p).map(r => ({ ...formatContact(r), type: 'contact' })));
+    all.push(...db.prepare(`SELECT * FROM contacts WHERE ${cond.join(' AND ')} ORDER BY company_name ASC`).all(...p).map(r => ({ ...formatContact(r), type: 'contact' })));
   }
   if (peopleType !== 'contacts') {
     const cond = ['active = 1']; const p = [];

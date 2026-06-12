@@ -75,7 +75,9 @@ export function useJobFiles(jobcardId) {
       const list = await fetchList(category);
       setCounts(prev => ({ ...prev, [category]: (list || []).length }));
     } catch {
-      setCounts(prev => ({ ...prev, [category]: 0 }));
+      // Leave the count as unknown (null) rather than claiming "0 files" — a
+      // failed listing isn't proof the folder is empty.
+      setCounts(prev => ({ ...prev, [category]: null }));
     }
   }, [jobcardId, fetchList]);
 

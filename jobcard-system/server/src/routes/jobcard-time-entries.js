@@ -289,12 +289,11 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
     }
 
     recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name || req.user.username, {
-      timeEntryId: { from: null, to: entryId },
       machineNumber: { from: null, to: data.machineNumber || null },
       description: { from: null, to: data.description || null },
       scrapQty: { from: null, to: scrapQty },
       startTime: { from: null, to: startTime }
-    });
+    }, { timeEntryId: entryId });
 
     const entry = timeEntryQueries.getById.get(entryId);
     res.status(201).json(toCamelCase(entry));

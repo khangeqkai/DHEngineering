@@ -23,11 +23,12 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS contacts (
     id TEXT PRIMARY KEY,
     contact_name TEXT,
-    company_name TEXT NOT NULL,
+    company_name TEXT NOT NULL UNIQUE COLLATE NOCASE,
     phone TEXT,
     email TEXT,
     address TEXT,
     notes TEXT,
+    archived INTEGER DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );

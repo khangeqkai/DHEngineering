@@ -46,69 +46,197 @@ function getBasePath() {
   }
 }
 
+// A folder's owning record (a contact, or a QA level) is identified by a short
+// code embedded at the END of the folder name, in square brackets — e.g.
+// "Rio Tinto Iron Ore [550e8400]". Because the code is part of the name, a
+// folder can never exist "untagged": there is no separate marker file to forget
+// to write, lose, or have stripped. Renaming the company just renames the
+// folder; the code (and so the identity) rides along. The same bracketed-code
+// scheme is used for per-part file names (see jobcard-files.js).
+
 /**
- * Create a company folder under the configured base path.
- * Fire-and-forget: logs errors but never throws.
+ * Stable code derived from a permanent id, embedded in folder and file names.
+ * Takes the part after the last ':' (so it works for bare contact uuids,
+ * "item:..." and "qa-level:..." alike), keeps alphanumerics, and lowercases.
+ * The FULL id is used (not a truncation) so the code is as unique as the id
+ * itself — two records can never collide on it. Returns null for a missing id.
  */
-function createCompanyFolder(companyName) {
-  try {
-    const basePath = getBasePath();
-    if (!basePath) return;
-
-    const sanitized = sanitizeFolderName(companyName);
-    if (!sanitized) return;
-
-    const folderPath = path.join(basePath, sanitized);
-    if (!isWithinBase(basePath, folderPath)) {
-      logger.error({ companyName, folderPath }, 'Company folder path escapes base directory');
-      return;
-    }
-
-    fs.mkdirSync(folderPath, { recursive: true });
-    logger.info({ folderPath }, 'Created company folder');
-  } catch (err) {
-    logger.error({ err, companyName }, 'Failed to create company folder');
-  }
+function idSlug(rawId) {
+  if (!rawId) return null;
+  const tail = String(rawId).split(':').pop();
+  const alnum = tail.replace(/[^a-z0-9]/gi, '').toLowerCase();
+  return alnum || null;
 }
 
-const FILE_CATEGORY_FOLDERS = ['Job Files', 'QA Forms', 'Customer Property'];
-
-// Hidden marker file placed inside each QA level folder, holding the level's
-// permanent id. Folder lookups match by this marker, never by the (mutable)
-// level name — so renaming a level can never strand its template PDFs.
-const QA_LEVEL_MARKER = '.levelid';
+/**
+ * Read the trailing "[code]" from a folder name, or null if absent. The LAST
+ * bracketed group always wins, so a company name that itself contains "[...]"
+ * is harmless — our code is appended last.
+ */
+function folderSlugOf(folderName) {
+  const m = /\[([a-z0-9]+)\]$/i.exec(String(folderName).trim());
+  return m ? m[1].toLowerCase() : null;
+}
 
 /**
- * Read the level id stamped inside a folder's marker file.
- * Returns the trimmed id, or null if the marker is absent/unreadable.
+ * Build the on-disk folder name for a customer: "Company Name [code]".
+ * Returns null if the name sanitizes to nothing or the id has no code.
  */
-function readQaLevelMarker(folderPath) {
+function companyFolderName(companyName, contactId) {
+  const sanitized = sanitizeFolderName(companyName);
+  const slug = idSlug(contactId);
+  return (sanitized && slug) ? `${sanitized} [${slug}]` : null;
+}
+
+/**
+ * Find a customer's company folder under the base by matching the code in the
+ * folder name to the contact's id — independent of the (mutable) company name,
+ * so a rename never strands files. Returns the absolute path, or null.
+ */
+function findCompanyFolder(basePath, contactId) {
   try {
-    const markerPath = path.join(folderPath, QA_LEVEL_MARKER);
-    if (!fs.existsSync(markerPath)) return null;
-    return fs.readFileSync(markerPath, 'utf8').trim() || null;
+    const slug = idSlug(contactId);
+    if (!basePath || !slug || !fs.existsSync(basePath)) return null;
+
+    for (const entry of fs.readdirSync(basePath, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      if (folderSlugOf(entry.name) !== slug) continue;
+      const folderPath = path.join(basePath, entry.name);
+      if (isWithinBase(basePath, folderPath)) return folderPath;
+    }
+    return null;
   } catch (err) {
+    logger.error({ err, contactId }, 'Failed to find company folder');
     return null;
   }
 }
 
 /**
- * Find a QA level's folder under the "QA Levels" base by reading each
- * subfolder's marker file and matching the permanent level id — independent
- * of the folder's display name. Returns the absolute path, or null if no
- * folder carries this level's marker (or the base is missing/unreadable).
+ * Resolve (read-only, never creates) where a customer's company folder lives.
+ * With a contact id: match by code, else the computed "Name [code]" path (which
+ * may not exist yet). With no contact id (a job whose contact was unlinked):
+ * fall back to the plain name-built path. Used by read/delete/QA-copy callers.
+ */
+function resolveCompanyFolder(basePath, contactId, companyName) {
+  try {
+    if (!basePath) return null;
+
+    if (contactId) {
+      const bySlug = findCompanyFolder(basePath, contactId);
+      if (bySlug) return bySlug;
+      const name = companyFolderName(companyName, contactId);
+      if (!name) return null;
+      const target = path.join(basePath, name);
+      return isWithinBase(basePath, target) ? target : null;
+    }
+
+    return companyPathByName(basePath, companyName);
+  } catch (err) {
+    logger.error({ err, contactId }, 'Failed to resolve company folder');
+    return null;
+  }
+}
+
+/**
+ * Resolve a customer's company folder, creating it if needed. Returns the
+ * absolute folder path, or null if storage isn't configured or the operation
+ * fails. The code in the folder name makes it unique, so there's no marker file
+ * to write and no same-name disambiguation to do. Fire-and-forget: logs errors
+ * but never throws.
+ */
+function ensureCompanyFolder(contactId, companyName) {
+  try {
+    const basePath = getBasePath();
+    if (!basePath || !contactId) return null;
+
+    const existing = findCompanyFolder(basePath, contactId);
+    if (existing) return existing;
+
+    const name = companyFolderName(companyName, contactId);
+    if (!name) return null;
+
+    const target = path.join(basePath, name);
+    if (!isWithinBase(basePath, target)) {
+      logger.error({ contactId, target }, 'Company folder path escapes base directory');
+      return null;
+    }
+
+    fs.mkdirSync(target, { recursive: true });
+    logger.info({ folderPath: target }, 'Ensured company folder');
+    return target;
+  } catch (err) {
+    logger.error({ err, contactId }, 'Failed to ensure company folder');
+    return null;
+  }
+}
+
+/**
+ * Relabel a customer's company folder when their company name changes: find the
+ * folder by its code and rename it to "New Name [code]". Best-effort — if the
+ * rename can't happen (e.g. the folder is locked), lookups still succeed by code
+ * regardless of the on-disk name. Fire-and-forget: never throws.
+ */
+function renameCompanyFolder(contactId, oldName, newName) {
+  try {
+    const basePath = getBasePath();
+    if (!basePath || !contactId) return;
+
+    const desired = companyFolderName(newName, contactId);
+    if (!desired) return;
+
+    const current = findCompanyFolder(basePath, contactId);
+    if (!current) {
+      // Nothing on disk yet → just make the new folder.
+      ensureCompanyFolder(contactId, newName);
+      return;
+    }
+
+    const target = path.join(basePath, desired);
+    if (!isWithinBase(basePath, target)) return;
+    if (path.resolve(current) === path.resolve(target)) return; // already correct
+
+    if (fs.existsSync(target)) {
+      // Can't happen with a unique code, but never clobber another folder if it does.
+      logger.warn({ contactId, target }, 'Company rename target exists; keeping current folder');
+      return;
+    }
+
+    fs.renameSync(current, target);
+    logger.info({ from: current, to: target }, 'Renamed company folder');
+  } catch (err) {
+    logger.error({ err, contactId }, 'Failed to rename company folder');
+  }
+}
+
+const FILE_CATEGORY_FOLDERS = ['Job Files', 'QA Forms', 'Customer Property'];
+
+/**
+ * Build the on-disk folder name for a QA level: "Level Name [code]".
+ */
+function qaLevelFolderName(levelName, levelId) {
+  const sanitized = sanitizeFolderName(levelName);
+  const slug = idSlug(levelId);
+  return (sanitized && slug) ? `${sanitized} [${slug}]` : null;
+}
+
+/**
+ * Find a QA level's folder under the "QA Levels" base by matching the code in
+ * the folder name to the level's id — independent of the display name, so
+ * renaming a level never strands its template PDFs. Returns the absolute path,
+ * or null.
  * @param {string} qaLevelsBase - the ".../QA Levels" directory
  * @param {string} levelId
  */
 function findQaLevelFolder(qaLevelsBase, levelId) {
   try {
-    if (!qaLevelsBase || !levelId || !fs.existsSync(qaLevelsBase)) return null;
+    const slug = idSlug(levelId);
+    if (!qaLevelsBase || !slug || !fs.existsSync(qaLevelsBase)) return null;
 
     for (const entry of fs.readdirSync(qaLevelsBase, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
+      if (folderSlugOf(entry.name) !== slug) continue;
       const folderPath = path.join(qaLevelsBase, entry.name);
-      if (!isWithinBase(qaLevelsBase, folderPath)) continue;
-      if (readQaLevelMarker(folderPath) === levelId) return folderPath;
+      if (isWithinBase(qaLevelsBase, folderPath)) return folderPath;
     }
     return null;
   } catch (err) {
@@ -118,14 +246,10 @@ function findQaLevelFolder(qaLevelsBase, levelId) {
 }
 
 /**
- * Resolve a QA level's folder, creating it (with its marker) if needed.
- * Returns the absolute folder path, or null if storage isn't configured or
- * the operation fails. Fire-and-forget: logs errors but never throws.
- *
- * A folder is only reused if its marker is absent or already this level's id.
- * If a folder with the same sanitized name exists but is owned by a DIFFERENT
- * level (two display names can sanitize to the same folder), a disambiguated
- * folder name is used instead so the levels never share a folder.
+ * Resolve a QA level's folder, creating it if needed. Returns the absolute
+ * folder path, or null if storage isn't configured or the operation fails. The
+ * code in the folder name makes it unique — no marker file, no disambiguation.
+ * Fire-and-forget: logs errors but never throws.
  * @param {string} qaLevelsBase - the ".../QA Levels" directory
  * @param {string} levelId
  * @param {string} levelName
@@ -137,27 +261,16 @@ function ensureQaLevelFolder(qaLevelsBase, levelId, levelName) {
     const existing = findQaLevelFolder(qaLevelsBase, levelId);
     if (existing) return existing;
 
-    const sanitized = sanitizeFolderName(levelName);
-    if (!sanitized) return null;
+    const name = qaLevelFolderName(levelName, levelId);
+    if (!name) return null;
 
-    let target = path.join(qaLevelsBase, sanitized);
+    const target = path.join(qaLevelsBase, name);
     if (!isWithinBase(qaLevelsBase, target)) {
       logger.error({ levelId, target }, 'QA level folder path escapes base directory');
       return null;
     }
 
-    // A same-name folder owned by another level → use a disambiguated name.
-    if (fs.existsSync(target)) {
-      const owner = readQaLevelMarker(target);
-      if (owner && owner !== levelId) {
-        const suffix = levelId.replace(/[^a-z0-9]/gi, '').slice(-6);
-        target = path.join(qaLevelsBase, `${sanitized} ${suffix}`);
-        if (!isWithinBase(qaLevelsBase, target)) return null;
-      }
-    }
-
     fs.mkdirSync(target, { recursive: true });
-    fs.writeFileSync(path.join(target, QA_LEVEL_MARKER), `${levelId}\n`);
     logger.info({ folderPath: target }, 'Ensured QA level folder');
     return target;
   } catch (err) {
@@ -167,24 +280,75 @@ function ensureQaLevelFolder(qaLevelsBase, levelId, levelName) {
 }
 
 /**
- * Create job card subfolders (Job Files/, QA Forms/, Customer Property/) under the company folder.
- * Files live directly on disk inside each category folder.
+ * Relabel a QA level's folder when its name changes: find by code and rename to
+ * "New Name [code]". Best-effort — lookups still succeed by code regardless of
+ * the on-disk name. Fire-and-forget: never throws.
+ * @param {string} qaLevelsBase - the ".../QA Levels" directory
+ * @param {string} levelId
+ * @param {string} newName
+ */
+function renameQaLevelFolder(qaLevelsBase, levelId, newName) {
+  try {
+    const desired = qaLevelFolderName(newName, levelId);
+    if (!qaLevelsBase || !desired) return;
+
+    const current = findQaLevelFolder(qaLevelsBase, levelId);
+    if (!current) {
+      ensureQaLevelFolder(qaLevelsBase, levelId, newName);
+      return;
+    }
+
+    const target = path.join(qaLevelsBase, desired);
+    if (!isWithinBase(qaLevelsBase, target)) return;
+    if (path.resolve(current) === path.resolve(target)) return;
+
+    if (fs.existsSync(target)) {
+      logger.warn({ levelId, target }, 'QA level rename target exists; keeping current folder');
+      return;
+    }
+
+    fs.renameSync(current, target);
+    logger.info({ from: current, to: target }, 'Renamed QA level folder');
+  } catch (err) {
+    logger.error({ err, levelId }, 'Failed to rename QA level folder');
+  }
+}
+
+/**
+ * Resolve the name-built company path as a fallback for jobs with no linked
+ * contact (e.g. the contact was deleted/unlinked) — there's no permanent id to
+ * key on, so the company name is all we have.
+ */
+function companyPathByName(basePath, companyName) {
+  const sanitized = sanitizeFolderName(companyName);
+  if (!sanitized) return null;
+  const folderPath = path.join(basePath, sanitized);
+  return isWithinBase(basePath, folderPath) ? folderPath : null;
+}
+
+/**
+ * Create job card subfolders (Job Files/, QA Forms/, Customer Property/) under
+ * the customer's company folder, located by the permanent contact id (created
+ * if needed) so it survives company-name changes. Jobs with no contact fall
+ * back to the name-built company folder.
  * Fire-and-forget: logs errors but never throws.
  */
-function createJobCardFolders(companyName, jobNumber) {
+function createJobCardFolders(contactId, companyName, jobNumber) {
   try {
     const basePath = getBasePath();
     if (!basePath) return;
 
-    const sanitizedCompany = sanitizeFolderName(companyName);
-    if (!sanitizedCompany) return;
+    const companyFolder = contactId
+      ? ensureCompanyFolder(contactId, companyName)
+      : companyPathByName(basePath, companyName);
+    if (!companyFolder) return;
 
     const sanitizedJob = sanitizeFolderName(jobNumber);
     if (!sanitizedJob) return;
 
-    const jobPath = path.join(basePath, sanitizedCompany, sanitizedJob);
+    const jobPath = path.join(companyFolder, sanitizedJob);
     if (!isWithinBase(basePath, jobPath)) {
-      logger.error({ companyName, jobNumber, jobPath }, 'Job card folder path escapes base directory');
+      logger.error({ contactId, jobNumber, jobPath }, 'Job card folder path escapes base directory');
       return;
     }
 
@@ -193,29 +357,32 @@ function createJobCardFolders(companyName, jobNumber) {
     }
     logger.info({ jobPath }, 'Created job card folders');
   } catch (err) {
-    logger.error({ err, companyName, jobNumber }, 'Failed to create job card folders');
+    logger.error({ err, contactId, jobNumber }, 'Failed to create job card folders');
   }
 }
 
 /**
  * Delete job card folder (Company/JobNumber/) when a job card is deleted.
- * Only deletes the job card subfolder, not the parent company folder.
+ * The company folder is located by the permanent contact id (read-only, never
+ * created) so a renamed customer still has the right folder targeted; only the
+ * job card subfolder is removed, not the parent company folder.
  * Fire-and-forget: logs errors but never throws.
  */
-function deleteJobCardFolders(companyName, jobNumber) {
+function deleteJobCardFolders(contactId, companyName, jobNumber) {
   try {
     const basePath = getBasePath();
     if (!basePath) return;
 
-    const sanitizedCompany = sanitizeFolderName(companyName);
-    if (!sanitizedCompany) return;
+    const companyFolder = (contactId && resolveCompanyFolder(basePath, contactId, companyName))
+      || companyPathByName(basePath, companyName);
+    if (!companyFolder) return;
 
     const sanitizedJob = sanitizeFolderName(jobNumber);
     if (!sanitizedJob) return;
 
-    const jobPath = path.join(basePath, sanitizedCompany, sanitizedJob);
+    const jobPath = path.join(companyFolder, sanitizedJob);
     if (!isWithinBase(basePath, jobPath)) {
-      logger.error({ companyName, jobNumber, jobPath }, 'Job card folder path escapes base directory');
+      logger.error({ contactId, jobNumber, jobPath }, 'Job card folder path escapes base directory');
       return;
     }
 
@@ -224,18 +391,21 @@ function deleteJobCardFolders(companyName, jobNumber) {
       logger.info({ jobPath }, 'Deleted job card folder');
     }
   } catch (err) {
-    logger.error({ err, companyName, jobNumber }, 'Failed to delete job card folder');
+    logger.error({ err, contactId, jobNumber }, 'Failed to delete job card folder');
   }
 }
 
 module.exports = {
   sanitizeFolderName,
   isWithinBase,
-  createCompanyFolder,
+  idSlug,
+  resolveCompanyFolder,
+  ensureCompanyFolder,
+  renameCompanyFolder,
   createJobCardFolders,
   deleteJobCardFolders,
   findQaLevelFolder,
   ensureQaLevelFolder,
-  QA_LEVEL_MARKER,
+  renameQaLevelFolder,
   FILE_CATEGORY_FOLDERS
 };

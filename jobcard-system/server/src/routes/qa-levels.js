@@ -10,7 +10,8 @@ const {
   sanitizeFolderName,
   isWithinBase,
   findQaLevelFolder,
-  ensureQaLevelFolder
+  ensureQaLevelFolder,
+  renameQaLevelFolder
 } = require('../utils/folderCreation');
 const {
   qaLevelQueries,
@@ -115,7 +116,7 @@ router.post('/',
 
       const id = `qa-level:${uuidv4()}`;
 
-      // Create the level's folder on disk with its permanent-id marker inside.
+      // Create the level's folder on disk with its permanent-id code in the name.
       // Fire-and-forget: a storage error is logged and never blocks creation.
       const basePath = getQaLevelsBasePath();
       if (basePath) ensureQaLevelFolder(basePath, id, name.trim());
@@ -175,28 +176,11 @@ router.put('/:id',
       );
 
       // Best-effort cosmetic rename so the folder name tracks the level name.
-      // Lookups go by the hidden marker, so a failed/skipped rename never
-      // strands templates — the folder is still found by its id.
+      // Lookups go by the code in the folder name, so a failed/skipped rename
+      // never strands templates — the folder is still found by its id.
       if (changes.name) {
-        try {
-          const basePath = getQaLevelsBasePath();
-          const current = basePath ? findQaLevelFolder(basePath, id) : null;
-          if (current) {
-            const sanitized = sanitizeFolderName(name.trim());
-            const target = sanitized ? path.join(basePath, sanitized) : null;
-            if (
-              target &&
-              target !== current &&
-              isWithinBase(basePath, target) &&
-              !fs.existsSync(target)
-            ) {
-              fs.renameSync(current, target);
-              logger.info({ from: current, to: target }, 'Renamed QA level folder');
-            }
-          }
-        } catch (err) {
-          logger.error({ err, id }, 'Failed to rename QA level folder (templates still resolve by marker)');
-        }
+        const basePath = getQaLevelsBasePath();
+        if (basePath) renameQaLevelFolder(basePath, id, name.trim());
       }
 
       if (Object.keys(changes).length > 0) {
@@ -235,7 +219,7 @@ router.delete('/:id', authenticate, requireAdmin, (req, res) => {
       });
     }
 
-    // Delete level folder from disk, located by its marker (not its name).
+    // Delete level folder from disk, located by the code in its name (not the name).
     const basePath = getQaLevelsBasePath();
     const levelFolder = basePath ? findQaLevelFolder(basePath, id) : null;
     if (levelFolder && isWithinBase(basePath, levelFolder)) {
@@ -280,7 +264,7 @@ router.post('/:id/templates', authenticate, requireAdmin, (req, res) => {
     const finalDisplayName = displayName || sanitizedFileName;
 
     // Save file to disk if folder is configured. The folder is located (or
-    // created) by the level's marker, so it works regardless of the level name.
+    // created) by the code in its name, so it works regardless of the level name.
     const basePath = getQaLevelsBasePath();
     if (basePath) {
       const levelFolder = ensureQaLevelFolder(basePath, level.id, level.name);
@@ -340,7 +324,7 @@ router.delete('/:id/templates/:tid', authenticate, requireAdmin, (req, res) => {
 
     const level = qaLevelQueries.getById.get(id);
 
-    // Delete file from disk, locating the level folder by its marker.
+    // Delete file from disk, locating the level folder by the code in its name.
     const basePath = getQaLevelsBasePath();
     const levelFolder = basePath && level ? findQaLevelFolder(basePath, level.id) : null;
     if (levelFolder) {

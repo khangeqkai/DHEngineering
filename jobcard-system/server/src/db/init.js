@@ -25,6 +25,14 @@ function runMigrations() {
     logger.info({ deleted: result.changes }, 'Migration: Wiped legacy time_entries for per-item timer');
   }
 
+  // Customers are archived, never deleted (track-and-trace) — add the flag to
+  // databases created before this column existed.
+  const contactCols = db.prepare("PRAGMA table_info(contacts)").all();
+  if (!contactCols.some(c => c.name === 'archived')) {
+    db.prepare('ALTER TABLE contacts ADD COLUMN archived INTEGER DEFAULT 0').run();
+    logger.info('Migration: Added archived column to contacts');
+  }
+
   logger.info('Migrations complete');
 }
 

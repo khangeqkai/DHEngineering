@@ -10,7 +10,7 @@ const {
   getSettings,
   recordHistory
 } = require('../db/database');
-const { sanitizeFolderName, isWithinBase } = require('../utils/folderCreation');
+const { sanitizeFolderName, isWithinBase, resolveCompanyFolder, idSlug } = require('../utils/folderCreation');
 const { handleValidationErrors } = require('../middleware/validation');
 const { body, param } = require('express-validator');
 
@@ -70,9 +70,11 @@ function resolveCategoryFolder(jobcardId, category) {
     return { error: 'Job card not found', status: 404 };
   }
 
+  const base = basePath.trim();
+  const contactId = jobcard.contact_id || null;
   let companyName = null;
-  if (jobcard.contact_id) {
-    const contact = contactQueries.getById.get(jobcard.contact_id);
+  if (contactId) {
+    const contact = contactQueries.getById.get(contactId);
     if (contact) companyName = contact.company_name;
   }
   if (!companyName) companyName = jobcard.company_name;
@@ -80,15 +82,21 @@ function resolveCategoryFolder(jobcardId, category) {
     return { error: 'No company associated with this job card', status: 400 };
   }
 
-  const sanitizedCompany = sanitizeFolderName(companyName);
+  // Locate the customer's company folder by the permanent code in its name (not
+  // the mutable name) so renaming a customer never strands its files. This is a
+  // read-only resolve — it never creates folders, so merely listing or reading
+  // files leaves no stray folders on disk. The upload path creates the folder
+  // chain itself when a file is actually written. Jobs with no linked contact
+  // fall back to name-based lookup.
+  const companyFolder = resolveCompanyFolder(base, contactId, companyName);
   const sanitizedJob = sanitizeFolderName(jobcard.job_number);
   const subfolder = CATEGORY_FOLDER[category];
-  if (!sanitizedCompany || !sanitizedJob || !subfolder) {
+  if (!companyFolder || !sanitizedJob || !subfolder) {
     return { error: 'Invalid path components', status: 400 };
   }
 
-  const folderPath = path.join(basePath.trim(), sanitizedCompany, sanitizedJob, subfolder);
-  if (!isWithinBase(basePath.trim(), folderPath)) {
+  const folderPath = path.join(companyFolder, sanitizedJob, subfolder);
+  if (!isWithinBase(base, folderPath)) {
     return { error: 'Path traversal detected', status: 403 };
   }
 
@@ -104,30 +112,31 @@ function resolveCategoryFolder(jobcardId, category) {
  */
 function partFileCode(itemId) {
   if (!itemId || typeof itemId !== 'string' || !itemId.startsWith('item:')) return null;
-  const hex = itemId.slice('item:'.length).replace(/[^a-zA-Z0-9]/g, '');
-  return hex ? `p${hex.slice(0, 8)}` : null;
+  const slug = idSlug(itemId);
+  return slug ? `p${slug}` : null;
 }
 
 /**
- * Build a unique on-disk filename.
+ * Build a unique on-disk filename. The identifying code rides at the END of the
+ * name, in square brackets, so the human-readable name leads — matching the
+ * folder naming scheme (see folderCreation.js).
  * - Per-part files (a drawing / customer property attached to a specific line)
- *   are named "p{code}_{name}" using the part's stable id code, so each part's
+ *   are named "{name} [p{code}]" using the part's stable id code, so each part's
  *   file is identifiable on disk and the missing-file check can match per part
  *   even after the parts are re-numbered.
- * - Job-level files keep a timestamp prefix so two uploads of the same name
- *   don't collide. (The returned-QA-form check relies on this timestamp shape.)
- * In both cases a numeric suffix is appended if the name already exists.
+ * - Job-level files get a 14-digit timestamp tag instead, so two uploads of the
+ *   same name don't collide. (The returned-QA-form check relies on an uploaded
+ *   form's name differing from a bare template name, which the tag guarantees.)
+ * In both cases " (n)" is appended before the extension if the name exists.
  */
 function buildStorageFilename(folderPath, displayName, partCode) {
   const ext = path.extname(displayName);
   const base = path.basename(displayName, ext);
-  const prefix = partCode
-    ? `${partCode}_`
-    : `${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}_`;
-  let candidate = `${prefix}${base}${ext}`;
+  const tag = partCode || new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
+  let candidate = `${base} [${tag}]${ext}`;
   let counter = 1;
   while (fs.existsSync(path.join(folderPath, candidate))) {
-    candidate = `${prefix}${base}_${counter}${ext}`;
+    candidate = `${base} [${tag}] (${counter})${ext}`;
     counter += 1;
   }
   return candidate;

@@ -48,12 +48,21 @@ const userQueries = {
 // Contact queries (phone contacts style - each contact is standalone)
 const contactQueries = {
   getById: db.prepare('SELECT * FROM contacts WHERE id = ?'),
-  getAll: db.prepare('SELECT * FROM contacts ORDER BY company_name ASC'),
+  // Pickers and autocomplete only see live customers; the admin list can opt in
+  // to archived ones for restoring.
+  getAll: db.prepare('SELECT * FROM contacts WHERE archived = 0 ORDER BY company_name ASC'),
+  getAllIncludeArchived: db.prepare('SELECT * FROM contacts ORDER BY archived ASC, company_name ASC'),
 
-  // Search by company name OR contact name
+  // Company names are unique (case-insensitive). Used to reject duplicates so
+  // two customers can never share a company name — which would otherwise make
+  // their job folders ambiguous on disk. Matches archived customers too, since
+  // an archived customer still owns its name and folder.
+  getByCompanyName: db.prepare('SELECT * FROM contacts WHERE company_name = ? COLLATE NOCASE'),
+
+  // Search by company name OR contact name (live customers only)
   search: db.prepare(`
     SELECT * FROM contacts
-    WHERE company_name LIKE ? OR contact_name LIKE ?
+    WHERE (company_name LIKE ? OR contact_name LIKE ?) AND archived = 0
     ORDER BY company_name ASC
     LIMIT 20
   `),
@@ -69,8 +78,8 @@ const contactQueries = {
     WHERE id = ?
   `),
 
-  delete: db.prepare('DELETE FROM contacts WHERE id = ?'),
-  unlinkJobcards: db.prepare('UPDATE jobcards SET contact_id = NULL WHERE contact_id = ?')
+  archive: db.prepare("UPDATE contacts SET archived = 1, updated_at = datetime('now') WHERE id = ?"),
+  unarchive: db.prepare("UPDATE contacts SET archived = 0, updated_at = datetime('now') WHERE id = ?")
 };
 
 // Supplier queries (approved field deprecated - all suppliers are approved when added)

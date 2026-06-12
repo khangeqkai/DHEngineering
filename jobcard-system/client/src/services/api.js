@@ -199,12 +199,13 @@ class ApiService {
   }
 
   // Contact endpoints (phone contacts style)
-  getContacts() { return this.request('/contacts'); }
+  getContacts(includeArchived = false) { return this.request(`/contacts${includeArchived ? '?includeArchived=true' : ''}`); }
   searchContacts(query) { return this.request(`/contacts/search?q=${encodeURIComponent(query)}`); }
   getContact(id) { return this.request(`/contacts/${id}`); }
   createContact(data) { return this._post('/contacts', data); }
   updateContact(id, data) { return this._put(`/contacts/${id}`, data); }
-  deleteContact(id) { return this._del(`/contacts/${id}`); }
+  archiveContact(id) { return this._post(`/contacts/${id}/archive`); }
+  unarchiveContact(id) { return this._post(`/contacts/${id}/unarchive`); }
 
   // Supplier endpoints
   getSuppliers(includeInactive = false) { return this.request(`/suppliers${includeInactive ? '?includeInactive=true' : ''}`); }

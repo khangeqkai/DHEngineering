@@ -212,6 +212,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       qaResult = await copyQaTemplatesForJob(id, qaLevelId, buildQaFillData(id, {
         jobNumber: jobNumber,
         status: status,
+        contactId: data.contactId || null,
         companyName: data.companyName || null,
         contactName: data.contactName || null,
         description: data.description || null,
@@ -231,7 +232,7 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
 
     const folderCompany = jobcard.company_name || data.companyName;
     if (folderCompany) {
-      createJobCardFolders(folderCompany, jobNumber);
+      createJobCardFolders(jobcard.contact_id || null, folderCompany, jobNumber);
     }
 
     const response = formatJobcard(jobcard, items, assignees, req.user.role);
@@ -358,7 +359,10 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     // Uses the items being saved (or the current ones if items aren't changing).
     if (shouldArchive && data.confirmMissingAttachments !== true) {
       const itemsForCheck = data.items !== undefined ? data.items : jobItemQueries.getByJobcard.all(id);
-      const warnings = computeAttachmentWarnings(id, itemsForCheck, newQaLevelId);
+      // flagUnsaved: a part added in this same save can't have a file attached yet,
+      // so a drawing/customer-property it declares is genuinely missing — the gate
+      // must catch it, even though the live scan skips not-yet-saved parts.
+      const warnings = computeAttachmentWarnings(id, itemsForCheck, newQaLevelId, true);
       if (warnings.hasAny) {
         return res.status(409).json({ error: 'MISSING_ATTACHMENTS', attachmentWarnings: warnings });
       }
@@ -496,6 +500,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       qaResult = await copyQaTemplatesForJob(id, newQaLevelId, buildQaFillData(id, {
         jobNumber: current.job_number,
         status: current.status,
+        contactId: current.contact_id || null,
         companyName: current.company_name || data.companyName || null,
         contactName: current.contact_name || data.contactName || null,
         description: current.description || data.description || null,
@@ -520,7 +525,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     // Idempotent — covers jobs created before job_folders_base was configured
     const folderCompany = updated.company_name || data.companyName;
     if (folderCompany) {
-      createJobCardFolders(folderCompany, updated.job_number);
+      createJobCardFolders(updated.contact_id || null, folderCompany, updated.job_number);
     }
 
     const response = formatJobcard(updated, items, assignees, req.user.role);

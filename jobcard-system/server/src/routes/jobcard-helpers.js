@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const logger = require('../utils/logger');
-const { sanitizeFolderName, isWithinBase, findQaLevelFolder } = require('../utils/folderCreation');
+const { sanitizeFolderName, isWithinBase, findQaLevelFolder, ensureCompanyFolder, resolveCompanyFolder } = require('../utils/folderCreation');
 const { fillPdfTemplate } = require('../utils/pdfFiller');
 const {
   jobItemQueries,
@@ -44,15 +44,15 @@ function declaresValue(raw) {
   return String(raw).split(',').map(v => v.trim()).filter(Boolean).some(v => v !== 'N_A');
 }
 
-// A per-part file is stored as "p{code}_{name}" by the upload route, where the
+// A per-part file is stored as "{name} [p{code}]" by the upload route, where the
 // code is derived from the part's permanent id. Matching by that code (not the
 // visible item number) keeps a part's files attached even after re-numbering.
 function hasItemFile(names, itemId) {
   const { partFileCode } = require('./jobcard-files');
   const code = partFileCode(itemId);
   if (!code) return false;
-  const prefix = `${code}_`;
-  return names.some(name => name.startsWith(prefix));
+  const tag = `[${code}]`;
+  return names.some(name => name.includes(tag));
 }
 
 // Detect "declared but no file" gaps for one job by comparing each line item's
@@ -62,7 +62,7 @@ function hasItemFile(names, itemId) {
 //   - a QA level set but no returned (timestamp-named) form in QA Forms
 // Items may be DB rows (snake_case) or formatted/request items (camelCase).
 // No-ops safely (hasAny:false) when job-folders storage isn't configured.
-function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null) {
+function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flagUnsaved = false) {
   const { listCategoryFileNames, partFileCode } = require('./jobcard-files');
   const settings = getSettings();
   if (!settings.job_folders_base || !settings.job_folders_base.trim()) {
@@ -76,13 +76,24 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null) {
   items.forEach((it, idx) => {
     const itemNumber = it.itemNumber != null ? it.itemNumber
       : (it.item_number != null ? it.item_number : idx + 1);
-    // Only a saved part has a permanent "item:" id; an unsaved part (just added
-    // in this same edit) can't have a file attached yet, so flagging it would be
-    // a dead end — there's no part to attach to until it's saved. Skip it; it'll
-    // be checked normally on the next save/scan once it has an id.
-    if (!partFileCode(it.id)) return;
     const drawings = it.drawingsType !== undefined ? it.drawingsType : it.drawings_type;
     const customerProperty = it.customerProperty !== undefined ? it.customerProperty : it.customer_property;
+    // Only a saved part has a permanent "item:" id; an unsaved part (just added
+    // in this same edit) has no folder code, so no file can be matched to it yet.
+    if (!partFileCode(it.id)) {
+      // In a live scan, skip it — flagging a part you can't attach to yet is a
+      // dead end; it'll be checked normally on the next save once it has an id.
+      // At the invoice gate (flagUnsaved), a declared drawing/customer-property
+      // on a brand-new part is genuinely unattached, so it must be flagged or the
+      // job could be invoiced with a missing file no warning ever caught.
+      if (!flagUnsaved) return;
+      const missingDrawing = declaresValue(drawings);
+      const missingCustomerProperty = declaresValue(customerProperty);
+      if (missingDrawing || missingCustomerProperty) {
+        flagged.push({ itemNumber, missingDrawing, missingCustomerProperty });
+      }
+      return;
+    }
     // Match files by the part's permanent id; the itemNumber is only carried
     // back for the UI to line warnings up with the rows it's showing.
     const missingDrawing = declaresValue(drawings) && !hasItemFile(jobFileNames, it.id);
@@ -314,19 +325,27 @@ async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
       return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'No job folders base configured' };
     }
 
-    const sanitizedCompany = sanitizeFolderName(jobData.companyName);
+    const base = basePath.trim();
+    // Locate the customer's company folder by permanent contact id (created +
+    // marked if needed) so QA forms land in the same folder the job's files
+    // resolve to — even after a company-name change. Jobs with no contact fall
+    // back to the name-built folder.
+    const contactId = jobData.contactId || null;
+    const companyFolder = contactId
+      ? ensureCompanyFolder(contactId, jobData.companyName)
+      : resolveCompanyFolder(base, null, jobData.companyName);
     const sanitizedJob = sanitizeFolderName(jobData.jobNumber);
-    if (!sanitizedCompany || !sanitizedJob) {
+    if (!companyFolder || !sanitizedJob) {
       return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'Invalid company or job folder name' };
     }
 
-    const qaFormsFolder = path.join(basePath.trim(), sanitizedCompany, sanitizedJob, 'QA Forms');
-    if (!isWithinBase(basePath.trim(), qaFormsFolder)) {
+    const qaFormsFolder = path.join(companyFolder, sanitizedJob, 'QA Forms');
+    if (!isWithinBase(base, qaFormsFolder)) {
       return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'QA Forms folder path outside base' };
     }
 
-    // Locate the level's template folder by its marker, not its name, so a
-    // renamed level still resolves to the right folder.
+    // Locate the level's template folder by the code in its name, not the name
+    // itself, so a renamed level still resolves to the right folder.
     const qaLevelsBase = path.join(basePath.trim(), 'QA Levels');
     const levelFolder = findQaLevelFolder(qaLevelsBase, level.id);
 

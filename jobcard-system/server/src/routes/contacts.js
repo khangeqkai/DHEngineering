@@ -4,7 +4,7 @@ const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { validateCreateContact, validateUpdateContact } = require('../middleware/validation');
 const { contactQueries, recordHistory } = require('../db/database');
-const { createCompanyFolder } = require('../utils/folderCreation');
+const { ensureCompanyFolder, renameCompanyFolder } = require('../utils/folderCreation');
 
 const router = express.Router();
 
@@ -17,6 +17,7 @@ const toApiFormat = (c) => ({
   email: c.email,
   address: c.address,
   notes: c.notes,
+  archived: !!c.archived,
   createdAt: c.created_at,
   updatedAt: c.updated_at
 });
@@ -24,10 +25,14 @@ const toApiFormat = (c) => ({
 // All routes require authentication
 router.use(authenticate);
 
-// GET /api/contacts - Get all contacts (admin only)
+// GET /api/contacts - Get all contacts (admin only). Pass ?includeArchived=true
+// to include archived customers (for the admin list's "Show archived" toggle).
 router.get('/', requireAdmin, (req, res) => {
   try {
-    const contacts = contactQueries.getAll.all();
+    const includeArchived = req.query.includeArchived === 'true';
+    const contacts = includeArchived
+      ? contactQueries.getAllIncludeArchived.all()
+      : contactQueries.getAll.all();
     res.json(contacts.map(toApiFormat));
   } catch (err) {
     logger.error({ err }, 'Failed to get contacts');
@@ -70,6 +75,18 @@ router.post('/', requireAdmin, validateCreateContact, (req, res) => {
   try {
     const { contactName, companyName, phone, email, address, notes } = req.body;
 
+    // Company names must be unique (case-insensitive) so each customer maps to
+    // exactly one folder on disk. An archived customer still owns its name, so
+    // tell the admin to restore it rather than leaving them at a dead end.
+    const existingByName = contactQueries.getByCompanyName.get(companyName);
+    if (existingByName) {
+      return res.status(409).json({
+        error: existingByName.archived
+          ? 'A customer with this company name already exists in the archive. Restore it from the archived list instead.'
+          : 'A customer with this company name already exists'
+      });
+    }
+
     const id = uuidv4();
 
     contactQueries.create.run(
@@ -82,8 +99,9 @@ router.post('/', requireAdmin, validateCreateContact, (req, res) => {
       notes || null
     );
 
-    // Create company folder on disk (fire-and-forget)
-    createCompanyFolder(companyName);
+    // Create the company folder on disk, stamped with this contact's permanent
+    // id so it survives later company-name changes (fire-and-forget)
+    ensureCompanyFolder(id, companyName);
 
     const contact = contactQueries.getById.get(id);
 
@@ -112,6 +130,18 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
       return res.status(404).json({ error: 'Contact not found' });
     }
 
+    // Company names must be unique (case-insensitive) — reject if another
+    // customer already uses this name. Point at the archive when the clashing
+    // record is archived so the reason isn't hidden from view.
+    const dupe = contactQueries.getByCompanyName.get(companyName);
+    if (dupe && dupe.id !== id) {
+      return res.status(409).json({
+        error: dupe.archived
+          ? 'A customer with this company name already exists in the archive. Restore it from the archived list instead.'
+          : 'A customer with this company name already exists'
+      });
+    }
+
     // Track changes for audit
     const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
     const changes = {};
@@ -134,9 +164,11 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
 
     const contact = contactQueries.getById.get(id);
 
-    // Create folder for new company name if it changed (fire-and-forget)
+    // Company name changed → relabel the existing folder on disk, located by
+    // the permanent code in its name so its job files follow the rename
+    // instead of being stranded under the old name (fire-and-forget).
     if (changes.companyName && companyName) {
-      createCompanyFolder(companyName);
+      renameCompanyFolder(id, existing.company_name, companyName);
     }
 
     if (Object.keys(changes).length > 0) {
@@ -150,8 +182,10 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
   }
 });
 
-// DELETE /api/contacts/:id - Delete contact (admin only)
-router.delete('/:id', requireAdmin, (req, res) => {
+// POST /api/contacts/:id/archive - Archive a customer (admin only). Customers
+// are never deleted (track-and-trace): archiving hides them from pickers but
+// keeps the record, the link from their jobs, and their files on disk intact.
+router.post('/:id/archive', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
 
@@ -159,20 +193,48 @@ router.delete('/:id', requireAdmin, (req, res) => {
     if (!existing) {
       return res.status(404).json({ error: 'Contact not found' });
     }
+    if (existing.archived) {
+      return res.json(toApiFormat(existing));
+    }
 
-    contactQueries.unlinkJobcards.run(id);
-    contactQueries.delete.run(id);
+    contactQueries.archive.run(id);
+    const contact = contactQueries.getById.get(id);
 
-    const deleted = toApiFormat(existing);
-    recordHistory('contact', id, 'delete', req.user.userId, req.user.name || req.user.username, {
-      contactName: { from: deleted.contactName, to: null },
-      companyName: { from: deleted.companyName, to: null }
+    recordHistory('contact', id, 'archive', req.user.userId, req.user.name || req.user.username, {
+      status: { from: 'Active', to: 'Archived' }
     });
 
-    res.json({ success: true });
+    res.json(toApiFormat(contact));
   } catch (err) {
-    logger.error({ err }, 'Failed to delete contact');
-    res.status(500).json({ error: 'Failed to delete contact' });
+    logger.error({ err }, 'Failed to archive contact');
+    res.status(500).json({ error: 'Failed to archive contact' });
+  }
+});
+
+// POST /api/contacts/:id/unarchive - Restore an archived customer (admin only).
+router.post('/:id/unarchive', requireAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existing = contactQueries.getById.get(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Contact not found' });
+    }
+    if (!existing.archived) {
+      return res.json(toApiFormat(existing));
+    }
+
+    contactQueries.unarchive.run(id);
+    const contact = contactQueries.getById.get(id);
+
+    recordHistory('contact', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
+      status: { from: 'Archived', to: 'Active' }
+    });
+
+    res.json(toApiFormat(contact));
+  } catch (err) {
+    logger.error({ err }, 'Failed to restore contact');
+    res.status(500).json({ error: 'Failed to restore contact' });
   }
 });
 

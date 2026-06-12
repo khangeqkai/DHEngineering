@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase, capitalizeFirst, autoResize } from '../utils/formatters';
-import { Plus, Trash2, Save, History } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore, Save, History } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportContacts } from '../utils/excelExport';
@@ -29,24 +29,24 @@ export default function ContactManagement() {
   const [pendingId, setPendingId] = useState(null);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [showActivityLog, setShowActivityLog] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
-  // Load contacts on mount
-  useEffect(() => {
-    loadContacts();
-  }, []);
-
-  const loadContacts = async () => {
+  const loadContacts = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api.getContacts();
+      const data = await api.getContacts(showArchived);
       setContacts(data);
     } catch (err) {
       toast.error('Failed to load contacts');
     } finally {
       setLoading(false);
     }
-  };
+  }, [showArchived]);
+
+  useEffect(() => {
+    loadContacts();
+  }, [loadContacts]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -81,26 +81,42 @@ export default function ContactManagement() {
     setShowForm(true);
   };
 
-  const handleDelete = async (contact) => {
+  const handleArchive = async (contact) => {
     if (pendingId !== null) return;
     const displayName = contact.contactName
       ? `${contact.companyName} (${contact.contactName})`
       : contact.companyName;
     const confirmed = await showConfirm({
-      title: 'Delete Contact',
-      message: `Are you sure you want to delete "${displayName}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
-      confirmVariant: 'danger'
+      title: 'Archive Contact',
+      message: `Archive "${displayName}"? It will no longer appear when picking a customer for a job, but its existing jobs and files stay intact. You can restore it any time.`,
+      confirmLabel: 'Archive',
+      confirmVariant: 'warning'
     });
     if (!confirmed) return;
 
     setPendingId(contact.id);
     try {
-      await api.deleteContact(contact.id);
+      await api.archiveContact(contact.id);
+      toast.success('Contact archived');
       await loadContacts();
       setActivityRefreshKey(k => k + 1);
     } catch (err) {
-      toast.error(err.message || 'Failed to delete contact');
+      toast.error(err.message || 'Failed to archive contact');
+    } finally {
+      setPendingId(null);
+    }
+  };
+
+  const handleRestore = async (contact) => {
+    if (pendingId !== null) return;
+    setPendingId(contact.id);
+    try {
+      await api.unarchiveContact(contact.id);
+      toast.success('Contact restored');
+      await loadContacts();
+      setActivityRefreshKey(k => k + 1);
+    } catch (err) {
+      toast.error(err.message || 'Failed to restore contact');
     } finally {
       setPendingId(null);
     }
@@ -123,6 +139,14 @@ export default function ContactManagement() {
   return (
     <div className="contact-management page-contacts page-scroll-layout page-enter">
       <PageHeader title="Contacts">
+        <label className="show-inactive-label">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+          />
+          Show archived
+        </label>
         <ExportButton
           onExportView={() => contacts.length ? exportContacts(contacts) : false}
         />
@@ -273,15 +297,22 @@ export default function ContactManagement() {
                 label: 'Actions',
                 render: (_, row) => (
                   <div className="action-buttons">
-                    <button className="btn btn-danger btn-sm" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
-                      <Trash2 size={14} /> {pendingId === row.id ? 'Deleting…' : 'Delete'}
-                    </button>
+                    {row.archived ? (
+                      <button className="btn btn-success btn-sm" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); handleRestore(row); }}>
+                        <ArchiveRestore size={14} /> {pendingId === row.id ? 'Restoring…' : 'Restore'}
+                      </button>
+                    ) : (
+                      <button className="btn btn-warning btn-sm" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); handleArchive(row); }}>
+                        <Archive size={14} /> {pendingId === row.id ? 'Archiving…' : 'Archive'}
+                      </button>
+                    )}
                   </div>
                 )
               }
             ]}
             data={contacts}
             loading={loading}
+            rowClassName={(row) => row.archived ? 'inactive-row' : ''}
             searchable
             searchKeys={['companyName', 'contactName', 'email', 'phone']}
             searchPlaceholder="Search contacts..."
@@ -303,6 +334,16 @@ export default function ContactManagement() {
         onClose={() => setShowActivityLog(false)}
         refreshKey={activityRefreshKey}
       />
+
+      <style>{`
+        .show-inactive-label {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.875rem;
+          cursor: pointer;
+        }
+      `}</style>
 
       <ConfirmDialog
         isOpen={dialogState.isOpen}
