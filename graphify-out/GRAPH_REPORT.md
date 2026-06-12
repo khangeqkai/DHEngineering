@@ -1,11 +1,11 @@
 # Graph Report - DHEngineering  (2026-06-12)
 
 ## Corpus Check
-- 142 files · ~105,092 words
+- 142 files · ~105,209 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 649 nodes · 919 edges · 28 communities detected
+- 650 nodes · 921 edges · 28 communities detected
 - Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 81 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
@@ -71,15 +71,15 @@ Nodes (1): ApiService
 
 ### Community 1 - "Community 1"
 Cohesion: 0.07
-Nodes (25): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), UserManagement() (+17 more)
+Nodes (25): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), AuthProvider() (+17 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.09
-Nodes (30): buildStorageFilename(), listCategoryFileNames(), listFolderFiles(), partFileCode(), resolveCategoryFolder(), resolveCustomerPropertyPath(), resolveJobFilesPath(), resolveJobSubfolder() (+22 more)
+Nodes (26): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), UserManagement(), useConfirmDialog(), invalidateTagCache(), buildJobCardWorkbook() (+18 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.1
-Nodes (25): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), useConfirmDialog(), invalidateTagCache(), buildJobCardWorkbook(), buildSheet() (+17 more)
+Cohesion: 0.09
+Nodes (30): buildStorageFilename(), listCategoryFileNames(), listFolderFiles(), partFileCode(), resolveCategoryFolder(), resolveCustomerPropertyPath(), resolveJobFilesPath(), resolveJobSubfolder() (+22 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.07
@@ -202,9 +202,9 @@ Nodes (2): formatNum(), ScrapStat()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `useAuth()` connect `Community 1` to `Community 5`, `Community 6`, `Community 7`?**
+- **Why does `useAuth()` connect `Community 1` to `Community 2`, `Community 5`, `Community 6`, `Community 7`?**
   _High betweenness centrality (0.035) - this node is a cross-community bridge._
-- **Why does `useConfirmDialog()` connect `Community 3` to `Community 1`, `Community 5`, `Community 7`?**
+- **Why does `useConfirmDialog()` connect `Community 2` to `Community 1`, `Community 5`, `Community 7`?**
   _High betweenness centrality (0.032) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 11 INFERRED edges - model-reasoned connections that need verification._

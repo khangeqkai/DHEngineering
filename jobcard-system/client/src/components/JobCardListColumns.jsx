@@ -1,6 +1,6 @@
 import { Trash2, ArchiveRestore, Check } from 'lucide-react';
 import { getInitials, getAvatarColor } from '../utils/initials';
-import { describeAttachmentGaps } from '../utils/attachmentWarnings';
+import { describeAttachmentGaps, attachmentSeverity } from '../utils/attachmentWarnings';
 import {
   STATUS_LABELS,
   PRIORITY_COLORS,
@@ -205,33 +205,37 @@ export function getJobCardColumns({
       label: 'Attachments',
       renderCell: (card) => {
         const warning = missingFilesIds?.get(card.id);
-        return (
-          <td key="attachments" className="attachment-cell">
-            {warning ? (() => {
-              const gaps = describeAttachmentGaps(warning);
-              return (
-                <span
-                  className="missing-files-indicator"
-                  tabIndex={0}
-                  aria-label={`Not attached yet: ${gaps.join(', ')}`}
-                >
-                  ⚠
-                  <span className="mf-tooltip" role="tooltip">
-                    <span className="mf-tooltip-title">Not attached yet</span>
-                    {gaps.map((g, i) => (
-                      <span key={i} className="mf-tooltip-item">
-                        <span className="mf-tooltip-dot" />
-                        {g}
-                      </span>
-                    ))}
-                  </span>
-                </span>
-              );
-            })() : (
+        const severity = attachmentSeverity(warning);
+        if (severity === 'ok') {
+          return (
+            <td key="attachments" className="attachment-cell">
               <span className="attachment-ok" aria-label="All files attached">
                 <Check size={13} />
               </span>
-            )}
+            </td>
+          );
+        }
+        const blocking = severity === 'blocking';
+        const gaps = describeAttachmentGaps(warning);
+        const title = blocking ? 'Missing — blocking' : 'Not attached yet';
+        return (
+          <td key="attachments" className="attachment-cell">
+            <span
+              className={`missing-files-indicator${blocking ? ' missing-files-blocking' : ''}`}
+              tabIndex={0}
+              aria-label={`${title}: ${gaps.join(', ')}`}
+            >
+              ⚠
+              <span className="mf-tooltip" role="tooltip">
+                <span className="mf-tooltip-title">{title}</span>
+                {gaps.map((g, i) => (
+                  <span key={i} className="mf-tooltip-item">
+                    <span className="mf-tooltip-dot" />
+                    {g}
+                  </span>
+                ))}
+              </span>
+            </span>
           </td>
         );
       }

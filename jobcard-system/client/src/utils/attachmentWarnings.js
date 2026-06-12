@@ -15,6 +15,19 @@ export function describeAttachmentGaps(warnings) {
   return gaps;
 }
 
+// Decide how loudly to flag a job's missing attachments. A missing drawing or
+// quality form is treated as blocking (it shouldn't go out the door without
+// them), so it reads red; a missing customer property is only a soft warning
+// (amber); no declared gaps is fine (green). Returns 'blocking' | 'warning' | 'ok'.
+export function attachmentSeverity(warnings) {
+  if (!warnings) return 'ok';
+  const items = warnings.items || [];
+  const missingDrawing = items.some(i => i.missingDrawing);
+  if (missingDrawing || warnings.missingQaForms) return 'blocking';
+  if (items.some(i => i.missingCustomerProperty)) return 'warning';
+  return 'ok';
+}
+
 // Build the per-line-item lookup the line-item view uses to decide which fields
 // to flag. Keyed by item number → { missingDrawing, missingCustomerProperty }.
 export function itemWarningMap(warnings) {
