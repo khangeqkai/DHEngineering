@@ -55,10 +55,14 @@ const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
 const MAX_FILE_DATA_CHARS = Math.ceil((MAX_UPLOAD_BYTES * 4) / 3);
 
 /**
- * Resolve the on-disk category folder for a job card.
- * Returns { folderPath, jobcard } on success, or { error, status } on failure.
+ * Resolve the on-disk job folder ([Company]/[JobNumber]) for a job card, once.
+ * Returns { jobFolderPath, base, jobcard } on success, or { error, status } on
+ * failure. Read-only — never creates folders. Locating the customer's company
+ * folder by the permanent code in its name (not the mutable name) means renaming
+ * a customer never strands files; jobs with no linked contact fall back to a
+ * name-based lookup.
  */
-function resolveCategoryFolder(jobcardId, category) {
+function resolveJobFolder(jobcardId) {
   const settings = getSettings();
   const basePath = settings.job_folders_base;
   if (!basePath || !basePath.trim()) {
@@ -82,25 +86,39 @@ function resolveCategoryFolder(jobcardId, category) {
     return { error: 'No company associated with this job card', status: 400 };
   }
 
-  // Locate the customer's company folder by the permanent code in its name (not
-  // the mutable name) so renaming a customer never strands its files. This is a
-  // read-only resolve — it never creates folders, so merely listing or reading
-  // files leaves no stray folders on disk. The upload path creates the folder
-  // chain itself when a file is actually written. Jobs with no linked contact
-  // fall back to name-based lookup.
   const companyFolder = resolveCompanyFolder(base, contactId, companyName);
   const sanitizedJob = sanitizeFolderName(jobcard.job_number);
-  const subfolder = CATEGORY_FOLDER[category];
-  if (!companyFolder || !sanitizedJob || !subfolder) {
+  if (!companyFolder || !sanitizedJob) {
     return { error: 'Invalid path components', status: 400 };
   }
 
-  const folderPath = path.join(companyFolder, sanitizedJob, subfolder);
-  if (!isWithinBase(base, folderPath)) {
+  const jobFolderPath = path.join(companyFolder, sanitizedJob);
+  if (!isWithinBase(base, jobFolderPath)) {
     return { error: 'Path traversal detected', status: 403 };
   }
 
-  return { folderPath, jobcard };
+  return { jobFolderPath, base, jobcard };
+}
+
+/**
+ * Resolve a single category folder for a job card.
+ * Returns { folderPath, jobcard } on success, or { error, status } on failure.
+ */
+function resolveCategoryFolder(jobcardId, category) {
+  const jobRes = resolveJobFolder(jobcardId);
+  if (jobRes.error) return jobRes;
+
+  const subfolder = CATEGORY_FOLDER[category];
+  if (!subfolder) {
+    return { error: 'Invalid path components', status: 400 };
+  }
+
+  const folderPath = path.join(jobRes.jobFolderPath, subfolder);
+  if (!isWithinBase(jobRes.base, folderPath)) {
+    return { error: 'Path traversal detected', status: 403 };
+  }
+
+  return { folderPath, jobcard: jobRes.jobcard };
 }
 
 /**
@@ -167,14 +185,30 @@ function listFolderFiles(folderPath) {
     .sort((a, b) => b.modified.localeCompare(a.modified));
 }
 
-// List just the on-disk filenames in a job's category folder. Returns [] when
-// storage isn't configured, the job/company can't be resolved, or the folder is
-// empty/missing. Used by the attachment-warnings detector to tell whether a
-// declared drawing / customer property / returned QA form actually has a file.
-function listCategoryFileNames(jobcardId, category) {
-  const folderRes = resolveCategoryFolder(jobcardId, category);
-  if (folderRes.error) return [];
-  return listFolderFiles(folderRes.folderPath).map(f => f.name);
+// List the on-disk filenames for several of a job's category folders at once,
+// resolving the job folder a single time (the customer-area lookup is the
+// expensive part, so we don't repeat it per category). Returns a map of
+// category → filenames; categories whose folder is missing/empty, or any job
+// that can't be resolved, come back as empty arrays. Used by the
+// attachment-warnings detector to tell whether a declared drawing / customer
+// property / returned QA form actually has a file.
+function listCategoryFileNames(jobcardId, categories) {
+  const wanted = Array.isArray(categories) ? categories : [categories];
+  const empty = Object.fromEntries(wanted.map(c => [c, []]));
+
+  const jobRes = resolveJobFolder(jobcardId);
+  if (jobRes.error) return empty;
+
+  const out = {};
+  for (const category of wanted) {
+    const subfolder = CATEGORY_FOLDER[category];
+    if (!subfolder) { out[category] = []; continue; }
+    const folderPath = path.join(jobRes.jobFolderPath, subfolder);
+    out[category] = isWithinBase(jobRes.base, folderPath)
+      ? listFolderFiles(folderPath).map(f => f.name)
+      : [];
+  }
+  return out;
 }
 
 const validateCategory = [

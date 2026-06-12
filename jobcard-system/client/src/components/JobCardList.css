@@ -72,6 +72,24 @@
   text-align: center;
 }
 
+/* Shown while a row's files are still being checked (per-page lazy check):
+   a faint pulsing dot, so it reads as "loading" rather than clean or missing. */
+.attachment-pending {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-secondary, #9aa0a6);
+  opacity: 0.35;
+  vertical-align: middle;
+  animation: attachment-pending-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes attachment-pending-pulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.55; }
+}
+
 /* "Everything attached" counterpart to .missing-files-indicator, in success green. */
 .attachment-ok {
   display: inline-flex;

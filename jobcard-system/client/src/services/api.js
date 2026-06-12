@@ -149,7 +149,7 @@ class ApiService {
   }
   // Active jobs that declared a drawing / customer property / quality forms but
   // have no matching file attached — used to flag rows in the job list.
-  getAttachmentWarnings() { return this.request('/jobcards/attachment-warnings'); }
+  getAttachmentWarnings(ids) { return this._post('/jobcards/attachment-warnings', { ids: ids || [] }); }
   unarchiveJobcard(id) { return this._post(`/jobcards/${id}/unarchive`); }
   deleteJobcard(id) { return this._del(`/jobcards/${id}`); }
 

@@ -69,15 +69,40 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
     return { items: [], missingQaForms: false, hasAny: false };
   }
 
-  const jobFileNames = listCategoryFileNames(jobcardId, 'job-files');
-  const customerPropertyNames = listCategoryFileNames(jobcardId, 'customer-property-files');
+  // Normalise items once — they may be DB rows (snake_case) or formatted/request
+  // items (camelCase). itemNumber is only carried back so the UI can line each
+  // warning up with the row it's showing; files are matched by the part's id.
+  const normItems = items.map((it, idx) => ({
+    id: it.id,
+    itemNumber: it.itemNumber != null ? it.itemNumber
+      : (it.item_number != null ? it.item_number : idx + 1),
+    drawings: it.drawingsType !== undefined ? it.drawingsType : it.drawings_type,
+    customerProperty: it.customerProperty !== undefined ? it.customerProperty : it.customer_property
+  }));
+
+  // Work out what actually needs checking before touching the disk, so a job
+  // that declared nothing (and needs no quality form) does no folder reads.
+  const anyDrawing = normItems.some(it => declaresValue(it.drawings));
+  const anyProperty = normItems.some(it => declaresValue(it.customerProperty));
+  // A job needs a quality form only if its QA level actually has one attached.
+  const qaTemplates = qaLevelId ? qaLevelTemplateQueries.getByLevel.all(qaLevelId) : [];
+  const needsQa = qaTemplates.length > 0;
+
+  if (!anyDrawing && !anyProperty && !needsQa) {
+    return { items: [], missingQaForms: false, hasAny: false };
+  }
+
+  // Read only the category folders we need, in one job-folder resolve.
+  const categories = [];
+  if (anyDrawing) categories.push('job-files');
+  if (anyProperty) categories.push('customer-property-files');
+  if (needsQa) categories.push('qa-form-files');
+  const fileNames = listCategoryFileNames(jobcardId, categories);
+  const jobFileNames = fileNames['job-files'] || [];
+  const customerPropertyNames = fileNames['customer-property-files'] || [];
 
   const flagged = [];
-  items.forEach((it, idx) => {
-    const itemNumber = it.itemNumber != null ? it.itemNumber
-      : (it.item_number != null ? it.item_number : idx + 1);
-    const drawings = it.drawingsType !== undefined ? it.drawingsType : it.drawings_type;
-    const customerProperty = it.customerProperty !== undefined ? it.customerProperty : it.customer_property;
+  normItems.forEach((it) => {
     // Only a saved part has a permanent "item:" id; an unsaved part (just added
     // in this same edit) has no folder code, so no file can be matched to it yet.
     if (!partFileCode(it.id)) {
@@ -87,37 +112,31 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
       // on a brand-new part is genuinely unattached, so it must be flagged or the
       // job could be invoiced with a missing file no warning ever caught.
       if (!flagUnsaved) return;
-      const missingDrawing = declaresValue(drawings);
-      const missingCustomerProperty = declaresValue(customerProperty);
+      const missingDrawing = declaresValue(it.drawings);
+      const missingCustomerProperty = declaresValue(it.customerProperty);
       if (missingDrawing || missingCustomerProperty) {
-        flagged.push({ itemNumber, missingDrawing, missingCustomerProperty });
+        flagged.push({ itemNumber: it.itemNumber, missingDrawing, missingCustomerProperty });
       }
       return;
     }
-    // Match files by the part's permanent id; the itemNumber is only carried
-    // back for the UI to line warnings up with the rows it's showing.
-    const missingDrawing = declaresValue(drawings) && !hasItemFile(jobFileNames, it.id);
-    const missingCustomerProperty = declaresValue(customerProperty) && !hasItemFile(customerPropertyNames, it.id);
+    const missingDrawing = declaresValue(it.drawings) && !hasItemFile(jobFileNames, it.id);
+    const missingCustomerProperty = declaresValue(it.customerProperty) && !hasItemFile(customerPropertyNames, it.id);
     if (missingDrawing || missingCustomerProperty) {
-      flagged.push({ itemNumber, missingDrawing, missingCustomerProperty });
+      flagged.push({ itemNumber: it.itemNumber, missingDrawing, missingCustomerProperty });
     }
   });
 
-  // A job needs a quality form only if its QA level actually has one attached.
   // The blank templates are copied (bare-named) into the QA Forms folder when the
   // job is created; a completed form is brought back in via upload and stored
   // with a timestamp prefix, so it never matches a bare template name. The real
   // gap is therefore "no completed form returned yet" — the folder holds nothing
-  // beyond the blank templates. Levels with no form attached are never flagged.
+  // beyond the blank templates.
   let missingQaForms = false;
-  if (qaLevelId) {
-    const templates = qaLevelTemplateQueries.getByLevel.all(qaLevelId);
-    if (templates.length > 0) {
-      const templateNames = new Set(templates.map(t => t.file_name));
-      const qaNames = listCategoryFileNames(jobcardId, 'qa-form-files');
-      const hasReturnedForm = qaNames.some(name => !templateNames.has(name));
-      missingQaForms = !hasReturnedForm;
-    }
+  if (needsQa) {
+    const templateNames = new Set(qaTemplates.map(t => t.file_name));
+    const qaNames = fileNames['qa-form-files'] || [];
+    const hasReturnedForm = qaNames.some(name => !templateNames.has(name));
+    missingQaForms = !hasReturnedForm;
   }
 
   return { items: flagged, missingQaForms, hasAny: flagged.length > 0 || missingQaForms };

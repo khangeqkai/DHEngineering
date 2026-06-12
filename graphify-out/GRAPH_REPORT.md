@@ -1,12 +1,12 @@
 # Graph Report - DHEngineering  (2026-06-12)
 
 ## Corpus Check
-- 141 files · ~99,028 words
+- 141 files · ~100,101 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 662 nodes · 974 edges · 28 communities detected
-- Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 86 edges (avg confidence: 0.8)
+- 663 nodes · 982 edges · 28 communities detected
+- Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 90 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -42,10 +42,10 @@
 ## God Nodes (most connected - your core abstractions)
 1. `ApiService` - 120 edges
 2. `useAuth()` - 22 edges
-3. `isWithinBase()` - 18 edges
+3. `isWithinBase()` - 20 edges
 4. `useConfirmDialog()` - 17 edges
 5. `HardwareService` - 13 edges
-6. `sanitizeFolderName()` - 12 edges
+6. `sanitizeFolderName()` - 13 edges
 7. `JobCardModal()` - 11 edges
 8. `useTags()` - 11 edges
 9. `capitalizeFirst()` - 11 edges
@@ -70,16 +70,16 @@ Cohesion: 0.03
 Nodes (1): ApiService
 
 ### Community 1 - "Community 1"
-Cohesion: 0.07
-Nodes (28): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), UserManagement(), useConfirmDialog(), invalidateTagCache(), buildJobCardWorkbook() (+20 more)
+Cohesion: 0.1
+Nodes (41): buildStorageFilename(), listCategoryFileNames(), listFolderFiles(), partFileCode(), resolveCategoryFolder(), resolveCustomerPropertyPath(), resolveJobFilesPath(), resolveJobFolder() (+33 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.1
-Nodes (40): buildStorageFilename(), listCategoryFileNames(), listFolderFiles(), partFileCode(), resolveCategoryFolder(), resolveCustomerPropertyPath(), resolveJobFilesPath(), resolveJobSubfolder() (+32 more)
+Cohesion: 0.06
+Nodes (26): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), UserManagement() (+18 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.07
-Nodes (24): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), AuthProvider() (+16 more)
+Cohesion: 0.1
+Nodes (25): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), useConfirmDialog(), invalidateTagCache(), buildJobCardWorkbook(), buildSheet() (+17 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.07
@@ -90,12 +90,12 @@ Cohesion: 0.09
 Nodes (18): JobCardModal(), validateJobCardForm(), getDefaultCostingForm(), getDefaultFormData(), getDefaultTimeEntryForm(), isoToLocalInput(), localInputToIso(), mapLineItemFromApi() (+10 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.11
-Nodes (10): JobFilesMenu(), LineItemFilesMenu(), formatElapsed(), QuickActionPanel(), useCamera(), useItemFiles(), useJobFiles(), useQuickActionFiles() (+2 more)
+Cohesion: 0.08
+Nodes (11): getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), SearchPage(), StatusBadge(), useSearch(), formatDueDate() (+3 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.13
-Nodes (10): getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), SearchPage(), StatusBadge(), useSearch(), formatDueDate() (+2 more)
+Cohesion: 0.12
+Nodes (10): JobFilesMenu(), LineItemFilesMenu(), formatElapsed(), QuickActionPanel(), useCamera(), useItemFiles(), useJobFiles(), useQuickActionFiles() (+2 more)
 
 ### Community 8 - "Community 8"
 Cohesion: 0.15
@@ -202,17 +202,17 @@ Nodes (2): formatNum(), ScrapStat()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `useAuth()` connect `Community 3` to `Community 1`, `Community 5`, `Community 6`, `Community 7`?**
+- **Why does `useAuth()` connect `Community 2` to `Community 5`, `Community 6`, `Community 7`?**
   _High betweenness centrality (0.034) - this node is a cross-community bridge._
-- **Why does `useConfirmDialog()` connect `Community 1` to `Community 3`, `Community 5`, `Community 6`?**
+- **Why does `useConfirmDialog()` connect `Community 3` to `Community 2`, `Community 5`, `Community 7`?**
   _High betweenness centrality (0.029) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 11 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 5 inferred relationships involving `isWithinBase()` (e.g. with `resolveCategoryFolder()` and `saveFile()`) actually correct?**
-  _`isWithinBase()` has 5 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 7 inferred relationships involving `isWithinBase()` (e.g. with `resolveJobFolder()` and `resolveCategoryFolder()`) actually correct?**
+  _`isWithinBase()` has 7 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 8 inferred relationships involving `useConfirmDialog()` (e.g. with `ContactManagement()` and `JobCardList()`) actually correct?**
   _`useConfirmDialog()` has 8 INFERRED edges - model-reasoned connections that need verification._
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.03 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.07 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.1 - nodes in this community are weakly interconnected._

@@ -58,7 +58,7 @@ export default function JobCardList() {
   const [density, setDensity] = useJobCardListDensity();
   const [viewMode, setViewMode] = useState('list');
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
-  const { flaggedIds: missingFilesIds, refresh: refreshMissingFiles } = useMissingFilesIndicator();
+  const { warningsById: missingFilesIds, checkedIds: attachmentCheckedIds, ensure: ensureMissingFiles, refresh: refreshMissingFiles } = useMissingFilesIndicator();
 
   const { columnOrder, handleDragStart, handleDragEnd, handleDragOver, handleDrop } = useJobCardColumnOrder();
 
@@ -130,7 +130,7 @@ export default function JobCardList() {
     const applyLocally = () => {
       toast.success(`Status updated to ${STATUS_LABELS[newStatus]}`);
       setJobcards(prev => prev.map(c => c.id === cardId ? { ...c, status: newStatus } : c));
-      refreshMissingFiles();
+      refreshMissingFiles([cardId]);
     };
     try {
       await api.updateJobcardStatus(cardId, newStatus);
@@ -283,6 +283,16 @@ export default function JobCardList() {
     safeCurrentPage * PAGE_SIZE
   );
 
+  // Check missing-file status only for the rows currently on screen. Re-runs
+  // whenever the visible set changes (page turn, filter, search, or sort);
+  // already-checked rows are skipped inside the hook.
+  const visibleIds = paginatedCards.map(c => c.id);
+  const visibleIdsKey = visibleIds.join(',');
+  useEffect(() => {
+    if (visibleIds.length) ensureMissingFiles(visibleIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleIdsKey, ensureMissingFiles]);
+
   const openCreateModal = () => {
     setEditingCardId(null);
     setIsModalOpen(true);
@@ -295,7 +305,9 @@ export default function JobCardList() {
 
   const handleModalSuccess = () => {
     loadJobcards();
-    refreshMissingFiles();
+    // Re-check the rows on screen plus the job that was just edited, so its
+    // marker reflects any files attached or items changed in the modal.
+    refreshMissingFiles([editingCardId, ...visibleIds].filter(Boolean));
   };
 
   const columns = getJobCardColumns({
@@ -305,6 +317,7 @@ export default function JobCardList() {
     activeTimerJobcardId,
     formattedElapsed,
     missingFilesIds,
+    attachmentCheckedIds,
     statusPopoverId,
     setStatusPopoverId,
     popoverRef,
@@ -425,7 +438,7 @@ export default function JobCardList() {
 
       <JobCardModal
         isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); refreshMissingFiles(); }}
+        onClose={() => { setIsModalOpen(false); refreshMissingFiles([editingCardId, ...visibleIds].filter(Boolean)); }}
         jobCardId={editingCardId}
         onSuccess={handleModalSuccess}
         onTimerChange={() => { refreshTimer(); loadJobcards(); }}

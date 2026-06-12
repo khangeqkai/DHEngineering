@@ -64,32 +64,36 @@ router.get('/overdue', authenticate, (req, res) => {
   }
 });
 
-// Batched "missing files" scan for the job list. Returns one entry per active
-// (non-archived) job that has at least one declared-but-not-attached gap, so the
-// list can show a marker without scanning folders per row on every render. This
-// is registered before '/:id' so the literal path isn't swallowed by it.
-router.get('/attachment-warnings', authenticate, (req, res) => {
+// Per-page "missing files" check for the job list. Takes the ids of just the
+// rows currently on screen and checks only those, so the cost never grows with
+// the total job count. Returns the full set of ids that were checked (so the
+// list can tell "checked, clean" apart from "not checked yet") plus the detail
+// for the ones that have a declared-but-not-attached gap. Registered before
+// '/:id' so the literal path isn't swallowed by it.
+router.post('/attachment-warnings', authenticate, (req, res) => {
   try {
-    const jobcards = jobcardQueries.getAll.all();
-    const result = [];
-    for (const jc of jobcards) {
-      const items = jobItemQueries.getByJobcard.all(jc.id);
-      const w = computeAttachmentWarnings(jc.id, items, jc.qa_level_id);
+    const rawIds = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    // De-dupe and keep only well-formed string ids.
+    const ids = [...new Set(rawIds.filter(id => typeof id === 'string' && id))];
+
+    const flagged = [];
+    for (const id of ids) {
+      const jc = jobcardQueries.getById.get(id);
+      // Missing or archived (invoiced) jobs are reported as checked-clean — the
+      // list shows no marker on them, matching the previous behaviour.
+      if (!jc || jc.archived === 1) continue;
+
+      const items = jobItemQueries.getByJobcard.all(id);
+      const w = computeAttachmentWarnings(id, items, jc.qa_level_id);
       if (w.hasAny) {
-        // Carry the per-item detail (which line items, which gap) and the
-        // QA-forms flag through to the list so the row can name exactly what's
-        // missing instead of a generic note.
-        result.push({
-          jobcardId: jc.id,
-          items: w.items,
-          missingQaForms: w.missingQaForms
-        });
+        flagged.push({ jobcardId: id, items: w.items, missingQaForms: w.missingQaForms });
       }
     }
-    res.json(result);
+
+    res.json({ checked: ids, flagged });
   } catch (err) {
-    logger.error({ err }, 'Attachment-warnings scan error');
-    res.status(500).json({ error: 'Failed to scan for missing files' });
+    logger.error({ err }, 'Attachment-warnings check error');
+    res.status(500).json({ error: 'Failed to check for missing files' });
   }
 });
 

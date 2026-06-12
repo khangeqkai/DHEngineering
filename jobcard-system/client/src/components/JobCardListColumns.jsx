@@ -15,6 +15,7 @@ export function getJobCardColumns({
   activeTimerJobcardId,
   formattedElapsed,
   missingFilesIds,
+  attachmentCheckedIds,
   statusPopoverId,
   setStatusPopoverId,
   popoverRef,
@@ -204,6 +205,15 @@ export function getJobCardColumns({
       id: 'attachments',
       label: 'Attachments',
       renderCell: (card) => {
+        // Until this row has actually been checked, show a faint loading hint
+        // rather than a green tick — a not-yet-checked row isn't known to be clean.
+        if (attachmentCheckedIds && !attachmentCheckedIds.has(card.id)) {
+          return (
+            <td key="attachments" className="attachment-cell">
+              <span className="attachment-pending" aria-label="Checking files" />
+            </td>
+          );
+        }
         const warning = missingFilesIds?.get(card.id);
         const severity = attachmentSeverity(warning);
         if (severity === 'ok') {
