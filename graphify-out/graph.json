@@ -4390,7 +4390,7 @@
       "label": "hasItemFile()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L48",
+      "source_location": "L53",
       "id": "routes_jobcard_helpers_hasitemfile",
       "community": 2,
       "norm_label": "hasitemfile()"
@@ -4399,7 +4399,7 @@
       "label": "computeAttachmentWarnings()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L63",
+      "source_location": "L72",
       "id": "routes_jobcard_helpers_computeattachmentwarnings",
       "community": 2,
       "norm_label": "computeattachmentwarnings()"
@@ -4408,7 +4408,7 @@
       "label": "formatJobcard()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L143",
+      "source_location": "L157",
       "id": "routes_jobcard_helpers_formatjobcard",
       "community": 2,
       "norm_label": "formatjobcard()"
@@ -4417,7 +4417,7 @@
       "label": "buildChanges()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L196",
+      "source_location": "L210",
       "id": "routes_jobcard_helpers_buildchanges",
       "community": 2,
       "norm_label": "buildchanges()"
@@ -4426,7 +4426,7 @@
       "label": "sanitizeHistoryForRole()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L233",
+      "source_location": "L247",
       "id": "routes_jobcard_helpers_sanitizehistoryforrole",
       "community": 2,
       "norm_label": "sanitizehistoryforrole()"
@@ -4435,7 +4435,7 @@
       "label": "serializeTreatments()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L242",
+      "source_location": "L256",
       "id": "routes_jobcard_helpers_serializetreatments",
       "community": 2,
       "norm_label": "serializetreatments()"
@@ -4444,7 +4444,7 @@
       "label": "buildQaFillData()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L249",
+      "source_location": "L263",
       "id": "routes_jobcard_helpers_buildqafilldata",
       "community": 2,
       "norm_label": "buildqafilldata()"
@@ -4453,7 +4453,7 @@
       "label": "createRelatedRecords()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L281",
+      "source_location": "L295",
       "id": "routes_jobcard_helpers_createrelatedrecords",
       "community": 2,
       "norm_label": "createrelatedrecords()"
@@ -4462,7 +4462,7 @@
       "label": "copyQaTemplatesForJob()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L316",
+      "source_location": "L330",
       "id": "routes_jobcard_helpers_copyqatemplatesforjob",
       "community": 2,
       "norm_label": "copyqatemplatesforjob()"
@@ -4471,7 +4471,7 @@
       "label": "copyTemplatesToJobFolder()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L334",
+      "source_location": "L348",
       "id": "routes_jobcard_helpers_copytemplatestojobfolder",
       "community": 2,
       "norm_label": "copytemplatestojobfolder()"
@@ -4480,7 +4480,7 @@
       "label": "verifyQaTemplatesAvailable()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L444",
+      "source_location": "L458",
       "id": "routes_jobcard_helpers_verifyqatemplatesavailable",
       "community": 2,
       "norm_label": "verifyqatemplatesavailable()"
@@ -10445,9 +10445,9 @@
       "source_file": "client/src/services/api.js",
       "source_location": "L229",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_api_apiservice",
-      "target": "services_api_apiservice_archivetag",
-      "confidence_score": 1.0
+      "target": "services_api_apiservice_archivetag"
     },
     {
       "relation": "method",
@@ -12173,9 +12173,9 @@
       "source_file": "client/src/services/api.js",
       "source_location": "L229",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_api_apiservice_archivetag",
-      "target": "services_api_apiservice_del",
-      "confidence_score": 1.0
+      "target": "services_api_apiservice_del"
     },
     {
       "relation": "calls",

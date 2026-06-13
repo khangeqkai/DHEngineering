@@ -42,15 +42,24 @@ function declaresValue(raw) {
   return String(raw).split(',').map(v => v.trim()).filter(Boolean).some(v => v !== 'N_A');
 }
 
-// A per-part file is stored as "{name} [p{code}]" by the upload route, where the
-// code is derived from the part's permanent id. Matching by that code (not the
-// visible item number) keeps a part's files attached even after re-numbering.
+// A per-part file is stored as "{name} [p{code}]" by the upload route (or
+// "{name} [p{code}] (n)" on a name clash), where the code is derived from the
+// part's permanent id. Matching by that code (not the visible item number) keeps
+// a part's files attached even after re-numbering. The code is matched only at
+// the END of the base name — where the upload route writes it — so a file whose
+// human-readable name merely *contains* another part's code can't masquerade as
+// that part's attachment (which could otherwise slip a missing drawing past the
+// invoice gate).
 function hasItemFile(names, itemId) {
   const { partFileCode } = require('./jobcard-files');
   const code = partFileCode(itemId);
   if (!code) return false;
-  const tag = `[${code}]`;
-  return names.some(name => name.includes(tag));
+  const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const tagAtEnd = new RegExp(`\\[${escaped}\\](?: \\(\\d+\\))?$`);
+  return names.some(name => {
+    const base = name.slice(0, name.length - path.extname(name).length);
+    return tagAtEnd.test(base);
+  });
 }
 
 // Detect "declared but no file" gaps for one job by comparing each line item's
@@ -125,15 +134,20 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
   });
 
   // The blank templates are copied (bare-named) into the QA Forms folder when the
-  // job is created; a completed form is brought back in via upload and stored
-  // with a timestamp prefix, so it never matches a bare template name. The real
-  // gap is therefore "no completed form returned yet" — the folder holds nothing
-  // beyond the blank templates.
+  // job is created; a completed form is brought back in via the upload route,
+  // which stamps a 14-digit timestamp tag at the end of the name
+  // ("{name} [{timestamp}]", or "... (n)" on a clash). Detect a returned form by
+  // that positive marker — NOT by "any file that isn't a template name", which
+  // would let any unrelated file (or a stray blank template) dropped in the
+  // folder falsely clear the missing-form warning. The real gap is "no stamped
+  // form returned yet".
   let missingQaForms = false;
   if (needsQa) {
-    const templateNames = new Set(qaTemplates.map(t => t.file_name));
+    const returnedTag = /\[\d{14}\](?: \(\d+\))?$/;
     const qaNames = fileNames['qa-form-files'] || [];
-    const hasReturnedForm = qaNames.some(name => !templateNames.has(name));
+    const hasReturnedForm = qaNames.some(name =>
+      returnedTag.test(name.slice(0, name.length - path.extname(name).length))
+    );
     missingQaForms = !hasReturnedForm;
   }
 

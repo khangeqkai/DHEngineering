@@ -15,7 +15,7 @@ Each item has a **plain description** (what goes wrong for the user) and a **whe
   - Where: `server/src/routes/jobcard-time-entries.js` (manual add ~line 275 stamps `req.user.userId`). Add a worker-select field; validate it's a real user; record that user as the entry owner. Mirror on the manual-edit path.
   - Severity: High (everyday data accuracy)
 
-- [ ] **Deleting/renaming a dropdown option can freeze the jobs that use it**
+- [x] **Deleting/renaming a dropdown option can freeze the jobs that use it** — fixed in commit `c3e75bf` (delete now archives across all five categories; rename in-use guard extended to job_type, material, drawings, customer_property).
   - What: Only "treatment" options are protected from being deleted/renamed while jobs still use them. Job-type, material, drawing, and customer-property options have no protection. Remove or rename one and every job still using it holds an unrecognised value — those jobs then refuse to save on the next edit, and the option shows blank.
   - Where: `server/src/routes/tags.js` (DELETE ~line 193, PUT ~line 153 only guard `category === 'treatment'`). Extend the in-use guard to all by-value categories (job_type, material, drawings, customer_property). Need usage-count queries that match the comma-separated lists on `job_items`.
   - Severity: High
@@ -24,12 +24,12 @@ Each item has a **plain description** (what goes wrong for the user) and a **whe
 
 ## Priority 2 — Undermines the "all files present before invoicing?" gate
 
-- [ ] **The "drawing attached" safety net can be fooled by a file's name**
+- [x] **The "drawing attached" safety net can be fooled by a file's name** — fixed: `hasItemFile` now matches the part code only at the end of the base name (optionally followed by ` (n)`), before the extension, instead of anywhere in the name.
   - What: The system decides a part has its drawing by searching for the part's hidden code *anywhere* in a file's name. Since the uploader picks the visible name, a file named to contain another part's code makes the system believe that other part is covered — and can let a job slip past the "invoice anyway, files missing" warning with a genuinely missing drawing.
   - Where: `server/src/routes/jobcard-helpers.js` `hasItemFile` (~line 48-53) uses `name.includes('[pCODE]')`. Match the code only at the END of the base name (where the upload route writes it), optionally followed by ` (n)`, before the extension.
   - Severity: High
 
-- [ ] **A returned quality form can be faked by any upload**
+- [x] **A returned quality form can be faked by any upload** — fixed: a returned form is now detected by the 14-digit timestamp tag the upload route always stamps on the name, not by "any file that isn't a template".
   - What: A job's quality form counts as "returned/completed" if *any* file sits in the quality folder that isn't a blank template. Uploading any unrelated file (or an extra blank template) into that folder falsely clears the "missing quality form" warning.
   - Where: `server/src/routes/jobcard-helpers.js` (~line 132-137) detects returned forms as "not equal to a template name." Detect by a positive marker the upload route always adds (the timestamp tag) instead.
   - Severity: Medium-High
