@@ -33,7 +33,7 @@ const timeEntryQueries = {
 
   update: db.prepare(`
     UPDATE time_entries SET
-      item_id = ?, machine_number = ?, qty = ?, description = ?, scrap_qty = ?,
+      user_id = ?, item_id = ?, machine_number = ?, qty = ?, description = ?, scrap_qty = ?,
       start_time = ?, end_time = ?,
       updated_at = datetime('now')
     WHERE id = ?

@@ -7,7 +7,15 @@ import LineItemTreatment from './LineItemTreatment';
 import LineItemProgress from './LineItemProgress';
 import LineItemTimerButton from '../LineItemTimerButton';
 import LineItemTagSelect from './LineItemTagSelect';
+import CheckboxDropdown from '../../common/CheckboxDropdown';
 import { itemWarningMap } from '../../../utils/attachmentWarnings';
+
+// Machines on a time entry are kept as one comma-joined string (e.g. "5, 9") to
+// match how the worker's stop-timer form stores them. Split it back into a list
+// for the tick-box picker, and join the list back into that string on each change.
+function machineListToArray(value) {
+  return value ? String(value).split(',').map(s => s.trim()).filter(Boolean) : [];
+}
 
 function entriesForItem(entries, itemNumber) {
   const target = String(itemNumber);
@@ -24,6 +32,7 @@ export default function ItemsTab({
   updateLineItem,
   removeLineItem,
   suppliers = [],
+  employees = [],
   timeEntries = [],
   isAdmin = false,
   readOnly = false,
@@ -111,6 +120,16 @@ export default function ItemsTab({
               </button>
             </div>
 
+            <div className="form-group">
+              <label>Worker <span className="required">*</span></label>
+              <select name="workerId" value={timeEntryForm.workerId} onChange={handleTimeEntryChange}>
+                <option value="">Select worker...</option>
+                {employees.map(u => (
+                  <option key={u.id} value={u.id}>{u.name || u.username}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="form-row">
               <div className="form-group">
                 <label>Item #</label>
@@ -124,13 +143,24 @@ export default function ItemsTab({
                 </select>
               </div>
               <div className="form-group">
-                <label>Machine #</label>
-                <select name="machineNumber" value={timeEntryForm.machineNumber} onChange={handleTimeEntryChange}>
-                  <option value="">Select machine...</option>
-                  {machines.map(m => (
-                    <option key={m.id} value={m.machineNumber}>{m.machineNumber} {m.name && `- ${m.name}`}</option>
-                  ))}
-                </select>
+                <label>Machines</label>
+                <CheckboxDropdown
+                  ariaLabel="Machines used"
+                  placeholder="Select machines..."
+                  options={machines.map(m => ({
+                    value: String(m.machineNumber),
+                    label: String(m.machineNumber),
+                    sublabel: m.name || undefined
+                  }))}
+                  selectedValues={machineListToArray(timeEntryForm.machineNumber)}
+                  onToggle={(value) => {
+                    const current = machineListToArray(timeEntryForm.machineNumber);
+                    const next = current.includes(value)
+                      ? current.filter(v => v !== value)
+                      : [...current, value];
+                    handleTimeEntryChange({ target: { name: 'machineNumber', value: next.join(', ') } });
+                  }}
+                />
               </div>
               <div className="form-group">
                 <label>Qty</label>

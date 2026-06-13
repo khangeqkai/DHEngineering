@@ -37,6 +37,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   const handleEditTimeEntry = useCallback((entry) => {
     setEditingTimeEntryId(entry.id);
     setTimeEntryForm({
+      workerId: entry.userId || '',
       itemNumber: entry.itemNumber || '',
       machineNumber: entry.machineNumber || '',
       qty: entry.qty || '',
@@ -54,6 +55,13 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     // Sanity-check hand-entered times before saving: both must be real,
     // and the finish must come after the start, so bad times can't poison
     // the job's labour hours and cost totals.
+    // A hand-entered block must be credited to the worker who actually did the
+    // work, so per-worker hours stay accurate — not to the admin filling the form.
+    if (!timeEntryForm.workerId) {
+      toast.error('Please choose the worker who did this work');
+      return;
+    }
+
     const { startTime, endTime } = timeEntryForm;
     if (!startTime) {
       toast.error('Please enter a start time');

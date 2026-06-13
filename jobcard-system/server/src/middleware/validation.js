@@ -193,7 +193,7 @@ const validateCreateUser = [
     .matches(/^\d{4}$/)
     .withMessage('Password must be exactly 4 digits'),
   optionalEmail('email'),
-  optionalString('name', 'Name', 100),
+  requiredString('name', 'Name').isLength({ max: 100 }).withMessage('Name cannot exceed 100 characters'),
   body('role')
     .optional()
     .isIn(['admin', 'user'])

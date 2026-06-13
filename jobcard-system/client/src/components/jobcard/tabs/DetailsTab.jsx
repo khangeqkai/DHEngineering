@@ -240,6 +240,7 @@ export default function DetailsTab({
         onAttachItemFile={onAttachItemFile}
         timeEntries={timeEntries}
         machines={machines}
+        employees={employees}
         isAdmin={isAdmin && isEdit}
         showTimeEntryForm={showTimeEntryForm}
         editingTimeEntryId={editingTimeEntryId}

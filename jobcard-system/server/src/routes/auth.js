@@ -276,7 +276,7 @@ router.post('/users', authenticate, requireRole('admin'), userCreationLimiter, v
       username,
       hashedPassword,
       role || 'user',
-      name || username,
+      name,
       email || null,
       null,  // phone
       null   // employee_id
@@ -286,14 +286,14 @@ router.post('/users', authenticate, requireRole('admin'), userCreationLimiter, v
     recordHistory('user', userId, 'create', req.user.userId, req.user.name || req.user.username, {
       username: { from: null, to: username },
       role: { from: null, to: role || 'user' },
-      name: { from: null, to: name || username }
+      name: { from: null, to: name }
     });
 
     res.status(201).json({
       id: userId,
       username,
       role: role || 'user',
-      name: name || username,
+      name,
       email,
       active: true
     });

@@ -51,6 +51,13 @@ export default function UserManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Every account must carry a real display name so time entries, the activity
+    // log, and pickers always show who someone is — never a blank.
+    if (!formData.name.trim()) {
+      toast.error('Please enter a display name');
+      return;
+    }
+
     // Client-side password validation
     if (formData.password) {
       const passwordError = validatePassword(formData.password);
@@ -211,7 +218,7 @@ export default function UserManagement() {
 
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="name">Display Name</label>
+                <label htmlFor="name">Display Name *</label>
                 <input
                   type="text"
                   id="name"
@@ -223,6 +230,7 @@ export default function UserManagement() {
                       setFormData(prev => ({ ...prev, name: formatted }));
                     }
                   }}
+                  required
                 />
               </div>
 

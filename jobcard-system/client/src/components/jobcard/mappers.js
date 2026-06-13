@@ -92,6 +92,7 @@ export function localInputToIso(localStr) {
 
 export function getDefaultTimeEntryForm() {
   return {
+    workerId: '',
     itemNumber: '',
     machineNumber: '',
     qty: '',

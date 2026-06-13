@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { validateStartTimer, validateManualTimeEntry } = require('../middleware/validation');
-const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, recordHistory } = require('../db/database');
+const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
@@ -41,6 +41,45 @@ function resolveItemId(jobcardId, itemNumber) {
     return { error: `Item #${itemNumber} does not exist on this job card` };
   }
   return { itemId: match.id };
+}
+
+// Resolve the worker a hand-entered time block should be credited to. An admin
+// adding/editing a block by hand picks who actually did the work, so the hours
+// land under the right person (not under the admin filling in the form). Returns
+// { userId } for a real, active worker, or { error } otherwise.
+function resolveWorkerId(workerId) {
+  if (workerId === null || workerId === undefined || workerId === '') {
+    return { error: 'Please choose the worker who did this work' };
+  }
+  const user = userQueries.getById.get(workerId);
+  if (!user) {
+    return { error: 'That worker does not exist' };
+  }
+  if (!(user.active === 1 || user.active === true)) {
+    return { error: 'That worker is no longer active' };
+  }
+  return { userId: user.id };
+}
+
+// Add the credited worker to this job's assigned list if they aren't already on
+// it, mirroring what happens when a worker starts their own timer. Fire-and-forget
+// (logged, never blocks the time entry). Logs the assignment to history.
+function autoAssignWorker(jobcardId, workerId, actor) {
+  const before = jobAssigneeQueries.getByJobcard.all(jobcardId);
+  if (before.some(a => a.user_id === workerId)) return;
+  try {
+    jobAssigneeQueries.create.run(`assignee:${uuidv4()}`, jobcardId, workerId);
+    const after = jobAssigneeQueries.getByJobcard.all(jobcardId);
+    const fromNames = before.map(a => a.user_name).join(', ') || 'none';
+    const toNames = after.map(a => a.user_name).join(', ') || 'none';
+    recordHistory('jobcard', jobcardId, 'assign', actor.userId, actor.name || actor.username, {
+      assignees: { from: fromNames, to: toNames }
+    });
+  } catch (e) {
+    if (!e || e.code !== 'SQLITE_CONSTRAINT_UNIQUE') {
+      logger.error({ err: e }, 'Auto-assign on manual time entry failed');
+    }
+  }
 }
 
 // True when an error is the database rejecting a second open timer for one user
@@ -262,6 +301,13 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
       return res.status(400).json({ error: itemError });
     }
 
+    // Credit the block to the worker the admin picked, not the admin filling in the
+    // form, so per-worker hours and labour reports are accurate.
+    const { userId: workerId, error: workerError } = resolveWorkerId(data.workerId);
+    if (workerError) {
+      return res.status(400).json({ error: workerError });
+    }
+
     const entryId = `timeentry:${uuidv4()}`;
 
     // Scrap is normally entered by the worker's stop-timer form, but an admin adding
@@ -272,7 +318,7 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
       timeEntryQueries.create.run(
         entryId,
         id,
-        req.user.userId,
+        workerId,
         itemId,
         data.machineNumber || null,
         data.qty || null,
@@ -282,13 +328,18 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
         scrapQty
       );
     } catch (e) {
-      // A manual block with no finish time counts as an open timer; if this admin
-      // already has one running, the one-timer rule rejects it — tell them clearly.
-      if (isOpenTimerConflict(e) && sendOpenTimerConflict(res, req.user.userId)) return;
+      // A manual block with no finish time counts as an open timer; if the credited
+      // worker already has one running, the one-timer rule rejects it — tell them clearly.
+      if (isOpenTimerConflict(e) && sendOpenTimerConflict(res, workerId)) return;
       throw e;
     }
 
+    // Keep the job's assigned-people list accurate when crediting someone new.
+    autoAssignWorker(id, workerId, req.user);
+
+    const workerName = userQueries.getById.get(workerId).name;
     recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name || req.user.username, {
+      worker: { from: null, to: workerName },
       machineNumber: { from: null, to: data.machineNumber || null },
       description: { from: null, to: data.description || null },
       scrapQty: { from: null, to: scrapQty },
@@ -357,6 +408,22 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       ? Math.max(0, parseInt(data.scrapQty, 10) || 0)
       : (existing.scrap_qty || 0);
 
+    // Only an admin may re-credit a block to a different worker, and only when they
+    // actually send a worker. A regular worker editing their own block (filling in
+    // qty/description after stopping) keeps it under themselves — they can't hand it
+    // away. A change to a *different* worker must be a real, active account; leaving
+    // the owner unchanged is always allowed (so an old block owned by a since-
+    // deactivated worker can still have its other fields corrected).
+    let workerId = existing.user_id;
+    if (req.user.role === 'admin' && data.workerId !== undefined &&
+        String(data.workerId) !== String(existing.user_id)) {
+      const resolved = resolveWorkerId(data.workerId);
+      if (resolved.error) {
+        return res.status(400).json({ error: resolved.error });
+      }
+      workerId = resolved.userId;
+    }
+
     const { itemId, error: itemError } = resolveItemId(id, data.itemNumber);
     if (itemError) {
       return res.status(400).json({ error: itemError });
@@ -364,6 +431,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
 
     try {
       timeEntryQueries.update.run(
+        workerId,
         itemId,
         data.machineNumber || null,
         data.qty || null,
@@ -375,10 +443,16 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       );
     } catch (e) {
       // Reopening an entry (clearing its finish time, e.g. resuming a timer) makes
-      // it an open timer; if the user already has one running elsewhere, the
-      // one-timer rule rejects it — surface the stop & switch prompt, not a 500.
-      if (isOpenTimerConflict(e) && sendOpenTimerConflict(res, existing.user_id)) return;
+      // it an open timer; if the credited worker already has one running elsewhere,
+      // the one-timer rule rejects it — surface the stop & switch prompt, not a 500.
+      if (isOpenTimerConflict(e) && sendOpenTimerConflict(res, workerId)) return;
       throw e;
+    }
+
+    // Keep the job's assigned-people list accurate when an admin re-credits a block
+    // to someone not already on the job.
+    if (workerId !== existing.user_id) {
+      autoAssignWorker(id, workerId, req.user);
     }
 
     // Build proper diff of changed fields
@@ -403,6 +477,12 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     // human-friendly position numbers (old → new) so the activity log stays readable.
     if (normalizeEmpty(itemId) !== normalizeEmpty(existing.item_id)) {
       changes.itemNumber = { from: existing.item_number, to: data.itemNumber || null };
+    }
+
+    // Show who the block was re-credited to, by name, when an admin changed the owner.
+    if (workerId !== existing.user_id) {
+      const toName = userQueries.getById.get(workerId).name;
+      changes.worker = { from: existing.user_name, to: toName };
     }
 
     if (Object.keys(changes).length > 0) {
