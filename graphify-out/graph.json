@@ -3796,7 +3796,7 @@
       "label": "getAssigneesForJobcards()",
       "file_type": "code",
       "source_file": "server/src/db/queries/jobcard.js",
-      "source_location": "L169",
+      "source_location": "L160",
       "id": "queries_jobcard_getassigneesforjobcards",
       "community": 10,
       "norm_label": "getassigneesforjobcards()"
@@ -4327,7 +4327,7 @@
       "label": "parseTreatments()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L29",
+      "source_location": "L27",
       "id": "routes_jobcard_helpers_parsetreatments",
       "community": 16,
       "norm_label": "parsetreatments()"
@@ -4336,7 +4336,7 @@
       "label": "declaresValue()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L42",
+      "source_location": "L40",
       "id": "routes_jobcard_helpers_declaresvalue",
       "community": 1,
       "norm_label": "declaresvalue()"
@@ -4345,7 +4345,7 @@
       "label": "hasItemFile()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L50",
+      "source_location": "L48",
       "id": "routes_jobcard_helpers_hasitemfile",
       "community": 1,
       "norm_label": "hasitemfile()"
@@ -4354,7 +4354,7 @@
       "label": "computeAttachmentWarnings()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L65",
+      "source_location": "L63",
       "id": "routes_jobcard_helpers_computeattachmentwarnings",
       "community": 1,
       "norm_label": "computeattachmentwarnings()"
@@ -4363,7 +4363,7 @@
       "label": "formatJobcard()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L145",
+      "source_location": "L143",
       "id": "routes_jobcard_helpers_formatjobcard",
       "community": 1,
       "norm_label": "formatjobcard()"
@@ -4372,7 +4372,7 @@
       "label": "buildChanges()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L200",
+      "source_location": "L196",
       "id": "routes_jobcard_helpers_buildchanges",
       "community": 1,
       "norm_label": "buildchanges()"
@@ -4381,7 +4381,7 @@
       "label": "sanitizeHistoryForRole()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L237",
+      "source_location": "L233",
       "id": "routes_jobcard_helpers_sanitizehistoryforrole",
       "community": 1,
       "norm_label": "sanitizehistoryforrole()"
@@ -4390,7 +4390,7 @@
       "label": "serializeTreatments()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L246",
+      "source_location": "L242",
       "id": "routes_jobcard_helpers_serializetreatments",
       "community": 1,
       "norm_label": "serializetreatments()"
@@ -4399,7 +4399,7 @@
       "label": "buildQaFillData()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L253",
+      "source_location": "L249",
       "id": "routes_jobcard_helpers_buildqafilldata",
       "community": 1,
       "norm_label": "buildqafilldata()"
@@ -4408,7 +4408,7 @@
       "label": "createRelatedRecords()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L285",
+      "source_location": "L281",
       "id": "routes_jobcard_helpers_createrelatedrecords",
       "community": 1,
       "norm_label": "createrelatedrecords()"
@@ -4417,7 +4417,7 @@
       "label": "copyQaTemplatesForJob()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L320",
+      "source_location": "L316",
       "id": "routes_jobcard_helpers_copyqatemplatesforjob",
       "community": 1,
       "norm_label": "copyqatemplatesforjob()"
@@ -4426,7 +4426,7 @@
       "label": "copyTemplatesToJobFolder()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L338",
+      "source_location": "L334",
       "id": "routes_jobcard_helpers_copytemplatestojobfolder",
       "community": 1,
       "norm_label": "copytemplatestojobfolder()"
@@ -4435,7 +4435,7 @@
       "label": "verifyQaTemplatesAvailable()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L448",
+      "source_location": "L444",
       "id": "routes_jobcard_helpers_verifyqatemplatesavailable",
       "community": 1,
       "norm_label": "verifyqatemplatesavailable()"
@@ -11467,9 +11467,9 @@
       "source_file": "client/src/services/api.js",
       "source_location": "L152",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "services_api_apiservice_getattachmentwarnings",
-      "target": "services_api_apiservice_post",
-      "confidence_score": 1.0
+      "target": "services_api_apiservice_post"
     },
     {
       "relation": "calls",
@@ -13926,9 +13926,9 @@
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L65",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_src_routes_jobcard_files_js",
-      "target": "routes_jobcard_files_resolvejobfolder",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_resolvejobfolder"
     },
     {
       "relation": "contains",
@@ -14057,9 +14057,9 @@
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L108",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routes_jobcard_files_resolvecategoryfolder",
-      "target": "routes_jobcard_files_resolvejobfolder",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_resolvejobfolder"
     },
     {
       "relation": "calls",
@@ -14068,9 +14068,9 @@
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L199",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routes_jobcard_files_listcategoryfilenames",
-      "target": "routes_jobcard_files_resolvejobfolder",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_resolvejobfolder"
     },
     {
       "relation": "calls",

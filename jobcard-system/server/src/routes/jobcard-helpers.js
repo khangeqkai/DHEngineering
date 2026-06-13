@@ -21,9 +21,7 @@ const CUSTOMER_HISTORY_FIELDS = [
   'contactName',
   'companyName',
   'contactPhone',
-  'contactEmail',
-  'storedContactName',
-  'storedCompanyName'
+  'contactEmail'
 ];
 
 function parseTreatments(raw) {
@@ -150,9 +148,7 @@ function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
     contactName: row.contact_name,
     companyName: row.company_name,
     contactPhone: row.contact_phone,
-    contactEmail: row.contact_email,
-    storedContactName: row.stored_contact_name,
-    storedCompanyName: row.stored_company_name
+    contactEmail: row.contact_email
   } : Object.fromEntries(CUSTOMER_HISTORY_FIELDS.map(f => [f, null]));
   return {
     _id: row.id,

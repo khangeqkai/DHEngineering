@@ -121,8 +121,42 @@ export default function DetailsTab({
 
   return (
     <div className="modal-form-grid">
-      {/* Contact Section - Inline Autocomplete (admin only) */}
-      {isAdmin && (
+      {/* Contact Section — frozen after creation: pick on create, read-only on edit (admin only) */}
+      {isAdmin && isEdit && (
+      <div className="form-section">
+        <h3 className="form-section-title">
+          Contact
+          {contact && <span className="contact-linked-badge">Linked</span>}
+        </h3>
+        <div className="customer-input-strip">
+          <div className="cis-item">
+            <span className="cis-label">Company</span>
+            <span className="cis-value">{contactFormData.companyName || '-'}</span>
+          </div>
+          {contactFormData.contactName && (
+            <div className="cis-item">
+              <span className="cis-label">Contact</span>
+              <span className="cis-value">{contactFormData.contactName}</span>
+            </div>
+          )}
+          {contactFormData.phone && (
+            <div className="cis-item">
+              <span className="cis-label">Phone</span>
+              <span className="cis-value">{contactFormData.phone}</span>
+            </div>
+          )}
+          {contactFormData.email && (
+            <div className="cis-item">
+              <span className="cis-label">Email</span>
+              <span className="cis-value">{contactFormData.email}</span>
+            </div>
+          )}
+        </div>
+      </div>
+      )}
+
+      {/* Contact Section - Inline Autocomplete (admin only, create mode) */}
+      {isAdmin && !isEdit && (
       <div className="form-section">
         <h3 className="form-section-title">
           Contact <span className="required">*</span>

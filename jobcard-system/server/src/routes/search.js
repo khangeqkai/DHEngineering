@@ -14,8 +14,8 @@ function formatJob(row, assignees, isAdmin) {
   return {
     id: row.id,
     jobNumber: row.job_number,
-    companyName: isAdmin ? (row.stored_company_name || row.company_name) : null,
-    contactName: isAdmin ? (row.stored_contact_name || row.contact_name) : null,
+    companyName: isAdmin ? row.company_name : null,
+    contactName: isAdmin ? row.contact_name : null,
     status: row.status,
     priority: row.priority,
     qualityLevel: row.quality_level,
@@ -120,15 +120,15 @@ function searchAll(req, res, isAdmin) {
   // toggle that flips this, and that choice is carried through on "see all".
   const includeArchived = req.query.includeArchived === 'true';
   const jobMatch = isAdmin
-    ? '(j.job_number LIKE ? OR j.description LIKE ? OR c.company_name LIKE ? OR c.contact_name LIKE ? OR j.po_number LIKE ?)'
+    ? '(j.job_number LIKE ? OR j.description LIKE ? OR j.company_name LIKE ? OR j.contact_name LIKE ? OR j.po_number LIKE ?)'
     : '(j.job_number LIKE ? OR j.description LIKE ?)';
   const jobWhere = includeArchived ? jobMatch : `${jobMatch} AND j.archived = 0`;
   const jobParams = isAdmin ? [like, like, like, like, like] : [like, like];
-  const jobFrom = 'FROM jobcards j LEFT JOIN contacts c ON j.contact_id = c.id';
+  const jobFrom = 'FROM jobcards j';
 
   const jobCount = db.prepare(`SELECT COUNT(*) as count ${jobFrom} WHERE ${jobWhere}`).get(...jobParams).count;
   const jobRows = db.prepare(
-    `SELECT j.*, c.company_name as stored_company_name, c.contact_name as stored_contact_name ${jobFrom} WHERE ${jobWhere} ORDER BY j.created_at DESC LIMIT ?`
+    `SELECT j.* ${jobFrom} WHERE ${jobWhere} ORDER BY j.created_at DESC LIMIT ?`
   ).all(...jobParams, PREVIEW_LIMIT);
   const assigneeMap = getAssigneesForJobcards(jobRows.map(j => j.id));
   groups.jobs = { count: jobCount, results: jobRows.map(j => formatJob(j, assigneeMap[j.id], isAdmin)) };
@@ -168,7 +168,7 @@ function searchJobs(req, res, isAdmin) {
   if (q) {
     const like = `%${q.trim()}%`;
     if (isAdmin) {
-      conditions.push('(j.job_number LIKE ? OR j.description LIKE ? OR c.company_name LIKE ? OR c.contact_name LIKE ? OR j.po_number LIKE ?)');
+      conditions.push('(j.job_number LIKE ? OR j.description LIKE ? OR j.company_name LIKE ? OR j.contact_name LIKE ? OR j.po_number LIKE ?)');
       params.push(like, like, like, like, like);
     } else {
       conditions.push('(j.job_number LIKE ? OR j.description LIKE ?)');
@@ -196,11 +196,11 @@ function searchJobs(req, res, isAdmin) {
   if (includeArchived !== 'true') conditions.push('j.archived = 0');
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-  const from = 'FROM jobcards j LEFT JOIN contacts c ON j.contact_id = c.id';
+  const from = 'FROM jobcards j';
   const total = db.prepare(`SELECT COUNT(*) as count ${from} ${where}`).get(...params).count;
   const offset = (page - 1) * PAGE_SIZE;
   const rows = db.prepare(
-    `SELECT j.*, c.company_name as stored_company_name, c.contact_name as stored_contact_name ${from} ${where} ORDER BY j.created_at DESC LIMIT ? OFFSET ?`
+    `SELECT j.* ${from} ${where} ORDER BY j.created_at DESC LIMIT ? OFFSET ?`
   ).all(...params, PAGE_SIZE, offset);
   const assigneeMap = getAssigneesForJobcards(rows.map(j => j.id));
 

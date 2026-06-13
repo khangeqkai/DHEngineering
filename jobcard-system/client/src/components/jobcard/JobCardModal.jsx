@@ -338,7 +338,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     try {
       let contactId = formHook.formData.contactId;
 
-      if (isAdmin) {
+      // Customer details are chosen once, at creation. On an existing job they are
+      // frozen and read-only, so we neither create contacts nor send contact fields
+      // when editing — the server ignores them anyway.
+      if (isAdmin && !isEdit) {
         // Smart detection: Check if user edited a selected contact and changed the company
         if (contactHook.hasCompanyNameChanged()) {
           const saveNew = await showConfirm({
@@ -376,7 +379,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
       const jobcardData = {
         status: formHook.formData.status,
-        ...(isAdmin && {
+        ...(isAdmin && !isEdit && {
           contactId: contactId,
           contactName: contactHook.contactFormData.contactName,
           companyName: contactHook.contactFormData.companyName,

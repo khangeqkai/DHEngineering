@@ -152,8 +152,8 @@ const ACTIVITY_COLS = [
 
 const JOBCARD_SUMMARY_COLS = [
   { label: 'Job #', value: r => r.jobNumber },
-  { label: 'Company', value: r => r.companyName || r.storedCompanyName },
-  { label: 'Contact Name', value: r => r.contactName || r.storedContactName },
+  { label: 'Company', value: r => r.companyName },
+  { label: 'Contact Name', value: r => r.contactName },
   { label: 'Contact Phone', value: r => r.contactPhone },
   { label: 'Contact Email', value: r => r.contactEmail },
   { label: 'Type', value: r => r.cardType },

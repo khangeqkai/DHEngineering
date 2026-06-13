@@ -59,14 +59,6 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
   try {
     const data = req.body;
 
-    if (req.user.role !== 'admin') {
-      delete data.contactId;
-      delete data.contactName;
-      delete data.companyName;
-      delete data.contactPhone;
-      delete data.contactEmail;
-    }
-
     // Validate everything BEFORE any database write, so a rejection can never
     // consume a job number or leave a half-made record behind.
     const treatmentError = validateItemTreatments(data.items);
@@ -259,13 +251,15 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       }
     }
 
-    if (req.user.role !== 'admin') {
-      delete data.contactId;
-      delete data.contactName;
-      delete data.companyName;
-      delete data.contactPhone;
-      delete data.contactEmail;
-    }
+    // Customer details are frozen at creation and can never change on an existing
+    // job (traceability: a job is a permanent record of who the work was for, as
+    // it was at the time). Strip them on every update regardless of role; the
+    // update query falls back to the existing stored values.
+    delete data.contactId;
+    delete data.contactName;
+    delete data.companyName;
+    delete data.contactPhone;
+    delete data.contactEmail;
 
     const existing = jobcardQueries.getById.get(id);
     if (!existing) {

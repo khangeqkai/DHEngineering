@@ -6,58 +6,51 @@ const jobcardQueries = {
   getByJobNumber: db.prepare('SELECT * FROM jobcards WHERE job_number = ?'),
 
   getAll: db.prepare(`
-    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
+    SELECT j.*
     FROM jobcards j
-    LEFT JOIN contacts c ON j.contact_id = c.id
     WHERE j.archived = 0
     ORDER BY j.created_at DESC
   `),
 
   getByStatus: db.prepare(`
-    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
+    SELECT j.*
     FROM jobcards j
-    LEFT JOIN contacts c ON j.contact_id = c.id
     WHERE j.status = ? AND j.archived = 0
     ORDER BY j.created_at DESC
   `),
 
   getArchived: db.prepare(`
-    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
+    SELECT j.*
     FROM jobcards j
-    LEFT JOIN contacts c ON j.contact_id = c.id
     WHERE j.archived = 1
     ORDER BY j.invoiced_date DESC
   `),
 
   getByContact: db.prepare(`
-    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
+    SELECT j.*
     FROM jobcards j
-    LEFT JOIN contacts c ON j.contact_id = c.id
     WHERE j.contact_id = ?
     ORDER BY j.created_at DESC
   `),
 
   getOverdue: db.prepare(`
-    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
+    SELECT j.*
     FROM jobcards j
-    LEFT JOIN contacts c ON j.contact_id = c.id
     WHERE j.due_date < date('now') AND j.status NOT IN ('DONE', 'INVOICED') AND j.archived = 0
     ORDER BY j.due_date ASC
   `),
 
   getByAssignee: db.prepare(`
-    SELECT DISTINCT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
+    SELECT DISTINCT j.*
     FROM jobcards j
-    LEFT JOIN contacts c ON j.contact_id = c.id
     INNER JOIN job_assignees ja ON ja.jobcard_id = j.id
     WHERE ja.user_id = ? AND j.archived = 0
     ORDER BY j.created_at DESC
   `),
 
   getByAssigneeAndStatus: db.prepare(`
-    SELECT DISTINCT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
+    SELECT DISTINCT j.*
     FROM jobcards j
-    LEFT JOIN contacts c ON j.contact_id = c.id
     INNER JOIN job_assignees ja ON ja.jobcard_id = j.id
     WHERE ja.user_id = ? AND j.status = ? AND j.archived = 0
     ORDER BY j.created_at DESC
@@ -65,18 +58,16 @@ const jobcardQueries = {
 
 
   getUnassigned: db.prepare(`
-    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
+    SELECT j.*
     FROM jobcards j
-    LEFT JOIN contacts c ON j.contact_id = c.id
     LEFT JOIN job_assignees ja ON ja.jobcard_id = j.id
     WHERE ja.id IS NULL AND j.archived = 0
     ORDER BY j.created_at DESC
   `),
 
   getUnassignedByStatus: db.prepare(`
-    SELECT j.*, c.contact_name as stored_contact_name, c.company_name as stored_company_name
+    SELECT j.*
     FROM jobcards j
-    LEFT JOIN contacts c ON j.contact_id = c.id
     LEFT JOIN job_assignees ja ON ja.jobcard_id = j.id
     WHERE ja.id IS NULL AND j.status = ? AND j.archived = 0
     ORDER BY j.created_at DESC
