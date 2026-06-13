@@ -719,6 +719,25 @@ select.has-retired option.retired-option {
   letter-spacing: normal;
 }
 
+/* Inline "form must be returned" toggle on each QA level row */
+.qa-level-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  position: relative;
+  margin-right: 0.5rem;
+}
+
+.qa-level-toggle-text {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 /* Required indicator */
 .required {
   color: var(--accent-caution);
@@ -1911,6 +1930,41 @@ div[data-hot-toast] > div {
   gap: 0.5rem;
 }
 
+/* Click-to-rename title: the pencil sits faint until the row is hovered */
+.qa-level-name--editable {
+  cursor: text;
+  border-radius: var(--radius-sm);
+  padding: 0.1rem 0.35rem;
+  margin: -0.1rem -0.35rem;
+  transition: background 0.15s ease;
+}
+
+.qa-level-name--editable:hover {
+  background: var(--surface-hover, rgba(0, 0, 0, 0.05));
+}
+
+.qa-level-name-pencil {
+  opacity: 0;
+  color: var(--text-tertiary);
+  transition: opacity 0.15s ease;
+}
+
+.qa-level-card:hover .qa-level-name-pencil,
+.qa-level-name--editable:hover .qa-level-name-pencil {
+  opacity: 1;
+}
+
+.qa-level-name-input {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 0.1rem 0.35rem;
+  border: 1.5px solid var(--primary-accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  min-width: 12rem;
+}
+
 .qa-level-meta {
   font-size: var(--text-sm);
   color: var(--text-tertiary);
@@ -1918,6 +1972,7 @@ div[data-hot-toast] > div {
 
 .qa-level-actions {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
 }

@@ -25,6 +25,9 @@ export function useSettings() {
   const [savingTimeout, setSavingTimeout] = useState(false);
   const [savingJobNumber, setSavingJobNumber] = useState(false);
 
+  const [jobCardTemplate, setJobCardTemplate] = useState(null);
+  const [uploadingTemplate, setUploadingTemplate] = useState(false);
+
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -49,6 +52,11 @@ export function useSettings() {
         setInactivityTimeout(parseInt(data.inactivityTimeoutMinutes, 10) || 5);
         setJobNumberPrefix(data.jobNumberPrefix || '');
         setJobNumberNext(data.jobNumberNext || '');
+      }
+      try {
+        setJobCardTemplate(await api.getJobCardTemplate());
+      } catch {
+        setJobCardTemplate(null);
       }
     } catch (err) {
       toast.error('Failed to load settings');
@@ -134,6 +142,47 @@ export function useSettings() {
       setSavingJobNumber(false);
     }
   }, [jobNumberPrefix, jobNumberNext, loadSettings]);
+
+  const handleUploadJobCardTemplate = useCallback(async (file) => {
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+      toast.error('The job card template must be a PDF');
+      return;
+    }
+    if (file.size > 30 * 1024 * 1024) {
+      toast.error('File is too large (max 30 MB)');
+      return;
+    }
+    setUploadingTemplate(true);
+    try {
+      const fileData = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1]);
+        reader.onerror = () => reject(new Error('Could not read the file'));
+        reader.readAsDataURL(file);
+      });
+      await api.uploadJobCardTemplate({ fileName: file.name, fileData });
+      setJobCardTemplate(await api.getJobCardTemplate());
+      toast.success('Job card template saved');
+    } catch (err) {
+      toast.error(err.message || 'Failed to upload job card template');
+    } finally {
+      setUploadingTemplate(false);
+    }
+  }, []);
+
+  const handleRemoveJobCardTemplate = useCallback(async () => {
+    setUploadingTemplate(true);
+    try {
+      await api.deleteJobCardTemplate();
+      setJobCardTemplate(await api.getJobCardTemplate());
+      toast.success('Job card template removed');
+    } catch (err) {
+      toast.error(err.message || 'Failed to remove job card template');
+    } finally {
+      setUploadingTemplate(false);
+    }
+  }, []);
 
   const toggleDarkMode = useCallback(() => setDarkMode(prev => !prev), []);
 
@@ -243,6 +292,7 @@ export function useSettings() {
     jobFoldersBase, setJobFoldersBase, handleSelectJobFolders, handleSaveJobFolders, savingJobFolders,
     inactivityTimeout, setInactivityTimeout, handleSaveInactivityTimeout, savingTimeout,
     jobNumberPrefix, setJobNumberPrefix, jobNumberNext, setJobNumberNext, handleSaveJobNumber, savingJobNumber,
+    jobCardTemplate, uploadingTemplate, handleUploadJobCardTemplate, handleRemoveJobCardTemplate,
     showPasswordModal, setShowPasswordModal,
     currentPassword, setCurrentPassword,
     newPassword, setNewPassword,

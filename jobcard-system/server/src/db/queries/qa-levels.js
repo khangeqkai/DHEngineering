@@ -8,12 +8,12 @@ const qaLevelQueries = {
   getByNameLower: db.prepare('SELECT * FROM qa_levels WHERE name_lower = ?'),
 
   create: db.prepare(`
-    INSERT INTO qa_levels (id, name, name_lower, is_active, created_at, updated_at)
-    VALUES (?, ?, ?, 1, datetime('now'), datetime('now'))
+    INSERT INTO qa_levels (id, name, name_lower, is_active, requires_returned_form, created_at, updated_at)
+    VALUES (?, ?, ?, 1, ?, datetime('now'), datetime('now'))
   `),
 
   update: db.prepare(`
-    UPDATE qa_levels SET name = ?, name_lower = ?, updated_at = datetime('now')
+    UPDATE qa_levels SET name = ?, name_lower = ?, requires_returned_form = ?, updated_at = datetime('now')
     WHERE id = ?
   `),
 

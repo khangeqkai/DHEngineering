@@ -360,3 +360,4 @@ router.post('/:id/files/:category/upload', authenticate, validateCategory, valid
 module.exports = router;
 module.exports.listCategoryFileNames = listCategoryFileNames;
 module.exports.partFileCode = partFileCode;
+module.exports.resolveJobFolder = resolveJobFolder;

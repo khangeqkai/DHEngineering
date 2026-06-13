@@ -278,6 +278,7 @@ db.exec(`
     name TEXT NOT NULL,
     name_lower TEXT UNIQUE NOT NULL,
     is_active INTEGER DEFAULT 1,
+    requires_returned_form INTEGER DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
@@ -357,6 +358,9 @@ const migrations = [
   { table: 'job_items', column: 'customer_property', type: 'TEXT' },
   { table: 'tags', column: 'archived', type: 'INTEGER DEFAULT 0' },
   { table: 'users', column: 'jobcard_column_order', type: 'TEXT' },
+  // Per-level switch: when on, a completed quality form must be scanned back before
+  // invoicing (drives the missing-quality-form warning). Off = print-only level.
+  { table: 'qa_levels', column: 'requires_returned_form', type: 'INTEGER DEFAULT 0' },
 ];
 
 // Drop drawings_type / customer_property from jobcards (now live on job_items)

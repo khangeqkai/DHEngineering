@@ -1,6 +1,11 @@
 # QA PDF Template Guide
 
-When creating custom PDF templates for QA levels, you can include **fillable form fields** that the system will auto-populate with job card data when the template is copied to a job.
+This guide covers **two separate kinds of PDF template**, both of which use the same fillable field names listed below:
+
+1. **Job card printout** — ONE global template, uploaded once under **Settings → Job Card Printout**. When anyone clicks **Print job card** on a job, this template is filled with that job's data and saved as a single file at the top of the job's folder (`Job Card {jobNumber}.pdf`), then printed. It is a print-and-keep summary: nothing is scanned back, and it is **never** counted as a missing file before invoicing.
+2. **Quality forms** — per-QA-level inspection templates (see below). These are printed, hand-filled, and scanned back. A returned form is **only required before invoicing** when the QA level's **"Requires completed form returned"** switch is on; levels with it off are print-only and never trigger the missing-quality-form warning.
+
+When creating custom PDF templates (either kind), you can include **fillable form fields** that the system will auto-populate with job card data.
 
 ## How It Works
 

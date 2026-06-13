@@ -15,10 +15,12 @@ const {
 } = require('../db/database');
 const { formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings } = require('./jobcard-helpers');
 const jobcardMutationsRoutes = require('./jobcard-mutations');
+const jobcardPrintoutRoutes = require('./jobcard-printout');
 
 const router = express.Router();
 
 router.use('/', jobcardMutationsRoutes);
+router.use('/', jobcardPrintoutRoutes);
 
 // Get all job cards
 router.get('/', authenticate, validateJobcardListQuery, (req, res) => {

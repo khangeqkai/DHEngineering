@@ -33,6 +33,7 @@ function formatLevel(row) {
   return {
     id: row.id,
     name: row.name,
+    requiresReturnedForm: row.requires_returned_form === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -107,6 +108,7 @@ router.post('/',
     try {
       const { name } = req.body;
       const nameLower = name.trim().toLowerCase();
+      const requiresReturnedForm = req.body.requiresReturnedForm ? 1 : 0;
 
       // Check for duplicate name
       const existing = qaLevelQueries.getByNameLower.get(nameLower);
@@ -121,10 +123,11 @@ router.post('/',
       const basePath = getQaLevelsBasePath();
       if (basePath) ensureQaLevelFolder(basePath, id, name.trim());
 
-      qaLevelQueries.create.run(id, name.trim(), nameLower);
+      qaLevelQueries.create.run(id, name.trim(), nameLower, requiresReturnedForm);
 
       recordHistory('qa_level', id, 'create', req.user.userId, req.user.name || req.user.username, {
-        name: { from: null, to: name.trim() }
+        name: { from: null, to: name.trim() },
+        requiresReturnedForm: { from: null, to: requiresReturnedForm ? 'Yes' : 'No' }
       });
 
       const created = qaLevelQueries.getById.get(id);
@@ -164,14 +167,37 @@ router.put('/:id',
         return res.status(400).json({ error: 'A QA level with this name already exists' });
       }
 
+      // Keep the existing setting when the field is omitted, so a name-only edit
+      // doesn't silently turn the "needs form back" switch off.
+      const requiresReturnedForm = req.body.requiresReturnedForm === undefined
+        ? existing.requires_returned_form
+        : (req.body.requiresReturnedForm ? 1 : 0);
+
+      // Can't require a form back when the level has no template to print — there'd
+      // be nothing to return. Block only the act of turning it ON; a name-only edit
+      // (or any edit) on a level that's already on is left alone.
+      if (requiresReturnedForm === 1 && existing.requires_returned_form !== 1) {
+        const templateCount = qaLevelTemplateQueries.getByLevel.all(id).length;
+        if (templateCount === 0) {
+          return res.status(400).json({ error: 'Upload a form template to this level before requiring its return.' });
+        }
+      }
+
       const changes = {};
       if (name.trim() !== existing.name) {
         changes.name = { from: existing.name, to: name.trim() };
+      }
+      if (requiresReturnedForm !== existing.requires_returned_form) {
+        changes.requiresReturnedForm = {
+          from: existing.requires_returned_form ? 'Yes' : 'No',
+          to: requiresReturnedForm ? 'Yes' : 'No'
+        };
       }
 
       qaLevelQueries.update.run(
         name.trim(),
         nameLower,
+        requiresReturnedForm,
         id
       );
 

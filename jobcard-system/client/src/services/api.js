@@ -252,6 +252,14 @@ class ApiService {
   exportBackup(outputPath) { return this._post('/settings/export-backup', { outputPath }); }
   importBackup(inputPath) { return this._post('/settings/import-backup', { inputPath }); }
 
+  // Global job card printout template (admin only)
+  getJobCardTemplate() { return this.request('/settings/job-card-template'); }
+  uploadJobCardTemplate(data) { return this._post('/settings/job-card-template', data); }
+  deleteJobCardTemplate() { return this._del('/settings/job-card-template'); }
+
+  // Generate + save + return a job's printed job card (any authenticated user)
+  printJobCard(jobcardId) { return this._post(`/jobcards/${jobcardId}/print`, {}); }
+
   // Search
   search(params) {
     const query = new URLSearchParams();

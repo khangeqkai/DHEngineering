@@ -91,9 +91,12 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
   // that declared nothing (and needs no quality form) does no folder reads.
   const anyDrawing = normItems.some(it => declaresValue(it.drawings));
   const anyProperty = normItems.some(it => declaresValue(it.customerProperty));
-  // A job needs a quality form only if its QA level actually has one attached.
+  // A job needs a returned quality form only if its QA level has a template attached
+  // AND the level is switched to "requires completed form returned". Print-only levels
+  // (switch off) still get their templates copied/pre-filled on save, but never nag.
   const qaTemplates = qaLevelId ? qaLevelTemplateQueries.getByLevel.all(qaLevelId) : [];
-  const needsQa = qaTemplates.length > 0;
+  const qaLevel = qaLevelId ? qaLevelQueries.getById.get(qaLevelId) : null;
+  const needsQa = qaTemplates.length > 0 && !!(qaLevel && qaLevel.requires_returned_form);
 
   if (!anyDrawing && !anyProperty && !needsQa) {
     return { items: [], missingQaForms: false, hasAny: false };

@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase } from '../utils/formatters';
-import { Plus, Trash2, Save, Upload, FileText } from 'lucide-react';
+import { Plus, Trash2, Save, Upload, FileText, Pencil } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -12,9 +12,14 @@ export default function QALevelManagement() {
   const [levels, setLevels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingLevel, setEditingLevel] = useState(null);
   const [formData, setFormData] = useState({ name: '' });
   const [saving, setSaving] = useState(false);
+  const [togglingId, setTogglingId] = useState(null);
+  const [editingNameId, setEditingNameId] = useState(null);
+  const [editingNameValue, setEditingNameValue] = useState('');
+  // Set right before we close an inline rename on Escape, so the blur that follows
+  // the input being removed doesn't also try to save.
+  const cancelRenameRef = useRef(false);
   const [uploadingTemplate, setUploadingTemplate] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
@@ -36,10 +41,10 @@ export default function QALevelManagement() {
 
   const resetForm = () => {
     setFormData({ name: '' });
-    setEditingLevel(null);
     setShowForm(false);
   };
 
+  // The pop-up is now create-only — renaming happens inline on each row's title.
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
@@ -49,13 +54,8 @@ export default function QALevelManagement() {
 
     setSaving(true);
     try {
-      if (editingLevel) {
-        await api.updateQaLevel(editingLevel.id, formData);
-        toast.success('QA level updated');
-      } else {
-        await api.createQaLevel(formData);
-        toast.success('QA level created');
-      }
+      await api.createQaLevel(formData);
+      toast.success('QA level created');
       await loadData();
       resetForm();
     } catch (err) {
@@ -65,12 +65,52 @@ export default function QALevelManagement() {
     }
   };
 
-  const handleEdit = (level) => {
-    setEditingLevel(level);
-    setFormData({
-      name: level.name
-    });
-    setShowForm(true);
+  const startRename = (level) => {
+    setEditingNameId(level.id);
+    setEditingNameValue(level.name);
+  };
+
+  // Save an inline rename (called from the title field's blur / Enter). Sends only the
+  // name so the level's "requires returned form" switch is left exactly as it was.
+  const commitRename = async (level) => {
+    if (cancelRenameRef.current) {
+      cancelRenameRef.current = false;
+      setEditingNameId(null);
+      return;
+    }
+    const name = toTitleCase(editingNameValue.trim());
+    setEditingNameId(null);
+    if (!name) {
+      toast.error('Name is required');
+      return;
+    }
+    if (name === level.name) return;
+
+    setLevels(prev => prev.map(l => l.id === level.id ? { ...l, name } : l));
+    try {
+      await api.updateQaLevel(level.id, { name });
+      toast.success('QA level renamed');
+    } catch (err) {
+      setLevels(prev => prev.map(l => l.id === level.id ? { ...l, name: level.name } : l));
+      toast.error(err.message || 'Failed to rename QA level');
+    }
+  };
+
+  // Flip the "requires completed form returned" switch straight from the level's row.
+  // Sends the unchanged name plus the new flag so the existing update route applies it
+  // (an unchanged name skips the rename/duplicate checks). Optimistic; reverts on failure.
+  const handleToggleReturnedForm = async (level) => {
+    const next = !level.requiresReturnedForm;
+    setTogglingId(level.id);
+    setLevels(prev => prev.map(l => l.id === level.id ? { ...l, requiresReturnedForm: next } : l));
+    try {
+      await api.updateQaLevel(level.id, { name: level.name, requiresReturnedForm: next });
+    } catch (err) {
+      setLevels(prev => prev.map(l => l.id === level.id ? { ...l, requiresReturnedForm: !next } : l));
+      toast.error(err.message || 'Failed to update QA level');
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const handleDelete = async (level) => {
@@ -170,15 +210,48 @@ export default function QALevelManagement() {
             <div key={level.id} className="qa-level-card">
               <div className="qa-level-header">
                 <div className="qa-level-info">
-                  <h3 className="qa-level-name">
-                    {level.name}
-                  </h3>
+                  {editingNameId === level.id ? (
+                    <input
+                      className="qa-level-name-input"
+                      type="text"
+                      value={editingNameValue}
+                      autoFocus
+                      onChange={(e) => setEditingNameValue(e.target.value)}
+                      onBlur={() => commitRename(level)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
+                        else if (e.key === 'Escape') { e.preventDefault(); cancelRenameRef.current = true; setEditingNameId(null); }
+                      }}
+                    />
+                  ) : (
+                    <h3
+                      className="qa-level-name qa-level-name--editable"
+                      title="Click to rename"
+                      onClick={() => startRename(level)}
+                    >
+                      {level.name}
+                      <Pencil size={13} className="qa-level-name-pencil" />
+                    </h3>
+                  )}
                   <span className="qa-level-meta">
                     {level.templateCount || 0} template{(level.templateCount || 0) !== 1 ? 's' : ''}
                   </span>
                 </div>
                 <div className="qa-level-actions">
-                  <button className="btn btn-secondary btn-sm" onClick={() => handleEdit(level)}>Edit</button>
+                  <label
+                    className="qa-level-toggle"
+                    title="When on, a completed quality form must be scanned back before a job at this level can be invoiced (the level must have a form template first)"
+                  >
+                    <span className="qa-level-toggle-text">Form must be returned</span>
+                    <input
+                      className="toggle-input"
+                      type="checkbox"
+                      checked={!!level.requiresReturnedForm}
+                      disabled={togglingId === level.id}
+                      onChange={() => handleToggleReturnedForm(level)}
+                    />
+                    <span className="toggle-switch"></span>
+                  </label>
                   <button className="btn btn-danger btn-sm" onClick={() => handleDelete(level)}>
                     <Trash2 size={14} />
                   </button>
@@ -226,11 +299,11 @@ export default function QALevelManagement() {
         )}
       </div>
 
-      {/* Create/Edit Form */}
+      {/* New level form (renaming is done inline on each row's title) */}
       <BottomSheet
         isOpen={showForm}
         onClose={resetForm}
-        title={editingLevel ? `Edit: ${editingLevel.name}` : 'New QA Level'}
+        title="New QA Level"
         size="small"
       >
         <form onSubmit={handleSubmit}>
@@ -254,7 +327,7 @@ export default function QALevelManagement() {
           <BottomSheet.Footer>
             <button type="submit" className="btn btn-primary" disabled={saving}>
               <Save size={16} />
-              {saving ? 'Saving...' : editingLevel ? 'Update' : 'Create'}
+              {saving ? 'Saving...' : 'Create'}
             </button>
           </BottomSheet.Footer>
         </form>

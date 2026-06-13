@@ -21,6 +21,7 @@ import StopTimerForm from './StopTimerForm';
 import ZoomToggle, { useJobCardZoom } from './ZoomToggle';
 import JobFilesMenu from './JobFilesMenu';
 import JobIdentityStrip from './JobIdentityStrip';
+import { usePrintJobCard } from './usePrintJobCard';
 import { validateJobCardForm } from './jobCardValidation';
 import { mapTimeEntryFromApi } from './mappers';
 import { describeAttachmentGaps } from '../../utils/attachmentWarnings';
@@ -42,6 +43,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const [activeTab, setActiveTab] = useState('details');
   const [zoom, setZoom] = useJobCardZoom();
   const [saving, setSaving] = useState(false);
+  const { printJobCard, printing } = usePrintJobCard(isEdit ? jobCardId : null);
   const [loading, setLoading] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -500,6 +502,17 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         closeOnOverlayClick={false}
         headerActions={
           <>
+            {isEdit && jobCardId && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={printJobCard}
+                disabled={printing}
+                title="Print a job card summary"
+              >
+                {printing ? 'Printing...' : 'Print job card'}
+              </button>
+            )}
             {isEdit && jobCardId && <JobFilesMenu jobcardId={jobCardId} jobNumber={formHook.jobNumber} onFilesChanged={refreshAttachmentWarnings} />}
             <ZoomToggle zoom={zoom} onChange={setZoom} />
           </>
