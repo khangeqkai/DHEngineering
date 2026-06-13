@@ -14,6 +14,7 @@ export default function LineItemTagSelect({
   readOnly = false,
   value = '',
   options = [],
+  labelOf = null,
   naValue,
   onChange,
   warning = false,
@@ -63,7 +64,17 @@ export default function LineItemTagSelect({
     };
   }, [open]);
 
-  const labelFor = v => options.find(o => o.value === v)?.label || v;
+  // A value saved on this job whose option was since archived won't be in the
+  // active `options` list. Add those selected-but-missing values to the menu (tagged
+  // "(retired)") so the user can still see and untick them — they just can't be re-added.
+  const missingSelected = selected.filter(v => v && !options.some(o => o.value === v));
+  const menuOptions = [
+    ...options,
+    ...missingSelected.map(v => ({ value: v, label: `${labelOf ? labelOf(v) : v} (retired)`, retired: true }))
+  ];
+  const hasRetired = missingSelected.length > 0;
+
+  const labelFor = v => menuOptions.find(o => o.value === v)?.label || v;
   const summary = selected.map(labelFor).join(', ');
 
   if (readOnly) {
@@ -94,7 +105,7 @@ export default function LineItemTagSelect({
       <div className="lit-select">
         <button
           type="button"
-          className={`lit-select-btn${value ? '' : ' lit-select-btn--empty'}`}
+          className={`lit-select-btn${value ? '' : ' lit-select-btn--empty'}${hasRetired ? ' lit-select-btn--retired' : ''}`}
           onClick={() => setOpen(o => !o)}
           aria-haspopup="listbox"
           aria-expanded={open}
@@ -105,7 +116,7 @@ export default function LineItemTagSelect({
         </button>
         {open && (
           <div className="lit-select-menu" role="listbox" aria-multiselectable="true">
-            {options.map(opt => {
+            {menuOptions.map(opt => {
               const isSelected = selected.includes(opt.value);
               return (
                 <button
@@ -113,7 +124,7 @@ export default function LineItemTagSelect({
                   type="button"
                   role="option"
                   aria-selected={isSelected}
-                  className={`lit-select-option${isSelected ? ' selected' : ''}`}
+                  className={`lit-select-option${isSelected ? ' selected' : ''}${opt.retired ? ' retired-option' : ''}`}
                   onClick={() => toggle(opt.value)}
                 >
                   <span className="lit-select-check">{isSelected ? '✓' : ''}</span>

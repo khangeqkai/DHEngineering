@@ -22,7 +22,7 @@ function supplierOffers(supplier, treatmentValue) {
 // line item's `treatments` array (length 0 or 1) so the rest of the system
 // (costing, PDF fill, history) is unchanged.
 export default function LineItemTreatment({ treatments = [], suppliers = [], onChange }) {
-  const { tags: treatmentTags } = useTags('treatment');
+  const { tags: treatmentTags, labelOf: treatmentLabelOf } = useTags('treatment');
 
   const current = (Array.isArray(treatments) && treatments[0]) || null;
   const value = current?.value || '';
@@ -39,10 +39,13 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
     list.push({ value: OTHER, label: 'Other' });
     if (value && value !== OTHER && !list.some(o => o.value === value)) {
       const tag = treatmentTags.find(t => t.value === value);
-      list.unshift({ value, label: tag ? (tag.label || tag.name) : value });
+      // No matching active tag → the treatment was archived; show it tagged "(retired)".
+      list.unshift(tag
+        ? { value, label: tag.label || tag.name }
+        : { value, label: `${treatmentLabelOf(value)} (retired)`, retired: true });
     }
     return list;
-  }, [treatmentTags, activeSuppliers, value]);
+  }, [treatmentTags, treatmentLabelOf, activeSuppliers, value]);
 
   // Supplier list: filtered by the chosen treatment (who offers it), or all active
   // suppliers when none / 'Other' is chosen. The current pick is always kept.
@@ -52,8 +55,12 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
       : activeSuppliers;
     const list = base.map(s => ({ value: s.id, label: s.name }));
     if (supplierId && !list.some(o => o.value === supplierId)) {
+      // The saved supplier isn't in the active list — it was archived. Keep it visible and
+      // tagged "(retired)", matching how a retired treatment reads. Use the live name when
+      // we still have the record, falling back to the name frozen on the job.
       const s = suppliers.find(x => x.id === supplierId);
-      list.unshift({ value: supplierId, label: s ? `${s.name}${isActive(s) ? '' : ' (removed)'}` : (current?.supplierName || 'Unknown') });
+      const name = s ? s.name : (current?.supplierName || 'Unknown');
+      list.unshift({ value: supplierId, label: `${name} (retired)`, retired: true });
     }
     return list;
   }, [activeSuppliers, suppliers, value, supplierId, current]);
@@ -76,9 +83,15 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
   };
 
   const handleTreatmentChange = (newVal) => {
+    // "No treatment" clears the supplier too — otherwise the part keeps a dangling
+    // supplier with no treatment, an invalid half-entry the server rejects on save.
+    if (!newVal) {
+      emit({ value: '', supplierId: '' });
+      return;
+    }
     // Drop the supplier if it doesn't offer the newly chosen treatment.
     let sid = supplierId;
-    if (newVal && newVal !== OTHER && sid) {
+    if (newVal !== OTHER && sid) {
       const s = suppliers.find(x => x.id === sid);
       if (s && !supplierOffers(s, newVal)) sid = '';
     }
@@ -95,10 +108,14 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
     <>
       <div className="line-item-treatment-field">
         <label>Treatment</label>
-        <select value={value} onChange={(e) => handleTreatmentChange(e.target.value)}>
+        <select
+          className={treatmentOptions.some(o => o.retired && o.value === value) ? 'has-retired' : ''}
+          value={value}
+          onChange={(e) => handleTreatmentChange(e.target.value)}
+        >
           <option value="">No treatment</option>
           {treatmentOptions.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value} className={o.retired ? 'retired-option' : ''}>{o.label}</option>
           ))}
         </select>
       </div>
@@ -109,11 +126,11 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
           <select
             value={supplierId}
             onChange={(e) => handleSupplierChange(e.target.value)}
-            className={!supplierId ? 'field-required' : ''}
+            className={`${!supplierId ? 'field-required' : ''}${supplierOptions.some(o => o.retired && o.value === supplierId) ? ' has-retired' : ''}`.trim()}
           >
             <option value="">No supplier</option>
             {supplierOptions.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value} className={o.retired ? 'retired-option' : ''}>{o.label}</option>
             ))}
           </select>
         </div>

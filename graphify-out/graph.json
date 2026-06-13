@@ -81,7 +81,7 @@
       "source_file": "client/src/App.jsx",
       "source_location": "L1",
       "id": "client_src_app_jsx",
-      "community": 7,
+      "community": 3,
       "norm_label": "app.jsx"
     },
     {
@@ -90,7 +90,7 @@
       "source_file": "client/src/App.jsx",
       "source_location": "L17",
       "id": "src_app_privateroute",
-      "community": 7,
+      "community": 3,
       "norm_label": "privateroute()"
     },
     {
@@ -99,7 +99,7 @@
       "source_file": "client/src/App.jsx",
       "source_location": "L27",
       "id": "src_app_adminroute",
-      "community": 7,
+      "community": 3,
       "norm_label": "adminroute()"
     },
     {
@@ -108,7 +108,7 @@
       "source_file": "client/src/App.jsx",
       "source_location": "L45",
       "id": "src_app_getcssvar",
-      "community": 7,
+      "community": 3,
       "norm_label": "getcssvar()"
     },
     {
@@ -117,7 +117,7 @@
       "source_file": "client/src/App.jsx",
       "source_location": "L48",
       "id": "src_app_app",
-      "community": 7,
+      "community": 3,
       "norm_label": "app()"
     },
     {
@@ -126,7 +126,7 @@
       "source_file": "client/src/main.jsx",
       "source_location": "L1",
       "id": "client_src_main_jsx",
-      "community": 7,
+      "community": 3,
       "norm_label": "main.jsx"
     },
     {
@@ -369,7 +369,7 @@
       "source_file": "client/src/components/Login.jsx",
       "source_location": "L1",
       "id": "client_src_components_login_jsx",
-      "community": 7,
+      "community": 3,
       "norm_label": "login.jsx"
     },
     {
@@ -378,7 +378,7 @@
       "source_file": "client/src/components/Login.jsx",
       "source_location": "L10",
       "id": "components_login_login",
-      "community": 7,
+      "community": 3,
       "norm_label": "login()"
     },
     {
@@ -504,7 +504,7 @@
       "source_file": "client/src/components/Settings.jsx",
       "source_location": "L1",
       "id": "client_src_components_settings_jsx",
-      "community": 7,
+      "community": 3,
       "norm_label": "settings.jsx"
     },
     {
@@ -513,7 +513,7 @@
       "source_file": "client/src/components/Settings.jsx",
       "source_location": "L8",
       "id": "components_settings_settings",
-      "community": 7,
+      "community": 3,
       "norm_label": "settings()"
     },
     {
@@ -1494,7 +1494,7 @@
       "source_file": "client/src/components/jobcard/useTimer.js",
       "source_location": "L1",
       "id": "client_src_components_jobcard_usetimer_js",
-      "community": 7,
+      "community": 3,
       "norm_label": "usetimer.js"
     },
     {
@@ -1503,7 +1503,7 @@
       "source_file": "client/src/components/jobcard/useTimer.js",
       "source_location": "L6",
       "id": "jobcard_usetimer_emptyentryform",
-      "community": 7,
+      "community": 3,
       "norm_label": "emptyentryform()"
     },
     {
@@ -1935,7 +1935,7 @@
       "source_file": "client/src/context/AuthContext.jsx",
       "source_location": "L1",
       "id": "client_src_context_authcontext_jsx",
-      "community": 7,
+      "community": 3,
       "norm_label": "authcontext.jsx"
     },
     {
@@ -1944,7 +1944,7 @@
       "source_file": "client/src/context/AuthContext.jsx",
       "source_location": "L11",
       "id": "context_authcontext_authprovider",
-      "community": 7,
+      "community": 3,
       "norm_label": "authprovider()"
     },
     {
@@ -1953,7 +1953,7 @@
       "source_file": "client/src/context/AuthContext.jsx",
       "source_location": "L115",
       "id": "context_authcontext_useauth",
-      "community": 7,
+      "community": 3,
       "norm_label": "useauth()"
     },
     {
@@ -2007,7 +2007,7 @@
       "source_file": "client/src/hooks/useInactivityTimer.js",
       "source_location": "L1",
       "id": "client_src_hooks_useinactivitytimer_js",
-      "community": 7,
+      "community": 3,
       "norm_label": "useinactivitytimer.js"
     },
     {
@@ -2016,7 +2016,7 @@
       "source_file": "client/src/hooks/useInactivityTimer.js",
       "source_location": "L6",
       "id": "hooks_useinactivitytimer_useinactivitytimer",
-      "community": 7,
+      "community": 3,
       "norm_label": "useinactivitytimer()"
     },
     {
@@ -2025,7 +2025,7 @@
       "source_file": "client/src/hooks/useJobCardColumnOrder.js",
       "source_location": "L1",
       "id": "client_src_hooks_usejobcardcolumnorder_js",
-      "community": 7,
+      "community": 3,
       "norm_label": "usejobcardcolumnorder.js"
     },
     {
@@ -2034,7 +2034,7 @@
       "source_file": "client/src/hooks/useJobCardColumnOrder.js",
       "source_location": "L6",
       "id": "hooks_usejobcardcolumnorder_usejobcardcolumnorder",
-      "community": 7,
+      "community": 3,
       "norm_label": "usejobcardcolumnorder()"
     },
     {
@@ -2097,7 +2097,7 @@
       "source_file": "client/src/hooks/useSettings.js",
       "source_location": "L1",
       "id": "client_src_hooks_usesettings_js",
-      "community": 7,
+      "community": 3,
       "norm_label": "usesettings.js"
     },
     {
@@ -2106,7 +2106,7 @@
       "source_file": "client/src/hooks/useSettings.js",
       "source_location": "L7",
       "id": "hooks_usesettings_usesettings",
-      "community": 7,
+      "community": 3,
       "norm_label": "usesettings()"
     },
     {
@@ -2185,7 +2185,7 @@
       "label": "invalidateTagCache()",
       "file_type": "code",
       "source_file": "client/src/hooks/useTags.js",
-      "source_location": "L64",
+      "source_location": "L70",
       "id": "hooks_usetags_invalidatetagcache",
       "community": 1,
       "norm_label": "invalidatetagcache()"
@@ -2779,7 +2779,7 @@
       "label": ".getTagCategories()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L223",
+      "source_location": "L226",
       "id": "services_api_apiservice_gettagcategories",
       "community": 0,
       "norm_label": ".gettagcategories()"
@@ -2788,7 +2788,7 @@
       "label": ".createTag()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L224",
+      "source_location": "L227",
       "id": "services_api_apiservice_createtag",
       "community": 0,
       "norm_label": ".createtag()"
@@ -2797,25 +2797,34 @@
       "label": ".updateTag()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L225",
+      "source_location": "L228",
       "id": "services_api_apiservice_updatetag",
       "community": 0,
       "norm_label": ".updatetag()"
     },
     {
-      "label": ".deleteTag()",
+      "label": ".archiveTag()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L226",
-      "id": "services_api_apiservice_deletetag",
+      "source_location": "L229",
+      "id": "services_api_apiservice_archivetag",
       "community": 0,
-      "norm_label": ".deletetag()"
+      "norm_label": ".archivetag()"
+    },
+    {
+      "label": ".activateTag()",
+      "file_type": "code",
+      "source_file": "client/src/services/api.js",
+      "source_location": "L230",
+      "id": "services_api_apiservice_activatetag",
+      "community": 0,
+      "norm_label": ".activatetag()"
     },
     {
       "label": ".getActivityHistory()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L229",
+      "source_location": "L233",
       "id": "services_api_apiservice_getactivityhistory",
       "community": 0,
       "norm_label": ".getactivityhistory()"
@@ -2824,7 +2833,7 @@
       "label": ".getUserActivity()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L230",
+      "source_location": "L234",
       "id": "services_api_apiservice_getuseractivity",
       "community": 0,
       "norm_label": ".getuseractivity()"
@@ -2833,7 +2842,7 @@
       "label": ".getEntityHistory()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L231",
+      "source_location": "L235",
       "id": "services_api_apiservice_getentityhistory",
       "community": 0,
       "norm_label": ".getentityhistory()"
@@ -2842,7 +2851,7 @@
       "label": ".getMachines()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L234",
+      "source_location": "L238",
       "id": "services_api_apiservice_getmachines",
       "community": 0,
       "norm_label": ".getmachines()"
@@ -2851,7 +2860,7 @@
       "label": ".createMachine()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L235",
+      "source_location": "L239",
       "id": "services_api_apiservice_createmachine",
       "community": 0,
       "norm_label": ".createmachine()"
@@ -2860,7 +2869,7 @@
       "label": ".updateMachine()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L236",
+      "source_location": "L240",
       "id": "services_api_apiservice_updatemachine",
       "community": 0,
       "norm_label": ".updatemachine()"
@@ -2869,7 +2878,7 @@
       "label": ".archiveMachine()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L237",
+      "source_location": "L241",
       "id": "services_api_apiservice_archivemachine",
       "community": 0,
       "norm_label": ".archivemachine()"
@@ -2878,7 +2887,7 @@
       "label": ".activateMachine()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L238",
+      "source_location": "L242",
       "id": "services_api_apiservice_activatemachine",
       "community": 0,
       "norm_label": ".activatemachine()"
@@ -2887,7 +2896,7 @@
       "label": ".getPrinters()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L241",
+      "source_location": "L245",
       "id": "services_api_apiservice_getprinters",
       "community": 0,
       "norm_label": ".getprinters()"
@@ -2896,7 +2905,7 @@
       "label": ".getHardwareStatus()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L242",
+      "source_location": "L246",
       "id": "services_api_apiservice_gethardwarestatus",
       "community": 0,
       "norm_label": ".gethardwarestatus()"
@@ -2905,7 +2914,7 @@
       "label": ".getSettings()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L245",
+      "source_location": "L249",
       "id": "services_api_apiservice_getsettings",
       "community": 0,
       "norm_label": ".getsettings()"
@@ -2914,7 +2923,7 @@
       "label": ".updateSettings()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L246",
+      "source_location": "L250",
       "id": "services_api_apiservice_updatesettings",
       "community": 0,
       "norm_label": ".updatesettings()"
@@ -2923,7 +2932,7 @@
       "label": ".getInactivityTimeout()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L247",
+      "source_location": "L251",
       "id": "services_api_apiservice_getinactivitytimeout",
       "community": 0,
       "norm_label": ".getinactivitytimeout()"
@@ -2932,7 +2941,7 @@
       "label": ".exportBackup()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L248",
+      "source_location": "L252",
       "id": "services_api_apiservice_exportbackup",
       "community": 0,
       "norm_label": ".exportbackup()"
@@ -2941,7 +2950,7 @@
       "label": ".importBackup()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L249",
+      "source_location": "L253",
       "id": "services_api_apiservice_importbackup",
       "community": 0,
       "norm_label": ".importbackup()"
@@ -2950,7 +2959,7 @@
       "label": ".search()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L252",
+      "source_location": "L256",
       "id": "services_api_apiservice_search",
       "community": 0,
       "norm_label": ".search()"
@@ -2959,7 +2968,7 @@
       "label": ".getQaLevels()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L261",
+      "source_location": "L265",
       "id": "services_api_apiservice_getqalevels",
       "community": 0,
       "norm_label": ".getqalevels()"
@@ -2968,7 +2977,7 @@
       "label": ".getQaLevel()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L262",
+      "source_location": "L266",
       "id": "services_api_apiservice_getqalevel",
       "community": 0,
       "norm_label": ".getqalevel()"
@@ -2977,7 +2986,7 @@
       "label": ".createQaLevel()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L263",
+      "source_location": "L267",
       "id": "services_api_apiservice_createqalevel",
       "community": 0,
       "norm_label": ".createqalevel()"
@@ -2986,7 +2995,7 @@
       "label": ".updateQaLevel()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L264",
+      "source_location": "L268",
       "id": "services_api_apiservice_updateqalevel",
       "community": 0,
       "norm_label": ".updateqalevel()"
@@ -2995,7 +3004,7 @@
       "label": ".deleteQaLevel()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L265",
+      "source_location": "L269",
       "id": "services_api_apiservice_deleteqalevel",
       "community": 0,
       "norm_label": ".deleteqalevel()"
@@ -3004,7 +3013,7 @@
       "label": ".uploadQaTemplate()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L266",
+      "source_location": "L270",
       "id": "services_api_apiservice_uploadqatemplate",
       "community": 0,
       "norm_label": ".uploadqatemplate()"
@@ -3013,7 +3022,7 @@
       "label": ".deleteQaTemplate()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L267",
+      "source_location": "L271",
       "id": "services_api_apiservice_deleteqatemplate",
       "community": 0,
       "norm_label": ".deleteqatemplate()"
@@ -3168,7 +3177,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L1",
       "id": "client_src_utils_excelexport_js",
-      "community": 3,
+      "community": 7,
       "norm_label": "excelexport.js"
     },
     {
@@ -3177,7 +3186,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L7",
       "id": "utils_excelexport_saveworkbook",
-      "community": 3,
+      "community": 7,
       "norm_label": "saveworkbook()"
     },
     {
@@ -3186,7 +3195,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L31",
       "id": "utils_excelexport_buildsheet",
-      "community": 3,
+      "community": 7,
       "norm_label": "buildsheet()"
     },
     {
@@ -3195,7 +3204,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L48",
       "id": "utils_excelexport_timestamp",
-      "community": 3,
+      "community": 7,
       "norm_label": "timestamp()"
     },
     {
@@ -3204,7 +3213,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L54",
       "id": "utils_excelexport_fmtdate",
-      "community": 3,
+      "community": 7,
       "norm_label": "fmtdate()"
     },
     {
@@ -3213,7 +3222,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L61",
       "id": "utils_excelexport_fmtdatetime",
-      "community": 3,
+      "community": 7,
       "norm_label": "fmtdatetime()"
     },
     {
@@ -3222,7 +3231,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L68",
       "id": "utils_excelexport_durationhrs",
-      "community": 3,
+      "community": 7,
       "norm_label": "durationhrs()"
     },
     {
@@ -3231,7 +3240,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L76",
       "id": "utils_excelexport_valuetolabel",
-      "community": 3,
+      "community": 7,
       "norm_label": "valuetolabel()"
     },
     {
@@ -3240,7 +3249,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L81",
       "id": "utils_excelexport_fmtcodelist",
-      "community": 3,
+      "community": 7,
       "norm_label": "fmtcodelist()"
     },
     {
@@ -3249,7 +3258,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L86",
       "id": "utils_excelexport_fmtmaterial",
-      "community": 3,
+      "community": 7,
       "norm_label": "fmtmaterial()"
     },
     {
@@ -3258,7 +3267,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L90",
       "id": "utils_excelexport_fmtitemtaglist",
-      "community": 3,
+      "community": 7,
       "norm_label": "fmtitemtaglist()"
     },
     {
@@ -3267,7 +3276,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L134",
       "id": "utils_excelexport_formatchangestext",
-      "community": 3,
+      "community": 7,
       "norm_label": "formatchangestext()"
     },
     {
@@ -3276,7 +3285,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L242",
       "id": "utils_excelexport_exportcontacts",
-      "community": 3,
+      "community": 7,
       "norm_label": "exportcontacts()"
     },
     {
@@ -3285,7 +3294,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L248",
       "id": "utils_excelexport_exportsuppliers",
-      "community": 3,
+      "community": 7,
       "norm_label": "exportsuppliers()"
     },
     {
@@ -3294,7 +3303,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L254",
       "id": "utils_excelexport_exportequipment",
-      "community": 3,
+      "community": 7,
       "norm_label": "exportequipment()"
     },
     {
@@ -3303,7 +3312,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L260",
       "id": "utils_excelexport_exportusers",
-      "community": 3,
+      "community": 7,
       "norm_label": "exportusers()"
     },
     {
@@ -3312,7 +3321,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L266",
       "id": "utils_excelexport_exportactivitylog",
-      "community": 3,
+      "community": 7,
       "norm_label": "exportactivitylog()"
     },
     {
@@ -3321,7 +3330,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L274",
       "id": "utils_excelexport_fetchinbatches",
-      "community": 3,
+      "community": 7,
       "norm_label": "fetchinbatches()"
     },
     {
@@ -3330,7 +3339,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L284",
       "id": "utils_excelexport_buildjobcardworkbook",
-      "community": 3,
+      "community": 7,
       "norm_label": "buildjobcardworkbook()"
     },
     {
@@ -3339,7 +3348,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L357",
       "id": "utils_excelexport_exportjobcardlist",
-      "community": 3,
+      "community": 7,
       "norm_label": "exportjobcardlist()"
     },
     {
@@ -3348,7 +3357,7 @@
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L363",
       "id": "utils_excelexport_exportjobcardsfull",
-      "community": 3,
+      "community": 7,
       "norm_label": "exportjobcardsfull()"
     },
     {
@@ -3393,7 +3402,7 @@
       "source_file": "client/src/utils/formatters.js",
       "source_location": "L17",
       "id": "utils_formatters_validatepassword",
-      "community": 7,
+      "community": 3,
       "norm_label": "validatepassword()"
     },
     {
@@ -3949,7 +3958,7 @@
       "label": "handleValidationErrors()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L39",
+      "source_location": "L42",
       "id": "middleware_validation_handlevalidationerrors",
       "community": 9,
       "norm_label": "handlevalidationerrors()"
@@ -3958,7 +3967,7 @@
       "label": "requiredString()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L60",
+      "source_location": "L63",
       "id": "middleware_validation_requiredstring",
       "community": 9,
       "norm_label": "requiredstring()"
@@ -3967,7 +3976,7 @@
       "label": "optionalEmail()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L76",
+      "source_location": "L79",
       "id": "middleware_validation_optionalemail",
       "community": 9,
       "norm_label": "optionalemail()"
@@ -3976,7 +3985,7 @@
       "label": "optionalPhone()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L90",
+      "source_location": "L93",
       "id": "middleware_validation_optionalphone",
       "community": 9,
       "norm_label": "optionalphone()"
@@ -3985,7 +3994,7 @@
       "label": "uuidParam()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L104",
+      "source_location": "L107",
       "id": "middleware_validation_uuidparam",
       "community": 9,
       "norm_label": "uuidparam()"
@@ -3994,7 +4003,7 @@
       "label": "optionalString()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L116",
+      "source_location": "L119",
       "id": "middleware_validation_optionalstring",
       "community": 9,
       "norm_label": "optionalstring()"
@@ -4003,7 +4012,7 @@
       "label": "optionalBoolean()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L131",
+      "source_location": "L134",
       "id": "middleware_validation_optionalboolean",
       "community": 9,
       "norm_label": "optionalboolean()"
@@ -4012,7 +4021,7 @@
       "label": "optionalEnum()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L144",
+      "source_location": "L147",
       "id": "middleware_validation_optionalenum",
       "community": 9,
       "norm_label": "optionalenum()"
@@ -4021,7 +4030,7 @@
       "label": "buildGrandfatheredPairs()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L348",
+      "source_location": "L351",
       "id": "middleware_validation_buildgrandfatheredpairs",
       "community": 9,
       "norm_label": "buildgrandfatheredpairs()"
@@ -4030,16 +4039,25 @@
       "label": "validateItemTreatments()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L367",
+      "source_location": "L370",
       "id": "middleware_validation_validateitemtreatments",
       "community": 9,
       "norm_label": "validateitemtreatments()"
     },
     {
+      "label": "buildGrandfatheredValues()",
+      "file_type": "code",
+      "source_file": "server/src/middleware/validation.js",
+      "source_location": "L438",
+      "id": "middleware_validation_buildgrandfatheredvalues",
+      "community": 9,
+      "norm_label": "buildgrandfatheredvalues()"
+    },
+    {
       "label": "validateItemMaterials()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L432",
+      "source_location": "L455",
       "id": "middleware_validation_validateitemmaterials",
       "community": 9,
       "norm_label": "validateitemmaterials()"
@@ -4048,7 +4066,7 @@
       "label": "validateItemJobTypes()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L453",
+      "source_location": "L478",
       "id": "middleware_validation_validateitemjobtypes",
       "community": 9,
       "norm_label": "validateitemjobtypes()"
@@ -4057,7 +4075,7 @@
       "label": "validateItemTagList()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L480",
+      "source_location": "L508",
       "id": "middleware_validation_validateitemtaglist",
       "community": 9,
       "norm_label": "validateitemtaglist()"
@@ -4066,7 +4084,7 @@
       "label": "validateItemDrawings()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L499",
+      "source_location": "L528",
       "id": "middleware_validation_validateitemdrawings",
       "community": 9,
       "norm_label": "validateitemdrawings()"
@@ -4075,7 +4093,7 @@
       "label": "validateItemCustomerProperty()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L503",
+      "source_location": "L532",
       "id": "middleware_validation_validateitemcustomerproperty",
       "community": 9,
       "norm_label": "validateitemcustomerproperty()"
@@ -4084,7 +4102,7 @@
       "label": "validateItemDescriptions()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L514",
+      "source_location": "L543",
       "id": "middleware_validation_validateitemdescriptions",
       "community": 9,
       "norm_label": "validateitemdescriptions()"
@@ -5179,6 +5197,15 @@
       "norm_label": "preload.js"
     },
     {
+      "label": ".deleteTag()",
+      "file_type": "code",
+      "source_file": "client/src/services/api.js",
+      "source_location": "L229",
+      "community": 0,
+      "norm_label": ".deletetag()",
+      "id": "services_api_apiservice_deletetag"
+    },
+    {
       "label": ".deleteContact()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
@@ -5354,7 +5381,7 @@
       "file_type": "code",
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L86",
-      "community": 3,
+      "community": 7,
       "norm_label": "fmtdrawings()",
       "id": "utils_excelexport_fmtdrawings"
     },
@@ -5363,7 +5390,7 @@
       "file_type": "code",
       "source_file": "client/src/utils/excelExport.js",
       "source_location": "L88",
-      "community": 3,
+      "community": 7,
       "norm_label": "fmtcustomerproperty()",
       "id": "utils_excelexport_fmtcustomerproperty"
     },
@@ -5516,7 +5543,7 @@
       "file_type": "code",
       "source_file": "client/src/components/JobCardList.jsx",
       "source_location": "L69",
-      "community": 7,
+      "community": 3,
       "norm_label": "mergecolumnorder()",
       "id": "components_jobcardlist_mergecolumnorder"
     },
@@ -7279,9 +7306,9 @@
       "source_file": "client/src/components/common/CheckboxDropdown.jsx",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "client_src_components_common_checkboxdropdown_jsx",
-      "target": "common_checkboxdropdown_checkboxdropdown",
-      "confidence_score": 1.0
+      "target": "common_checkboxdropdown_checkboxdropdown"
     },
     {
       "relation": "contains",
@@ -9082,9 +9109,9 @@
       "source_file": "client/src/components/jobcard/tabs/ItemsTab.jsx",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "client_src_components_jobcard_tabs_itemstab_jsx",
-      "target": "tabs_itemstab_machinelisttoarray",
-      "confidence_score": 1.0
+      "target": "tabs_itemstab_machinelisttoarray"
     },
     {
       "relation": "contains",
@@ -9113,9 +9140,9 @@
       "source_file": "client/src/components/jobcard/tabs/ItemsTab.jsx",
       "source_location": "L155",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tabs_itemstab_itemstab",
-      "target": "tabs_itemstab_machinelisttoarray",
-      "confidence_score": 1.0
+      "target": "tabs_itemstab_machinelisttoarray"
     },
     {
       "relation": "calls",
@@ -10416,11 +10443,21 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "client/src/services/api.js",
-      "source_location": "L228",
+      "source_location": "L229",
+      "weight": 1.0,
+      "source": "services_api_apiservice",
+      "target": "services_api_apiservice_archivetag",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/services/api.js",
+      "source_location": "L230",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "services_api_apiservice",
-      "target": "services_api_apiservice_deletetag"
+      "target": "services_api_apiservice_activatetag"
     },
     {
       "relation": "method",
@@ -10651,6 +10688,16 @@
       "confidence_score": 1.0,
       "source": "services_api_apiservice",
       "target": "services_api_apiservice_deleteqatemplate"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/services/api.js",
+      "source_location": "L228",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "services_api_apiservice",
+      "target": "services_api_apiservice_deletetag"
     },
     {
       "relation": "method",
@@ -11717,6 +11764,17 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "client/src/services/api.js",
+      "source_location": "L230",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "services_api_apiservice_activatetag",
+      "target": "services_api_apiservice_post"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/services/api.js",
       "source_location": "L237",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -12113,11 +12171,11 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "client/src/services/api.js",
-      "source_location": "L228",
+      "source_location": "L229",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "services_api_apiservice_deletetag",
-      "target": "services_api_apiservice_del"
+      "source": "services_api_apiservice_archivetag",
+      "target": "services_api_apiservice_del",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -12150,6 +12208,17 @@
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "services_api_apiservice_deleteqatemplate",
+      "target": "services_api_apiservice_del"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/services/api.js",
+      "source_location": "L228",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "services_api_apiservice_deletetag",
       "target": "services_api_apiservice_del"
     },
     {
@@ -13668,6 +13737,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "server/src/middleware/validation.js",
+      "source_location": "L438",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_src_middleware_validation_js",
+      "target": "middleware_validation_buildgrandfatheredvalues"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/middleware/validation.js",
       "source_location": "L380",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -13811,6 +13890,39 @@
       "confidence_score": 1.0,
       "source": "middleware_validation_validateitemtreatments",
       "target": "middleware_validation_buildgrandfatheredpairs"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/middleware/validation.js",
+      "source_location": "L458",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "middleware_validation_validateitemmaterials",
+      "target": "middleware_validation_buildgrandfatheredvalues"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/middleware/validation.js",
+      "source_location": "L481",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "middleware_validation_validateitemjobtypes",
+      "target": "middleware_validation_buildgrandfatheredvalues"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/middleware/validation.js",
+      "source_location": "L511",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "middleware_validation_validateitemtaglist",
+      "target": "middleware_validation_buildgrandfatheredvalues"
     },
     {
       "relation": "calls",
@@ -14716,9 +14828,9 @@
       "source_file": "server/src/routes/jobcard-time-entries.js",
       "source_location": "L50",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_src_routes_jobcard_time_entries_js",
-      "target": "routes_jobcard_time_entries_resolveworkerid",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_time_entries_resolveworkerid"
     },
     {
       "relation": "contains",
@@ -14726,9 +14838,9 @@
       "source_file": "server/src/routes/jobcard-time-entries.js",
       "source_location": "L67",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "server_src_routes_jobcard_time_entries_js",
-      "target": "routes_jobcard_time_entries_autoassignworker",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_time_entries_autoassignworker"
     },
     {
       "relation": "contains",

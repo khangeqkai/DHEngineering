@@ -57,10 +57,10 @@ export default function ItemsTab({
   onStartTimer,
   onStopTimer
 }) {
-  const { tags: materialTags } = useTags('material');
-  const { tags: jobTypeTags } = useTags('job_type');
-  const { tags: drawingsTags } = useTags('drawings');
-  const { tags: customerPropertyTags } = useTags('customer_property');
+  const { tags: materialTags, loading: materialsLoading, labelOf: materialLabelOf } = useTags('material');
+  const { tags: jobTypeTags, loading: jobTypesLoading, labelOf: jobTypeLabelOf } = useTags('job_type');
+  const { tags: drawingsTags, labelOf: drawingsLabelOf } = useTags('drawings');
+  const { tags: customerPropertyTags, labelOf: customerPropertyLabelOf } = useTags('customer_property');
   const fieldsLocked = readOnly;
   const warningByItem = itemWarningMap(attachmentWarnings);
 
@@ -208,6 +208,10 @@ export default function ItemsTab({
         <div className="line-items-list">
           {lineItems.map(item => {
             const itemEntries = entriesForItem(timeEntries, item.itemNumber);
+            // A saved value whose option was archived isn't in the active list — flag it
+            // (only once the list has loaded, so it doesn't flash on every value at startup).
+            const jobTypeRetired = item.jobType && !jobTypesLoading && !jobTypeTags.some(o => o.value === item.jobType);
+            const materialRetired = item.material && !materialsLoading && !materialTags.some(o => o.value === item.material);
             return (
               <div key={item.id} className="line-item-card">
                 <div className="line-item-badge">#{item.itemNumber}</div>
@@ -217,14 +221,18 @@ export default function ItemsTab({
                     <label>Job Type {!fieldsLocked && <span className="required">*</span>}</label>
                     {fieldsLocked ? (
                       <div className="readonly-value">
-                        {jobTypeTags.find(j => j.value === item.jobType)?.label || item.jobType || '-'}
+                        {item.jobType ? jobTypeLabelOf(item.jobType) : '-'}
                       </div>
                     ) : (
                       <select
+                        className={jobTypeRetired ? 'has-retired' : ''}
                         value={item.jobType || ''}
                         onChange={(e) => updateLineItem(item.id, 'jobType', e.target.value)}
                       >
                         <option value="">Select...</option>
+                        {jobTypeRetired && (
+                          <option className="retired-option" value={item.jobType}>{jobTypeLabelOf(item.jobType)} (retired)</option>
+                        )}
                         {jobTypeTags.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -269,14 +277,18 @@ export default function ItemsTab({
                     <label>Material</label>
                     {fieldsLocked ? (
                       <div className="readonly-value">
-                        {item.material ? (materialTags.find(m => m.value === item.material)?.label || item.material) : '-'}
+                        {item.material ? materialLabelOf(item.material) : '-'}
                       </div>
                     ) : (
                       <select
+                        className={materialRetired ? 'has-retired' : ''}
                         value={item.material || ''}
                         onChange={(e) => updateLineItem(item.id, 'material', e.target.value)}
                       >
                         <option value="">No material</option>
+                        {materialRetired && (
+                          <option className="retired-option" value={item.material}>{materialLabelOf(item.material)} (retired)</option>
+                        )}
                         {materialTags.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -290,7 +302,17 @@ export default function ItemsTab({
                         {(Array.isArray(item.treatments) && item.treatments.length > 0)
                           ? item.treatments.map((t, i) => {
                               const tName = t.value === 'OTHER' ? (t.otherText || 'Other') : t.value;
-                              return <span key={i} className="readonly-badge treatment">{tName} → {t.supplierName || '(no supplier)'}</span>;
+                              // If the saved supplier still exists but is archived, tag it
+                              // "(retired)" so it reads the same as a retired treatment.
+                              const supplier = t.supplierId ? suppliers.find(s => s.id === t.supplierId) : null;
+                              const supplierRetired = supplier && !(supplier.active === 1 || supplier.active === true);
+                              return (
+                                <span key={i} className="readonly-badge treatment">
+                                  {tName} → {t.supplierName
+                                    ? <span className={supplierRetired ? 'retired-option' : ''}>{t.supplierName}{supplierRetired ? ' (retired)' : ''}</span>
+                                    : '(no supplier)'}
+                                </span>
+                              );
                             })
                           : '-'}
                       </div>
@@ -309,6 +331,7 @@ export default function ItemsTab({
                     readOnly={fieldsLocked}
                     value={item.drawingsType || ''}
                     options={drawingsTags.map(o => ({ value: o.value, label: o.label }))}
+                    labelOf={drawingsLabelOf}
                     naValue="N_A"
                     onChange={(v) => updateLineItem(item.id, 'drawingsType', v)}
                     warning={!!warningByItem[item.itemNumber]?.missingDrawing}
@@ -321,6 +344,7 @@ export default function ItemsTab({
                     readOnly={fieldsLocked}
                     value={item.customerProperty || ''}
                     options={customerPropertyTags.map(o => ({ value: o.value, label: o.label }))}
+                    labelOf={customerPropertyLabelOf}
                     naValue="N_A"
                     onChange={(v) => updateLineItem(item.id, 'customerProperty', v)}
                     warning={!!warningByItem[item.itemNumber]?.missingCustomerProperty}

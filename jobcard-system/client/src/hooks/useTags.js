@@ -27,7 +27,9 @@ export function useTags(category) {
         return;
       }
 
-      const data = await api.getTags(category);
+      // Fetch archived options too: pickers use the active-only list, but a job that
+      // already saved a since-retired value still needs its real name for display.
+      const data = await api.getTags(category, true);
       tagCache[category] = data;
       cacheTimestamps[category] = Date.now();
       setRawTags(data);
@@ -42,11 +44,15 @@ export function useTags(category) {
     fetchTags();
   }, [fetchTags]);
 
-  // Convert to { value, label } format for dropdowns
-  const tags = rawTags.map(t => ({
-    value: t.value,
-    label: t.name
-  }));
+  // Pickers offer active options only. (rawTags may include archived ones, which
+  // we keep around purely so labelOf can name a retired value on an existing job.)
+  const tags = rawTags
+    .filter(t => !t.archived)
+    .map(t => ({ value: t.value, label: t.name }));
+
+  // Resolve a stored value to its friendly name, archived included; falls back to
+  // the raw value if the option was renamed away entirely.
+  const labelOf = (value) => rawTags.find(t => t.value === value)?.name || value;
 
   const refresh = useCallback(() => {
     delete tagCache[category];
@@ -55,7 +61,7 @@ export function useTags(category) {
     fetchTags();
   }, [category, fetchTags]);
 
-  return { tags, rawTags, loading, refresh };
+  return { tags, rawTags, loading, refresh, labelOf };
 }
 
 /**

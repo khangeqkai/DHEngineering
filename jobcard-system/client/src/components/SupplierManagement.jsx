@@ -56,6 +56,22 @@ export default function SupplierManagement() {
     loadData();
   }, [loadData]);
 
+  // Refresh just the service options. Called when opening the supplier form so a
+  // treatment that was archived/restored elsewhere shows up without a page reload.
+  const loadServiceTags = useCallback(async () => {
+    try {
+      const tagsData = await api.getTags('treatment');
+      setServiceTags(tagsData);
+    } catch (err) {
+      // Non-fatal: keep whatever list we already have.
+    }
+  }, []);
+
+  const openAddForm = useCallback(() => {
+    loadServiceTags();
+    setShowForm(true);
+  }, [loadServiceTags]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -79,6 +95,7 @@ export default function SupplierManagement() {
   };
 
   const handleEdit = (supplier) => {
+    loadServiceTags();
     setEditingSupplier(supplier);
     setFormData({
       name: supplier.name || '',
@@ -157,25 +174,25 @@ export default function SupplierManagement() {
     }
   };
 
-  const handleDeleteTag = async (tag) => {
+  const handleArchiveTag = async (tag) => {
     const confirmed = await showConfirm({
-      title: 'Delete Service Tag',
-      message: `Are you sure you want to delete "${tag.name}"? It will be removed from all suppliers that use it.`,
-      confirmLabel: 'Delete',
-      confirmVariant: 'danger'
+      title: 'Archive Service',
+      message: `Archive "${tag.name}"? It will no longer appear when choosing services for suppliers, but suppliers that already have it keep it. You can restore it from the Tags & Equipment page.`,
+      confirmLabel: 'Archive',
+      confirmVariant: 'warning'
     });
     if (!confirmed) return;
 
     try {
-      await api.deleteTag(tag.id);
+      await api.archiveTag(tag.id);
       setServiceTags(prev => prev.filter(t => t.id !== tag.id));
       setFormData(prev => ({
         ...prev,
         serviceTagIds: prev.serviceTagIds.filter(id => id !== tag.id)
       }));
-      toast.success('Service tag deleted');
+      toast.success('Service archived');
     } catch (err) {
-      toast.error(err.message || 'Failed to delete service tag');
+      toast.error(err.message || 'Failed to archive service');
     }
   };
 
@@ -195,6 +212,11 @@ export default function SupplierManagement() {
     setCustomTagName('');
   };
 
+  // Services already on the supplier being edited whose tag has since been archived:
+  // held (in serviceTagIds) but absent from the active picker list above.
+  const activeTagIds = new Set(serviceTags.map(t => t.id));
+  const retiredHeldTags = (editingSupplier?.serviceTags || [])
+    .filter(t => formData.serviceTagIds.includes(t.id) && !activeTagIds.has(t.id));
 
   return (
     <div className="supplier-management page-suppliers page-scroll-layout page-enter">
@@ -213,7 +235,7 @@ export default function SupplierManagement() {
         <button className="btn btn-secondary" onClick={() => setShowActivityLog(true)}>
           <History size={16} /> Activity Log
         </button>
-        <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+        <button className="btn btn-primary" onClick={openAddForm}>
           <Plus size={16} /> Add Supplier
         </button>
       </PageHeader>
@@ -320,13 +342,27 @@ export default function SupplierManagement() {
                       className="tag-delete-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeleteTag(tag);
+                        handleArchiveTag(tag);
                       }}
-                      title={`Delete "${tag.name}" tag`}
+                      title={`Archive "${tag.name}"`}
                     >
                       <X size={12} />
                     </button>
                   </span>
+                ))}
+                {/* Services this supplier already holds whose tag was since archived
+                    aren't in the active list above. Show them as "(retired)" chips so
+                    they stay visible and can be unticked — they just can't be re-added. */}
+                {retiredHeldTags.map(tag => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    className="tag-chip selected retired-option"
+                    onClick={() => handleTagToggle(tag.id)}
+                  >
+                    {tag.name} (retired)
+                    <span className="check-mark"><Check size={12} /></span>
+                  </button>
                 ))}
                 {!showCustomTagInput ? (
                   <button
@@ -477,7 +513,7 @@ export default function SupplierManagement() {
               title: 'No suppliers yet',
               description: 'Add your first supplier to get started.',
               actionLabel: 'Add Supplier',
-              onAction: () => setShowForm(true),
+              onAction: openAddForm,
             }}
             defaultSortKey="name"
           />

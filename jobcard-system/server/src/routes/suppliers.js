@@ -144,7 +144,7 @@ router.put('/:id', requireAdmin, (req, res) => {
     if (normalizeEmpty(notes) !== normalizeEmpty(existing.notes)) changes.notes = { from: existing.notes, to: notes || null };
     if (newTagIds !== oldTagIds) {
       const oldTagNames = oldTags.map(t => t.name).sort().join(', ') || null;
-      const allTags = tagQueries.getByCategory.all('treatment') || [];
+      const allTags = tagQueries.getByCategoryIncludeArchived.all('treatment') || [];
       const newTagNames = Array.isArray(serviceTagIds)
         ? serviceTagIds.map(tid => { const t = allTags.find(at => at.id === tid); return t ? t.name : tid; }).sort().join(', ') || null
         : oldTagNames;

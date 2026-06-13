@@ -56,6 +56,7 @@ db.exec(`
     name TEXT NOT NULL,
     value TEXT NOT NULL,
     sort_order INTEGER DEFAULT 0,
+    archived INTEGER DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(category, value)
   );
@@ -354,6 +355,7 @@ const migrations = [
   { table: 'job_items', column: 'job_type', type: 'TEXT' },
   { table: 'job_items', column: 'drawings_type', type: 'TEXT' },
   { table: 'job_items', column: 'customer_property', type: 'TEXT' },
+  { table: 'tags', column: 'archived', type: 'INTEGER DEFAULT 0' },
   { table: 'users', column: 'jobcard_column_order', type: 'TEXT' },
 ];
 
@@ -449,6 +451,14 @@ for (const migration of migrations) {
   } catch (err) {
     // Column might already exist, ignore error
   }
+}
+
+// Indexes on migration-added columns must come after the migrations above so the
+// column exists (on an existing DB the CREATE TABLE block is skipped).
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_tags_archived ON tags(category, archived)');
+} catch (err) {
+  logger.error({ err }, 'Migration: Failed to create idx_tags_archived');
 }
 
 // Seed default tags

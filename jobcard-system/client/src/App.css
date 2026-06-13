@@ -465,6 +465,33 @@
   background: var(--danger-bg-hover);
 }
 
+/* A retired (archived) option still shown on a job that already used it.
+   Amber + bold, not red — it's old, not wrong. Covers native dropdowns and
+   the custom tag picker. */
+.retired-option {
+  color: var(--warning-color, #f59e0b);
+  font-weight: 700;
+}
+
+/* Closed field reads amber only when the currently-picked value is the retired one. */
+select.has-retired,
+.lit-select-btn--retired .lit-select-text {
+  color: var(--warning-color, #f59e0b);
+  font-weight: 700;
+}
+
+/* When the native dropdown is open, the field's amber would bleed onto every
+   row (options inherit the select's colour). Pin the other rows back to normal
+   so only the retired row stays amber. */
+select.has-retired option {
+  color: var(--text-primary);
+  font-weight: 400;
+}
+select.has-retired option.retired-option {
+  color: var(--warning-color, #f59e0b);
+  font-weight: 700;
+}
+
 .dark-mode .btn-warning {
   background: var(--warning-bg);
   color: var(--text-on-saturated);

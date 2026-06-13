@@ -216,14 +216,18 @@ class ApiService {
   activateSupplier(id) { return this._post(`/suppliers/${id}/activate`); }
 
   // Tag endpoints
-  getTags(category) {
-    const query = category ? `?category=${encodeURIComponent(category)}` : '';
+  getTags(category, includeArchived = false) {
+    const params = [];
+    if (category) params.push(`category=${encodeURIComponent(category)}`);
+    if (includeArchived) params.push('includeArchived=true');
+    const query = params.length ? `?${params.join('&')}` : '';
     return this.request(`/tags${query}`);
   }
   getTagCategories() { return this.request('/tags/categories'); }
   createTag(data) { return this._post('/tags', data); }
   updateTag(id, data) { return this._put(`/tags/${id}`, data); }
-  deleteTag(id) { return this._del(`/tags/${id}`); }
+  archiveTag(id) { return this._del(`/tags/${id}`); }
+  activateTag(id) { return this._post(`/tags/${id}/activate`); }
 
   // Activity history (admin only)
   getActivityHistory(limit = 50) { return this.request(`/history?limit=${limit}`); }

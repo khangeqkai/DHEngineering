@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase } from '../utils/formatters';
-import { Plus, Trash2, Edit2, Save, Archive, ArchiveRestore } from 'lucide-react';
+import { Plus, Edit2, Save, Archive, ArchiveRestore } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -27,6 +27,8 @@ export default function TagManagement() {
   // Tag state
   const [tags, setTags] = useState([]);
   const [tagLoading, setTagLoading] = useState(true);
+  const [showArchivedTags, setShowArchivedTags] = useState(false);
+  const [pendingTagId, setPendingTagId] = useState(null);
 
   // Equipment state
   const [machines, setMachines] = useState([]);
@@ -49,14 +51,14 @@ export default function TagManagement() {
     if (isEquipment) return;
     try {
       setTagLoading(true);
-      const data = await api.getTags(selectedCategory);
+      const data = await api.getTags(selectedCategory, showArchivedTags);
       setTags(data);
     } catch (err) {
       toast.error('Failed to load tags');
     } finally {
       setTagLoading(false);
     }
-  }, [selectedCategory, isEquipment]);
+  }, [selectedCategory, isEquipment, showArchivedTags]);
 
   useEffect(() => { if (!isEquipment) loadTags(); }, [loadTags, isEquipment]);
 
@@ -131,11 +133,27 @@ export default function TagManagement() {
     setShowForm(true);
   };
 
-  const handleDeleteTag = async (tag) => {
-    const confirmed = await showConfirm({ title: 'Delete Tag', message: `Delete "${tag.name}"? This cannot be undone.`, confirmLabel: 'Delete', confirmVariant: 'danger' });
+  const handleArchiveTag = async (tag) => {
+    if (pendingTagId !== null) return;
+    const confirmed = await showConfirm({
+      title: 'Archive Option',
+      message: `Archive "${tag.name}"? It will no longer appear in the picker for new jobs, but existing jobs keep it. You can restore it any time.`,
+      confirmLabel: 'Archive',
+      confirmVariant: 'warning'
+    });
     if (!confirmed) return;
-    try { await api.deleteTag(tag.id); toast.success('Tag deleted'); invalidateTagCache(selectedCategory); await loadTags(); }
-    catch (err) { toast.error(err.message || 'Failed to delete tag'); }
+    setPendingTagId(tag.id);
+    try { await api.archiveTag(tag.id); toast.success('Option archived'); invalidateTagCache(selectedCategory); await loadTags(); }
+    catch (err) { toast.error(err.message || 'Failed to archive option'); }
+    finally { setPendingTagId(null); }
+  };
+
+  const handleRestoreTag = async (tag) => {
+    if (pendingTagId !== null) return;
+    setPendingTagId(tag.id);
+    try { await api.activateTag(tag.id); toast.success('Option restored'); invalidateTagCache(selectedCategory); await loadTags(); }
+    catch (err) { toast.error(err.message || 'Failed to restore option'); }
+    finally { setPendingTagId(null); }
   };
 
   // --- Equipment actions ---
@@ -180,16 +198,14 @@ export default function TagManagement() {
   return (
     <div className="tag-management page-scroll-layout page-enter">
       <PageHeader title="Tags &amp; Equipment">
-        {isEquipment && (
-          <label className="show-inactive-label">
-            <input
-              type="checkbox"
-              checked={showInactiveMachines}
-              onChange={(e) => setShowInactiveMachines(e.target.checked)}
-            />
-            Show archived
-          </label>
-        )}
+        <label className="show-inactive-label">
+          <input
+            type="checkbox"
+            checked={isEquipment ? showInactiveMachines : showArchivedTags}
+            onChange={(e) => (isEquipment ? setShowInactiveMachines : setShowArchivedTags)(e.target.checked)}
+          />
+          Show archived
+        </label>
         <button className="btn btn-primary" onClick={openAddForm}>
           <Plus size={16} /> {isEquipment ? 'Add Machine' : 'Add Tag'}
         </button>
@@ -300,11 +316,20 @@ export default function TagManagement() {
             ) : (
               <div className="tag-chips-grid">
                 {tags.map(tag => (
-                  <div key={tag.id} className="tag-chip-card">
-                    <span className="tag-chip-name">{tag.name}</span>
+                  <div key={tag.id} className={`tag-chip-card${tag.archived ? ' archived' : ''}`}>
+                    <span className="tag-chip-name">
+                      {tag.name}
+                      {tag.archived && <span className="tag-archived-badge">Archived</span>}
+                    </span>
                     <div className="tag-chip-actions">
-                      <button className="tag-action-btn" onClick={() => handleEditTag(tag)} title="Edit"><Edit2 size={13} /></button>
-                      <button className="tag-action-btn danger" onClick={() => handleDeleteTag(tag)} title="Delete"><Trash2 size={13} /></button>
+                      {tag.archived ? (
+                        <button className="tag-action-btn restore" disabled={pendingTagId === tag.id} onClick={() => handleRestoreTag(tag)} title="Restore"><ArchiveRestore size={13} /></button>
+                      ) : (
+                        <>
+                          <button className="tag-action-btn" onClick={() => handleEditTag(tag)} title="Edit"><Edit2 size={13} /></button>
+                          <button className="tag-action-btn danger" disabled={pendingTagId === tag.id} onClick={() => handleArchiveTag(tag)} title="Archive"><Archive size={13} /></button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}

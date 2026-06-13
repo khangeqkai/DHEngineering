@@ -279,19 +279,19 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       if (treatmentError) {
         return res.status(400).json({ error: treatmentError });
       }
-      const materialError = validateItemMaterials(data.items);
+      const materialError = validateItemMaterials(data.items, existingItems);
       if (materialError) {
         return res.status(400).json({ error: materialError });
       }
-      const jobTypeError = validateItemJobTypes(data.items);
+      const jobTypeError = validateItemJobTypes(data.items, existingItems);
       if (jobTypeError) {
         return res.status(400).json({ error: jobTypeError });
       }
-      const drawingsError = validateItemDrawings(data.items);
+      const drawingsError = validateItemDrawings(data.items, existingItems);
       if (drawingsError) {
         return res.status(400).json({ error: drawingsError });
       }
-      const propertyError = validateItemCustomerProperty(data.items);
+      const propertyError = validateItemCustomerProperty(data.items, existingItems);
       if (propertyError) {
         return res.status(400).json({ error: propertyError });
       }

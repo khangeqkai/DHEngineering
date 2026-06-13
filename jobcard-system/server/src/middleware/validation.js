@@ -25,7 +25,10 @@ function getSupplierQueries() {
  */
 function getTagValues(category) {
   try {
-    return getTagQueries().getByCategory.all(category).map(t => t.value);
+    // Include archived options: a job keeps whatever value it was saved with, so
+    // the save-check must still recognise a since-retired option. The pickers use
+    // the active-only list separately, so retired options never get offered for new work.
+    return getTagQueries().getByCategoryIncludeArchived.all(category).map(t => t.value);
   } catch (err) {
     // Fallback to empty array if DB not ready
     return [];
@@ -425,18 +428,39 @@ function validateItemTreatments(items, existingItems) {
 }
 
 /**
+ * Collect every value a job already had saved in a given line-item column (raw DB
+ * rows, snake_case). A previously-saved value is "grandfathered": it still passes
+ * validation even after the option was archived or — in the rename edge case —
+ * removed from the tag list entirely. With getTagValues now reading archived
+ * options too, this mainly rescues that rename edge case. Splitting on comma
+ * handles both single-value columns (material/job_type) and comma-joined lists.
+ */
+function buildGrandfatheredValues(existingItems, column) {
+  const values = new Set();
+  if (!Array.isArray(existingItems)) return values;
+  for (const item of existingItems) {
+    const raw = item && item[column];
+    if (!raw) continue;
+    String(raw).split(',').map(v => v.trim()).filter(Boolean).forEach(v => values.add(v));
+  }
+  return values;
+}
+
+/**
  * Validate material field on line items array.
  * Each item.material is a single tag value from the 'material' category.
+ * `existingItems` (optional, raw DB rows) grandfather values already saved on the job.
  * Returns error string or null if valid.
  */
-function validateItemMaterials(items) {
+function validateItemMaterials(items, existingItems) {
   if (!Array.isArray(items)) return null;
   const allowedMaterials = getTagValues('material');
+  const grandfathered = buildGrandfatheredValues(existingItems, 'material');
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     if (item.material) {
       const value = String(item.material).trim();
-      if (value && allowedMaterials.length > 0 && !allowedMaterials.includes(value)) {
+      if (value && allowedMaterials.length > 0 && !allowedMaterials.includes(value) && !grandfathered.has(value)) {
         return `Item #${i + 1} has invalid material value: ${value}`;
       }
     }
@@ -448,18 +472,20 @@ function validateItemMaterials(items) {
  * Validate jobType field on line items array.
  * Each item.jobType is a single tag value from the 'job_type' category.
  * Required: every item must have a jobType.
+ * `existingItems` (optional, raw DB rows) grandfather values already saved on the job.
  * Returns error string or null if valid.
  */
-function validateItemJobTypes(items) {
+function validateItemJobTypes(items, existingItems) {
   if (!Array.isArray(items)) return null;
   const allowedJobTypes = getTagValues('job_type');
+  const grandfathered = buildGrandfatheredValues(existingItems, 'job_type');
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     const value = item.jobType ? String(item.jobType).trim() : '';
     if (!value) {
       return `Item #${i + 1} is missing job type`;
     }
-    if (allowedJobTypes.length > 0 && !allowedJobTypes.includes(value)) {
+    if (allowedJobTypes.length > 0 && !allowedJobTypes.includes(value) && !grandfathered.has(value)) {
       return `Item #${i + 1} has invalid job type value: ${value}`;
     }
   }
@@ -475,11 +501,14 @@ function validateItemJobTypes(items) {
  * @param {string} field - the camelCase item field name (e.g. 'drawingsType')
  * @param {string} category - the tag category to validate against
  * @param {string} label - human-readable label for error messages
+ * @param {Array} existingItems - raw DB rows; values already saved are grandfathered
+ * @param {string} column - the snake_case DB column to read grandfathered values from
  * @returns {string|null} error string or null if valid
  */
-function validateItemTagList(items, field, category, label) {
+function validateItemTagList(items, field, category, label, existingItems, column) {
   if (!Array.isArray(items)) return null;
   const allowed = getTagValues(category);
+  const grandfathered = buildGrandfatheredValues(existingItems, column);
   for (let i = 0; i < items.length; i++) {
     const raw = items[i][field];
     const values = (raw ? String(raw) : '').split(',').map(v => v.trim()).filter(Boolean);
@@ -487,7 +516,7 @@ function validateItemTagList(items, field, category, label) {
       return `Item #${i + 1} is missing ${label}`;
     }
     if (allowed.length > 0) {
-      const invalid = values.filter(v => !allowed.includes(v));
+      const invalid = values.filter(v => !allowed.includes(v) && !grandfathered.has(v));
       if (invalid.length > 0) {
         return `Item #${i + 1} has invalid ${label} values: ${invalid.join(', ')}`;
       }
@@ -496,12 +525,12 @@ function validateItemTagList(items, field, category, label) {
   return null;
 }
 
-function validateItemDrawings(items) {
-  return validateItemTagList(items, 'drawingsType', 'drawings', 'drawings');
+function validateItemDrawings(items, existingItems) {
+  return validateItemTagList(items, 'drawingsType', 'drawings', 'drawings', existingItems, 'drawings_type');
 }
 
-function validateItemCustomerProperty(items) {
-  return validateItemTagList(items, 'customerProperty', 'customer_property', 'customer property');
+function validateItemCustomerProperty(items, existingItems) {
+  return validateItemTagList(items, 'customerProperty', 'customer_property', 'customer property', existingItems, 'customer_property');
 }
 
 /**

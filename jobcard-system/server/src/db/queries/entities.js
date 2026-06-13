@@ -107,7 +107,11 @@ const tagQueries = {
   getById: db.prepare('SELECT * FROM tags WHERE id = ?'),
   getByValue: db.prepare('SELECT * FROM tags WHERE category = ? AND value = ?'),
   getByName: db.prepare('SELECT * FROM tags WHERE category = ? AND name = ?'),
-  getByCategory: db.prepare('SELECT * FROM tags WHERE category = ? ORDER BY sort_order ASC, name ASC'),
+  // Active options only — drives the pickers ("what you can choose today").
+  getByCategory: db.prepare('SELECT * FROM tags WHERE category = ? AND archived = 0 ORDER BY sort_order ASC, name ASC'),
+  // Every option, archived included — drives save-validation and display lookups
+  // ("what was chosen back then"). Active first so the admin "show archived" list reads naturally.
+  getByCategoryIncludeArchived: db.prepare('SELECT * FROM tags WHERE category = ? ORDER BY archived ASC, sort_order ASC, name ASC'),
   getAll: db.prepare('SELECT * FROM tags ORDER BY category ASC, sort_order ASC, name ASC'),
 
   create: db.prepare(`
@@ -116,14 +120,15 @@ const tagQueries = {
   `),
 
   update: db.prepare('UPDATE tags SET name = ?, value = ? WHERE id = ?'),
-  delete: db.prepare('DELETE FROM tags WHERE id = ?'),
+  archive: db.prepare('UPDATE tags SET archived = 1 WHERE id = ?'),
+  unarchive: db.prepare('UPDATE tags SET archived = 0 WHERE id = ?'),
 
   getMaxSortOrder: db.prepare('SELECT MAX(sort_order) as max_sort FROM tags WHERE category = ?'),
   updateSortOrder: db.prepare('UPDATE tags SET sort_order = ? WHERE id = ?'),
 
-  // Count line items still referencing a treatment tag value. Each item's
-  // treatments column is a JSON array of objects keyed by `value`, so we walk
-  // the array with json_each and match on the treatment's value.
+  // Count line items still referencing a tag value, per category. A value still
+  // in use must not be renamed (a rename changes the value and would strand it).
+  // treatments: JSON array of objects keyed by `value` — walk it with json_each.
   countItemsByTreatmentValue: db.prepare(`
     SELECT COUNT(*) as count FROM job_items
     WHERE treatments IS NOT NULL
@@ -131,6 +136,22 @@ const tagQueries = {
         SELECT 1 FROM json_each(job_items.treatments)
         WHERE json_extract(json_each.value, '$.value') = ?
       )
+  `),
+  // material / job_type: single value per line item — plain equality.
+  countItemsByMaterialValue: db.prepare('SELECT COUNT(*) as count FROM job_items WHERE material = ?'),
+  countItemsByJobTypeValue: db.prepare('SELECT COUNT(*) as count FROM job_items WHERE job_type = ?'),
+  // drawings / customer_property: comma-joined list per line item — delimiter-padded
+  // membership so "DH_CAD" doesn't match "DH_CAD_V2". Uses instr (literal substring
+  // match) not LIKE, because tag values contain underscores and "_" is a LIKE
+  // single-char wildcard — LIKE would over-count similar values. A NULL column makes
+  // the concatenation NULL, so instr yields NULL and the row is excluded (correct).
+  countItemsByDrawingsValue: db.prepare(`
+    SELECT COUNT(*) as count FROM job_items
+    WHERE instr(',' || drawings_type || ',', ',' || ? || ',') > 0
+  `),
+  countItemsByCustomerPropertyValue: db.prepare(`
+    SELECT COUNT(*) as count FROM job_items
+    WHERE instr(',' || customer_property || ',', ',' || ? || ',') > 0
   `),
 
   // Supplier tag operations (treatment tags for suppliers)

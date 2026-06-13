@@ -67,7 +67,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     const loadReferenceData = async () => {
       try {
         const [suppliersRes, usersRes, machinesRes, qaLevelsRes] = await Promise.all([
-          api.getSuppliers(),
+          // Include archived suppliers: the pickers filter to active themselves, but a job
+          // that already chose a since-archived supplier needs it here to show it "(retired)".
+          api.getSuppliers(true),
           api.getEmployees(),
           api.getMachines(),
           api.getQaLevels()
