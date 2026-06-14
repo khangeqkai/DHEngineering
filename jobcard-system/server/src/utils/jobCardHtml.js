@@ -57,6 +57,8 @@ const CSS = `
   .f .lbl { font-size:7pt; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted); }
   .f .val { font-size:10.5pt; font-weight:600; margin-top:1px; white-space:normal; overflow-wrap:anywhere; }
   .f .val.na { color:var(--faint); font-weight:500; }
+  .f .val .file { font-size:8.5pt; font-weight:500; color:var(--muted); margin-top:1px; }
+  .f .val .file.missing { color:#dc2626; font-weight:700; }
   .f.qty { flex:0 0 60px; }
   .f.jobtype { flex:0 0 110px; }
   .f.desc { flex:1; }
@@ -77,9 +79,17 @@ const CSS = `
 `;
 
 function renderItem(it) {
-  const drawings = it.drawingsIsNa
-    ? `<div class="val na">${esc(it.drawings || 'N/A')}</div>`
-    : `<div class="val">${esc(it.drawings)}</div>`;
+  let drawings;
+  if (it.drawingsIsNa) {
+    drawings = `<div class="val na">${esc(it.drawings || 'N/A')}</div>`;
+  } else {
+    // Drawing name on top; the attached file name(s) on a second, smaller line —
+    // every matching file listed, or a red "Missing" when none are on disk yet.
+    const files = (it.drawingFiles && it.drawingFiles.length)
+      ? it.drawingFiles.map(f => `<div class="file">${esc(f)}</div>`).join('')
+      : `<div class="file missing">Missing</div>`;
+    drawings = `<div class="val">${esc(it.drawings)}${files}</div>`;
+  }
   return `
   <div class="item">
     <div class="no">${esc(it.number)}</div>
@@ -102,7 +112,8 @@ function renderItem(it) {
  * @param {Object} view - friendly, pre-formatted job card data:
  *   { jobNumber, priorityLabel|null, priorityClass, dateCreated, dueDate, company,
  *     customerProperty, printed, items: [{ number, qty, jobType, description,
- *     material, drawings, drawingsIsNa, treatment }] }
+ *     material, drawings, drawingsIsNa, drawingFiles, drawingsMissing,
+ *     treatment }] }
  * @returns {string} full HTML document
  */
 function renderJobCardHtml(view) {

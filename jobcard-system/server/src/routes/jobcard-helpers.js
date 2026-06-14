@@ -64,6 +64,26 @@ function hasItemFile(names, itemId) {
   });
 }
 
+// Like hasItemFile, but returns the human-readable names of the files attached to
+// a part — with the on-disk "[p{code}]" id tag (and any " (n)" clash suffix)
+// stripped back off, so the printout shows the name the user uploaded ("ABC.pdf"),
+// not the storage name. Used by the job card printout to list a part's drawings.
+function itemFileDisplayNames(names, itemId) {
+  const { partFileCode } = require('./jobcard-files');
+  const code = partFileCode(itemId);
+  if (!code) return [];
+  const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const tagAtEnd = new RegExp(`\\[${escaped}\\](?: \\(\\d+\\))?$`);
+  const stripTag = new RegExp(` \\[${escaped}\\](?: \\(\\d+\\))?$`);
+  return names
+    .filter(name => tagAtEnd.test(name.slice(0, name.length - path.extname(name).length)))
+    .map(name => {
+      const ext = path.extname(name);
+      const base = name.slice(0, name.length - ext.length).replace(stripTag, '');
+      return `${base}${ext}`;
+    });
+}
+
 // Detect "declared but no file" gaps for one job by comparing each line item's
 // declarations against what's actually on disk:
 //   - a drawing declared but no file named for that part in Job Files
@@ -327,12 +347,22 @@ function formatAuDate(raw) {
 function buildJobCardView(jobcardId, jc) {
   const rows = jobItemQueries.getByJobcard.all(jobcardId);
 
+  // Read the Job Files folder once so each part's drawing can show the actual
+  // file attached to it (or flag a missing one). Empty when storage isn't set up
+  // or the folder is missing — in which case every declared drawing shows missing.
+  const { listCategoryFileNames } = require('./jobcard-files');
+  const jobFileNames = listCategoryFileNames(jobcardId, ['job-files'])['job-files'] || [];
+
   const items = rows.map(r => {
     const dVals = splitValues(r.drawings_type);
     const drawingsIsNa = dVals.length === 0 || (dVals.length === 1 && dVals[0] === 'N_A');
     const drawings = drawingsIsNa
       ? 'N/A'
       : [...new Set(dVals.map(v => tagName('drawings', v)))].join(', ');
+    // For a declared drawing, find the file(s) attached to this exact part and
+    // show their human-readable names; "missing" when none are on disk yet.
+    const drawingFiles = drawingsIsNa ? [] : itemFileDisplayNames(jobFileNames, r.id);
+    const drawingsMissing = !drawingsIsNa && drawingFiles.length === 0;
     const treatments = parseTreatments(r.treatments).map(t => {
       const name = t.value === 'OTHER' ? (t.otherText || 'Other') : tagName('treatment', t.value);
       return t.supplierName ? `${name} - ${t.supplierName}` : name;
@@ -345,6 +375,8 @@ function buildJobCardView(jobcardId, jc) {
       material: tagName('material', r.material) || '—',
       drawings,
       drawingsIsNa,
+      drawingFiles,
+      drawingsMissing,
       treatment: treatments.length ? treatments.join(', ') : 'None'
     };
   });
