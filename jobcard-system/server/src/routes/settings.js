@@ -23,10 +23,6 @@ const {
 // All settings routes require authentication
 router.use(authenticate);
 
-// Global job card printout template management (admin only, enforced within).
-const { templateRouter: jobCardTemplateRouter } = require('./jobcard-printout');
-router.use('/job-card-template', jobCardTemplateRouter);
-
 // Helper: Convert snake_case to camelCase
 function snakeToCamel(str) {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());

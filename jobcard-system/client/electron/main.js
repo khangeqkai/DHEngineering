@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, globalShortcut, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, globalShortcut, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -269,48 +269,43 @@ ipcMain.handle('get-app-info', () => {
   };
 });
 
-// Helper: print in a hidden BrowserWindow with cancel safety
-function printInHiddenWindow(loadFn, options = {}) {
-  let printWindow = null;
-  return new Promise(async (resolve) => {
-    try {
-      printWindow = new BrowserWindow({
-        show: false,
-        webPreferences: { contextIsolation: true, nodeIntegration: false }
-      });
-
-      await loadFn(printWindow);
-
-      printWindow.webContents.print(
-        {
-          silent: options.silent || false,
-          printBackground: true,
-          deviceName: options.printerName || '',
-          pageSize: options.pageSize || 'A4'
-        },
-        (success, failureReason) => {
-          if (printWindow && !printWindow.isDestroyed()) printWindow.close();
-          resolve({ success, cancelled: !success, failureReason: failureReason || '' });
-        }
-      );
-    } catch (err) {
-      if (printWindow && !printWindow.isDestroyed()) printWindow.close();
-      resolve({ success: false, cancelled: false, failureReason: err.message });
-    }
-  });
+// Delete leftover job card printouts from previous prints so the temp folder
+// doesn't grow without bound on a shared workstation. Each print writes one
+// `Job Card …html` file and opens it in the browser; once a new print starts,
+// any earlier ones have already been opened and are safe to remove.
+async function sweepOldJobCardPrintouts(tempDir) {
+  try {
+    const entries = await fs.promises.readdir(tempDir);
+    await Promise.all(
+      entries
+        .filter(name => /^Job Card .*\.html$/.test(name))
+        .map(name => fs.promises.unlink(path.join(tempDir, name)).catch(() => {}))
+    );
+  } catch {
+    // Temp folder unreadable — nothing to sweep.
+  }
 }
 
-ipcMain.handle('print-html', async (event, { html, options = {} }) => {
-  return printInHiddenWindow(async (win) => {
-    const encoded = Buffer.from(html, 'utf-8').toString('base64');
-    await win.loadURL(`data:text/html;base64,${encoded}`);
-  }, options);
-});
-
-ipcMain.handle('print-file', async (event, { filePath, options = {} }) => {
-  return printInHiddenWindow(async (win) => {
-    await win.loadFile(filePath);
-  }, options);
+// Open the job card in the OS default browser, which auto-opens its print
+// preview on load. The app itself can't show a print preview (Electron ships
+// without that screen), so we hand the card to the real browser — one click,
+// preview appears.
+ipcMain.handle('print-html', async (event, { html }) => {
+  try {
+    const tempDir = app.getPath('temp');
+    await sweepOldJobCardPrintouts(tempDir);
+    // Inject an auto-print trigger so the browser pops its print preview itself.
+    const autoPrint = '<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},200);});</script>';
+    const doc = html.includes('</body>') ? html.replace('</body>', autoPrint + '</body>') : html + autoPrint;
+    const tmpHtml = path.join(tempDir, `Job Card ${Date.now()}.html`);
+    await fs.promises.writeFile(tmpHtml, doc, 'utf-8');
+    const openErr = await shell.openPath(tmpHtml);
+    if (openErr) return { success: false, failureReason: openErr };
+    return { success: true };
+  } catch (err) {
+    logger.error({ err }, 'Open job card for printing failed');
+    return { success: false, failureReason: err.message };
+  }
 });
 
 // Save file dialog (for Excel export etc.)

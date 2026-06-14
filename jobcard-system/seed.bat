@@ -14,6 +14,6 @@ if /i not "%confirm%"=="y" (
     exit /b 0
 )
 echo.
-node server/scripts/seed-mock-data.js
+node server/scripts/seed-mock-data.js %*
 echo.
 pause

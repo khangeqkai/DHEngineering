@@ -6,10 +6,12 @@ const logger = require('../utils/logger');
 const { sanitizeFolderName, isWithinBase, findQaLevelFolder, ensureCompanyFolder, resolveCompanyFolder } = require('../utils/folderCreation');
 const { fillPdfTemplate } = require('../utils/pdfFiller');
 const {
+  jobcardQueries,
   jobItemQueries,
   jobAssigneeQueries,
   qaLevelQueries,
   qaLevelTemplateQueries,
+  tagQueries,
   getSettings
 } = require('../db/database');
 
@@ -277,7 +279,7 @@ function buildQaFillData(jobcardId, fields) {
   }));
   const allTreatments = itemsForPdf.flatMap(i => i.treatments).map(t => {
     const name = t.value === 'OTHER' ? (t.otherText || 'Other') : t.value;
-    return t.supplierName ? `${name} → ${t.supplierName}` : name;
+    return t.supplierName ? `${name} - ${t.supplierName}` : name;
   });
   const allJobTypes = [...new Set(items.map(i => i.job_type).filter(Boolean))];
   // Drawings + customer property now live per line item; aggregate (de-duped)
@@ -285,13 +287,91 @@ function buildQaFillData(jobcardId, fields) {
   const splitValues = raw => (raw ? String(raw) : '').split(',').map(v => v.trim()).filter(Boolean);
   const allDrawings = [...new Set(items.flatMap(i => splitValues(i.drawings_type)))];
   const allProperty = [...new Set(items.flatMap(i => splitValues(i.customer_property)))];
+  // The job's creation date, formatted for any "date created" PDF field.
+  const jc = jobcardQueries.getById.get(jobcardId);
   return {
     ...fields,
+    dateCreated: jc ? formatAuDate(jc.created_at) : null,
     jobType: allJobTypes.join(',') || null,
     treatmentRequired: allTreatments.join(', ') || null,
     drawingsType: allDrawings.join(',') || null,
     customerProperty: allProperty.join(',') || null,
     items: itemsForPdf
+  };
+}
+
+// ─── Job card printout (generated HTML) ───
+// Resolve a stored tag value to its friendly name; fall back to the raw value
+// (covers values whose option was archived/renamed away).
+const PRIORITY_LABELS = { NONE: 'None', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' };
+
+function tagName(category, value) {
+  if (value == null || value === '') return '';
+  const row = tagQueries.getByValue.get(category, value);
+  return row ? row.name : value;
+}
+
+function splitValues(raw) {
+  return String(raw || '').split(',').map(v => v.trim()).filter(Boolean);
+}
+
+function formatAuDate(raw) {
+  if (!raw) return '';
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString('en-AU');
+}
+
+// Build friendly, pre-formatted data for the generated job card printout
+// (rendered by renderJobCardHtml in utils/jobCardHtml.js). `jc` is the raw
+// jobcards row.
+function buildJobCardView(jobcardId, jc) {
+  const rows = jobItemQueries.getByJobcard.all(jobcardId);
+
+  const items = rows.map(r => {
+    const dVals = splitValues(r.drawings_type);
+    const drawingsIsNa = dVals.length === 0 || (dVals.length === 1 && dVals[0] === 'N_A');
+    const drawings = drawingsIsNa
+      ? 'N/A'
+      : [...new Set(dVals.map(v => tagName('drawings', v)))].join(', ');
+    const treatments = parseTreatments(r.treatments).map(t => {
+      const name = t.value === 'OTHER' ? (t.otherText || 'Other') : tagName('treatment', t.value);
+      return t.supplierName ? `${name} - ${t.supplierName}` : name;
+    });
+    return {
+      number: r.item_number,
+      qty: (r.qty == null || r.qty === '') ? '—' : r.qty,
+      jobType: tagName('job_type', r.job_type) || '—',
+      description: r.description || '',
+      material: tagName('material', r.material) || '—',
+      drawings,
+      drawingsIsNa,
+      treatment: treatments.length ? treatments.join(', ') : 'None'
+    };
+  });
+
+  // Job-wide customer property: friendly, de-duped, "N/A" dropped.
+  const cpNames = [...new Set(
+    rows
+      .flatMap(r => splitValues(r.customer_property))
+      .filter(v => v !== 'N_A')
+      .map(v => tagName('customer_property', v))
+  )];
+
+  const priorityKey = (jc.priority || 'NONE').toUpperCase();
+  const priorityLabel = priorityKey === 'NONE' ? null : (PRIORITY_LABELS[priorityKey] || priorityKey);
+
+  return {
+    jobNumber: jc.job_number,
+    priorityLabel,
+    priorityClass: priorityKey === 'HIGH' ? 'high' : 'normal',
+    dateCreated: formatAuDate(jc.created_at),
+    dueDate: formatAuDate(jc.due_date),
+    // The shop-floor printout shows the company so workers know whose job it is.
+    // Contact name / phone / email are never on the printout for anyone.
+    company: jc.company_name || '',
+    customerProperty: cpNames.length ? cpNames.join(', ') : null,
+    printed: new Date().toLocaleDateString('en-AU'),
+    items
   };
 }
 
@@ -498,4 +578,4 @@ function verifyQaTemplatesAvailable(qaLevelId) {
   return { ok: true };
 }
 
-module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob, verifyQaTemplatesAvailable, computeAttachmentWarnings };
+module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, buildJobCardView, copyQaTemplatesForJob, verifyQaTemplatesAvailable, computeAttachmentWarnings };

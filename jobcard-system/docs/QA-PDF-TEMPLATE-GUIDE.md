@@ -1,11 +1,10 @@
 # QA PDF Template Guide
 
-This guide covers **two separate kinds of PDF template**, both of which use the same fillable field names listed below:
+This guide covers **quality form (QA level) PDF templates** — per-QA-level inspection templates that are printed, hand-filled, and scanned back. A returned form is **only required before invoicing** when the QA level's **"Requires completed form returned"** switch is on; levels with it off are print-only and never trigger the missing-quality-form warning.
 
-1. **Job card printout** — ONE global template, uploaded once under **Settings → Job Card Printout**. When anyone clicks **Print job card** on a job, this template is filled with that job's data and saved as a single file at the top of the job's folder (`Job Card {jobNumber}.pdf`), then printed. It is a print-and-keep summary: nothing is scanned back, and it is **never** counted as a missing file before invoicing.
-2. **Quality forms** — per-QA-level inspection templates (see below). These are printed, hand-filled, and scanned back. A returned form is **only required before invoicing** when the QA level's **"Requires completed form returned"** switch is on; levels with it off are print-only and never trigger the missing-quality-form warning.
+(The **job card printout** is a separate feature and does **not** use a PDF template — it is generated on demand as an HTML page from the job's current data and printed directly. See `server/src/utils/jobCardHtml.js`.)
 
-When creating custom PDF templates (either kind), you can include **fillable form fields** that the system will auto-populate with job card data.
+When creating a quality form template, you can include **fillable form fields** that the system will auto-populate with job card data.
 
 ## How It Works
 
@@ -35,7 +34,7 @@ Use any of these names when creating fillable text fields in your PDF form. Fiel
 | Quote Reference | `quote_reference`, `quotereference`, `quote_ref`, `quoteref` |
 | Drawings Type | `drawings_type`, `drawingstype`, `drawings` |
 | Customer Property | `customer_property`, `customerproperty` |
-| Treatment Required | `treatment`, `treatment_required`, `treatmentrequired` (formatted as `Treatment → Supplier, ...` across all items) |
+| Treatment Required | `treatment`, `treatment_required`, `treatmentrequired` (formatted as `Treatment - Supplier, ...` across all items) |
 | Repeat Job (Yes/No) | `repeat_job`, `repeatjob` |
 | Repeat Job Reference | `repeat_job_reference`, `repeatjobreference`, `repeat_ref`, `repeatref` |
 
@@ -50,7 +49,8 @@ Job items use indexed field names. Add as many rows as you need (up to 50). Unfi
 | Description | `item_N_description` | `item_1_description` |
 | Job Type | `item_N_job_type` | `item_1_job_type` |
 | Material | `item_N_material` | `item_1_material` |
-| Treatment | `item_N_treatment` (formatted as `Treatment → Supplier, ...`) | `item_1_treatment` |
+| Drawings | `item_N_drawings` | `item_1_drawings` |
+| Treatment | `item_N_treatment` (formatted as `Treatment - Supplier, ...`) | `item_1_treatment` |
 
 Where `N` is the 1-based item index (1, 2, 3, ...). For example, a template with 5 item rows would have fields: `item_1_number`, `item_1_qty`, `item_1_description`, `item_2_number`, ..., `item_5_description`.
 

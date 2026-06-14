@@ -7,9 +7,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   print: (options) => ipcRenderer.invoke('print', options),
   printToPDF: (options) => ipcRenderer.invoke('print-to-pdf', options),
 
-  // Print HTML/file in hidden window
+  // Print the job card HTML via the OS default browser
   printHtml: (data) => ipcRenderer.invoke('print-html', data),
-  printFile: (data) => ipcRenderer.invoke('print-file', data),
 
   // Camera functions
   getCameras: () => ipcRenderer.invoke('get-cameras'),

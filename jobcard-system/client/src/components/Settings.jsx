@@ -3,7 +3,6 @@ import BottomSheet from './common/BottomSheet';
 import { useSettings } from '../hooks/useSettings';
 import SecurityCard from './settings/SecurityCard';
 import FoldersCard from './settings/FoldersCard';
-import JobCardTemplateCard from './settings/JobCardTemplateCard';
 import DataBackupCard from './settings/DataBackupCard';
 
 export default function Settings() {
@@ -154,7 +153,6 @@ export default function Settings() {
           <>
             <SecurityCard s={s} />
             <FoldersCard s={s} />
-            <JobCardTemplateCard s={s} />
           </>
         )}
 

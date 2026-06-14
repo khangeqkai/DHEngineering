@@ -18,6 +18,11 @@ const refData = require('./seed-data');
 
 const uid = (prefix) => `${prefix}:${uuidv4()}`;
 
+// `--no-jobs` (alias `--empty`) seeds everything EXCEPT job cards, so the app
+// starts with users/suppliers/contacts/machines/tags/QA levels in place and an
+// empty job list — handy for testing job-card creation one at a time.
+const SKIP_JOBS = process.argv.slice(2).some(a => ['--no-jobs', '--empty'].includes(a));
+
 // Give every reference record an id up front so the rest of the script can wire
 // relationships (assignees, supplier links, treatment→supplier defaults) by id.
 const users = refData.users.map(u => ({ ...u, id: uid('user') }));
@@ -193,7 +198,7 @@ function buildTreatments(treatmentStr, otherText) {
 
 // Generated job set covering every status, job type, material, treatment, drawing,
 // customer-property value, the repeat flag, and every priority — see seed-scenarios.js.
-const scenarios = buildScenarios(contacts, qaLevels, {
+const scenarios = SKIP_JOBS ? [] : buildScenarios(contacts, qaLevels, {
   workerCount: workers.length,
   machineNumbers: machines.map(m => m.number),
 });
@@ -310,7 +315,9 @@ const createJobs = db.transaction(() => {
 });
 
 createJobs();
-console.log(`Created ${scenarios.length} job cards covering every status, job type, material, treatment, drawing, and customer-property value.`);
+console.log(SKIP_JOBS
+  ? 'Skipped job cards (--no-jobs): job list starts empty, next job number is DH-00001.'
+  : `Created ${scenarios.length} job cards covering every status, job type, material, treatment, drawing, and customer-property value.`);
 
 // ─── ACTIVITY HISTORY TRAIL ───
 console.log('Generating activity history...');
@@ -334,18 +341,23 @@ for (const s of suppliers) {
 }
 console.log('Supplier tags linked.');
 
-const lastJob = `DH-${String(scenarios.length).padStart(5, '0')}`;
-const nextJob = `DH-${String(scenarios.length + 1).padStart(5, '0')}`;
 console.log('\n✓ Mock data seeded successfully!');
 console.log(`  - ${users.length} users (all PIN 1234): ${users.map(u => u.username).join(', ')}`);
 console.log(`  - ${contacts.length} contacts (Australian industrial companies across WA/NSW/VIC/QLD)`);
 console.log(`  - ${suppliers.length} suppliers covering every treatment type`);
 console.log(`  - ${machines.length} machines`);
 console.log(`  - ${qaLevels.length} QA levels (${qaLevels.map(q => q.name).join(', ')})`);
-console.log(`  - ${scenarios.length} job cards covering every status, job type, material, treatment, drawing, and customer-property value`);
-console.log('  - Repeat-job flag, every priority (incl. None), and a free-text "Other" treatment all represented');
-console.log('  - Quote references on all jobs; PO numbers on post-quote jobs');
-console.log('  - Scrap pieces, a live running timer, and Saturday special labour recorded');
-console.log('  - Pricing on in-progress, treatment, done, and invoiced jobs');
-console.log('  - Activity history backfilled for setup, jobs, notes, and timers');
-console.log(`  - Job numbering: DH-00001 to ${lastJob}, next: ${nextJob}`);
+if (SKIP_JOBS) {
+  console.log('  - 0 job cards (--no-jobs): create them one at a time in the app to test');
+  console.log('  - Job numbering: starts at DH-00001');
+} else {
+  const lastJob = `DH-${String(scenarios.length).padStart(5, '0')}`;
+  const nextJob = `DH-${String(scenarios.length + 1).padStart(5, '0')}`;
+  console.log(`  - ${scenarios.length} job cards covering every status, job type, material, treatment, drawing, and customer-property value`);
+  console.log('  - Repeat-job flag, every priority (incl. None), and a free-text "Other" treatment all represented');
+  console.log('  - Quote references on all jobs; PO numbers on post-quote jobs');
+  console.log('  - Scrap pieces, a live running timer, and Saturday special labour recorded');
+  console.log('  - Pricing on in-progress, treatment, done, and invoiced jobs');
+  console.log('  - Activity history backfilled for setup, jobs, notes, and timers');
+  console.log(`  - Job numbering: DH-00001 to ${lastJob}, next: ${nextJob}`);
+}
