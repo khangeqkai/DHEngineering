@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  FolderOpen, Upload, Camera, X, ArrowLeft, Check, Printer, Save,
-  FileText, Image as ImageIcon, ClipboardCheck, Package, FileStack
+  FolderOpen, Upload, Camera, X, ArrowLeft, Check, Minus, Printer, Save,
+  FileText, Image as ImageIcon, FileStack, Eye
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useCamera } from './useCamera';
 import { useJobFiles, CATEGORY_LABELS, ACCEPT_ATTR } from './useJobFiles';
 import { usePacketPrint } from './usePacketPrint';
+import { api } from '../../services/api';
 import './JobPaperworkHub.css';
 
 // One place for a job's paperwork: the generated job card plus the three file
@@ -14,18 +16,37 @@ import './JobPaperworkHub.css';
 // a ticked selection into one combined packet to print or save. Available to every
 // user (workers included), so it lives on a header button, not an admin-only tab.
 
-// Order the packet (and the folder sections) follow: drawings, forms, property.
-const ORDER = ['job-files', 'qa-form-files', 'customer-property-files'];
+// Order the packet (and the folder sections) follow: job files, customer
+// property, then QA forms last.
+const ORDER = ['job-files', 'customer-property-files', 'qa-form-files'];
 // Most files that can go in one combined packet (matches the server's cap). The
 // job card itself rides separately and doesn't count toward this.
 const MAX_PACKET_FILES = 20;
-const SECTION_ICONS = {
-  'job-files': FileText,
-  'qa-form-files': ClipboardCheck,
-  'customer-property-files': Package
-};
 
 const keyOf = (category, filename) => `${category}::${filename}`;
+
+// A friendly one-word "what kind of file" line shown under each name.
+function fileKindLabel(f) {
+  if ((f.mimeType || '').startsWith('image/')) return 'Image';
+  const dot = f.name.lastIndexOf('.');
+  const ext = dot > 0 ? f.name.slice(dot + 1).toUpperCase() : '';
+  if (ext === 'PDF') return 'PDF document';
+  return ext ? `${ext} file` : 'File';
+}
+
+// The one selection control used everywhere (rows, groups, the job card and the
+// master switch) so the whole panel reads consistently. `state` is a tri-state:
+// 'all' shows a tick, 'some' shows a dash (a group only partly picked), 'none' is
+// empty. A plain boolean works too for single items.
+function PickCircle({ state }) {
+  const s = state === true ? 'all' : state === false ? 'none' : state;
+  return (
+    <span className={`hub-check hub-check--${s}`} aria-hidden="true">
+      {s === 'all' && <Check size={13} strokeWidth={3} />}
+      {s === 'some' && <Minus size={13} strokeWidth={3} />}
+    </span>
+  );
+}
 
 export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarnings = null }) {
   const [open, setOpen] = useState(false);
@@ -33,6 +54,8 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
   const [cameraCategory, setCameraCategory] = useState(null);
   const [selected, setSelected] = useState(() => new Set());
   const [cardTicked, setCardTicked] = useState(true);
+  const [cardPreview, setCardPreview] = useState(null); // generated job-card HTML, shown in the viewer
+  const [cardPreviewLoading, setCardPreviewLoading] = useState(false);
   const seenRef = useRef(new Set());
   const pendingUploadCat = useRef(null);
   const fileInputRef = useRef(null);
@@ -79,6 +102,32 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
     });
   }, []);
 
+  // --- Selection helpers (whole-group + whole-job pick/clear) ---
+  const sectionFileKeys = useCallback(
+    (cat) => (files.filesByCategory[cat] || []).map(f => keyOf(cat, f.name)),
+    [files.filesByCategory]
+  );
+
+  const sectionState = useCallback((cat) => {
+    const keys = sectionFileKeys(cat);
+    if (keys.length === 0) return 'empty';
+    const picked = keys.filter(k => selected.has(k)).length;
+    return picked === 0 ? 'none' : picked === keys.length ? 'all' : 'some';
+  }, [sectionFileKeys, selected]);
+
+  const toggleSection = useCallback((cat) => {
+    const keys = sectionFileKeys(cat);
+    const fullySelected = sectionState(cat) === 'all';
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (fullySelected) keys.forEach(k => next.delete(k));
+      else keys.forEach(k => next.add(k));
+      return next;
+    });
+  }, [sectionFileKeys, sectionState]);
+
+  const allFileKeys = useCallback(() => ORDER.flatMap(sectionFileKeys), [sectionFileKeys]);
+
   // Build the ordered {category, filename} list from the current ticks.
   const selectedItems = () => {
     const items = [];
@@ -90,10 +139,18 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
     return items;
   };
 
-  const totalCount = ORDER.reduce((sum, c) => sum + (files.counts[c] || 0), 0);
+  const totalFileCount = allFileKeys().length;
+  const totalSelectable = totalFileCount + 1; // + the job card
   const tickedFileCount = selectedItems().length;
   const tickedCount = tickedFileCount + (cardTicked ? 1 : 0);
   const overFileLimit = tickedFileCount > MAX_PACKET_FILES;
+  // Whole-job pick state: card + every file, for the master Select all / Clear all.
+  const masterState = tickedCount === 0 ? 'none'
+    : tickedCount === totalSelectable ? 'all' : 'some';
+
+  const selectAll = () => { setCardTicked(true); setSelected(new Set(allFileKeys())); };
+  const clearAll = () => { setCardTicked(false); setSelected(new Set()); };
+  const toggleMaster = () => { if (masterState === 'all') clearAll(); else selectAll(); };
 
   const closeAll = useCallback(() => {
     camera.stopCamera();
@@ -101,6 +158,7 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
     seenRef.current = new Set();
     setSelected(new Set());
     setCardTicked(true);
+    setCardPreview(null);
     setView('hub');
     setCameraCategory(null);
     setOpen(false);
@@ -112,6 +170,7 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
     if (!open) return;
     const onKeyDown = (e) => {
       if (e.key === 'Escape') {
+        if (cardPreview) { setCardPreview(null); return; }
         if (files.viewerUrl) { files.closeViewer(); return; }
         if (files.lightboxPhoto) { files.closeLightbox(); return; }
         if (view === 'camera') { camera.stopCamera(); setView('hub'); setCameraCategory(null); return; }
@@ -137,7 +196,7 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, view, files, camera, closeAll]);
+  }, [open, view, files, camera, closeAll, cardPreview]);
 
   // Move focus into the panel when it opens so Tab is trapped from the first press.
   useEffect(() => {
@@ -177,59 +236,127 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
   const savePacket = () => packet.savePacket({ items: selectedItems(), includeJobCard: cardTicked });
   const printOne = (cat, name) => packet.printPacket({ items: [{ category: cat, filename: name }], includeJobCard: false });
   const printCardOnly = () => packet.printPacket({ items: [], includeJobCard: true });
+  // Preview the job card the same way the other files preview: fetch the freshly
+  // generated page and show it in the document viewer.
+  const previewCard = async () => {
+    setCardPreviewLoading(true);
+    try {
+      const { html } = await api.printJobCard(jobcardId);
+      if (html) setCardPreview(html);
+      else toast.error('Could not build the job card preview');
+    } catch (err) {
+      toast.error(err.message || 'Could not build the job card preview');
+    } finally {
+      setCardPreviewLoading(false);
+    }
+  };
+
+  // The generated job card lives pinned at the top of the Job Files group (it is
+  // part of the job's paperwork, not its own category), but stays independently
+  // tickable with its own preview/print.
+  const renderJobCardRow = () => (
+    <li className={`hub-file-row${cardTicked ? '' : ' off'}`}>
+      <button
+        type="button"
+        className="hub-row-toggle"
+        onClick={() => setCardTicked(v => !v)}
+        aria-pressed={cardTicked}
+        title={cardTicked ? 'Tap to leave the job card out' : 'Tap to add the job card'}
+      >
+        <PickCircle state={cardTicked} />
+        <span className="hub-thumb"><FileStack size={18} /></span>
+        <span className="hub-namecell">
+          <span className="hub-file-name">Job Card <span className="hub-pin-tag">pinned</span></span>
+          <span className="hub-file-sub">Generated automatically</span>
+        </span>
+      </button>
+      <div className="hub-row-tools">
+        <button type="button" className="hub-icon-btn" onClick={previewCard} disabled={cardPreviewLoading} title="Preview the job card">
+          <Eye size={15} />
+        </button>
+        <button type="button" className="hub-icon-btn" onClick={printCardOnly} disabled={packet.building} title="Print just the job card">
+          <Printer size={15} />
+        </button>
+      </div>
+    </li>
+  );
 
   const renderSection = (cat) => {
     const list = files.filesByCategory[cat] || [];
     const loading = !!files.loadingByCategory[cat];
-    const Icon = SECTION_ICONS[cat];
+    const isJobFiles = cat === 'job-files';
     const showQaWarning = cat === 'qa-form-files' && attachmentWarnings?.missingQaForms;
+    const state = sectionState(cat);
+    const pickedHere = list.filter(f => selected.has(keyOf(cat, f.name))).length;
+    const canToggleGroup = list.length > 0;
     return (
-      <div className="hub-section" key={cat}>
-        <div className="hub-section-head">
-          <Icon size={16} className="hub-section-icon" />
-          <span className="hub-section-name">{CATEGORY_LABELS[cat]}</span>
+      <div className="hub-group" key={cat}>
+        <div className="hub-group-head">
+          {/* Quiet section label. Clicking it picks/clears the whole group. */}
+          <button
+            type="button"
+            className="hub-group-label-btn"
+            onClick={() => toggleSection(cat)}
+            disabled={!canToggleGroup}
+            title={canToggleGroup ? (state === 'all' ? 'Clear this whole group' : 'Pick this whole group') : undefined}
+          >
+            <span className="hub-group-label">{CATEGORY_LABELS[cat]}</span>
+            {canToggleGroup && <span className="hub-group-meta">{pickedHere}/{list.length}</span>}
+          </button>
           {showQaWarning && (
-            <span className="hub-warning" title="A completed quality form hasn't been brought back yet">⚠ Form missing</span>
+            <span className="hub-group-warn" title="A completed quality form hasn't been brought back yet">· form missing</span>
           )}
-          <div className="hub-section-actions">
-            <button type="button" className="hub-add-btn" onClick={() => pickFiles(cat)} disabled={files.uploading}>
-              <Upload size={13} /> {files.uploading ? 'Adding…' : 'Add file'}
-            </button>
-            <button type="button" className="hub-add-btn" onClick={() => openCamera(cat)}>
-              <Camera size={13} /> Camera
-            </button>
-          </div>
+          <span className="hub-group-spacer" />
+          <button type="button" className="hub-pillbtn" onClick={() => pickFiles(cat)} disabled={files.uploading} title="Add a file">
+            <Upload size={14} /> Add
+          </button>
+          <button type="button" className="hub-pillbtn" onClick={() => openCamera(cat)} title="Take a photo">
+            <Camera size={14} /> Photo
+          </button>
         </div>
-        {loading ? (
-          <div className="hub-loading"><div className="hub-loading-bar" /></div>
-        ) : list.length === 0 ? (
-          <p className="hub-empty">No files yet</p>
-        ) : (
+        <div className="hub-card">
           <ul className="hub-file-list">
-            {list.map(f => {
+            {isJobFiles && renderJobCardRow()}
+            {!loading && list.map(f => {
               const isImage = f.mimeType?.startsWith('image/');
               const thumb = files.thumbnails.get(`${cat}/${f.name}`);
               const FileIcon = isImage ? ImageIcon : FileText;
               const checked = selected.has(keyOf(cat, f.name));
               return (
-                <li key={f.name} className="hub-file-row">
-                  <label className="hub-tick">
-                    <input type="checkbox" checked={checked} onChange={() => toggle(cat, f.name)} />
-                  </label>
-                  <button type="button" className="hub-file-main" onClick={() => files.handleViewFile(f, cat)} title={f.name}>
+                <li key={f.name} className={`hub-file-row${checked ? '' : ' off'}`}>
+                  <button
+                    type="button"
+                    className="hub-row-toggle"
+                    onClick={() => toggle(cat, f.name)}
+                    aria-pressed={checked}
+                    title={checked ? 'Tap to leave out of the packet' : 'Tap to add to the packet'}
+                  >
+                    <PickCircle state={checked} />
                     <span className="hub-thumb">
-                      {isImage && thumb ? <img src={thumb} alt={f.name} /> : <FileIcon size={16} />}
+                      {isImage && thumb ? <img src={thumb} alt="" /> : <FileIcon size={18} />}
                     </span>
-                    <span className="hub-file-name">{f.name}</span>
+                    <span className="hub-namecell">
+                      <span className="hub-file-name">{f.name}</span>
+                      <span className="hub-file-sub">{fileKindLabel(f)}</span>
+                    </span>
                   </button>
-                  <button type="button" className="hub-row-print" onClick={() => printOne(cat, f.name)} disabled={packet.building} title="Print this one">
-                    <Printer size={14} />
-                  </button>
+                  <div className="hub-row-tools">
+                    <button type="button" className="hub-icon-btn" onClick={() => files.handleViewFile(f, cat)} title="Preview">
+                      <Eye size={15} />
+                    </button>
+                    <button type="button" className="hub-icon-btn" onClick={() => printOne(cat, f.name)} disabled={packet.building} title="Print just this one">
+                      <Printer size={15} />
+                    </button>
+                  </div>
                 </li>
               );
             })}
           </ul>
-        )}
+          {loading && <div className="hub-loading"><div className="hub-loading-bar" /></div>}
+          {!loading && list.length === 0 && !isJobFiles && (
+            <p className="hub-empty">Nothing here yet — use Add or Photo above</p>
+          )}
+        </div>
       </div>
     );
   };
@@ -238,7 +365,7 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
     <>
       <input type="file" ref={fileInputRef} accept={ACCEPT_ATTR} multiple style={{ display: 'none' }} onChange={onFilesChosen} />
       <button type="button" className="btn btn-secondary btn-sm hub-trigger" onClick={() => setOpen(true)}>
-        <FolderOpen size={14} /> Files{totalCount > 0 ? ` (${totalCount})` : ''}
+        <FolderOpen size={14} /> Files{totalFileCount > 0 ? ` (${totalFileCount})` : ''}
       </button>
 
       {open && createPortal(
@@ -248,46 +375,49 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
               {view === 'camera' ? (
                 <button className="hub-back" onClick={leaveCamera}><ArrowLeft size={16} /> Back</button>
               ) : (
-                <div className="hub-title"><FileStack size={18} /> {jobNumber || 'Paperwork'}</div>
+                <div className="hub-title">
+                  <span className="hub-title-badge"><FolderOpen size={20} /></span>
+                  <span className="hub-title-text">
+                    <b>{jobNumber || 'Paperwork'}</b>
+                    <span>Paperwork</span>
+                  </span>
+                </div>
               )}
               <button className="hub-close" onClick={closeAll}><X size={18} /></button>
             </div>
 
             {view === 'hub' && (
               <>
+                {/* Toolbar: a plain-language line + one switch to pick or clear everything. */}
+                <div className="hub-toolbar">
+                  <span className="hub-toolbar-count">
+                    <strong>{tickedCount}</strong> of {totalSelectable} documents selected
+                  </span>
+                  <button type="button" className="hub-selectall" onClick={toggleMaster}>
+                    {masterState === 'all'
+                      ? <><X size={15} /> Clear all</>
+                      : <><Check size={15} /> Select all</>}
+                  </button>
+                </div>
+
                 <div className="hub-body">
-                  <p className="hub-hint">Everything's ticked to print. Untick anything you don't want in the packet.</p>
-
-                  <div className="hub-section hub-card-section">
-                    <label className="hub-tick">
-                      <input type="checkbox" checked={cardTicked} onChange={() => setCardTicked(v => !v)} />
-                    </label>
-                    <div className="hub-card-main">
-                      <FileStack size={16} className="hub-section-icon" />
-                      <span className="hub-section-name">Job Card</span>
-                      <span className="hub-generated">generated</span>
-                    </div>
-                    <button type="button" className="hub-row-print" onClick={printCardOnly} disabled={packet.building} title="Print just the job card">
-                      <Printer size={14} />
-                    </button>
-                  </div>
-
                   {ORDER.map(renderSection)}
                 </div>
 
                 <div className="hub-footer">
-                  <span className="hub-count">
-                    {tickedCount} ticked
-                    {overFileLimit && (
-                      <span className="hub-count-warn"> · untick {tickedFileCount - MAX_PACKET_FILES} (max {MAX_PACKET_FILES} files per packet)</span>
-                    )}
-                  </span>
+                  {overFileLimit ? (
+                    <span className="hub-count hub-count-warn">
+                      Too many — untick {tickedFileCount - MAX_PACKET_FILES} (max {MAX_PACKET_FILES} files per packet)
+                    </span>
+                  ) : (
+                    <span className="hub-count">{tickedCount === 0 ? 'Pick documents to print' : 'Combined into one printout'}</span>
+                  )}
                   <div className="hub-footer-actions">
                     <button type="button" className="btn btn-secondary" onClick={savePacket} disabled={packet.building || tickedCount === 0 || overFileLimit}>
-                      <Save size={15} /> Save as PDF
+                      <Save size={15} /> Save PDF{tickedCount > 0 ? ` (${tickedCount})` : ''}
                     </button>
                     <button type="button" className="btn btn-primary" onClick={printPacket} disabled={packet.building || tickedCount === 0 || overFileLimit}>
-                      <Printer size={15} /> {packet.building ? 'Preparing…' : 'Print packet'}
+                      <Printer size={15} /> {packet.building ? 'Preparing…' : `Print${tickedCount > 0 ? ` (${tickedCount})` : ''}`}
                     </button>
                   </div>
                 </div>
@@ -345,6 +475,12 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
             <div className="hub-doc-viewer">
               <button className="hub-lightbox-close" onClick={files.closeViewer}><X size={24} /></button>
               <iframe src={files.viewerUrl} className="hub-doc-frame" title="Document viewer" />
+            </div>
+          )}
+          {cardPreview && (
+            <div className="hub-doc-viewer">
+              <button className="hub-lightbox-close" onClick={() => setCardPreview(null)}><X size={24} /></button>
+              <iframe srcDoc={cardPreview} className="hub-doc-frame" title="Job card preview" />
             </div>
           )}
         </div>,
