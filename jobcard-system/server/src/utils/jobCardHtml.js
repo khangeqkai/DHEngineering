@@ -69,8 +69,11 @@ const CSS = `
   .sign .slot { width:150px; }
   .sign .ln { border-bottom:1px solid var(--ink); height:26px; }
   .sign .cap { font-size:7.5pt; letter-spacing:.5px; margin-top:3px; }
-  @page { size:A4 portrait; margin:12mm; }
-  @media print { .sheet { padding:0; } }
+  /* Zero page margin leaves the browser no room for its own date/URL/page-number
+     band, so it omits headers & footers by default. The sheet supplies the real
+     margin via its own padding instead. */
+  @page { size:A4 portrait; margin:0; }
+  @media print { .sheet { padding:12mm; } }
 `;
 
 function renderItem(it) {
