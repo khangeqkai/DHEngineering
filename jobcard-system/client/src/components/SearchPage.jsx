@@ -96,8 +96,9 @@ const ACTION_TO_TAB = {
   add_time_entry: 'details', update_time_entry: 'details', delete_time_entry: 'details',
   add_note: 'details',  delete_note: 'details',
   update_costing: 'costing',
-  update_qa_form: 'files',
-  upload_file: 'files', add_document: 'files',
+  // Files now live in the header paperwork hub, not a tab — land on Details.
+  update_qa_form: 'details',
+  upload_file: 'details', add_document: 'details',
 };
 
 export default function SearchPage() {

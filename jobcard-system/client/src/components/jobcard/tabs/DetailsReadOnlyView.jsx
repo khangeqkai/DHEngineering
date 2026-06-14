@@ -19,7 +19,7 @@ export default function DetailsReadOnlyView({
 }) {
   return (
     <div className="modal-form-grid readonly-view">
-      {/* Line Items — read-only field shells with active timer + files menu + per-item progress */}
+      {/* Line Items — read-only field shells with active timer + per-item attach buttons + per-item progress */}
       <ItemsTab
         jobCardId={jobCardId}
         lineItems={lineItems}

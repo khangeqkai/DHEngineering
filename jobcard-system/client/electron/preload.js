@@ -10,6 +10,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Print the job card HTML via the OS default browser
   printHtml: (data) => ipcRenderer.invoke('print-html', data),
 
+  // Render the job card HTML to a PDF buffer off-screen (for the combined packet)
+  htmlToPdf: (data) => ipcRenderer.invoke('render-html-to-pdf', data),
+
+  // Open a combined-packet PDF buffer in the OS viewer (which prints it)
+  openPdf: (data) => ipcRenderer.invoke('open-pdf', data),
+
   // Camera functions
   getCameras: () => ipcRenderer.invoke('get-cameras'),
 
@@ -18,7 +24,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // File dialogs
   selectFolder: () => ipcRenderer.invoke('select-folder'),
-  saveFile: (defaultName, buffer) => ipcRenderer.invoke('save-file', { defaultName, buffer }),
+  saveFile: (defaultName, buffer, filters) => ipcRenderer.invoke('save-file', { defaultName, buffer, filters }),
   showSaveDialog: (defaultName, filters) => ipcRenderer.invoke('show-save-dialog', { defaultName, filters }),
   selectFile: (title, filters) => ipcRenderer.invoke('select-file', { title, filters }),
 

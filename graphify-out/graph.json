@@ -9,7 +9,7 @@
       "source_file": "client/vite.config.js",
       "source_location": "L1",
       "id": "client_vite_config_js",
-      "community": 64,
+      "community": 65,
       "norm_label": "vite.config.js"
     },
     {
@@ -18,7 +18,7 @@
       "source_file": "client/electron/main.js",
       "source_location": "L1",
       "id": "client_electron_main_js",
-      "community": 21,
+      "community": 22,
       "norm_label": "main.js"
     },
     {
@@ -27,7 +27,7 @@
       "source_file": "client/electron/main.js",
       "source_location": "L22",
       "id": "electron_main_startserver",
-      "community": 21,
+      "community": 22,
       "norm_label": "startserver()"
     },
     {
@@ -36,7 +36,7 @@
       "source_file": "client/electron/main.js",
       "source_location": "L76",
       "id": "electron_main_createwindow",
-      "community": 21,
+      "community": 22,
       "norm_label": "createwindow()"
     },
     {
@@ -45,7 +45,7 @@
       "source_file": "client/electron/main.js",
       "source_location": "L112",
       "id": "electron_main_createmenu",
-      "community": 21,
+      "community": 22,
       "norm_label": "createmenu()"
     },
     {
@@ -54,7 +54,7 @@
       "source_file": "client/electron/main.js",
       "source_location": "L276",
       "id": "electron_main_sweepoldjobcardprintouts",
-      "community": 21,
+      "community": 22,
       "norm_label": "sweepoldjobcardprintouts()"
     },
     {
@@ -63,7 +63,7 @@
       "source_file": "client/electron/preload.js",
       "source_location": "L1",
       "id": "client_electron_preload_js",
-      "community": 65,
+      "community": 66,
       "norm_label": "preload.js"
     },
     {
@@ -72,7 +72,7 @@
       "source_file": "client/scripts/rebuild-native.js",
       "source_location": "L1",
       "id": "client_scripts_rebuild_native_js",
-      "community": 66,
+      "community": 67,
       "norm_label": "rebuild-native.js"
     },
     {
@@ -153,7 +153,7 @@
       "source_file": "client/src/components/ContactManagement.jsx",
       "source_location": "L1",
       "id": "client_src_components_contactmanagement_jsx",
-      "community": 2,
+      "community": 1,
       "norm_label": "contactmanagement.jsx"
     },
     {
@@ -162,7 +162,7 @@
       "source_file": "client/src/components/ContactManagement.jsx",
       "source_location": "L15",
       "id": "components_contactmanagement_contactmanagement",
-      "community": 2,
+      "community": 1,
       "norm_label": "contactmanagement()"
     },
     {
@@ -171,7 +171,7 @@
       "source_file": "client/src/components/JobCardCalendarView.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcardcalendarview_jsx",
-      "community": 39,
+      "community": 40,
       "norm_label": "jobcardcalendarview.jsx"
     },
     {
@@ -180,7 +180,7 @@
       "source_file": "client/src/components/JobCardCalendarView.jsx",
       "source_location": "L5",
       "id": "components_jobcardcalendarview_jobcardcalendarview",
-      "community": 39,
+      "community": 40,
       "norm_label": "jobcardcalendarview()"
     },
     {
@@ -297,7 +297,7 @@
       "source_file": "client/src/components/JobCardListFilters.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcardlistfilters_jsx",
-      "community": 40,
+      "community": 41,
       "norm_label": "jobcardlistfilters.jsx"
     },
     {
@@ -306,7 +306,7 @@
       "source_file": "client/src/components/JobCardListFilters.jsx",
       "source_location": "L5",
       "id": "components_jobcardlistfilters_jobcardlistfilters",
-      "community": 40,
+      "community": 41,
       "norm_label": "jobcardlistfilters()"
     },
     {
@@ -315,7 +315,7 @@
       "source_file": "client/src/components/JobCardListPagination.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcardlistpagination_jsx",
-      "community": 41,
+      "community": 42,
       "norm_label": "jobcardlistpagination.jsx"
     },
     {
@@ -324,7 +324,7 @@
       "source_file": "client/src/components/JobCardListPagination.jsx",
       "source_location": "L3",
       "id": "components_jobcardlistpagination_jobcardlistpagination",
-      "community": 41,
+      "community": 42,
       "norm_label": "jobcardlistpagination()"
     },
     {
@@ -333,7 +333,7 @@
       "source_file": "client/src/components/JobCardListTable.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcardlisttable_jsx",
-      "community": 42,
+      "community": 43,
       "norm_label": "jobcardlisttable.jsx"
     },
     {
@@ -342,7 +342,7 @@
       "source_file": "client/src/components/JobCardListTable.jsx",
       "source_location": "L4",
       "id": "components_jobcardlisttable_jobcardlisttable",
-      "community": 42,
+      "community": 43,
       "norm_label": "jobcardlisttable()"
     },
     {
@@ -387,7 +387,7 @@
       "source_file": "client/src/components/QALevelManagement.jsx",
       "source_location": "L1",
       "id": "client_src_components_qalevelmanagement_jsx",
-      "community": 2,
+      "community": 1,
       "norm_label": "qalevelmanagement.jsx"
     },
     {
@@ -396,7 +396,7 @@
       "source_file": "client/src/components/QALevelManagement.jsx",
       "source_location": "L11",
       "id": "components_qalevelmanagement_qalevelmanagement",
-      "community": 2,
+      "community": 1,
       "norm_label": "qalevelmanagement()"
     },
     {
@@ -405,7 +405,7 @@
       "source_file": "client/src/components/searchFields.js",
       "source_location": "L1",
       "id": "client_src_components_searchfields_js",
-      "community": 67,
+      "community": 68,
       "norm_label": "searchfields.js"
     },
     {
@@ -493,7 +493,7 @@
       "label": "SearchPage()",
       "file_type": "code",
       "source_file": "client/src/components/SearchPage.jsx",
-      "source_location": "L103",
+      "source_location": "L104",
       "id": "components_searchpage_searchpage",
       "community": 5,
       "norm_label": "searchpage()"
@@ -504,7 +504,7 @@
       "source_file": "client/src/components/Settings.jsx",
       "source_location": "L1",
       "id": "client_src_components_settings_jsx",
-      "community": 2,
+      "community": 1,
       "norm_label": "settings.jsx"
     },
     {
@@ -513,7 +513,7 @@
       "source_file": "client/src/components/Settings.jsx",
       "source_location": "L8",
       "id": "components_settings_settings",
-      "community": 2,
+      "community": 1,
       "norm_label": "settings()"
     },
     {
@@ -522,7 +522,7 @@
       "source_file": "client/src/components/SupplierManagement.jsx",
       "source_location": "L1",
       "id": "client_src_components_suppliermanagement_jsx",
-      "community": 2,
+      "community": 1,
       "norm_label": "suppliermanagement.jsx"
     },
     {
@@ -531,7 +531,7 @@
       "source_file": "client/src/components/SupplierManagement.jsx",
       "source_location": "L15",
       "id": "components_suppliermanagement_suppliermanagement",
-      "community": 2,
+      "community": 1,
       "norm_label": "suppliermanagement()"
     },
     {
@@ -540,7 +540,7 @@
       "source_file": "client/src/components/TagManagement.jsx",
       "source_location": "L1",
       "id": "client_src_components_tagmanagement_jsx",
-      "community": 2,
+      "community": 1,
       "norm_label": "tagmanagement.jsx"
     },
     {
@@ -549,7 +549,7 @@
       "source_file": "client/src/components/TagManagement.jsx",
       "source_location": "L23",
       "id": "components_tagmanagement_tagmanagement",
-      "community": 2,
+      "community": 1,
       "norm_label": "tagmanagement()"
     },
     {
@@ -558,7 +558,7 @@
       "source_file": "client/src/components/UserManagement.jsx",
       "source_location": "L1",
       "id": "client_src_components_usermanagement_jsx",
-      "community": 2,
+      "community": 1,
       "norm_label": "usermanagement.jsx"
     },
     {
@@ -567,7 +567,7 @@
       "source_file": "client/src/components/UserManagement.jsx",
       "source_location": "L16",
       "id": "components_usermanagement_usermanagement",
-      "community": 2,
+      "community": 1,
       "norm_label": "usermanagement()"
     },
     {
@@ -576,7 +576,7 @@
       "source_file": "client/src/components/common/BottomSheet.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_bottomsheet_jsx",
-      "community": 18,
+      "community": 19,
       "norm_label": "bottomsheet.jsx"
     },
     {
@@ -585,7 +585,7 @@
       "source_file": "client/src/components/common/BottomSheet.jsx",
       "source_location": "L10",
       "id": "common_bottomsheet_bottomsheet",
-      "community": 18,
+      "community": 19,
       "norm_label": "bottomsheet()"
     },
     {
@@ -594,7 +594,7 @@
       "source_file": "client/src/components/common/CalendarPicker.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_calendarpicker_jsx",
-      "community": 32,
+      "community": 33,
       "norm_label": "calendarpicker.jsx"
     },
     {
@@ -603,7 +603,7 @@
       "source_file": "client/src/components/common/CalendarPicker.jsx",
       "source_location": "L10",
       "id": "common_calendarpicker_todatestring",
-      "community": 32,
+      "community": 33,
       "norm_label": "todatestring()"
     },
     {
@@ -612,7 +612,7 @@
       "source_file": "client/src/components/common/CalendarPicker.jsx",
       "source_location": "L17",
       "id": "common_calendarpicker_calendarpicker",
-      "community": 32,
+      "community": 33,
       "norm_label": "calendarpicker()"
     },
     {
@@ -621,7 +621,7 @@
       "source_file": "client/src/components/common/CheckboxDropdown.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_checkboxdropdown_jsx",
-      "community": 43,
+      "community": 44,
       "norm_label": "checkboxdropdown.jsx"
     },
     {
@@ -630,7 +630,7 @@
       "source_file": "client/src/components/common/CheckboxDropdown.jsx",
       "source_location": "L10",
       "id": "common_checkboxdropdown_checkboxdropdown",
-      "community": 43,
+      "community": 44,
       "norm_label": "checkboxdropdown()"
     },
     {
@@ -639,7 +639,7 @@
       "source_file": "client/src/components/common/ClickSpark.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_clickspark_jsx",
-      "community": 44,
+      "community": 45,
       "norm_label": "clickspark.jsx"
     },
     {
@@ -648,7 +648,7 @@
       "source_file": "client/src/components/common/ClickSpark.jsx",
       "source_location": "L3",
       "id": "common_clickspark_clickspark",
-      "community": 44,
+      "community": 45,
       "norm_label": "clickspark()"
     },
     {
@@ -657,7 +657,7 @@
       "source_file": "client/src/components/common/ConfirmDialog.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_confirmdialog_jsx",
-      "community": 18,
+      "community": 19,
       "norm_label": "confirmdialog.jsx"
     },
     {
@@ -666,7 +666,7 @@
       "source_file": "client/src/components/common/ConfirmDialog.jsx",
       "source_location": "L5",
       "id": "common_confirmdialog_confirmdialog",
-      "community": 18,
+      "community": 19,
       "norm_label": "confirmdialog()"
     },
     {
@@ -675,7 +675,7 @@
       "source_file": "client/src/components/common/DataTable.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_datatable_jsx",
-      "community": 13,
+      "community": 14,
       "norm_label": "datatable.jsx"
     },
     {
@@ -684,7 +684,7 @@
       "source_file": "client/src/components/common/DataTable.jsx",
       "source_location": "L45",
       "id": "common_datatable_getinitialdensity",
-      "community": 13,
+      "community": 14,
       "norm_label": "getinitialdensity()"
     },
     {
@@ -693,7 +693,7 @@
       "source_file": "client/src/components/common/DataTable.jsx",
       "source_location": "L60",
       "id": "common_datatable_skeletonrows",
-      "community": 13,
+      "community": 14,
       "norm_label": "skeletonrows()"
     },
     {
@@ -702,7 +702,7 @@
       "source_file": "client/src/components/common/DataTable.jsx",
       "source_location": "L75",
       "id": "common_datatable_datatable",
-      "community": 13,
+      "community": 14,
       "norm_label": "datatable()"
     },
     {
@@ -711,7 +711,7 @@
       "source_file": "client/src/components/common/EmptyState.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_emptystate_jsx",
-      "community": 45,
+      "community": 46,
       "norm_label": "emptystate.jsx"
     },
     {
@@ -720,7 +720,7 @@
       "source_file": "client/src/components/common/EmptyState.jsx",
       "source_location": "L59",
       "id": "common_emptystate_emptystate",
-      "community": 45,
+      "community": 46,
       "norm_label": "emptystate()"
     },
     {
@@ -783,7 +783,7 @@
       "source_file": "client/src/components/common/ExportButton.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_exportbutton_jsx",
-      "community": 46,
+      "community": 47,
       "norm_label": "exportbutton.jsx"
     },
     {
@@ -792,7 +792,7 @@
       "source_file": "client/src/components/common/ExportButton.jsx",
       "source_location": "L6",
       "id": "common_exportbutton_exportbutton",
-      "community": 46,
+      "community": 47,
       "norm_label": "exportbutton()"
     },
     {
@@ -801,7 +801,7 @@
       "source_file": "client/src/components/common/GradientText.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_gradienttext_jsx",
-      "community": 47,
+      "community": 48,
       "norm_label": "gradienttext.jsx"
     },
     {
@@ -810,7 +810,7 @@
       "source_file": "client/src/components/common/GradientText.jsx",
       "source_location": "L3",
       "id": "common_gradienttext_gradienttext",
-      "community": 47,
+      "community": 48,
       "norm_label": "gradienttext()"
     },
     {
@@ -819,7 +819,7 @@
       "source_file": "client/src/components/common/InactivityWarningModal.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_inactivitywarningmodal_jsx",
-      "community": 48,
+      "community": 49,
       "norm_label": "inactivitywarningmodal.jsx"
     },
     {
@@ -828,7 +828,7 @@
       "source_file": "client/src/components/common/InactivityWarningModal.jsx",
       "source_location": "L4",
       "id": "common_inactivitywarningmodal_inactivitywarningmodal",
-      "community": 48,
+      "community": 49,
       "norm_label": "inactivitywarningmodal()"
     },
     {
@@ -837,7 +837,7 @@
       "source_file": "client/src/components/common/modalStack.js",
       "source_location": "L1",
       "id": "client_src_components_common_modalstack_js",
-      "community": 18,
+      "community": 19,
       "norm_label": "modalstack.js"
     },
     {
@@ -846,7 +846,7 @@
       "source_file": "client/src/components/common/modalStack.js",
       "source_location": "L8",
       "id": "common_modalstack_pushmodal",
-      "community": 18,
+      "community": 19,
       "norm_label": "pushmodal()"
     },
     {
@@ -855,7 +855,7 @@
       "source_file": "client/src/components/common/modalStack.js",
       "source_location": "L13",
       "id": "common_modalstack_removemodal",
-      "community": 18,
+      "community": 19,
       "norm_label": "removemodal()"
     },
     {
@@ -864,7 +864,7 @@
       "source_file": "client/src/components/common/modalStack.js",
       "source_location": "L18",
       "id": "common_modalstack_istopmodal",
-      "community": 18,
+      "community": 19,
       "norm_label": "istopmodal()"
     },
     {
@@ -873,7 +873,7 @@
       "source_file": "client/src/components/common/PageHeader.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_pageheader_jsx",
-      "community": 49,
+      "community": 50,
       "norm_label": "pageheader.jsx"
     },
     {
@@ -882,7 +882,7 @@
       "source_file": "client/src/components/common/PageHeader.jsx",
       "source_location": "L3",
       "id": "common_pageheader_pageheader",
-      "community": 49,
+      "community": 50,
       "norm_label": "pageheader()"
     },
     {
@@ -891,7 +891,7 @@
       "source_file": "client/src/components/common/SearchableSupplierSelect.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_searchablesupplierselect_jsx",
-      "community": 50,
+      "community": 51,
       "norm_label": "searchablesupplierselect.jsx"
     },
     {
@@ -900,7 +900,7 @@
       "source_file": "client/src/components/common/SearchableSupplierSelect.jsx",
       "source_location": "L3",
       "id": "common_searchablesupplierselect_searchablesupplierselect",
-      "community": 50,
+      "community": 51,
       "norm_label": "searchablesupplierselect()"
     },
     {
@@ -909,7 +909,7 @@
       "source_file": "client/src/components/common/ShinyText.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_shinytext_jsx",
-      "community": 51,
+      "community": 52,
       "norm_label": "shinytext.jsx"
     },
     {
@@ -918,7 +918,7 @@
       "source_file": "client/src/components/common/ShinyText.jsx",
       "source_location": "L3",
       "id": "common_shinytext_shinytext",
-      "community": 51,
+      "community": 52,
       "norm_label": "shinytext()"
     },
     {
@@ -927,7 +927,7 @@
       "source_file": "client/src/components/common/ToggleTiles.jsx",
       "source_location": "L1",
       "id": "client_src_components_common_toggletiles_jsx",
-      "community": 52,
+      "community": 53,
       "norm_label": "toggletiles.jsx"
     },
     {
@@ -936,7 +936,7 @@
       "source_file": "client/src/components/common/ToggleTiles.jsx",
       "source_location": "L9",
       "id": "common_toggletiles_toggletiles",
-      "community": 52,
+      "community": 53,
       "norm_label": "toggletiles()"
     },
     {
@@ -1044,7 +1044,7 @@
       "source_file": "client/src/components/jobcard/constants.js",
       "source_location": "L1",
       "id": "client_src_components_jobcard_constants_js",
-      "community": 68,
+      "community": 69,
       "norm_label": "constants.js"
     },
     {
@@ -1060,7 +1060,7 @@
       "label": "fileToBase64()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/JobCardModal.jsx",
-      "source_location": "L30",
+      "source_location": "L28",
       "id": "jobcard_jobcardmodal_filetobase64",
       "community": 4,
       "norm_label": "filetobase64()"
@@ -1069,7 +1069,7 @@
       "label": "JobCardModal()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/JobCardModal.jsx",
-      "source_location": "L39",
+      "source_location": "L37",
       "id": "jobcard_jobcardmodal_jobcardmodal",
       "community": 4,
       "norm_label": "jobcardmodal()"
@@ -1091,24 +1091,6 @@
       "id": "jobcard_jobcardvalidation_validatejobcardform",
       "community": 4,
       "norm_label": "validatejobcardform()"
-    },
-    {
-      "label": "JobFilesMenu.jsx",
-      "file_type": "code",
-      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
-      "source_location": "L1",
-      "id": "client_src_components_jobcard_jobfilesmenu_jsx",
-      "community": 6,
-      "norm_label": "jobfilesmenu.jsx"
-    },
-    {
-      "label": "JobFilesMenu()",
-      "file_type": "code",
-      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
-      "source_location": "L17",
-      "id": "jobcard_jobfilesmenu_jobfilesmenu",
-      "community": 6,
-      "norm_label": "jobfilesmenu()"
     },
     {
       "label": "JobIdentityStrip.jsx",
@@ -1138,12 +1120,39 @@
       "norm_label": "jobidentitystrip()"
     },
     {
+      "label": "JobPaperworkHub.jsx",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/JobPaperworkHub.jsx",
+      "source_location": "L1",
+      "id": "client_src_components_jobcard_jobpaperworkhub_jsx",
+      "community": 6,
+      "norm_label": "jobpaperworkhub.jsx"
+    },
+    {
+      "label": "keyOf()",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/JobPaperworkHub.jsx",
+      "source_location": "L28",
+      "id": "jobcard_jobpaperworkhub_keyof",
+      "community": 6,
+      "norm_label": "keyof()"
+    },
+    {
+      "label": "JobPaperworkHub()",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/JobPaperworkHub.jsx",
+      "source_location": "L30",
+      "id": "jobcard_jobpaperworkhub_jobpaperworkhub",
+      "community": 6,
+      "norm_label": "jobpaperworkhub()"
+    },
+    {
       "label": "LineItemTimerButton.jsx",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/LineItemTimerButton.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcard_lineitemtimerbutton_jsx",
-      "community": 33,
+      "community": 34,
       "norm_label": "lineitemtimerbutton.jsx"
     },
     {
@@ -1152,7 +1161,7 @@
       "source_file": "client/src/components/jobcard/LineItemTimerButton.jsx",
       "source_location": "L3",
       "id": "jobcard_lineitemtimerbutton_formatelapsed",
-      "community": 33,
+      "community": 34,
       "norm_label": "formatelapsed()"
     },
     {
@@ -1161,7 +1170,7 @@
       "source_file": "client/src/components/jobcard/LineItemTimerButton.jsx",
       "source_location": "L10",
       "id": "jobcard_lineitemtimerbutton_lineitemtimerbutton",
-      "community": 33,
+      "community": 34,
       "norm_label": "lineitemtimerbutton()"
     },
     {
@@ -1260,7 +1269,7 @@
       "source_file": "client/src/components/jobcard/StopTimerForm.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcard_stoptimerform_jsx",
-      "community": 2,
+      "community": 1,
       "norm_label": "stoptimerform.jsx"
     },
     {
@@ -1269,7 +1278,7 @@
       "source_file": "client/src/components/jobcard/StopTimerForm.jsx",
       "source_location": "L9",
       "id": "jobcard_stoptimerform_stoptimerform",
-      "community": 2,
+      "community": 1,
       "norm_label": "stoptimerform()"
     },
     {
@@ -1458,7 +1467,7 @@
       "source_file": "client/src/components/jobcard/useJobSearch.js",
       "source_location": "L1",
       "id": "client_src_components_jobcard_usejobsearch_js",
-      "community": 2,
+      "community": 1,
       "norm_label": "usejobsearch.js"
     },
     {
@@ -1467,26 +1476,80 @@
       "source_file": "client/src/components/jobcard/useJobSearch.js",
       "source_location": "L5",
       "id": "jobcard_usejobsearch_usejobsearch",
-      "community": 2,
+      "community": 1,
       "norm_label": "usejobsearch()"
     },
     {
-      "label": "usePrintJobCard.js",
+      "label": "usePacketPrint.js",
       "file_type": "code",
-      "source_file": "client/src/components/jobcard/usePrintJobCard.js",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
       "source_location": "L1",
-      "id": "client_src_components_jobcard_useprintjobcard_js",
-      "community": 4,
-      "norm_label": "useprintjobcard.js"
+      "id": "client_src_components_jobcard_usepacketprint_js",
+      "community": 13,
+      "norm_label": "usepacketprint.js"
     },
     {
-      "label": "usePrintJobCard()",
+      "label": "isDesktop()",
       "file_type": "code",
-      "source_file": "client/src/components/jobcard/usePrintJobCard.js",
-      "source_location": "L8",
-      "id": "jobcard_useprintjobcard_useprintjobcard",
-      "community": 4,
-      "norm_label": "useprintjobcard()"
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L10",
+      "id": "jobcard_usepacketprint_isdesktop",
+      "community": 13,
+      "norm_label": "isdesktop()"
+    },
+    {
+      "label": "renderCardPdfBase64()",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L12",
+      "id": "jobcard_usepacketprint_rendercardpdfbase64",
+      "community": 13,
+      "norm_label": "rendercardpdfbase64()"
+    },
+    {
+      "label": "reportSkipped()",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L23",
+      "id": "jobcard_usepacketprint_reportskipped",
+      "community": 13,
+      "norm_label": "reportskipped()"
+    },
+    {
+      "label": "printPdfInIframe()",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L31",
+      "id": "jobcard_usepacketprint_printpdfiniframe",
+      "community": 13,
+      "norm_label": "printpdfiniframe()"
+    },
+    {
+      "label": "printHtmlInIframe()",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L45",
+      "id": "jobcard_usepacketprint_printhtmliniframe",
+      "community": 13,
+      "norm_label": "printhtmliniframe()"
+    },
+    {
+      "label": "downloadBytes()",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L56",
+      "id": "jobcard_usepacketprint_downloadbytes",
+      "community": 13,
+      "norm_label": "downloadbytes()"
+    },
+    {
+      "label": "usePacketPrint()",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L64",
+      "id": "jobcard_usepacketprint_usepacketprint",
+      "community": 6,
+      "norm_label": "usepacketprint()"
     },
     {
       "label": "useTimeEntries.js",
@@ -1593,7 +1656,7 @@
       "source_file": "client/src/components/jobcard/tabs/CostingTab.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcard_tabs_costingtab_jsx",
-      "community": 24,
+      "community": 1,
       "norm_label": "costingtab.jsx"
     },
     {
@@ -1602,7 +1665,7 @@
       "source_file": "client/src/components/jobcard/tabs/CostingTab.jsx",
       "source_location": "L1",
       "id": "tabs_costingtab_costingtab",
-      "community": 24,
+      "community": 1,
       "norm_label": "costingtab()"
     },
     {
@@ -1611,7 +1674,7 @@
       "source_file": "client/src/components/jobcard/tabs/DetailsReadOnlyView.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcard_tabs_detailsreadonlyview_jsx",
-      "community": 2,
+      "community": 1,
       "norm_label": "detailsreadonlyview.jsx"
     },
     {
@@ -1620,7 +1683,7 @@
       "source_file": "client/src/components/jobcard/tabs/DetailsReadOnlyView.jsx",
       "source_location": "L4",
       "id": "tabs_detailsreadonlyview_detailsreadonlyview",
-      "community": 2,
+      "community": 1,
       "norm_label": "detailsreadonlyview()"
     },
     {
@@ -1629,7 +1692,7 @@
       "source_file": "client/src/components/jobcard/tabs/DetailsTab.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcard_tabs_detailstab_jsx",
-      "community": 2,
+      "community": 1,
       "norm_label": "detailstab.jsx"
     },
     {
@@ -1638,26 +1701,8 @@
       "source_file": "client/src/components/jobcard/tabs/DetailsTab.jsx",
       "source_location": "L9",
       "id": "tabs_detailstab_detailstab",
-      "community": 2,
+      "community": 1,
       "norm_label": "detailstab()"
-    },
-    {
-      "label": "FilesTab.jsx",
-      "file_type": "code",
-      "source_file": "client/src/components/jobcard/tabs/FilesTab.jsx",
-      "source_location": "L1",
-      "id": "client_src_components_jobcard_tabs_filestab_jsx",
-      "community": 6,
-      "norm_label": "filestab.jsx"
-    },
-    {
-      "label": "FilesTab()",
-      "file_type": "code",
-      "source_file": "client/src/components/jobcard/tabs/FilesTab.jsx",
-      "source_location": "L7",
-      "id": "tabs_filestab_filestab",
-      "community": 6,
-      "norm_label": "filestab()"
     },
     {
       "label": "ItemsTab.jsx",
@@ -1665,7 +1710,7 @@
       "source_file": "client/src/components/jobcard/tabs/ItemsTab.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcard_tabs_itemstab_jsx",
-      "community": 2,
+      "community": 1,
       "norm_label": "itemstab.jsx"
     },
     {
@@ -1674,7 +1719,7 @@
       "source_file": "client/src/components/jobcard/tabs/ItemsTab.jsx",
       "source_location": "L16",
       "id": "tabs_itemstab_machinelisttoarray",
-      "community": 2,
+      "community": 1,
       "norm_label": "machinelisttoarray()"
     },
     {
@@ -1683,7 +1728,7 @@
       "source_file": "client/src/components/jobcard/tabs/ItemsTab.jsx",
       "source_location": "L20",
       "id": "tabs_itemstab_entriesforitem",
-      "community": 2,
+      "community": 1,
       "norm_label": "entriesforitem()"
     },
     {
@@ -1692,7 +1737,7 @@
       "source_file": "client/src/components/jobcard/tabs/ItemsTab.jsx",
       "source_location": "L28",
       "id": "tabs_itemstab_itemstab",
-      "community": 2,
+      "community": 1,
       "norm_label": "itemstab()"
     },
     {
@@ -1701,7 +1746,7 @@
       "source_file": "client/src/components/jobcard/tabs/LineItemProgress.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcard_tabs_lineitemprogress_jsx",
-      "community": 22,
+      "community": 23,
       "norm_label": "lineitemprogress.jsx"
     },
     {
@@ -1710,7 +1755,7 @@
       "source_file": "client/src/components/jobcard/tabs/LineItemProgress.jsx",
       "source_location": "L5",
       "id": "tabs_lineitemprogress_parseqty",
-      "community": 22,
+      "community": 23,
       "norm_label": "parseqty()"
     },
     {
@@ -1719,7 +1764,7 @@
       "source_file": "client/src/components/jobcard/tabs/LineItemProgress.jsx",
       "source_location": "L11",
       "id": "tabs_lineitemprogress_computeprogress",
-      "community": 22,
+      "community": 23,
       "norm_label": "computeprogress()"
     },
     {
@@ -1728,7 +1773,7 @@
       "source_file": "client/src/components/jobcard/tabs/LineItemProgress.jsx",
       "source_location": "L55",
       "id": "tabs_lineitemprogress_formatnum",
-      "community": 22,
+      "community": 23,
       "norm_label": "formatnum()"
     },
     {
@@ -1737,7 +1782,7 @@
       "source_file": "client/src/components/jobcard/tabs/LineItemProgress.jsx",
       "source_location": "L60",
       "id": "tabs_lineitemprogress_statuspill",
-      "community": 22,
+      "community": 23,
       "norm_label": "statuspill()"
     },
     {
@@ -1746,7 +1791,7 @@
       "source_file": "client/src/components/jobcard/tabs/LineItemProgress.jsx",
       "source_location": "L78",
       "id": "tabs_lineitemprogress_lineitemprogress",
-      "community": 22,
+      "community": 23,
       "norm_label": "lineitemprogress()"
     },
     {
@@ -1755,7 +1800,7 @@
       "source_file": "client/src/components/jobcard/tabs/LineItemTagSelect.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcard_tabs_lineitemtagselect_jsx",
-      "community": 53,
+      "community": 54,
       "norm_label": "lineitemtagselect.jsx"
     },
     {
@@ -1764,7 +1809,7 @@
       "source_file": "client/src/components/jobcard/tabs/LineItemTagSelect.jsx",
       "source_location": "L11",
       "id": "tabs_lineitemtagselect_lineitemtagselect",
-      "community": 53,
+      "community": 54,
       "norm_label": "lineitemtagselect()"
     },
     {
@@ -1773,7 +1818,7 @@
       "source_file": "client/src/components/jobcard/tabs/LineItemTreatment.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcard_tabs_lineitemtreatment_jsx",
-      "community": 2,
+      "community": 1,
       "norm_label": "lineitemtreatment.jsx"
     },
     {
@@ -1782,7 +1827,7 @@
       "source_file": "client/src/components/jobcard/tabs/LineItemTreatment.jsx",
       "source_location": "L7",
       "id": "tabs_lineitemtreatment_isactive",
-      "community": 2,
+      "community": 1,
       "norm_label": "isactive()"
     },
     {
@@ -1791,7 +1836,7 @@
       "source_file": "client/src/components/jobcard/tabs/LineItemTreatment.jsx",
       "source_location": "L13",
       "id": "tabs_lineitemtreatment_supplieroffers",
-      "community": 2,
+      "community": 1,
       "norm_label": "supplieroffers()"
     },
     {
@@ -1800,7 +1845,7 @@
       "source_file": "client/src/components/jobcard/tabs/LineItemTreatment.jsx",
       "source_location": "L24",
       "id": "tabs_lineitemtreatment_lineitemtreatment",
-      "community": 2,
+      "community": 1,
       "norm_label": "lineitemtreatment()"
     },
     {
@@ -1809,7 +1854,7 @@
       "source_file": "client/src/components/jobcard/tabs/NotesSection.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcard_tabs_notessection_jsx",
-      "community": 2,
+      "community": 1,
       "norm_label": "notessection.jsx"
     },
     {
@@ -1818,7 +1863,7 @@
       "source_file": "client/src/components/jobcard/tabs/NotesSection.jsx",
       "source_location": "L3",
       "id": "tabs_notessection_notessection",
-      "community": 2,
+      "community": 1,
       "norm_label": "notessection()"
     },
     {
@@ -1827,7 +1872,7 @@
       "source_file": "client/src/components/jobcard/tabs/ScrapStat.jsx",
       "source_location": "L1",
       "id": "client_src_components_jobcard_tabs_scrapstat_jsx",
-      "community": 34,
+      "community": 35,
       "norm_label": "scrapstat.jsx"
     },
     {
@@ -1836,7 +1881,7 @@
       "source_file": "client/src/components/jobcard/tabs/ScrapStat.jsx",
       "source_location": "L1",
       "id": "tabs_scrapstat_formatnum",
-      "community": 34,
+      "community": 35,
       "norm_label": "formatnum()"
     },
     {
@@ -1845,7 +1890,7 @@
       "source_file": "client/src/components/jobcard/tabs/ScrapStat.jsx",
       "source_location": "L8",
       "id": "tabs_scrapstat_scrapstat",
-      "community": 34,
+      "community": 35,
       "norm_label": "scrapstat()"
     },
     {
@@ -1899,7 +1944,7 @@
       "source_file": "client/src/components/settings/DataBackupCard.jsx",
       "source_location": "L1",
       "id": "client_src_components_settings_databackupcard_jsx",
-      "community": 54,
+      "community": 55,
       "norm_label": "databackupcard.jsx"
     },
     {
@@ -1908,7 +1953,7 @@
       "source_file": "client/src/components/settings/DataBackupCard.jsx",
       "source_location": "L1",
       "id": "settings_databackupcard_databackupcard",
-      "community": 54,
+      "community": 55,
       "norm_label": "databackupcard()"
     },
     {
@@ -1917,7 +1962,7 @@
       "source_file": "client/src/components/settings/FoldersCard.jsx",
       "source_location": "L1",
       "id": "client_src_components_settings_folderscard_jsx",
-      "community": 55,
+      "community": 56,
       "norm_label": "folderscard.jsx"
     },
     {
@@ -1926,7 +1971,7 @@
       "source_file": "client/src/components/settings/FoldersCard.jsx",
       "source_location": "L1",
       "id": "settings_folderscard_folderscard",
-      "community": 55,
+      "community": 56,
       "norm_label": "folderscard()"
     },
     {
@@ -1935,7 +1980,7 @@
       "source_file": "client/src/components/settings/SecurityCard.jsx",
       "source_location": "L1",
       "id": "client_src_components_settings_securitycard_jsx",
-      "community": 56,
+      "community": 57,
       "norm_label": "securitycard.jsx"
     },
     {
@@ -1944,7 +1989,7 @@
       "source_file": "client/src/components/settings/SecurityCard.jsx",
       "source_location": "L1",
       "id": "settings_securitycard_securitycard",
-      "community": 56,
+      "community": 57,
       "norm_label": "securitycard()"
     },
     {
@@ -2007,7 +2052,7 @@
       "source_file": "client/src/hooks/useConfirmDialog.js",
       "source_location": "L1",
       "id": "client_src_hooks_useconfirmdialog_js",
-      "community": 2,
+      "community": 1,
       "norm_label": "useconfirmdialog.js"
     },
     {
@@ -2016,7 +2061,7 @@
       "source_file": "client/src/hooks/useConfirmDialog.js",
       "source_location": "L3",
       "id": "hooks_useconfirmdialog_useconfirmdialog",
-      "community": 2,
+      "community": 1,
       "norm_label": "useconfirmdialog()"
     },
     {
@@ -2115,7 +2160,7 @@
       "source_file": "client/src/hooks/useSettings.js",
       "source_location": "L1",
       "id": "client_src_hooks_usesettings_js",
-      "community": 2,
+      "community": 1,
       "norm_label": "usesettings.js"
     },
     {
@@ -2124,7 +2169,7 @@
       "source_file": "client/src/hooks/useSettings.js",
       "source_location": "L7",
       "id": "hooks_usesettings_usesettings",
-      "community": 2,
+      "community": 1,
       "norm_label": "usesettings()"
     },
     {
@@ -2133,7 +2178,7 @@
       "source_file": "client/src/hooks/useTableFilter.js",
       "source_location": "L1",
       "id": "client_src_hooks_usetablefilter_js",
-      "community": 13,
+      "community": 14,
       "norm_label": "usetablefilter.js"
     },
     {
@@ -2142,7 +2187,7 @@
       "source_file": "client/src/hooks/useTableFilter.js",
       "source_location": "L3",
       "id": "hooks_usetablefilter_usetablefilter",
-      "community": 13,
+      "community": 14,
       "norm_label": "usetablefilter()"
     },
     {
@@ -2151,7 +2196,7 @@
       "source_file": "client/src/hooks/useTableResize.js",
       "source_location": "L1",
       "id": "client_src_hooks_usetableresize_js",
-      "community": 13,
+      "community": 14,
       "norm_label": "usetableresize.js"
     },
     {
@@ -2160,7 +2205,7 @@
       "source_file": "client/src/hooks/useTableResize.js",
       "source_location": "L3",
       "id": "hooks_usetableresize_usetableresize",
-      "community": 13,
+      "community": 14,
       "norm_label": "usetableresize()"
     },
     {
@@ -2169,7 +2214,7 @@
       "source_file": "client/src/hooks/useTableSort.js",
       "source_location": "L1",
       "id": "client_src_hooks_usetablesort_js",
-      "community": 13,
+      "community": 14,
       "norm_label": "usetablesort.js"
     },
     {
@@ -2178,7 +2223,7 @@
       "source_file": "client/src/hooks/useTableSort.js",
       "source_location": "L3",
       "id": "hooks_usetablesort_usetablesort",
-      "community": 13,
+      "community": 14,
       "norm_label": "usetablesort()"
     },
     {
@@ -2187,7 +2232,7 @@
       "source_file": "client/src/hooks/useTags.js",
       "source_location": "L1",
       "id": "client_src_hooks_usetags_js",
-      "community": 2,
+      "community": 1,
       "norm_label": "usetags.js"
     },
     {
@@ -2196,7 +2241,7 @@
       "source_file": "client/src/hooks/useTags.js",
       "source_location": "L17",
       "id": "hooks_usetags_usetags",
-      "community": 2,
+      "community": 1,
       "norm_label": "usetags()"
     },
     {
@@ -2205,7 +2250,7 @@
       "source_file": "client/src/hooks/useTags.js",
       "source_location": "L70",
       "id": "hooks_usetags_invalidatetagcache",
-      "community": 2,
+      "community": 1,
       "norm_label": "invalidatetagcache()"
     },
     {
@@ -2214,7 +2259,7 @@
       "source_file": "client/src/services/api.js",
       "source_location": "L1",
       "id": "client_src_services_api_js",
-      "community": 0,
+      "community": 13,
       "norm_label": "api.js"
     },
     {
@@ -2983,10 +3028,19 @@
       "norm_label": ".printjobcard()"
     },
     {
+      "label": ".buildPacket()",
+      "file_type": "code",
+      "source_file": "client/src/services/api.js",
+      "source_location": "L261",
+      "id": "services_api_apiservice_buildpacket",
+      "community": 0,
+      "norm_label": ".buildpacket()"
+    },
+    {
       "label": ".search()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L259",
+      "source_location": "L266",
       "id": "services_api_apiservice_search",
       "community": 0,
       "norm_label": ".search()"
@@ -2995,7 +3049,7 @@
       "label": ".getQaLevels()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L268",
+      "source_location": "L275",
       "id": "services_api_apiservice_getqalevels",
       "community": 0,
       "norm_label": ".getqalevels()"
@@ -3004,7 +3058,7 @@
       "label": ".getQaLevel()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L269",
+      "source_location": "L276",
       "id": "services_api_apiservice_getqalevel",
       "community": 0,
       "norm_label": ".getqalevel()"
@@ -3013,7 +3067,7 @@
       "label": ".createQaLevel()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L270",
+      "source_location": "L277",
       "id": "services_api_apiservice_createqalevel",
       "community": 0,
       "norm_label": ".createqalevel()"
@@ -3022,7 +3076,7 @@
       "label": ".updateQaLevel()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L271",
+      "source_location": "L278",
       "id": "services_api_apiservice_updateqalevel",
       "community": 0,
       "norm_label": ".updateqalevel()"
@@ -3031,7 +3085,7 @@
       "label": ".deleteQaLevel()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L272",
+      "source_location": "L279",
       "id": "services_api_apiservice_deleteqalevel",
       "community": 0,
       "norm_label": ".deleteqalevel()"
@@ -3040,7 +3094,7 @@
       "label": ".uploadQaTemplate()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L273",
+      "source_location": "L280",
       "id": "services_api_apiservice_uploadqatemplate",
       "community": 0,
       "norm_label": ".uploadqatemplate()"
@@ -3049,10 +3103,28 @@
       "label": ".deleteQaTemplate()",
       "file_type": "code",
       "source_file": "client/src/services/api.js",
-      "source_location": "L274",
+      "source_location": "L281",
       "id": "services_api_apiservice_deleteqatemplate",
       "community": 0,
       "norm_label": ".deleteqatemplate()"
+    },
+    {
+      "label": "bytesToBase64()",
+      "file_type": "code",
+      "source_file": "client/src/services/api.js",
+      "source_location": "L289",
+      "id": "services_api_bytestobase64",
+      "community": 13,
+      "norm_label": "bytestobase64()"
+    },
+    {
+      "label": "base64ToBytes()",
+      "file_type": "code",
+      "source_file": "client/src/services/api.js",
+      "source_location": "L299",
+      "id": "services_api_base64tobytes",
+      "community": 13,
+      "norm_label": "base64tobytes()"
     },
     {
       "label": "hardware.js",
@@ -3195,7 +3267,7 @@
       "source_file": "client/src/utils/attachmentWarnings.js",
       "source_location": "L33",
       "id": "utils_attachmentwarnings_itemwarningmap",
-      "community": 2,
+      "community": 1,
       "norm_label": "itemwarningmap()"
     },
     {
@@ -3393,7 +3465,7 @@
       "source_file": "client/src/utils/formatters.js",
       "source_location": "L1",
       "id": "client_src_utils_formatters_js",
-      "community": 2,
+      "community": 1,
       "norm_label": "formatters.js"
     },
     {
@@ -3402,7 +3474,7 @@
       "source_file": "client/src/utils/formatters.js",
       "source_location": "L1",
       "id": "utils_formatters_totitlecase",
-      "community": 2,
+      "community": 1,
       "norm_label": "totitlecase()"
     },
     {
@@ -3411,7 +3483,7 @@
       "source_file": "client/src/utils/formatters.js",
       "source_location": "L6",
       "id": "utils_formatters_autoresize",
-      "community": 2,
+      "community": 1,
       "norm_label": "autoresize()"
     },
     {
@@ -3420,7 +3492,7 @@
       "source_file": "client/src/utils/formatters.js",
       "source_location": "L11",
       "id": "utils_formatters_capitalizefirst",
-      "community": 2,
+      "community": 1,
       "norm_label": "capitalizefirst()"
     },
     {
@@ -3429,7 +3501,7 @@
       "source_file": "client/src/utils/formatters.js",
       "source_location": "L17",
       "id": "utils_formatters_validatepassword",
-      "community": 2,
+      "community": 1,
       "norm_label": "validatepassword()"
     },
     {
@@ -3474,7 +3546,7 @@
       "source_file": "scripts/setup.js",
       "source_location": "L1",
       "id": "scripts_setup_js",
-      "community": 14,
+      "community": 15,
       "norm_label": "setup.js"
     },
     {
@@ -3483,7 +3555,7 @@
       "source_file": "scripts/setup.js",
       "source_location": "L18",
       "id": "scripts_setup_log",
-      "community": 14,
+      "community": 15,
       "norm_label": "log()"
     },
     {
@@ -3492,7 +3564,7 @@
       "source_file": "scripts/setup.js",
       "source_location": "L22",
       "id": "scripts_setup_checkcommand",
-      "community": 14,
+      "community": 15,
       "norm_label": "checkcommand()"
     },
     {
@@ -3501,7 +3573,7 @@
       "source_file": "scripts/setup.js",
       "source_location": "L40",
       "id": "scripts_setup_checkplatformmatch",
-      "community": 14,
+      "community": 15,
       "norm_label": "checkplatformmatch()"
     },
     {
@@ -3510,7 +3582,7 @@
       "source_file": "scripts/setup.js",
       "source_location": "L51",
       "id": "scripts_setup_writeplatformmarker",
-      "community": 14,
+      "community": 15,
       "norm_label": "writeplatformmarker()"
     },
     {
@@ -3519,7 +3591,7 @@
       "source_file": "scripts/setup.js",
       "source_location": "L59",
       "id": "scripts_setup_installdependencies",
-      "community": 14,
+      "community": 15,
       "norm_label": "installdependencies()"
     },
     {
@@ -3528,7 +3600,7 @@
       "source_file": "scripts/setup.js",
       "source_location": "L102",
       "id": "scripts_setup_checknativemodules",
-      "community": 14,
+      "community": 15,
       "norm_label": "checknativemodules()"
     },
     {
@@ -3537,7 +3609,7 @@
       "source_file": "scripts/setup.js",
       "source_location": "L147",
       "id": "scripts_setup_ensuredatadir",
-      "community": 14,
+      "community": 15,
       "norm_label": "ensuredatadir()"
     },
     {
@@ -3546,7 +3618,7 @@
       "source_file": "scripts/setup.js",
       "source_location": "L203",
       "id": "scripts_setup_runchecks",
-      "community": 14,
+      "community": 15,
       "norm_label": "runchecks()"
     },
     {
@@ -3573,7 +3645,7 @@
       "source_file": "server/scripts/seed-data.js",
       "source_location": "L1",
       "id": "server_scripts_seed_data_js",
-      "community": 69,
+      "community": 70,
       "norm_label": "seed-data.js"
     },
     {
@@ -3582,7 +3654,7 @@
       "source_file": "server/scripts/seed-history.js",
       "source_location": "L1",
       "id": "server_scripts_seed_history_js",
-      "community": 57,
+      "community": 58,
       "norm_label": "seed-history.js"
     },
     {
@@ -3591,7 +3663,7 @@
       "source_file": "server/scripts/seed-history.js",
       "source_location": "L28",
       "id": "scripts_seed_history_seedhistory",
-      "community": 57,
+      "community": 58,
       "norm_label": "seedhistory()"
     },
     {
@@ -3600,7 +3672,7 @@
       "source_file": "server/scripts/seed-mock-data.js",
       "source_location": "L1",
       "id": "server_scripts_seed_mock_data_js",
-      "community": 15,
+      "community": 16,
       "norm_label": "seed-mock-data.js"
     },
     {
@@ -3609,7 +3681,7 @@
       "source_file": "server/scripts/seed-mock-data.js",
       "source_location": "L19",
       "id": "scripts_seed_mock_data_uid",
-      "community": 15,
+      "community": 16,
       "norm_label": "uid()"
     },
     {
@@ -3618,7 +3690,7 @@
       "source_file": "server/scripts/seed-mock-data.js",
       "source_location": "L100",
       "id": "scripts_seed_mock_data_tagvalue",
-      "community": 15,
+      "community": 16,
       "norm_label": "tagvalue()"
     },
     {
@@ -3627,7 +3699,7 @@
       "source_file": "server/scripts/seed-mock-data.js",
       "source_location": "L165",
       "id": "scripts_seed_mock_data_makedate",
-      "community": 15,
+      "community": 16,
       "norm_label": "makedate()"
     },
     {
@@ -3636,7 +3708,7 @@
       "source_file": "server/scripts/seed-mock-data.js",
       "source_location": "L183",
       "id": "scripts_seed_mock_data_buildtreatments",
-      "community": 15,
+      "community": 16,
       "norm_label": "buildtreatments()"
     },
     {
@@ -3645,7 +3717,7 @@
       "source_file": "server/scripts/seed-scenarios.js",
       "source_location": "L1",
       "id": "server_scripts_seed_scenarios_js",
-      "community": 58,
+      "community": 59,
       "norm_label": "seed-scenarios.js"
     },
     {
@@ -3654,7 +3726,7 @@
       "source_file": "server/scripts/seed-scenarios.js",
       "source_location": "L94",
       "id": "scripts_seed_scenarios_buildscenarios",
-      "community": 58,
+      "community": 59,
       "norm_label": "buildscenarios()"
     },
     {
@@ -3663,7 +3735,7 @@
       "source_file": "server/src/config.js",
       "source_location": "L1",
       "id": "server_src_config_js",
-      "community": 59,
+      "community": 60,
       "norm_label": "config.js"
     },
     {
@@ -3672,7 +3744,7 @@
       "source_file": "server/src/config.js",
       "source_location": "L9",
       "id": "src_config_getorcreatejwtsecret",
-      "community": 59,
+      "community": 60,
       "norm_label": "getorcreatejwtsecret()"
     },
     {
@@ -3681,7 +3753,7 @@
       "source_file": "server/src/db/connection.js",
       "source_location": "L1",
       "id": "server_src_db_connection_js",
-      "community": 70,
+      "community": 71,
       "norm_label": "connection.js"
     },
     {
@@ -3690,7 +3762,7 @@
       "source_file": "server/src/db/database.js",
       "source_location": "L1",
       "id": "server_src_db_database_js",
-      "community": 71,
+      "community": 72,
       "norm_label": "database.js"
     },
     {
@@ -3789,7 +3861,7 @@
       "source_file": "server/src/db/schema.js",
       "source_location": "L1",
       "id": "server_src_db_schema_js",
-      "community": 72,
+      "community": 73,
       "norm_label": "schema.js"
     },
     {
@@ -3798,7 +3870,7 @@
       "source_file": "server/src/db/seed-tags.js",
       "source_location": "L1",
       "id": "server_src_db_seed_tags_js",
-      "community": 60,
+      "community": 61,
       "norm_label": "seed-tags.js"
     },
     {
@@ -3807,7 +3879,7 @@
       "source_file": "server/src/db/seed-tags.js",
       "source_location": "L3",
       "id": "db_seed_tags_nametovalue",
-      "community": 60,
+      "community": 61,
       "norm_label": "nametovalue()"
     },
     {
@@ -3816,7 +3888,7 @@
       "source_file": "server/src/db/queries/entities.js",
       "source_location": "L1",
       "id": "server_src_db_queries_entities_js",
-      "community": 73,
+      "community": 74,
       "norm_label": "entities.js"
     },
     {
@@ -3825,7 +3897,7 @@
       "source_file": "server/src/db/queries/index.js",
       "source_location": "L1",
       "id": "server_src_db_queries_index_js",
-      "community": 74,
+      "community": 75,
       "norm_label": "index.js"
     },
     {
@@ -3852,7 +3924,7 @@
       "source_file": "server/src/db/queries/operations.js",
       "source_location": "L1",
       "id": "server_src_db_queries_operations_js",
-      "community": 75,
+      "community": 76,
       "norm_label": "operations.js"
     },
     {
@@ -3861,7 +3933,7 @@
       "source_file": "server/src/db/queries/qa-levels.js",
       "source_location": "L1",
       "id": "server_src_db_queries_qa_levels_js",
-      "community": 76,
+      "community": 77,
       "norm_label": "qa-levels.js"
     },
     {
@@ -3870,7 +3942,7 @@
       "source_file": "server/src/db/queries/support.js",
       "source_location": "L1",
       "id": "server_src_db_queries_support_js",
-      "community": 77,
+      "community": 78,
       "norm_label": "support.js"
     },
     {
@@ -3879,7 +3951,7 @@
       "source_file": "server/src/middleware/auth.js",
       "source_location": "L1",
       "id": "server_src_middleware_auth_js",
-      "community": 35,
+      "community": 36,
       "norm_label": "auth.js"
     },
     {
@@ -3888,7 +3960,7 @@
       "source_file": "server/src/middleware/auth.js",
       "source_location": "L6",
       "id": "middleware_auth_authenticate",
-      "community": 35,
+      "community": 36,
       "norm_label": "authenticate()"
     },
     {
@@ -3897,7 +3969,7 @@
       "source_file": "server/src/middleware/auth.js",
       "source_location": "L47",
       "id": "middleware_auth_requirerole",
-      "community": 35,
+      "community": 36,
       "norm_label": "requirerole()"
     },
     {
@@ -4122,7 +4194,7 @@
       "source_file": "server/src/routes/auth.js",
       "source_location": "L1",
       "id": "server_src_routes_auth_js",
-      "community": 23,
+      "community": 24,
       "norm_label": "auth.js"
     },
     {
@@ -4131,7 +4203,7 @@
       "source_file": "server/src/routes/auth.js",
       "source_location": "L25",
       "id": "routes_auth_cooldownmsforcount",
-      "community": 23,
+      "community": 24,
       "norm_label": "cooldownmsforcount()"
     },
     {
@@ -4140,7 +4212,7 @@
       "source_file": "server/src/routes/auth.js",
       "source_location": "L32",
       "id": "routes_auth_checkloginratelimit",
-      "community": 23,
+      "community": 24,
       "norm_label": "checkloginratelimit()"
     },
     {
@@ -4149,7 +4221,7 @@
       "source_file": "server/src/routes/auth.js",
       "source_location": "L57",
       "id": "routes_auth_recordloginfailure",
-      "community": 23,
+      "community": 24,
       "norm_label": "recordloginfailure()"
     },
     {
@@ -4158,7 +4230,7 @@
       "source_file": "server/src/routes/auth.js",
       "source_location": "L69",
       "id": "routes_auth_clearloginfailures",
-      "community": 23,
+      "community": 24,
       "norm_label": "clearloginfailures()"
     },
     {
@@ -4167,7 +4239,7 @@
       "source_file": "server/src/routes/auth.js",
       "source_location": "L331",
       "id": "routes_auth_normalizeempty",
-      "community": 23,
+      "community": 24,
       "norm_label": "normalizeempty()"
     },
     {
@@ -4176,7 +4248,7 @@
       "source_file": "server/src/routes/backup-helpers.js",
       "source_location": "L1",
       "id": "server_src_routes_backup_helpers_js",
-      "community": 19,
+      "community": 20,
       "norm_label": "backup-helpers.js"
     },
     {
@@ -4185,7 +4257,7 @@
       "source_file": "server/src/routes/backup-helpers.js",
       "source_location": "L8",
       "id": "routes_backup_helpers_listfilesrecursive",
-      "community": 19,
+      "community": 20,
       "norm_label": "listfilesrecursive()"
     },
     {
@@ -4194,7 +4266,7 @@
       "source_file": "server/src/routes/backup-helpers.js",
       "source_location": "L23",
       "id": "routes_backup_helpers_verifystagedfiles",
-      "community": 19,
+      "community": 20,
       "norm_label": "verifystagedfiles()"
     },
     {
@@ -4203,7 +4275,7 @@
       "source_file": "server/src/routes/backup-helpers.js",
       "source_location": "L41",
       "id": "routes_backup_helpers_copydirrecursive",
-      "community": 19,
+      "community": 20,
       "norm_label": "copydirrecursive()"
     },
     {
@@ -4212,7 +4284,7 @@
       "source_file": "server/src/routes/backup-helpers.js",
       "source_location": "L60",
       "id": "routes_backup_helpers_besteffortremove",
-      "community": 19,
+      "community": 20,
       "norm_label": "besteffortremove()"
     },
     {
@@ -4221,7 +4293,7 @@
       "source_file": "server/src/routes/backup-helpers.js",
       "source_location": "L77",
       "id": "routes_backup_helpers_partitionreadablefiles",
-      "community": 19,
+      "community": 20,
       "norm_label": "partitionreadablefiles()"
     },
     {
@@ -4230,7 +4302,7 @@
       "source_file": "server/src/routes/backup-helpers.js",
       "source_location": "L109",
       "id": "routes_backup_helpers_archivebackup",
-      "community": 19,
+      "community": 20,
       "norm_label": "archivebackup()"
     },
     {
@@ -4239,7 +4311,7 @@
       "source_file": "server/src/routes/backup-helpers.js",
       "source_location": "L205",
       "id": "routes_backup_helpers_archivebackupwithretry",
-      "community": 19,
+      "community": 20,
       "norm_label": "archivebackupwithretry()"
     },
     {
@@ -4248,7 +4320,7 @@
       "source_file": "server/src/routes/contacts.js",
       "source_location": "L1",
       "id": "server_src_routes_contacts_js",
-      "community": 36,
+      "community": 37,
       "norm_label": "contacts.js"
     },
     {
@@ -4257,7 +4329,7 @@
       "source_file": "server/src/routes/contacts.js",
       "source_location": "L12",
       "id": "routes_contacts_toapiformat",
-      "community": 36,
+      "community": 37,
       "norm_label": "toapiformat()"
     },
     {
@@ -4266,7 +4338,7 @@
       "source_file": "server/src/routes/contacts.js",
       "source_location": "L146",
       "id": "routes_contacts_normalizeempty",
-      "community": 36,
+      "community": 37,
       "norm_label": "normalizeempty()"
     },
     {
@@ -4275,7 +4347,7 @@
       "source_file": "server/src/routes/hardware.js",
       "source_location": "L1",
       "id": "server_src_routes_hardware_js",
-      "community": 78,
+      "community": 79,
       "norm_label": "hardware.js"
     },
     {
@@ -4284,7 +4356,7 @@
       "source_file": "server/src/routes/history.js",
       "source_location": "L1",
       "id": "server_src_routes_history_js",
-      "community": 79,
+      "community": 80,
       "norm_label": "history.js"
     },
     {
@@ -4293,7 +4365,7 @@
       "source_file": "server/src/routes/jobcard-costing.js",
       "source_location": "L1",
       "id": "server_src_routes_jobcard_costing_js",
-      "community": 80,
+      "community": 81,
       "norm_label": "jobcard-costing.js"
     },
     {
@@ -4302,7 +4374,7 @@
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L1",
       "id": "server_src_routes_jobcard_files_js",
-      "community": 1,
+      "community": 2,
       "norm_label": "jobcard-files.js"
     },
     {
@@ -4311,7 +4383,7 @@
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L65",
       "id": "routes_jobcard_files_resolvejobfolder",
-      "community": 1,
+      "community": 2,
       "norm_label": "resolvejobfolder()"
     },
     {
@@ -4320,7 +4392,7 @@
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L107",
       "id": "routes_jobcard_files_resolvecategoryfolder",
-      "community": 1,
+      "community": 2,
       "norm_label": "resolvecategoryfolder()"
     },
     {
@@ -4329,7 +4401,7 @@
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L131",
       "id": "routes_jobcard_files_partfilecode",
-      "community": 1,
+      "community": 2,
       "norm_label": "partfilecode()"
     },
     {
@@ -4338,7 +4410,7 @@
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L150",
       "id": "routes_jobcard_files_buildstoragefilename",
-      "community": 1,
+      "community": 2,
       "norm_label": "buildstoragefilename()"
     },
     {
@@ -4347,7 +4419,7 @@
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L163",
       "id": "routes_jobcard_files_listfolderfiles",
-      "community": 1,
+      "community": 2,
       "norm_label": "listfolderfiles()"
     },
     {
@@ -4356,7 +4428,7 @@
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L195",
       "id": "routes_jobcard_files_listcategoryfilenames",
-      "community": 1,
+      "community": 2,
       "norm_label": "listcategoryfilenames()"
     },
     {
@@ -4365,7 +4437,7 @@
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L307",
       "id": "routes_jobcard_files_savefile",
-      "community": 1,
+      "community": 2,
       "norm_label": "savefile()"
     },
     {
@@ -4374,7 +4446,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L1",
       "id": "server_src_routes_jobcard_helpers_js",
-      "community": 1,
+      "community": 2,
       "norm_label": "jobcard-helpers.js"
     },
     {
@@ -4383,7 +4455,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L29",
       "id": "routes_jobcard_helpers_parsetreatments",
-      "community": 16,
+      "community": 17,
       "norm_label": "parsetreatments()"
     },
     {
@@ -4392,7 +4464,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L42",
       "id": "routes_jobcard_helpers_declaresvalue",
-      "community": 1,
+      "community": 2,
       "norm_label": "declaresvalue()"
     },
     {
@@ -4401,7 +4473,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L55",
       "id": "routes_jobcard_helpers_hasitemfile",
-      "community": 1,
+      "community": 2,
       "norm_label": "hasitemfile()"
     },
     {
@@ -4410,7 +4482,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L74",
       "id": "routes_jobcard_helpers_computeattachmentwarnings",
-      "community": 1,
+      "community": 2,
       "norm_label": "computeattachmentwarnings()"
     },
     {
@@ -4419,7 +4491,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L162",
       "id": "routes_jobcard_helpers_formatjobcard",
-      "community": 1,
+      "community": 2,
       "norm_label": "formatjobcard()"
     },
     {
@@ -4428,7 +4500,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L215",
       "id": "routes_jobcard_helpers_buildchanges",
-      "community": 1,
+      "community": 2,
       "norm_label": "buildchanges()"
     },
     {
@@ -4437,7 +4509,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L252",
       "id": "routes_jobcard_helpers_sanitizehistoryforrole",
-      "community": 1,
+      "community": 2,
       "norm_label": "sanitizehistoryforrole()"
     },
     {
@@ -4446,7 +4518,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L261",
       "id": "routes_jobcard_helpers_serializetreatments",
-      "community": 1,
+      "community": 2,
       "norm_label": "serializetreatments()"
     },
     {
@@ -4455,7 +4527,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L268",
       "id": "routes_jobcard_helpers_buildqafilldata",
-      "community": 1,
+      "community": 2,
       "norm_label": "buildqafilldata()"
     },
     {
@@ -4464,7 +4536,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L308",
       "id": "routes_jobcard_helpers_tagname",
-      "community": 1,
+      "community": 2,
       "norm_label": "tagname()"
     },
     {
@@ -4473,7 +4545,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L314",
       "id": "routes_jobcard_helpers_splitvalues",
-      "community": 1,
+      "community": 2,
       "norm_label": "splitvalues()"
     },
     {
@@ -4482,7 +4554,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L318",
       "id": "routes_jobcard_helpers_formataudate",
-      "community": 1,
+      "community": 2,
       "norm_label": "formataudate()"
     },
     {
@@ -4491,7 +4563,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L327",
       "id": "routes_jobcard_helpers_buildjobcardview",
-      "community": 1,
+      "community": 2,
       "norm_label": "buildjobcardview()"
     },
     {
@@ -4500,7 +4572,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L378",
       "id": "routes_jobcard_helpers_createrelatedrecords",
-      "community": 1,
+      "community": 2,
       "norm_label": "createrelatedrecords()"
     },
     {
@@ -4509,7 +4581,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L413",
       "id": "routes_jobcard_helpers_copyqatemplatesforjob",
-      "community": 1,
+      "community": 2,
       "norm_label": "copyqatemplatesforjob()"
     },
     {
@@ -4518,7 +4590,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L431",
       "id": "routes_jobcard_helpers_copytemplatestojobfolder",
-      "community": 1,
+      "community": 2,
       "norm_label": "copytemplatestojobfolder()"
     },
     {
@@ -4527,7 +4599,7 @@
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L541",
       "id": "routes_jobcard_helpers_verifyqatemplatesavailable",
-      "community": 1,
+      "community": 2,
       "norm_label": "verifyqatemplatesavailable()"
     },
     {
@@ -4536,7 +4608,7 @@
       "source_file": "server/src/routes/jobcard-mutations.js",
       "source_location": "L1",
       "id": "server_src_routes_jobcard_mutations_js",
-      "community": 16,
+      "community": 17,
       "norm_label": "jobcard-mutations.js"
     },
     {
@@ -4545,7 +4617,7 @@
       "source_file": "server/src/routes/jobcard-mutations.js",
       "source_location": "L25",
       "id": "routes_jobcard_mutations_treatmentstotext",
-      "community": 16,
+      "community": 17,
       "norm_label": "treatmentstotext()"
     },
     {
@@ -4554,7 +4626,7 @@
       "source_file": "server/src/routes/jobcard-mutations.js",
       "source_location": "L33",
       "id": "routes_jobcard_mutations_itemsummary",
-      "community": 16,
+      "community": 17,
       "norm_label": "itemsummary()"
     },
     {
@@ -4563,7 +4635,7 @@
       "source_file": "server/src/routes/jobcard-mutations.js",
       "source_location": "L41",
       "id": "routes_jobcard_mutations_assigneenames",
-      "community": 16,
+      "community": 17,
       "norm_label": "assigneenames()"
     },
     {
@@ -4572,7 +4644,7 @@
       "source_file": "server/src/routes/jobcard-mutations.js",
       "source_location": "L48",
       "id": "routes_jobcard_mutations_buildqatemplatewarning",
-      "community": 16,
+      "community": 17,
       "norm_label": "buildqatemplatewarning()"
     },
     {
@@ -4581,7 +4653,7 @@
       "source_file": "server/src/routes/jobcard-notes.js",
       "source_location": "L1",
       "id": "server_src_routes_jobcard_notes_js",
-      "community": 81,
+      "community": 82,
       "norm_label": "jobcard-notes.js"
     },
     {
@@ -4590,7 +4662,7 @@
       "source_file": "server/src/routes/jobcard-printout.js",
       "source_location": "L1",
       "id": "server_src_routes_jobcard_printout_js",
-      "community": 1,
+      "community": 2,
       "norm_label": "jobcard-printout.js"
     },
     {
@@ -4680,7 +4752,7 @@
       "source_file": "server/src/routes/jobcards.js",
       "source_location": "L1",
       "id": "server_src_routes_jobcards_js",
-      "community": 16,
+      "community": 17,
       "norm_label": "jobcards.js"
     },
     {
@@ -4689,7 +4761,7 @@
       "source_file": "server/src/routes/machines.js",
       "source_location": "L1",
       "id": "server_src_routes_machines_js",
-      "community": 37,
+      "community": 38,
       "norm_label": "machines.js"
     },
     {
@@ -4698,7 +4770,7 @@
       "source_file": "server/src/routes/machines.js",
       "source_location": "L13",
       "id": "routes_machines_toresponseformat",
-      "community": 37,
+      "community": 38,
       "norm_label": "toresponseformat()"
     },
     {
@@ -4707,7 +4779,7 @@
       "source_file": "server/src/routes/machines.js",
       "source_location": "L110",
       "id": "routes_machines_normalizeempty",
-      "community": 37,
+      "community": 38,
       "norm_label": "normalizeempty()"
     },
     {
@@ -4851,7 +4923,7 @@
       "source_file": "server/src/routes/settings.js",
       "source_location": "L1",
       "id": "server_src_routes_settings_js",
-      "community": 20,
+      "community": 21,
       "norm_label": "settings.js"
     },
     {
@@ -4860,7 +4932,7 @@
       "source_file": "server/src/routes/settings.js",
       "source_location": "L27",
       "id": "routes_settings_snaketocamel",
-      "community": 20,
+      "community": 21,
       "norm_label": "snaketocamel()"
     },
     {
@@ -4869,7 +4941,7 @@
       "source_file": "server/src/routes/settings.js",
       "source_location": "L32",
       "id": "routes_settings_cameltosnake",
-      "community": 20,
+      "community": 21,
       "norm_label": "cameltosnake()"
     },
     {
@@ -4878,7 +4950,7 @@
       "source_file": "server/src/routes/settings.js",
       "source_location": "L37",
       "id": "routes_settings_convertkeystocamel",
-      "community": 20,
+      "community": 21,
       "norm_label": "convertkeystocamel()"
     },
     {
@@ -4887,7 +4959,7 @@
       "source_file": "server/src/routes/settings.js",
       "source_location": "L162",
       "id": "routes_settings_gettablecolumns",
-      "community": 20,
+      "community": 21,
       "norm_label": "gettablecolumns()"
     },
     {
@@ -4932,7 +5004,7 @@
       "source_file": "server/src/routes/tags.js",
       "source_location": "L1",
       "id": "server_src_routes_tags_js",
-      "community": 38,
+      "community": 39,
       "norm_label": "tags.js"
     },
     {
@@ -4941,7 +5013,7 @@
       "source_file": "server/src/routes/tags.js",
       "source_location": "L11",
       "id": "routes_tags_nametovalue",
-      "community": 38,
+      "community": 39,
       "norm_label": "nametovalue()"
     },
     {
@@ -4950,7 +5022,7 @@
       "source_file": "server/src/routes/tags.js",
       "source_location": "L15",
       "id": "routes_tags_formattag",
-      "community": 38,
+      "community": 39,
       "norm_label": "formattag()"
     },
     {
@@ -4959,7 +5031,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L1",
       "id": "server_src_utils_foldercreation_js",
-      "community": 1,
+      "community": 2,
       "norm_label": "foldercreation.js"
     },
     {
@@ -4968,7 +5040,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L11",
       "id": "utils_foldercreation_sanitizefoldername",
-      "community": 1,
+      "community": 2,
       "norm_label": "sanitizefoldername()"
     },
     {
@@ -4977,7 +5049,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L27",
       "id": "utils_foldercreation_iswithinbase",
-      "community": 1,
+      "community": 2,
       "norm_label": "iswithinbase()"
     },
     {
@@ -4986,7 +5058,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L37",
       "id": "utils_foldercreation_getbasepath",
-      "community": 1,
+      "community": 2,
       "norm_label": "getbasepath()"
     },
     {
@@ -4995,7 +5067,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L64",
       "id": "utils_foldercreation_idslug",
-      "community": 1,
+      "community": 2,
       "norm_label": "idslug()"
     },
     {
@@ -5004,7 +5076,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L76",
       "id": "utils_foldercreation_folderslugof",
-      "community": 1,
+      "community": 2,
       "norm_label": "folderslugof()"
     },
     {
@@ -5013,7 +5085,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L85",
       "id": "utils_foldercreation_companyfoldername",
-      "community": 1,
+      "community": 2,
       "norm_label": "companyfoldername()"
     },
     {
@@ -5022,7 +5094,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L96",
       "id": "utils_foldercreation_findcompanyfolder",
-      "community": 1,
+      "community": 2,
       "norm_label": "findcompanyfolder()"
     },
     {
@@ -5031,7 +5103,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L120",
       "id": "utils_foldercreation_resolvecompanyfolder",
-      "community": 1,
+      "community": 2,
       "norm_label": "resolvecompanyfolder()"
     },
     {
@@ -5040,7 +5112,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L147",
       "id": "utils_foldercreation_ensurecompanyfolder",
-      "community": 1,
+      "community": 2,
       "norm_label": "ensurecompanyfolder()"
     },
     {
@@ -5049,7 +5121,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L179",
       "id": "utils_foldercreation_renamecompanyfolder",
-      "community": 1,
+      "community": 2,
       "norm_label": "renamecompanyfolder()"
     },
     {
@@ -5058,7 +5130,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L216",
       "id": "utils_foldercreation_qalevelfoldername",
-      "community": 1,
+      "community": 2,
       "norm_label": "qalevelfoldername()"
     },
     {
@@ -5067,7 +5139,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L230",
       "id": "utils_foldercreation_findqalevelfolder",
-      "community": 1,
+      "community": 2,
       "norm_label": "findqalevelfolder()"
     },
     {
@@ -5076,7 +5148,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L257",
       "id": "utils_foldercreation_ensureqalevelfolder",
-      "community": 1,
+      "community": 2,
       "norm_label": "ensureqalevelfolder()"
     },
     {
@@ -5085,7 +5157,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L290",
       "id": "utils_foldercreation_renameqalevelfolder",
-      "community": 1,
+      "community": 2,
       "norm_label": "renameqalevelfolder()"
     },
     {
@@ -5094,7 +5166,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L322",
       "id": "utils_foldercreation_companypathbyname",
-      "community": 1,
+      "community": 2,
       "norm_label": "companypathbyname()"
     },
     {
@@ -5103,7 +5175,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L336",
       "id": "utils_foldercreation_createjobcardfolders",
-      "community": 1,
+      "community": 2,
       "norm_label": "createjobcardfolders()"
     },
     {
@@ -5112,7 +5184,7 @@
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L371",
       "id": "utils_foldercreation_deletejobcardfolders",
-      "community": 1,
+      "community": 2,
       "norm_label": "deletejobcardfolders()"
     },
     {
@@ -5157,7 +5229,7 @@
       "source_file": "server/src/utils/logger.js",
       "source_location": "L1",
       "id": "server_src_utils_logger_js",
-      "community": 61,
+      "community": 62,
       "norm_label": "logger.js"
     },
     {
@@ -5166,7 +5238,7 @@
       "source_file": "server/src/utils/logger.js",
       "source_location": "L52",
       "id": "utils_logger_requestlogger",
-      "community": 61,
+      "community": 62,
       "norm_label": "requestlogger()"
     },
     {
@@ -5206,11 +5278,101 @@
       "norm_label": "fillpdftemplate()"
     },
     {
+      "label": "pdfPacket.js",
+      "file_type": "code",
+      "source_file": "server/src/utils/pdfPacket.js",
+      "source_location": "L1",
+      "id": "server_src_utils_pdfpacket_js",
+      "community": 31,
+      "norm_label": "pdfpacket.js"
+    },
+    {
+      "label": "appendPdf()",
+      "file_type": "code",
+      "source_file": "server/src/utils/pdfPacket.js",
+      "source_location": "L20",
+      "id": "utils_pdfpacket_appendpdf",
+      "community": 31,
+      "norm_label": "appendpdf()"
+    },
+    {
+      "label": "appendImage()",
+      "file_type": "code",
+      "source_file": "server/src/utils/pdfPacket.js",
+      "source_location": "L26",
+      "id": "utils_pdfpacket_appendimage",
+      "community": 31,
+      "norm_label": "appendimage()"
+    },
+    {
+      "label": "buildPacketPdf()",
+      "file_type": "code",
+      "source_file": "server/src/utils/pdfPacket.js",
+      "source_location": "L49",
+      "id": "utils_pdfpacket_buildpacketpdf",
+      "community": 31,
+      "norm_label": "buildpacketpdf()"
+    },
+    {
+      "label": "JobFilesMenu.jsx",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
+      "source_location": "L1",
+      "community": 6,
+      "norm_label": "jobfilesmenu.jsx",
+      "id": "client_src_components_jobcard_jobfilesmenu_jsx"
+    },
+    {
+      "label": "JobFilesMenu()",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
+      "source_location": "L17",
+      "community": 6,
+      "norm_label": "jobfilesmenu()",
+      "id": "jobcard_jobfilesmenu_jobfilesmenu"
+    },
+    {
+      "label": "usePrintJobCard.js",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/usePrintJobCard.js",
+      "source_location": "L1",
+      "community": 4,
+      "norm_label": "useprintjobcard.js",
+      "id": "client_src_components_jobcard_useprintjobcard_js"
+    },
+    {
+      "label": "usePrintJobCard()",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/usePrintJobCard.js",
+      "source_location": "L8",
+      "community": 4,
+      "norm_label": "useprintjobcard()",
+      "id": "jobcard_useprintjobcard_useprintjobcard"
+    },
+    {
+      "label": "FilesTab.jsx",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/tabs/FilesTab.jsx",
+      "source_location": "L1",
+      "community": 6,
+      "norm_label": "filestab.jsx",
+      "id": "client_src_components_jobcard_tabs_filestab_jsx"
+    },
+    {
+      "label": "FilesTab()",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/tabs/FilesTab.jsx",
+      "source_location": "L7",
+      "community": 6,
+      "norm_label": "filestab()",
+      "id": "tabs_filestab_filestab"
+    },
+    {
       "label": "printInHiddenWindow()",
       "file_type": "code",
       "source_file": "client/electron/main.js",
       "source_location": "L273",
-      "community": 21,
+      "community": 22,
       "norm_label": "printinhiddenwindow()",
       "id": "electron_main_printinhiddenwindow"
     },
@@ -5228,7 +5390,7 @@
       "file_type": "code",
       "source_file": "client/src/components/settings/JobCardTemplateCard.jsx",
       "source_location": "L1",
-      "community": 62,
+      "community": 63,
       "norm_label": "jobcardtemplatecard.jsx",
       "id": "client_src_components_settings_jobcardtemplatecard_jsx"
     },
@@ -5237,7 +5399,7 @@
       "file_type": "code",
       "source_file": "client/src/components/settings/JobCardTemplateCard.jsx",
       "source_location": "L3",
-      "community": 62,
+      "community": 63,
       "norm_label": "jobcardtemplatecard()",
       "id": "settings_jobcardtemplatecard_jobcardtemplatecard"
     },
@@ -5273,7 +5435,7 @@
       "file_type": "code",
       "source_file": "server/scripts/generate-job-card-template.js",
       "source_location": "L1",
-      "community": 63,
+      "community": 64,
       "norm_label": "generate-job-card-template.js",
       "id": "server_scripts_generate_job_card_template_js"
     },
@@ -5282,7 +5444,7 @@
       "file_type": "code",
       "source_file": "server/scripts/generate-job-card-template.js",
       "source_location": "L24",
-      "community": 63,
+      "community": 64,
       "norm_label": "generatetemplate()",
       "id": "scripts_generate_job_card_template_generatetemplate"
     },
@@ -5291,7 +5453,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-printout.js",
       "source_location": "L28",
-      "community": 1,
+      "community": 2,
       "norm_label": "gettemplatedir()",
       "id": "routes_jobcard_printout_gettemplatedir"
     },
@@ -5300,7 +5462,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-printout.js",
       "source_location": "L38",
-      "community": 1,
+      "community": 2,
       "norm_label": "gettemplatefile()",
       "id": "routes_jobcard_printout_gettemplatefile"
     },
@@ -5309,7 +5471,7 @@
       "file_type": "code",
       "source_file": "worker-client/main.js",
       "source_location": "L1",
-      "community": 17,
+      "community": 18,
       "norm_label": "main.js",
       "id": "worker_client_main_js"
     },
@@ -5318,7 +5480,7 @@
       "file_type": "code",
       "source_file": "worker-client/main.js",
       "source_location": "L10",
-      "community": 17,
+      "community": 18,
       "norm_label": "readconfig()",
       "id": "worker_client_main_readconfig"
     },
@@ -5327,7 +5489,7 @@
       "file_type": "code",
       "source_file": "worker-client/main.js",
       "source_location": "L22",
-      "community": 17,
+      "community": 18,
       "norm_label": "saveconfig()",
       "id": "worker_client_main_saveconfig"
     },
@@ -5336,7 +5498,7 @@
       "file_type": "code",
       "source_file": "worker-client/main.js",
       "source_location": "L30",
-      "community": 17,
+      "community": 18,
       "norm_label": "buildmenu()",
       "id": "worker_client_main_buildmenu"
     },
@@ -5345,7 +5507,7 @@
       "file_type": "code",
       "source_file": "worker-client/main.js",
       "source_location": "L60",
-      "community": 17,
+      "community": 18,
       "norm_label": "showsetup()",
       "id": "worker_client_main_showsetup"
     },
@@ -5354,7 +5516,7 @@
       "file_type": "code",
       "source_file": "worker-client/main.js",
       "source_location": "L93",
-      "community": 17,
+      "community": 18,
       "norm_label": "showmain()",
       "id": "worker_client_main_showmain"
     },
@@ -5363,7 +5525,7 @@
       "file_type": "code",
       "source_file": "worker-client/main.js",
       "source_location": "L127",
-      "community": 17,
+      "community": 18,
       "norm_label": "escapehtml()",
       "id": "worker_client_main_escapehtml"
     },
@@ -5372,7 +5534,7 @@
       "file_type": "code",
       "source_file": "worker-client/main.js",
       "source_location": "L131",
-      "community": 17,
+      "community": 18,
       "norm_label": "errorpage()",
       "id": "worker_client_main_errorpage"
     },
@@ -5381,7 +5543,7 @@
       "file_type": "code",
       "source_file": "worker-client/main.js",
       "source_location": "L190",
-      "community": 17,
+      "community": 18,
       "norm_label": "isvalidip()",
       "id": "worker_client_main_isvalidip"
     },
@@ -5390,7 +5552,7 @@
       "file_type": "code",
       "source_file": "worker-client/preload.js",
       "source_location": "L1",
-      "community": 82,
+      "community": 83,
       "norm_label": "preload.js",
       "id": "worker_client_preload_js"
     },
@@ -5417,7 +5579,7 @@
       "file_type": "code",
       "source_file": "server/scripts/backfill-folders.js",
       "source_location": "L1",
-      "community": 83,
+      "community": 84,
       "norm_label": "backfill-folders.js",
       "id": "server_scripts_backfill_folders_js"
     },
@@ -5426,7 +5588,7 @@
       "file_type": "code",
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L53",
-      "community": 1,
+      "community": 2,
       "norm_label": "createcompanyfolder()",
       "id": "utils_foldercreation_createcompanyfolder"
     },
@@ -5435,7 +5597,7 @@
       "file_type": "code",
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L85",
-      "community": 1,
+      "community": 2,
       "norm_label": "readqalevelmarker()",
       "id": "utils_foldercreation_readqalevelmarker"
     },
@@ -5453,7 +5615,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
       "source_location": "L62",
-      "community": 2,
+      "community": 1,
       "norm_label": "formatfilesize()",
       "id": "jobcard_mappers_formatfilesize"
     },
@@ -5462,7 +5624,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
       "source_location": "L68",
-      "community": 2,
+      "community": 1,
       "norm_label": "formatfiledate()",
       "id": "jobcard_mappers_formatfiledate"
     },
@@ -5516,7 +5678,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/mappers.js",
       "source_location": "L60",
-      "community": 2,
+      "community": 1,
       "norm_label": "makeemptytreatment()",
       "id": "jobcard_mappers_makeemptytreatment"
     },
@@ -5525,7 +5687,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/TreatmentChips.jsx",
       "source_location": "L1",
-      "community": 2,
+      "community": 1,
       "norm_label": "treatmentchips.jsx",
       "id": "client_src_components_jobcard_tabs_treatmentchips_jsx"
     },
@@ -5534,7 +5696,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/TreatmentChips.jsx",
       "source_location": "L7",
-      "community": 2,
+      "community": 1,
       "norm_label": "findsupplier()",
       "id": "tabs_treatmentchips_findsupplier"
     },
@@ -5543,7 +5705,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/TreatmentChips.jsx",
       "source_location": "L11",
-      "community": 2,
+      "community": 1,
       "norm_label": "suppliersfortreatment()",
       "id": "tabs_treatmentchips_suppliersfortreatment"
     },
@@ -5552,7 +5714,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/TreatmentChips.jsx",
       "source_location": "L17",
-      "community": 2,
+      "community": 1,
       "norm_label": "addtreatmentpopover()",
       "id": "tabs_treatmentchips_addtreatmentpopover"
     },
@@ -5561,7 +5723,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/TreatmentChips.jsx",
       "source_location": "L137",
-      "community": 2,
+      "community": 1,
       "norm_label": "treatmentchip()",
       "id": "tabs_treatmentchips_treatmentchip"
     },
@@ -5570,7 +5732,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/TreatmentChips.jsx",
       "source_location": "L214",
-      "community": 2,
+      "community": 1,
       "norm_label": "treatmentchips()",
       "id": "tabs_treatmentchips_treatmentchips"
     },
@@ -5606,7 +5768,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/JobScrapSummary.jsx",
       "source_location": "L1",
-      "community": 31,
+      "community": 32,
       "norm_label": "jobscrapsummary.jsx",
       "id": "client_src_components_jobcard_tabs_jobscrapsummary_jsx"
     },
@@ -5615,7 +5777,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/JobScrapSummary.jsx",
       "source_location": "L3",
-      "community": 31,
+      "community": 32,
       "norm_label": "parseqty()",
       "id": "tabs_jobscrapsummary_parseqty"
     },
@@ -5624,7 +5786,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/JobScrapSummary.jsx",
       "source_location": "L9",
-      "community": 31,
+      "community": 32,
       "norm_label": "formatnum()",
       "id": "tabs_jobscrapsummary_formatnum"
     },
@@ -5633,7 +5795,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/JobScrapSummary.jsx",
       "source_location": "L16",
-      "community": 31,
+      "community": 32,
       "norm_label": "jobscrapsummary()",
       "id": "tabs_jobscrapsummary_jobscrapsummary"
     },
@@ -5651,7 +5813,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/settings.js",
       "source_location": "L507",
-      "community": 20,
+      "community": 21,
       "norm_label": "listfilesrecursive()",
       "id": "routes_settings_listfilesrecursive"
     },
@@ -5660,7 +5822,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/settings.js",
       "source_location": "L522",
-      "community": 20,
+      "community": 21,
       "norm_label": "verifystagedfiles()",
       "id": "routes_settings_verifystagedfiles"
     },
@@ -5669,7 +5831,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/settings.js",
       "source_location": "L540",
-      "community": 20,
+      "community": 21,
       "norm_label": "copydirrecursive()",
       "id": "routes_settings_copydirrecursive"
     },
@@ -5723,7 +5885,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcards.js",
       "source_location": "L355",
-      "community": 16,
+      "community": 17,
       "norm_label": "treatmentstotext()",
       "id": "routes_jobcards_treatmentstotext"
     },
@@ -5732,7 +5894,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcards.js",
       "source_location": "L362",
-      "community": 16,
+      "community": 17,
       "norm_label": "itemsummary()",
       "id": "routes_jobcards_itemsummary"
     },
@@ -5750,7 +5912,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/DetailsReadOnlyView.jsx",
       "source_location": "L4",
-      "community": 2,
+      "community": 1,
       "norm_label": "labelvalue()",
       "id": "tabs_detailsreadonlyview_labelvalue"
     },
@@ -5759,7 +5921,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/DetailsReadOnlyView.jsx",
       "source_location": "L5",
-      "community": 2,
+      "community": 1,
       "norm_label": "statusbadge()",
       "id": "tabs_detailsreadonlyview_statusbadge"
     },
@@ -5813,7 +5975,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/DetailsReadOnlyView.jsx",
       "source_location": "L13",
-      "community": 2,
+      "community": 1,
       "norm_label": "prioritybadge()",
       "id": "tabs_detailsreadonlyview_prioritybadge"
     },
@@ -6020,7 +6182,7 @@
       "file_type": "code",
       "source_file": "server/scripts/seed-mock-data.js",
       "source_location": "L220",
-      "community": 15,
+      "community": 16,
       "norm_label": "pick()",
       "id": "scripts_seed_mock_data_pick"
     },
@@ -6029,7 +6191,7 @@
       "file_type": "code",
       "source_file": "server/scripts/seed-mock-data.js",
       "source_location": "L221",
-      "community": 15,
+      "community": 16,
       "norm_label": "pickn()",
       "id": "scripts_seed_mock_data_pickn"
     },
@@ -6038,7 +6200,7 @@
       "file_type": "code",
       "source_file": "server/scripts/seed-mock-data.js",
       "source_location": "L225",
-      "community": 15,
+      "community": 16,
       "norm_label": "daysago()",
       "id": "scripts_seed_mock_data_daysago"
     },
@@ -6047,7 +6209,7 @@
       "file_type": "code",
       "source_file": "server/scripts/seed-mock-data.js",
       "source_location": "L230",
-      "community": 15,
+      "community": 16,
       "norm_label": "daysfromnow()",
       "id": "scripts_seed_mock_data_daysfromnow"
     },
@@ -6056,7 +6218,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-documents.js",
       "source_location": "L1",
-      "community": 84,
+      "community": 85,
       "norm_label": "jobcard-documents.js",
       "id": "server_src_routes_jobcard_documents_js"
     },
@@ -6065,7 +6227,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L41",
-      "community": 1,
+      "community": 2,
       "norm_label": "resolvejobsubfolder()",
       "id": "routes_jobcard_files_resolvejobsubfolder"
     },
@@ -6074,7 +6236,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L92",
-      "community": 1,
+      "community": 2,
       "norm_label": "parseitemnumber()",
       "id": "routes_jobcard_files_parseitemnumber"
     },
@@ -6083,7 +6245,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L144",
-      "community": 1,
+      "community": 2,
       "norm_label": "resolvejobfilespath()",
       "id": "routes_jobcard_files_resolvejobfilespath"
     },
@@ -6092,7 +6254,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L219",
-      "community": 1,
+      "community": 2,
       "norm_label": "resolveqaformspath()",
       "id": "routes_jobcard_files_resolveqaformspath"
     },
@@ -6101,7 +6263,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L281",
-      "community": 1,
+      "community": 2,
       "norm_label": "resolvecustomerpropertypath()",
       "id": "routes_jobcard_files_resolvecustomerpropertypath"
     },
@@ -6110,7 +6272,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-files.js",
       "source_location": "L343",
-      "community": 1,
+      "community": 2,
       "norm_label": "deduplicatefilename()",
       "id": "routes_jobcard_files_deduplicatefilename"
     },
@@ -6119,7 +6281,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L173",
-      "community": 1,
+      "community": 2,
       "norm_label": "initqaforms()",
       "id": "routes_jobcard_helpers_initqaforms"
     },
@@ -6128,7 +6290,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
       "source_location": "L193",
-      "community": 1,
+      "community": 2,
       "norm_label": "initqaformsfromlevel()",
       "id": "routes_jobcard_helpers_initqaformsfromlevel"
     },
@@ -6137,7 +6299,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-qa-forms.js",
       "source_location": "L1",
-      "community": 85,
+      "community": 86,
       "norm_label": "jobcard-qa-forms.js",
       "id": "server_src_routes_jobcard_qa_forms_js"
     },
@@ -6146,7 +6308,7 @@
       "file_type": "code",
       "source_file": "server/src/utils/folderCreation.js",
       "source_location": "L116",
-      "community": 1,
+      "community": 2,
       "norm_label": "ensureitemsubfolder()",
       "id": "utils_foldercreation_ensureitemsubfolder"
     },
@@ -6209,7 +6371,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/DetailsReadOnlyView.jsx",
       "source_location": "L8",
-      "community": 2,
+      "community": 1,
       "norm_label": "entriesforitem()",
       "id": "tabs_detailsreadonlyview_entriesforitem"
     },
@@ -6218,7 +6380,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/CostingTab.jsx",
       "source_location": "L4",
-      "community": 24,
+      "community": 1,
       "norm_label": "formatelapsed()",
       "id": "tabs_costingtab_formatelapsed"
     },
@@ -6227,7 +6389,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/CostingTab.jsx",
       "source_location": "L11",
-      "community": 24,
+      "community": 1,
       "norm_label": "liveelapsed()",
       "id": "tabs_costingtab_liveelapsed"
     },
@@ -6236,7 +6398,7 @@
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/CostingTab.jsx",
       "source_location": "L29",
-      "community": 24,
+      "community": 1,
       "norm_label": "timeentriessection()",
       "id": "tabs_costingtab_timeentriessection"
     }
@@ -8068,17 +8230,6 @@
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "client_src_components_jobcard_jobcardmodal_jsx",
-      "target": "jobcard_useprintjobcard_useprintjobcard"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "client/src/components/jobcard/JobCardModal.jsx",
-      "source_location": "L24",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "client_src_components_jobcard_jobcardmodal_jsx",
       "target": "jobcard_jobcardvalidation_validatejobcardform"
     },
     {
@@ -8124,6 +8275,17 @@
       "target": "jobcard_jobcardmodal_jobcardmodal"
     },
     {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/JobCardModal.jsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_jobcardmodal_jsx",
+      "target": "jobcard_useprintjobcard_useprintjobcard"
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "client/src/components/jobcard/JobCardModal.jsx",
@@ -8154,17 +8316,6 @@
       "weight": 1.0,
       "source": "jobcard_jobcardmodal_jobcardmodal",
       "target": "jobcard_zoomtoggle_usejobcardzoom"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "client/src/components/jobcard/JobCardModal.jsx",
-      "source_location": "L46",
-      "weight": 1.0,
-      "source": "jobcard_jobcardmodal_jobcardmodal",
-      "target": "jobcard_useprintjobcard_useprintjobcard"
     },
     {
       "relation": "calls",
@@ -8255,6 +8406,17 @@
       "target": "jobcard_usetimeentries_usetimeentries"
     },
     {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "client/src/components/jobcard/JobCardModal.jsx",
+      "source_location": "L46",
+      "weight": 1.0,
+      "source": "jobcard_jobcardmodal_jobcardmodal",
+      "target": "jobcard_useprintjobcard_useprintjobcard"
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "client/src/components/jobcard/jobCardValidation.js",
@@ -8263,60 +8425,6 @@
       "confidence_score": 1.0,
       "source": "client_src_components_jobcard_jobcardvalidation_js",
       "target": "jobcard_jobcardvalidation_validatejobcardform"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
-      "source_location": "L7",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "client_src_components_jobcard_jobfilesmenu_jsx",
-      "target": "jobcard_usecamera_usecamera"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
-      "source_location": "L8",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "client_src_components_jobcard_jobfilesmenu_jsx",
-      "target": "jobcard_usejobfiles_usejobfiles"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
-      "source_location": "L17",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "client_src_components_jobcard_jobfilesmenu_jsx",
-      "target": "jobcard_jobfilesmenu_jobfilesmenu"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
-      "source_location": "L24",
-      "weight": 1.0,
-      "source": "jobcard_jobfilesmenu_jobfilesmenu",
-      "target": "jobcard_usecamera_usecamera"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
-      "source_location": "L25",
-      "weight": 1.0,
-      "source": "jobcard_jobfilesmenu_jobfilesmenu",
-      "target": "jobcard_usejobfiles_usejobfiles"
     },
     {
       "relation": "imports",
@@ -8391,6 +8499,92 @@
       "confidence_score": 1.0,
       "source": "jobcard_jobidentitystrip_jobidentitystrip",
       "target": "jobcard_jobidentitystrip_statustoken"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/JobPaperworkHub.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_jobpaperworkhub_jsx",
+      "target": "jobcard_usecamera_usecamera"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/JobPaperworkHub.jsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_jobpaperworkhub_jsx",
+      "target": "jobcard_usejobfiles_usejobfiles"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/JobPaperworkHub.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_jobpaperworkhub_jsx",
+      "target": "jobcard_usepacketprint_usepacketprint"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/JobPaperworkHub.jsx",
+      "source_location": "L25",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_jobpaperworkhub_jsx",
+      "target": "jobcard_jobpaperworkhub_keyof"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/JobPaperworkHub.jsx",
+      "source_location": "L27",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_jobpaperworkhub_jsx",
+      "target": "jobcard_jobpaperworkhub_jobpaperworkhub"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "client/src/components/jobcard/JobPaperworkHub.jsx",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "jobcard_jobpaperworkhub_jobpaperworkhub",
+      "target": "jobcard_usejobfiles_usejobfiles"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "client/src/components/jobcard/JobPaperworkHub.jsx",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "jobcard_jobpaperworkhub_jobpaperworkhub",
+      "target": "jobcard_usecamera_usecamera"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "client/src/components/jobcard/JobPaperworkHub.jsx",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "jobcard_jobpaperworkhub_jobpaperworkhub",
+      "target": "jobcard_usepacketprint_usepacketprint"
     },
     {
       "relation": "contains",
@@ -8707,6 +8901,28 @@
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_jobfilesmenu_jsx",
+      "target": "jobcard_usecamera_usecamera"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "jobcard_jobfilesmenu_jobfilesmenu",
+      "target": "jobcard_usecamera_usecamera"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
       "source_file": "client/src/components/jobcard/LineItemFilesMenu.jsx",
       "source_location": "L9",
       "weight": 1.0,
@@ -8863,6 +9079,28 @@
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_jobfilesmenu_jsx",
+      "target": "jobcard_usejobfiles_usejobfiles"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "jobcard_jobfilesmenu_jobfilesmenu",
+      "target": "jobcard_usejobfiles_usejobfiles"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
       "source_file": "client/src/components/jobcard/tabs/FilesTab.jsx",
       "source_location": "L4",
       "weight": 1.0,
@@ -8924,24 +9162,107 @@
       "target": "jobcard_usejobsearch_usejobsearch"
     },
     {
-      "relation": "contains",
+      "relation": "imports",
+      "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "client/src/components/jobcard/usePrintJobCard.js",
-      "source_location": "L15",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L3",
       "weight": 1.0,
       "confidence_score": 1.0,
-      "source": "client_src_components_jobcard_useprintjobcard_js",
-      "target": "jobcard_useprintjobcard_useprintjobcard"
+      "source": "client_src_components_jobcard_usepacketprint_js",
+      "target": "services_api_bytestobase64"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_usepacketprint_js",
+      "target": "services_api_base64tobytes"
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "client/src/components/jobcard/usePrintJobCard.js",
-      "source_location": "L5",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L10",
       "weight": 1.0,
       "confidence_score": 1.0,
-      "source": "client_src_components_jobcard_useprintjobcard_js",
-      "target": "jobcard_useprintjobcard_base64toblob"
+      "source": "client_src_components_jobcard_usepacketprint_js",
+      "target": "jobcard_usepacketprint_isdesktop"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L12",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_usepacketprint_js",
+      "target": "jobcard_usepacketprint_rendercardpdfbase64"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L23",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_usepacketprint_js",
+      "target": "jobcard_usepacketprint_reportskipped"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L31",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_usepacketprint_js",
+      "target": "jobcard_usepacketprint_printpdfiniframe"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L45",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_usepacketprint_js",
+      "target": "jobcard_usepacketprint_printhtmliniframe"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L56",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_usepacketprint_js",
+      "target": "jobcard_usepacketprint_downloadbytes"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L64",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_usepacketprint_js",
+      "target": "jobcard_usepacketprint_usepacketprint"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "jobcard_usepacketprint_rendercardpdfbase64",
+      "target": "services_api_bytestobase64"
     },
     {
       "relation": "contains",
@@ -9277,48 +9598,6 @@
       "weight": 1.0,
       "source": "tabs_detailstab_detailstab",
       "target": "hooks_usetags_usetags"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "client/src/components/jobcard/tabs/FilesTab.jsx",
-      "source_location": "L13",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "client_src_components_jobcard_tabs_filestab_jsx",
-      "target": "tabs_filestab_filestab"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "client/src/components/jobcard/tabs/FilesTab.jsx",
-      "source_location": "L14",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "client_src_components_jobcard_tabs_filestab_jsx",
-      "target": "tabs_filestab_base64toblob"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "client/src/components/jobcard/tabs/FilesTab.jsx",
-      "source_location": "L4",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "client_src_components_jobcard_tabs_filestab_jsx",
-      "target": "jobcard_usequickactionfiles_usequickactionfiles"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "client/src/components/jobcard/tabs/FilesTab.jsx",
-      "source_location": "L15",
-      "weight": 1.0,
-      "source": "tabs_filestab_filestab",
-      "target": "jobcard_usequickactionfiles_usequickactionfiles"
     },
     {
       "relation": "imports",
@@ -10028,6 +10307,26 @@
       "confidence_score": 1.0,
       "source": "client_src_services_api_js",
       "target": "services_api_apiservice"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/services/api.js",
+      "source_location": "L289",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_services_api_js",
+      "target": "services_api_bytestobase64"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/services/api.js",
+      "source_location": "L299",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_services_api_js",
+      "target": "services_api_base64tobytes"
     },
     {
       "relation": "method",
@@ -10868,6 +11167,16 @@
       "confidence_score": 1.0,
       "source": "services_api_apiservice",
       "target": "services_api_apiservice_printjobcard"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/services/api.js",
+      "source_location": "L261",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "services_api_apiservice",
+      "target": "services_api_apiservice_buildpacket"
     },
     {
       "relation": "method",
@@ -12124,6 +12433,17 @@
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "services_api_apiservice_printjobcard",
+      "target": "services_api_apiservice_post"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/services/api.js",
+      "source_location": "L262",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "services_api_apiservice_buildpacket",
       "target": "services_api_apiservice_post"
     },
     {
@@ -16518,6 +16838,130 @@
       "confidence_score": 1.0,
       "source": "utils_pdffiller_fillpdftemplate",
       "target": "utils_pdffiller_topdfsafe"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/utils/pdfPacket.js",
+      "source_location": "L20",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_src_utils_pdfpacket_js",
+      "target": "utils_pdfpacket_appendpdf"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/utils/pdfPacket.js",
+      "source_location": "L26",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_src_utils_pdfpacket_js",
+      "target": "utils_pdfpacket_appendimage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/utils/pdfPacket.js",
+      "source_location": "L49",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_src_utils_pdfpacket_js",
+      "target": "utils_pdfpacket_buildpacketpdf"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/utils/pdfPacket.js",
+      "source_location": "L55",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "utils_pdfpacket_buildpacketpdf",
+      "target": "utils_pdfpacket_appendpdf"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/utils/pdfPacket.js",
+      "source_location": "L67",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "utils_pdfpacket_buildpacketpdf",
+      "target": "utils_pdfpacket_appendimage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/JobFilesMenu.jsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_jobfilesmenu_jsx",
+      "target": "jobcard_jobfilesmenu_jobfilesmenu"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/usePrintJobCard.js",
+      "source_location": "L15",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_useprintjobcard_js",
+      "target": "jobcard_useprintjobcard_useprintjobcard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/usePrintJobCard.js",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_useprintjobcard_js",
+      "target": "jobcard_useprintjobcard_base64toblob"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/tabs/FilesTab.jsx",
+      "source_location": "L13",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_tabs_filestab_jsx",
+      "target": "tabs_filestab_filestab"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/tabs/FilesTab.jsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_tabs_filestab_jsx",
+      "target": "tabs_filestab_base64toblob"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/tabs/FilesTab.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_tabs_filestab_jsx",
+      "target": "jobcard_usequickactionfiles_usequickactionfiles"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "client/src/components/jobcard/tabs/FilesTab.jsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "tabs_filestab_filestab",
+      "target": "jobcard_usequickactionfiles_usequickactionfiles"
     },
     {
       "relation": "contains",

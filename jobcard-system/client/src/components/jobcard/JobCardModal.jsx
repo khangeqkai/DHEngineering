@@ -12,16 +12,14 @@ import { useContactSearch } from './useContactSearch';
 import { useJobCardForm } from './useJobCardForm';
 import DetailsTab from './tabs/DetailsTab';
 import CostingTab from './tabs/CostingTab';
-import FilesTab from './tabs/FilesTab';
 import ActivityLogTab from './tabs/ActivityLogTab';
 import { useActivityLog } from './useActivityLog';
 import { useTimer } from './useTimer';
 import { useJobNotes } from './useJobNotes';
 import StopTimerForm from './StopTimerForm';
 import ZoomToggle, { useJobCardZoom } from './ZoomToggle';
-import JobFilesMenu from './JobFilesMenu';
+import JobPaperworkHub from './JobPaperworkHub';
 import JobIdentityStrip from './JobIdentityStrip';
-import { usePrintJobCard } from './usePrintJobCard';
 import { validateJobCardForm } from './jobCardValidation';
 import { mapTimeEntryFromApi } from './mappers';
 import { describeAttachmentGaps } from '../../utils/attachmentWarnings';
@@ -43,7 +41,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const [activeTab, setActiveTab] = useState('details');
   const [zoom, setZoom] = useJobCardZoom();
   const [saving, setSaving] = useState(false);
-  const { printJobCard, printing } = usePrintJobCard(isEdit ? jobCardId : null);
   const [loading, setLoading] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -284,7 +281,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   }, [resetFormHook, resetContact, resetTimeEntries, resetCosting, resetTimer, resetNotes, resetHistory]);
   useEffect(() => {
     if (isOpen) {
-      setActiveTab(initialTab || 'details');
+      // Only the real tabs are valid; anything else (e.g. a stale 'files') lands on Details.
+      const validTabs = ['details', 'costing', 'activity'];
+      setActiveTab(validTabs.includes(initialTab) ? initialTab : 'details');
     }
   }, [isOpen, initialTab]);
 
@@ -503,17 +502,13 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         headerActions={
           <>
             {isEdit && jobCardId && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={printJobCard}
-                disabled={printing}
-                title="Print a job card summary"
-              >
-                {printing ? 'Printing...' : 'Print job card'}
-              </button>
+              <JobPaperworkHub
+                jobcardId={jobCardId}
+                jobNumber={formHook.jobNumber}
+                onFilesChanged={refreshAttachmentWarnings}
+                attachmentWarnings={attachmentWarnings}
+              />
             )}
-            {isEdit && jobCardId && <JobFilesMenu jobcardId={jobCardId} jobNumber={formHook.jobNumber} onFilesChanged={refreshAttachmentWarnings} />}
             <ZoomToggle zoom={zoom} onChange={setZoom} />
           </>
         }
@@ -530,7 +525,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                     Details
                     {jobNotes.notes.length > 0 && <span className="tab-badge">{jobNotes.notes.length}</span>}
                   </button>
-                  <button type="button" className={`tab ${activeTab === 'files' ? 'active' : ''}`} onClick={() => setActiveTab('files')}>Files</button>
                   <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>
                   <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>
                 </div>
@@ -603,10 +597,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   handleSaveCosting={costingHook.handleSaveCosting}
                   savingCosting={costingHook.savingCosting}
                 />
-              )}
-
-              {activeTab === 'files' && isEdit && isAdmin && (
-                <FilesTab jobCardId={jobCardId} attachmentWarnings={attachmentWarnings} />
               )}
 
               {activeTab === 'activity' && isEdit && isAdmin && (

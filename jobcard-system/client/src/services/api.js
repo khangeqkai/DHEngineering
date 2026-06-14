@@ -255,6 +255,13 @@ class ApiService {
   // Generate a job's printed job card as HTML, on demand (any authenticated user)
   printJobCard(jobcardId) { return this._post(`/jobcards/${jobcardId}/print`, {}); }
 
+  // Weld the chosen job documents into one combined PDF. The file bytes stay on
+  // the server (only the {category, filename} list travels up); jobCardPdf is the
+  // optional, already-rendered card as base64. Returns { pdf: base64, skipped }.
+  buildPacket(jobcardId, { items, jobCardPdf }) {
+    return this._post(`/jobcards/${jobcardId}/packet`, { items, jobCardPdf: jobCardPdf || null });
+  }
+
   // Search
   search(params) {
     const query = new URLSearchParams();
@@ -275,3 +282,23 @@ class ApiService {
 }
 
 export const api = new ApiService();
+
+// Encode raw bytes (e.g. the Uint8Array a PDF render hands back) to base64 in
+// chunks — a single String.fromCharCode(...wholeBuffer) overflows the call stack
+// on multi-MB inputs.
+export function bytesToBase64(bytes) {
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+// Decode base64 (e.g. a combined-packet PDF from the server) back to bytes.
+export function base64ToBytes(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
