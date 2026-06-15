@@ -11,6 +11,7 @@ const {
   recordHistory
 } = require('../db/database');
 const { sanitizeFolderName, isWithinBase, resolveCompanyFolder, idSlug } = require('../utils/folderCreation');
+const { decodeBase64Strict, assertMatchesExtension } = require('../utils/fileValidation');
 const { handleValidationErrors } = require('../middleware/validation');
 const { body, param } = require('express-validator');
 
@@ -378,11 +379,19 @@ router.post('/:id/files/:category/upload', authenticate, validateCategory, valid
     const { id, category } = req.params;
     const { filename, fileData, itemId } = req.body;
 
+    let buffer;
+    try {
+      buffer = decodeBase64Strict(fileData);
+      assertMatchesExtension(buffer, filename);
+    } catch (decodeErr) {
+      return res.status(400).json({ error: decodeErr.message });
+    }
+
     return saveFile({
       jobcardId: id,
       category,
       displayName: filename,
-      buffer: Buffer.from(fileData, 'base64'),
+      buffer,
       source: 'upload',
       itemId,
       req,

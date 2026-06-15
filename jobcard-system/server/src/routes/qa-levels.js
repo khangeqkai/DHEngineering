@@ -13,6 +13,7 @@ const {
   ensureQaLevelFolder,
   renameQaLevelFolder
 } = require('../utils/folderCreation');
+const { decodeBase64Strict, assertMatchesExtension } = require('../utils/fileValidation');
 const {
   qaLevelQueries,
   qaLevelTemplateQueries,
@@ -289,6 +290,15 @@ router.post('/:id/templates', authenticate, requireAdmin, (req, res) => {
     const sanitizedFileName = sanitizeFolderName(path.parse(fileName).name) + path.extname(fileName);
     const finalDisplayName = displayName || sanitizedFileName;
 
+    // Reject a corrupt/cut-off upload before creating any record. Templates are PDFs.
+    let buffer;
+    try {
+      buffer = decodeBase64Strict(fileData);
+      assertMatchesExtension(buffer, sanitizedFileName);
+    } catch (decodeErr) {
+      return res.status(400).json({ error: decodeErr.message });
+    }
+
     // Save file to disk if folder is configured. The folder is located (or
     // created) by the code in its name, so it works regardless of the level name.
     const basePath = getQaLevelsBasePath();
@@ -298,7 +308,6 @@ router.post('/:id/templates', authenticate, requireAdmin, (req, res) => {
         try {
           const filePath = path.join(levelFolder, sanitizedFileName);
           if (isWithinBase(levelFolder, filePath)) {
-            const buffer = Buffer.from(fileData, 'base64');
             fs.writeFileSync(filePath, buffer);
             logger.info({ filePath }, 'Saved QA template file');
           }

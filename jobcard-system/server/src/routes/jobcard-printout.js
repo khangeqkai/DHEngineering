@@ -10,6 +10,7 @@ const { buildJobCardView } = require('./jobcard-helpers');
 const { renderJobCardHtml } = require('../utils/jobCardHtml');
 const { resolveCategoryFolder, listCategoryFileNames } = require('./jobcard-files');
 const { isWithinBase } = require('../utils/folderCreation');
+const { decodeBase64Strict } = require('../utils/fileValidation');
 const { buildPacketPdf } = require('../utils/pdfPacket');
 const { jobcardQueries, recordHistory } = require('../db/database');
 
@@ -105,7 +106,14 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
       folderByCategory[category] = res2.folderPath;
     }
 
-    const cardBuf = jobCardPdf ? Buffer.from(jobCardPdf, 'base64') : null;
+    let cardBuf = null;
+    if (jobCardPdf) {
+      try {
+        cardBuf = decodeBase64Strict(jobCardPdf);
+      } catch (decodeErr) {
+        return res.status(400).json({ error: decodeErr.message });
+      }
+    }
 
     const files = [];
     const skipped = [];

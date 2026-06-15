@@ -1,11 +1,11 @@
 # Graph Report - DHEngineering  (2026-06-15)
 
 ## Corpus Check
-- 141 files · ~109,836 words
+- 142 files · ~111,573 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 716 nodes · 1063 edges · 32 communities detected
+- 720 nodes · 1067 edges · 33 communities detected
 - Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 100 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
@@ -42,6 +42,7 @@
 - [[_COMMUNITY_Community 33|Community 33]]
 - [[_COMMUNITY_Community 34|Community 34]]
 - [[_COMMUNITY_Community 35|Community 35]]
+- [[_COMMUNITY_Community 36|Community 36]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `ApiService` - 127 edges
@@ -82,12 +83,12 @@ Cohesion: 0.07
 Nodes (24): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), AuthProvider() (+16 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.1
-Nodes (26): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), UserManagement(), useConfirmDialog(), buildJobCardWorkbook(), buildSheet() (+18 more)
-
-### Community 4 - "Community 4"
 Cohesion: 0.06
 Nodes (16): invalidateTagCache(), useTags(), formatFileDate(), formatFileSize(), makeEmptyTreatment(), useJobSearch(), formatElapsed(), LiveElapsed() (+8 more)
+
+### Community 4 - "Community 4"
+Cohesion: 0.1
+Nodes (26): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), UserManagement(), useConfirmDialog(), buildJobCardWorkbook(), buildSheet() (+18 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.08
@@ -122,12 +123,12 @@ Cohesion: 0.25
 Nodes (2): Grad, Noise
 
 ### Community 13 - "Community 13"
-Cohesion: 0.2
-Nodes (4): DataTable(), useTableFilter(), useTableResize(), useTableSort()
-
-### Community 14 - "Community 14"
 Cohesion: 0.24
 Nodes (3): renderCardPdfBase64(), base64ToBytes(), bytesToBase64()
+
+### Community 14 - "Community 14"
+Cohesion: 0.2
+Nodes (4): DataTable(), useTableFilter(), useTableResize(), useTableSort()
 
 ### Community 15 - "Community 15"
 Cohesion: 0.36
@@ -170,30 +171,34 @@ Cohesion: 0.67
 Nodes (2): getSupplierWithTags(), toApiFormat()
 
 ### Community 29 - "Community 29"
-Cohesion: 0.83
-Nodes (3): esc(), renderItem(), renderJobCardHtml()
+Cohesion: 0.67
+Nodes (2): assertMatchesExtension(), matchesSignature()
 
 ### Community 30 - "Community 30"
 Cohesion: 0.83
-Nodes (3): fillPdfTemplate(), formatTreatments(), toPdfSafe()
+Nodes (3): esc(), renderItem(), renderJobCardHtml()
 
 ### Community 31 - "Community 31"
 Cohesion: 0.83
-Nodes (3): appendImage(), appendPdf(), buildPacketPdf()
+Nodes (3): fillPdfTemplate(), formatTreatments(), toPdfSafe()
 
 ### Community 32 - "Community 32"
+Cohesion: 0.83
+Nodes (3): appendImage(), appendPdf(), buildPacketPdf()
+
+### Community 33 - "Community 33"
 Cohesion: 0.67
 Nodes (2): formatNum(), JobScrapSummary()
 
-### Community 33 - "Community 33"
+### Community 34 - "Community 34"
 Cohesion: 1.0
 Nodes (2): CalendarPicker(), toDateString()
 
-### Community 34 - "Community 34"
+### Community 35 - "Community 35"
 Cohesion: 1.0
 Nodes (2): formatElapsed(), LineItemTimerButton()
 
-### Community 35 - "Community 35"
+### Community 36 - "Community 36"
 Cohesion: 1.0
 Nodes (2): formatNum(), ScrapStat()
 
@@ -210,22 +215,24 @@ Nodes (2): formatNum(), ScrapStat()
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 28`** (4 nodes): `getSupplierWithTags()`, `normalizeEmpty()`, `toApiFormat()`, `suppliers.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 32`** (4 nodes): `JobScrapSummary.jsx`, `formatNum()`, `JobScrapSummary()`, `parseQty()`
+- **Thin community `Community 29`** (4 nodes): `fileValidation.js`, `assertMatchesExtension()`, `decodeBase64Strict()`, `matchesSignature()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 33`** (3 nodes): `CalendarPicker.jsx`, `CalendarPicker()`, `toDateString()`
+- **Thin community `Community 33`** (4 nodes): `JobScrapSummary.jsx`, `formatNum()`, `JobScrapSummary()`, `parseQty()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 34`** (3 nodes): `LineItemTimerButton.jsx`, `formatElapsed()`, `LineItemTimerButton()`
+- **Thin community `Community 34`** (3 nodes): `CalendarPicker.jsx`, `CalendarPicker()`, `toDateString()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 35`** (3 nodes): `ScrapStat.jsx`, `formatNum()`, `ScrapStat()`
+- **Thin community `Community 35`** (3 nodes): `LineItemTimerButton.jsx`, `formatElapsed()`, `LineItemTimerButton()`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 36`** (3 nodes): `ScrapStat.jsx`, `formatNum()`, `ScrapStat()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ApiService` connect `Community 0` to `Community 14`?**
-  _High betweenness centrality (0.142) - this node is a cross-community bridge._
-- **Why does `usePacketPrint()` connect `Community 6` to `Community 14`?**
-  _High betweenness centrality (0.121) - this node is a cross-community bridge._
+- **Why does `ApiService` connect `Community 0` to `Community 13`?**
+  _High betweenness centrality (0.141) - this node is a cross-community bridge._
+- **Why does `usePacketPrint()` connect `Community 6` to `Community 13`?**
+  _High betweenness centrality (0.119) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 9 inferred relationships involving `isWithinBase()` (e.g. with `resolveJobFolder()` and `resolveCategoryFolder()`) actually correct?**
