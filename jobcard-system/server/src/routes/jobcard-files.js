@@ -160,6 +160,33 @@ function buildStorageFilename(folderPath, displayName, partCode) {
   return candidate;
 }
 
+/**
+ * Returned quality forms are renamed to a clean, predictable "Completed Form N"
+ * regardless of what the scanner/camera called the file, so the QA Forms list
+ * reads "Completed Form 1, 2, 3…" instead of "scan001"/"photo_…". The next
+ * number is one past the highest existing "Completed Form N" in the folder
+ * (gaps from any future deletion are left as-is; numbering only goes forward).
+ * The timestamp tag is still appended by buildStorageFilename, so the
+ * returned-form detection (and collision safety) is unchanged.
+ */
+function nextQaFormNumber(folderPath) {
+  let max = 0;
+  try {
+    for (const name of fs.readdirSync(folderPath)) {
+      const ext = path.extname(name);
+      const base = name.slice(0, name.length - ext.length);
+      const m = base.match(/^Completed Form (\d+)\b/);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (n > max) max = n;
+      }
+    }
+  } catch {
+    // Unreadable/missing folder → treat as empty, start at 1.
+  }
+  return max + 1;
+}
+
 function listFolderFiles(folderPath) {
   if (!fs.existsSync(folderPath)) return [];
   return fs.readdirSync(folderPath)
@@ -312,7 +339,17 @@ function saveFile({ jobcardId, category, displayName, buffer, source, itemId, re
     fs.mkdirSync(folderRes.folderPath, { recursive: true });
   }
 
-  const storageFilename = buildStorageFilename(folderRes.folderPath, displayName, partFileCode(itemId));
+  // A file brought back into the QA Forms folder is a completed inspection form.
+  // Give it a clean "Completed Form N" name (counting up) so the list is tidy,
+  // dropping whatever random name the scanner/camera produced. Other folders keep
+  // the uploaded name. QA forms are always job-level (no line-item code).
+  let effectiveName = displayName;
+  if (category === 'qa-form-files' && !partFileCode(itemId)) {
+    const ext = path.extname(displayName);
+    effectiveName = `Completed Form ${nextQaFormNumber(folderRes.folderPath)}${ext}`;
+  }
+
+  const storageFilename = buildStorageFilename(folderRes.folderPath, effectiveName, partFileCode(itemId));
   const targetPath = path.join(folderRes.folderPath, storageFilename);
   if (!isWithinBase(folderRes.folderPath, targetPath)) {
     return res.status(403).json({ error: 'Path traversal detected' });
@@ -321,7 +358,7 @@ function saveFile({ jobcardId, category, displayName, buffer, source, itemId, re
   fs.writeFileSync(targetPath, buffer);
 
   recordHistory('jobcard', jobcardId, 'upload_file', req.user.userId, req.user.name || req.user.username,
-    { file: { from: null, to: displayName } },
+    { file: { from: null, to: effectiveName } },
     { destination: CATEGORY_FOLDER[category], source, itemId: itemId ?? null }
   );
 

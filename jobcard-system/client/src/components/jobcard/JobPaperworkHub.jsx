@@ -25,6 +25,18 @@ const MAX_PACKET_FILES = 20;
 
 const keyOf = (category, filename) => `${category}::${filename}`;
 
+// Returned quality forms are stored with a hidden tag on the end of the name
+// (e.g. "Completed Form 1 [20260614153027].pdf") so the system can tell a
+// completed form apart from a blank template. Strip that trailing tag for
+// display so the list reads cleanly as "Completed Form 1.pdf". The real name is
+// still used everywhere else (selection, view, print).
+function cleanQaName(name) {
+  const dot = name.lastIndexOf('.');
+  const ext = dot > 0 ? name.slice(dot) : '';
+  const base = dot > 0 ? name.slice(0, dot) : name;
+  return `${base.replace(/ \[[^\]]+\](?: \(\d+\))?$/, '')}${ext}`;
+}
+
 // A friendly one-word "what kind of file" line shown under each name.
 function fileKindLabel(f) {
   if ((f.mimeType || '').startsWith('image/')) return 'Image';
@@ -336,7 +348,7 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
                       {isImage && thumb ? <img src={thumb} alt="" /> : <FileIcon size={18} />}
                     </span>
                     <span className="hub-namecell">
-                      <span className="hub-file-name">{f.name}</span>
+                      <span className="hub-file-name">{cat === 'qa-form-files' ? cleanQaName(f.name) : f.name}</span>
                       <span className="hub-file-sub">{fileKindLabel(f)}</span>
                     </span>
                   </button>
