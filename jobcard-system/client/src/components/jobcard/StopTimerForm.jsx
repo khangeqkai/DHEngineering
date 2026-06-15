@@ -139,9 +139,11 @@ export default function StopTimerForm({
                     onChange={(e) => onFieldChange('qty', e.target.value)}
                     className="stf-qty-input"
                   />
-                  {item && parseFloat(item.qty) > 0 && (
-                    <span className="stf-qty-hint">of {item.qty} needed</span>
-                  )}
+                  {/* Always render the hint line so both boxes stay the same
+                      height and line up along the bottom, even with no target qty. */}
+                  <span className="stf-qty-hint">
+                    {item && parseFloat(item.qty) > 0 ? `of ${item.qty} needed` : ' '}
+                  </span>
                 </div>
 
                 <div className="stf-item-field stf-qty-field">

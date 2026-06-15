@@ -318,11 +318,13 @@ export default function ItemsTab({
                       </div>
                     </div>
                   ) : (
-                    <LineItemTreatment
-                      treatments={Array.isArray(item.treatments) ? item.treatments : []}
-                      suppliers={suppliers}
-                      onChange={(arr) => updateLineItem(item.id, 'treatments', arr)}
-                    />
+                    <div className="line-item-treatment-group">
+                      <LineItemTreatment
+                        treatments={Array.isArray(item.treatments) ? item.treatments : []}
+                        suppliers={suppliers}
+                        onChange={(arr) => updateLineItem(item.id, 'treatments', arr)}
+                      />
+                    </div>
                   )}
 
                   <LineItemTagSelect

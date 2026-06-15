@@ -17,7 +17,6 @@ import { useActivityLog } from './useActivityLog';
 import { useTimer } from './useTimer';
 import { useJobNotes } from './useJobNotes';
 import StopTimerForm from './StopTimerForm';
-import ZoomToggle, { useJobCardZoom } from './ZoomToggle';
 import JobPaperworkHub from './JobPaperworkHub';
 import JobIdentityStrip from './JobIdentityStrip';
 import { validateJobCardForm } from './jobCardValidation';
@@ -39,7 +38,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const isEdit = Boolean(jobCardId);
   const isAdmin = user?.role === 'admin';
   const [activeTab, setActiveTab] = useState('details');
-  const [zoom, setZoom] = useJobCardZoom();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
@@ -500,17 +498,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         size="large"
         closeOnOverlayClick={false}
         headerActions={
-          <>
-            {isEdit && jobCardId && (
-              <JobPaperworkHub
-                jobcardId={jobCardId}
-                jobNumber={formHook.jobNumber}
-                onFilesChanged={refreshAttachmentWarnings}
-                attachmentWarnings={attachmentWarnings}
-              />
-            )}
-            <ZoomToggle zoom={zoom} onChange={setZoom} />
-          </>
+          isEdit && jobCardId ? (
+            <JobPaperworkHub
+              jobcardId={jobCardId}
+              jobNumber={formHook.jobNumber}
+              onFilesChanged={refreshAttachmentWarnings}
+              attachmentWarnings={attachmentWarnings}
+            />
+          ) : null
         }
       >
         {loading ? (
@@ -518,7 +513,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         ) : (
           <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT' && e.target.type !== 'submit') e.preventDefault(); }} style={{ display: 'contents' }}>
             <BottomSheet.Body>
-              <div className="jc-zoom-root" data-zoom={zoom}>
+              <div className="jc-zoom-root">
               {isEdit && isAdmin && (
                 <div className="modal-tabs">
                   <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>

@@ -42,7 +42,6 @@ const CSS = `
   .meta .cell.span { grid-column:1 / -1; }
   .meta .lbl { font-size:7.5pt; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); }
   .meta .val { font-size:11.5pt; font-weight:600; margin-top:2px; }
-  .meta .val.dim { color:var(--faint); font-weight:500; }
   .items-h { margin:22px 0 8px; display:flex; align-items:baseline; justify-content:space-between; }
   .items-h h2 { margin:0; font-size:9pt; font-weight:800; letter-spacing:2px; text-transform:uppercase; }
   .items-h .count { font-size:8.5pt; color:var(--muted); }
@@ -65,6 +64,7 @@ const CSS = `
   .f.material { flex:1 1 0; }
   .f.drawings { flex:1 1 0; }
   .f.treatment { flex:1.4 1 0; }
+  .f.property { flex:1 1 0; }
   .foot { margin-top:22px; padding-top:10px; border-top:1px solid var(--line);
     display:flex; justify-content:space-between; align-items:flex-end; font-size:8pt; color:var(--muted); }
   .sign { display:flex; gap:30px; }
@@ -90,19 +90,23 @@ function renderItem(it) {
       : `<div class="file missing">Missing</div>`;
     drawings = `<div class="val">${esc(it.drawings)}${files}</div>`;
   }
+  const property = it.customerPropertyIsNa
+    ? `<div class="val na">${esc(it.customerProperty || 'N/A')}</div>`
+    : `<div class="val">${esc(it.customerProperty)}</div>`;
   return `
   <div class="item">
     <div class="no">${esc(it.number)}</div>
     <div class="body">
       <div class="frow">
-        <div class="f qty"><div class="lbl">Qty</div><div class="val">${esc(it.qty)}</div></div>
         <div class="f jobtype"><div class="lbl">Job type</div><div class="val">${esc(it.jobType)}</div></div>
+        <div class="f qty"><div class="lbl">Qty</div><div class="val">${esc(it.qty)}</div></div>
         <div class="f desc"><div class="lbl">Description</div><div class="val">${esc(it.description)}</div></div>
       </div>
       <div class="frow">
         <div class="f material"><div class="lbl">Material</div><div class="val">${esc(it.material)}</div></div>
-        <div class="f drawings"><div class="lbl">Drawings</div>${drawings}</div>
         <div class="f treatment"><div class="lbl">Treatment</div><div class="val">${esc(it.treatment)}</div></div>
+        <div class="f drawings"><div class="lbl">Drawings</div>${drawings}</div>
+        <div class="f property"><div class="lbl">Customer property</div>${property}</div>
       </div>
     </div>
   </div>`;
@@ -111,9 +115,9 @@ function renderItem(it) {
 /**
  * @param {Object} view - friendly, pre-formatted job card data:
  *   { jobNumber, priorityLabel|null, priorityClass, dateCreated, dueDate, company,
- *     customerProperty, printed, items: [{ number, qty, jobType, description,
- *     material, drawings, drawingsIsNa, drawingFiles, drawingsMissing,
- *     treatment }] }
+ *     printed, items: [{ number, qty, jobType, description, material, drawings,
+ *     drawingsIsNa, drawingFiles, drawingsMissing, treatment, customerProperty,
+ *     customerPropertyIsNa }] }
  * @returns {string} full HTML document
  */
 function renderJobCardHtml(view) {
@@ -122,10 +126,6 @@ function renderJobCardHtml(view) {
   const pill = v.priorityLabel
     ? `<span class="pill ${v.priorityClass === 'high' ? 'high' : 'normal'}">${esc(v.priorityLabel)} priority</span>`
     : '';
-  const cp = v.customerProperty;
-  const cpCell = cp
-    ? `<div class="val">${esc(cp)}</div>`
-    : `<div class="val dim">None supplied</div>`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <title>Job Card ${esc(v.jobNumber)}</title>
@@ -141,7 +141,6 @@ function renderJobCardHtml(view) {
     <div class="cell"><div class="lbl">Date created</div><div class="val">${esc(v.dateCreated)}</div></div>
     <div class="cell"><div class="lbl">Due date</div><div class="val">${esc(v.dueDate)}</div></div>
     <div class="cell span"><div class="lbl">Company</div><div class="val">${esc(v.company)}</div></div>
-    <div class="cell span"><div class="lbl">Customer property</div>${cpCell}</div>
   </div>
   <div class="items-h"><h2>Items</h2><span class="count">${items.length} ${items.length === 1 ? 'part' : 'parts'}</span></div>
   ${items.map(renderItem).join('')}

@@ -1,7 +1,30 @@
-.hub-trigger {
+/* Match the strip's pill controls (priority / status / due date) so the header
+   reads as one set instead of a pill next to a square button. */
+.btn.hub-trigger {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.btn.hub-trigger:hover:not(:disabled) {
+  background: var(--surface);
+  border-color: var(--primary-accent);
+  transform: translateY(-1px);
+  box-shadow: none;
+}
+
+.btn.hub-trigger:focus-visible {
+  outline: none;
+  border-color: var(--primary-accent);
+  box-shadow: var(--focus-ring);
 }
 
 /* The panel sets a soft tray tint used behind the floating cards. */
@@ -30,7 +53,7 @@
   flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg, 16px);
+  border-radius: var(--radius-lg);
   box-shadow: 0 30px 70px -18px rgba(13, 23, 42, 0.4);
   overflow: hidden;
 }
@@ -46,7 +69,7 @@
 .hub-title-badge {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -55,7 +78,7 @@
   color: var(--accent-action, #2563eb);
 }
 .hub-title-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
-.hub-title-text b { font-size: 1rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
+.hub-title-text b { font-size: var(--text-base); font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
 .hub-title-text span { font-size: var(--text-xs); color: var(--text-tertiary, var(--text-secondary)); font-weight: 500; }
 
 .hub-back {
@@ -79,7 +102,7 @@
   cursor: pointer;
   width: 32px;
   height: 32px;
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -126,7 +149,7 @@
   background: color-mix(in srgb, var(--accent-action, #2563eb) 12%, var(--surface));
   color: var(--accent-action, #2563eb);
   font-size: var(--text-sm);
-  font-weight: 650;
+  font-weight: var(--font-bold);
   padding: 0.4rem 0.8rem;
   border-radius: 999px;
 }
@@ -151,7 +174,10 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.1rem 0.3rem 0.5rem;
+  /* Left padding matches the file-row content inset (0.85rem) so the section
+     title lines up directly above the file names below it. The label button's
+     -0.3rem margin is cancelled by its own padding, keeping the text on that edge. */
+  padding: 0.1rem 0.3rem 0.5rem 0.85rem;
 }
 .hub-group-label-btn {
   display: inline-flex;
@@ -162,19 +188,19 @@
   cursor: pointer;
   padding: 0.1rem 0.3rem;
   margin-left: -0.3rem;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 .hub-group-label-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--text-primary) 7%, transparent); }
 .hub-group-label-btn:disabled { cursor: default; }
 .hub-group-label {
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-size: var(--text-2xs);
+  font-weight: var(--font-bold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-tertiary, var(--text-secondary));
 }
 .hub-group-meta {
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   color: var(--text-tertiary, var(--text-secondary));
   font-variant-numeric: tabular-nums;
@@ -191,7 +217,7 @@
   cursor: pointer;
   background: var(--surface);
   color: var(--text-secondary);
-  font-size: 0.7rem;
+  font-size: var(--text-2xs);
   font-weight: 600;
   padding: 0.25rem 0.55rem;
   border-radius: 999px;
@@ -203,7 +229,7 @@
 .hub-card {
   background: var(--surface);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md);
   box-shadow: 0 1px 2px rgba(13, 23, 42, 0.05), 0 8px 18px -12px rgba(13, 23, 42, 0.22);
   overflow: hidden;
 }
@@ -249,7 +275,7 @@
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--surface-elevated);
   color: var(--text-tertiary, var(--text-secondary));
   overflow: hidden;
@@ -259,7 +285,7 @@
 .hub-namecell { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
 .hub-file-name {
   font-size: var(--text-sm);
-  font-weight: 650;
+  font-weight: var(--font-bold);
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -272,7 +298,7 @@
 
 /* "pinned" tag on the generated job card row */
 .hub-pin-tag {
-  font-size: 0.6rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -294,7 +320,7 @@
   border: none;
   background: var(--surface-elevated);
   color: var(--text-secondary);
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   width: 33px;
   height: 33px;
   cursor: pointer;

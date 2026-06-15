@@ -41,7 +41,7 @@ export function getJobCardColumns({
               openEditModal(card.id);
             }}
           >
-            <strong>{card.jobNumber}</strong>
+            <strong className="mono-num">{card.jobNumber}</strong>
           </a>
           {card.id === activeTimerJobcardId && (
             <span className="timer-indicator">
@@ -204,6 +204,7 @@ export function getJobCardColumns({
     {
       id: 'attachments',
       label: 'Attachments',
+      align: 'center',
       renderCell: (card) => {
         // Until this row has actually been checked, show a faint loading hint
         // rather than a green tick — a not-yet-checked row isn't known to be clean.
@@ -253,8 +254,9 @@ export function getJobCardColumns({
     {
       id: 'dueDate',
       label: 'Due Date',
+      align: 'right',
       renderCell: (card, isOverdue) => (
-        <td key="dueDate" className={isOverdue ? 'overdue-date' : ''}>
+        <td key="dueDate" className={`jc-align-right${isOverdue ? ' overdue-date' : ''}`}>
           {card.dueDate ? new Date(card.dueDate).toLocaleDateString() : '-'}
           {isOverdue && <span className="overdue-label">OVERDUE</span>}
         </td>
@@ -263,8 +265,9 @@ export function getJobCardColumns({
     {
       id: 'createdAt',
       label: 'Created At',
+      align: 'right',
       renderCell: (card) => (
-        <td key="createdAt">
+        <td key="createdAt" className="jc-align-right">
           {card.createdAt ? new Date(card.createdAt).toLocaleString() : '-'}
         </td>
       )
@@ -272,8 +275,9 @@ export function getJobCardColumns({
     {
       id: 'updatedAt',
       label: 'Last Edited',
+      align: 'right',
       renderCell: (card) => (
-        <td key="updatedAt">
+        <td key="updatedAt" className="jc-align-right">
           {card.updatedAt ? new Date(card.updatedAt).toLocaleString() : '-'}
         </td>
       )
@@ -282,8 +286,9 @@ export function getJobCardColumns({
       id: 'actions',
       label: 'Actions',
       adminOnly: true,
+      align: 'right',
       renderCell: (card) => (
-        <td key="actions">
+        <td key="actions" className="jc-align-right">
           <div className="action-buttons">
             {showArchived && card.archived && (
               <button

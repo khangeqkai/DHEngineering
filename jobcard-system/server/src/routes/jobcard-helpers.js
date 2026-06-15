@@ -367,6 +367,13 @@ function buildJobCardView(jobcardId, jc) {
       const name = t.value === 'OTHER' ? (t.otherText || 'Other') : tagName('treatment', t.value);
       return t.supplierName ? `${name} - ${t.supplierName}` : name;
     });
+    // Customer property is a per-part field on screen, so the printout shows it
+    // per part too (same friendly-name + N/A handling as drawings).
+    const cpVals = splitValues(r.customer_property);
+    const customerPropertyIsNa = cpVals.length === 0 || (cpVals.length === 1 && cpVals[0] === 'N_A');
+    const customerProperty = customerPropertyIsNa
+      ? 'N/A'
+      : [...new Set(cpVals.map(v => tagName('customer_property', v)))].join(', ');
     return {
       number: r.item_number,
       qty: (r.qty == null || r.qty === '') ? '—' : r.qty,
@@ -377,17 +384,11 @@ function buildJobCardView(jobcardId, jc) {
       drawingsIsNa,
       drawingFiles,
       drawingsMissing,
-      treatment: treatments.length ? treatments.join(', ') : 'None'
+      treatment: treatments.length ? treatments.join(', ') : 'None',
+      customerProperty,
+      customerPropertyIsNa
     };
   });
-
-  // Job-wide customer property: friendly, de-duped, "N/A" dropped.
-  const cpNames = [...new Set(
-    rows
-      .flatMap(r => splitValues(r.customer_property))
-      .filter(v => v !== 'N_A')
-      .map(v => tagName('customer_property', v))
-  )];
 
   const priorityKey = (jc.priority || 'NONE').toUpperCase();
   const priorityLabel = priorityKey === 'NONE' ? null : (PRIORITY_LABELS[priorityKey] || priorityKey);
@@ -401,7 +402,6 @@ function buildJobCardView(jobcardId, jc) {
     // The shop-floor printout shows the company so workers know whose job it is.
     // Contact name / phone / email are never on the printout for anyone.
     company: jc.company_name || '',
-    customerProperty: cpNames.length ? cpNames.join(', ') : null,
     printed: new Date().toLocaleDateString('en-AU'),
     items
   };

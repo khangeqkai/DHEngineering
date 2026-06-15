@@ -101,7 +101,7 @@ export default function LineItemTagSelect({
 
   return (
     <div className="line-item-tagselect" ref={ref}>
-      <label>{label} {required && <span className="required">*</span>} {warningPill}</label>
+      <label>{label} {required && <span className="required">*</span>}</label>
       <div className="lit-select">
         <button
           type="button"
@@ -135,6 +135,7 @@ export default function LineItemTagSelect({
           </div>
         )}
       </div>
+      {warningPill}
     </div>
   );
 }

@@ -15,6 +15,13 @@
   margin-right: auto;
 }
 
+/* Keep the header on one even rhythm: the Files button and the close button
+   sit the same distance apart as the pills inside the strip. */
+.jc-identity-strip + .modal-header-actions {
+  margin-left: 0.875rem;
+  margin-right: 0.875rem;
+}
+
 .jc-strip-jobnumber {
   font-size: var(--text-xl);
   font-weight: 700;
@@ -49,32 +56,29 @@
 }
 .jc-strip-priority-low {
   --p-bg: rgba(59, 130, 246, 0.08);
-  --p-color: #1d4ed8;
+  --p-color: var(--badge-progress-text);
   --p-border: #93c5fd;
   --p-dot: #3b82f6;
 }
 .jc-strip-priority-medium {
   --p-bg: rgba(217, 119, 6, 0.10);
-  --p-color: #b45309;
+  --p-color: var(--badge-pending-text);
   --p-border: #fcd34d;
   --p-dot: #d97706;
 }
 .jc-strip-priority-high {
   --p-bg: rgba(239, 68, 68, 0.10);
-  --p-color: #c81e1e;
+  --p-color: var(--badge-cancelled-text);
   --p-border: #fca5a5;
   --p-dot: #ef4444;
 }
 .dark-mode .jc-strip-priority-low {
-  --p-color: #93c5fd;
   --p-bg: rgba(59, 130, 246, 0.18);
 }
 .dark-mode .jc-strip-priority-medium {
-  --p-color: #fcd34d;
   --p-bg: rgba(217, 119, 6, 0.18);
 }
 .dark-mode .jc-strip-priority-high {
-  --p-color: #fca5a5;
   --p-bg: rgba(239, 68, 68, 0.18);
 }
 
@@ -174,41 +178,40 @@
 
 .jc-strip-description-input {
   width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 1px dashed transparent;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   outline: none;
-  padding: 0.35rem 0.25rem;
+  padding: 0.35rem 0.6rem;
   font-size: var(--text-base);
   font-weight: 500;
   color: var(--text-primary);
   font-family: inherit;
   letter-spacing: -0.005em;
   transition: border-color var(--duration-fast) ease,
-              background var(--duration-fast) ease;
+              box-shadow var(--duration-fast) ease;
   text-overflow: ellipsis;
 }
 .jc-strip-description-input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   font-style: italic;
   font-weight: 400;
 }
 .jc-strip-description-input:hover {
-  border-bottom-color: var(--border-color);
+  border-color: var(--border-strong);
 }
 .jc-strip-description-input:focus,
 .jc-strip-description-input:focus-visible {
   outline: none;
-  border-bottom-color: var(--primary-accent);
-  background: var(--surface-inset);
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-color: var(--primary-accent);
+  box-shadow: var(--focus-ring);
 }
 
 .jc-strip-description-static {
   display: block;
   width: 100%;
   font-size: var(--text-base);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -327,7 +330,7 @@
 .jc-strip-duedate-trigger:focus-visible {
   outline: none;
   border-color: var(--primary-accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  box-shadow: var(--focus-ring);
 }
 
 .jc-strip-duedate-icon {
@@ -342,7 +345,7 @@
 .jc-strip-duedate-flag {
   margin-left: 0.4rem;
   padding: 0.05rem 0.4rem;
-  font-size: 0.6875rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   background: #ef4444;
@@ -430,10 +433,10 @@
   height: 18px;
   padding: 0 5px;
   margin-left: 0.4rem;
-  font-size: 0.7rem;
+  font-size: var(--text-2xs);
   font-weight: var(--font-bold);
   line-height: 1;
-  border-radius: 9px;
+  border-radius: var(--radius-md);
   background: var(--primary-accent);
   color: var(--surface);
   vertical-align: middle;
@@ -587,7 +590,11 @@
   gap: 0.5rem;
   cursor: pointer;
   font-weight: normal;
-  height: 38px;
+  /* Mirror the input box-model (vertical padding + a transparent border the
+     same width as a field's border) so this cell is exactly as tall as the
+     text/dropdown boxes beside it and the row lines up. */
+  padding: 0.5625rem 0;
+  border: 1.5px solid transparent;
   text-transform: none;
   letter-spacing: normal;
 }
@@ -686,7 +693,7 @@
 
 .critical-warning::before {
   content: '\26A0';
-  font-size: 1rem;
+  font-size: var(--text-base);
 }
 
 /* Contact Fields */
@@ -887,11 +894,10 @@
   line-height: 1.5;
 }
 
-/* Deliberate two-row layout per part, so the arrangement stays predictable
-   regardless of the item view-size (zoom) control. Row 1 = what the part is
-   (job type, qty, description); row 2 = its attributes (material, supplier,
-   treatment, drawings, customer property). Each row spans the full width so it
-   always breaks onto its own line. */
+/* Deliberate two-row layout per part, so the arrangement stays predictable.
+   Row 1 = what the part is (job type, qty, description); row 2 = its attributes
+   (material, supplier, treatment, drawings, customer property). Each row spans
+   the full width so it always breaks onto its own line. */
 .line-item-row {
   display: flex;
   flex-wrap: wrap;
@@ -966,7 +972,7 @@
   width: 100%;
   padding: 0.375rem 0.5rem;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -990,7 +996,7 @@
   width: 100%;
   padding: 0.375rem 0.5rem;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   font-size: var(--text-sm);
 }
@@ -1003,7 +1009,7 @@
 .line-item-remove {
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-tertiary);
@@ -1036,7 +1042,7 @@
   width: 100%;
   padding: 0.375rem 0.5rem;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   font-size: var(--text-sm);
 }
@@ -1057,7 +1063,7 @@
   width: 100%;
   padding: 0.375rem 0.5rem;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   font-size: var(--text-sm);
 }
@@ -1081,7 +1087,7 @@
   width: 100%;
   padding: 0.375rem 0.5rem;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   font-size: var(--text-sm);
 }
@@ -1096,12 +1102,34 @@
   border-color: var(--danger-color, #ef4444);
 }
 
-/* Treatment read-only column (per line item) — inline with the other fields */
+/* Fixed-width wrapper for the Treatment + Supplier dropdowns. The supplier (and
+   "specify") sub-fields appear/disappear depending on the choice, so without a
+   reserved width the fields after it (Drawings, Customer Property) would shift
+   left/right from one part to the next. Pinning the group to the width of two
+   side-by-side fields keeps every part's columns lined up; extra sub-fields wrap
+   onto a second line within this same width. */
+.line-item-treatment-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 362px;
+  flex-shrink: 0;
+}
+
+/* Top-align the attribute row so the per-field "Attach file" pills can hang
+   below their control without nudging the neighbouring boxes off the line. */
+.line-item-row-secondary {
+  align-items: flex-start;
+}
+
+/* Treatment read-only column (per line item) — same width as the editable
+   Treatment + Supplier group so the columns line up in both views. */
 .line-item-treatment {
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto;
-  min-width: 240px;
+  width: 362px;
+  flex-shrink: 0;
   max-width: 100%;
 }
 
@@ -1124,13 +1152,14 @@
 .lit-missing-file {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
   gap: 3px;
   margin-top: 4px;
   padding: 1px 6px;
   border-radius: 999px;
   background: rgba(var(--warning-rgb), 0.14);
   color: var(--warning-color);
-  font-size: 0.6875rem;
+  font-size: var(--text-2xs);
   font-weight: 600;
   white-space: nowrap;
   vertical-align: middle;
@@ -1146,7 +1175,7 @@
   padding: 2px 8px;
   border: 1px solid transparent;
   border-radius: 999px;
-  font-size: 0.6875rem;
+  font-size: var(--text-2xs);
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -1181,7 +1210,7 @@
   width: 100%;
   padding: 0.375rem 0.5rem;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   font-size: var(--text-sm);
   color: var(--text-primary);
@@ -1238,7 +1267,7 @@
   cursor: pointer;
   font-size: var(--text-sm);
   color: var(--text-primary);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   white-space: nowrap;
 }
 
@@ -1469,7 +1498,7 @@
   align-items: baseline;
   gap: 0.3rem;
   padding: 0.2rem 0.55rem;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: rgba(220, 38, 38, 0.10);
   border: 1px solid rgba(220, 38, 38, 0.28);
   flex-shrink: 0;
@@ -1507,7 +1536,7 @@
 /* Chevron */
 .lip-chevron {
   color: var(--text-tertiary);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   flex-shrink: 0;
   transition: transform 0.2s;
   margin-left: 0.1rem;
@@ -1703,7 +1732,7 @@
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
   padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
   background: var(--surface);
   color: var(--text-secondary);
@@ -1740,7 +1769,7 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
   background: var(--surface);
   color: var(--text-secondary);
@@ -1777,7 +1806,7 @@
   padding: 0.42rem 0.55rem;
   border: none;
   background: transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   font-weight: var(--font-medium, 500);
   color: var(--text-primary);
@@ -1860,7 +1889,7 @@
   font-weight: var(--font-semibold);
   letter-spacing: -0.01em;
   padding: 0.2rem 0.55rem;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--primary-accent) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--primary-accent) 30%, transparent);
   color: var(--primary-accent);
@@ -1879,7 +1908,7 @@
   align-items: baseline;
   gap: 0.35rem;
   padding: 0.2rem 0.55rem;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--success-color) 10%, var(--surface-elevated));
   border: 1px solid color-mix(in srgb, var(--success-color) 28%, transparent);
   font-family: var(--font-mono);
@@ -1903,7 +1932,7 @@
 /* Arrow connecting delta to running total */
 .te-qty-arrow {
   color: var(--text-tertiary);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   line-height: 1;
   margin: 0 -0.05rem;
   user-select: none;
@@ -1996,7 +2025,7 @@
 
 .te-item-note-mark {
   font-family: 'Georgia', 'Times New Roman', serif;
-  font-size: 1.5rem;
+  font-size: var(--text-2xl);
   font-weight: 700;
   line-height: 0.7;
   color: color-mix(in srgb, var(--primary-accent) 75%, var(--text-primary));
@@ -2348,7 +2377,7 @@
   border: 1px solid rgba(var(--text-inverse-rgb), 0.3);
   background: rgba(0, 0, 0, 0.8);
   color: var(--text-inverse);
-  font-size: 1.25rem;
+  font-size: var(--text-xl);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2427,7 +2456,7 @@
 .timer-elapsed {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 3rem;
+  font-size: var(--text-4xl);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
 }
@@ -2483,7 +2512,7 @@
 }
 
 .cis-label {
-  font-size: 0.7rem;
+  font-size: var(--text-2xs);
   font-weight: var(--font-semibold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2536,18 +2565,18 @@
 }
 
 .readonly-badge.treatment {
-  background: #ede9fe;
-  color: #7c3aed;
+  background: var(--status-treatment-bg);
+  color: var(--status-treatment-text);
 }
 
 .readonly-badge.material {
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--status-open-bg);
+  color: var(--status-open-text);
 }
 
 .readonly-badge.job-type {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--status-awaiting-material-bg);
+  color: var(--status-awaiting-material-text);
 }
 
 .readonly-items-list {
@@ -2626,7 +2655,7 @@
 .notes-textarea:focus {
   outline: none;
   border-color: var(--primary-accent);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  box-shadow: var(--focus-ring-sm);
 }
 
 .notes-list {
@@ -2676,60 +2705,13 @@
 }
 
 /* =============================================
-   Zoom Modes (Compact / Comfortable / Spacious)
+   Content density — job card content always renders compact
+   (the only level used in practice; the picker was removed).
    ============================================= */
 
 .jc-zoom-root {
-  /* Comfortable is the default — no override needed */
-}
-
-.jc-zoom-root[data-zoom="compact"] {
   zoom: 0.9;
   --font-medium: 300;
   --font-semibold: 400;
   --font-bold: 600;
-}
-
-.jc-zoom-root[data-zoom="spacious"] {
-  zoom: 1.12;
-  --font-medium: 600;
-  --font-semibold: 700;
-  --font-bold: 700;
-}
-
-/* Header-mounted zoom toggle */
-.jc-zoom-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 2px;
-  flex-shrink: 0;
-}
-
-.jc-zoom-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  transition: all var(--duration-fast) ease;
-}
-
-.jc-zoom-btn:hover {
-  color: var(--text-primary);
-  background: var(--surface);
-}
-
-.jc-zoom-btn.active {
-  color: var(--primary-accent);
-  background: var(--surface);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }

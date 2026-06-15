@@ -1,7 +1,7 @@
 # Graph Report - DHEngineering  (2026-06-15)
 
 ## Corpus Check
-- 142 files · ~109,836 words
+- 141 files · ~109,637 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -62,10 +62,10 @@
   client/src/App.jsx → client/src/context/AuthContext.jsx
 - `ContactManagement()` --calls--> `useConfirmDialog()`  [INFERRED]
   client/src/components/ContactManagement.jsx → client/src/hooks/useConfirmDialog.js
-- `JobCardList()` --calls--> `useAuth()`  [INFERRED]
-  client/src/components/JobCardList.jsx → client/src/context/AuthContext.jsx
 - `JobCardList()` --calls--> `useConfirmDialog()`  [INFERRED]
   client/src/components/JobCardList.jsx → client/src/hooks/useConfirmDialog.js
+- `JobCardList()` --calls--> `useJobCardSort()`  [INFERRED]
+  client/src/components/JobCardList.jsx → client/src/hooks/useJobCardSort.js
 
 ## Communities
 
@@ -74,32 +74,32 @@ Cohesion: 0.03
 Nodes (1): ApiService
 
 ### Community 1 - "Community 1"
-Cohesion: 0.05
-Nodes (27): ContactManagement(), QALevelManagement(), Settings(), SupplierManagement(), TagManagement(), UserManagement(), useConfirmDialog(), useSettings() (+19 more)
-
-### Community 2 - "Community 2"
 Cohesion: 0.09
 Nodes (46): buildStorageFilename(), listCategoryFileNames(), listFolderFiles(), nextQaFormNumber(), partFileCode(), resolveCategoryFolder(), resolveCustomerPropertyPath(), resolveJobFilesPath() (+38 more)
 
+### Community 2 - "Community 2"
+Cohesion: 0.07
+Nodes (24): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), AuthProvider() (+16 more)
+
 ### Community 3 - "Community 3"
-Cohesion: 0.06
-Nodes (28): Login(), AuthProvider(), useAuth(), useInactivityTimer(), JobCardModal(), validateJobCardForm(), getDefaultCostingForm(), getDefaultFormData() (+20 more)
+Cohesion: 0.1
+Nodes (26): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), UserManagement(), useConfirmDialog(), buildJobCardWorkbook(), buildSheet() (+18 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.08
-Nodes (11): getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), SearchPage(), StatusBadge(), useSearch(), formatDueDate() (+3 more)
+Cohesion: 0.06
+Nodes (16): invalidateTagCache(), useTags(), formatFileDate(), formatFileSize(), makeEmptyTreatment(), useJobSearch(), formatElapsed(), LiveElapsed() (+8 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.09
-Nodes (11): JobFilesMenu(), JobPaperworkHub(), LineItemFilesMenu(), formatElapsed(), QuickActionPanel(), useCamera(), useItemFiles(), useJobFiles() (+3 more)
+Cohesion: 0.08
+Nodes (19): JobCardModal(), validateJobCardForm(), getDefaultCostingForm(), getDefaultFormData(), getDefaultTimeEntryForm(), isoToLocalInput(), localInputToIso(), mapLineItemFromApi() (+11 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.11
-Nodes (14): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), formatElapsed(), useActiveTimerIndicator(), useJobCardColumnOrder() (+6 more)
+Cohesion: 0.09
+Nodes (12): JobFilesMenu(), JobPaperworkHub(), LineItemFilesMenu(), formatElapsed(), QuickActionPanel(), useCamera(), useItemFiles(), useJobFiles() (+4 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.19
-Nodes (17): buildJobCardWorkbook(), buildSheet(), exportActivityLog(), exportContacts(), exportEquipment(), exportJobCardList(), exportJobCardsFull(), exportSuppliers() (+9 more)
+Cohesion: 0.08
+Nodes (11): getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), SearchPage(), StatusBadge(), useSearch(), formatDueDate() (+3 more)
 
 ### Community 8 - "Community 8"
 Cohesion: 0.11
@@ -122,12 +122,12 @@ Cohesion: 0.25
 Nodes (2): Grad, Noise
 
 ### Community 13 - "Community 13"
-Cohesion: 0.24
-Nodes (3): renderCardPdfBase64(), base64ToBytes(), bytesToBase64()
-
-### Community 14 - "Community 14"
 Cohesion: 0.2
 Nodes (4): DataTable(), useTableFilter(), useTableResize(), useTableSort()
+
+### Community 14 - "Community 14"
+Cohesion: 0.24
+Nodes (3): renderCardPdfBase64(), base64ToBytes(), bytesToBase64()
 
 ### Community 15 - "Community 15"
 Cohesion: 0.36
@@ -222,9 +222,9 @@ Nodes (2): formatNum(), ScrapStat()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ApiService` connect `Community 0` to `Community 13`?**
+- **Why does `ApiService` connect `Community 0` to `Community 14`?**
   _High betweenness centrality (0.142) - this node is a cross-community bridge._
-- **Why does `usePacketPrint()` connect `Community 5` to `Community 13`?**
+- **Why does `usePacketPrint()` connect `Community 6` to `Community 14`?**
   _High betweenness centrality (0.121) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 11 INFERRED edges - model-reasoned connections that need verification._
@@ -235,4 +235,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.03 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.05 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09 - nodes in this community are weakly interconnected._

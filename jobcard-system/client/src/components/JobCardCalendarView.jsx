@@ -55,7 +55,6 @@ export default function JobCardCalendarView({ jobcards, onCardClick, getStatusBa
           <button className="btn btn-secondary btn-sm" onClick={nextMonth} aria-label="Next month"><ChevronRight size={16} /></button>
         </div>
         <h3 className="calendar-title">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
-        <div style={{ width: '88px' }}></div> {/* Spacer for centering title */}
       </div>
       <div className="calendar-grid">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (

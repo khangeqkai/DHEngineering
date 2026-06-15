@@ -45,14 +45,14 @@
   max-width: 100%;
   height: auto;
   object-fit: contain;
-  margin-bottom: -2.5rem;
+  margin-bottom: 0;
 }
 
 .login-divider {
   border: none;
   border-top: 1px solid rgba(37, 99, 235, 0.3);
   height: 0;
-  margin: 3rem 0 1rem;
+  margin: 1rem 0;
 }
 
 .login-form-title {
@@ -96,7 +96,7 @@
 
 .login-card .form-group input:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  box-shadow: var(--focus-ring);
 }
 
 .login-input-wrapper {
@@ -123,7 +123,7 @@
 .login-btn {
   width: 100%;
   padding: 0.75rem;
-  font-size: 1rem;
+  font-size: var(--text-base);
   font-weight: var(--font-semibold);
   background: #2563eb !important;
   border: none;

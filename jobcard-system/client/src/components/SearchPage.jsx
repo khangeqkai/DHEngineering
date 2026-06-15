@@ -67,7 +67,7 @@ function FilterRow({ label, children }) {
 }
 
 function StatusBadge({ status }) {
-  return <span className={`search-badge status-${statusToken(status)}`}>{fmt(status)}</span>;
+  return <span className={`badge status-${statusToken(status)}`}>{fmt(status)}</span>;
 }
 
 function ActionBadge({ action }) {

@@ -9,8 +9,9 @@
 }
 
 .calendar-header {
+  position: relative;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   padding: 1rem;
   border-bottom: 1px solid var(--border-color);
@@ -23,8 +24,11 @@
 }
 
 .calendar-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   margin: 0;
-  font-size: 1.25rem;
+  font-size: var(--text-xl);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -93,7 +97,7 @@
 }
 
 .calendar-card {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   padding: 0.25rem 0.5rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -112,6 +116,9 @@
 
 .calendar-card-job {
   font-weight: 600;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
 }
 
 .calendar-card-company {

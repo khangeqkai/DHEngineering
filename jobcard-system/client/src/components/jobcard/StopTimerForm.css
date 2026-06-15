@@ -164,7 +164,7 @@
 .stf-item-field input[type="text"]:focus {
   outline: none;
   border-color: var(--primary-accent);
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2);
+  box-shadow: var(--focus-ring-sm);
 }
 
 .stf-qty-row {
@@ -188,7 +188,7 @@
 .stf-qty-hint {
   font-size: var(--text-sm);
   color: var(--text-tertiary);
-  align-self: center;
+  align-self: flex-start;
 }
 
 /* Machine selection uses the shared ToggleTiles component (common/ToggleTiles). */

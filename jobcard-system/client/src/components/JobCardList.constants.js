@@ -1,6 +1,6 @@
 export const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
-  { value: 'QUOTE', label: 'Quotes' },
+  { value: 'QUOTE', label: 'Quote' },
   { value: 'OPEN', label: 'Open' },
   { value: 'AWAITING_MATERIAL', label: 'Awaiting Material' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
@@ -25,8 +25,8 @@ export const STATUS_LABELS = {
 export const PRIORITY_COLORS = {
   NONE: 'var(--text-secondary)',
   LOW: 'var(--badge-progress-text)',
-  MEDIUM: '#d97706',
-  HIGH: 'var(--danger-color)'
+  MEDIUM: 'var(--badge-pending-text)',
+  HIGH: 'var(--badge-cancelled-text)'
 };
 
 export const PRIORITY_LABELS = { NONE: 'None', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' };

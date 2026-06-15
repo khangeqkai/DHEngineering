@@ -40,7 +40,7 @@
 .data-table-search-input input:focus {
   outline: none;
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+  box-shadow: var(--focus-ring);
 }
 
 .data-table-search-icon {
@@ -176,7 +176,7 @@
 .data-table.density-compact td,
 .data-table.density-compact th {
   padding: 0.35rem 0.75rem;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
 }
 
 /* Comfortable density — uses default table styles, no overrides needed */
@@ -185,7 +185,7 @@
 .data-table.density-spacious td,
 .data-table.density-spacious th {
   padding: 1rem 1.25rem;
-  font-size: 0.95rem;
+  font-size: var(--text-base);
 }
 
 /* ========================================
@@ -196,7 +196,7 @@
 
 .skeleton-bar {
   height: 14px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(90deg, var(--surface-inset) 25%, var(--surface-elevated) 50%, var(--surface-inset) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s ease-in-out infinite;
