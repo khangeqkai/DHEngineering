@@ -22,15 +22,15 @@ function authenticate(req, res, next) {
 
     // Single-session enforcement + live account check against the DB.
     // One lookup covers both: the account must still be active, and the
-    // session token must still match (latest login wins).
-    if (decoded.sessionToken) {
-      const row = userQueries.getAuthState.get(decoded.userId);
-      if (!row || row.active !== 1) {
-        return res.status(401).json({ error: 'Account deactivated', code: 'ACCOUNT_DEACTIVATED' });
-      }
-      if (row.sessionToken !== decoded.sessionToken) {
-        return res.status(401).json({ error: 'Session invalidated', code: 'SESSION_REPLACED' });
-      }
+    // session token must still match (latest login wins). Run unconditionally
+    // so a token missing its session marker can never skip the check — a
+    // marker-less token simply fails the match and is rejected.
+    const row = userQueries.getAuthState.get(decoded.userId);
+    if (!row || row.active !== 1) {
+      return res.status(401).json({ error: 'Account deactivated', code: 'ACCOUNT_DEACTIVATED' });
+    }
+    if (row.sessionToken !== decoded.sessionToken) {
+      return res.status(401).json({ error: 'Session invalidated', code: 'SESSION_REPLACED' });
     }
 
     req.user = decoded;
