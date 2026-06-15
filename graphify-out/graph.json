@@ -4498,7 +4498,7 @@
       "label": "formatJobcard()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L182",
+      "source_location": "L196",
       "id": "routes_jobcard_helpers_formatjobcard",
       "community": 1,
       "norm_label": "formatjobcard()"
@@ -4507,7 +4507,7 @@
       "label": "buildChanges()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L235",
+      "source_location": "L249",
       "id": "routes_jobcard_helpers_buildchanges",
       "community": 1,
       "norm_label": "buildchanges()"
@@ -4516,7 +4516,7 @@
       "label": "sanitizeHistoryForRole()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L272",
+      "source_location": "L286",
       "id": "routes_jobcard_helpers_sanitizehistoryforrole",
       "community": 1,
       "norm_label": "sanitizehistoryforrole()"
@@ -4525,7 +4525,7 @@
       "label": "serializeTreatments()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L281",
+      "source_location": "L295",
       "id": "routes_jobcard_helpers_serializetreatments",
       "community": 1,
       "norm_label": "serializetreatments()"
@@ -4534,7 +4534,7 @@
       "label": "buildQaFillData()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L288",
+      "source_location": "L302",
       "id": "routes_jobcard_helpers_buildqafilldata",
       "community": 1,
       "norm_label": "buildqafilldata()"
@@ -4543,7 +4543,7 @@
       "label": "tagName()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L328",
+      "source_location": "L342",
       "id": "routes_jobcard_helpers_tagname",
       "community": 1,
       "norm_label": "tagname()"
@@ -4552,7 +4552,7 @@
       "label": "splitValues()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L334",
+      "source_location": "L348",
       "id": "routes_jobcard_helpers_splitvalues",
       "community": 1,
       "norm_label": "splitvalues()"
@@ -4561,7 +4561,7 @@
       "label": "formatAuDate()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L338",
+      "source_location": "L352",
       "id": "routes_jobcard_helpers_formataudate",
       "community": 1,
       "norm_label": "formataudate()"
@@ -4570,7 +4570,7 @@
       "label": "buildJobCardView()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L347",
+      "source_location": "L361",
       "id": "routes_jobcard_helpers_buildjobcardview",
       "community": 1,
       "norm_label": "buildjobcardview()"
@@ -4579,7 +4579,7 @@
       "label": "createRelatedRecords()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L410",
+      "source_location": "L424",
       "id": "routes_jobcard_helpers_createrelatedrecords",
       "community": 1,
       "norm_label": "createrelatedrecords()"
@@ -4588,7 +4588,7 @@
       "label": "copyQaTemplatesForJob()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L445",
+      "source_location": "L459",
       "id": "routes_jobcard_helpers_copyqatemplatesforjob",
       "community": 1,
       "norm_label": "copyqatemplatesforjob()"
@@ -4597,7 +4597,7 @@
       "label": "copyTemplatesToJobFolder()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L463",
+      "source_location": "L477",
       "id": "routes_jobcard_helpers_copytemplatestojobfolder",
       "community": 1,
       "norm_label": "copytemplatestojobfolder()"
@@ -4606,7 +4606,7 @@
       "label": "verifyQaTemplatesAvailable()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L573",
+      "source_location": "L587",
       "id": "routes_jobcard_helpers_verifyqatemplatesavailable",
       "community": 1,
       "norm_label": "verifyqatemplatesavailable()"

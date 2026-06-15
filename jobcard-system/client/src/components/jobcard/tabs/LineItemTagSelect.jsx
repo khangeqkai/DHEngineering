@@ -18,15 +18,17 @@ export default function LineItemTagSelect({
   naValue,
   onChange,
   warning = false,
+  attachedFiles = [],
   onAttach
 }) {
   const selected = value ? value.split(',').filter(Boolean) : [];
   // "Declares something" = a real value picked, not the explicit N/A answer.
   const isDeclared = selected.some(v => v && v !== naValue);
   // When the parent supplies an attach handler and this field declares something,
-  // show an actionable button: amber "Attach file" while missing, green "✓ Attached"
-  // once a file for this part exists (still clickable to add another). Without an
-  // attach handler (e.g. the create form), fall back to a passive nudge.
+  // show an actionable button: amber "Attach file" while missing, or — once files
+  // for this part exist — the attached file names as green chips plus a small
+  // "Add" button to attach another. Without an attach handler (e.g. the create
+  // form), fall back to a passive nudge.
   let warningPill = null;
   if (onAttach && isDeclared) {
     warningPill = warning ? (
@@ -34,9 +36,16 @@ export default function LineItemTagSelect({
         ⚠ Attach file
       </button>
     ) : (
-      <button type="button" className="lit-attach lit-attach--done" onClick={onAttach} title="Attached — click to add another">
-        ✓ Attached
-      </button>
+      <div className="lit-attach-done">
+        {attachedFiles.length > 0
+          ? attachedFiles.map((name, i) => (
+              <span key={i} className="lit-attach-file" title={name}>✓ {name}</span>
+            ))
+          : <span className="lit-attach-file">✓ Attached</span>}
+        <button type="button" className="lit-attach lit-attach--add" onClick={onAttach} title="Attach another file">
+          + Add
+        </button>
+      </div>
     );
   } else if (warning) {
     warningPill = <span className="lit-missing-file" title="No file attached yet">⚠ No file yet</span>;

@@ -63,6 +63,9 @@ export default function ItemsTab({
   const { tags: customerPropertyTags, labelOf: customerPropertyLabelOf } = useTags('customer_property');
   const fieldsLocked = readOnly;
   const warningByItem = itemWarningMap(attachmentWarnings);
+  // Names of the files already attached per part, so each Drawings / Customer
+  // Property field can list them instead of just saying "Attached".
+  const attachedByItem = attachmentWarnings?.attachedByItem || {};
 
   // Only saved parts (which carry a permanent "item:" id) can take attachments;
   // a part added but not yet saved has no stable id to tie a file to.
@@ -337,6 +340,7 @@ export default function ItemsTab({
                     naValue="N_A"
                     onChange={(v) => updateLineItem(item.id, 'drawingsType', v)}
                     warning={!!warningByItem[item.itemNumber]?.missingDrawing}
+                    attachedFiles={attachedByItem[item.itemNumber]?.drawings || []}
                     onAttach={onAttachItemFile && isPersisted(item) ? () => triggerAttach(item.id, 'job-files') : undefined}
                   />
 
@@ -350,6 +354,7 @@ export default function ItemsTab({
                     naValue="N_A"
                     onChange={(v) => updateLineItem(item.id, 'customerProperty', v)}
                     warning={!!warningByItem[item.itemNumber]?.missingCustomerProperty}
+                    attachedFiles={attachedByItem[item.itemNumber]?.customerProperty || []}
                     onAttach={onAttachItemFile && isPersisted(item) ? () => triggerAttach(item.id, 'customer-property-files') : undefined}
                   />
                   </div>

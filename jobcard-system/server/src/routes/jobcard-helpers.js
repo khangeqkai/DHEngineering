@@ -95,7 +95,7 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
   const { listCategoryFileNames, partFileCode } = require('./jobcard-files');
   const settings = getSettings();
   if (!settings.job_folders_base || !settings.job_folders_base.trim()) {
-    return { items: [], missingQaForms: false, hasAny: false };
+    return { items: [], missingQaForms: false, hasAny: false, attachedByItem: {} };
   }
 
   // Normalise items once — they may be DB rows (snake_case) or formatted/request
@@ -121,7 +121,7 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
   const needsQa = qaTemplates.length > 0 && !!(qaLevel && qaLevel.requires_returned_form);
 
   if (!anyDrawing && !anyProperty && !needsQa) {
-    return { items: [], missingQaForms: false, hasAny: false };
+    return { items: [], missingQaForms: false, hasAny: false, attachedByItem: {} };
   }
 
   // Read only the category folders we need, in one job-folder resolve.
@@ -134,6 +134,11 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
   const customerPropertyNames = fileNames['customer-property-files'] || [];
 
   const flagged = [];
+  // Per-part list of the file names actually attached (id tag stripped back to the
+  // name the user uploaded), keyed by item number, so the line-item view can show
+  // "✓ ABC.pdf" under each Drawings / Customer Property field instead of a bare
+  // "Attached". Only carries parts that have at least one attached file.
+  const attachedByItem = {};
   normItems.forEach((it) => {
     // Only a saved part has a permanent "item:" id; an unsaved part (just added
     // in this same edit) has no folder code, so no file can be matched to it yet.
@@ -156,6 +161,15 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
     if (missingDrawing || missingCustomerProperty) {
       flagged.push({ itemNumber: it.itemNumber, missingDrawing, missingCustomerProperty });
     }
+
+    // Collect the names of files already attached to this part, so the field can
+    // show them. Only the folders we read above are available; an undeclared
+    // category simply yields no names.
+    const drawingFiles = anyDrawing ? itemFileDisplayNames(jobFileNames, it.id) : [];
+    const propertyFiles = anyProperty ? itemFileDisplayNames(customerPropertyNames, it.id) : [];
+    if (drawingFiles.length || propertyFiles.length) {
+      attachedByItem[it.itemNumber] = { drawings: drawingFiles, customerProperty: propertyFiles };
+    }
   });
 
   // The blank templates are copied (bare-named) into the QA Forms folder when the
@@ -176,7 +190,7 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
     missingQaForms = !hasReturnedForm;
   }
 
-  return { items: flagged, missingQaForms, hasAny: flagged.length > 0 || missingQaForms };
+  return { items: flagged, missingQaForms, hasAny: flagged.length > 0 || missingQaForms, attachedByItem };
 }
 
 function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
