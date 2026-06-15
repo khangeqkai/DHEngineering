@@ -56,8 +56,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (reloadTimeEntriesRef.current) reloadTimeEntriesRef.current();
   }, []);
   const timer = useTimer(isEdit ? jobCardId : null, { onExternalStop });
-  const jobNotes = useJobNotes(isEdit ? jobCardId : null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
+  const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm);
 
   // Load reference data on mount
   useEffect(() => {

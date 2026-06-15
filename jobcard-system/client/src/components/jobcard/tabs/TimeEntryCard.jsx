@@ -180,7 +180,7 @@ export default function TimeEntryCard({
                         type="button"
                         role="menuitem"
                         className="te-menu-item te-menu-item--del"
-                        onClick={() => { setMenuOpen(false); onDelete(entry.id); }}
+                        onClick={() => { setMenuOpen(false); onDelete(entry); }}
                       >
                         <Trash2 size={14} /> Delete
                       </button>

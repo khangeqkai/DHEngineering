@@ -8466,10 +8466,10 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "client/src/components/jobcard/JobCardModal.jsx",
-      "source_location": "L49",
+      "source_location": "L50",
       "weight": 1.0,
       "source": "jobcard_jobcardmodal_jobcardmodal",
-      "target": "jobcard_usejobnotes_usejobnotes"
+      "target": "hooks_useconfirmdialog_useconfirmdialog"
     },
     {
       "relation": "calls",
@@ -8477,10 +8477,10 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "client/src/components/jobcard/JobCardModal.jsx",
-      "source_location": "L50",
+      "source_location": "L49",
       "weight": 1.0,
       "source": "jobcard_jobcardmodal_jobcardmodal",
-      "target": "hooks_useconfirmdialog_useconfirmdialog"
+      "target": "jobcard_usejobnotes_usejobnotes"
     },
     {
       "relation": "calls",

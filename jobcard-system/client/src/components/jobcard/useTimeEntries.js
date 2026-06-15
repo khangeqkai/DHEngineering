@@ -106,22 +106,31 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     }
   }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry]);
 
-  const handleDeleteTimeEntry = useCallback(async (entryId) => {
+  const handleDeleteTimeEntry = useCallback(async (entry) => {
     if (!jobCardId) return;
 
-    // Use custom confirm dialog if available, otherwise fall back to native confirm
-    const confirmed = showConfirm
-      ? await showConfirm({
-          title: 'Delete Time Entry',
-          message: 'Delete this time entry?',
-          confirmLabel: 'Delete',
-          confirmVariant: 'danger'
-        })
-      : window.confirm('Delete this time entry?');
+    // Spell out exactly what's being erased — whose hours, how many, and when —
+    // so an admin can't wipe a worker's recorded labour (which feeds the job's
+    // totals) on the strength of a vague one-liner.
+    const who = entry?.userName || 'this worker';
+    const hours = entry?.startTime && entry?.endTime
+      ? Math.round(((new Date(entry.endTime) - new Date(entry.startTime)) / 3600000) * 10) / 10
+      : null;
+    const day = entry?.startTime ? new Date(entry.startTime).toLocaleDateString() : null;
+    const message = hours != null && day
+      ? `Delete ${who}'s ${hours} ${hours === 1 ? 'hour' : 'hours'} from ${day}? This removes the time from the job's total and can't be undone.`
+      : `Delete ${who}'s recorded time? This removes it from the job's total and can't be undone.`;
+
+    const confirmed = await showConfirm({
+      title: 'Delete recorded time',
+      message,
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger'
+    });
     if (!confirmed) return;
 
     try {
-      await deleteTimeEntry(entryId);
+      await deleteTimeEntry(entry.id);
     } catch (err) {
       toast.error(err.message || 'Failed to delete time entry');
     }
@@ -130,14 +139,12 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   const handleStopActiveEntry = useCallback(async (entry) => {
     if (!jobCardId) return;
 
-    const confirmed = showConfirm
-      ? await showConfirm({
-          title: 'Stop Timer',
-          message: `Stop ${entry.userName}'s active timer?`,
-          confirmLabel: 'Stop Timer',
-          confirmVariant: 'danger'
-        })
-      : window.confirm(`Stop ${entry.userName}'s timer?`);
+    const confirmed = await showConfirm({
+      title: 'Stop Timer',
+      message: `Stop ${entry.userName}'s active timer?`,
+      confirmLabel: 'Stop Timer',
+      confirmVariant: 'danger'
+    });
     if (!confirmed) return;
 
     try {

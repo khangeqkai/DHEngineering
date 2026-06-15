@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 
-export function useJobNotes(jobcardId) {
+export function useJobNotes(jobcardId, showConfirm) {
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,6 +39,19 @@ export function useJobNotes(jobcardId) {
   }, [jobcardId, newNote, loadNotes]);
 
   const deleteNote = useCallback(async (noteId) => {
+    // Deleting a comment is permanent, so confirm first (naming the author when
+    // we can) — a single misclick shouldn't erase someone's note with no warning.
+    const note = notes.find(n => n.id === noteId);
+    const who = note?.userName ? `${note.userName}'s` : 'this';
+    const message = `Delete ${who} comment? This can't be undone.`;
+    const confirmed = await showConfirm({
+      title: 'Delete comment',
+      message,
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger'
+    });
+    if (!confirmed) return;
+
     setLoading(true);
     try {
       await api.deleteJobNote(jobcardId, noteId);
@@ -48,7 +61,7 @@ export function useJobNotes(jobcardId) {
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, loadNotes]);
+  }, [jobcardId, loadNotes, notes, showConfirm]);
 
   const resetNotes = useCallback(() => {
     setNotes([]);
