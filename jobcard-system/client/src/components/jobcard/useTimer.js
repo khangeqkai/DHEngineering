@@ -17,6 +17,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
   const [pendingStartItem, setPendingStartItem] = useState(null);
   const intervalRef = useRef(null);
   const selfStoppedRef = useRef(false);
+  const pollInFlightRef = useRef(false);
   const onExternalStopRef = useRef(onExternalStop);
   onExternalStopRef.current = onExternalStop;
 
@@ -63,6 +64,11 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
 
     const poll = setInterval(async () => {
       if (document.visibilityState === 'hidden') return;
+      // Guard against overlapping checks: a slow check (>5s) would otherwise let
+      // the next tick start a second check, and the two race on selfStoppedRef —
+      // producing a false "stopped by an admin" message when the user stopped it.
+      if (pollInFlightRef.current) return;
+      pollInFlightRef.current = true;
       try {
         const current = await api.getActiveTimer();
         if (!current || current.id !== activeTimer.id) {
@@ -76,6 +82,8 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
         }
       } catch {
         // Ignore poll errors — network hiccups should not surface to user
+      } finally {
+        pollInFlightRef.current = false;
       }
     }, 5000);
 
