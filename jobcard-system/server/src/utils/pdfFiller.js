@@ -112,7 +112,7 @@ function toPdfSafe(value) {
  * Fill PDF form fields with job data.
  * Returns filled PDF buffer, or the original buffer if no fields or on error.
  * @param {Buffer} sourceBuffer - Source PDF file buffer
- * @param {Object} jobData - Job card data with keys matching FIELD_MAPPINGS (see docs/QA-PDF-TEMPLATE-GUIDE.md)
+ * @param {Object} jobData - Job card data with keys matching FIELD_MAPPINGS
  * @returns {Promise<Buffer>} Filled PDF buffer
  */
 async function fillPdfTemplate(sourceBuffer, jobData) {

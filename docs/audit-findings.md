@@ -47,7 +47,7 @@ Severity legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Low / edge ca
 - **Notes:** Rare; requires >5s poll latency.
 
 ### 4. 🟢 Auto-logout countdown can tick erratically after sleep/wake
-- [ ] Fixed
+- [x] Fixed
 - **What happens:** If the machine sleeps just before the 30-second warning and wakes inside it, two
   countdowns can briefly run at once and the displayed number jumps. The actual logout still fires at
   the correct time.
@@ -59,7 +59,7 @@ Severity legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Low / edge ca
 - **Notes:** Platform/timing dependent.
 
 ### 5. 🟢 Rapid switch between two job cards can show the wrong details
-- [ ] Fixed
+- [x] Fixed
 - **What happens:** Jump straight from one card to another without closing, and if the first card's
   data arrives last, it overwrites the second card on screen.
 - **Where:** `client/src/components/jobcard/JobCardModal.jsx:91-128` (`loadJobCard`) — no

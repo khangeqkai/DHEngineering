@@ -88,9 +88,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const { setContactFromJobCard, resetContact } = contactHook;
   const { loadHistory, resetHistory } = activityLog;
   const { loadNotes } = jobNotes;
+  // Tracks which job's load should "win". A load only applies its result if the
+  // modal is still showing the same job when the request resolves, so a slow
+  // response for a just-closed job can't paint over a newly opened one.
+  const currentLoadRef = useRef(null);
   const loadJobCard = useCallback(async () => {
     if (!isEdit || !jobCardId) return;
 
+    currentLoadRef.current = jobCardId;
     setLoading(true);
     try {
       const [jobcardRes, timeEntriesRes, costingRes] = await Promise.all([
@@ -98,6 +103,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         api.getTimeEntries(jobCardId),
         isAdmin ? api.getCosting(jobCardId).catch(() => null) : Promise.resolve(null)
       ]);
+
+      if (currentLoadRef.current !== jobCardId) return;  // superseded by a newer load — ignore
 
       const jobcardData = jobcardRes;
       setFormDataFromJobCard(jobcardData);
@@ -120,10 +127,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         });
       }
     } catch (err) {
+      if (currentLoadRef.current !== jobCardId) return;  // stale failure for a closed job — don't disturb the current one
       toast.error('Failed to load job card. Please try again.');
       onClose();
     } finally {
-      setLoading(false);
+      if (currentLoadRef.current === jobCardId) setLoading(false);
     }
   }, [isEdit, jobCardId, isAdmin, setFormDataFromJobCard, setContactFromJobCard, loadNotes, onClose]);
 
