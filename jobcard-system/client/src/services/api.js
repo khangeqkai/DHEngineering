@@ -76,8 +76,10 @@ class ApiService {
   _patch(endpoint, data) {
     return this.request(endpoint, { method: 'PATCH', body: JSON.stringify(data) });
   }
-  _del(endpoint) {
-    return this.request(endpoint, { method: 'DELETE' });
+  _del(endpoint, data) {
+    const opts = { method: 'DELETE' };
+    if (data !== undefined) opts.body = JSON.stringify(data);
+    return this.request(endpoint, opts);
   }
 
   // Auth endpoints
@@ -151,7 +153,9 @@ class ApiService {
   // have no matching file attached — used to flag rows in the job list.
   getAttachmentWarnings(ids) { return this._post('/jobcards/attachment-warnings', { ids: ids || [] }); }
   unarchiveJobcard(id) { return this._post(`/jobcards/${id}/unarchive`); }
-  deleteJobcard(id) { return this._del(`/jobcards/${id}`); }
+  deleteJobcard(id, confirmDelete = false) {
+    return this._del(`/jobcards/${id}`, confirmDelete ? { confirmDelete: true } : undefined);
+  }
 
   getOverdueJobcards() {
     return this.request('/jobcards/overdue');

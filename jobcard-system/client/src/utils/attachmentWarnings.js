@@ -15,6 +15,32 @@ export function describeAttachmentGaps(warnings) {
   return gaps;
 }
 
+// Join names the way a person would: "Jane", "Jane and Bob", "Jane, Bob and Sam".
+function joinNames(names) {
+  const list = names.filter(Boolean);
+  if (list.length <= 1) return list[0] || 'someone';
+  if (list.length === 2) return `${list[0]} and ${list[1]}`;
+  return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
+}
+
+// Turn the server's delete-time work warning into plain sentences for the
+// "delete anyway?" confirm. Returns an array of lines to show before the final
+// "Deleting erases all of it..." line.
+export function describeWorkWarning(warning) {
+  if (!warning) return [];
+  const lines = [];
+  if (warning.hasActive && warning.activeWorkers?.length) {
+    const who = joinNames(warning.activeWorkers);
+    const verb = warning.activeWorkers.length > 1 ? 'are' : 'is';
+    lines.push(`${who} ${verb} working on this job right now.`);
+  }
+  if (warning.loggedHours > 0) {
+    const by = warning.pastWorkers?.length ? ` by ${joinNames(warning.pastWorkers)}` : '';
+    lines.push(`This job has ${warning.loggedHours} hours of recorded work${by}.`);
+  }
+  return lines;
+}
+
 // Decide how loudly to flag a job's missing attachments. A missing drawing or
 // quality form is treated as blocking (it shouldn't go out the door without
 // them), so it reads red; a missing customer property is only a soft warning

@@ -12,7 +12,7 @@ import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
 import { useMissingFilesIndicator } from '../hooks/useMissingFilesIndicator';
-import { describeAttachmentGaps } from '../utils/attachmentWarnings';
+import { describeAttachmentGaps, describeWorkWarning } from '../utils/attachmentWarnings';
 import useJobCardSort from '../hooks/useJobCardSort';
 import useJobCardColumnOrder from '../hooks/useJobCardColumnOrder';
 import EmptyState from './common/EmptyState';
@@ -91,18 +91,38 @@ export default function JobCardList() {
   }, [isAdmin]);
 
   const handleDelete = async (id) => {
-    const confirmed = await showConfirm({
-      title: 'Delete Job Card',
-      message: 'Are you sure you want to delete this job card?',
-      confirmLabel: 'Delete',
-      confirmVariant: 'danger'
-    });
-    if (!confirmed) return;
-
     try {
+      // The first request never deletes — the server bounces back a single
+      // confirmation request (409). When the job has recorded work it also sends
+      // who/what so we can spell out what's being erased; otherwise it's a plain
+      // "are you sure". One box either way, then resend with the confirm flag.
       await api.deleteJobcard(id);
       await loadJobcards();
     } catch (err) {
+      if (err.status === 409 && err.data?.error === 'CONFIRM_DELETE') {
+        const lines = describeWorkWarning(err.data.workWarning);
+        const proceed = await showConfirm({
+          title: lines.length ? 'Job has recorded work' : 'Delete Job Card',
+          message: lines.length ? (
+            <span>
+              {lines.map((l, i) => <span key={i}>{l}<br /></span>)}
+              <br />
+              Deleting erases all of it permanently, and the job number is never reused. Delete anyway?
+            </span>
+          ) : 'Are you sure you want to delete this job card? The job number is never reused.',
+          confirmLabel: lines.length ? 'Delete anyway' : 'Delete',
+          cancelLabel: 'Go back',
+          confirmVariant: 'danger'
+        });
+        if (!proceed) return;
+        try {
+          await api.deleteJobcard(id, true);
+          await loadJobcards();
+        } catch (e2) {
+          toast.error(e2.message || 'Failed to delete job card');
+        }
+        return;
+      }
       toast.error(err.message || 'Failed to delete job card');
     }
   };

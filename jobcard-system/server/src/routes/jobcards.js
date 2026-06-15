@@ -9,6 +9,7 @@ const {
   jobcardQueries,
   jobItemQueries,
   jobAssigneeQueries,
+  timeEntryQueries,
   getAssigneesForJobcards,
   historyQueries,
   recordHistory
@@ -325,6 +326,37 @@ router.delete('/:id', authenticate, requireAdmin, (req, res) => {
     const existing = jobcardQueries.getById.get(id);
     if (!existing) {
       return res.status(404).json({ error: 'Job card not found' });
+    }
+
+    // Soft delete checkpoint: deleting a job is permanent and its number is never
+    // reused, so we never delete on the first request — we bounce back a 409 asking
+    // the admin to confirm. When the job has recorded work (anyone clocked in right
+    // now, or any logged time — both cascade away on delete) we attach who/what so
+    // the confirm can spell out what's being erased; otherwise workWarning is null
+    // and the client shows a plain "are you sure". Resending with confirmDelete:true
+    // bypasses this single gate. Mirrors the missing-attachments checkpoint.
+    if (req.body.confirmDelete !== true) {
+      const entries = timeEntryQueries.getByJobcard.all(id);
+      let workWarning = null;
+      if (entries.length > 0) {
+        const activeWorkers = [...new Set(
+          entries.filter(e => !e.end_time).map(e => e.user_name).filter(Boolean)
+        )];
+        const pastWorkers = [...new Set(
+          entries.filter(e => e.end_time).map(e => e.user_name).filter(Boolean)
+        )];
+        const hrs = timeEntryQueries.getHoursByJobcard.get(id);
+        const loggedHours = Math.round(
+          ((hrs?.labour_hours || 0) + (hrs?.labour_special_hours || 0)) * 10
+        ) / 10;
+        workWarning = {
+          hasActive: activeWorkers.length > 0,
+          activeWorkers,
+          loggedHours,
+          pastWorkers
+        };
+      }
+      return res.status(409).json({ error: 'CONFIRM_DELETE', workWarning });
     }
 
     // Record deletion with snapshot
