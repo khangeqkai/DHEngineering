@@ -1,12 +1,12 @@
 # Graph Report - DHEngineering  (2026-06-16)
 
 ## Corpus Check
-- 140 files · ~111,010 words
+- 141 files · ~112,404 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 740 nodes · 1107 edges · 34 communities detected
-- Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 99 edges (avg confidence: 0.8)
+- 747 nodes · 1119 edges · 34 communities detected
+- Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 101 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -76,20 +76,20 @@ Cohesion: 0.03
 Nodes (1): ApiService
 
 ### Community 1 - "Community 1"
-Cohesion: 0.05
-Nodes (27): ContactManagement(), QALevelManagement(), Settings(), SupplierManagement(), TagManagement(), UserManagement(), useConfirmDialog(), useSettings() (+19 more)
-
-### Community 2 - "Community 2"
 Cohesion: 0.09
 Nodes (46): buildStorageFilename(), listCategoryFileNames(), listFolderFiles(), nextQaFormNumber(), partFileCode(), resolveCategoryFolder(), resolveCustomerPropertyPath(), resolveJobFilesPath() (+38 more)
 
+### Community 2 - "Community 2"
+Cohesion: 0.06
+Nodes (23): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), useConfirmDialog(), invalidateTagCache(), useTags(), formatFileDate() (+15 more)
+
 ### Community 3 - "Community 3"
 Cohesion: 0.07
-Nodes (13): JobFilesMenu(), JobPaperworkHub(), LineItemFilesMenu(), formatElapsed(), QuickActionPanel(), useCamera(), useItemFiles(), useJobFiles() (+5 more)
+Nodes (28): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), UserManagement() (+20 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.08
-Nodes (24): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), AuthProvider(), useAuth() (+16 more)
+Cohesion: 0.07
+Nodes (13): JobFilesMenu(), JobPaperworkHub(), LineItemFilesMenu(), formatElapsed(), QuickActionPanel(), useCamera(), useItemFiles(), useJobFiles() (+5 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.08
@@ -100,15 +100,15 @@ Cohesion: 0.08
 Nodes (11): getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), SearchPage(), StatusBadge(), useSearch(), formatDueDate() (+3 more)
 
 ### Community 7 - "Community 7"
+Cohesion: 0.1
+Nodes (14): getSettings(), peekNextJobNumber(), recordHistory(), checkInterruptedRestore(), ensureBuiltInStandardLevel(), initializeDatabase(), runMigrations(), autoAssignWorker() (+6 more)
+
+### Community 8 - "Community 8"
 Cohesion: 0.21
 Nodes (18): buildJobCardWorkbook(), buildSheet(), exportActivityLog(), exportContacts(), exportEquipment(), exportJobCardList(), exportJobCardsFull(), exportSuppliers() (+10 more)
 
-### Community 8 - "Community 8"
-Cohesion: 0.11
-Nodes (9): getSettings(), peekNextJobNumber(), recordHistory(), checkInterruptedRestore(), ensureBuiltInStandardLevel(), initializeDatabase(), runMigrations(), autoAssignWorker() (+1 more)
-
 ### Community 9 - "Community 9"
-Cohesion: 0.16
+Cohesion: 0.15
 Nodes (11): buildGrandfatheredPairs(), buildGrandfatheredValues(), getSupplierQueries(), getTagQueries(), getTagValues(), validateItemCustomerProperty(), validateItemDrawings(), validateItemJobTypes() (+3 more)
 
 ### Community 10 - "Community 10"
@@ -234,8 +234,8 @@ Nodes (2): formatNum(), ScrapStat()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ApiService` connect `Community 0` to `Community 3`?**
-  _High betweenness centrality (0.134) - this node is a cross-community bridge._
+- **Why does `ApiService` connect `Community 0` to `Community 4`?**
+  _High betweenness centrality (0.131) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 9 inferred relationships involving `isWithinBase()` (e.g. with `resolveJobFolder()` and `resolveCategoryFolder()`) actually correct?**
@@ -247,4 +247,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.03 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.05 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09 - nodes in this community are weakly interconnected._

@@ -32,6 +32,17 @@ export function validateJobCardForm({ isAdmin, formData, contactFormData, lineIt
     errors.push(`Customer property is required on item #${itemMissingProperty + 1}`);
   }
 
+  // Quantity is compulsory and must be a positive whole number (it drives the
+  // "all parts finished -> Done" check). Blanks, zero, and decimals are rejected.
+  for (let i = 0; i < validItems.length; i++) {
+    const qty = String(validItems[i].qty ?? '').trim();
+    if (!qty) {
+      errors.push(`Quantity is required on item #${i + 1}`);
+    } else if (!/^\d+$/.test(qty) || parseInt(qty, 10) < 1) {
+      errors.push(`Quantity on item #${i + 1} must be a whole number of 1 or more`);
+    }
+  }
+
   // One treatment + supplier per part. Both must be set together (or both left
   // blank). A half-picked pair — supplier without a treatment, or the reverse —
   // is flagged so nothing incomplete is saved.

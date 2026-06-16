@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { createJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { validateJobcardEnums, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions } = require('../middleware/validation');
+const { validateJobcardEnums, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions, validateItemQuantities } = require('../middleware/validation');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -89,6 +89,11 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
     const descriptionError = validateItemDescriptions(data.items);
     if (descriptionError) {
       return res.status(400).json({ error: descriptionError });
+    }
+
+    const quantityError = validateItemQuantities(data.items);
+    if (quantityError) {
+      return res.status(400).json({ error: quantityError });
     }
 
     const id = `jobcard:${uuidv4()}`;
@@ -309,6 +314,10 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       const descriptionError = validateItemDescriptions(data.items);
       if (descriptionError) {
         return res.status(400).json({ error: descriptionError });
+      }
+      const quantityError = validateItemQuantities(data.items);
+      if (quantityError) {
+        return res.status(400).json({ error: quantityError });
       }
 
       // Block removing a line that already has recorded work. Each line has a stable

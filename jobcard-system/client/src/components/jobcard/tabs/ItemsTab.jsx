@@ -248,10 +248,12 @@ export default function ItemsTab({
                       <div className="readonly-value">{item.qty || '-'}</div>
                     ) : (
                       <input
-                        type="text"
+                        type="number"
+                        min="1"
+                        step="1"
                         value={item.qty}
-                        onChange={(e) => updateLineItem(item.id, 'qty', e.target.value)}
-                        placeholder="-"
+                        onChange={(e) => updateLineItem(item.id, 'qty', e.target.value.replace(/[^\d]/g, ''))}
+                        placeholder="Qty"
                       />
                     )}
                   </div>

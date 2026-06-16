@@ -534,6 +534,29 @@ function validateItemCustomerProperty(items, existingItems) {
 }
 
 /**
+ * Validate the quantity field on line items array.
+ * Every line item must carry a quantity, and it must be a positive whole number
+ * (1 or more) — no blanks, decimals, or zero. The ordered quantity drives the
+ * "all parts finished -> Done" check, so a missing/fractional value would make
+ * completion impossible to judge.
+ * Returns error string or null if valid.
+ */
+function validateItemQuantities(items) {
+  if (!Array.isArray(items)) return null;
+  for (let i = 0; i < items.length; i++) {
+    const raw = items[i].qty;
+    const str = (raw === undefined || raw === null) ? '' : String(raw).trim();
+    if (!str) {
+      return `Item #${i + 1} is missing a quantity`;
+    }
+    if (!/^\d+$/.test(str) || parseInt(str, 10) < 1) {
+      return `Item #${i + 1} quantity must be a whole number of 1 or more`;
+    }
+  }
+  return null;
+}
+
+/**
  * Validate description field on line items array.
  * The job_items.description column is NOT NULL, so every line item must carry a
  * non-empty description. The create screen already strips blank rows, but the
@@ -579,6 +602,7 @@ module.exports = {
   validateItemDrawings,
   validateItemCustomerProperty,
   validateItemDescriptions,
+  validateItemQuantities,
 
   JOBCARD_STATUSES,
   PRIORITY_OPTIONS

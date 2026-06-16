@@ -5,6 +5,7 @@ const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { validateStartTimer, validateManualTimeEntry } = require('../middleware/validation');
 const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, recordHistory } = require('../db/database');
+const { syncStatusToWork } = require('../utils/jobStatusAuto');
 
 const router = express.Router();
 
@@ -201,9 +202,15 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
       throw e;
     }
 
+    // Starting work puts the job "In Progress" (or back to Done if it's already
+    // fully counted). Fold any resulting status change into the start-timer entry so
+    // the timeline shows one event. Never blocks the timer if it can't.
+    const statusChange = syncStatusToWork(id, req.user);
+
     recordHistory('jobcard', id, 'start_timer', req.user.userId, req.user.name || req.user.username, {
       timer: { from: null, to: startTime },
-      itemNumber: { from: null, to: itemNumber }
+      itemNumber: { from: null, to: itemNumber },
+      ...(statusChange ? { status: statusChange } : {})
     }, null);
 
     // Auto-assign the user to this job if they aren't already an assignee
@@ -263,8 +270,13 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
     const endTime = new Date().toISOString();
     timeEntryQueries.stop.run(endTime, entryId);
 
+    // Recompute the job's status from the logged work (Done if fully counted), and
+    // fold any change into the stop-timer entry so it reads as one event.
+    const statusChange = syncStatusToWork(id, req.user);
+
     recordHistory('jobcard', id, 'stop_timer', req.user.userId, req.user.name || req.user.username, {
-      endTime: { from: null, to: endTime }
+      endTime: { from: null, to: endTime },
+      ...(statusChange ? { status: statusChange } : {})
     }, { timeEntryId: entryId, startTime: existing.start_time });
 
     const entry = timeEntryQueries.getById.get(entryId);
@@ -341,13 +353,18 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
     // Keep the job's assigned-people list accurate when crediting someone new.
     autoAssignWorker(id, workerId, req.user);
 
+    // Recompute the job's status from the logged work (Done if fully counted), and
+    // fold any change into the add-time-entry record so it reads as one event.
+    const statusChange = syncStatusToWork(id, req.user);
+
     const workerName = userQueries.getById.get(workerId).name;
     recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name || req.user.username, {
       worker: { from: null, to: workerName },
       machineNumber: { from: null, to: data.machineNumber || null },
       description: { from: null, to: data.description || null },
       scrapQty: { from: null, to: scrapQty },
-      startTime: { from: null, to: startTime }
+      startTime: { from: null, to: startTime },
+      ...(statusChange ? { status: statusChange } : {})
     }, { timeEntryId: entryId });
 
     const entry = timeEntryQueries.getById.get(entryId);
@@ -487,6 +504,14 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     if (workerId !== existing.user_id) {
       const toName = userQueries.getById.get(workerId).name;
       changes.worker = { from: existing.user_name, to: toName };
+    }
+
+    // Filling in / correcting the finished quantity changes completion — recompute
+    // the job's status (Done if every line is now counted, else In Progress) and fold
+    // any change into this edit's history so it reads as one event.
+    const statusChange = syncStatusToWork(id, req.user);
+    if (statusChange) {
+      changes.status = statusChange;
     }
 
     if (Object.keys(changes).length > 0) {

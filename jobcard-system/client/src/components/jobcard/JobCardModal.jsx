@@ -84,7 +84,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     };
     loadReferenceData();
   }, []);
-  const { setFormDataFromJobCard, resetForm: resetFormHook } = formHook;
+  const { setFormDataFromJobCard, setFormData, resetForm: resetFormHook } = formHook;
   const { setContactFromJobCard, resetContact } = contactHook;
   const { loadHistory, resetHistory } = activityLog;
   const { loadNotes } = jobNotes;
@@ -193,11 +193,27 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   }, [jobCardId]);
   reloadTimeEntriesRef.current = reloadTimeEntries;
 
+  // Logging work can auto-advance the job's status on the server (start a timer ->
+  // In Progress; finish the last part -> Done). Pull just the current status back so
+  // the on-screen status updates without disturbing any edits in the open form.
+  const refreshJobStatus = useCallback(async () => {
+    if (!isEdit || !jobCardId) return;
+    try {
+      const fresh = await api.getJobcard(jobCardId);
+      if (fresh && fresh.status) {
+        setFormData(prev => ({ ...prev, status: fresh.status }));
+      }
+    } catch {
+      // Non-fatal — the status will catch up next time the job is opened.
+    }
+  }, [isEdit, jobCardId, setFormData]);
+
   const reloadTimeEntriesAndCosting = useCallback(async () => {
     await reloadTimeEntries();
     // Costing endpoint is admin-only; skip for non-admin to avoid 403 toast
     if (isAdmin && costingHookRef.current) await costingHookRef.current();
-  }, [reloadTimeEntries, isAdmin]);
+    await refreshJobStatus();
+  }, [reloadTimeEntries, isAdmin, refreshJobStatus]);
 
   const handleSubmitEntryForm = useCallback(async () => {
     await timer.submitEntryForm(reloadTimeEntriesAndCosting);
@@ -249,24 +265,27 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const handleStartItemTimer = useCallback(async (itemNumber) => {
     await timer.startTimerWithConflictCheck(itemNumber, showConfirm);
     await reloadTimeEntries();
-    // Server may have auto-assigned the user when starting the timer — refresh assignees
+    // Server may have auto-assigned the user and nudged the status to In Progress
+    // when starting the timer — refresh both from one fetch.
     try {
       const fresh = await api.getJobcard(jobCardId);
       setAssignees((fresh.assignees || []).map(a => ({
         userId: a.userId,
         userName: a.userName || a.username
       })));
+      if (fresh.status) setFormData(prev => ({ ...prev, status: fresh.status }));
     } catch {
-      // Non-fatal — assignees will refresh next time the modal opens
+      // Non-fatal — assignees/status will refresh next time the modal opens
     }
     if (onTimerChange) onTimerChange();
-  }, [timer, showConfirm, reloadTimeEntries, onTimerChange, jobCardId, setAssignees]);
+  }, [timer, showConfirm, reloadTimeEntries, onTimerChange, jobCardId, setAssignees, setFormData]);
 
   const handleStopItemTimer = useCallback(async () => {
     await timer.stopTimer();
     await reloadTimeEntries();
+    await refreshJobStatus();
     if (onTimerChange) onTimerChange();
-  }, [timer, reloadTimeEntries, onTimerChange]);
+  }, [timer, reloadTimeEntries, refreshJobStatus, onTimerChange]);
 
   const timeEntry = useTimeEntries(jobCardId, { ...apiTimeEntryOperations, showConfirm });
   const { resetTimeEntries } = timeEntry;
