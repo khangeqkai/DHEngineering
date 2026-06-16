@@ -177,9 +177,13 @@ async function cmdLan() {
   const lanIp = findLanIp();
 
   console.log('\nStarting server on port 3000...');
+  // On Windows, modern Node refuses to spawn npm/npx (.cmd shims) directly
+  // (throws EINVAL) unless routed through the shell. shell:true fixes that and
+  // is harmless elsewhere.
   const server = spawn(npmCmd, ['start'], {
     cwd: path.join(ROOT, 'server'),
-    stdio: 'inherit'
+    stdio: 'inherit',
+    shell: isWindows
   });
 
   let serverExited = false;
@@ -214,6 +218,7 @@ async function cmdLan() {
   const electron = spawn(npxCmd, ['electron', '.'], {
     cwd: path.join(ROOT, 'client'),
     stdio: 'inherit',
+    shell: isWindows,
     env: { ...process.env, ELECTRON_LOAD_URL: 'http://localhost:3000' }
   });
 

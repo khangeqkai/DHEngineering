@@ -47,39 +47,39 @@ export default function JobCardCalendarView({ jobcards, onCardClick, getStatusBa
   }, [jobcards]);
 
   return (
-    <div className="calendar-view">
-      <div className="calendar-header">
-        <div className="calendar-nav">
-          <button className="btn btn-secondary btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={prevMonth} aria-label="Previous month"><ChevronLeft size={16} /></button>
-          <button className="btn btn-secondary btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={today}>Today</button>
-          <button className="btn btn-secondary btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={nextMonth} aria-label="Next month"><ChevronRight size={16} /></button>
+    <div className="calview">
+      <div className="calview-header">
+        <div className="calview-nav">
+          <button className="btn btn-secondary btn-sm calview-nav-arrow" onClick={prevMonth} aria-label="Previous month"><ChevronLeft size={18} /></button>
+          <h3 className="calview-title">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
+          <button className="btn btn-secondary btn-sm calview-nav-arrow" onClick={nextMonth} aria-label="Next month"><ChevronRight size={18} /></button>
         </div>
-        <h3 className="calendar-title">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
+        <button className="btn btn-secondary btn-sm" onClick={today}>Today</button>
       </div>
-      <div className="calendar-grid">
+      <div className="calview-grid">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="calendar-day-header">{day}</div>
+          <div key={day} className="calview-day-header">{day}</div>
         ))}
         {days.map((date, index) => {
-          if (!date) return <div key={`empty-${index}`} className="calendar-day empty"></div>;
+          if (!date) return <div key={`empty-${index}`} className="calview-day empty"></div>;
           
           const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
           const dayCards = cardsByDate[dateStr] || [];
           const isToday = new Date().toDateString() === date.toDateString();
 
           return (
-            <div key={dateStr} className={`calendar-day ${isToday ? 'today' : ''}`}>
-              <div className="calendar-day-number">{date.getDate()}</div>
-              <div className="calendar-day-cards">
+            <div key={dateStr} className={`calview-day ${isToday ? 'today' : ''}`}>
+              <div className="calview-day-number">{date.getDate()}</div>
+              <div className="calview-day-cards">
                 {dayCards.map(card => (
-                  <div 
-                    key={card.id} 
-                    className={`calendar-card ${getStatusBadgeClass(card.status)}`}
+                  <div
+                    key={card.id}
+                    className={`calview-card ${getStatusBadgeClass(card.status)}`}
                     onClick={() => onCardClick(card)}
                     title={`${card.jobNumber} - ${card.companyName || 'No Company'}\nStatus: ${STATUS_LABELS[card.status] || card.status}`}
                   >
-                    <span className="calendar-card-job">{card.jobNumber}</span>
-                    <span className="calendar-card-company">{card.companyName || card.contactName || 'No Company'}</span>
+                    <span className="calview-card-job">{card.jobNumber}</span>
+                    <span className="calview-card-company">{card.companyName || card.contactName || 'No Company'}</span>
                   </div>
                 ))}
               </div>

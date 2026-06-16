@@ -1,10 +1,19 @@
-import * as XLSX from 'xlsx';
 import { api } from '../services/api';
 // Tag labels are now dynamic (DB-driven). For exports, convert values to readable labels.
+
+// xlsx is a heavy library (~430 kB) but is only ever needed when the user
+// actually exports a spreadsheet. Load it on demand (and cache the module) so it
+// stays out of the initial app bundle and the app starts faster.
+let xlsxPromise = null;
+function loadXlsx() {
+  if (!xlsxPromise) xlsxPromise = import('xlsx');
+  return xlsxPromise;
+}
 
 // ── Save helper ──────────────────────────────────────────────────────────────
 
 export async function saveWorkbook(wb, defaultName) {
+  const XLSX = await loadXlsx();
   const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
 
   if (window.electronAPI?.saveFile) {
@@ -28,7 +37,7 @@ export async function saveWorkbook(wb, defaultName) {
 
 // ── Sheet builder helpers ────────────────────────────────────────────────────
 
-function buildSheet(rows, columns) {
+function buildSheet(XLSX, rows, columns) {
   const header = columns.map(c => c.label);
   const data = rows.map(row => columns.map(c => c.value(row)));
   const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
@@ -239,33 +248,38 @@ const COSTING_COLS = [
 
 // ── Page export functions ────────────────────────────────────────────────────
 
-export function exportContacts(contacts) {
+export async function exportContacts(contacts) {
+  const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, buildSheet(contacts, CONTACT_COLS), 'Contacts');
+  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, contacts, CONTACT_COLS), 'Contacts');
   return saveWorkbook(wb, `Contacts_${timestamp()}.xlsx`);
 }
 
-export function exportSuppliers(suppliers) {
+export async function exportSuppliers(suppliers) {
+  const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, buildSheet(suppliers, SUPPLIER_COLS), 'Suppliers');
+  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, suppliers, SUPPLIER_COLS), 'Suppliers');
   return saveWorkbook(wb, `Suppliers_${timestamp()}.xlsx`);
 }
 
-export function exportEquipment(machines) {
+export async function exportEquipment(machines) {
+  const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, buildSheet(machines, EQUIPMENT_COLS), 'Equipment');
+  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, machines, EQUIPMENT_COLS), 'Equipment');
   return saveWorkbook(wb, `Equipment_${timestamp()}.xlsx`);
 }
 
-export function exportUsers(users) {
+export async function exportUsers(users) {
+  const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, buildSheet(users, USER_COLS), 'Users');
+  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, users, USER_COLS), 'Users');
   return saveWorkbook(wb, `Users_${timestamp()}.xlsx`);
 }
 
-export function exportActivityLog(activities) {
+export async function exportActivityLog(activities) {
+  const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, buildSheet(activities, ACTIVITY_COLS), 'Activity Log');
+  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, activities, ACTIVITY_COLS), 'Activity Log');
   return saveWorkbook(wb, `Activity_Log_${timestamp()}.xlsx`);
 }
 
@@ -345,11 +359,12 @@ async function buildJobCardWorkbook(cards, onProgress) {
   }
 
   onProgress?.('Building workbook...');
+  const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, buildSheet(enrichedCards, JOBCARD_SUMMARY_COLS), 'Summary');
-  XLSX.utils.book_append_sheet(wb, buildSheet(allItems, ITEM_COLS), 'Items');
-  XLSX.utils.book_append_sheet(wb, buildSheet(allTimeEntries, TIME_ENTRY_COLS), 'Time Entries');
-  XLSX.utils.book_append_sheet(wb, buildSheet(allCosting, COSTING_COLS), 'Costing');
+  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, enrichedCards, JOBCARD_SUMMARY_COLS), 'Summary');
+  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allItems, ITEM_COLS), 'Items');
+  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allTimeEntries, TIME_ENTRY_COLS), 'Time Entries');
+  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allCosting, COSTING_COLS), 'Costing');
 
   return wb;
 }
