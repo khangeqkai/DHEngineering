@@ -341,6 +341,9 @@
 }
 @keyframes hub-shimmer { to { background-position: -200% 0; } }
 
+.hub-spin { animation: hub-spin 1s linear infinite; }
+@keyframes hub-spin { to { transform: rotate(360deg); } }
+
 /* Footer */
 .hub-footer {
   display: flex;

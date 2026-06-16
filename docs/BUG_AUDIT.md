@@ -26,7 +26,7 @@ How to read this: each item has a checkbox. Tick it when fixed. "Confidence" is 
 
 ## 2. Wrong loading spinner when two documents share a name — MINOR
 
-- [ ] Fixed
+- [x] Fixed
 
 **Confidence:** High — confirmed by reading the code.
 **Severity:** Low (visual glitch only, nothing is lost or mixed up).

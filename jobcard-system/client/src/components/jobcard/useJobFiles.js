@@ -199,7 +199,8 @@ export function useJobFiles(jobcardId) {
       setLightboxPhoto(cachedThumb);
       return;
     }
-    setLoadingFiles(prev => new Set(prev).add(file.name));
+    const loadingKey = `${category}/${file.name}`;
+    setLoadingFiles(prev => new Set(prev).add(loadingKey));
     try {
       const fileData = await api.getJobcardFile(jobcardId, category, file.name);
       if (!fileData?.data) {
@@ -218,7 +219,7 @@ export function useJobFiles(jobcardId) {
     } catch (err) {
       toast.error(err.message || 'Failed to view file');
     } finally {
-      setLoadingFiles(prev => { const next = new Set(prev); next.delete(file.name); return next; });
+      setLoadingFiles(prev => { const next = new Set(prev); next.delete(loadingKey); return next; });
     }
   }, [jobcardId, thumbnails]);
 

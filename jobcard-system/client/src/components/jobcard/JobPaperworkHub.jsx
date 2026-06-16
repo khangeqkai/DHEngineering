@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   FolderOpen, Upload, Camera, X, ArrowLeft, Check, Minus, Printer, Save,
-  FileText, Image as ImageIcon, FileStack, Eye
+  FileText, Image as ImageIcon, FileStack, Eye, Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCamera } from './useCamera';
@@ -334,6 +334,7 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
               const thumb = files.thumbnails.get(`${cat}/${f.name}`);
               const FileIcon = isImage ? ImageIcon : FileText;
               const checked = selected.has(keyOf(cat, f.name));
+              const viewing = files.loadingFiles.has(`${cat}/${f.name}`);
               return (
                 <li key={f.name} className={`hub-file-row${checked ? '' : ' off'}`}>
                   <button
@@ -353,8 +354,8 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
                     </span>
                   </button>
                   <div className="hub-row-tools">
-                    <button type="button" className="hub-icon-btn" onClick={() => files.handleViewFile(f, cat)} title="Preview">
-                      <Eye size={15} />
+                    <button type="button" className="hub-icon-btn" onClick={() => files.handleViewFile(f, cat)} disabled={viewing} title="Preview">
+                      {viewing ? <Loader2 size={15} className="hub-spin" /> : <Eye size={15} />}
                     </button>
                     <button type="button" className="hub-icon-btn" onClick={() => printOne(cat, f.name)} disabled={packet.building} title="Print just this one">
                       <Printer size={15} />
