@@ -270,6 +270,15 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       return res.status(403).json({ error: 'Only admins can change job card status' });
     }
 
+    // A filed-away (archived) job is locked: refuse a status change here too, so
+    // even an admin can't recreate the filed-away-but-open state by editing.
+    // Editing other fields on an archived job is still allowed, and once a job is
+    // un-filed (archived cleared, status reset to OPEN) status edits work normally.
+    if (data.status !== undefined && data.status !== existing.status &&
+        existing.archived === 1) {
+      return res.status(409).json({ error: 'This job is invoiced and filed away. Un-file it before changing its status.' });
+    }
+
     // Items already saved on this job — used to grandfather unchanged treatment
     // lines past the supplier-active/offers checks, and reused for change tracking.
     const existingItems = data.items !== undefined ? jobItemQueries.getByJobcard.all(id) : [];

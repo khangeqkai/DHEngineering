@@ -254,6 +254,18 @@ router.patch('/:id/status', authenticate, (req, res) => {
       return res.status(404).json({ error: 'Job card not found' });
     }
 
+    // A filed-away (archived) job is locked: refuse any status change before any
+    // write. Re-opening goes through the admin-only unarchive action, which
+    // un-files the job and resets its status back to OPEN. We key off the
+    // filed-away flag alone — invoicing always files a job away, and unarchive
+    // clears both the flag and the INVOICED status, so once un-filed the job
+    // changes status normally.
+    if (existing.archived === 1) {
+      return res.status(409).json({
+        error: 'This job is invoiced and filed away. A manager must un-file it before its status can change.'
+      });
+    }
+
     const isInvoicingTransition = status === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
 
     // Soft close-out checkpoint: when invoicing (which also archives) and files
@@ -305,10 +317,13 @@ router.post('/:id/unarchive', authenticate, requireAdmin, (req, res) => {
       return res.status(400).json({ error: 'Job card is not archived' });
     }
 
+    // Un-filing also resets the status back to OPEN so the job returns as a
+    // normal working job, never a back-in-the-list-but-still-INVOICED limbo.
     jobcardQueries.unarchive.run(req.user.userId, id);
     recordHistory('jobcard', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
       archived: { from: true, to: false },
-      invoicedDate: { from: existing.invoiced_date, to: null }
+      invoicedDate: { from: existing.invoiced_date, to: null },
+      status: { from: existing.status, to: 'OPEN' }
     }, { jobNumber: existing.job_number });
 
     res.json({ success: true });

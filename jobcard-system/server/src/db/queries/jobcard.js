@@ -107,7 +107,7 @@ const jobcardQueries = {
   `),
 
   unarchive: db.prepare(`
-    UPDATE jobcards SET archived = 0, invoiced_date = NULL, updated_by = ?, updated_at = datetime('now')
+    UPDATE jobcards SET archived = 0, invoiced_date = NULL, status = 'OPEN', updated_by = ?, updated_at = datetime('now')
     WHERE id = ?
   `),
 
