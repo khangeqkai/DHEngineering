@@ -76,13 +76,60 @@ function findLanIp() {
 }
 
 function buildClientIfNeeded(force = false) {
-  const indexHtml = path.join(ROOT, 'client', 'dist', 'index.html');
-  if (!force && fs.existsSync(indexHtml)) return;
-  console.log('\nBuilding client...');
+  const distIndex = path.join(ROOT, 'client', 'dist', 'index.html');
+  const srcDir = path.join(ROOT, 'client', 'src');
+  const indexHtmlSrc = path.join(ROOT, 'client', 'index.html');
+
+  let reason = null;
+  if (force) {
+    reason = '--rebuild requested';
+  } else if (!fs.existsSync(distIndex)) {
+    reason = 'no existing build found';
+  } else {
+    const distMtime = fs.statSync(distIndex).mtimeMs;
+    const newest = newestMtime(srcDir, distMtime);
+    if (newest > distMtime) {
+      reason = 'source files changed since last build';
+    } else if (fs.existsSync(indexHtmlSrc) && fs.statSync(indexHtmlSrc).mtimeMs > distMtime) {
+      reason = 'source files changed since last build';
+    }
+  }
+
+  if (!reason) return;
+
+  console.log(`\nBuilding client (${reason})...`);
   execSync(`${npmCmd} run build`, {
     cwd: path.join(ROOT, 'client'),
     stdio: 'inherit'
   });
+}
+
+// Walks a directory tree and returns the newest mtime found. Stops walking
+// as soon as anything beats the cutoff (we only need a yes/no answer).
+function newestMtime(dir, cutoff) {
+  let newest = 0;
+  const stack = [dir];
+  while (stack.length) {
+    const cur = stack.pop();
+    let entries;
+    try {
+      entries = fs.readdirSync(cur, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const full = path.join(cur, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === 'node_modules' || entry.name === 'dist') continue;
+        stack.push(full);
+      } else {
+        const m = fs.statSync(full).mtimeMs;
+        if (m > newest) newest = m;
+        if (m > cutoff) return m;
+      }
+    }
+  }
+  return newest;
 }
 
 function waitForHealth(timeoutMs = 20000) {
