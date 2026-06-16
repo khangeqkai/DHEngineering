@@ -88,7 +88,9 @@ function createWindow() {
   });
 
   // Load the app
-  if (isDev) {
+  if (process.env.ELECTRON_LOAD_URL) {
+    mainWindow.loadURL(process.env.ELECTRON_LOAD_URL);
+  } else if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {

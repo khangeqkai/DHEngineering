@@ -8,6 +8,9 @@
     "client": "cd client && npm start",
     "build": "cd client && npm run build",
     "setup": "node scripts/setup.js",
+    "lan": "node scripts/launch.js lan",
+    "seed": "node scripts/launch.js seed",
+    "seed:empty": "node scripts/launch.js seed:empty",
     "reset-password": "node scripts/reset-admin-password.js"
   },
   "devDependencies": {
