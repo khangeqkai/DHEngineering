@@ -16,7 +16,6 @@ import { describeAttachmentGaps, describeWorkWarning } from '../utils/attachment
 import useJobCardSort from '../hooks/useJobCardSort';
 import useJobCardColumnOrder from '../hooks/useJobCardColumnOrder';
 import EmptyState from './common/EmptyState';
-import { useJobCardListDensity } from './JobCardListDensity';
 import JobCardCalendarView from './JobCardCalendarView';
 import JobCardListFilters from './JobCardListFilters';
 import JobCardListTable from './JobCardListTable';
@@ -55,7 +54,6 @@ export default function JobCardList() {
   const [assignPopoverId, setAssignPopoverId] = useState(null);
   const assignPopoverRef = useRef(null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
-  const [density, setDensity] = useJobCardListDensity();
   const [viewMode, setViewMode] = useState('list');
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
   const { warningsById: missingFilesIds, checkedIds: attachmentCheckedIds, ensure: ensureMissingFiles, refresh: refreshMissingFiles } = useMissingFilesIndicator();
@@ -398,8 +396,6 @@ export default function JobCardList() {
         onFilterChange={setFilter}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        density={density}
-        onDensityChange={setDensity}
       />
 
       {viewMode === 'calendar' ? (
@@ -434,7 +430,6 @@ export default function JobCardList() {
               <JobCardListTable
                 visibleColumns={visibleColumns}
                 paginatedCards={paginatedCards}
-                density={density}
                 sortBy={sortBy}
                 sortDir={sortDir}
                 onSort={handleSort}

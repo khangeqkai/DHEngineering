@@ -1,5 +1,4 @@
 import { Calendar, List, User } from 'lucide-react';
-import JobCardListDensityToggle from './JobCardListDensity';
 import { STATUS_OPTIONS } from './JobCardList.constants';
 
 export default function JobCardListFilters({
@@ -15,9 +14,7 @@ export default function JobCardListFilters({
   filter,
   onFilterChange,
   viewMode,
-  onViewModeChange,
-  density,
-  onDensityChange
+  onViewModeChange
 }) {
   return (
     <div className="filters">
@@ -80,7 +77,6 @@ export default function JobCardListFilters({
           <Calendar size={16} />
         </button>
       </div>
-      {viewMode === 'list' && <JobCardListDensityToggle density={density} onChange={onDensityChange} />}
     </div>
   );
 }

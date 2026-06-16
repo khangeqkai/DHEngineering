@@ -6,7 +6,7 @@
   min-height: 0;
 }
 
-/* Toolbar (search + density toggle) */
+/* Toolbar (search) */
 .data-table-toolbar {
   display: flex;
   align-items: center;
@@ -17,10 +17,6 @@
 
 .data-table-toolbar .data-table-search-input {
   flex: 1;
-}
-
-.data-table-toolbar-end {
-  justify-content: flex-end;
 }
 
 .data-table-search-input {
@@ -50,43 +46,6 @@
   transform: translateY(-50%);
   color: var(--text-tertiary);
   pointer-events: none;
-}
-
-/* Density toggle */
-.data-table-density-toggle {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 2px;
-  flex-shrink: 0;
-}
-
-.data-table-density-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  transition: all var(--duration-fast) ease;
-}
-
-.data-table-density-btn:hover {
-  color: var(--text-primary);
-  background: var(--surface);
-}
-
-.data-table-density-btn.active {
-  color: var(--primary-accent);
-  background: var(--surface);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 /* Table container */
@@ -169,30 +128,20 @@
 }
 
 /* ========================================
-   DENSITY MODES
+   TABLE SIZING
    ======================================== */
 
-/* Compact density */
-.data-table.density-compact td,
-.data-table.density-compact th {
+.data-table td,
+.data-table th {
   padding: 0.35rem 0.75rem;
   font-size: var(--text-sm);
-}
-
-/* Comfortable density — uses default table styles, no overrides needed */
-
-/* Spacious density */
-.data-table.density-spacious td,
-.data-table.density-spacious th {
-  padding: 1rem 1.25rem;
-  font-size: var(--text-base);
 }
 
 /* ========================================
    SKELETON LOADING
    ======================================== */
 
-/* Skeleton rows inherit padding from density classes via the td rules above */
+/* Skeleton rows inherit padding from the td rules above */
 
 .skeleton-bar {
   height: 14px;

@@ -4,7 +4,6 @@ import { SORT_VALUE_GETTERS } from '../hooks/useJobCardSort';
 export default function JobCardListTable({
   visibleColumns,
   paginatedCards,
-  density,
   sortBy,
   sortDir,
   onSort,
@@ -15,7 +14,7 @@ export default function JobCardListTable({
   handleDrop
 }) {
   return (
-    <table className="table" data-density={density}>
+    <table className="table table-compact">
       <thead>
         <tr>
           {visibleColumns.map(col => {
