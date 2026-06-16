@@ -1,24 +1,11 @@
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { api, bytesToBase64, base64ToBytes } from '../../services/api';
+import { api, base64ToBytes } from '../../services/api';
 
 // Builds and prints/saves the combined "packet" PDF (job card + chosen files).
-// The desktop app renders the card to a PDF off-screen and welds it in; the
-// browser build can't do that, so there the card prints on its own and the packet
-// holds only the files.
-
-const isDesktop = () => !!window.electronAPI?.htmlToPdf;
-
-async function renderCardPdfBase64(jobcardId) {
-  const { html } = await api.printJobCard(jobcardId);
-  if (!html) throw new Error('Failed to build the job card');
-  const result = await window.electronAPI.htmlToPdf({ html });
-  if (!result || result.success === false) {
-    throw new Error(result?.failureReason || 'Failed to render the job card');
-  }
-  const bytes = result.pdf instanceof Uint8Array ? result.pdf : new Uint8Array(result.pdf);
-  return bytesToBase64(bytes);
-}
+// The server builds the whole packet — including rendering the job card to a PDF —
+// so the desktop app and the browser build get the identical card-first result.
+// The PC only sends the small list of files to include plus "include the card?".
 
 function reportSkipped(skipped) {
   if (skipped && skipped.length) {
@@ -41,18 +28,6 @@ function printPdfInIframe(bytes) {
   document.body.appendChild(iframe);
 }
 
-// Web-only: print the job card HTML via a hidden iframe.
-function printHtmlInIframe(html) {
-  const iframe = document.createElement('iframe');
-  Object.assign(iframe.style, { position: 'fixed', right: '0', bottom: '0', width: '0', height: '0', border: '0' });
-  iframe.srcdoc = html;
-  iframe.onload = () => {
-    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch { /* blocked */ }
-    setTimeout(() => iframe.remove(), 60000);
-  };
-  document.body.appendChild(iframe);
-}
-
 function downloadBytes(bytes, filename) {
   const blob = new Blob([bytes], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
@@ -64,23 +39,16 @@ function downloadBytes(bytes, filename) {
 export function usePacketPrint(jobcardId, jobNumber) {
   const [building, setBuilding] = useState(false);
 
-  // Returns { pdf: base64|null, skipped, cardIncluded, cardWanted }.
-  const build = useCallback(async ({ items, includeJobCard }) => {
-    let jobCardPdf = null;
-    if (includeJobCard && isDesktop()) {
-      jobCardPdf = await renderCardPdfBase64(jobcardId);
-    }
-    if (items.length === 0 && !jobCardPdf) {
-      return { pdf: null, skipped: [], cardIncluded: false, cardWanted: includeJobCard };
-    }
-    const { pdf, skipped } = await api.buildPacket(jobcardId, { items, jobCardPdf });
-    return { pdf, skipped, cardIncluded: !!jobCardPdf, cardWanted: includeJobCard };
+  // Returns { pdf: base64, skipped }. The server renders the card and welds it in.
+  const build = useCallback(({ items, includeJobCard }) => {
+    return api.buildPacket(jobcardId, { items, includeJobCard });
   }, [jobcardId]);
 
   const printPacket = useCallback(async ({ items, includeJobCard }) => {
+    if (items.length === 0 && includeJobCard === false) { toast.error('Nothing to print'); return; }
     setBuilding(true);
     try {
-      const { pdf, skipped, cardIncluded, cardWanted } = await build({ items, includeJobCard });
+      const { pdf, skipped } = await build({ items, includeJobCard });
       if (pdf) {
         const bytes = base64ToBytes(pdf);
         if (window.electronAPI?.openPdf) {
@@ -92,23 +60,18 @@ export function usePacketPrint(jobcardId, jobNumber) {
         }
       }
       reportSkipped(skipped);
-      // Browser build can't fold the card into the PDF — print it on its own.
-      if (cardWanted && !cardIncluded) {
-        const { html } = await api.printJobCard(jobcardId);
-        if (html) { printHtmlInIframe(html); toast('The job card prints separately in the browser version.'); }
-      }
     } catch (err) {
       toast.error(err.message || 'Failed to print the packet');
     } finally {
       setBuilding(false);
     }
-  }, [build, jobcardId, jobNumber]);
+  }, [build, jobNumber]);
 
   const savePacket = useCallback(async ({ items, includeJobCard }) => {
+    if (items.length === 0 && includeJobCard === false) { toast.error('Nothing to save'); return; }
     setBuilding(true);
     try {
       const { pdf, skipped } = await build({ items, includeJobCard });
-      if (!pdf) { toast.error('Nothing to save'); return; }
       const bytes = base64ToBytes(pdf);
       const name = `${jobNumber || 'Job'} packet.pdf`;
       if (window.electronAPI?.saveFile) {

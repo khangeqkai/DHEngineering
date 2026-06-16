@@ -269,10 +269,10 @@ ipcMain.handle('get-app-info', () => {
   };
 });
 
-// Delete leftover job card printouts from previous prints so the temp folder
-// doesn't grow without bound on a shared workstation. Each print writes one
-// `Job Card …html` file and opens it in the browser; once a new print starts,
-// any earlier ones have already been opened and are safe to remove.
+// Delete leftover packet/printout temp files so the temp folder doesn't grow
+// without bound on a shared workstation: the combined packet PDFs we hand to the
+// OS viewer, plus any stray `Job Card …html` left behind by the server-side
+// off-screen card render (which normally cleans up after itself).
 async function sweepOldJobCardPrintouts(tempDir) {
   // Leave very recent files alone: another print/render started moments ago may
   // still be writing or loading its temp file, and deleting it mid-flight would
@@ -282,8 +282,8 @@ async function sweepOldJobCardPrintouts(tempDir) {
     const entries = await fs.promises.readdir(tempDir);
     await Promise.all(
       entries
-        // Job card HTML (single-card print + offscreen packet render) and the
-        // combined packet PDFs we hand to the OS viewer.
+        // Combined packet PDFs we hand to the OS viewer, plus any leftover
+        // off-screen card-render HTML.
         .filter(name => /^Job Card .*\.html$/.test(name) || /^Packet .*\.pdf$/.test(name))
         .map(async (name) => {
           const filePath = path.join(tempDir, name);
@@ -300,63 +300,6 @@ async function sweepOldJobCardPrintouts(tempDir) {
     // Temp folder unreadable — nothing to sweep.
   }
 }
-
-// Open the job card in the OS default browser, which auto-opens its print
-// preview on load. The app itself can't show a print preview (Electron ships
-// without that screen), so we hand the card to the real browser — one click,
-// preview appears.
-ipcMain.handle('print-html', async (event, { html }) => {
-  try {
-    const tempDir = app.getPath('temp');
-    await sweepOldJobCardPrintouts(tempDir);
-    // Inject an auto-print trigger so the browser pops its print preview itself.
-    const autoPrint = '<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},200);});</script>';
-    const doc = html.includes('</body>') ? html.replace('</body>', autoPrint + '</body>') : html + autoPrint;
-    const tmpHtml = path.join(tempDir, `Job Card ${Date.now()}.html`);
-    await fs.promises.writeFile(tmpHtml, doc, 'utf-8');
-    const openErr = await shell.openPath(tmpHtml);
-    if (openErr) return { success: false, failureReason: openErr };
-    return { success: true };
-  } catch (err) {
-    logger.error({ err }, 'Open job card for printing failed');
-    return { success: false, failureReason: err.message };
-  }
-});
-
-// Render arbitrary HTML (the generated job card) to a PDF buffer, off-screen.
-// Used to fold the card into the combined packet. We can't reuse 'print-to-pdf'
-// because that captures the visible app window; here we load the card HTML into a
-// hidden window and snapshot just that. Margins are zero — the card CSS already
-// sets @page margin 0 and self-pads 12mm, so any extra margin would double it.
-ipcMain.handle('render-html-to-pdf', async (event, { html }) => {
-  const tempDir = app.getPath('temp');
-  const tmpHtml = path.join(tempDir, `Job Card packet ${Date.now()}.html`);
-  let win = null;
-  try {
-    await sweepOldJobCardPrintouts(tempDir);
-    await fs.promises.writeFile(tmpHtml, html, 'utf-8');
-    win = new BrowserWindow({
-      show: false,
-      webPreferences: { offscreen: false, sandbox: true }
-    });
-    await win.loadFile(tmpHtml); // resolves on did-finish-load
-    // The card is fully self-contained (inline CSS, no external fetches); a small
-    // settle delay is cheap insurance against a first-layout race.
-    await new Promise(resolve => setTimeout(resolve, 150));
-    const pdf = await win.webContents.printToPDF({
-      pageSize: 'A4',
-      printBackground: true,
-      margins: { top: 0, bottom: 0, left: 0, right: 0 }
-    });
-    return { success: true, pdf };
-  } catch (err) {
-    logger.error({ err }, 'render-html-to-pdf failed');
-    return { success: false, failureReason: err.message };
-  } finally {
-    if (win) win.destroy();
-    fs.promises.unlink(tmpHtml).catch(() => {});
-  }
-});
 
 // Write a combined-packet PDF to a temp file and open it in the OS PDF viewer,
 // which handles the print dialog (Electron has no built-in print preview).

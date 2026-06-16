@@ -1,7 +1,8 @@
 // Renders a job card as a self-contained printable HTML page. Pure presentation:
 // it receives already-friendly data (see buildJobCardView in jobcard-helpers.js)
-// and returns an HTML string. The desktop app prints this directly (Electron
-// 'print-html'); the web build prints it in a hidden iframe. Nothing is saved.
+// and returns an HTML string. It's shown as the on-screen preview in the paperwork
+// hub and rendered to PDF server-side (see htmlToPdf.js) to lead the combined
+// packet. Nothing is saved to disk.
 //
 // Colours mirror the app palette (client/src/index.css): navy #0f2645 + blue #2563eb.
 

@@ -7,12 +7,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   print: (options) => ipcRenderer.invoke('print', options),
   printToPDF: (options) => ipcRenderer.invoke('print-to-pdf', options),
 
-  // Print the job card HTML via the OS default browser
-  printHtml: (data) => ipcRenderer.invoke('print-html', data),
-
-  // Render the job card HTML to a PDF buffer off-screen (for the combined packet)
-  htmlToPdf: (data) => ipcRenderer.invoke('render-html-to-pdf', data),
-
   // Open a combined-packet PDF buffer in the OS viewer (which prints it)
   openPdf: (data) => ipcRenderer.invoke('open-pdf', data),
 

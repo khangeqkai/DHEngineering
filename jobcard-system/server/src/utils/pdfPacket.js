@@ -75,7 +75,11 @@ async function buildPacketPdf({ jobCardPdf, files }) {
   }
 
   if (out.getPageCount() === 0) {
-    throw new Error('Packet has no usable pages');
+    // Carry the per-document reasons so the caller can tell the user which were
+    // corrupt vs. unsupported, not just "nothing combined".
+    const err = new Error('Packet has no usable pages');
+    err.skipped = skipped;
+    throw err;
   }
 
   const bytes = await out.save();

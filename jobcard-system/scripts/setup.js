@@ -144,6 +144,43 @@ function checkNativeModules() {
   }
 }
 
+/**
+ * Ensure the Chrome that Puppeteer uses to render the printable job card to PDF
+ * is downloaded. The standalone server (development / server-only run) relies on
+ * Puppeteer's own Chrome; without it, combined packets silently drop the job-card
+ * page. (The packaged desktop app uses Electron's built-in Chromium instead, so
+ * this only matters when running the server outside Electron.) Auto-downloads the
+ * version pinned by the installed Puppeteer if it's missing.
+ */
+async function checkPdfBrowser() {
+  const serverDir = path.join(ROOT_DIR, 'server');
+  const puppeteerPath = path.join(serverDir, 'node_modules', 'puppeteer');
+  if (!fs.existsSync(puppeteerPath)) return 'OK (not yet installed)';
+
+  let execPath = null;
+  try {
+    const puppeteer = require(puppeteerPath);
+    // Newer Puppeteer returns a Promise from executablePath(); awaiting a plain
+    // string is harmless, so this covers both.
+    execPath = await puppeteer.executablePath();
+  } catch {
+    // Couldn't resolve the path — fall through and let the install fix it.
+  }
+
+  if (execPath && fs.existsSync(execPath)) return 'OK';
+
+  log('  Chrome for PDF rendering is missing, downloading (one-time)...', 'yellow');
+  try {
+    execSync('npx puppeteer browsers install chrome', {
+      cwd: serverDir,
+      stdio: 'inherit'
+    });
+    return 'installed';
+  } catch {
+    throw new Error('Could not download Chrome for PDF rendering. Run manually: cd server && npx puppeteer browsers install chrome');
+  }
+}
+
 function ensureDataDir() {
   const dataDir = path.join(ROOT_DIR, 'data');
   if (!fs.existsSync(dataDir)) {
@@ -197,6 +234,10 @@ const checks = [
   {
     name: 'Native modules',
     check: checkNativeModules
+  },
+  {
+    name: 'Browser for PDF rendering',
+    check: checkPdfBrowser
   }
 ];
 
@@ -209,7 +250,7 @@ async function runChecks() {
 
   for (const { name, check } of checks) {
     try {
-      const result = check();
+      const result = await check();
       log(`  ✓ ${name}: ${result}`, 'green');
     } catch (err) {
       log(`  ✗ ${name}: ${err.message}`, 'red');
