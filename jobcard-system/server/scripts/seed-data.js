@@ -85,10 +85,11 @@ const machines = [
   { number: 'WJET-01',  name: 'Flow Mach 200',         description: 'Waterjet Cutter' },
 ];
 
-// ─── QA LEVELS: 2 active. Whether a job needs a form is decided by whether the
+// ─── QA LEVELS: only the extra levels someone creates. "Standard" is the baseline,
+// not a row — a job is labelled STANDARD whenever no special level is chosen (qa_level_id
+// NULL), so it's never seeded here. Whether a job needs a form is decided by whether the
 // level has a form attached, not by any per-level flag. ───
 const qaLevels = [
-  { name: 'Standard',   nameLower: 'standard',   isActive: 1 },
   { name: 'Critical',   nameLower: 'critical',   isActive: 1 },
 ];
 

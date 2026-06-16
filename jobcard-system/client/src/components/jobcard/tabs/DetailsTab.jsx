@@ -283,11 +283,13 @@ export default function DetailsTab({
                 setFormData(prev => ({
                   ...prev,
                   qaLevelId: e.target.value || null,
-                  qualityLevel: selectedLevel ? selectedLevel.name.toUpperCase() : null
+                  qualityLevel: selectedLevel ? selectedLevel.name.toUpperCase() : 'STANDARD'
                 }));
               }}
             >
-              <option value="">None</option>
+              {/* "Standard" is the baseline — no special level. It's the default and
+                  shows first; the saved levels (Critical, etc.) are the upgrades. */}
+              <option value="">Standard</option>
               {(qaLevels || []).map(level => (
                 <option key={level.id} value={level.id}>{level.name}</option>
               ))}

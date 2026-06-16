@@ -134,6 +134,11 @@ for (const q of qaLevels) {
 }
 console.log(`Created ${qaLevels.length} QA levels.`);
 
+// "Standard" is the baseline — no saved level, no special quality form. Give the job
+// scenarios a Standard entry (id null) alongside the real levels so some seeded jobs
+// sit on the plain baseline, just like real jobs do.
+const scenarioLevels = [{ id: null, name: 'Standard' }, ...qaLevels];
+
 // ─── JOB CARDS ───
 console.log('Creating job cards...');
 
@@ -198,7 +203,7 @@ function buildTreatments(treatmentStr, otherText) {
 
 // Generated job set covering every status, job type, material, treatment, drawing,
 // customer-property value, the repeat flag, and every priority — see seed-scenarios.js.
-const scenarios = SKIP_JOBS ? [] : buildScenarios(contacts, qaLevels, {
+const scenarios = SKIP_JOBS ? [] : buildScenarios(contacts, scenarioLevels, {
   workerCount: workers.length,
   machineNumbers: machines.map(m => m.number),
 });

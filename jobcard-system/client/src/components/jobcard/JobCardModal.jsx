@@ -311,6 +311,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       loadActiveTimerRef.current();
     }
   }, [isOpen, isEdit, jobCardId]);
+
   const selectContact = (cont) => contactHook.selectContact(cont, formHook.setFormData);
   const handleContactFieldChange = (field, value) => contactHook.handleContactFieldChange(field, value, formHook.setFormData);
   const handleSubmit = async (e) => {

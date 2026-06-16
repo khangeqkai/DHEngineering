@@ -94,8 +94,10 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
     const id = `jobcard:${uuidv4()}`;
     const status = data.status || 'OPEN';
 
+    // No level chosen means the plain "Standard" baseline (no special quality form),
+    // which is stored as the label STANDARD with no level id.
     const qaLevelId = data.qaLevelId || null;
-    let qualityLevelName = null;
+    let qualityLevelName = 'STANDARD';
 
     // QA level validity is a read — check it before touching the number.
     if (qaLevelId) {
@@ -337,13 +339,22 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
 
     // Validate a changed QA level BEFORE touching the database, so an invalid
     // selection can't leave a half-applied update committed.
-    const newQaLevelId = data.qaLevelId !== undefined ? data.qaLevelId : existing.qa_level_id;
+    // A job always keeps a quality level — if the edit clears it (or an old job had
+    // none), fall back to the built-in Standard instead of saving "no level".
+    const newQaLevelId = data.qaLevelId !== undefined ? (data.qaLevelId || null) : existing.qa_level_id;
     const qaLevelChanged = data.qaLevelId !== undefined && (data.qaLevelId || null) !== (existing.qa_level_id || null);
+    // The stored quality-level label follows the level: a special level's name, or
+    // the plain "Standard" baseline when no level is set.
+    let newQualityLevel = existing.quality_level;
+    if (qaLevelChanged) {
+      newQualityLevel = 'STANDARD';
+    }
     if (qaLevelChanged && newQaLevelId) {
       const newLevel = qaLevelQueries.getById.get(newQaLevelId);
       if (!newLevel) {
         return res.status(400).json({ error: 'Invalid QA level selected' });
       }
+      newQualityLevel = newLevel.name.toUpperCase();
       // Confirm the new level's forms are on disk BEFORE writing the update, so
       // the job is never saved expecting forms that can't be made.
       const qaCheck = verifyQaTemplatesAvailable(newQaLevelId);
@@ -383,7 +394,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
         data.companyName !== undefined ? data.companyName : existing.company_name,
         data.contactPhone !== undefined ? data.contactPhone : existing.contact_phone,
         data.contactEmail !== undefined ? data.contactEmail : existing.contact_email,
-        data.qualityLevel !== undefined ? data.qualityLevel : existing.quality_level,
+        newQualityLevel,
         data.priority !== undefined ? data.priority : existing.priority,
         data.poNumber !== undefined ? data.poNumber : existing.po_number,
         data.quoteReference !== undefined ? data.quoteReference : existing.quote_reference,
@@ -523,7 +534,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
         description: current.description || data.description || null,
         priority: current.priority || data.priority || 'NONE',
         dueDate: current.due_date || data.dueDate || null,
-        qualityLevel: data.qualityLevel || existing.quality_level,
+        qualityLevel: newQualityLevel,
         poNumber: current.po_number || data.poNumber || null,
         quoteReference: current.quote_reference || data.quoteReference || null,
         repeatJob: (data.isRepeatJob !== undefined ? data.isRepeatJob : current.is_repeat_job === 1) ? 'Yes' : 'No',
