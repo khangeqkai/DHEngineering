@@ -245,7 +245,6 @@ export default function SupplierManagement() {
         onClose={resetForm}
         title={editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}
         size="small"
-        closeOnOverlayClick={false}
       >
         <BottomSheet.Body>
           <form id="supplier-form" onSubmit={handleSubmit}>

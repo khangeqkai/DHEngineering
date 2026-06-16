@@ -212,7 +212,7 @@ export default function TagManagement() {
       </PageHeader>
 
       {/* Unified BottomSheet — adapts fields based on category */}
-      <BottomSheet isOpen={showForm} onClose={resetForm} title={formTitle} size="small" closeOnOverlayClick={false}>
+      <BottomSheet isOpen={showForm} onClose={resetForm} title={formTitle} size="small">
         <BottomSheet.Body>
           <form id="tag-form" onSubmit={handleSubmit}>
             <div className="form-group">

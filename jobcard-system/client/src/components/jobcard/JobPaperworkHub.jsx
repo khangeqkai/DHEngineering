@@ -382,7 +382,7 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
       </button>
 
       {open && createPortal(
-        <div className="hub-overlay" ref={overlayRef} onClick={(e) => { if (e.target.classList.contains('hub-overlay')) closeAll(); }}>
+        <div className="hub-overlay" ref={overlayRef}>
           <div className="hub-panel" role="dialog" aria-modal="true" aria-label="Job paperwork">
             <div className="hub-head">
               {view === 'camera' ? (
@@ -479,9 +479,9 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
           </div>
 
           {files.lightboxPhoto && (
-            <div className="hub-lightbox" onClick={files.closeLightbox}>
+            <div className="hub-lightbox">
               <button className="hub-lightbox-close" onClick={files.closeLightbox}><X size={24} /></button>
-              <img src={files.lightboxPhoto} alt="Full size" onClick={(e) => e.stopPropagation()} />
+              <img src={files.lightboxPhoto} alt="Full size" />
             </div>
           )}
           {files.viewerUrl && (

@@ -91,9 +91,17 @@ function renderItem(it) {
       : `<div class="file missing">Missing</div>`;
     drawings = `<div class="val">${esc(it.drawings)}${files}</div>`;
   }
-  const property = it.customerPropertyIsNa
-    ? `<div class="val na">${esc(it.customerProperty || 'N/A')}</div>`
-    : `<div class="val">${esc(it.customerProperty)}</div>`;
+  let property;
+  if (it.customerPropertyIsNa) {
+    property = `<div class="val na">${esc(it.customerProperty || 'N/A')}</div>`;
+  } else {
+    // Property name on top; the attached file name(s) on a second, smaller line —
+    // every matching file listed, or a red "Missing" when none are on disk yet.
+    const propFiles = (it.propertyFiles && it.propertyFiles.length)
+      ? it.propertyFiles.map(f => `<div class="file">${esc(f)}</div>`).join('')
+      : `<div class="file missing">Missing</div>`;
+    property = `<div class="val">${esc(it.customerProperty)}${propFiles}</div>`;
+  }
   return `
   <div class="item">
     <div class="no">${esc(it.number)}</div>
@@ -118,7 +126,7 @@ function renderItem(it) {
  *   { jobNumber, priorityLabel|null, priorityClass, dateCreated, dueDate, company,
  *     printed, items: [{ number, qty, jobType, description, material, drawings,
  *     drawingsIsNa, drawingFiles, drawingsMissing, treatment, customerProperty,
- *     customerPropertyIsNa }] }
+ *     customerPropertyIsNa, propertyFiles, customerPropertyMissing }] }
  * @returns {string} full HTML document
  */
 function renderJobCardHtml(view) {

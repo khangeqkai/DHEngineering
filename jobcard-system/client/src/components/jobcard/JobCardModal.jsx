@@ -504,7 +504,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         onClose={onClose}
         headerSlot={headerStrip}
         size="large"
-        closeOnOverlayClick={false}
         headerActions={
           isEdit && jobCardId ? (
             <JobPaperworkHub

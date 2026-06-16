@@ -184,7 +184,6 @@ export default function Settings() {
         onClose={s.resetPasswordForm}
         title="Change PIN"
         size="small"
-        closeOnOverlayClick={false}
       >
         <BottomSheet.Body>
           <form id="change-password-form" onSubmit={s.handleChangePassword}>
@@ -246,7 +245,6 @@ export default function Settings() {
         onClose={s.handleCancelImport}
         title="Confirm Import"
         size="small"
-        closeOnOverlayClick={false}
       >
         <BottomSheet.Body>
           <p style={{ marginBottom: '0.75rem', fontWeight: 500 }}>

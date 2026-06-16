@@ -108,7 +108,7 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose }) {
   }
 
   return createPortal(
-    <div className="calendar-overlay" onClick={onClose}>
+    <div className="calendar-overlay">
       <div
         className="calendar-modal"
         ref={calendarRef}
@@ -116,7 +116,6 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-label="Date picker"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="calendar-header">
           <button type="button" className="calendar-nav" onClick={prevMonth}>&lsaquo;</button>

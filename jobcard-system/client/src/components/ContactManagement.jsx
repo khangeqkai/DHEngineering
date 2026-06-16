@@ -163,7 +163,6 @@ export default function ContactManagement() {
         onClose={resetForm}
         title={editingContact ? 'Edit Contact' : 'Add New Contact'}
         size="small"
-        closeOnOverlayClick={false}
       >
         <BottomSheet.Body>
           <form id="contact-form" onSubmit={handleSubmit}>

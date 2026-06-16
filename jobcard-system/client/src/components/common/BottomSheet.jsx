@@ -13,7 +13,6 @@ export default function BottomSheet({
   title,
   headerSlot,
   size = 'compact',
-  closeOnOverlayClick = true,
   headerActions,
   children
 }) {
@@ -95,10 +94,11 @@ export default function BottomSheet({
 
   if (!isOpen) return null;
 
-  const handleOverlayClick = closeOnOverlayClick ? onClose : undefined;
-
+  // Background clicks never close the dialog — only Escape or the close button
+  // do (consistent across every full-screen window in the app), so an accidental
+  // click outside can't discard an open form.
   return createPortal(
-    <div className="modal-overlay" onClick={handleOverlayClick}>
+    <div className="modal-overlay">
       <div
         ref={dialogRef}
         className={`modal-popup modal-${size}`}
@@ -106,7 +106,6 @@ export default function BottomSheet({
         aria-modal="true"
         aria-labelledby="modal-title"
         tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
           {headerSlot ? (

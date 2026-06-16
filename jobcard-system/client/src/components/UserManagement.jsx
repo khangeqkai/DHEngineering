@@ -182,7 +182,6 @@ export default function UserManagement() {
         onClose={resetForm}
         title={editingUser ? 'Edit User' : 'Add New User'}
         size="small"
-        closeOnOverlayClick={false}
       >
         <BottomSheet.Body>
           <form id="user-form" onSubmit={handleSubmit}>

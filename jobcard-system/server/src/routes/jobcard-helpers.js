@@ -361,11 +361,14 @@ function formatAuDate(raw) {
 function buildJobCardView(jobcardId, jc) {
   const rows = jobItemQueries.getByJobcard.all(jobcardId);
 
-  // Read the Job Files folder once so each part's drawing can show the actual
-  // file attached to it (or flag a missing one). Empty when storage isn't set up
-  // or the folder is missing — in which case every declared drawing shows missing.
+  // Read the Job Files and Customer Property folders once so each part's drawing
+  // and customer-property field can show the actual file(s) attached to it (or
+  // flag a missing one). Empty when storage isn't set up or a folder is missing —
+  // in which case every declared drawing / property shows missing.
   const { listCategoryFileNames } = require('./jobcard-files');
-  const jobFileNames = listCategoryFileNames(jobcardId, ['job-files'])['job-files'] || [];
+  const folderNames = listCategoryFileNames(jobcardId, ['job-files', 'customer-property-files']);
+  const jobFileNames = folderNames['job-files'] || [];
+  const customerPropertyNames = folderNames['customer-property-files'] || [];
 
   const items = rows.map(r => {
     const dVals = splitValues(r.drawings_type);
@@ -388,6 +391,10 @@ function buildJobCardView(jobcardId, jc) {
     const customerProperty = customerPropertyIsNa
       ? 'N/A'
       : [...new Set(cpVals.map(v => tagName('customer_property', v)))].join(', ');
+    // For declared customer property, list the file(s) attached to this exact part
+    // (or flag "missing"), the same way drawings does.
+    const propertyFiles = customerPropertyIsNa ? [] : itemFileDisplayNames(customerPropertyNames, r.id);
+    const customerPropertyMissing = !customerPropertyIsNa && propertyFiles.length === 0;
     return {
       number: r.item_number,
       qty: (r.qty == null || r.qty === '') ? '—' : r.qty,
@@ -400,7 +407,9 @@ function buildJobCardView(jobcardId, jc) {
       drawingsMissing,
       treatment: treatments.length ? treatments.join(', ') : 'None',
       customerProperty,
-      customerPropertyIsNa
+      customerPropertyIsNa,
+      propertyFiles,
+      customerPropertyMissing
     };
   });
 
