@@ -168,7 +168,9 @@ async function fillPdfTemplate(sourceBuffer, jobData) {
       // Standard field mappings
       const dataKey = FIELD_MAPPINGS[fieldName];
 
-      if (dataKey && jobData[dataKey]) {
+      // Explicit emptiness check (mirrors the item branch) so a legitimate zero
+      // isn't treated as "no value" and left blank on the printed form.
+      if (dataKey && jobData[dataKey] !== null && jobData[dataKey] !== undefined && jobData[dataKey] !== '') {
         try {
           if (typeof field.setText === 'function') {
             field.setText(toPdfSafe(jobData[dataKey]));

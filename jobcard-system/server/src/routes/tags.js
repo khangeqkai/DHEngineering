@@ -167,9 +167,17 @@ router.put('/:id', requireAdmin, (req, res) => {
       return res.status(400).json({ error: 'Tag name must include at least one letter or number' });
     }
 
-    // Check for duplicate value in same category (different id)
+    // Check for duplicate value in same category (different id). getByValue
+    // returns archived rows too, so an invisible retired option can collide.
+    // Point the admin to the archived list instead of dead-ending on a flat
+    // "already exists" error they can't see or resolve.
     const duplicate = tagQueries.getByValue.get(existing.category, value);
     if (duplicate && duplicate.id !== id) {
+      if (duplicate.archived) {
+        return res.status(400).json({
+          error: `A retired option named "${duplicate.name}" already uses this name. Turn on "Show archived" and restore it instead of renaming.`
+        });
+      }
       return res.status(400).json({ error: 'Another tag with this name already exists in this category' });
     }
 

@@ -247,6 +247,10 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
       return res.status(404).json({ error: 'Time entry not found' });
     }
 
+    if (existing.jobcard_id !== id) {
+      return res.status(403).json({ error: 'Time entry does not belong to this job card' });
+    }
+
     // Only owner or admin can stop
     if (existing.user_id !== req.user.userId && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'You can only stop your own timer' });

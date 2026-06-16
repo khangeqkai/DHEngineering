@@ -246,7 +246,13 @@ function searchActivity(req, res) {
     if (arr.length) { conditions.push(`action IN (${arr.map(() => '?').join(',')})`); params.push(...arr); }
   }
   if (entityType) { conditions.push('entity_type = ?'); params.push(entityType); }
-  if (field) { conditions.push('changes LIKE ?'); params.push(`%"${field}"%`); }
+  if (field) {
+    // This is a precise field-name match, so escape LIKE metacharacters
+    // (% and _) the admin might type — otherwise they widen the match.
+    const escaped = field.replace(/[\\%_]/g, c => `\\${c}`);
+    conditions.push("changes LIKE ? ESCAPE '\\'");
+    params.push(`%"${escaped}"%`);
+  }
   if (dateFrom) { conditions.push('created_at >= ?'); params.push(dateFrom); }
   if (dateTo) { conditions.push('created_at <= ?'); params.push(dateTo + 'T23:59:59'); }
 
@@ -272,7 +278,13 @@ function searchTime(req, res, isAdmin) {
     params.push(like, like, like, like);
   }
   if (workerId) { conditions.push('te.user_id = ?'); params.push(workerId); }
-  if (machineId) { conditions.push('te.machine_number = ?'); params.push(machineId); }
+  if (machineId) {
+    // machine_number is a comma-joined list (e.g. "5, 9"), so an exact match
+    // drops entries where this machine was used alongside others. Normalize out
+    // spaces and wrap both sides in commas for a boundary-safe membership test.
+    conditions.push(`(',' || REPLACE(te.machine_number, ' ', '') || ',') LIKE ?`);
+    params.push(`%,${machineId},%`);
+  }
   if (jobNumber) { conditions.push('j.job_number LIKE ?'); params.push(`%${jobNumber.trim()}%`); }
   if (specialOnly === 'true') { conditions.push('te.is_special_labour = 1'); }
   if (dateFrom) { conditions.push('te.start_time >= ?'); params.push(dateFrom); }

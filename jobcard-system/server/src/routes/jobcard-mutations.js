@@ -456,18 +456,32 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     }
 
     if (data.items !== undefined) {
-      const oldMap = new Map(existingItems.map(i => [i.item_number, itemSummary(i.qty, i.description, i.job_type, i.material, i.treatments, i.drawings_type, i.customer_property)]));
-      const newMap = new Map(data.items.map((i, idx) => [i.itemNumber || idx + 1, itemSummary(i.qty, i.description, i.jobType, i.material, i.treatments, i.drawingsType, i.customerProperty)]));
-      for (const [num, desc] of newMap) {
-        if (!oldMap.has(num)) {
-          changes[`item #${num} added`] = { from: null, to: desc };
-        } else if (oldMap.get(num) !== desc) {
-          changes[`item #${num}`] = { from: oldMap.get(num), to: desc };
+      // Match lines by their stable id (the same id the save reconciles on) so
+      // renumbering after a delete/reorder can't fabricate phantom add/edit/remove
+      // entries. Position numbers are used only as human-readable labels.
+      const oldById = new Map(existingItems.map(i => [i.id, {
+        num: i.item_number,
+        summary: itemSummary(i.qty, i.description, i.job_type, i.material, i.treatments, i.drawings_type, i.customer_property)
+      }]));
+      const seenIds = new Set();
+      data.items.forEach((item, idx) => {
+        const pos = idx + 1; // the new position the save just assigned this line
+        const summary = itemSummary(item.qty, item.description, item.jobType, item.material, item.treatments, item.drawingsType, item.customerProperty);
+        const prior = (typeof item.id === 'string' && item.id.startsWith('item:'))
+          ? oldById.get(item.id)
+          : null;
+        if (!prior) {
+          changes[`item #${pos} added`] = { from: null, to: summary };
+        } else {
+          seenIds.add(item.id);
+          if (prior.summary !== summary) {
+            changes[`item #${pos}`] = { from: prior.summary, to: summary };
+          }
         }
-      }
-      for (const [num, desc] of oldMap) {
-        if (!newMap.has(num)) {
-          changes[`item #${num} removed`] = { from: desc, to: null };
+      });
+      for (const [id, prior] of oldById) {
+        if (!seenIds.has(id)) {
+          changes[`item #${prior.num} removed`] = { from: prior.summary, to: null };
         }
       }
     }

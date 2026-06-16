@@ -12,13 +12,17 @@ export function useActiveTimerIndicator() {
   const [activeTimer, setActiveTimer] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const intervalRef = useRef(null);
+  const requestId = useRef(0);
 
   const fetchTimer = useCallback(async () => {
+    // Tag each poll so a slow response that resolves out of order can't
+    // overwrite a newer one and flicker the indicator to a stale state.
+    const id = ++requestId.current;
     try {
       const timer = await api.getActiveTimer();
-      setActiveTimer(timer || null);
+      if (id === requestId.current) setActiveTimer(timer || null);
     } catch {
-      setActiveTimer(null);
+      if (id === requestId.current) setActiveTimer(null);
     }
   }, []);
 

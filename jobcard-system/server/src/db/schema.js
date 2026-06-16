@@ -6,7 +6,7 @@ db.exec(`
   -- Users table (employees)
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
-    username TEXT UNIQUE NOT NULL,
+    username TEXT UNIQUE NOT NULL COLLATE NOCASE,
     password TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
     name TEXT,

@@ -3,7 +3,7 @@ const { db } = require('../connection');
 // User queries
 const userQueries = {
   getById: db.prepare('SELECT * FROM users WHERE id = ?'),
-  getByUsername: db.prepare('SELECT * FROM users WHERE username = ?'),
+  getByUsername: db.prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE'),
   getAll: db.prepare('SELECT id, username, role, name, email, phone, employee_id, active, created_at, updated_at FROM users ORDER BY name ASC'),
   getAllActive: db.prepare('SELECT id, username, role, name, email, phone, employee_id, active, created_at, updated_at FROM users WHERE active = 1 ORDER BY name ASC'),
 

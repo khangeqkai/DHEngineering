@@ -80,7 +80,10 @@ export function useInactivityTimer({ onTimeout, enabled = true, timeoutMs = DEFA
           setSecondsRemaining(remaining);
           setIsWarningActive(true);
 
-          // Start countdown interval if not already running
+          // The original warning timeout may not have fired during sleep; left
+          // pending it re-fires on wake and snaps the count back to 30 while
+          // leaking a second countdown. Clear it (and dedupe the countdown).
+          if (warningRef.current) clearTimeout(warningRef.current);
           if (countdownRef.current) clearInterval(countdownRef.current);
           countdownRef.current = setInterval(() => {
             setSecondsRemaining(prev => Math.max(prev - 1, 1));
