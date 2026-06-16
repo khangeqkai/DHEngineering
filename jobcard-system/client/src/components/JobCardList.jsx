@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Plus } from 'lucide-react';
@@ -53,6 +54,7 @@ export default function JobCardList() {
   const popoverRef = useRef(null);
   const [assignPopoverId, setAssignPopoverId] = useState(null);
   const assignPopoverRef = useRef(null);
+  const [hoverNames, setHoverNames] = useState(null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   const [viewMode, setViewMode] = useState('list');
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
@@ -342,6 +344,7 @@ export default function JobCardList() {
     assignPopoverId,
     setAssignPopoverId,
     assignPopoverRef,
+    setHoverNames,
     openEditModal,
     handleQuickStatusChange,
     handleSelfToggle,
@@ -449,6 +452,22 @@ export default function JobCardList() {
             onPageChange={setCurrentPage}
           />
         </div>
+      )}
+
+      {hoverNames && createPortal(
+        <div
+          className="assignee-tooltip"
+          style={{ top: hoverNames.top, left: hoverNames.left }}
+        >
+          <span className="mf-tooltip-title">Assigned to</span>
+          {hoverNames.names.map((n, i) => (
+            <span key={i} className="mf-tooltip-item">
+              <span className="mf-tooltip-dot" style={{ background: n.color }} />
+              {n.name}
+            </span>
+          ))}
+        </div>,
+        document.body
       )}
 
       <JobCardModal

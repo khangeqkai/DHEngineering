@@ -22,6 +22,7 @@ export function getJobCardColumns({
   assignPopoverId,
   setAssignPopoverId,
   assignPopoverRef,
+  setHoverNames,
   openEditModal,
   handleQuickStatusChange,
   handleSelfToggle,
@@ -103,11 +104,6 @@ export function getJobCardColumns({
                   </span>
                 )}
               </span>
-              <span className="assignee-tooltip">
-                {card.assignees.map(a => (
-                  <span key={a.userId} className="assignee-tooltip-item">{a.userName}</span>
-                ))}
-              </span>
             </span>
           );
         })() : '-';
@@ -121,6 +117,19 @@ export function getJobCardColumns({
                   e.stopPropagation();
                   setAssignPopoverId(assignPopoverId === card.id ? null : card.id);
                 }}
+                onMouseEnter={(e) => {
+                  if (!card.assignees?.length) return;
+                  const r = e.currentTarget.getBoundingClientRect();
+                  setHoverNames({
+                    top: r.bottom + 6,
+                    left: r.left,
+                    names: card.assignees.map(a => ({
+                      name: a.userName,
+                      color: getAvatarColor(a.userName || a.username || a.userId).bg
+                    }))
+                  });
+                }}
+                onMouseLeave={() => setHoverNames(null)}
               >
                 {renderAvatars()}
               </span>

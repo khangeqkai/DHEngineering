@@ -232,7 +232,7 @@
       "label": "JobCardList()",
       "file_type": "code",
       "source_file": "client/src/components/JobCardList.jsx",
-      "source_location": "L32",
+      "source_location": "L33",
       "id": "components_jobcardlist_jobcardlist",
       "community": 4,
       "norm_label": "jobcardlist()"
