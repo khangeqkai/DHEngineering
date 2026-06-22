@@ -575,14 +575,24 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireAdmin, (req, re
       return res.status(400).json({ error: 'Stop the timer before deleting this entry' });
     }
 
-    recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, req.user.name || req.user.username, {
+    timeEntryQueries.delete.run(entryId);
+
+    // Removing finished pieces changes completion — recompute the job's status (Done if
+    // every line is still counted, else In Progress) against the post-delete state and fold
+    // any change into this deletion's history so it reads as one event. Must run after the
+    // delete: isJobComplete sums the remaining blocks' pieces, so the removed block has to be
+    // gone first.
+    const statusChange = syncStatusToWork(id, req.user);
+
+    const changes = {
       timeEntryId: { from: entryId, to: null },
       machineNumber: { from: existing.machine_number, to: null },
       description: { from: existing.description, to: null },
       startTime: { from: existing.start_time, to: null }
-    });
+    };
+    if (statusChange) changes.status = statusChange;
 
-    timeEntryQueries.delete.run(entryId);
+    recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, req.user.name || req.user.username, changes);
 
     res.json({ success: true });
   } catch (err) {

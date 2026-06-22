@@ -61,6 +61,12 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
 
     // Validate everything BEFORE any database write, so a rejection can never
     // consume a job number or leave a half-made record behind.
+    // A job needs at least one line; the per-line rules below all no-op on an
+    // empty list, so without this guard a job with no parts would slip past them.
+    if (!Array.isArray(data.items) || data.items.length === 0) {
+      return res.status(400).json({ error: 'A job must have at least one part' });
+    }
+
     const treatmentError = validateItemTreatments(data.items);
     if (treatmentError) {
       return res.status(400).json({ error: treatmentError });
@@ -291,6 +297,11 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     const existingItems = data.items !== undefined ? jobItemQueries.getByJobcard.all(id) : [];
 
     if (data.items !== undefined) {
+      // When a save sends a parts list, it can't be empty — a job always keeps
+      // at least one line, and the per-line rules below no-op on an empty list.
+      if (!Array.isArray(data.items) || data.items.length === 0) {
+        return res.status(400).json({ error: 'A job must have at least one part' });
+      }
       const treatmentError = validateItemTreatments(data.items, existingItems);
       if (treatmentError) {
         return res.status(400).json({ error: treatmentError });

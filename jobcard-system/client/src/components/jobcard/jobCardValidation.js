@@ -32,6 +32,22 @@ export function validateJobCardForm({ isAdmin, formData, contactFormData, lineIt
     errors.push(`Customer property is required on item #${itemMissingProperty + 1}`);
   }
 
+  // "N/A" is the standalone "no drawing / nothing supplied" answer, so it can't
+  // share a part with a real value. The picker already enforces this; this mirrors
+  // the server rule so the form and the save check agree.
+  const naCombined = (value) => {
+    const values = String(value || '').split(',').map(v => v.trim()).filter(Boolean);
+    return values.includes('N_A') && values.length > 1;
+  };
+  for (let i = 0; i < validItems.length; i++) {
+    if (naCombined(validItems[i].drawingsType)) {
+      errors.push(`Item #${i + 1} cannot combine "N/A" with other drawings values`);
+    }
+    if (naCombined(validItems[i].customerProperty)) {
+      errors.push(`Item #${i + 1} cannot combine "N/A" with other customer property values`);
+    }
+  }
+
   // Quantity is compulsory and must be a positive whole number (it drives the
   // "all parts finished -> Done" check). Blanks, zero, and decimals are rejected.
   for (let i = 0; i < validItems.length; i++) {

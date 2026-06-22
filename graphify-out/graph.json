@@ -4066,7 +4066,7 @@
       "label": "validateItemDrawings()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L528",
+      "source_location": "L533",
       "id": "middleware_validation_validateitemdrawings",
       "community": 9,
       "norm_label": "validateitemdrawings()"
@@ -4075,7 +4075,7 @@
       "label": "validateItemCustomerProperty()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L532",
+      "source_location": "L537",
       "id": "middleware_validation_validateitemcustomerproperty",
       "community": 9,
       "norm_label": "validateitemcustomerproperty()"
@@ -4084,7 +4084,7 @@
       "label": "validateItemQuantities()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L544",
+      "source_location": "L549",
       "id": "middleware_validation_validateitemquantities",
       "community": 9,
       "norm_label": "validateitemquantities()"
@@ -4093,7 +4093,7 @@
       "label": "validateItemDescriptions()",
       "file_type": "code",
       "source_file": "server/src/middleware/validation.js",
-      "source_location": "L566",
+      "source_location": "L571",
       "id": "middleware_validation_validateitemdescriptions",
       "community": 9,
       "norm_label": "validateitemdescriptions()"

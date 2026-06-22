@@ -515,6 +515,11 @@ function validateItemTagList(items, field, category, label, existingItems, colum
     if (values.length === 0) {
       return `Item #${i + 1} is missing ${label}`;
     }
+    // "N/A" is the standalone "no drawing / nothing supplied" answer, so it can't
+    // be combined with a real value for the same line.
+    if (values.includes('N_A') && values.length > 1) {
+      return `Item #${i + 1} cannot combine "N/A" with other ${label} values`;
+    }
     if (allowed.length > 0) {
       const invalid = values.filter(v => !allowed.includes(v) && !grandfathered.has(v));
       if (invalid.length > 0) {
