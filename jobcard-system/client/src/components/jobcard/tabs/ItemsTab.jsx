@@ -35,6 +35,7 @@ export default function ItemsTab({
   employees = [],
   timeEntries = [],
   isAdmin = false,
+  isCritical = false,
   readOnly = false,
   attachmentWarnings = null,
   onAttachItemFile,
@@ -170,10 +171,57 @@ export default function ItemsTab({
                 <input type="text" name="qty" value={timeEntryForm.qty} onChange={handleTimeEntryChange} />
               </div>
               <div className="form-group">
-                <label>Scrap</label>
-                <input type="text" inputMode="numeric" name="scrapQty" value={timeEntryForm.scrapQty} onChange={handleTimeEntryChange} />
+                <label>Scrap — Bin</label>
+                <input type="text" inputMode="numeric" name="scrapBinQty" value={timeEntryForm.scrapBinQty} onChange={handleTimeEntryChange} />
+              </div>
+              <div className="form-group">
+                <label>Scrap — Recycle</label>
+                <input type="text" inputMode="numeric" name="scrapRecycleQty" value={timeEntryForm.scrapRecycleQty} onChange={handleTimeEntryChange} />
               </div>
             </div>
+
+            {isCritical && (
+              <div className="form-group te-inspection-admin">
+                <label>Critical Job — Inspection Checks</label>
+                <div className="te-inspection-grid">
+                  {[
+                    { field: 'firstOffInspection', label: 'First-Off Inspection' },
+                    { field: 'inProcessValidation', label: 'In-Process Validation' },
+                    { field: 'measuringEquipmentVerification', label: 'Measuring Equipment Verification' },
+                    { field: 'equipmentChecks', label: 'Equipment Checks' }
+                  ].map(({ field, label }) => (
+                    <div key={field} className="te-inspection-item">
+                      <span className="te-inspection-name">{label}</span>
+                      <div className="te-yesno" role="group" aria-label={label}>
+                        <button
+                          type="button"
+                          className={`te-yesno-btn${timeEntryForm[field] === true ? ' is-yes' : ''}`}
+                          aria-pressed={timeEntryForm[field] === true}
+                          onClick={() => handleTimeEntryChange({ target: { name: field, value: true } })}
+                        >
+                          Yes
+                        </button>
+                        <button
+                          type="button"
+                          className={`te-yesno-btn${timeEntryForm[field] === false ? ' is-no' : ''}`}
+                          aria-pressed={timeEntryForm[field] === false}
+                          onClick={() => handleTimeEntryChange({ target: { name: field, value: false } })}
+                        >
+                          No
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  name="equipmentChecksComments"
+                  placeholder="Equipment checks comments (optional)"
+                  value={timeEntryForm.equipmentChecksComments}
+                  onChange={handleTimeEntryChange}
+                />
+              </div>
+            )}
 
             <div className="form-group">
               <label>Description</label>

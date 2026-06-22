@@ -108,6 +108,43 @@ function sendOpenTimerConflict(res, userId, knownActive) {
   return true;
 }
 
+// Read a yes/no inspection answer from a request body into the stored form
+// (1 = yes, 0 = no, null = not answered). Accepts booleans, 0/1, or yes/no strings.
+function toBoolFlag(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (v === true || v === 1 || v === '1' || v === 'yes' || v === 'true') return 1;
+  if (v === false || v === 0 || v === '0' || v === 'no' || v === 'false') return 0;
+  return null;
+}
+
+// Turn a stored 1/0/null inspection flag into true/false/null for the client.
+function flagToBool(v) {
+  return v == null ? null : v === 1;
+}
+
+const qualityLevelOfJob = db.prepare('SELECT quality_level FROM jobcards WHERE id = ?');
+
+// A job sits on the Critical quality level when its stored label is 'CRITICAL'.
+// Only those jobs ask the worker the extra inspection checklist on finishing.
+function isCriticalJob(jobcardId) {
+  const row = qualityLevelOfJob.get(jobcardId);
+  return !!row && String(row.quality_level || '').toUpperCase() === 'CRITICAL';
+}
+
+// On a Critical job, a finished time block must carry all four inspection answers.
+// `completed` is whether the block has a finish time (an open timer hasn't been
+// answered yet, so it's never blocked). Returns an error string, or null if fine.
+function checkCriticalInspection(jobcardId, completed, flags) {
+  if (!completed || !isCriticalJob(jobcardId)) return null;
+  const missing = [flags.firstOffInspection, flags.inProcessValidation,
+    flags.measuringEquipmentVerification, flags.equipmentChecks]
+    .some(v => v === null || v === undefined);
+  if (missing) {
+    return 'This is a Critical job — please answer all the inspection checks (first-off, in-process, measuring equipment, and equipment) before saving.';
+  }
+  return null;
+}
+
 // Convert database row (snake_case) to API response (camelCase)
 function toCamelCase(e) {
   return {
@@ -119,7 +156,13 @@ function toCamelCase(e) {
     machineNumber: e.machine_number,
     qty: e.qty,
     description: e.description,
-    scrapQty: e.scrap_qty != null ? e.scrap_qty : 0,
+    scrapBinQty: e.scrap_bin_qty != null ? e.scrap_bin_qty : 0,
+    scrapRecycleQty: e.scrap_recycle_qty != null ? e.scrap_recycle_qty : 0,
+    firstOffInspection: flagToBool(e.first_off_inspection),
+    inProcessValidation: flagToBool(e.in_process_validation),
+    measuringEquipmentVerification: flagToBool(e.measuring_equipment_verification),
+    equipmentChecks: flagToBool(e.equipment_checks),
+    equipmentChecksComments: e.equipment_checks_comments || null,
     startTime: e.start_time,
     endTime: e.end_time,
     isSpecialLabour: e.is_special_labour === 1,
@@ -188,7 +231,13 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
         null, // description
         startTime,
         null, // endTime
-        0     // scrapQty — recorded by the worker when they stop the timer
+        0,    // scrapBinQty — recorded by the worker when they stop the timer
+        0,    // scrapRecycleQty
+        null, // firstOffInspection — answered on the stop-timer form (Critical jobs)
+        null, // inProcessValidation
+        null, // measuringEquipmentVerification
+        null, // equipmentChecks
+        null  // equipmentChecksComments
       );
     });
 
@@ -327,8 +376,24 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
     const entryId = `timeentry:${uuidv4()}`;
 
     // Scrap is normally entered by the worker's stop-timer form, but an admin adding
-    // a block by hand can record it too. Clamp blank/garbage to 0, same as the edit route.
-    const scrapQty = Math.max(0, parseInt(data.scrapQty, 10) || 0);
+    // a block by hand can record it too. Two destinations: binned and recycled.
+    // Clamp blank/garbage to 0, same as the edit route.
+    const scrapBinQty = Math.max(0, parseInt(data.scrapBinQty, 10) || 0);
+    const scrapRecycleQty = Math.max(0, parseInt(data.scrapRecycleQty, 10) || 0);
+
+    // Inspection checklist (Critical jobs only). On a finished block the admin must
+    // answer all four, mirroring the worker's stop-timer form.
+    const inspection = {
+      firstOffInspection: toBoolFlag(data.firstOffInspection),
+      inProcessValidation: toBoolFlag(data.inProcessValidation),
+      measuringEquipmentVerification: toBoolFlag(data.measuringEquipmentVerification),
+      equipmentChecks: toBoolFlag(data.equipmentChecks)
+    };
+    const equipmentChecksComments = data.equipmentChecksComments || null;
+    const inspectionError = checkCriticalInspection(id, endTime != null, inspection);
+    if (inspectionError) {
+      return res.status(400).json({ error: inspectionError });
+    }
 
     try {
       timeEntryQueries.create.run(
@@ -341,7 +406,13 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
         data.description || null,
         startTime,
         endTime,
-        scrapQty
+        scrapBinQty,
+        scrapRecycleQty,
+        inspection.firstOffInspection,
+        inspection.inProcessValidation,
+        inspection.measuringEquipmentVerification,
+        inspection.equipmentChecks,
+        equipmentChecksComments
       );
     } catch (e) {
       // A manual block with no finish time counts as an open timer; if the credited
@@ -357,12 +428,30 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
     // fold any change into the add-time-entry record so it reads as one event.
     const statusChange = syncStatusToWork(id, req.user);
 
+    // Record the Critical-job inspection answers too (same keys/values as the edit
+    // route), but only the ones actually set — a non-Critical block has all four as
+    // null and would otherwise spam the log with empty "null → null" rows.
+    const inspectionChanges = {};
+    for (const [key, value] of [
+      ['firstOffInspection', inspection.firstOffInspection],
+      ['inProcessValidation', inspection.inProcessValidation],
+      ['measuringEquipmentVerification', inspection.measuringEquipmentVerification],
+      ['equipmentChecks', inspection.equipmentChecks],
+      ['equipmentChecksComments', equipmentChecksComments],
+    ]) {
+      if (value !== null && value !== undefined && value !== '') {
+        inspectionChanges[key] = { from: null, to: value };
+      }
+    }
+
     const workerName = userQueries.getById.get(workerId).name;
     recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name || req.user.username, {
       worker: { from: null, to: workerName },
       machineNumber: { from: null, to: data.machineNumber || null },
       description: { from: null, to: data.description || null },
-      scrapQty: { from: null, to: scrapQty },
+      scrapBin: { from: null, to: scrapBinQty },
+      scrapRecycle: { from: null, to: scrapRecycleQty },
+      ...inspectionChanges,
       startTime: { from: null, to: startTime },
       ...(statusChange ? { status: statusChange } : {})
     }, { timeEntryId: entryId });
@@ -423,11 +512,35 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     }
 
     // Scrap comes from the worker's stop-timer form or the admin's time-entry
-    // form (which has a Scrap field when editing too). If an update omits it
-    // entirely, keep the existing value.
-    const scrapQty = data.scrapQty !== undefined
-      ? Math.max(0, parseInt(data.scrapQty, 10) || 0)
-      : (existing.scrap_qty || 0);
+    // form (which has Scrap fields when editing too), split into binned and
+    // recycled pieces. If an update omits a field entirely, keep the existing value.
+    const scrapBinQty = data.scrapBinQty !== undefined
+      ? Math.max(0, parseInt(data.scrapBinQty, 10) || 0)
+      : (existing.scrap_bin_qty || 0);
+    const scrapRecycleQty = data.scrapRecycleQty !== undefined
+      ? Math.max(0, parseInt(data.scrapRecycleQty, 10) || 0)
+      : (existing.scrap_recycle_qty || 0);
+
+    // Inspection answers (Critical jobs). Each is kept as-is when the update omits
+    // it, so an admin correcting one field never wipes the rest.
+    const readFlag = (key, col) => data[key] !== undefined
+      ? toBoolFlag(data[key])
+      : (existing[col] != null ? existing[col] : null);
+    const inspection = {
+      firstOffInspection: readFlag('firstOffInspection', 'first_off_inspection'),
+      inProcessValidation: readFlag('inProcessValidation', 'in_process_validation'),
+      measuringEquipmentVerification: readFlag('measuringEquipmentVerification', 'measuring_equipment_verification'),
+      equipmentChecks: readFlag('equipmentChecks', 'equipment_checks')
+    };
+    const equipmentChecksComments = data.equipmentChecksComments !== undefined
+      ? (data.equipmentChecksComments || null)
+      : (existing.equipment_checks_comments || null);
+
+    // On a finished block on a Critical job, all four answers must be present.
+    const inspectionError = checkCriticalInspection(id, endTime != null, inspection);
+    if (inspectionError) {
+      return res.status(400).json({ error: inspectionError });
+    }
 
     // Only an admin may re-credit a block to a different worker, and only when they
     // actually send a worker. A regular worker editing their own block (filling in
@@ -457,7 +570,13 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
         data.machineNumber || null,
         data.qty || null,
         data.description || null,
-        scrapQty,
+        scrapBinQty,
+        scrapRecycleQty,
+        inspection.firstOffInspection,
+        inspection.inProcessValidation,
+        inspection.measuringEquipmentVerification,
+        inspection.equipmentChecks,
+        equipmentChecksComments,
         startTime,
         endTime,
         entryId
@@ -482,7 +601,13 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       ['machine_number', 'machineNumber', data.machineNumber || null],
       ['qty', 'qty', data.qty || null],
       ['description', 'description', data.description || null],
-      ['scrap_qty', 'scrapQty', scrapQty],
+      ['scrap_bin_qty', 'scrapBin', scrapBinQty],
+      ['scrap_recycle_qty', 'scrapRecycle', scrapRecycleQty],
+      ['first_off_inspection', 'firstOffInspection', inspection.firstOffInspection],
+      ['in_process_validation', 'inProcessValidation', inspection.inProcessValidation],
+      ['measuring_equipment_verification', 'measuringEquipmentVerification', inspection.measuringEquipmentVerification],
+      ['equipment_checks', 'equipmentChecks', inspection.equipmentChecks],
+      ['equipment_checks_comments', 'equipmentChecksComments', equipmentChecksComments],
       ['start_time', 'startTime', startTime],
       ['end_time', 'endTime', endTime],
     ];

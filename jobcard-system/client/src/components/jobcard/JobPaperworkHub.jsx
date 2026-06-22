@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import {
   FolderOpen, Upload, Camera, X, ArrowLeft, Check, Minus, Printer, Save,
@@ -9,6 +9,7 @@ import { useCamera } from './useCamera';
 import { useJobFiles, CATEGORY_LABELS, ACCEPT_ATTR } from './useJobFiles';
 import { usePacketPrint } from './usePacketPrint';
 import { api } from '../../services/api';
+import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import './JobPaperworkHub.css';
 
 // One place for a job's paperwork: the generated job card plus the three file
@@ -72,6 +73,16 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
   const pendingUploadCat = useRef(null);
   const fileInputRef = useRef(null);
   const overlayRef = useRef(null);
+  const modalId = useId();
+
+  // Join the shared modal stack while open. This window opens on top of the job
+  // card (itself a dialog that traps Tab/Escape); registering makes this the
+  // top-most layer, so the card behind stops grabbing the keyboard.
+  useEffect(() => {
+    if (!open) return undefined;
+    pushModal(modalId);
+    return () => removeModal(modalId);
+  }, [open, modalId]);
 
   const files = useJobFiles(jobcardId);
   const camera = useCamera();
@@ -181,6 +192,8 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e) => {
+      // Only the top-most dialog reacts to global keys.
+      if (!isTopModal(modalId)) return;
       if (e.key === 'Escape') {
         if (cardPreview) { setCardPreview(null); return; }
         if (files.viewerUrl) { files.closeViewer(); return; }
@@ -208,7 +221,7 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, view, files, camera, closeAll, cardPreview]);
+  }, [open, view, files, camera, closeAll, cardPreview, modalId]);
 
   // Move focus into the panel when it opens so Tab is trapped from the first press.
   useEffect(() => {

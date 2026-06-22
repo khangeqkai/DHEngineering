@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
+import { pushModal, removeModal, isTopModal } from './modalStack';
 
 export default function InactivityWarningModal({
   isOpen,
@@ -8,6 +9,17 @@ export default function InactivityWarningModal({
 }) {
   const modalRef = useRef(null);
   const buttonRef = useRef(null);
+  const modalId = useId();
+
+  // Join the shared modal stack while open. This warning can appear on top of an
+  // open job card or edit form (each a dialog that traps Tab/Escape); registering
+  // makes it the top-most layer, so the form behind stops grabbing the keyboard —
+  // otherwise Escape would close that form and Enter could save it.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    pushModal(modalId);
+    return () => removeModal(modalId);
+  }, [isOpen, modalId]);
 
   // Focus trap and keyboard handling
   useEffect(() => {
@@ -17,6 +29,9 @@ export default function InactivityWarningModal({
     buttonRef.current?.focus();
 
     const handleKeyDown = (e) => {
+      // Only the top-most dialog reacts to global keys.
+      if (!isTopModal(modalId)) return;
+
       // Escape key - stay logged in
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -35,7 +50,7 @@ export default function InactivityWarningModal({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onStayLoggedIn]);
+  }, [isOpen, onStayLoggedIn, modalId]);
 
   if (!isOpen) return null;
 

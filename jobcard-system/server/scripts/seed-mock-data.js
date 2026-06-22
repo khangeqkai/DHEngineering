@@ -154,7 +154,7 @@ const insertJobcard = db.prepare(`INSERT INTO jobcards (
 const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments, drawings_type, customer_property) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
 const insertNote = db.prepare('INSERT INTO job_notes (id, jobcard_id, user_id, user_name, text, created_at) VALUES (?, ?, ?, ?, ?, ?)');
-const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, user_id, item_id, machine_number, qty, scrap_qty, description, start_time, end_time, is_special_labour) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, user_id, item_id, machine_number, qty, scrap_bin_qty, scrap_recycle_qty, description, start_time, end_time, is_special_labour) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 const insertCosting = db.prepare(`INSERT INTO job_costings (
   id, jobcard_id,
   labour_hours, labour_rate, labour_total,
@@ -278,7 +278,8 @@ const createJobs = db.transaction(() => {
       }
       insertTimeEntry.run(
         uid('timeentry'), jobId, workers[e.worker].id,
-        itemIdByNumber[parseInt(e.item, 10)] || null, e.machine, e.qty, e.scrap || 0, e.desc,
+        itemIdByNumber[parseInt(e.item, 10)] || null, e.machine, e.qty,
+        e.scrap || 0, 0, e.desc,
         start.toISOString(), endIso,
         e.special ? 1 : 0
       );

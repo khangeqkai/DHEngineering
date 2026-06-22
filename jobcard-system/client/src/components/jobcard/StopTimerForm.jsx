@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { api } from '../../services/api';
 import { capitalizeFirst } from '../../utils/formatters';
 import ToggleTiles from '../common/ToggleTiles';
+import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import './StopTimerForm.css';
 
 export default function StopTimerForm({
@@ -19,9 +20,21 @@ export default function StopTimerForm({
 }) {
   const [item, setItem] = useState(null);
   const [machines, setMachines] = useState([]);
+  const [isCritical, setIsCritical] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
   const formRef = useRef(null);
   const firstInputRef = useRef(null);
+  const modalId = useId();
+
+  // Join the shared modal stack while open. This form opens on top of the job
+  // card (itself a dialog with its own Tab trap); registering here makes this the
+  // top-most layer, so the job card behind stops grabbing Tab and focus stays in
+  // this form. Without it, Tab between these fields gets yanked back to the card.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    pushModal(modalId);
+    return () => removeModal(modalId);
+  }, [isOpen, modalId]);
 
   useEffect(() => {
     if (!isOpen || !jobCard?.id) return;
@@ -34,9 +47,12 @@ export default function StopTimerForm({
       const target = itemNumber != null ? Number(itemNumber) : null;
       const matched = target != null ? items.find(i => i.itemNumber === target) : null;
       setItem(matched || null);
+      // Only Critical jobs get the extra inspection checklist.
+      setIsCritical(String(jobcardRes?.qualityLevel || '').toUpperCase() === 'CRITICAL');
       setMachines((machinesRes || []).filter(m => m.active !== 0 && m.active !== false));
     }).catch(() => {
       setItem(null);
+      setIsCritical(false);
       setMachines([]);
     }).finally(() => {
       setDataLoading(false);
@@ -50,6 +66,9 @@ export default function StopTimerForm({
   }, [isOpen, dataLoading]);
 
   const handleKeyDown = useCallback((e) => {
+    // Only the top-most dialog reacts to global keys (a confirmation layered over
+    // this form should win), matching how the other dialogs behave.
+    if (!isTopModal(modalId)) return;
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
@@ -68,7 +87,7 @@ export default function StopTimerForm({
         first.focus();
       }
     }
-  }, []);
+  }, [modalId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -78,8 +97,19 @@ export default function StopTimerForm({
 
   if (!isOpen) return null;
 
+  // The four Yes/No inspection checks shown on Critical jobs. Equipment Checks also
+  // carries an optional comments box.
+  const INSPECTION_ITEMS = [
+    { field: 'firstOffInspection', label: 'First-Off Inspection' },
+    { field: 'inProcessValidation', label: 'In-Process Validation' },
+    { field: 'measuringEquipmentVerification', label: 'Measuring Equipment Verification' },
+    { field: 'equipmentChecks', label: 'Equipment Checks', comments: true }
+  ];
+
   const hasDescription = entryForm.description && String(entryForm.description).trim() !== '';
-  const canSubmit = hasDescription;
+  const inspectionComplete = !isCritical ||
+    INSPECTION_ITEMS.every(i => entryForm[i.field] === true || entryForm[i.field] === false);
+  const canSubmit = hasDescription && inspectionComplete;
 
   const handleDescriptionBlur = (e) => {
     const formatted = capitalizeFirst(e.target.value);
@@ -147,18 +177,72 @@ export default function StopTimerForm({
                 </div>
 
                 <div className="stf-item-field stf-qty-field">
-                  <label>Scrap Pieces</label>
+                  <label>Scrap — Bin</label>
                   <input
                     type="text"
                     inputMode="numeric"
                     placeholder="0"
-                    value={entryForm.scrapQty || ''}
-                    onChange={(e) => onFieldChange('scrapQty', e.target.value)}
+                    value={entryForm.scrapBinQty || ''}
+                    onChange={(e) => onFieldChange('scrapBinQty', e.target.value)}
                     className="stf-qty-input"
                   />
-                  <span className="stf-qty-hint">pieces scrapped</span>
+                  <span className="stf-qty-hint">pieces binned</span>
+                </div>
+
+                <div className="stf-item-field stf-qty-field">
+                  <label>Scrap — Recycle</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={entryForm.scrapRecycleQty || ''}
+                    onChange={(e) => onFieldChange('scrapRecycleQty', e.target.value)}
+                    className="stf-qty-input"
+                  />
+                  <span className="stf-qty-hint">pieces recycled</span>
                 </div>
               </div>
+
+              {isCritical && (
+                <div className="stf-inspection">
+                  <div className="stf-inspection-head">
+                    <span className="stf-inspection-title">Critical Job — Inspection Checks</span>
+                    <span className="required">all required</span>
+                  </div>
+                  {INSPECTION_ITEMS.map(({ field, label, comments }) => (
+                    <div key={field} className="stf-check-row">
+                      <span className="stf-check-label">{label} <span className="required">*</span></span>
+                      <div className="stf-yesno" role="group" aria-label={label}>
+                        <button
+                          type="button"
+                          className={`stf-yesno-btn${entryForm[field] === true ? ' is-yes' : ''}`}
+                          aria-pressed={entryForm[field] === true}
+                          onClick={() => onFieldChange(field, true)}
+                        >
+                          Yes
+                        </button>
+                        <button
+                          type="button"
+                          className={`stf-yesno-btn${entryForm[field] === false ? ' is-no' : ''}`}
+                          aria-pressed={entryForm[field] === false}
+                          onClick={() => onFieldChange(field, false)}
+                        >
+                          No
+                        </button>
+                      </div>
+                      {comments && (
+                        <input
+                          type="text"
+                          className="stf-check-comments"
+                          placeholder="Comments (optional)"
+                          value={entryForm.equipmentChecksComments || ''}
+                          onChange={(e) => onFieldChange('equipmentChecksComments', e.target.value)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {machines.length > 0 && (
                 <div className="stf-item-field">
@@ -190,7 +274,11 @@ export default function StopTimerForm({
 
             <div className="stop-timer-actions">
               {!canSubmit && !loading && (
-                <span className="stop-timer-hint">Add a description of what you worked on to finish.</span>
+                <span className="stop-timer-hint">
+                  {!hasDescription
+                    ? 'Add a description of what you worked on to finish.'
+                    : 'Answer all the inspection checks to finish.'}
+                </span>
               )}
               <button
                 type="submit"

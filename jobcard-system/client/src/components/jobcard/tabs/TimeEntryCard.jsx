@@ -54,10 +54,20 @@ export default function TimeEntryCard({
   const qtyNum = rawQty === '' ? null : parseFloat(rawQty);
   const showQty = qtyNum !== null && Number.isFinite(qtyNum);
 
-  const rawScrap = entry.scrapQty != null ? String(entry.scrapQty).trim() : '';
-  const scrapNum = rawScrap === '' ? null : parseFloat(rawScrap);
+  const scrapBin = Number(entry.scrapBinQty) || 0;
+  const scrapRecycle = Number(entry.scrapRecycleQty) || 0;
   const showScrap = !isActive;
   const goodNum = qtyNum !== null && Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 0;
+
+  // A finished block on a Critical job carries the inspection checklist answers.
+  const inspectionChecks = [
+    { label: 'First-off', value: entry.firstOffInspection },
+    { label: 'In-process', value: entry.inProcessValidation },
+    { label: 'Measuring equip.', value: entry.measuringEquipmentVerification },
+    { label: 'Equipment', value: entry.equipmentChecks }
+  ];
+  const hasInspection = !isActive && inspectionChecks.some(c => c.value === true || c.value === false);
+  const equipmentComments = entry.equipmentChecksComments ? String(entry.equipmentChecksComments).trim() : '';
   const showCumulative =
     showQty && qtyNum > 0 && target != null && Number.isFinite(cumulativeAfter);
   const noteText = entry.description ? entry.description.trim() : '';
@@ -133,7 +143,7 @@ export default function TimeEntryCard({
                   )}
                 </div>
               )}
-              {showScrap && <ScrapStat scrap={scrapNum} good={goodNum} />}
+              {showScrap && <ScrapStat bin={scrapBin} recycle={scrapRecycle} good={goodNum} />}
             </div>
           )}
 
@@ -207,6 +217,23 @@ export default function TimeEntryCard({
           ) : (
             <p className="te-no-note">No comment left</p>
           )
+        )}
+
+        {hasInspection && (
+          <div className="te-inspection">
+            {inspectionChecks.map(({ label, value }) => (
+              <span
+                key={label}
+                className={`te-insp-chip${value === true ? ' te-insp-chip--yes' : value === false ? ' te-insp-chip--no' : ' te-insp-chip--na'}`}
+              >
+                <span className="te-insp-name">{label}</span>
+                <span className="te-insp-val">{value === true ? 'Yes' : value === false ? 'No' : '—'}</span>
+              </span>
+            ))}
+            {equipmentComments && (
+              <span className="te-insp-comments">Equipment: {equipmentComments}</span>
+            )}
+          </div>
         )}
       </div>
     </div>

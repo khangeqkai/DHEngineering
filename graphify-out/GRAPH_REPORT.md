@@ -1,11 +1,11 @@
 # Graph Report - DHEngineering  (2026-06-22)
 
 ## Corpus Check
-- 141 files · ~112,970 words
+- 141 files · ~115,181 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 748 nodes · 1120 edges · 34 communities detected
+- 754 nodes · 1141 edges · 33 communities detected
 - Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 101 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
@@ -43,7 +43,6 @@
 - [[_COMMUNITY_Community 34|Community 34]]
 - [[_COMMUNITY_Community 35|Community 35]]
 - [[_COMMUNITY_Community 36|Community 36]]
-- [[_COMMUNITY_Community 37|Community 37]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `ApiService` - 127 edges
@@ -81,15 +80,15 @@ Nodes (46): buildStorageFilename(), listCategoryFileNames(), listFolderFiles(), 
 
 ### Community 2 - "Community 2"
 Cohesion: 0.06
-Nodes (23): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), useConfirmDialog(), invalidateTagCache(), useTags(), formatFileDate() (+15 more)
+Nodes (25): ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), UserManagement(), useConfirmDialog(), invalidateTagCache(), useTags() (+17 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.07
-Nodes (28): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), UserManagement() (+20 more)
+Cohesion: 0.06
+Nodes (17): CalendarPicker(), toDateString(), isTopModal(), pushModal(), removeModal(), JobFilesMenu(), JobPaperworkHub(), LineItemFilesMenu() (+9 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.06
-Nodes (13): JobFilesMenu(), JobPaperworkHub(), LineItemFilesMenu(), formatElapsed(), QuickActionPanel(), useCamera(), useItemFiles(), useJobFiles() (+5 more)
+Cohesion: 0.07
+Nodes (26): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), AuthProvider() (+18 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.08
@@ -97,11 +96,11 @@ Nodes (19): JobCardModal(), validateJobCardForm(), getDefaultCostingForm(), getD
 
 ### Community 6 - "Community 6"
 Cohesion: 0.08
-Nodes (11): getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), SearchPage(), StatusBadge(), useSearch(), formatDueDate() (+3 more)
+Nodes (20): getSettings(), peekNextJobNumber(), recordHistory(), checkInterruptedRestore(), ensureBuiltInStandardLevel(), initializeDatabase(), runMigrations(), autoAssignWorker() (+12 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.1
-Nodes (14): getSettings(), peekNextJobNumber(), recordHistory(), checkInterruptedRestore(), ensureBuiltInStandardLevel(), initializeDatabase(), runMigrations(), autoAssignWorker() (+6 more)
+Cohesion: 0.08
+Nodes (11): getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), SearchPage(), StatusBadge(), useSearch(), formatDueDate() (+3 more)
 
 ### Community 8 - "Community 8"
 Cohesion: 0.21
@@ -140,12 +139,12 @@ Cohesion: 0.28
 Nodes (5): parseTreatments(), itemSummary(), treatmentsToText(), itemSummary(), treatmentsToText()
 
 ### Community 18 - "Community 18"
-Cohesion: 0.31
-Nodes (5): buildMenu(), errorPage(), escapeHtml(), showMain(), showSetup()
+Cohesion: 0.22
+Nodes (1): base64ToBytes()
 
 ### Community 19 - "Community 19"
-Cohesion: 0.39
-Nodes (3): isTopModal(), pushModal(), removeModal()
+Cohesion: 0.31
+Nodes (5): buildMenu(), errorPage(), escapeHtml(), showMain(), showSetup()
 
 ### Community 20 - "Community 20"
 Cohesion: 0.32
@@ -197,13 +196,9 @@ Nodes (2): formatNum(), JobScrapSummary()
 
 ### Community 35 - "Community 35"
 Cohesion: 1.0
-Nodes (2): CalendarPicker(), toDateString()
-
-### Community 36 - "Community 36"
-Cohesion: 1.0
 Nodes (2): formatElapsed(), LineItemTimerButton()
 
-### Community 37 - "Community 37"
+### Community 36 - "Community 36"
 Cohesion: 1.0
 Nodes (2): formatNum(), ScrapStat()
 
@@ -213,6 +208,8 @@ Nodes (2): formatNum(), ScrapStat()
 - **Thin community `Community 10`** (14 nodes): `hardware.js`, `HardwareService`, `.capturePhoto()`, `.checkElectron()`, `.closeCamera()`, `.constructor()`, `.getAppInfo()`, `.getCameras()`, `.getPrinters()`, `.getScanners()`, `.openCamera()`, `.print()`, `.printToPDF()`, `.scan()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 12`** (11 nodes): `Waves.jsx`, `Grad`, `.constructor()`, `.dot2()`, `Noise`, `.constructor()`, `.fade()`, `.lerp()`, `.perlin2()`, `.seed()`, `Waves()`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 18`** (9 nodes): `usePacketPrint.js`, `api.js`, `downloadBytes()`, `isDesktop()`, `printHtmlInIframe()`, `printPdfInIframe()`, `reportSkipped()`, `showPdfInBrowser()`, `base64ToBytes()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 21`** (8 nodes): `camelToSnake()`, `convertKeysToCamel()`, `copyDirRecursive()`, `getTableColumns()`, `listFilesRecursive()`, `snakeToCamel()`, `verifyStagedFiles()`, `settings.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -224,18 +221,18 @@ Nodes (2): formatNum(), ScrapStat()
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 34`** (4 nodes): `JobScrapSummary.jsx`, `formatNum()`, `JobScrapSummary()`, `parseQty()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 35`** (3 nodes): `CalendarPicker.jsx`, `CalendarPicker()`, `toDateString()`
+- **Thin community `Community 35`** (3 nodes): `LineItemTimerButton.jsx`, `formatElapsed()`, `LineItemTimerButton()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 36`** (3 nodes): `LineItemTimerButton.jsx`, `formatElapsed()`, `LineItemTimerButton()`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 37`** (3 nodes): `ScrapStat.jsx`, `formatNum()`, `ScrapStat()`
+- **Thin community `Community 36`** (3 nodes): `ScrapStat.jsx`, `formatNum()`, `ScrapStat()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ApiService` connect `Community 0` to `Community 4`?**
-  _High betweenness centrality (0.131) - this node is a cross-community bridge._
+- **Why does `ApiService` connect `Community 0` to `Community 18`?**
+  _High betweenness centrality (0.136) - this node is a cross-community bridge._
+- **Why does `usePacketPrint()` connect `Community 3` to `Community 18`?**
+  _High betweenness centrality (0.116) - this node is a cross-community bridge._
 - **Are the 11 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 11 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 9 inferred relationships involving `isWithinBase()` (e.g. with `resolveJobFolder()` and `resolveCategoryFolder()`) actually correct?**
@@ -246,5 +243,3 @@ _Questions this graph is uniquely positioned to answer:_
   _`sanitizeFolderName()` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.03 - nodes in this community are weakly interconnected._
-- **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.09 - nodes in this community are weakly interconnected._

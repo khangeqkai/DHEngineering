@@ -19,7 +19,8 @@ function computeProgress(entries, targetQty) {
   let scrapTotal = 0;
   for (const e of oldestFirst) {
     running += parseQty(e.qty);
-    scrapTotal += parseQty(e.scrapQty);
+    // Total scrap for the line = pieces binned + pieces recycled, across every session.
+    scrapTotal += parseQty(e.scrapBinQty) + parseQty(e.scrapRecycleQty);
     cumulativeMap.set(e.id, running);
   }
   const completedQty = running;

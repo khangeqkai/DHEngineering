@@ -3,7 +3,19 @@ import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
-const emptyEntryForm = () => ({ qty: '', scrapQty: '', machineNumbers: [], description: '' });
+const emptyEntryForm = () => ({
+  qty: '',
+  scrapBinQty: '',
+  scrapRecycleQty: '',
+  machineNumbers: [],
+  description: '',
+  // Critical-job inspection checklist (null = unanswered until the worker taps Yes/No)
+  firstOffInspection: null,
+  inProcessValidation: null,
+  measuringEquipmentVerification: null,
+  equipmentChecks: null,
+  equipmentChecksComments: ''
+});
 
 export function useTimer(jobcardId, { onExternalStop } = {}) {
   const { registerBeforeLogout } = useAuth();
@@ -194,7 +206,8 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     if (!hasDescription) return;
 
     const qty = String(entryForm.qty || '0').trim() || '0';
-    const scrapQty = Math.max(0, parseInt(entryForm.scrapQty, 10) || 0);
+    const scrapBinQty = Math.max(0, parseInt(entryForm.scrapBinQty, 10) || 0);
+    const scrapRecycleQty = Math.max(0, parseInt(entryForm.scrapRecycleQty, 10) || 0);
     const machines = (entryForm.machineNumbers || []).join(', ');
     const description = (entryForm.description || '').trim();
 
@@ -205,9 +218,17 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
       await api.updateTimeEntry(entryJobcardId, stoppedEntry.id, {
         ...stoppedEntry,
         qty,
-        scrapQty,
+        scrapBinQty,
+        scrapRecycleQty,
         machineNumber: machines,
-        description
+        description,
+        // Inspection answers ride along; the server stores them only on Critical jobs
+        // and requires all four there before it will save.
+        firstOffInspection: entryForm.firstOffInspection,
+        inProcessValidation: entryForm.inProcessValidation,
+        measuringEquipmentVerification: entryForm.measuringEquipmentVerification,
+        equipmentChecks: entryForm.equipmentChecks,
+        equipmentChecksComments: (entryForm.equipmentChecksComments || '').trim()
       });
 
       setShowEntryForm(false);

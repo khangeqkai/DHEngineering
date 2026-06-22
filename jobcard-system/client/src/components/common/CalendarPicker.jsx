@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
+import { pushModal, removeModal, isTopModal } from './modalStack';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
@@ -19,6 +20,7 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose }) {
   const [viewYear, setViewYear] = useState(initial.getFullYear());
   const [viewMonth, setViewMonth] = useState(initial.getMonth());
   const calendarRef = useRef(null);
+  const modalId = useId();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -27,12 +29,22 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose }) {
     setViewMonth(d.getMonth());
   }, [isOpen, value]);
 
+  // Join the shared modal stack while open. This calendar opens on top of the job
+  // card dialog; registering makes it the top-most layer so the card behind stops
+  // trapping Tab and stops closing on Escape meant for the calendar.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    pushModal(modalId);
+    return () => removeModal(modalId);
+  }, [isOpen, modalId]);
+
   useEffect(() => {
     if (!isOpen) return;
 
     calendarRef.current?.focus();
 
     const handleKeyDown = (e) => {
+      if (!isTopModal(modalId)) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
@@ -55,7 +67,7 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose }) {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, modalId]);
 
   if (!isOpen) return null;
 

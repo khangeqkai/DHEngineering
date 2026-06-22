@@ -167,7 +167,16 @@ db.exec(`
     description TEXT,
     start_time TEXT NOT NULL,
     end_time TEXT,
-    scrap_qty INTEGER DEFAULT 0,
+    -- Scrap is split into two destinations: pieces binned vs pieces sent to recycling.
+    scrap_bin_qty INTEGER DEFAULT 0,
+    scrap_recycle_qty INTEGER DEFAULT 0,
+    -- Critical-job inspection checklist. 1 = yes, 0 = no, NULL = not applicable
+    -- (job isn't on the Critical quality level, so the worker was never asked).
+    first_off_inspection INTEGER,
+    in_process_validation INTEGER,
+    measuring_equipment_verification INTEGER,
+    equipment_checks INTEGER,
+    equipment_checks_comments TEXT,
 
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -350,7 +359,13 @@ const migrations = [
   { table: 'users', column: 'session_token', type: 'TEXT' },
   { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
   { table: 'time_entries', column: 'is_special_labour', type: 'INTEGER DEFAULT 0' },
-  { table: 'time_entries', column: 'scrap_qty', type: 'INTEGER DEFAULT 0' },
+  { table: 'time_entries', column: 'scrap_bin_qty', type: 'INTEGER DEFAULT 0' },
+  { table: 'time_entries', column: 'scrap_recycle_qty', type: 'INTEGER DEFAULT 0' },
+  { table: 'time_entries', column: 'first_off_inspection', type: 'INTEGER' },
+  { table: 'time_entries', column: 'in_process_validation', type: 'INTEGER' },
+  { table: 'time_entries', column: 'measuring_equipment_verification', type: 'INTEGER' },
+  { table: 'time_entries', column: 'equipment_checks', type: 'INTEGER' },
+  { table: 'time_entries', column: 'equipment_checks_comments', type: 'TEXT' },
   { table: 'time_entries', column: 'item_id', type: 'TEXT' },
   { table: 'job_items', column: 'material', type: 'TEXT' },
   { table: 'job_items', column: 'job_type', type: 'TEXT' },
@@ -420,15 +435,17 @@ try {
   logger.error({ err }, 'Migration: Failed to drop qa_forms/documents tables');
 }
 
-// Drop legacy QA columns from time_entries (QA workflow moved to paper forms)
+// Drop superseded time_entries columns: the old single scrap count (now split into
+// bin + recycle) and stale notes/flags from an earlier inspection design. The
+// current inspection columns (first_off_inspection, in_process_validation, etc.) are
+// deliberately NOT listed here — they're live again for the Critical-job checklist.
 try {
   const teCols = db.prepare('PRAGMA table_info(time_entries)').all();
   const deadCols = [
+    'scrap_qty',
     'equipment_checks_done',
     'measuring_verification_done',
-    'first_off_inspection',
     'first_off_inspection_notes',
-    'in_process_validation',
     'in_process_validation_notes',
     'scrap_all_good',
     'scrap_recycle_inhouse_qty',

@@ -242,6 +242,7 @@ export default function DetailsTab({
         machines={machines}
         employees={employees}
         isAdmin={isAdmin && isEdit}
+        isCritical={String(formData.qualityLevel || '').toUpperCase() === 'CRITICAL'}
         showTimeEntryForm={showTimeEntryForm}
         editingTimeEntryId={editingTimeEntryId}
         timeEntryForm={timeEntryForm}
