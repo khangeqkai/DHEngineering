@@ -72,11 +72,16 @@ const CSS = `
   .sign .slot { width:150px; }
   .sign .ln { border-bottom:1px solid var(--ink); height:26px; }
   .sign .cap { font-size:7.5pt; letter-spacing:.5px; margin-top:3px; }
-  /* Zero page margin leaves the browser no room for its own date/URL/page-number
-     band, so it omits headers & footers by default. The sheet supplies the real
-     margin via its own padding instead. */
-  @page { size:A4 portrait; margin:0; }
-  @media print { .sheet { padding:12mm; } }
+  /* A real page margin so EVERY printed page keeps a clean border — not just the
+     first and last. (Putting the margin in .sheet padding instead only spaces the
+     very top and bottom of the whole document, so a multi-page card runs its
+     continuation pages right off the paper edge.) The card is rendered to PDF
+     server-side with page headers/footers turned off, so there's no browser
+     date/URL band to leave room for. The on-screen preview keeps .sheet padding
+     since @page margins don't apply on screen; print zeroes that padding so the
+     page margin isn't doubled. */
+  @page { size:A4 portrait; margin:12mm; }
+  @media print { .sheet { padding:0; } }
 `;
 
 function renderItem(it) {
