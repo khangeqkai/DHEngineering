@@ -14,18 +14,23 @@ function reportSkipped(skipped) {
   }
 }
 
-// Web-only: print a PDF byte array via a hidden iframe.
-function printPdfInIframe(bytes) {
+// Web-only: show the built PDF in a real browser tab the user can view and print
+// from. We point a tab that was opened during the click (see printPacket) at the
+// PDF. A hidden zero-size frame is unreliable — browsers often refuse to run their
+// PDF viewer (and print()) inside one, failing with nothing shown. If the browser
+// blocked the tab anyway, fall back to downloading the file so the user always
+// gets the packet rather than a silent no-op.
+function showPdfInBrowser(win, bytes, filename) {
   const blob = new Blob([bytes], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
-  const iframe = document.createElement('iframe');
-  Object.assign(iframe.style, { position: 'fixed', right: '0', bottom: '0', width: '0', height: '0', border: '0' });
-  iframe.src = url;
-  iframe.onload = () => {
-    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch { /* blocked */ }
-    setTimeout(() => { iframe.remove(); URL.revokeObjectURL(url); }, 60000);
-  };
-  document.body.appendChild(iframe);
+  if (win && !win.closed) {
+    win.location = url;
+  } else {
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    toast('Pop-up blocked — the packet was downloaded instead', { icon: 'ℹ️', duration: 6000 });
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 function downloadBytes(bytes, filename) {
@@ -46,6 +51,13 @@ export function usePacketPrint(jobcardId, jobNumber) {
 
   const printPacket = useCallback(async ({ items, includeJobCard }) => {
     if (items.length === 0 && includeJobCard === false) { toast.error('Nothing to print'); return; }
+    // On the web build, open the viewer tab NOW, during the user's click, so the
+    // browser treats it as user-initiated and doesn't block it. We point it at the
+    // PDF once the packet is built (the build round-trip would otherwise lose the
+    // click's "user gesture" and the tab would be blocked). The desktop app uses
+    // its own viewer instead, so it opens no tab.
+    const onWeb = !window.electronAPI?.openPdf;
+    const win = onWeb ? window.open('', '_blank') : null;
     setBuilding(true);
     try {
       const { pdf, skipped } = await build({ items, includeJobCard });
@@ -56,11 +68,14 @@ export function usePacketPrint(jobcardId, jobNumber) {
           if (r && r.success === false) { toast.error(r.failureReason || 'Failed to open the packet'); return; }
           toast.success('Opening print preview…');
         } else {
-          printPdfInIframe(bytes);
+          showPdfInBrowser(win, bytes, `${jobNumber || 'Job'} packet.pdf`);
         }
+      } else if (win && !win.closed) {
+        win.close();
       }
       reportSkipped(skipped);
     } catch (err) {
+      if (win && !win.closed) win.close();
       toast.error(err.message || 'Failed to print the packet');
     } finally {
       setBuilding(false);

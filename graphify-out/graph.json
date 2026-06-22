@@ -1462,19 +1462,19 @@
       "norm_label": "reportskipped()"
     },
     {
-      "label": "printPdfInIframe()",
+      "label": "showPdfInBrowser()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/usePacketPrint.js",
-      "source_location": "L18",
-      "id": "jobcard_usepacketprint_printpdfiniframe",
+      "source_location": "L23",
+      "id": "jobcard_usepacketprint_showpdfinbrowser",
       "community": 4,
-      "norm_label": "printpdfiniframe()"
+      "norm_label": "showpdfinbrowser()"
     },
     {
       "label": "downloadBytes()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/usePacketPrint.js",
-      "source_location": "L31",
+      "source_location": "L36",
       "id": "jobcard_usepacketprint_downloadbytes",
       "community": 4,
       "norm_label": "downloadbytes()"
@@ -1483,7 +1483,7 @@
       "label": "usePacketPrint()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/usePacketPrint.js",
-      "source_location": "L39",
+      "source_location": "L44",
       "id": "jobcard_usepacketprint_usepacketprint",
       "community": 4,
       "norm_label": "usepacketprint()"
@@ -5375,6 +5375,15 @@
       "id": "utils_pdfpacket_buildpacketpdf",
       "community": 33,
       "norm_label": "buildpacketpdf()"
+    },
+    {
+      "label": "printPdfInIframe()",
+      "file_type": "code",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L18",
+      "community": 4,
+      "norm_label": "printpdfiniframe()",
+      "id": "jobcard_usepacketprint_printpdfiniframe"
     },
     {
       "label": "recordAutoStatus()",
@@ -9511,11 +9520,11 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "client/src/components/jobcard/usePacketPrint.js",
-      "source_location": "L31",
+      "source_location": "L23",
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "client_src_components_jobcard_usepacketprint_js",
-      "target": "jobcard_usepacketprint_printpdfiniframe"
+      "target": "jobcard_usepacketprint_showpdfinbrowser"
     },
     {
       "relation": "contains",
@@ -9536,6 +9545,16 @@
       "confidence_score": 1.0,
       "source": "client_src_components_jobcard_usepacketprint_js",
       "target": "jobcard_usepacketprint_usepacketprint"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/jobcard/usePacketPrint.js",
+      "source_location": "L31",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_jobcard_usepacketprint_js",
+      "target": "jobcard_usepacketprint_printpdfiniframe"
     },
     {
       "relation": "contains",

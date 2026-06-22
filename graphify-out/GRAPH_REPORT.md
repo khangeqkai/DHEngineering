@@ -1,11 +1,11 @@
 # Graph Report - DHEngineering  (2026-06-22)
 
 ## Corpus Check
-- 141 files · ~112,467 words
+- 141 files · ~112,638 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 747 nodes · 1119 edges · 34 communities detected
+- 748 nodes · 1120 edges · 34 communities detected
 - Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 101 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
@@ -88,7 +88,7 @@ Cohesion: 0.07
 Nodes (28): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), UserManagement() (+20 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.07
+Cohesion: 0.06
 Nodes (13): JobFilesMenu(), JobPaperworkHub(), LineItemFilesMenu(), formatElapsed(), QuickActionPanel(), useCamera(), useItemFiles(), useJobFiles() (+5 more)
 
 ### Community 5 - "Community 5"
