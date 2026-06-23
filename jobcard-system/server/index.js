@@ -23,6 +23,7 @@ const qaLevelsRoutes = require('./src/routes/qa-levels');
 const searchRoutes = require('./src/routes/search');
 const { initializeDatabase } = require('./src/db/init');
 const { maintenanceGuard } = require('./src/middleware/maintenance');
+const { verifyPdfEngine, getPdfEngineStatus } = require('./src/utils/pdfEngine');
 
 const app = express();
 
@@ -39,7 +40,8 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    version: require('./package.json').version
+    version: require('./package.json').version,
+    pdfEngine: getPdfEngineStatus()
   });
 });
 
@@ -103,6 +105,12 @@ async function start() {
       });
       server.on('error', reject);
     });
+
+    // Confirm the PDF-rendering browser is usable, after the server is listening so
+    // this never delays or blocks startup. Fire-and-forget: a missing browser logs a
+    // loud, fixable message and flips /health to "unavailable" but never stops the
+    // server (printing still degrades gracefully).
+    verifyPdfEngine().catch(() => {});
   } catch (err) {
     logger.fatal({ err }, 'Failed to start server');
     throw err;

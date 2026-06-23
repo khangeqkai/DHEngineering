@@ -113,7 +113,10 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
         cardBuf = await renderHtmlToPdf(renderJobCardHtml(view));
       } catch (cardErr) {
         logger.error({ err: cardErr }, 'Packet: job card render failed');
-        skipped.push({ name: 'Job Card', reason: 'render' });
+        // Tell "the PDF engine isn't installed/usable" apart from "this card just
+        // failed to draw", so the client can show a specific, fixable message.
+        const reason = cardErr.code === 'PDF_ENGINE_UNAVAILABLE' ? 'engine' : 'render';
+        skipped.push({ name: 'Job Card', reason });
       }
     }
 

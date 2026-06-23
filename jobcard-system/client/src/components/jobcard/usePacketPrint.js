@@ -8,8 +8,17 @@ import { api, base64ToBytes } from '../../services/api';
 // The PC only sends the small list of files to include plus "include the card?".
 
 function reportSkipped(skipped) {
-  if (skipped && skipped.length) {
-    const names = skipped.map(s => s.name).join(', ');
+  if (!skipped || !skipped.length) return;
+  // The job card being dropped because the PDF engine couldn't start is a real,
+  // fixable problem — call it out specifically rather than burying it among files
+  // that simply couldn't be read.
+  if (skipped.some(s => s.reason === 'engine')) {
+    toast('Couldn’t start the PDF engine — the job card was left out of the packet. Ask an admin to set it up.',
+      { icon: '⚠️', duration: 8000 });
+  }
+  const others = skipped.filter(s => s.reason !== 'engine');
+  if (others.length) {
+    const names = others.map(s => s.name).join(', ');
     toast(`Left out of the packet (couldn't be added): ${names}`, { icon: '⚠️', duration: 6000 });
   }
 }

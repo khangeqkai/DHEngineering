@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Bundled PDF-rendering browser (pinned into the project by server/.puppeteerrc.cjs).
+# Large and OS-specific — each machine downloads its own; never commit it.
+server/.chrome/
+
 # Build outputs
 dist/
 build/

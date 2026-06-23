@@ -106,7 +106,11 @@ async function renderWithPuppeteer(html) {
     ({ browser, promise: mine } = await getBrowser());
   } catch (err) {
     logger.error({ err }, 'Failed to launch headless browser for PDF rendering');
-    throw new Error('PDF engine unavailable on this server');
+    // Tag with a stable code so callers can tell "engine couldn't start" from a
+    // later render failure without matching on this message's wording.
+    const launchErr = new Error('PDF engine unavailable on this server');
+    launchErr.code = 'PDF_ENGINE_UNAVAILABLE';
+    throw launchErr;
   }
   let page;
   try {
@@ -135,4 +139,15 @@ async function renderHtmlToPdf(html) {
   return inElectron() ? renderWithElectron(html) : renderWithPuppeteer(html);
 }
 
-module.exports = { renderHtmlToPdf };
+// Start (and cache/warm) the headless browser without rendering anything, so the
+// server can confirm at startup that the PDF engine is actually usable — and so the
+// first real print doesn't pay the launch cost. Reuses getBrowser() so the warmed
+// instance is the exact one renderWithPuppeteer will reuse. Throws if the browser
+// can't be launched (e.g. it was never downloaded). Only meaningful outside Electron
+// (the packaged app renders with its own built-in browser instead).
+async function probeBrowser() {
+  const { browser } = await getBrowser();
+  return browser.connected;
+}
+
+module.exports = { renderHtmlToPdf, probeBrowser, inElectron };

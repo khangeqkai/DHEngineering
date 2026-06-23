@@ -157,6 +157,14 @@ async function checkPdfBrowser() {
   const puppeteerPath = path.join(serverDir, 'node_modules', 'puppeteer');
   if (!fs.existsSync(puppeteerPath)) return 'OK (not yet installed)';
 
+  // Pin the browser to the project folder (server/.chrome), matching
+  // server/.puppeteerrc.cjs. setup.js runs from the repo root, so the runtime's
+  // config file (resolved from server/'s cwd) wouldn't apply here — without this the
+  // check below would look in the default per-user cache while the install writes to
+  // the pinned folder, and they'd disagree. Setting the env makes both the
+  // resolution and the install (which inherits this env) agree on server/.chrome.
+  process.env.PUPPETEER_CACHE_DIR = path.join(serverDir, '.chrome');
+
   let execPath = null;
   try {
     const puppeteer = require(puppeteerPath);
