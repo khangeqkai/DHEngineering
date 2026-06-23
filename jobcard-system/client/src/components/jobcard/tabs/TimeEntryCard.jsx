@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MoreVertical, Pencil, Trash2, Check } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, Check, ChevronDown } from 'lucide-react';
 import ScrapStat from './ScrapStat';
 
 function formatElapsed(seconds) {
@@ -67,7 +67,12 @@ export default function TimeEntryCard({
     { label: 'Equipment', value: entry.equipmentChecks }
   ];
   const hasInspection = !isActive && inspectionChecks.some(c => c.value === true || c.value === false);
+  const inspectionTotal = inspectionChecks.length;
+  const inspectionYesCount = inspectionChecks.filter(c => c.value === true).length;
+  const inspectionNoCount = inspectionChecks.filter(c => c.value === false).length;
+  const inspectionAllPass = inspectionNoCount === 0;
   const equipmentComments = entry.equipmentChecksComments ? String(entry.equipmentChecksComments).trim() : '';
+  const [inspectionOpen, setInspectionOpen] = useState(false);
   const showCumulative =
     showQty && qtyNum > 0 && target != null && Number.isFinite(cumulativeAfter);
   const noteText = entry.description ? entry.description.trim() : '';
@@ -206,21 +211,40 @@ export default function TimeEntryCard({
       </div>
 
       <div className="te-body">
-        {noteText ? (
-          <figure className="te-item-note">
-            <span className="te-item-note-mark" aria-hidden="true">&ldquo;</span>
-            <blockquote className="te-item-note-text">{noteText}</blockquote>
-          </figure>
-        ) : (
-          isActive ? (
-            <p className="te-active-hint">In progress…</p>
+        <div className={`te-body-head${hasInspection && inspectionOpen ? ' is-open' : ''}`}>
+          {noteText ? (
+            <figure className="te-item-note">
+              <span className="te-item-note-mark" aria-hidden="true">&ldquo;</span>
+              <blockquote className="te-item-note-text">{noteText}</blockquote>
+            </figure>
           ) : (
-            <p className="te-no-note">No comment left</p>
-          )
-        )}
+            isActive ? (
+              <p className="te-active-hint">In progress…</p>
+            ) : (
+              <p className="te-no-note">No comment left</p>
+            )
+          )}
 
-        {hasInspection && (
-          <div className="te-inspection">
+          {hasInspection && (
+            <button
+              type="button"
+              className="te-insp-toggle"
+              aria-expanded={inspectionOpen}
+              onClick={() => setInspectionOpen((o) => !o)}
+            >
+              <ChevronDown size={14} className="te-insp-caret" />
+              <span className="te-insp-toggle-label">Inspection</span>
+              <span className={`te-insp-status${inspectionAllPass ? ' te-insp-status--pass' : ' te-insp-status--flag'}`}>
+                {inspectionAllPass
+                  ? `${inspectionYesCount} of ${inspectionTotal} passed`
+                  : `${inspectionNoCount} of ${inspectionTotal} flagged`}
+              </span>
+            </button>
+          )}
+        </div>
+
+        {hasInspection && inspectionOpen && (
+          <div className="te-insp-detail">
             {inspectionChecks.map(({ label, value }) => (
               <span
                 key={label}

@@ -646,6 +646,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         isOpen={timer.showEntryForm}
         jobCard={timer.stoppedEntryJobCard || (jobCardId ? { id: jobCardId, jobNumber: formHook.jobNumber } : null)}
         itemNumber={timer.stoppedEntry?.itemNumber}
+        stoppedEntry={timer.stoppedEntry}
         entryForm={timer.entryForm}
         onFieldChange={timer.handleEntryFieldChange}
         onMachineToggle={timer.handleEntryMachineToggle}

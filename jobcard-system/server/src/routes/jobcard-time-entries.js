@@ -20,6 +20,10 @@ const {
 
 const router = express.Router();
 
+// A timer that ran for less than this is treated as an accidental start/stop tap:
+// the block is discarded rather than logged, and the client skips the stop form.
+const MIN_LOGGED_MS = 15 * 1000;
+
 // Get user's active timer across all jobs
 router.get('/active-timer', authenticate, (req, res) => {
   try {
@@ -164,6 +168,19 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
 
     if (existing.end_time) {
       return res.status(400).json({ error: 'Timer already stopped' });
+    }
+
+    // Accidental tap guard: a run shorter than the minimum is discarded instead of
+    // logged. The block is removed and the client is told to skip the stop form.
+    const ranMs = Date.now() - new Date(existing.start_time).getTime();
+    if (Number.isFinite(ranMs) && ranMs < MIN_LOGGED_MS) {
+      timeEntryQueries.delete.run(entryId);
+      const statusChange = syncStatusToWork(id, req.user);
+      recordHistory('jobcard', id, 'discard_timer', req.user.userId, req.user.name || req.user.username, {
+        timer: { from: 'running', to: 'discarded (under 15s)' },
+        ...(statusChange ? { status: statusChange } : {})
+      }, { timeEntryId: entryId, startTime: existing.start_time });
+      return res.json({ discarded: true });
     }
 
     const endTime = new Date().toISOString();

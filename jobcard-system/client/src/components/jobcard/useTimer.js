@@ -135,25 +135,32 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
               confirmVariant: 'primary'
             });
             if (shouldSwitch) {
-              if (onSameJob) {
-                selfStoppedRef.current = true;
-                const entry = await api.stopTimer(currentTimer.jobcardId, currentTimer.id);
-                setStoppedEntry(entry);
-                setActiveTimer(null);
-                setEntryForm(emptyEntryForm());
-                setShowEntryForm(true);
-                setPendingStartItem(itemNumber);
-              } else {
-                const entry = await api.stopTimer(currentTimer.jobcardId, currentTimer.id);
-                setStoppedEntry(entry);
+              selfStoppedRef.current = true;
+              const entry = await api.stopTimer(currentTimer.jobcardId, currentTimer.id);
+              setActiveTimer(null);
+              // If the old run was under 15s it's discarded — don't ask about it, just
+              // start the new timer straight away.
+              if (entry?.discarded) {
+                const result = await api.startTimer(jobcardId, itemNumber);
+                setActiveTimer({
+                  id: result.id,
+                  jobcardId: result.jobcardId,
+                  itemNumber: result.itemNumber,
+                  startTime: result.startTime
+                });
+                toast.success(`Timer started on item #${itemNumber}`);
+                return;
+              }
+              setStoppedEntry(entry);
+              if (!onSameJob) {
                 setStoppedEntryJobCard({
                   id: currentTimer.jobcardId,
                   jobNumber: currentTimer.jobNumber
                 });
-                setEntryForm(emptyEntryForm());
-                setShowEntryForm(true);
-                setPendingStartItem(itemNumber);
               }
+              setEntryForm(emptyEntryForm());
+              setShowEntryForm(true);
+              setPendingStartItem(itemNumber);
             }
           }
         } catch (innerErr) {
@@ -173,8 +180,13 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     try {
       selfStoppedRef.current = true;
       const entry = await api.stopTimer(jobcardId, activeTimer.id);
-      setStoppedEntry(entry);
       setActiveTimer(null);
+      // A run under 15s is discarded server-side — no block, no form, just a heads-up.
+      if (entry?.discarded) {
+        toast('Timer discarded — under 15 seconds', { icon: '🗑️' });
+        return;
+      }
+      setStoppedEntry(entry);
       setEntryForm(emptyEntryForm());
       setShowEntryForm(true);
       toast.success('Timer stopped');

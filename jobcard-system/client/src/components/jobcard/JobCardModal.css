@@ -1571,11 +1571,71 @@
 }
 
 /* Critical-job inspection results shown on a finished time entry */
-.te-inspection {
+/* The comment and the inspection summary share one row; the inspection toggle is
+   pushed to the far right and the note takes the remaining width. */
+.te-body-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.te-body-head > .te-item-note,
+.te-body-head > .te-active-hint,
+.te-body-head > .te-no-note {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Collapsed by default so a finished Critical block doesn't shout four chips at
+   once — a one-line summary you can expand for the full answers. */
+.te-insp-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.5rem 0.2rem 0.3rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.te-insp-toggle:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.te-insp-caret {
+  flex-shrink: 0;
+  transition: transform var(--duration-fast, 150ms) var(--ease-smooth, ease);
+  color: var(--text-tertiary);
+}
+
+.te-body-head.is-open .te-insp-caret {
+  transform: rotate(180deg);
+}
+
+.te-insp-toggle-label {
+  font-weight: var(--font-semibold);
+}
+
+.te-insp-status {
+  font-weight: var(--font-bold);
+  /* Fixed width so the control doesn't resize between "passed" and "flagged". */
+  min-width: 6.5rem;
+}
+
+.te-insp-status--pass { color: var(--success, #16a34a); }
+.te-insp-status--flag { color: var(--badge-cancelled-text); }
+
+.te-insp-detail {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem 0.5rem;
-  margin-top: 0.5rem;
+  margin-top: 0.4rem;
 }
 
 .te-insp-chip {

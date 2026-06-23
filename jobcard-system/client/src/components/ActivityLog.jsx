@@ -41,6 +41,7 @@ export default function ActivityLog() {
       'delete_note': 'var(--accent-caution)',
       'start_timer': 'var(--accent-ready)',
       'stop_timer': 'var(--primary-accent)',
+      'discard_timer': 'var(--accent-caution)',
       'add_time_entry': 'var(--accent-ready)',
       'update_time_entry': 'var(--primary-accent)',
       'delete_time_entry': 'var(--accent-caution)'
