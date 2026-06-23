@@ -19,8 +19,26 @@ const logger = require('./logger');
 
 const PDF_OPTS = { pageSize: 'A4', printBackground: true, margins: { top: 0, bottom: 0, left: 0, right: 0 } };
 
+// Hard ceiling on a single Electron render. The card page is fully self-contained
+// (no external fetches, no scripts), so a real render finishes in well under a
+// second — this only ever trips if the built-in browser itself wedges. Matches the
+// Puppeteer path's built-in 30s step default so both paths give up at the same point.
+const RENDER_TIMEOUT_MS = 30000;
+
 function inElectron() {
   return !!process.versions.electron;
+}
+
+// Race a promise against a timer so a wedged step can't hang forever. Note: this
+// only stops us *waiting* — it doesn't cancel the underlying work. In the Electron
+// path the caller's finally destroys the hidden window, which is what actually frees
+// a stuck render.
+function withTimeout(promise, ms, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 // Path 1: Electron's off-screen window (used by the installed desktop app).
@@ -31,10 +49,15 @@ async function renderWithElectron(html) {
   try {
     await fs.promises.writeFile(tmpHtml, html, 'utf-8');
     win = new BrowserWindow({ show: false, webPreferences: { offscreen: false, sandbox: true } });
-    await win.loadFile(tmpHtml); // resolves on did-finish-load
-    // The card is fully self-contained; a small settle delay guards a first-layout race.
-    await new Promise(resolve => setTimeout(resolve, 150));
-    const pdf = await win.webContents.printToPDF(PDF_OPTS);
+    // Bound the load → settle → print sequence: if the browser wedges, give up after
+    // RENDER_TIMEOUT_MS instead of hanging forever. The throw lands in the finally
+    // below, which destroys the window (the thing that actually frees a stuck render).
+    const pdf = await withTimeout((async () => {
+      await win.loadFile(tmpHtml); // resolves on did-finish-load
+      // The card is fully self-contained; a small settle delay guards a first-layout race.
+      await new Promise(resolve => setTimeout(resolve, 150));
+      return win.webContents.printToPDF(PDF_OPTS);
+    })(), RENDER_TIMEOUT_MS, 'PDF render timed out');
     return Buffer.from(pdf);
   } finally {
     if (win) win.destroy();
