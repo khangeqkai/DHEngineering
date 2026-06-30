@@ -8,6 +8,8 @@
  *   logger.debug({ data }, 'Debug information');
  */
 
+const path = require('path');
+const fs = require('fs');
 const pino = require('pino');
 
 // Determine environment
@@ -27,11 +29,15 @@ const options = {
   }
 };
 
-// In development, use pino-pretty for readable output
-// In production, use JSON format for log aggregation
-let transport;
+// Create the logger instance.
+// - Development runs with a real console, so pretty-print to stdout.
+// - Production (including the packaged desktop app, which is launched from the
+//   GUI with no attached console) must NOT write to stdout: that throws EBADF
+//   and crashes the process. Write JSON logs to a file under the data
+//   directory instead, and never let a logging error take the app down.
+let logger;
 if (isDevelopment) {
-  transport = {
+  logger = pino(options, pino.transport({
     target: 'pino-pretty',
     options: {
       colorize: true,
@@ -39,11 +45,26 @@ if (isDevelopment) {
       ignore: 'pid,hostname,app',
       singleLine: false
     }
-  };
+  }));
+} else {
+  const logDir = path.join(process.env.DATA_DIR || process.cwd(), 'logs');
+  try {
+    fs.mkdirSync(logDir, { recursive: true });
+  } catch (e) {
+    /* ignore — fall through to the destination, which also creates dirs */
+  }
+  // sync: true opens the file immediately, so logs written during startup (and
+  // flushed if the app exits early on an error) are captured rather than
+  // throwing "sonic boom is not ready yet".
+  const destination = pino.destination({
+    dest: path.join(logDir, 'server.log'),
+    mkdir: true,
+    sync: true
+  });
+  // A write failure on the log file must never crash the server.
+  destination.on('error', () => {});
+  logger = pino(options, destination);
 }
-
-// Create the logger instance
-const logger = pino(options, transport ? pino.transport(transport) : undefined);
 
 /**
  * Express request logging middleware

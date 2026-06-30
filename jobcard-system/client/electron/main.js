@@ -2,12 +2,36 @@ const { app, BrowserWindow, ipcMain, Menu, globalShortcut, dialog, shell } = req
 const path = require('path');
 const fs = require('fs');
 
+// A packaged GUI app has no attached console, so writing to stdout/stderr can
+// throw EBADF ("bad file descriptor") and crash the whole process on the very
+// first log line. Make these streams swallow such errors so logging can never
+// take the app down. This guards console.* and any plain-text logging in both
+// this process and the in-process server (required later). Must run before any
+// other code logs anything.
+for (const stream of [process.stdout, process.stderr]) {
+  if (stream && typeof stream.write === 'function') {
+    const original = stream.write.bind(stream);
+    stream.write = (chunk, encoding, callback) => {
+      try {
+        return original(chunk, encoding, callback);
+      } catch (e) {
+        if (typeof encoding === 'function') encoding();
+        else if (typeof callback === 'function') callback();
+        return true;
+      }
+    };
+    stream.on('error', () => {});
+  }
+}
+
 // Structured logging for Electron main process
 const logger = {
   _log(level, obj, msg) {
     const entry = { level, time: new Date().toISOString(), msg, ...obj };
     if (obj.err) { entry.err = { message: obj.err.message, stack: obj.err.stack }; }
-    process[level === 'error' || level === 'fatal' ? 'stderr' : 'stdout'].write(JSON.stringify(entry) + '\n');
+    try {
+      process[level === 'error' || level === 'fatal' ? 'stderr' : 'stdout'].write(JSON.stringify(entry) + '\n');
+    } catch (e) { /* no console in a packaged GUI app — ignore */ }
   },
   info(obj, msg) { this._log('info', obj, msg); },
   error(obj, msg) { this._log('error', obj, msg); },
@@ -79,6 +103,8 @@ function createWindow() {
     height: 900,
     minWidth: 1024,
     minHeight: 768,
+    // Keep the menu bar hidden; it drops down only when the user taps Alt.
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -86,6 +112,11 @@ function createWindow() {
     },
     icon: path.join(__dirname, '..', 'assets', 'icon.png')
   });
+
+  // Hide the menu bar (it drops down only on Alt). The constructor option alone
+  // is unreliable on some Windows setups, so force it explicitly here too.
+  mainWindow.setAutoHideMenuBar(true);
+  mainWindow.setMenuBarVisibility(false);
 
   // Load the app
   if (process.env.ELECTRON_LOAD_URL) {
@@ -97,15 +128,18 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:3000');
   }
 
-  // Add keyboard shortcut to toggle DevTools
-  mainWindow.webContents.on('before-input-event', (event, input) => {
-    // Cmd+Alt+I on Mac, Ctrl+Shift+I on Windows/Linux
-    if ((input.meta && input.alt && input.key.toLowerCase() === 'i') ||
-        (input.control && input.shift && input.key.toLowerCase() === 'i') ||
-        input.key === 'F12') {
-      mainWindow.webContents.toggleDevTools();
-    }
-  });
+  // Developer tools shortcut — only in development. The packaged app must not
+  // expose it (so shop-floor users can't open the debug panel by accident).
+  if (isDev) {
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      // Cmd+Alt+I on Mac, Ctrl+Shift+I on Windows/Linux
+      if ((input.meta && input.alt && input.key.toLowerCase() === 'i') ||
+          (input.control && input.shift && input.key.toLowerCase() === 'i') ||
+          input.key === 'F12') {
+        mainWindow.webContents.toggleDevTools();
+      }
+    });
+  }
 
   return mainWindow;
 }
@@ -118,14 +152,6 @@ function createMenu() {
       submenu: [
         { role: 'reload' },
         { role: 'forceReload' },
-        { type: 'separator' },
-        {
-          label: 'Toggle Developer Tools',
-          accelerator: process.platform === 'darwin' ? 'Cmd+Alt+I' : 'Ctrl+Shift+I',
-          click: (item, focusedWindow) => {
-            if (focusedWindow) focusedWindow.webContents.toggleDevTools();
-          }
-        },
         { type: 'separator' },
         { role: 'resetZoom' },
         { role: 'zoomIn' },
@@ -159,16 +185,39 @@ function createMenu() {
 }
 
 // App lifecycle
+
+// Only allow a single running copy. The app starts its own server in-process,
+// so a second launch would try to bind the same port and fail with
+// EADDRINUSE. Instead, hand focus back to the window that's already open and
+// let this duplicate quit.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
+
+app.on('second-instance', () => {
+  const existing = BrowserWindow.getAllWindows()[0];
+  if (existing) {
+    if (existing.isMinimized()) existing.restore();
+    existing.focus();
+  }
+});
+
 app.whenReady().then(async () => {
+  if (!gotSingleInstanceLock) return; // duplicate instance is on its way out
   createMenu();
 
   if (!isDev) {
     try {
       await startServer();
     } catch (err) {
+      const portInUse = /EADDRINUSE/.test((err && err.message) || '');
       dialog.showErrorBox(
         'Server Error',
-        'Failed to start the application server. Please restart the app.\n\n' + err.message
+        portInUse
+          ? 'The app appears to already be running, or a previous copy did not fully close.\n\n' +
+            'Close every copy of "DH Engineering Job Cards" (or simply restart the computer), then open it again.'
+          : 'Failed to start the application server. Please restart the app.\n\n' + ((err && err.message) || '')
       );
       app.quit();
       return;

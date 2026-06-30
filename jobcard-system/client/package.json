@@ -1,6 +1,6 @@
 {
   "name": "jobcard-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "DH Engineering Job Card System",
   "main": "electron/main.js",
   "scripts": {
@@ -58,7 +58,8 @@
       "target": "dmg"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,
