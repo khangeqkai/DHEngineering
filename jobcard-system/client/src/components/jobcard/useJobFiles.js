@@ -175,7 +175,7 @@ export function useJobFiles(jobcardId) {
     setSavingPhotos(true);
     try {
       const now = new Date();
-      const timestamp = now.toISOString().replace(/[-:T]/g, '').slice(0, 15);
+      const timestamp = now.toISOString().replace(/[-:T]/g, '').slice(0, 14);
       for (let i = 0; i < photos.length; i++) {
         const photo = photos[i];
         const suffix = photos.length > 1 ? `_${i + 1}` : '';
