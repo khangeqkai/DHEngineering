@@ -1051,6 +1051,7 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  color: var(--text-primary);
   font-size: var(--text-sm);
 }
 
@@ -1072,6 +1073,7 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  color: var(--text-primary);
   font-size: var(--text-sm);
 }
 
@@ -1096,7 +1098,18 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  color: var(--text-primary);
   font-size: var(--text-sm);
+}
+
+/* Options in the line-item dropdowns need explicit colours or the open menu
+   renders with default black-on-black in dark mode (only the closed control
+   inherits the theme). Mirrors how the status dropdown styles its options. */
+.line-item-job-type select option,
+.line-item-material select option,
+.line-item-treatment-field select option {
+  color: var(--text-primary);
+  background: var(--surface);
 }
 
 .line-item-treatment-field select:focus,
