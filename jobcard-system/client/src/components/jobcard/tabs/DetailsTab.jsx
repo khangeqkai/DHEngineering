@@ -32,6 +32,7 @@ export default function DetailsTab({
   updateLineItem,
   removeLineItem,
   suppliers,
+  onSuppliersChanged,
   attachmentWarnings,
   onAttachItemFile,
   // QA Levels
@@ -236,6 +237,7 @@ export default function DetailsTab({
         updateLineItem={updateLineItem}
         removeLineItem={removeLineItem}
         suppliers={suppliers}
+        onSuppliersChanged={onSuppliersChanged}
         attachmentWarnings={attachmentWarnings}
         onAttachItemFile={onAttachItemFile}
         timeEntries={timeEntries}

@@ -78,7 +78,7 @@ const ITEM_FIELD_REGEX = /^item_(\d+)_(number|qty|description|job_type|material|
 function formatTreatments(treatments) {
   if (!Array.isArray(treatments) || treatments.length === 0) return '';
   return treatments.map(t => {
-    const name = t.value === 'OTHER' ? (t.otherText || 'Other') : t.value;
+    const name = t.value;
     return t.supplierName ? `${name} - ${t.supplierName}` : name;
   }).join(', ');
 }

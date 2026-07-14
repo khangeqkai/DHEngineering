@@ -1118,8 +1118,53 @@
   border-color: var(--primary-accent);
 }
 
-.line-item-treatment-field select.field-required {
-  border-color: var(--danger-color, #ef4444);
+/* On-the-spot "add supplier" form: takes the full width of the treatment group and
+   drops onto its own line, so the fields are usable without the 175px supplier slot
+   squashing them. It reuses the app's titled-card form idiom (matching the inline
+   time-entry form) so it reads as part of the same screen. */
+.line-item-supplier-form-wrap {
+  width: 100%;
+}
+
+.inline-supplier-form {
+  border: 2px solid var(--primary-accent);
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* The title bar sits flush at the top; the body below provides the inset padding.
+   (The shared .form-section-header carries a bottom margin meant for use inside a
+   padded section — zero it here since our body owns the spacing.) */
+.inline-supplier-form .form-section-header {
+  margin-bottom: 0;
+}
+
+.inline-supplier-form-body {
+  padding: 0.875rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Stack fields in one column — the treatment group isn't wide enough for the
+   two-column .form-row grid used in roomier parts of the app. The vertical gap
+   above spaces them, so drop the default per-field bottom margin. */
+.inline-supplier-form-body .form-group {
+  margin-bottom: 0;
+}
+
+/* Address/notes can grow; the global rule hides textarea overflow for JS
+   auto-resize, but these are plain, so allow a manual drag and scrolling. */
+.inline-supplier-form-body textarea {
+  resize: vertical;
+  overflow: auto;
+  min-height: 2.5rem;
+}
+
+.inline-supplier-form-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* Fixed-width wrapper for the Treatment + Supplier dropdowns. The supplier (and

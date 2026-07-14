@@ -182,19 +182,14 @@ for (const s of suppliers) {
     if (!treatmentSupplierMap[t]) treatmentSupplierMap[t] = s;
   }
 }
-// Free-text "Other" treatments still need a supplier; use a specialised-coating shop.
-const otherSupplier = treatmentSupplierMap.SPECIALISED_COATING || suppliers[0];
-
-function buildTreatments(treatmentStr, otherText) {
+function buildTreatments(treatmentStr) {
   if (!treatmentStr) return null;
   const values = treatmentStr.split(',').map(v => v.trim()).filter(Boolean);
   if (values.length === 0) return null;
   return JSON.stringify(values.map(value => {
-    const isOther = value === 'OTHER';
-    const sup = isOther ? otherSupplier : (treatmentSupplierMap[value] || suppliers[0]);
+    const sup = treatmentSupplierMap[value] || suppliers[0];
     return {
       value,
-      otherText: isOther ? (otherText || 'Special process per customer spec') : '',
       supplierId: sup.id,
       supplierName: sup.name,
     };
@@ -245,7 +240,7 @@ const createJobs = db.transaction(() => {
     s.items.forEach((item, idx) => {
       const itemId = uid('item');
       itemIdByNumber[idx + 1] = itemId;
-      insertItem.run(itemId, jobId, idx + 1, item.qty, item.desc, item.jobType, item.material, buildTreatments(item.treatment, item.treatmentOther), item.drawings || 'N_A', item.customerProperty || 'N_A');
+      insertItem.run(itemId, jobId, idx + 1, item.qty, item.desc, item.jobType, item.material, buildTreatments(item.treatment), item.drawings || 'N_A', item.customerProperty || 'N_A');
     });
 
     for (const wIdx of s.assignees) {

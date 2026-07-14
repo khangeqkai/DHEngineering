@@ -47,7 +47,6 @@ export function mapLineItemFromApi(item) {
 export function mapTreatmentFromApi(t) {
   return {
     value: t.value || '',
-    otherText: t.otherText || '',
     supplierId: t.supplierId || '',
     supplierName: t.supplierName || ''
   };

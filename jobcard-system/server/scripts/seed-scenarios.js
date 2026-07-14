@@ -14,7 +14,6 @@
  *   contact, qaLevel, daysAgoCreated, daysFromNowDue, invoicedDaysAgo?,
  *   costing?, items[], assignees[], notes[], timeEntries[]
  *   items[].treatment       — comma-separated treatment values, or null
- *   items[].treatmentOther   — free text when treatment === 'OTHER'
  *   items[].drawings / .customerProperty — single tag value (per line item)
  */
 
@@ -32,8 +31,8 @@ const STATUS_PLAN = [
 
 const JOB_TYPES = ['MANUFACTURE', 'REPAIR', 'MODIFY', 'FABRICATE', 'SUPPLY', 'REVERSE_ENGINEER', 'INSPECTION', 'CAD_DRAWINGS', 'CONSULTATION', 'ONSITE'];
 const MATERIALS = ['STEEL', 'STAINLESS_STEEL', 'ALUMINIUM', 'BRASS', 'COPPER', 'BRONZE', 'CAST_IRON', 'TITANIUM', 'PLASTIC'];
-// null entries leave a line item untreated; every treatment value (incl. OTHER) appears.
-const TREATMENTS = [null, 'HEAT_TREATMENT', null, 'PRECISION_GRINDING', 'ANODISE', null, 'ELECTROPLATE', 'BLASTING', null, 'POWDERCOAT', 'SPRAYPAINT', 'GALVANISE', 'SPECIALISED_COATING', 'OTHER', null];
+// null entries leave a line item untreated; every real treatment value appears.
+const TREATMENTS = [null, 'HEAT_TREATMENT', null, 'PRECISION_GRINDING', 'ANODISE', null, 'ELECTROPLATE', 'BLASTING', null, 'POWDERCOAT', 'SPRAYPAINT', 'GALVANISE', 'SPECIALISED_COATING', null];
 const DRAWINGS = ['CUSTOMER_CAD', 'CUSTOMER_SKETCH', 'DH_CAD', 'DH_SKETCH', 'PREPARE_SKETCH', 'PREPARE_CAD'];
 const CUSTOMER_PROPERTY = ['N_A', 'MATERIAL_SUPPLIED', 'N_A', 'DAMAGED_OR_WORN_SAMPLE', 'GOOD_SAMPLE', 'N_A', 'PART_FOR_REPAIR', 'PART_FOR_MODIFICATION'];
 const PRIORITIES = ['MEDIUM', 'HIGH', 'LOW', 'MEDIUM', 'HIGH', 'NONE', 'MEDIUM', 'LOW'];
@@ -82,7 +81,6 @@ const NOTES = {
   DONE: ['All items complete, QC signed off.', 'Finished and ready for customer collection.'],
   INVOICED: ['Completed, collected, and invoiced.', 'Final inspection passed — invoiced.'],
 };
-const OTHER_TEXT = ['Passivation per ASTM A967', 'Dry-film lubricant coating', 'Phosphate & oil finish', 'Nitrocarburising'];
 
 const STARTED = new Set(['IN_PROGRESS', 'TREATMENT', 'ON_HOLD', 'DONE', 'INVOICED']);
 const FULLY_MACHINED = new Set(['TREATMENT', 'DONE', 'INVOICED']);
@@ -123,7 +121,6 @@ function buildScenarios(contacts, qaLevels, opts = {}) {
         jobType,
         material,
         treatment,
-        treatmentOther: treatment === 'OTHER' ? rot(OTHER_TEXT, 'other') : undefined,
         drawings: rot(DRAWINGS, 'draw'),
         customerProperty: rot(CUSTOMER_PROPERTY, 'prop'),
       });

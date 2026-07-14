@@ -111,8 +111,10 @@ export default function TagManagement() {
           await api.updateTag(editingItem.id, { name: formData.name.trim() });
           toast.success('Tag updated');
         } else {
+          // Creating is idempotent server-side: a name that already exists just
+          // returns the existing option, so the wording stays true either way.
           await api.createTag({ category: formCategory, name: formData.name.trim() });
-          toast.success('Tag created');
+          toast.success('Tag saved');
         }
         invalidateTagCache(formCategory);
         if (formCategory === selectedCategory) await loadTags();

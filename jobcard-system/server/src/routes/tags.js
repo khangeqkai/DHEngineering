@@ -107,9 +107,11 @@ router.post('/', requireAdmin, (req, res) => {
       return res.status(400).json({ error: 'Tag name must include at least one letter or number' });
     }
 
-    // Check if tag already exists in this category. An archived match is the same
-    // option a retired choice; bring it back (with the freshly typed name) rather
-    // than inserting a duplicate that would hit the UNIQUE(category, value) rule.
+    // Check if tag already exists in this category. Creating is idempotent: a name
+    // that maps to an existing option just returns that option instead of erroring,
+    // so "add on the spot" never makes a duplicate. An archived match is brought
+    // back (with the freshly typed name); an active match is returned as-is. Either
+    // way we return 200 (a genuinely new tag returns 201 below).
     const existing = tagQueries.getByValue.get(category, value);
     if (existing) {
       if (existing.archived) {
@@ -121,7 +123,7 @@ router.post('/', requireAdmin, (req, res) => {
         });
         return res.status(200).json(formatTag(restored));
       }
-      return res.status(400).json({ error: 'Tag already exists in this category' });
+      return res.status(200).json(formatTag(existing));
     }
 
     const id = uuidv4();

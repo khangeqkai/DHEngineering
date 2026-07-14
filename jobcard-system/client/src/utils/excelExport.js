@@ -190,7 +190,7 @@ const JOBCARD_SUMMARY_COLS = [
     const parts = [];
     for (const item of items) {
       for (const t of (item.treatments || [])) {
-        const tName = t.value === 'OTHER' ? (t.otherText || 'Other') : valueToLabel(t.value);
+        const tName = valueToLabel(t.value);
         const sName = t.supplierName || '(no supplier)';
         parts.push(`${tName}→${sName}`);
       }
@@ -224,7 +224,7 @@ const ITEM_COLS = [
   { label: 'Qty', value: r => r.qty },
   { label: 'Description', value: r => r.description },
   { label: 'Treatments', value: r => (r.treatments || []).map(t => {
-    const tName = t.value === 'OTHER' ? (t.otherText || 'Other') : valueToLabel(t.value);
+    const tName = valueToLabel(t.value);
     return `${tName}→${t.supplierName || '(no supplier)'}`;
   }).join(', ') },
 ];

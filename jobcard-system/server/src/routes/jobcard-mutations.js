@@ -25,8 +25,7 @@ const router = express.Router();
 function treatmentsToText(treatments) {
   const arr = Array.isArray(treatments) ? treatments : parseTreatments(treatments);
   return arr.map(t => {
-    const tName = t.value === 'OTHER' ? (t.otherText || 'Other') : t.value;
-    return `${tName}→${t.supplierName || t.supplierId || '?'}`;
+    return `${t.value}→${t.supplierName || t.supplierId || '(no supplier)'}`;
   }).join(', ');
 }
 

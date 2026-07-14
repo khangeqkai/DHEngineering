@@ -125,7 +125,8 @@ db.exec(`
 
   -- Job line items
   -- treatments column: JSON array of objects with shape:
-  --   { value, otherText, supplierId, supplierName, dateSent, dateExpected, dateReceived, status, notes }
+  --   { value, supplierId, supplierName, dateSent, dateExpected, dateReceived, status, notes }
+  -- (supplierId is optional; value is a treatment tag value)
   -- drawings_type / customer_property: comma-separated tag values per line item
   CREATE TABLE IF NOT EXISTS job_items (
     id TEXT PRIMARY KEY,

@@ -59,23 +59,16 @@ export function validateJobCardForm({ isAdmin, formData, contactFormData, lineIt
     }
   }
 
-  // One treatment + supplier per part. Both must be set together (or both left
-  // blank). A half-picked pair — supplier without a treatment, or the reverse —
-  // is flagged so nothing incomplete is saved.
+  // One treatment per part, with an optional supplier. The only invalid shape is a
+  // supplier chosen with no treatment (a dangling half-entry); a treatment on its
+  // own is fine.
   for (let i = 0; i < validItems.length; i++) {
     const item = validItems[i];
     const treatments = Array.isArray(item.treatments) ? item.treatments : [];
     for (const tr of treatments) {
-      if (!tr.value && !tr.supplierId) continue; // no treatment on this part — fine
+      if (!tr.value && !tr.supplierId) continue; // nothing on this part — fine
       if (!tr.value) {
         errors.push(`Item #${i + 1}: pick a treatment for the chosen supplier`);
-        continue;
-      }
-      if (tr.value === 'OTHER' && !(tr.otherText || '').trim()) {
-        errors.push(`Item #${i + 1}: type the "Other" treatment name`);
-      }
-      if (!tr.supplierId) {
-        errors.push(`Item #${i + 1}: pick a supplier for the chosen treatment`);
       }
     }
   }

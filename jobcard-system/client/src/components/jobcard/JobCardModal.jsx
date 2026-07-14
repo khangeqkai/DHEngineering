@@ -59,6 +59,17 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm);
 
+  // Re-fetch suppliers after one is created or linked to a treatment on a line item,
+  // so the new name and its updated services show up in the pickers right away.
+  const reloadSuppliers = useCallback(async () => {
+    try {
+      const res = await api.getSuppliers(true);
+      setSuppliers(res || []);
+    } catch (err) {
+      // Non-fatal: the picker keeps its current list until the next load.
+    }
+  }, []);
+
   // Load reference data on mount
   useEffect(() => {
     const loadReferenceData = async () => {
@@ -438,8 +449,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           material: item.material || null,
           treatments: (item.treatments || []).map(t => ({
             value: t.value,
-            otherText: t.otherText || '',
-            supplierId: t.supplierId,
+            supplierId: t.supplierId || '',
             supplierName: t.supplierName || ''
           })),
           drawingsType: item.drawingsType || null,
@@ -584,6 +594,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   updateLineItem={formHook.updateLineItem}
                   removeLineItem={formHook.removeLineItem}
                   suppliers={suppliers || []}
+                  onSuppliersChanged={reloadSuppliers}
                   attachmentWarnings={attachmentWarnings}
                   onAttachItemFile={isEdit ? handleAttachItemFile : undefined}
                   qaLevels={qaLevels}

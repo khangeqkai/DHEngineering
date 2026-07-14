@@ -336,15 +336,14 @@ const validateManualTimeEntry = [
 
 /**
  * Validate treatments array on line items.
- * Each item.treatments is an array of objects: { value, otherText, supplierId, supplierName }
- * Required: value (must be a known treatment tag value, or 'OTHER' with otherText) and supplierId.
+ * Each item.treatments is an array of objects: { value, supplierId, supplierName }
+ * Required: value (must be a known treatment tag value). Supplier is optional.
  *
  * `existingItems` (optional) are the treatments already saved on this job. Any
  * treatment->supplier pairing that was already saved is "grandfathered": we skip
- * the supplier-active / supplier-offers checks for it, so editing an old job whose
- * supplier was later switched off (or whose service list changed) doesn't get
- * blocked over a line the user never touched. Brand-new or changed pairings are
- * still fully checked. Create calls pass no existingItems → everything is checked.
+ * the supplier-active check for it, so editing an old job whose supplier was later
+ * switched off doesn't get blocked over a line the user never touched. Brand-new
+ * or changed pairings are still checked. Create calls pass no existingItems.
  *
  * Returns error string or null if valid.
  */
@@ -387,39 +386,20 @@ function validateItemTreatments(items, existingItems) {
       if (!value) {
         return `Item #${i + 1} treatment ${t + 1} is missing a treatment value`;
       }
-      if (value === 'OTHER') {
-        const otherText = tr.otherText ? String(tr.otherText).trim() : '';
-        if (!otherText) {
-          return `Item #${i + 1} treatment ${t + 1} (OTHER) requires text`;
-        }
-        if (otherText.length > 255) {
-          return `Item #${i + 1} treatment ${t + 1} otherText exceeds 255 characters`;
-        }
-      } else if (allowedTreatments.length > 0 && !allowedTreatments.includes(value)) {
+      if (allowedTreatments.length > 0 && !allowedTreatments.includes(value)) {
         return `Item #${i + 1} treatment ${t + 1} has invalid value: ${value}`;
       }
+      // Supplier is optional — a treatment can be saved with none. When one is
+      // given, it just has to be a real, active supplier; it no longer has to be
+      // pre-linked to this treatment (a treatment added on the spot has no links).
       const supplierId = tr.supplierId ? String(tr.supplierId).trim() : '';
-      if (!supplierId) {
-        return `Item #${i + 1} treatment ${t + 1} is missing a supplier`;
-      }
-      // Skip the strict checks for a treatment->supplier pairing that was already
-      // saved on this job — re-validating untouched lines would block legitimate
-      // edits when a supplier is switched off after the fact.
-      if (!grandfathered.has(`${supplierId}|${value}`)) {
-        // The supplier must be real, still active, and actually offer this treatment.
+      if (supplierId && !grandfathered.has(`${supplierId}|${value}`)) {
         const supplier = getSupplierQueries().getById.get(supplierId);
         if (!supplier) {
           return `Item #${i + 1} treatment ${t + 1}: selected supplier no longer exists`;
         }
         if (supplier.active !== 1) {
           return `Item #${i + 1} treatment ${t + 1}: selected supplier is switched off`;
-        }
-        // 'OTHER' is a free-text treatment with no tag, so there is nothing to match against.
-        if (value !== 'OTHER') {
-          const offered = getTagQueries().getForSupplier.all(supplierId).map(tag => tag.value);
-          if (!offered.includes(value)) {
-            return `Item #${i + 1} treatment ${t + 1}: supplier does not offer ${value}`;
-          }
         }
       }
     }

@@ -312,7 +312,7 @@ function buildQaFillData(jobcardId, fields) {
     customerProperty: i.customer_property
   }));
   const allTreatments = itemsForPdf.flatMap(i => i.treatments).map(t => {
-    const name = t.value === 'OTHER' ? (t.otherText || 'Other') : t.value;
+    const name = t.value;
     return t.supplierName ? `${name} - ${t.supplierName}` : name;
   });
   const allJobTypes = [...new Set(items.map(i => i.job_type).filter(Boolean))];
@@ -381,7 +381,7 @@ function buildJobCardView(jobcardId, jc) {
     const drawingFiles = drawingsIsNa ? [] : itemFileDisplayNames(jobFileNames, r.id);
     const drawingsMissing = !drawingsIsNa && drawingFiles.length === 0;
     const treatments = parseTreatments(r.treatments).map(t => {
-      const name = t.value === 'OTHER' ? (t.otherText || 'Other') : tagName('treatment', t.value);
+      const name = tagName('treatment', t.value);
       return t.supplierName ? `${name} - ${t.supplierName}` : name;
     });
     // Customer property is a per-part field on screen, so the printout shows it

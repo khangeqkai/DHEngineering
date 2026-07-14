@@ -1,155 +1,124 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import CreatableTagSelect from '../../common/CreatableTagSelect';
+import LineItemSupplierPicker from './LineItemSupplierPicker';
+import InlineSupplierForm from '../../common/InlineSupplierForm';
 import { useTags } from '../../../hooks/useTags';
-import { capitalizeFirst } from '../../../utils/formatters';
-
-const OTHER = 'OTHER';
 
 function isActive(s) {
   return s.active === 1 || s.active === true;
 }
 
-// Whether a supplier offers a given treatment. 'Other' (free-text) works with any
-// supplier, so it always matches.
-function supplierOffers(supplier, treatmentValue) {
-  if (!treatmentValue || treatmentValue === OTHER) return true;
-  return (supplier.serviceTags || []).some(t => t.value === treatmentValue);
-}
-
-// Per-line-item Treatment + Supplier. Treatment is the primary choice and is
-// shown first; the Supplier dropdown only appears once a treatment is picked
-// (no treatment → no supplier needed), narrowed to suppliers who offer that
-// treatment, with a supplier then required. One pair per part. Stored as the
-// line item's `treatments` array (length 0 or 1) so the rest of the system
-// (costing, PDF fill, history) is unchanged.
-export default function LineItemTreatment({ treatments = [], suppliers = [], onChange }) {
-  const { tags: treatmentTags, labelOf: treatmentLabelOf } = useTags('treatment');
-
+// Per-line-item Treatment + Supplier. Treatment is a type-or-create picker (any
+// treatment, plus add-a-new-one on the spot) shown first. Once a treatment is
+// picked, the Supplier picker appears: it lists the suppliers that provide that
+// treatment, lets you search all suppliers, and can create a new supplier on the
+// spot (attaching the treatment to it). A brand-new treatment requires a supplier.
+// One pair per part, stored as the line item's `treatments` array (length 0 or 1)
+// so the rest of the system (costing, PDF fill, history) is unchanged.
+export default function LineItemTreatment({ treatments = [], suppliers = [], onChange, onSuppliersChanged }) {
+  const { rawTags } = useTags('treatment');
   const current = (Array.isArray(treatments) && treatments[0]) || null;
   const value = current?.value || '';
   const supplierId = current?.supplierId || '';
-  const otherText = current?.otherText || '';
 
-  const activeSuppliers = useMemo(() => suppliers.filter(isActive), [suppliers]);
+  // Remember the treatment created fresh on this part. We keep the whole tag object
+  // (not just the value) so we have its id immediately — this part's copy of the
+  // treatment list may not have refreshed to include the brand-new option yet. Used
+  // both to require a supplier (optional for treatments that already existed) and to
+  // link the treatment onto the chosen/created supplier.
+  const [createdTag, setCreatedTag] = useState(null);
+  const createdValue = createdTag?.value || '';
+  const supplierRequired = !!value && value === createdValue && !supplierId;
 
-  // Treatment list: only treatments that at least one active supplier offers.
-  // 'Other' is always offered, and the current pick is always kept visible.
-  const treatmentOptions = useMemo(() => {
-    const base = treatmentTags.filter(t => activeSuppliers.some(s => supplierOffers(s, t.value)));
-    const list = base.map(t => ({ value: t.value, label: t.label || t.name }));
-    list.push({ value: OTHER, label: 'Other' });
-    if (value && value !== OTHER && !list.some(o => o.value === value)) {
-      const tag = treatmentTags.find(t => t.value === value);
-      // No matching active tag → the treatment was archived; show it tagged "(retired)".
-      list.unshift(tag
-        ? { value, label: tag.label || tag.name }
-        : { value, label: `${treatmentLabelOf(value)} (retired)`, retired: true });
+  const treatmentTagId = (createdTag && createdTag.value === value)
+    ? createdTag.id
+    : (rawTags.find(t => t.value === value)?.id || null);
+  const providerCount = suppliers.filter(
+    s => isActive(s) && (s.serviceTags || []).some(t => t.value === value)
+  ).length;
+
+  // Whether the inline "add supplier" form is showing in place of the picker.
+  const [creating, setCreating] = useState(false);
+  const [pendingName, setPendingName] = useState('');
+  // Set when the user cancels the form, so it doesn't immediately reopen.
+  const dismissedRef = useRef(false);
+
+  // A brand-new treatment has nobody who provides it yet, so open the add-supplier
+  // form straight away. The dismiss guard lets the user cancel back to the picker.
+  useEffect(() => {
+    if (supplierRequired && providerCount === 0 && !dismissedRef.current) {
+      setPendingName('');
+      setCreating(true);
     }
-    return list;
-  }, [treatmentTags, treatmentLabelOf, activeSuppliers, value]);
-
-  // Supplier list: filtered by the chosen treatment (who offers it), or all active
-  // suppliers when none / 'Other' is chosen. The current pick is always kept.
-  const supplierOptions = useMemo(() => {
-    const base = (value && value !== OTHER)
-      ? activeSuppliers.filter(s => supplierOffers(s, value))
-      : activeSuppliers;
-    const list = base.map(s => ({ value: s.id, label: s.name }));
-    if (supplierId && !list.some(o => o.value === supplierId)) {
-      // The saved supplier isn't in the active list — it was archived. Keep it visible and
-      // tagged "(retired)", matching how a retired treatment reads. Use the live name when
-      // we still have the record, falling back to the name frozen on the job.
-      const s = suppliers.find(x => x.id === supplierId);
-      const name = s ? s.name : (current?.supplierName || 'Unknown');
-      list.unshift({ value: supplierId, label: `${name} (retired)`, retired: true });
-    }
-    return list;
-  }, [activeSuppliers, suppliers, value, supplierId, current]);
+  }, [supplierRequired, providerCount]);
 
   const emit = (next) => {
     const v = next.value !== undefined ? next.value : value;
     const sid = next.supplierId !== undefined ? next.supplierId : supplierId;
-    const ot = next.otherText !== undefined ? next.otherText : otherText;
+    const sname = next.supplierName !== undefined ? next.supplierName : (current?.supplierName || '');
     if (!v && !sid) {
       onChange([]);
       return;
     }
-    const supplier = suppliers.find(s => s.id === sid) || null;
-    onChange([{
-      value: v,
-      otherText: v === OTHER ? ot : '',
-      supplierId: sid,
-      supplierName: supplier ? supplier.name : (sid ? (current?.supplierName || '') : '')
-    }]);
+    onChange([{ value: v, supplierId: sid, supplierName: sid ? sname : '' }]);
   };
 
   const handleTreatmentChange = (newVal) => {
-    // "No treatment" clears the supplier too — otherwise the part keeps a dangling
-    // supplier with no treatment, an invalid half-entry the server rejects on save.
-    if (!newVal) {
-      emit({ value: '', supplierId: '' });
-      return;
+    // Switching/clearing the treatment drops the supplier too — otherwise the part
+    // keeps a supplier that no longer matches the treatment.
+    if (newVal !== value) {
+      if (newVal !== createdValue) setCreatedTag(null);
+      dismissedRef.current = false;
+      setCreating(false);
+      emit({ value: newVal || '', supplierId: '', supplierName: '' });
     }
-    // Drop the supplier if it doesn't offer the newly chosen treatment.
-    let sid = supplierId;
-    if (newVal !== OTHER && sid) {
-      const s = suppliers.find(x => x.id === sid);
-      if (s && !supplierOffers(s, newVal)) sid = '';
-    }
-    emit({ value: newVal, supplierId: sid });
   };
 
-  const handleSupplierChange = (newSid) => {
-    // The supplier list is already filtered to suppliers that offer the chosen
-    // treatment, so the picked supplier always matches the current treatment.
-    emit({ supplierId: newSid });
+  const handleSupplierCreated = (supplier) => {
+    setCreating(false);
+    emit({ supplierId: supplier.id, supplierName: supplier.name });
+    if (onSuppliersChanged) onSuppliersChanged();
   };
 
   return (
     <>
       <div className="line-item-treatment-field">
         <label>Treatment</label>
-        <select
-          className={treatmentOptions.some(o => o.retired && o.value === value) ? 'has-retired' : ''}
+        <CreatableTagSelect
+          category="treatment"
           value={value}
-          onChange={(e) => handleTreatmentChange(e.target.value)}
-        >
-          <option value="">No treatment</option>
-          {treatmentOptions.map(o => (
-            <option key={o.value} value={o.value} className={o.retired ? 'retired-option' : ''}>{o.label}</option>
-          ))}
-        </select>
+          onChange={handleTreatmentChange}
+          onCreate={(tag) => setCreatedTag(tag)}
+          placeholder="Type or add a treatment…"
+        />
       </div>
 
       {value && (
-        <div className="line-item-treatment-field">
-          <label>Supplier <span className="required">*</span></label>
-          <select
-            value={supplierId}
-            onChange={(e) => handleSupplierChange(e.target.value)}
-            className={`${!supplierId ? 'field-required' : ''}${supplierOptions.some(o => o.retired && o.value === supplierId) ? ' has-retired' : ''}`.trim()}
-          >
-            <option value="">No supplier</option>
-            {supplierOptions.map(o => (
-              <option key={o.value} value={o.value} className={o.retired ? 'retired-option' : ''}>{o.label}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {value === OTHER && (
-        <div className="line-item-treatment-field">
-          <label>Specify</label>
-          <input
-            type="text"
-            value={otherText}
-            placeholder="Treatment name…"
-            onChange={(e) => emit({ otherText: e.target.value })}
-            onBlur={(e) => {
-              const f = capitalizeFirst(e.target.value);
-              if (f !== e.target.value) emit({ otherText: f });
-            }}
-          />
-        </div>
+        creating ? (
+          <div className="line-item-supplier-form-wrap">
+            <InlineSupplierForm
+              initialName={pendingName}
+              treatmentTagId={treatmentTagId}
+              onCreated={handleSupplierCreated}
+              onCancel={() => { dismissedRef.current = true; setCreating(false); }}
+            />
+          </div>
+        ) : (
+          <div className="line-item-treatment-field">
+            <label>Supplier{supplierRequired ? <span className="required"> *</span> : ''}</label>
+            <LineItemSupplierPicker
+              treatmentValue={value}
+              treatmentTagId={treatmentTagId}
+              suppliers={suppliers}
+              supplierId={supplierId}
+              supplierName={current?.supplierName || ''}
+              required={supplierRequired}
+              onChange={(sid, sname) => emit({ supplierId: sid, supplierName: sname })}
+              onRequestCreate={(name) => { setPendingName(name); dismissedRef.current = false; setCreating(true); }}
+              onSuppliersChanged={onSuppliersChanged}
+            />
+          </div>
+        )
       )}
     </>
   );
