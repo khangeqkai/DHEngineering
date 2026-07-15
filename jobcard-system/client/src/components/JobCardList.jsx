@@ -79,6 +79,7 @@ export default function JobCardList() {
   const [assignPopoverId, setAssignPopoverId] = useState(null);
   const assignPopoverRef = useRef(null);
   const [hoverNames, setHoverNames] = useState(null);
+  const [hoverDesc, setHoverDesc] = useState(null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   const [viewMode, setViewMode] = useState('list');
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
@@ -371,6 +372,7 @@ export default function JobCardList() {
     setAssignPopoverId,
     assignPopoverRef,
     setHoverNames,
+    setHoverDesc,
     openEditModal,
     handleQuickStatusChange,
     handleSelfToggle,
@@ -492,6 +494,17 @@ export default function JobCardList() {
               {n.name}
             </span>
           ))}
+        </div>,
+        document.body
+      )}
+
+      {hoverDesc && createPortal(
+        <div
+          className="assignee-tooltip description-tooltip"
+          style={{ top: hoverDesc.top, left: hoverDesc.left }}
+        >
+          <span className="mf-tooltip-title">Description</span>
+          {hoverDesc.text}
         </div>,
         document.body
       )}

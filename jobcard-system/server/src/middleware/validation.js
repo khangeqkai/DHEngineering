@@ -165,8 +165,8 @@ const PRIORITY_OPTIONS = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
 
 
 const JOBCARD_COLUMN_IDS = [
-  'jobNumber', 'company', 'customer', 'assignedTo',
-  'status', 'priority', 'dueDate', 'createdAt', 'updatedAt', 'actions'
+  'jobNumber', 'description', 'company', 'customer', 'assignedTo',
+  'status', 'priority', 'attachments', 'dueDate', 'createdAt', 'updatedAt', 'actions'
 ];
 
 // =============================================================================

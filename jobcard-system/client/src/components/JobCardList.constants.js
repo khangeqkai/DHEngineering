@@ -35,6 +35,7 @@ export const PAGE_SIZE = 20;
 
 export const DEFAULT_COLUMN_ORDER = [
   'jobNumber',
+  'description',
   'company',
   'customer',
   'assignedTo',

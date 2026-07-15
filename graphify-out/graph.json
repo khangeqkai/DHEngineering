@@ -2158,7 +2158,7 @@
       "label": "mergeColumnOrder()",
       "file_type": "code",
       "source_file": "client/src/components/JobCardList.constants.js",
-      "source_location": "L50",
+      "source_location": "L51",
       "id": "components_jobcardlist_constants_mergecolumnorder",
       "community": 7,
       "norm_label": "mergecolumnorder()"
@@ -2167,7 +2167,7 @@
       "label": "statusToken()",
       "file_type": "code",
       "source_file": "client/src/components/JobCardList.constants.js",
-      "source_location": "L61",
+      "source_location": "L62",
       "id": "components_jobcardlist_constants_statustoken",
       "community": 7,
       "norm_label": "statustoken()"
@@ -2176,7 +2176,7 @@
       "label": "getStatusBadgeClass()",
       "file_type": "code",
       "source_file": "client/src/components/JobCardList.constants.js",
-      "source_location": "L63",
+      "source_location": "L64",
       "id": "components_jobcardlist_constants_getstatusbadgeclass",
       "community": 7,
       "norm_label": "getstatusbadgeclass()"

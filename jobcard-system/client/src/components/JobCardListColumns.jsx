@@ -23,6 +23,7 @@ export function getJobCardColumns({
   setAssignPopoverId,
   assignPopoverRef,
   setHoverNames,
+  setHoverDesc,
   openEditModal,
   handleQuickStatusChange,
   handleSelfToggle,
@@ -53,12 +54,26 @@ export function getJobCardColumns({
           {card.qualityLevel === 'CRITICAL' && (
             <span className="critical-badge">Critical QA</span>
           )}
-          {card.description && (
-            <p className="description-preview">
-              {card.description.substring(0, 60)}
-              {card.description.length > 60 ? '...' : ''}
-            </p>
-          )}
+        </td>
+      )
+    },
+    {
+      id: 'description',
+      label: 'Description',
+      renderCell: (card) => (
+        <td
+          key="description"
+          className="description-cell"
+          onMouseEnter={(e) => {
+            const el = e.currentTarget;
+            // Only float the full text when it's actually cut off by the ellipsis.
+            if (!card.description || el.scrollWidth <= el.clientWidth) return;
+            const r = el.getBoundingClientRect();
+            setHoverDesc({ top: r.bottom + 6, left: r.left, text: card.description });
+          }}
+          onMouseLeave={() => setHoverDesc(null)}
+        >
+          {card.description || '-'}
         </td>
       )
     },
