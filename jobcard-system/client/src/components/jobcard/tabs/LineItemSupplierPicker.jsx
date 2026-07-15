@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../../../services/api';
 
@@ -115,6 +116,7 @@ export default function LineItemSupplierPicker({
         placeholder={required ? 'Choose or add a supplier…' : 'No supplier'}
         className={selectedRetired ? 'has-retired' : ''}
       />
+      <ChevronDown size={14} className={`autocomplete-caret${focused ? ' is-open' : ''}`} />
       {showDropdown && (
         <div className="customer-dropdown">
           {matches.map(s => (

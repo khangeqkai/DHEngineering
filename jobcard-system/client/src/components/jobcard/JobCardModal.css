@@ -619,50 +619,56 @@
   position: relative;
 }
 
+/* Shared dropdown menu language (see the "Unified dropdown language" note near
+   the line-item controls). The type-to-search pickers (customer/company,
+   material, treatment, supplier, previous job) open this panel; it matches the
+   Drawings / Customer Property and Machines menus exactly. */
 .customer-dropdown {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background: var(--surface);
-  border: 2px solid var(--primary-accent);
+  background: var(--surface-elevated, var(--surface));
+  border: 1.5px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   z-index: 9999;
-  max-height: 250px;
+  max-height: 240px;
   overflow-y: auto;
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
 }
 
 .dropdown-hint {
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0.55rem;
   font-size: var(--text-xs);
   color: var(--text-secondary);
-  background: var(--surface-inset);
-  border-bottom: 1px solid var(--border-color);
 }
 
 .customer-option {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--border-color);
-  transition: all var(--duration-fast) ease;
+  gap: 0.375rem;
+  font-size: var(--text-sm);
+  font-weight: var(--font-regular);
+  color: var(--text-primary);
+  transition: background var(--duration-fast) ease;
 }
 
-.customer-option:last-child {
-  border-bottom: none;
+/* Option names are plain weight to match the Drawings / Customer Property lists —
+   the markup wraps them in <strong>, so undo the browser's bold here. */
+.customer-option strong {
+  font-weight: var(--font-regular);
 }
 
 .customer-option:hover {
-  background: var(--primary-accent);
-  color: var(--text-inverse);
-}
-
-.customer-option:hover .badge-critical {
-  background: var(--text-inverse);
-  color: var(--accent-caution);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 
 /* Contact Linked Badge */
@@ -1045,21 +1051,6 @@
   flex-shrink: 0;
 }
 
-.line-item-job-type select {
-  width: 100%;
-  padding: 0.375rem 0.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-}
-
-.line-item-job-type select:focus {
-  outline: none;
-  border-color: var(--primary-accent);
-}
-
 .line-item-material {
   display: flex;
   flex-direction: column;
@@ -1067,23 +1058,8 @@
   flex-shrink: 0;
 }
 
-.line-item-material select {
-  width: 100%;
-  padding: 0.375rem 0.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-}
-
-.line-item-material select:focus {
-  outline: none;
-  border-color: var(--primary-accent);
-}
-
-/* Treatment + Supplier: two native dropdowns that match the Job Type / Material
-   boxes, so each part reads as one uniform row of controls. */
+/* Treatment + Supplier column — a type-or-create treatment picker plus an
+   optional supplier, stacked in a fixed-width slot so parts' columns line up. */
 .line-item-treatment-field {
   display: flex;
   flex-direction: column;
@@ -1091,31 +1067,98 @@
   flex-shrink: 0;
 }
 
-.line-item-treatment-field select,
-.line-item-treatment-field input {
+/* ── Unified dropdown language ──
+   Every closed picker in a part's row — Job Type, Material, Treatment, Supplier,
+   Drawings, Customer Property (its trigger is .lit-select-btn) — wears one face
+   so the row reads as a single instrument panel, not six mismatched boxes. It's
+   the same face the Machines picker and the app's form fields already use:
+   1.5px border, medium radius, focus ring, own chevron. background-color is a
+   longhand (not the `background` shorthand) so the native selects' chevron image
+   below is never reset. */
+.line-item-job-type select,
+.line-item-material .autocomplete-container input,
+.line-item-treatment-field input,
+.lit-select-btn {
   width: 100%;
-  padding: 0.375rem 0.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
+  min-height: 34px;
+  padding: 0.4rem 0.6rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--surface);
   color: var(--text-primary);
+  font-family: var(--font-sans);
   font-size: var(--text-sm);
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
 }
 
-/* Options in the line-item dropdowns need explicit colours or the open menu
-   renders with default black-on-black in dark mode (only the closed control
-   inherits the theme). Mirrors how the status dropdown styles its options. */
-.line-item-job-type select option,
-.line-item-material select option,
-.line-item-treatment-field select option {
-  color: var(--text-primary);
-  background: var(--surface);
+.line-item-job-type select:hover,
+.line-item-material .autocomplete-container input:hover,
+.line-item-treatment-field input:hover,
+.lit-select-btn:hover {
+  border-color: var(--primary-accent);
 }
 
-.line-item-treatment-field select:focus,
-.line-item-treatment-field input:focus {
+.line-item-job-type select:focus,
+.line-item-material .autocomplete-container input:focus,
+.line-item-treatment-field input:focus,
+.lit-select-btn:focus-visible {
   outline: none;
   border-color: var(--primary-accent);
+  box-shadow: var(--focus-ring-sm);
+}
+
+/* The type-to-search line-item pickers (Material, Treatment, Supplier) carry the
+   same chevron as the click-open ones (Drawings, Customer Property), so a part's
+   whole row of controls matches. It rotates while the list is open (input
+   focused). Room is reserved on the right so typed text never runs under it. */
+.line-item-material .autocomplete-container input,
+.line-item-treatment-field .autocomplete-container input {
+  padding-right: 1.9rem;
+}
+
+.autocomplete-caret {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+  transition: transform var(--duration-fast) ease;
+}
+
+.autocomplete-caret.is-open {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* Native single-selects in the modal (line-item Job Type, plus Quality Level /
+   Worker / Item # in the forms) drop the operating system's arrow for the same
+   chevron the custom pickers draw, so open or closed they all match. The
+   qualified selectors outrank the base field rules so the chevron image sticks
+   even where a `background` shorthand would otherwise wipe it (notably dark
+   mode). */
+.jc-zoom-root .form-group select,
+.line-item-job-type select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 1.9rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%233b4563' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 14px;
+}
+
+.dark-mode .jc-zoom-root .form-group select,
+.dark-mode .line-item-job-type select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3c0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+/* Open menus for the native selects need explicit option colours or they render
+   black-on-black in dark mode (only the closed control inherits the theme). */
+.line-item-job-type select option,
+.jc-zoom-root .form-group select option {
+  color: var(--text-primary);
+  background: var(--surface);
 }
 
 /* On-the-spot "add supplier" form: takes the full width of the treatment group and
@@ -1296,24 +1339,15 @@
   border-color: rgba(var(--accent-rgb), 0.35);
 }
 
+/* Closed-face geometry (border, radius, padding, focus) comes from the unified
+   dropdown rule above; only the button-specific layout lives here. */
 .lit-select-btn {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.25rem;
-  width: 100%;
-  padding: 0.375rem 0.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  font-size: var(--text-sm);
-  color: var(--text-primary);
   cursor: pointer;
   text-align: left;
-}
-
-.lit-select-btn:hover {
-  border-color: var(--primary-accent);
 }
 
 .lit-select-btn--empty .lit-select-text {
@@ -1328,7 +1362,12 @@
 
 .lit-select-caret {
   flex-shrink: 0;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
+  transition: transform var(--duration-fast) ease;
+}
+
+.lit-select-caret.is-open {
+  transform: rotate(180deg);
 }
 
 .lit-select-menu {
@@ -1339,8 +1378,8 @@
   max-width: 240px;
   max-height: 240px;
   overflow-y: auto;
-  background: var(--surface);
-  border: 1px solid var(--border-color);
+  background: var(--surface-elevated, var(--surface));
+  border: 1.5px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.15));
   z-index: 200;
@@ -1355,7 +1394,7 @@
   align-items: center;
   gap: 0.375rem;
   text-align: left;
-  padding: 0.375rem 0.5rem;
+  padding: 0.5rem 0.55rem;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -1366,11 +1405,11 @@
 }
 
 .lit-select-option:hover {
-  background: var(--surface-inset);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 
 .lit-select-option.selected {
-  background: rgba(var(--accent-rgb, 2, 132, 199), 0.08);
+  background: rgba(var(--accent-rgb), 0.14);
   font-weight: var(--font-medium);
 }
 

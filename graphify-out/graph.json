@@ -2617,7 +2617,7 @@
       "label": "CreatableTagSelect()",
       "file_type": "code",
       "source_file": "client/src/components/common/CreatableTagSelect.jsx",
-      "source_location": "L13",
+      "source_location": "L14",
       "id": "common_creatabletagselect_creatabletagselect",
       "community": 1,
       "norm_label": "creatabletagselect()"
@@ -3751,7 +3751,7 @@
       "label": "isActive()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/LineItemSupplierPicker.jsx",
-      "source_location": "L5",
+      "source_location": "L6",
       "id": "tabs_lineitemsupplierpicker_isactive",
       "community": 45,
       "norm_label": "isactive()"
@@ -3760,7 +3760,7 @@
       "label": "LineItemSupplierPicker()",
       "file_type": "code",
       "source_file": "client/src/components/jobcard/tabs/LineItemSupplierPicker.jsx",
-      "source_location": "L16",
+      "source_location": "L17",
       "id": "tabs_lineitemsupplierpicker_lineitemsupplierpicker",
       "community": 45,
       "norm_label": "lineitemsupplierpicker()"

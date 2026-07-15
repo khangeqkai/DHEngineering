@@ -121,7 +121,7 @@ export default function LineItemTagSelect({
           title={summary || undefined}
         >
           <span className="lit-select-text">{summary || 'Select…'}</span>
-          <ChevronDown size={14} className="lit-select-caret" />
+          <ChevronDown size={14} className={`lit-select-caret${open ? ' is-open' : ''}`} />
         </button>
         {open && (
           <div className="lit-select-menu" role="listbox" aria-multiselectable="true">

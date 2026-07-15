@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { useTags, invalidateTagCache } from '../../hooks/useTags';
@@ -102,6 +103,7 @@ export default function CreatableTagSelect({ category, value, onChange, onCreate
         placeholder={placeholder}
         className={isRetired ? 'has-retired' : ''}
       />
+      <ChevronDown size={14} className={`autocomplete-caret${focused ? ' is-open' : ''}`} />
       {showDropdown && (
         <div className="customer-dropdown">
           {filtered.map(o => (
