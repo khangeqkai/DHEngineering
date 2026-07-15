@@ -281,7 +281,7 @@ export function getJobCardColumns({
       align: 'right',
       renderCell: (card, isOverdue) => (
         <td key="dueDate" className={`jc-align-right${isOverdue ? ' overdue-date' : ''}`}>
-          {card.dueDate ? new Date(card.dueDate).toLocaleDateString() : '-'}
+          {card.dueDate ? new Date(card.dueDate).toLocaleDateString('en-AU') : '-'}
           {isOverdue && <span className="overdue-label">OVERDUE</span>}
         </td>
       )
@@ -292,7 +292,7 @@ export function getJobCardColumns({
       align: 'right',
       renderCell: (card) => (
         <td key="createdAt" className="jc-align-right">
-          {card.createdAt ? new Date(card.createdAt).toLocaleString() : '-'}
+          {card.createdAt ? new Date(card.createdAt).toLocaleString('en-AU') : '-'}
         </td>
       )
     },
@@ -302,7 +302,7 @@ export function getJobCardColumns({
       align: 'right',
       renderCell: (card) => (
         <td key="updatedAt" className="jc-align-right">
-          {card.updatedAt ? new Date(card.updatedAt).toLocaleString() : '-'}
+          {card.updatedAt ? new Date(card.updatedAt).toLocaleString('en-AU') : '-'}
         </td>
       )
     },

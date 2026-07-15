@@ -122,7 +122,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     const hours = entry?.startTime && entry?.endTime
       ? Math.round(((new Date(entry.endTime) - new Date(entry.startTime)) / 3600000) * 10) / 10
       : null;
-    const day = entry?.startTime ? new Date(entry.startTime).toLocaleDateString() : null;
+    const day = entry?.startTime ? new Date(entry.startTime).toLocaleDateString('en-AU') : null;
     const message = hours != null && day
       ? `Delete ${who}'s ${hours} ${hours === 1 ? 'hour' : 'hours'} from ${day}? This removes the time from the job's total and can't be undone.`
       : `Delete ${who}'s recorded time? This removes it from the job's total and can't be undone.`;

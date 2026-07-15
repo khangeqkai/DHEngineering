@@ -309,7 +309,7 @@ export default function UserManagement() {
                 key: 'createdAt',
                 label: 'Created',
                 sortable: true,
-                render: (val) => new Date(val).toLocaleDateString()
+                render: (val) => new Date(val).toLocaleDateString('en-AU')
               },
               {
                 key: 'actions',

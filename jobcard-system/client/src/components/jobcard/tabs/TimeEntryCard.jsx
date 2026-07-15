@@ -101,11 +101,11 @@ export default function TimeEntryCard({
           ) : (
             <span className="te-duration-badge">{formatElapsed(durationSec)}</span>
           )}
-          <span className="te-date">{new Date(entry.startTime).toLocaleDateString([], { day: '2-digit', month: 'short' })}</span>
+          <span className="te-date">{new Date(entry.startTime).toLocaleDateString('en-AU', { day: '2-digit', month: 'short' })}</span>
           <span className="te-timerange">
-            {new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {new Date(entry.startTime).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
             {entry.endTime && (
-              <> — {new Date(entry.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>
+              <> — {new Date(entry.endTime).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</>
             )}
           </span>
         </div>

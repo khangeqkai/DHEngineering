@@ -64,14 +64,14 @@ function fmtDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
   if (isNaN(d)) return iso;
-  return d.toLocaleDateString('en-ZA');
+  return d.toLocaleDateString('en-AU');
 }
 
 function fmtDateTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
   if (isNaN(d)) return iso;
-  return d.toLocaleString('en-ZA');
+  return d.toLocaleString('en-AU');
 }
 
 function durationHrs(start, end) {

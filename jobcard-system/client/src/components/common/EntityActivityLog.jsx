@@ -49,7 +49,7 @@ function formatChanges(changes) {
 }
 
 function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleString();
+  return new Date(dateStr).toLocaleString('en-AU');
 }
 
 function formatTarget(snapshot) {

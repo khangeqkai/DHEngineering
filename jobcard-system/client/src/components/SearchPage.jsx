@@ -25,8 +25,8 @@ const GROUP_LABELS = { jobs: 'Job Cards', contacts: 'Contacts', suppliers: 'Supp
 const GROUP_TO_SCOPE = { jobs: 'jobs', contacts: 'people', suppliers: 'people', activity: 'activity' };
 
 const fmt = (s) => (s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-const fmtDate = (d) => d ? new Date(d).toLocaleString() : '-';
-const fmtDateShort = (d) => d ? new Date(d).toLocaleDateString() : '-';
+const fmtDate = (d) => d ? new Date(d).toLocaleString('en-AU') : '-';
+const fmtDateShort = (d) => d ? new Date(d).toLocaleDateString('en-AU') : '-';
 
 const ACTION_COLORS = {
   create: 'var(--accent-ready)', update: 'var(--primary-accent)', delete: 'var(--accent-caution)',
