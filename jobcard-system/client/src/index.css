@@ -171,19 +171,21 @@
   --badge-cancelled-bg: rgba(239, 68, 68, 0.08);
   --badge-cancelled-text: #b91c1c;
 
-  /* Job status colors — reduced semantic palette (Light mode).
-     Four hue families carry signal instead of decoration:
-       grey  = idle / closed   (quote, invoiced)
-       blue  = active          (open, in progress)
-       warm  = waiting/blocked (material/treatment)
-       green = done
-     Sub-stages within a family separate by shade, not a new hue. */
+  /* Job status colors — semantic lifecycle palette (Light mode).
+     Colour tracks the job's journey and its "temperature": cool while
+     planning, warm once work starts, green when done, grey once filed.
+       pink   = quote        (a fresh estimate, not committed yet)
+       blue   = open         (accepted, queued)
+       violet = material     (parked — out at a supplier for material/treatment)
+       amber  = in progress  (being worked right now)
+       green  = done
+       grey   = invoiced     (billed and filed away — the only grey) */
 
-  /* Idle / draft */
-  --status-quote-bg: rgba(100, 116, 139, 0.10);
-  --status-quote-text: #475569;
-  --status-quote-border: rgba(100, 116, 139, 0.28);
-  --status-quote-dot: #64748b;
+  /* Fresh estimate (pink — the one warm-magenta, far from every other hue) */
+  --status-quote-bg: rgba(236, 72, 153, 0.11);
+  --status-quote-text: #be185d;
+  --status-quote-border: rgba(236, 72, 153, 0.30);
+  --status-quote-dot: #ec4899;
 
   /* Active — queued (blue) */
   --status-open-bg: rgba(59, 130, 246, 0.10);
@@ -191,17 +193,17 @@
   --status-open-border: rgba(59, 130, 246, 0.28);
   --status-open-dot: #3b82f6;
 
-  /* Waiting — material or out at treatment */
-  --status-awaiting-material-bg: rgba(245, 158, 11, 0.12);
-  --status-awaiting-material-text: #b45309;
-  --status-awaiting-material-border: rgba(245, 158, 11, 0.30);
-  --status-awaiting-material-dot: #f59e0b;
+  /* Parked — waiting on material or out at treatment (violet) */
+  --status-awaiting-material-bg: rgba(139, 92, 246, 0.12);
+  --status-awaiting-material-text: #6d28d9;
+  --status-awaiting-material-border: rgba(139, 92, 246, 0.32);
+  --status-awaiting-material-dot: #8b5cf6;
 
-  /* Active — being worked right now (teal, the one "live" colour) */
-  --status-in-progress-bg: rgba(20, 184, 166, 0.13);
-  --status-in-progress-text: #0f766e;
-  --status-in-progress-border: rgba(20, 184, 166, 0.32);
-  --status-in-progress-dot: #14b8a6;
+  /* Active — being worked right now (amber, the one "live" colour) */
+  --status-in-progress-bg: rgba(245, 158, 11, 0.14);
+  --status-in-progress-text: #b45309;
+  --status-in-progress-border: rgba(245, 158, 11, 0.34);
+  --status-in-progress-dot: #f59e0b;
 
   /* Done */
   --status-done-bg: rgba(34, 197, 94, 0.12);
@@ -309,15 +311,15 @@
   --badge-cancelled-bg: rgba(248, 113, 113, 0.15);
   --badge-cancelled-text: #fca5a5;
 
-  /* Job status colors — reduced semantic palette (Dark mode).
-     Same four families as light: grey idle/closed, blue active,
-     warm waiting, green done. */
+  /* Job status colors — semantic lifecycle palette (Dark mode).
+     Same journey as light: pink quote, blue open, violet material,
+     amber in progress, green done, grey invoiced. */
 
-  /* Idle / draft */
-  --status-quote-bg: rgba(100, 116, 139, 0.20);
-  --status-quote-text: #cbd5e1;
-  --status-quote-border: rgba(100, 116, 139, 0.32);
-  --status-quote-dot: #94a3b8;
+  /* Fresh estimate (pink) */
+  --status-quote-bg: rgba(236, 72, 153, 0.20);
+  --status-quote-text: #f9a8d4;
+  --status-quote-border: rgba(236, 72, 153, 0.34);
+  --status-quote-dot: #f472b6;
 
   /* Active — queued */
   --status-open-bg: rgba(59, 130, 246, 0.18);
@@ -325,17 +327,17 @@
   --status-open-border: rgba(59, 130, 246, 0.32);
   --status-open-dot: #60a5fa;
 
-  /* Waiting — material */
-  --status-awaiting-material-bg: rgba(245, 158, 11, 0.20);
-  --status-awaiting-material-text: #fcd34d;
-  --status-awaiting-material-border: rgba(245, 158, 11, 0.32);
-  --status-awaiting-material-dot: #fbbf24;
+  /* Parked — waiting on material or out at treatment (violet) */
+  --status-awaiting-material-bg: rgba(139, 92, 246, 0.22);
+  --status-awaiting-material-text: #c4b5fd;
+  --status-awaiting-material-border: rgba(139, 92, 246, 0.36);
+  --status-awaiting-material-dot: #a78bfa;
 
-  /* Active — being worked right now (teal, the one "live" colour) */
-  --status-in-progress-bg: rgba(20, 184, 166, 0.22);
-  --status-in-progress-text: #5eead4;
-  --status-in-progress-border: rgba(20, 184, 166, 0.38);
-  --status-in-progress-dot: #2dd4bf;
+  /* Active — being worked right now (amber, the one "live" colour) */
+  --status-in-progress-bg: rgba(245, 158, 11, 0.22);
+  --status-in-progress-text: #fcd34d;
+  --status-in-progress-border: rgba(245, 158, 11, 0.38);
+  --status-in-progress-dot: #fbbf24;
 
   /* Done */
   --status-done-bg: rgba(34, 197, 94, 0.22);
