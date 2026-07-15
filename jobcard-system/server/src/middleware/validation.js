@@ -159,7 +159,7 @@ function optionalEnum(field, label, allowed) {
 // Tag-based fields (drawings, customer_property, treatment, material, job_type)
 // are validated dynamically via getTagValues() from the tags DB table.
 
-const JOBCARD_STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'TREATMENT', 'ON_HOLD', 'DONE', 'INVOICED'];
+const JOBCARD_STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'DONE', 'INVOICED'];
 
 const PRIORITY_OPTIONS = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
 

@@ -21,10 +21,8 @@
 const STATUS_PLAN = [
   'QUOTE', 'QUOTE', 'QUOTE', 'QUOTE',
   'OPEN', 'OPEN', 'OPEN', 'OPEN',
-  'AWAITING_MATERIAL', 'AWAITING_MATERIAL', 'AWAITING_MATERIAL',
+  'AWAITING_MATERIAL', 'AWAITING_MATERIAL', 'AWAITING_MATERIAL', 'AWAITING_MATERIAL', 'AWAITING_MATERIAL',
   'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS',
-  'TREATMENT', 'TREATMENT', 'TREATMENT',
-  'ON_HOLD', 'ON_HOLD',
   'DONE', 'DONE', 'DONE', 'DONE',
   'INVOICED', 'INVOICED', 'INVOICED', 'INVOICED',
 ];
@@ -67,8 +65,6 @@ const CONTEXT = {
   OPEN: 'approved, scheduled to start',
   AWAITING_MATERIAL: 'awaiting material from supplier',
   IN_PROGRESS: 'machining underway',
-  TREATMENT: 'machined, out for treatment',
-  ON_HOLD: 'on hold pending customer decision',
   DONE: 'complete, awaiting collection',
   INVOICED: 'completed and invoiced',
 };
@@ -76,18 +72,16 @@ const NOTES = {
   OPEN: ['Drawing approved, tooling list prepared.', 'Scheduled to start next shift.'],
   AWAITING_MATERIAL: ['Bar stock ordered — ETA 5 working days.', 'Waiting on casting from the foundry.'],
   IN_PROGRESS: ['First item machined, first-off inspection passed.', 'Setup complete, running on the CNC now.'],
-  TREATMENT: ['Machining finished, parts sent out for treatment.', 'Dropped at the coater — ETA back is 4 days.'],
-  ON_HOLD: ['On hold — customer reviewing a revised drawing.', 'Paused pending a PO amendment.'],
   DONE: ['All items complete, QC signed off.', 'Finished and ready for customer collection.'],
   INVOICED: ['Completed, collected, and invoiced.', 'Final inspection passed — invoiced.'],
 };
 
-const STARTED = new Set(['IN_PROGRESS', 'TREATMENT', 'ON_HOLD', 'DONE', 'INVOICED']);
-const FULLY_MACHINED = new Set(['TREATMENT', 'DONE', 'INVOICED']);
-const COSTED = new Set(['IN_PROGRESS', 'TREATMENT', 'DONE', 'INVOICED']);
+const STARTED = new Set(['IN_PROGRESS', 'DONE', 'INVOICED']);
+const FULLY_MACHINED = new Set(['DONE', 'INVOICED']);
+const COSTED = new Set(['IN_PROGRESS', 'DONE', 'INVOICED']);
 // Base age (days ago created) per status — terminal jobs are older than fresh ones.
-const BASE_AGE = { QUOTE: 2, OPEN: 3, AWAITING_MATERIAL: 6, IN_PROGRESS: 9, TREATMENT: 16, ON_HOLD: 11, DONE: 22, INVOICED: 32 };
-const BASE_DUE = { QUOTE: 21, OPEN: 14, AWAITING_MATERIAL: 18, IN_PROGRESS: 8, TREATMENT: 10, ON_HOLD: 20, DONE: 3, INVOICED: -8 };
+const BASE_AGE = { QUOTE: 2, OPEN: 3, AWAITING_MATERIAL: 6, IN_PROGRESS: 9, DONE: 22, INVOICED: 32 };
+const BASE_DUE = { QUOTE: 21, OPEN: 14, AWAITING_MATERIAL: 18, IN_PROGRESS: 8, DONE: 3, INVOICED: -8 };
 
 function buildScenarios(contacts, qaLevels, opts = {}) {
   const workerCount = opts.workerCount || 5;
@@ -178,9 +172,6 @@ function buildScenarios(contacts, qaLevels, opts = {}) {
             const partial = Math.max(1, Math.floor(target / 2));
             timeEntries.push({ worker, item: itemNo, machine, qty: String(partial), scrap: 1, desc: it.desc, daysAgo: entered, startHour: 8, hours: 4 });
           }
-        } else if (status === 'ON_HOLD' && idx === 0) {
-          const partial = Math.max(1, Math.floor(target / 3));
-          timeEntries.push({ worker, item: itemNo, machine, qty: String(partial), desc: it.desc, daysAgo: entered, startHour: 8, hours: 3 });
         }
       });
 

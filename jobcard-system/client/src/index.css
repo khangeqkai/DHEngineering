@@ -175,7 +175,7 @@
      Four hue families carry signal instead of decoration:
        grey  = idle / closed   (quote, invoiced)
        blue  = active          (open, in progress)
-       warm  = waiting/blocked (awaiting material, treatment, on hold)
+       warm  = waiting/blocked (material/treatment)
        green = done
      Sub-stages within a family separate by shade, not a new hue. */
 
@@ -191,7 +191,7 @@
   --status-open-border: rgba(59, 130, 246, 0.28);
   --status-open-dot: #3b82f6;
 
-  /* Waiting — material */
+  /* Waiting — material or out at treatment */
   --status-awaiting-material-bg: rgba(245, 158, 11, 0.12);
   --status-awaiting-material-text: #b45309;
   --status-awaiting-material-border: rgba(245, 158, 11, 0.30);
@@ -202,18 +202,6 @@
   --status-in-progress-text: #0f766e;
   --status-in-progress-border: rgba(20, 184, 166, 0.32);
   --status-in-progress-dot: #14b8a6;
-
-  /* Waiting — out at treatment (warm orange) */
-  --status-treatment-bg: rgba(234, 88, 12, 0.11);
-  --status-treatment-text: #c2410c;
-  --status-treatment-border: rgba(234, 88, 12, 0.28);
-  --status-treatment-dot: #ea580c;
-
-  /* Parked / needs attention (pink — set apart from the warm waiting states) */
-  --status-on-hold-bg: rgba(236, 72, 153, 0.10);
-  --status-on-hold-text: #be185d;
-  --status-on-hold-border: rgba(236, 72, 153, 0.28);
-  --status-on-hold-dot: #ec4899;
 
   /* Done */
   --status-done-bg: rgba(34, 197, 94, 0.12);
@@ -348,18 +336,6 @@
   --status-in-progress-text: #5eead4;
   --status-in-progress-border: rgba(20, 184, 166, 0.38);
   --status-in-progress-dot: #2dd4bf;
-
-  /* Waiting — out at treatment (warm orange) */
-  --status-treatment-bg: rgba(234, 88, 12, 0.20);
-  --status-treatment-text: #fdba74;
-  --status-treatment-border: rgba(234, 88, 12, 0.34);
-  --status-treatment-dot: #f97316;
-
-  /* Parked / needs attention (pink — set apart from the warm waiting states) */
-  --status-on-hold-bg: rgba(236, 72, 153, 0.20);
-  --status-on-hold-text: #f9a8d4;
-  --status-on-hold-border: rgba(236, 72, 153, 0.34);
-  --status-on-hold-dot: #f472b6;
 
   /* Done */
   --status-done-bg: rgba(34, 197, 94, 0.22);

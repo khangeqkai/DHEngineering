@@ -11,10 +11,8 @@ export const PRIORITY_OPTIONS = [
 export const STATUS_OPTIONS = [
   { value: 'QUOTE', label: 'Quote' },
   { value: 'OPEN', label: 'Open' },
-  { value: 'AWAITING_MATERIAL', label: 'Awaiting Material' },
+  { value: 'AWAITING_MATERIAL', label: 'Material/Treatment' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
-  { value: 'TREATMENT', label: 'Treatment' },
-  { value: 'ON_HOLD', label: 'On Hold' },
   { value: 'DONE', label: 'Done' },
   { value: 'INVOICED', label: 'Invoiced' }
 ];

@@ -1025,8 +1025,6 @@ select.has-retired option.retired-option {
 .status-open,
 .status-awaiting-material,
 .status-in-progress,
-.status-treatment,
-.status-on-hold,
 .status-done,
 .status-invoiced {
   background: var(--s-bg);
@@ -1049,14 +1047,6 @@ select.has-retired option.retired-option {
 .status-in-progress {
   --s-bg: var(--status-in-progress-bg); --s-color: var(--status-in-progress-text);
   --s-border: var(--status-in-progress-border); --s-dot: var(--status-in-progress-dot);
-}
-.status-treatment {
-  --s-bg: var(--status-treatment-bg); --s-color: var(--status-treatment-text);
-  --s-border: var(--status-treatment-border); --s-dot: var(--status-treatment-dot);
-}
-.status-on-hold {
-  --s-bg: var(--status-on-hold-bg); --s-color: var(--status-on-hold-text);
-  --s-border: var(--status-on-hold-border); --s-dot: var(--status-on-hold-dot);
 }
 .status-done {
   --s-bg: var(--status-done-bg); --s-color: var(--status-done-text);

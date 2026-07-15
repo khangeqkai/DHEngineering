@@ -2857,8 +2857,8 @@
 }
 
 .readonly-badge.treatment {
-  background: var(--status-treatment-bg);
-  color: var(--status-treatment-text);
+  background: var(--status-awaiting-material-bg);
+  color: var(--status-awaiting-material-text);
 }
 
 .readonly-badge.material {

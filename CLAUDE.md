@@ -218,11 +218,12 @@ Supported PDF field names for templates are defined by `FIELD_MAPPINGS` in `serv
 
 ## Architectural Guidelines
 
-### No Backward Compatibility / No Legacy Code
-- **Do NOT add backward-compatibility logic** (migration shims, old-value fallbacks, renamed aliases, etc.)
-- **Actively remove legacy code** when replacing a system — delete old files, routes, queries, tables, imports, and exports. Do not leave orphaned code "for reference" or "just in case."
-- This is a fresh, actively-developed project — old data can be wiped/re-seeded
-- If a schema or value format changes, just change it everywhere; don't preserve old formats
+### Backward Compatibility via Startup Conversions
+- **When a schema or value format changes, ship a one-time startup conversion that folds existing data into the new shape.** This is the single, consistent way we keep existing databases working across changes. Put the conversion in `runMigrations()` (`server/src/db/init.js`) — it runs on every boot, and must be idempotent (a second run finds nothing to convert and is a no-op).
+- **Keep runtime code single-path — no backward-compatibility logic in live code** (old-value fallbacks, renamed aliases, dual read paths, etc.). The startup conversion is the *only* place that knows about the old shape; once it has run, every other part of the app only ever sees the new shape.
+- **Actively remove legacy code** when replacing a system — delete old files, routes, queries, tables, imports, and exports. Do not leave orphaned code "for reference" or "just in case." The conversion migrates the *data*; the old *code* still goes.
+- **Update the seed scripts to the new shape too**, so fresh installs and re-seeds produce new-shape data directly (only existing databases need the conversion).
+- Example: removing the `TREATMENT`/`ON_HOLD` job statuses folded them into `AWAITING_MATERIAL` via a startup conversion in `init.js`, while every status list, picker, sort map, and validator was updated to the new set and the old statuses were deleted from the code.
 
 ### File Size Limits
 - **Maximum 600 lines per file** - Refactor when approaching this limit

@@ -14,8 +14,9 @@ function runMigrations() {
   logger.info('Running migrations...');
 
   // One-shot wipe of legacy time_entries (Task 6 — per-item timer rewrite).
-  // CSV item_number rows are no longer supported; rather than splitting them,
-  // we wipe and start fresh per the project's "no backward compat" rule.
+  // CSV item_number rows can't be mapped onto the new per-item shape, so this
+  // conversion clears them rather than folding them; it runs once (guarded by
+  // the settings flag below) and is a no-op thereafter.
   const wipeFlagKey = 'time_entries_per_item_wiped_at';
   const flag = db.prepare('SELECT value FROM settings WHERE key = ?').get(wipeFlagKey);
   if (!flag) {
@@ -31,6 +32,17 @@ function runMigrations() {
   if (!contactCols.some(c => c.name === 'archived')) {
     db.prepare('ALTER TABLE contacts ADD COLUMN archived INTEGER DEFAULT 0').run();
     logger.info('Migration: Added archived column to contacts');
+  }
+
+  // The 'TREATMENT' and 'ON_HOLD' statuses were removed and folded into
+  // 'AWAITING_MATERIAL' (relabelled "Material/Treatment"). Convert any job still
+  // parked on the old values so they display, sort, and save normally — otherwise
+  // editing such a job would fail status validation.
+  const foldStatuses = db.prepare(
+    "UPDATE jobcards SET status = 'AWAITING_MATERIAL' WHERE status IN ('TREATMENT', 'ON_HOLD')"
+  ).run();
+  if (foldStatuses.changes > 0) {
+    logger.info({ moved: foldStatuses.changes }, "Migration: Folded TREATMENT/ON_HOLD jobs into AWAITING_MATERIAL");
   }
 
   logger.info('Migrations complete');

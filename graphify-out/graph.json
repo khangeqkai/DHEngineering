@@ -106,7 +106,7 @@
       "label": "seedHistory()",
       "file_type": "code",
       "source_file": "server/scripts/seed-history.js",
-      "source_location": "L28",
+      "source_location": "L26",
       "id": "scripts_seed_history_seedhistory",
       "community": 40,
       "norm_label": "seedhistory()"
@@ -169,7 +169,7 @@
       "label": "buildScenarios()",
       "file_type": "code",
       "source_file": "server/scripts/seed-scenarios.js",
-      "source_location": "L92",
+      "source_location": "L86",
       "id": "scripts_seed_scenarios_buildscenarios",
       "community": 41,
       "norm_label": "buildscenarios()"
@@ -286,7 +286,7 @@
       "label": "checkInterruptedRestore()",
       "file_type": "code",
       "source_file": "server/src/db/init.js",
-      "source_location": "L41",
+      "source_location": "L53",
       "id": "db_init_checkinterruptedrestore",
       "community": 11,
       "norm_label": "checkinterruptedrestore()"
@@ -295,7 +295,7 @@
       "label": "initializeDatabase()",
       "file_type": "code",
       "source_file": "server/src/db/init.js",
-      "source_location": "L59",
+      "source_location": "L71",
       "id": "db_init_initializedatabase",
       "community": 11,
       "norm_label": "initializedatabase()"
@@ -2176,7 +2176,7 @@
       "label": "normalizeHiddenColumns()",
       "file_type": "code",
       "source_file": "client/src/components/JobCardList.constants.js",
-      "source_location": "L57",
+      "source_location": "L53",
       "id": "components_jobcardlist_constants_normalizehiddencolumns",
       "community": 6,
       "norm_label": "normalizehiddencolumns()"
@@ -2185,7 +2185,7 @@
       "label": "mergeColumnOrder()",
       "file_type": "code",
       "source_file": "client/src/components/JobCardList.constants.js",
-      "source_location": "L70",
+      "source_location": "L66",
       "id": "components_jobcardlist_constants_mergecolumnorder",
       "community": 6,
       "norm_label": "mergecolumnorder()"
@@ -2194,7 +2194,7 @@
       "label": "statusToken()",
       "file_type": "code",
       "source_file": "client/src/components/JobCardList.constants.js",
-      "source_location": "L81",
+      "source_location": "L77",
       "id": "components_jobcardlist_constants_statustoken",
       "community": 6,
       "norm_label": "statustoken()"
@@ -2203,7 +2203,7 @@
       "label": "getStatusBadgeClass()",
       "file_type": "code",
       "source_file": "client/src/components/JobCardList.constants.js",
-      "source_location": "L83",
+      "source_location": "L79",
       "id": "components_jobcardlist_constants_getstatusbadgeclass",
       "community": 6,
       "norm_label": "getstatusbadgeclass()"
@@ -4120,7 +4120,7 @@
       "label": "useJobCardSort()",
       "file_type": "code",
       "source_file": "client/src/hooks/useJobCardSort.js",
-      "source_location": "L28",
+      "source_location": "L26",
       "id": "hooks_usejobcardsort_usejobcardsort",
       "community": 3,
       "norm_label": "usejobcardsort()"

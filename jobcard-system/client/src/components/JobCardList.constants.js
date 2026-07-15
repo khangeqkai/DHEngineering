@@ -2,10 +2,8 @@ export const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
   { value: 'QUOTE', label: 'Quote' },
   { value: 'OPEN', label: 'Open' },
-  { value: 'AWAITING_MATERIAL', label: 'Awaiting Material' },
+  { value: 'AWAITING_MATERIAL', label: 'Material/Treatment' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
-  { value: 'TREATMENT', label: 'Treatment' },
-  { value: 'ON_HOLD', label: 'On Hold' },
   { value: 'DONE', label: 'Done' },
   { value: 'INVOICED', label: 'Invoiced' },
   { value: 'OVERDUE', label: 'Overdue' }
@@ -14,10 +12,8 @@ export const STATUS_OPTIONS = [
 export const STATUS_LABELS = {
   QUOTE: 'Quote',
   OPEN: 'Open',
-  AWAITING_MATERIAL: 'Awaiting Material',
+  AWAITING_MATERIAL: 'Material/Treatment',
   IN_PROGRESS: 'In Progress',
-  TREATMENT: 'Treatment',
-  ON_HOLD: 'On Hold',
   DONE: 'Done',
   INVOICED: 'Invoiced'
 };
