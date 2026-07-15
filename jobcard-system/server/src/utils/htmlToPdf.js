@@ -71,7 +71,10 @@ let browserPromise = null;
 
 function launchBrowser() {
   const puppeteer = require('puppeteer');
-  const p = puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  // Generous launch timeout (default is 30s): the very first cold start after boot
+  // can be slow when Chromium lives on a slow disk, and cutting it off there is what
+  // makes the first print of a session fail. Once launched it's cached and reused.
+  const p = puppeteer.launch({ headless: true, timeout: 120000, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   // If the launch itself fails, clear the cache so the next caller starts fresh —
   // but only if we're still the cached instance (don't clobber a newer relaunch).
   p.catch(() => { if (browserPromise === p) browserPromise = null; });

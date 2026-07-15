@@ -1042,7 +1042,7 @@
       "label": "createRelatedRecords()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L433",
+      "source_location": "L436",
       "id": "routes_jobcard_helpers_createrelatedrecords",
       "community": 8,
       "norm_label": "createrelatedrecords()"
@@ -1051,7 +1051,7 @@
       "label": "copyQaTemplatesForJob()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L468",
+      "source_location": "L471",
       "id": "routes_jobcard_helpers_copyqatemplatesforjob",
       "community": 8,
       "norm_label": "copyqatemplatesforjob()"
@@ -1060,7 +1060,7 @@
       "label": "copyTemplatesToJobFolder()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L486",
+      "source_location": "L489",
       "id": "routes_jobcard_helpers_copytemplatestojobfolder",
       "community": 4,
       "norm_label": "copytemplatestojobfolder()"
@@ -1069,7 +1069,7 @@
       "label": "verifyQaTemplatesAvailable()",
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-helpers.js",
-      "source_location": "L596",
+      "source_location": "L599",
       "id": "routes_jobcard_helpers_verifyqatemplatesavailable",
       "community": 8,
       "norm_label": "verifyqatemplatesavailable()"
@@ -1690,7 +1690,7 @@
       "label": "discardBrowser()",
       "file_type": "code",
       "source_file": "server/src/utils/htmlToPdf.js",
-      "source_location": "L88",
+      "source_location": "L91",
       "id": "utils_htmltopdf_discardbrowser",
       "community": 9,
       "norm_label": "discardbrowser()"
@@ -1699,7 +1699,7 @@
       "label": "getBrowser()",
       "file_type": "code",
       "source_file": "server/src/utils/htmlToPdf.js",
-      "source_location": "L99",
+      "source_location": "L102",
       "id": "utils_htmltopdf_getbrowser",
       "community": 9,
       "norm_label": "getbrowser()"
@@ -1708,7 +1708,7 @@
       "label": "renderWithPuppeteer()",
       "file_type": "code",
       "source_file": "server/src/utils/htmlToPdf.js",
-      "source_location": "L126",
+      "source_location": "L129",
       "id": "utils_htmltopdf_renderwithpuppeteer",
       "community": 9,
       "norm_label": "renderwithpuppeteer()"
@@ -1717,7 +1717,7 @@
       "label": "renderHtmlToPdf()",
       "file_type": "code",
       "source_file": "server/src/utils/htmlToPdf.js",
-      "source_location": "L161",
+      "source_location": "L164",
       "id": "utils_htmltopdf_renderhtmltopdf",
       "community": 9,
       "norm_label": "renderhtmltopdf()"
@@ -1726,7 +1726,7 @@
       "label": "probeBrowser()",
       "file_type": "code",
       "source_file": "server/src/utils/htmlToPdf.js",
-      "source_location": "L171",
+      "source_location": "L174",
       "id": "utils_htmltopdf_probebrowser",
       "community": 9,
       "norm_label": "probebrowser()"
@@ -1753,7 +1753,7 @@
       "label": "renderItem()",
       "file_type": "code",
       "source_file": "server/src/utils/jobCardHtml.js",
-      "source_location": "L87",
+      "source_location": "L86",
       "id": "utils_jobcardhtml_renderitem",
       "community": 30,
       "norm_label": "renderitem()"
@@ -1762,7 +1762,7 @@
       "label": "renderJobCardHtml()",
       "file_type": "code",
       "source_file": "server/src/utils/jobCardHtml.js",
-      "source_location": "L137",
+      "source_location": "L130",
       "id": "utils_jobcardhtml_renderjobcardhtml",
       "community": 30,
       "norm_label": "renderjobcardhtml()"

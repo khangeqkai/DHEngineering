@@ -4,7 +4,7 @@
   "description": "Local job card system with offline support and LAN sync",
   "scripts": {
     "start": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "cd server && npm start",
+    "server": "cd server && npm run dev",
     "client": "cd client && npm start",
     "build": "cd client && npm run build",
     "setup": "node scripts/setup.js",

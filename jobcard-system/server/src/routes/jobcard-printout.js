@@ -108,14 +108,24 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
     // failing the whole packet.
     let cardBuf = null;
     if (includeJobCard) {
-      try {
-        const view = buildJobCardView(id, jobcard);
-        cardBuf = await renderHtmlToPdf(renderJobCardHtml(view));
-      } catch (cardErr) {
+      const html = renderJobCardHtml(buildJobCardView(id, jobcard));
+      // Try once, and if it fails for any reason other than the engine being missing,
+      // try one more time: the common failure is a cold first render (the browser was
+      // still starting up), and the second attempt reuses the now-warm browser.
+      let cardErr = null;
+      for (let attempt = 0; attempt < 2 && !cardBuf; attempt++) {
+        try {
+          cardBuf = await renderHtmlToPdf(html);
+        } catch (err) {
+          cardErr = err;
+          if (err.code === 'PDF_ENGINE_UNAVAILABLE') break; // no point retrying a missing engine
+        }
+      }
+      if (!cardBuf) {
         logger.error({ err: cardErr }, 'Packet: job card render failed');
         // Tell "the PDF engine isn't installed/usable" apart from "this card just
         // failed to draw", so the client can show a specific, fixable message.
-        const reason = cardErr.code === 'PDF_ENGINE_UNAVAILABLE' ? 'engine' : 'render';
+        const reason = cardErr && cardErr.code === 'PDF_ENGINE_UNAVAILABLE' ? 'engine' : 'render';
         skipped.push({ name: 'Job Card', reason });
       }
     }

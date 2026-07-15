@@ -24,15 +24,14 @@ const CSS = `
     font-family:"Segoe UI","Helvetica Neue",Arial,system-ui,sans-serif;
     font-size:10.5pt; line-height:1.35; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .sheet { padding:var(--pad); }
-  .head { display:flex; align-items:flex-end; justify-content:space-between;
-    padding-bottom:10px; border-bottom:2.5px solid var(--navy); }
-  .title { font-size:26pt; font-weight:800; letter-spacing:.5px; line-height:1; color:var(--navy); }
-  .title small { display:block; font-size:8.5pt; font-weight:600; letter-spacing:2.5px; color:var(--muted); margin-top:6px; }
-  .brand { text-align:right; }
-  .brand .name { font-size:13pt; font-weight:800; }
-  .brand .tag { font-size:8pt; color:var(--muted); letter-spacing:.4px; }
-  .jobno { margin-top:14px; display:flex; align-items:center; gap:14px; }
-  .jobno .num { font-size:18pt; font-weight:800; color:var(--accent); letter-spacing:.5px; }
+  .head { display:flex; align-items:flex-end; justify-content:space-between; gap:28px;
+    padding-bottom:12px; border-bottom:2.5px solid var(--navy); }
+  .ident { text-align:right; }
+  .ident .numrow { display:flex; align-items:center; justify-content:flex-end; gap:12px; }
+  .ident .num { font-size:13pt; font-weight:800; color:var(--accent); letter-spacing:.5px; line-height:1.25; }
+  .jobdesc { text-align:left; max-width:54%; }
+  .jobdesc .txt { font-size:13pt; font-weight:600; color:var(--navy);
+    line-height:1.25; overflow-wrap:anywhere; }
   .pill { font-size:8pt; font-weight:800; letter-spacing:1px; text-transform:uppercase;
     padding:3px 10px; border-radius:999px; border:1.5px solid currentColor; }
   .pill.high { color:#dc2626; background:#fef2f2; border-color:#fecaca; }
@@ -126,14 +125,8 @@ function renderItem(it) {
   </div>`;
 }
 
-/**
- * @param {Object} view - friendly, pre-formatted job card data:
- *   { jobNumber, priorityLabel|null, priorityClass, dateCreated, dueDate, company,
- *     printed, items: [{ number, qty, jobType, description, material, drawings,
- *     drawingsIsNa, drawingFiles, drawingsMissing, treatment, customerProperty,
- *     customerPropertyIsNa, propertyFiles, customerPropertyMissing }] }
- * @returns {string} full HTML document
- */
+// Builds the printable job card HTML from friendly, pre-formatted data
+// (see buildJobCardView in jobcard-helpers.js). Returns a full HTML document.
 function renderJobCardHtml(view) {
   const v = view || {};
   const items = Array.isArray(v.items) ? v.items : [];
@@ -147,14 +140,19 @@ function renderJobCardHtml(view) {
 <body>
 <div class="sheet">
   <div class="head">
-    <div class="title">JOB CARD<small>MANUFACTURING / INSPECTION</small></div>
-    <div class="brand"><div class="name">DH Engineering</div><div class="tag">Precision Engineering &amp; Manufacturing</div></div>
+    <div class="jobdesc">
+      <div class="txt">${esc(v.description) || '&mdash;'}</div>
+    </div>
+    <div class="ident">
+      <div class="numrow"><span class="num">${esc(v.jobNumber)}</span>${pill}</div>
+    </div>
   </div>
-  <div class="jobno"><span class="num">${esc(v.jobNumber)}</span>${pill}</div>
   <div class="meta">
     <div class="cell"><div class="lbl">Date created</div><div class="val">${esc(v.dateCreated)}</div></div>
     <div class="cell"><div class="lbl">Due date</div><div class="val">${esc(v.dueDate)}</div></div>
     <div class="cell span"><div class="lbl">Company</div><div class="val">${esc(v.company)}</div></div>
+    <div class="cell"><div class="lbl">Customer PO number</div><div class="val">${esc(v.poNumber) || '&mdash;'}</div></div>
+    <div class="cell"><div class="lbl">Quote reference</div><div class="val">${esc(v.quoteReference) || '&mdash;'}</div></div>
   </div>
   <div class="items-h"><h2>Items</h2><span class="count">${items.length} ${items.length === 1 ? 'part' : 'parts'}</span></div>
   ${items.map(renderItem).join('')}

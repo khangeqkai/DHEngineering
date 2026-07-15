@@ -418,6 +418,7 @@ function buildJobCardView(jobcardId, jc) {
 
   return {
     jobNumber: jc.job_number,
+    description: jc.description || '',
     priorityLabel,
     priorityClass: priorityKey === 'HIGH' ? 'high' : 'normal',
     dateCreated: formatAuDate(jc.created_at),
@@ -425,6 +426,8 @@ function buildJobCardView(jobcardId, jc) {
     // The shop-floor printout shows the company so workers know whose job it is.
     // Contact name / phone / email are never on the printout for anyone.
     company: jc.company_name || '',
+    poNumber: jc.po_number || '',
+    quoteReference: jc.quote_reference || '',
     printed: new Date().toLocaleDateString('en-AU'),
     items
   };
