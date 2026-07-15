@@ -169,7 +169,8 @@ router.get('/me', authenticate, (req, res) => {
       role: user.role,
       name: user.name,
       email: user.email,
-      jobcardColumnOrder: user.jobcard_column_order ? JSON.parse(user.jobcard_column_order) : null
+      jobcardColumnOrder: user.jobcard_column_order ? JSON.parse(user.jobcard_column_order) : null,
+      jobcardHiddenColumns: user.jobcard_hidden_columns ? JSON.parse(user.jobcard_hidden_columns) : null
     });
   } catch (err) {
     res.status(404).json({ error: 'User not found' });
@@ -179,10 +180,16 @@ router.get('/me', authenticate, (req, res) => {
 // Update user preferences
 router.put('/me/preferences', authenticate, validateUpdatePreferences, (req, res) => {
   try {
-    const { jobcardColumnOrder } = req.body;
+    const { jobcardColumnOrder, jobcardHiddenColumns } = req.body;
 
     if (jobcardColumnOrder) {
       userQueries.updateJobcardColumnOrder.run(JSON.stringify(jobcardColumnOrder), req.user.userId);
+    }
+
+    // An empty array is meaningful here ("show every column"), so save whenever the
+    // field is present rather than only when non-empty.
+    if (Array.isArray(jobcardHiddenColumns)) {
+      userQueries.updateJobcardHiddenColumns.run(JSON.stringify(jobcardHiddenColumns), req.user.userId);
     }
 
     res.json({ success: true });

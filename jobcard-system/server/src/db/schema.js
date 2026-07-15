@@ -374,6 +374,7 @@ const migrations = [
   { table: 'job_items', column: 'customer_property', type: 'TEXT' },
   { table: 'tags', column: 'archived', type: 'INTEGER DEFAULT 0' },
   { table: 'users', column: 'jobcard_column_order', type: 'TEXT' },
+  { table: 'users', column: 'jobcard_hidden_columns', type: 'TEXT' },
   // Per-level switch: when on, a completed quality form must be scanned back before
   // invoicing (drives the missing-quality-form warning). Off = print-only level.
   { table: 'qa_levels', column: 'requires_returned_form', type: 'INTEGER DEFAULT 0' },

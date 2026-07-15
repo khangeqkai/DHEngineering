@@ -48,6 +48,25 @@ export const DEFAULT_COLUMN_ORDER = [
   'actions'
 ];
 
+// Every column except the job number can be hidden — the job number is the
+// click-through to open a job, so it always stays visible.
+export const HIDEABLE_COLUMN_IDS = DEFAULT_COLUMN_ORDER.filter(id => id !== 'jobNumber');
+
+// Keep only known hideable ids, de-duped. Drops anything unknown or jobNumber so a
+// stale/garbage saved value can never hide the job number or a column that's gone.
+export const normalizeHiddenColumns = (saved) => {
+  if (!Array.isArray(saved)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const id of saved) {
+    if (HIDEABLE_COLUMN_IDS.includes(id) && !seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  return out;
+};
+
 export const mergeColumnOrder = (saved) => {
   if (!Array.isArray(saved) || saved.length === 0) return DEFAULT_COLUMN_ORDER;
   const missing = DEFAULT_COLUMN_ORDER.filter(c => !saved.includes(c));

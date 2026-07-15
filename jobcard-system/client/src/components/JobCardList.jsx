@@ -16,9 +16,11 @@ import { useMissingFilesIndicator } from '../hooks/useMissingFilesIndicator';
 import { describeAttachmentGaps, describeWorkWarning } from '../utils/attachmentWarnings';
 import useJobCardSort from '../hooks/useJobCardSort';
 import useJobCardColumnOrder from '../hooks/useJobCardColumnOrder';
+import useJobCardColumnVisibility from '../hooks/useJobCardColumnVisibility';
 import EmptyState from './common/EmptyState';
 import JobCardCalendarView from './JobCardCalendarView';
 import JobCardListFilters from './JobCardListFilters';
+import JobCardColumnsMenu from './JobCardColumnsMenu';
 import JobCardListTable from './JobCardListTable';
 import JobCardListPagination from './JobCardListPagination';
 import { getJobCardColumns } from './JobCardListColumns';
@@ -86,6 +88,7 @@ export default function JobCardList() {
   const { warningsById: missingFilesIds, checkedIds: attachmentCheckedIds, ensure: ensureMissingFiles, refresh: refreshMissingFiles } = useMissingFilesIndicator();
 
   const { columnOrder, handleDragStart, handleDragEnd, handleDragOver, handleDrop } = useJobCardColumnOrder();
+  const { hiddenColumns, toggleColumn, resetColumns } = useJobCardColumnVisibility();
 
   const hasLoadedOnceRef = useRef(false);
   const loadJobcards = useCallback(async () => {
@@ -380,10 +383,19 @@ export default function JobCardList() {
     handleUnarchive
   });
 
-  const visibleColumns = columnOrder
+  // Columns the user is allowed to see, in their chosen order — this drives both
+  // the show/hide menu (all of them) and the actual table (minus the hidden ones).
+  const permittedColumns = columnOrder
     .map(id => columns.find(c => c.id === id))
     .filter(Boolean)
     .filter(col => !col.adminOnly || isAdmin);
+
+  const toggleableColumns = permittedColumns
+    .filter(col => col.id !== 'jobNumber')
+    .map(col => ({ id: col.id, label: col.label }));
+
+  const visibleColumns = permittedColumns
+    .filter(col => col.id === 'jobNumber' || !hiddenColumns.includes(col.id));
 
   if (loading) {
     return <div className="loading">Loading job cards...</div>;
@@ -427,6 +439,14 @@ export default function JobCardList() {
         onFilterChange={setFilter}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        columnsMenu={
+          <JobCardColumnsMenu
+            columns={toggleableColumns}
+            hiddenColumns={hiddenColumns}
+            onToggle={toggleColumn}
+            onReset={resetColumns}
+          />
+        }
       />
 
       {viewMode === 'calendar' ? (

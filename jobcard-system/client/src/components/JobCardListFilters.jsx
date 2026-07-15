@@ -14,7 +14,8 @@ export default function JobCardListFilters({
   filter,
   onFilterChange,
   viewMode,
-  onViewModeChange
+  onViewModeChange,
+  columnsMenu
 }) {
   return (
     <div className="filters">
@@ -61,7 +62,9 @@ export default function JobCardListFilters({
           </div>
         </>
       )}
-      <div className="view-toggle">
+      <div className="filters-right">
+        {viewMode === 'list' && columnsMenu}
+        <div className="view-toggle">
         <button
           className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => onViewModeChange('list')}
@@ -76,6 +79,7 @@ export default function JobCardListFilters({
         >
           <Calendar size={16} />
         </button>
+        </div>
       </div>
     </div>
   );

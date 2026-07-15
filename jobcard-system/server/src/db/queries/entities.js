@@ -42,6 +42,11 @@ const userQueries = {
   updateJobcardColumnOrder: db.prepare(`
     UPDATE users SET jobcard_column_order = ?, updated_at = datetime('now')
     WHERE id = ?
+  `),
+
+  updateJobcardHiddenColumns: db.prepare(`
+    UPDATE users SET jobcard_hidden_columns = ?, updated_at = datetime('now')
+    WHERE id = ?
   `)
 };
 

@@ -169,6 +169,10 @@ const JOBCARD_COLUMN_IDS = [
   'status', 'priority', 'attachments', 'dueDate', 'createdAt', 'updatedAt', 'actions'
 ];
 
+// The job number column is the click-through to open a job, so it can never be
+// hidden — only these columns may appear in the hidden list.
+const HIDEABLE_COLUMN_IDS = JOBCARD_COLUMN_IDS.filter(id => id !== 'jobNumber');
+
 // =============================================================================
 // Pre-built Validation Arrays for Common Routes
 // =============================================================================
@@ -250,6 +254,24 @@ const validateUpdatePreferences = [
         }
         if (seen.has(id)) {
           throw new Error(`jobcardColumnOrder contains duplicate column ID: ${id}`);
+        }
+        seen.add(id);
+      }
+      return true;
+    }),
+  body('jobcardHiddenColumns')
+    .optional()
+    .isArray({ max: HIDEABLE_COLUMN_IDS.length })
+    .withMessage(`jobcardHiddenColumns must be an array of up to ${HIDEABLE_COLUMN_IDS.length} column IDs`)
+    .bail()
+    .custom((value) => {
+      const seen = new Set();
+      for (const id of value) {
+        if (typeof id !== 'string' || !HIDEABLE_COLUMN_IDS.includes(id)) {
+          throw new Error(`jobcardHiddenColumns contains invalid column ID: ${id}`);
+        }
+        if (seen.has(id)) {
+          throw new Error(`jobcardHiddenColumns contains duplicate column ID: ${id}`);
         }
         seen.add(id);
       }
