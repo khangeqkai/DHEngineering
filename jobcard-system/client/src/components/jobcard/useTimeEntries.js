@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { getDefaultTimeEntryForm, isoToLocalInput, localInputToIso } from './mappers';
 
-export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, stopActiveEntry, showConfirm }) {
+export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, showConfirm }) {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
   const [editingTimeEntryId, setEditingTimeEntryId] = useState(null);
   const [timeEntryForm, setTimeEntryForm] = useState(getDefaultTimeEntryForm());
@@ -142,25 +142,6 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     }
   }, [jobCardId, deleteTimeEntry, showConfirm]);
 
-  const handleStopActiveEntry = useCallback(async (entry) => {
-    if (!jobCardId) return;
-
-    const confirmed = await showConfirm({
-      title: 'Stop Timer',
-      message: `Stop ${entry.userName}'s active timer?`,
-      confirmLabel: 'Stop Timer',
-      confirmVariant: 'danger'
-    });
-    if (!confirmed) return;
-
-    try {
-      await stopActiveEntry(entry.id);
-      toast.success('Timer stopped');
-    } catch (err) {
-      toast.error(err.message || 'Failed to stop timer');
-    }
-  }, [jobCardId, stopActiveEntry, showConfirm]);
-
   const resetTimeEntries = useCallback(() => {
     resetTimeEntryForm();
   }, [resetTimeEntryForm]);
@@ -176,7 +157,6 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     handleEditTimeEntry,
     handleSaveTimeEntry,
     handleDeleteTimeEntry,
-    handleStopActiveEntry,
     resetTimeEntries
   };
 }

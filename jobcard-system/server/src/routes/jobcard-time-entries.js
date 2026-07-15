@@ -50,7 +50,23 @@ router.get('/active-timer', authenticate, (req, res) => {
 router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req, res) => {
   try {
     const { id } = req.params;
-    const { itemNumber } = req.body;
+    const { itemNumber, workerId } = req.body;
+
+    // Decide whose timer this is. Normally it's the caller's own. An admin may
+    // start a timer FOR another worker by naming them (workerId) — e.g. setting
+    // someone up at a machine — so the hours land under the worker, not the admin.
+    let targetWorkerId = req.user.userId;
+    if (workerId && workerId !== req.user.userId) {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Only an admin can start a timer for another worker' });
+      }
+      const resolved = resolveWorkerId(workerId);
+      if (resolved.error) {
+        return res.status(400).json({ error: resolved.error });
+      }
+      targetWorkerId = resolved.userId;
+    }
+    const isSelf = targetWorkerId === req.user.userId;
 
     // Verify the item exists on this jobcard, and bind the timer to the line's
     // stable id so it keeps pointing at the same line even if the lines are later
@@ -69,7 +85,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
     // two devices slipping a second timer through; the transaction keeps the
     // check and insert atomic.
     const startTimer = db.transaction(() => {
-      const active = timeEntryQueries.getActiveByUser.get(req.user.userId);
+      const active = timeEntryQueries.getActiveByUser.get(targetWorkerId);
       if (active) {
         const e = new Error('Timer already running');
         e.activeTimer = active;
@@ -78,7 +94,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
       timeEntryQueries.create.run(
         entryId,
         id,
-        req.user.userId,
+        targetWorkerId,
         targetItem.id,
         null, // machineNumber
         null, // qty
@@ -99,7 +115,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
       startTimer();
     } catch (e) {
       if ((e.activeTimer || isOpenTimerConflict(e)) &&
-          sendOpenTimerConflict(res, req.user.userId, e.activeTimer)) {
+          sendOpenTimerConflict(res, targetWorkerId, e.activeTimer)) {
         return;
       }
       throw e;
@@ -110,34 +126,46 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
     // the timeline shows one event. Never blocks the timer if it can't.
     const statusChange = syncStatusToWork(id, req.user);
 
+    // The event is attributed to whoever pressed Start (the admin, for an on-behalf
+    // start); name the worker as well when it isn't the admin's own timer, so the
+    // timeline reads "started for <worker>".
+    const targetWorker = isSelf ? null : userQueries.getById.get(targetWorkerId);
     recordHistory('jobcard', id, 'start_timer', req.user.userId, req.user.name || req.user.username, {
       timer: { from: null, to: startTime },
       itemNumber: { from: null, to: itemNumber },
+      ...(targetWorker ? { worker: { from: null, to: targetWorker.name || targetWorker.username } } : {}),
       ...(statusChange ? { status: statusChange } : {})
     }, null);
 
-    // Auto-assign the user to this job if they aren't already an assignee
-    const beforeAssignees = jobAssigneeQueries.getByJobcard.all(id);
-    const alreadyAssigned = beforeAssignees.some(a => a.user_id === req.user.userId);
-    if (!alreadyAssigned) {
-      try {
-        jobAssigneeQueries.create.run(`assignee:${uuidv4()}`, id, req.user.userId);
-        const afterAssignees = jobAssigneeQueries.getByJobcard.all(id);
-        const fromNames = beforeAssignees.map(a => a.user_name).join(', ') || 'none';
-        const toNames = afterAssignees.map(a => a.user_name).join(', ') || 'none';
-        recordHistory('jobcard', id, 'self_assign', req.user.userId, req.user.name || req.user.username, {
-          assignees: { from: fromNames, to: toNames }
-        });
-      } catch (e) {
-        if (!e || e.code !== 'SQLITE_CONSTRAINT_UNIQUE') {
-          logger.error({ err: e }, 'Auto-assign on start timer failed');
+    // Auto-assign the worker to this job if they aren't already an assignee. For a
+    // self-start we record it as a self_assign; for an on-behalf start the shared
+    // helper records it as an admin assign.
+    if (isSelf) {
+      const beforeAssignees = jobAssigneeQueries.getByJobcard.all(id);
+      const alreadyAssigned = beforeAssignees.some(a => a.user_id === targetWorkerId);
+      if (!alreadyAssigned) {
+        try {
+          jobAssigneeQueries.create.run(`assignee:${uuidv4()}`, id, targetWorkerId);
+          const afterAssignees = jobAssigneeQueries.getByJobcard.all(id);
+          const fromNames = beforeAssignees.map(a => a.user_name).join(', ') || 'none';
+          const toNames = afterAssignees.map(a => a.user_name).join(', ') || 'none';
+          recordHistory('jobcard', id, 'self_assign', req.user.userId, req.user.name || req.user.username, {
+            assignees: { from: fromNames, to: toNames }
+          });
+        } catch (e) {
+          if (!e || e.code !== 'SQLITE_CONSTRAINT_UNIQUE') {
+            logger.error({ err: e }, 'Auto-assign on start timer failed');
+          }
         }
       }
+    } else {
+      autoAssignWorker(id, targetWorkerId, req.user);
     }
 
     res.status(201).json({
       id: entryId,
       jobcardId: id,
+      userId: targetWorkerId,
       itemNumber,
       startTime
     });

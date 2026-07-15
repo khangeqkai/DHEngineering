@@ -49,7 +49,7 @@ export default function ItemsTab({
   handleAddTimeEntry,
   handleEditTimeEntry,
   handleSaveTimeEntry,
-  handleStopActiveEntry,
+  handleStopEntryWithForm,
   handleDeleteTimeEntry,
   resetTimeEntryForm,
   onToggleSpecial,
@@ -58,7 +58,8 @@ export default function ItemsTab({
   timerElapsed,
   timerLoading,
   onStartTimer,
-  onStopTimer
+  onStopTimer,
+  currentUserId
 }) {
   const { tags: jobTypeTags, loading: jobTypesLoading, labelOf: jobTypeLabelOf } = useTags('job_type');
   const { tags: drawingsTags, labelOf: drawingsLabelOf } = useTags('drawings');
@@ -407,6 +408,9 @@ export default function ItemsTab({
                         loading={timerLoading}
                         onStart={onStartTimer}
                         onStop={onStopTimer}
+                        isAdmin={isAdmin}
+                        employees={employees}
+                        currentUserId={currentUserId}
                       />
                     </div>
                   )}
@@ -419,7 +423,7 @@ export default function ItemsTab({
                       onAdd={isAdmin && handleAddTimeEntry ? () => handleAddTimeEntry(item.itemNumber) : undefined}
                       onEdit={isAdmin ? handleEditTimeEntry : undefined}
                       onDelete={isAdmin ? handleDeleteTimeEntry : undefined}
-                      onStop={handleStopActiveEntry}
+                      onStop={handleStopEntryWithForm}
                       onToggleSpecial={isAdmin ? onToggleSpecial : undefined}
                     />
                   )}

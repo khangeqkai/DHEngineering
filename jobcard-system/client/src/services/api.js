@@ -175,7 +175,11 @@ class ApiService {
 
   // Timer endpoints
   getActiveTimer() { return this.request('/jobcards/active-timer'); }
-  startTimer(jobcardId, itemNumber) { return this._post(`/jobcards/${jobcardId}/time-entries/start`, { itemNumber }); }
+  startTimer(jobcardId, itemNumber, workerId) {
+    const body = { itemNumber };
+    if (workerId) body.workerId = workerId;
+    return this._post(`/jobcards/${jobcardId}/time-entries/start`, body);
+  }
   stopTimer(jobcardId, entryId) { return this._post(`/jobcards/${jobcardId}/time-entries/${entryId}/stop`); }
   toggleSpecialLabour(jobcardId, entryId) { return this._patch(`/jobcards/${jobcardId}/time-entries/${entryId}/toggle-special`); }
 

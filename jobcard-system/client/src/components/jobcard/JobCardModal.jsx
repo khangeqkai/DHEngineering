@@ -248,13 +248,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     deleteTimeEntry: async (id) => {
       await api.deleteTimeEntry(jobCardId, id);
       await reloadTimeEntriesAndCosting();
-    },
-    stopActiveEntry: async (entryId) => {
-      await api.stopTimer(jobCardId, entryId);
-      if (timer.activeTimer?.id === entryId) {
-        timer.resetTimer();
-      }
-      await reloadTimeEntriesAndCosting();
     }
   };
 
@@ -273,8 +266,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   }, [jobCardId, reloadTimeEntries, refreshCosting]);
 
   const { setAssignees } = formHook;
-  const handleStartItemTimer = useCallback(async (itemNumber) => {
-    await timer.startTimerWithConflictCheck(itemNumber, showConfirm);
+  const handleStartItemTimer = useCallback(async (itemNumber, workerId, workerName) => {
+    await timer.startTimerWithConflictCheck(itemNumber, showConfirm, workerId, workerName);
     await reloadTimeEntries();
     // Server may have auto-assigned the user and nudged the status to In Progress
     // when starting the timer — refresh both from one fetch.
@@ -293,6 +286,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   const handleStopItemTimer = useCallback(async () => {
     await timer.stopTimer();
+    await reloadTimeEntries();
+    await refreshJobStatus();
+    if (onTimerChange) onTimerChange();
+  }, [timer, reloadTimeEntries, refreshJobStatus, onTimerChange]);
+
+  // Admin stops a running timer from a line's Progress list (their own or one they
+  // set up for a worker). Opens the same fill-in form so the pieces/scrap/description
+  // for that run get recorded, instead of silently dropping a blank block.
+  const handleStopEntryWithForm = useCallback(async (entry) => {
+    await timer.stopEntryWithForm(entry);
     await reloadTimeEntries();
     await refreshJobStatus();
     if (onTimerChange) onTimerChange();
@@ -573,6 +576,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   timerLoading={timer.loading}
                   onStartTimer={handleStartItemTimer}
                   onStopTimer={handleStopItemTimer}
+                  currentUserId={user?.id}
                   formData={formHook.formData}
                   setFormData={formHook.setFormData}
                   handleChange={formHook.handleChange}
@@ -616,7 +620,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   handleEditTimeEntry={timeEntry.handleEditTimeEntry}
                   handleSaveTimeEntry={timeEntry.handleSaveTimeEntry}
                   handleDeleteTimeEntry={timeEntry.handleDeleteTimeEntry}
-                  handleStopActiveEntry={timeEntry.handleStopActiveEntry}
+                  handleStopEntryWithForm={handleStopEntryWithForm}
                   resetTimeEntryForm={timeEntry.resetTimeEntryForm}
                   onToggleSpecial={handleToggleSpecial}
                 />

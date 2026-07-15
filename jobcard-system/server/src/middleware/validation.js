@@ -330,6 +330,12 @@ const validateStartTimer = [
     .isInt({ min: 1 })
     .withMessage('itemNumber must be a positive integer')
     .toInt(),
+  // Optional: an admin may start the timer for another worker. Light guard only —
+  // the route validates the worker exists and is active via resolveWorkerId.
+  body('workerId')
+    .optional({ checkFalsy: true })
+    .isString()
+    .withMessage('workerId must be a string'),
   handleValidationErrors
 ];
 

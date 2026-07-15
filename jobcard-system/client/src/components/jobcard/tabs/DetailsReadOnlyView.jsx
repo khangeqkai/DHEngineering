@@ -15,7 +15,7 @@ export default function DetailsReadOnlyView({
   timerLoading,
   onStartTimer,
   onStopTimer,
-  handleStopActiveEntry
+  handleStopEntryWithForm
 }) {
   return (
     <div className="modal-form-grid readonly-view">
@@ -34,7 +34,7 @@ export default function DetailsReadOnlyView({
         timerLoading={timerLoading}
         onStartTimer={onStartTimer}
         onStopTimer={onStopTimer}
-        handleStopActiveEntry={handleStopActiveEntry}
+        handleStopEntryWithForm={handleStopEntryWithForm}
       />
 
       {/* Assignees */}

@@ -18,7 +18,8 @@ const emptyEntryForm = () => ({
 });
 
 export function useTimer(jobcardId, { onExternalStop } = {}) {
-  const { registerBeforeLogout } = useAuth();
+  const { registerBeforeLogout, user } = useAuth();
+  const currentUserId = user?.id;
   const [activeTimer, setActiveTimer] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -102,22 +103,45 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     return () => clearInterval(poll);
   }, [activeTimer, jobcardId]);
 
-  const startTimerWithConflictCheck = useCallback(async (itemNumber, showConfirm) => {
+  const startTimerWithConflictCheck = useCallback(async (itemNumber, showConfirm, workerId, workerName) => {
     if (!Number.isInteger(itemNumber) || itemNumber < 1) {
       toast.error('Pick an item to start the timer');
       return;
     }
+    // An admin can start a timer FOR another worker. When they do, the running
+    // timer belongs to that person (it shows on the worker's own screen and in
+    // this job's Progress list), so we must NOT adopt it as the admin's own
+    // active timer here.
+    const isOnBehalf = !!workerId && workerId !== currentUserId;
     setLoading(true);
     try {
-      const result = await api.startTimer(jobcardId, itemNumber);
-      setActiveTimer({
-        id: result.id,
-        jobcardId: result.jobcardId,
-        itemNumber: result.itemNumber,
-        startTime: result.startTime
-      });
-      toast.success(`Timer started on item #${itemNumber}`);
+      const result = await api.startTimer(jobcardId, itemNumber, workerId);
+      if (isOnBehalf) {
+        toast.success(`Timer started for ${workerName || 'that worker'} on item #${itemNumber}`);
+      } else {
+        setActiveTimer({
+          id: result.id,
+          jobcardId: result.jobcardId,
+          itemNumber: result.itemNumber,
+          startTime: result.startTime
+        });
+        toast.success(`Timer started on item #${itemNumber}`);
+      }
     } catch (err) {
+      // On-behalf: the chosen worker already has a timer running elsewhere. This
+      // is their conflict, not the admin's, so just report it — the admin's own
+      // stop-and-switch flow below only makes sense for the admin's own timer.
+      if (isOnBehalf) {
+        if (err.status === 409 || err.message.includes('Timer running on another job')) {
+          const t = err.data?.activeTimer;
+          toast.error(t
+            ? `That worker already has a timer running on ${t.jobNumber || 'another job'}, item #${t.itemNumber}`
+            : 'That worker already has a timer running');
+        } else {
+          toast.error(err.message || 'Failed to start timer');
+        }
+        return;
+      }
       // Check for 409 conflict (timer running on another job/item)
       if (err.message.includes('Timer running on another job')) {
         try {
@@ -172,7 +196,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     } finally {
       setLoading(false);
     }
-  }, [jobcardId]);
+  }, [jobcardId, currentUserId]);
 
   const stopTimer = useCallback(async () => {
     if (!activeTimer) return;
@@ -187,6 +211,41 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
         return;
       }
       setStoppedEntry(entry);
+      setEntryForm(emptyEntryForm());
+      setShowEntryForm(true);
+      toast.success('Timer stopped');
+    } catch (err) {
+      toast.error(err.message || 'Failed to stop timer');
+    } finally {
+      setLoading(false);
+    }
+  }, [jobcardId, activeTimer]);
+
+  // Stop a specific running entry (from the per-item Progress list) and open the
+  // fill-in form so the good pieces / scrap / description get recorded — the same
+  // form a worker gets when stopping their own timer. Used by an admin, who may be
+  // stopping someone else's run (e.g. one they set up for a worker); when the entry
+  // isn't the admin's own we must NOT adopt it as the admin's active timer.
+  const stopEntryWithForm = useCallback(async (entry) => {
+    if (!entry?.id) return;
+    setLoading(true);
+    try {
+      const entryJobcardId = entry.jobcardId || jobcardId;
+      const isOwnActive = activeTimer && activeTimer.id === entry.id;
+      // Stopping our own running timer here behaves like the normal stop — clear it
+      // and stop the background poller crying "stopped by an admin".
+      if (isOwnActive) selfStoppedRef.current = true;
+      const result = await api.stopTimer(entryJobcardId, entry.id);
+      if (isOwnActive) setActiveTimer(null);
+      // A run under 15s is discarded server-side — no block, no form, just a heads-up.
+      if (result?.discarded) {
+        toast('Timer discarded — under 15 seconds', { icon: '🗑️' });
+        return;
+      }
+      setStoppedEntry(result);
+      setStoppedEntryJobCard(entryJobcardId !== jobcardId
+        ? { id: entryJobcardId, jobNumber: entry.jobNumber }
+        : null);
       setEntryForm(emptyEntryForm());
       setShowEntryForm(true);
       toast.success('Timer stopped');
@@ -285,8 +344,12 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
         ...stoppedEntry,
         endTime: null
       });
-      // Cross-job resume: the other job's timer stays running and re-attaches when that modal opens
-      if (isSameJob) {
+      // Re-adopt the resumed timer as our own only when it's actually ours. An admin
+      // may be resuming a run that belongs to another worker (one they stopped from
+      // the Progress list) — that timer reopens for the worker, but it must not become
+      // the admin's active timer. Cross-job resume: the other job's timer stays
+      // running and re-attaches when that modal opens.
+      if (isSameJob && stoppedEntry.userId === currentUserId) {
         setActiveTimer({
           id: stoppedEntry.id,
           jobcardId,
@@ -306,7 +369,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, stoppedEntry]);
+  }, [jobcardId, stoppedEntry, currentUserId]);
 
   // Resume timer if user gets auto-logged out while filling StopTimerForm
   const stoppedEntryRef = useRef(null);
@@ -343,6 +406,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     entryForm,
     startTimerWithConflictCheck,
     stopTimer,
+    stopEntryWithForm,
     handleEntryFieldChange,
     handleEntryMachineToggle,
     submitEntryForm,

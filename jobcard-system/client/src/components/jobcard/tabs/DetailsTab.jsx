@@ -57,7 +57,7 @@ export default function DetailsTab({
   handleEditTimeEntry,
   handleSaveTimeEntry,
   handleDeleteTimeEntry,
-  handleStopActiveEntry,
+  handleStopEntryWithForm,
   resetTimeEntryForm,
   onToggleSpecial,
   // Per-item timer
@@ -65,7 +65,8 @@ export default function DetailsTab({
   timerElapsed,
   timerLoading,
   onStartTimer,
-  onStopTimer
+  onStopTimer,
+  currentUserId
 }) {
   const readOnly = isEdit && !isAdmin;
 
@@ -96,7 +97,7 @@ export default function DetailsTab({
           timerLoading={timerLoading}
           onStartTimer={onStartTimer}
           onStopTimer={onStopTimer}
-          handleStopActiveEntry={handleStopActiveEntry}
+          handleStopEntryWithForm={handleStopEntryWithForm}
         />
         {isEdit && (
           <NotesSection
@@ -253,7 +254,7 @@ export default function DetailsTab({
         handleEditTimeEntry={handleEditTimeEntry}
         handleSaveTimeEntry={handleSaveTimeEntry}
         handleDeleteTimeEntry={handleDeleteTimeEntry}
-        handleStopActiveEntry={handleStopActiveEntry}
+        handleStopEntryWithForm={handleStopEntryWithForm}
         resetTimeEntryForm={resetTimeEntryForm}
         onToggleSpecial={onToggleSpecial}
         activeTimer={isEdit ? activeTimer : null}
@@ -261,6 +262,7 @@ export default function DetailsTab({
         timerLoading={timerLoading}
         onStartTimer={isEdit ? onStartTimer : undefined}
         onStopTimer={isEdit ? onStopTimer : undefined}
+        currentUserId={currentUserId}
       />
 
 
