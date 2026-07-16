@@ -34,9 +34,7 @@ export default function LabourRatesSettings() {
         />
         <ScheduleEditor
           schedule={lr.schedule}
-          setBlockTier={lr.setBlockTier}
-          addBlock={lr.addBlock}
-          removeBlock={lr.removeBlock}
+          paintHour={lr.paintHour}
           copyDayToAll={lr.copyDayToAll}
           onSave={lr.handleSaveSchedule}
           saving={lr.savingSchedule}

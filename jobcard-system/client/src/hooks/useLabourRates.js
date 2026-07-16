@@ -18,13 +18,51 @@ export const TIERS = [
   { value: 'ot2', label: 'Overtime 2' }
 ];
 
+const toMin = (hm) => {
+  const [h, m] = hm.split(':').map(Number);
+  return h * 60 + m;
+};
+const hourLabel = (h) => `${String(h).padStart(2, '0')}:00`;
+
+// A day's blocks → the tier for each of the 24 hours. The day is a cycle: the hours
+// before the earliest block start take the LAST block's tier (it wraps past midnight).
+export function gridFromBlocks(blocks) {
+  const sorted = [...blocks].sort((a, b) => a.start.localeCompare(b.start));
+  const grid = new Array(24);
+  const wrapTier = sorted[sorted.length - 1].tier;
+  for (let h = 0; h < 24; h++) {
+    const m = h * 60;
+    let tier = wrapTier;
+    for (const b of sorted) {
+      if (toMin(b.start) <= m) tier = b.tier; else break;
+    }
+    grid[h] = tier;
+  }
+  return grid;
+}
+
+// 24 hourly tiers → the compact block list the server stores. A block begins at each
+// hour whose tier differs from the hour before it (wrapping hour 0 back to hour 23).
+// An all-one-tier day collapses to a single block. Starts are unique and ascending.
+export function blocksFromGrid(grid) {
+  const blocks = [];
+  for (let h = 0; h < 24; h++) {
+    const prevTier = grid[(h + 23) % 24];
+    if (grid[h] !== prevTier) blocks.push({ start: hourLabel(h), tier: grid[h] });
+  }
+  if (blocks.length === 0) blocks.push({ start: '00:00', tier: grid[0] });
+  return blocks;
+}
+
 function emptySchedule() {
   const s = {};
   for (const d of DAYS) s[d.key] = [{ start: '00:00', tier: 'normal' }];
   return s;
 }
 
-// Coerce whatever came back from settings into a full, valid 7-day schedule.
+// Coerce whatever came back from settings into a full, valid 7-day schedule. Each day
+// is a 24-hour cycle: blocks are kept start-ordered, and the time before the earliest
+// block wraps to the last block — so a block can start at any time, not just midnight.
 function normalize(raw) {
   let obj = raw;
   if (typeof raw === 'string') {
@@ -34,14 +72,11 @@ function normalize(raw) {
   for (const d of DAYS) {
     let blocks = Array.isArray(obj?.[d.key]) ? obj[d.key] : null;
     if (!blocks || blocks.length === 0) blocks = [{ start: '00:00', tier: 'normal' }];
-    // Keep start-ordered and guarantee a 00:00 anchor.
     blocks = blocks
       .filter(b => b && /^\d{2}:\d{2}$/.test(b.start))
       .map(b => ({ start: b.start, tier: ['normal', 'ot1', 'ot2'].includes(b.tier) ? b.tier : 'normal' }))
       .sort((a, b) => a.start.localeCompare(b.start));
-    if (blocks.length === 0 || blocks[0].start !== '00:00') {
-      blocks = [{ start: '00:00', tier: blocks[0]?.tier || 'normal' }, ...blocks.filter(b => b.start !== '00:00')];
-    }
+    if (blocks.length === 0) blocks = [{ start: '00:00', tier: 'normal' }];
     out[d.key] = blocks;
   }
   return out;
@@ -85,28 +120,14 @@ export function useLabourRates() {
 
   // ---- Schedule editing (local; persisted on Save) ----
 
-  const setBlockTier = useCallback((day, index, tier) => {
-    setSchedule(prev => ({
-      ...prev,
-      [day]: prev[day].map((b, i) => (i === index ? { ...b, tier } : b))
-    }));
-  }, []);
-
-  // Add a block starting at `start` (HH:MM) with `tier`. Replaces a block at the same
-  // start; keeps the list start-ordered. The 00:00 anchor can't be added again.
-  const addBlock = useCallback((day, start, tier) => {
-    if (!/^\d{2}:\d{2}$/.test(start)) return;
+  // Paint one hour cell of one day to a tier. Works on the hourly grid, then folds
+  // the day back into the stored block list. A no-op (same tier) skips the re-render.
+  const paintHour = useCallback((day, hour, tier) => {
     setSchedule(prev => {
-      const rest = prev[day].filter(b => b.start !== start);
-      const next = [...rest, { start, tier }].sort((a, b) => a.start.localeCompare(b.start));
-      return { ...prev, [day]: next };
-    });
-  }, []);
-
-  const removeBlock = useCallback((day, index) => {
-    setSchedule(prev => {
-      if (index === 0) return prev; // never remove the 00:00 anchor
-      return { ...prev, [day]: prev[day].filter((_, i) => i !== index) };
+      const grid = gridFromBlocks(prev[day]);
+      if (grid[hour] === tier) return prev;
+      grid[hour] = tier;
+      return { ...prev, [day]: blocksFromGrid(grid) };
     });
   }, []);
 
@@ -120,9 +141,24 @@ export function useLabourRates() {
   }, []);
 
   const handleSaveSchedule = useCallback(async () => {
+    // Tidy each day: sort by start and reject two blocks at the same time (the same
+    // instant can't be two tiers) before sending — the server validates the same.
+    const tidied = {};
+    for (const d of DAYS) {
+      const day = [...schedule[d.key]].sort((a, b) => a.start.localeCompare(b.start));
+      const seen = new Set();
+      for (const b of day) {
+        if (seen.has(b.start)) {
+          toast.error(`${d.label} has two blocks starting at ${b.start} — give each a different start time.`);
+          return;
+        }
+        seen.add(b.start);
+      }
+      tidied[d.key] = day;
+    }
     setSavingSchedule(true);
     try {
-      await api.updateSettings({ labourSchedule: schedule });
+      await api.updateSettings({ labourSchedule: tidied });
       await load();
       toast.success('Weekly schedule saved');
     } catch (err) {
@@ -197,7 +233,7 @@ export function useLabourRates() {
 
   return {
     loading,
-    schedule, setBlockTier, addBlock, removeBlock, copyDayToAll,
+    schedule, paintHour, copyDayToAll,
     handleSaveSchedule, savingSchedule,
     ot1Mult, setOt1Mult, ot2Mult, setOt2Mult, holidayMult, setHolidayMult,
     handleSaveMultipliers, savingMultipliers,

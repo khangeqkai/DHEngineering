@@ -46,8 +46,10 @@ const SCHEDULE_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const SCHEDULE_TIERS = ['normal', 'ot1', 'ot2'];
 
 // Validate a weekly schedule. Returns an error string, or null if valid.
-// Each day must be a non-empty, start-ordered (strictly increasing) block list whose
-// first block starts at 00:00, so every minute of every day maps to exactly one tier.
+// Each day must be a non-empty, start-ordered (strictly increasing) block list. The
+// day is a 24-hour cycle: a block runs until the next block's start, and the time
+// before the earliest block wraps to the last block — so any single well-ordered set
+// of blocks covers every minute. The first block need NOT start at 00:00.
 function validateSchedule(input) {
   let obj = input;
   if (typeof input === 'string') {
@@ -64,7 +66,6 @@ function validateSchedule(input) {
       if (!/^\d{2}:\d{2}$/.test(b.start)) return `Schedule day "${day}" has an invalid start time`;
       const [h, m] = b.start.split(':').map(Number);
       if (h > 23 || m > 59) return `Schedule day "${day}" has an out-of-range start time`;
-      if (i === 0 && b.start !== '00:00') return `Schedule day "${day}" must start at 00:00`;
       if (prev !== null && b.start <= prev) return `Schedule day "${day}" blocks must be in increasing time order`;
       if (!SCHEDULE_TIERS.includes(b.tier)) return `Schedule day "${day}" has an invalid tier`;
       prev = b.start;

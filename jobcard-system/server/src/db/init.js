@@ -9,6 +9,37 @@ const {
   recordHistory
 } = require('./database');
 
+// Canonicalise one day's blocks to whole-hour boundaries using the SAME cycle
+// semantics the schedule editor and the minute-splitter use: build the 24 hourly
+// tiers (each hour classified at its top-of-hour minute; the hours before the earliest
+// block wrap to the last block's tier), then fold that back into a compact block list
+// with a block at each hour whose tier differs from the hour before it. Legacy data
+// could hold sub-hour starts (e.g. 14:30) the new hour-grid can't show; this snaps the
+// stored data to match what's shown and billed. Whole-hour data passes through unchanged.
+function scheduleDayToWholeHours(day) {
+  const toMin = (hm) => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
+  const hourLabel = (h) => `${String(h).padStart(2, '0')}:00`;
+  const sorted = (Array.isArray(day) ? day : [])
+    .filter(b => b && /^\d{2}:\d{2}$/.test(b.start))
+    .map(b => ({ start: b.start, tier: ['normal', 'ot1', 'ot2'].includes(b.tier) ? b.tier : 'normal' }))
+    .sort((a, b) => a.start.localeCompare(b.start));
+  if (sorted.length === 0) return [{ start: '00:00', tier: 'normal' }];
+  const wrapTier = sorted[sorted.length - 1].tier;
+  const grid = new Array(24);
+  for (let h = 0; h < 24; h++) {
+    const m = h * 60;
+    let tier = wrapTier;
+    for (const b of sorted) { if (toMin(b.start) <= m) tier = b.tier; else break; }
+    grid[h] = tier;
+  }
+  const blocks = [];
+  for (let h = 0; h < 24; h++) {
+    if (grid[h] !== grid[(h + 23) % 24]) blocks.push({ start: hourLabel(h), tier: grid[h] });
+  }
+  if (blocks.length === 0) blocks.push({ start: '00:00', tier: grid[0] });
+  return blocks;
+}
+
 // Run database migrations for existing databases
 function runMigrations() {
   logger.info('Running migrations...');
@@ -81,6 +112,41 @@ function runMigrations() {
   ).run();
   if (foldStatuses.changes > 0) {
     logger.info({ moved: foldStatuses.changes }, "Migration: Folded TREATMENT/ON_HOLD jobs into AWAITING_MATERIAL");
+  }
+
+  // The weekly overtime schedule is now edited on an hour-by-hour paint grid. The old
+  // editor allowed sub-hour block starts (e.g. 14:30), which the grid can't represent —
+  // it would show such a boundary at the next whole hour while the minute-splitter still
+  // billed the partial hour at the old tier, so screen and billing diverged. Snap every
+  // stored day to whole-hour boundaries ONCE (guarded by a settings flag) so what's shown
+  // matches what's billed. Whole-hour schedules are unchanged, so this is a no-op for
+  // them and never re-runs. Uses the same cycle semantics as the editor/splitter.
+  const scheduleSnapKey = 'labour_schedule_whole_hours_at';
+  const scheduleSnapFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(scheduleSnapKey);
+  if (!scheduleSnapFlag) {
+    try {
+      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('labour_schedule');
+      if (row && row.value) {
+        const sched = JSON.parse(row.value);
+        const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+        const out = {};
+        let changed = false;
+        for (const d of days) {
+          const before = sched?.[d];
+          const after = scheduleDayToWholeHours(before);
+          out[d] = after;
+          if (JSON.stringify(after) !== JSON.stringify(before)) changed = true;
+        }
+        if (changed) {
+          db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(JSON.stringify(out), 'labour_schedule');
+          logger.info('Migration: Snapped labour schedule block starts to whole hours');
+        }
+      }
+    } catch (err) {
+      logger.error({ err }, 'Migration: Failed to snap labour schedule to whole hours');
+    }
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
+      .run(scheduleSnapKey, new Date().toISOString());
   }
 
   logger.info('Migrations complete');

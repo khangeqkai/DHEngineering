@@ -3,6 +3,16 @@ import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { getDefaultCostingForm } from './mappers';
 
+// Which override flag each tier's hours box drives. Note the normal tier's flag is
+// `labourHoursOverridden` (with "Hours"), while the OT/holiday tiers drop it — so this
+// map is the single source of truth rather than deriving the name from the tier key.
+const HOURS_OVERRIDE_FLAG = {
+  labourHours: 'labourHoursOverridden',
+  labourOt1Hours: 'labourOt1Overridden',
+  labourOt2Hours: 'labourOt2Overridden',
+  labourHolidayHours: 'labourHolidayOverridden'
+};
+
 export function useCosting(jobCardId, { costing: offlineCosting, updateCosting } = {}) {
   const [costingForm, setCostingForm] = useState(getDefaultCostingForm());
   const [savingCosting, setSavingCosting] = useState(false);
@@ -44,13 +54,6 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
 
   // Typing in a tier's hours box marks it as a manual override, so the calculated
   // figure stops driving it (and a later timer refresh won't overwrite it).
-  const HOURS_OVERRIDE_FLAG = {
-    labourHours: 'labourHoursOverridden',
-    labourOt1Hours: 'labourOt1Overridden',
-    labourOt2Hours: 'labourOt2Overridden',
-    labourHolidayHours: 'labourHolidayOverridden'
-  };
-
   const handleCostingChange = useCallback((e) => {
     const { name, value } = e.target;
     const flag = HOURS_OVERRIDE_FLAG[name];
@@ -67,7 +70,7 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
   const resetTierHours = useCallback((tier = '') => {
     const hoursKey = `labour${tier}Hours`;
     const calcKey = `labour${tier}HoursCalculated`;
-    const flagKey = `labour${tier}Overridden`;
+    const flagKey = HOURS_OVERRIDE_FLAG[hoursKey];
     setCostingDirty(true);
     setCostingForm(prev => ({
       ...prev,

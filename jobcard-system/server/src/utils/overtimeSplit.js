@@ -40,12 +40,14 @@ function localParts(fmt, date) {
 
 // Which tier a given local moment falls in. A public holiday overrides the whole
 // day at the holiday tier; otherwise the day's blocks decide (each block runs from
-// its start until the next block's start; blocks are start-ordered).
+// its start until the next block's start; blocks are start-ordered). The day is a
+// cycle: a moment before the earliest block's start wraps to the LAST block's tier
+// (an evening block carries over past midnight into the small hours).
 function tierForMoment(parts, schedule, holidaySet) {
   if (holidaySet.has(parts.date)) return 'holiday';
   const blocks = schedule[parts.weekday];
   if (!blocks || blocks.length === 0) return 'normal';
-  let tier = 'normal';
+  let tier = blocks[blocks.length - 1].tier; // wrap: before the first block = last block
   for (const b of blocks) {
     if (b.start <= parts.hm) tier = b.tier;
     else break;
