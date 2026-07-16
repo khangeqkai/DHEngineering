@@ -9,6 +9,7 @@ import SupplierManagement from './components/SupplierManagement';
 import ActivityLog from './components/ActivityLog';
 import QALevelManagement from './components/QALevelManagement';
 import TagManagement from './components/TagManagement';
+import LabourRatesSettings from './components/LabourRatesSettings';
 import Settings from './components/Settings';
 import SearchPage from './components/SearchPage';
 import Layout from './components/Layout';
@@ -143,6 +144,14 @@ function App() {
           element={
             <AdminRoute>
               <QALevelManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="labour-rates"
+          element={
+            <AdminRoute>
+              <LabourRatesSettings />
             </AdminRoute>
           }
         />

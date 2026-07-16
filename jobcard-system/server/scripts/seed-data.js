@@ -103,12 +103,30 @@ const tagData = {
 };
 
 // ─── SETTINGS ───
+// Overtime schedule: weeknights bill Overtime 1 from 5pm and Overtime 2 from 8pm,
+// Saturdays are all Overtime 1, Sundays all Overtime 2 — so seeded evening/weekend
+// time entries show overtime tiers on the costing screen out of the box.
+const labourSchedule = {
+  mon: [{ start: '00:00', tier: 'normal' }, { start: '17:00', tier: 'ot1' }, { start: '20:00', tier: 'ot2' }],
+  tue: [{ start: '00:00', tier: 'normal' }, { start: '17:00', tier: 'ot1' }, { start: '20:00', tier: 'ot2' }],
+  wed: [{ start: '00:00', tier: 'normal' }, { start: '17:00', tier: 'ot1' }, { start: '20:00', tier: 'ot2' }],
+  thu: [{ start: '00:00', tier: 'normal' }, { start: '17:00', tier: 'ot1' }, { start: '20:00', tier: 'ot2' }],
+  fri: [{ start: '00:00', tier: 'normal' }, { start: '17:00', tier: 'ot1' }, { start: '20:00', tier: 'ot2' }],
+  sat: [{ start: '00:00', tier: 'ot1' }],
+  sun: [{ start: '00:00', tier: 'ot2' }],
+};
+
 const settings = {
   company_name: 'DH Engineering',
   timezone: 'Australia/Sydney',
   job_number_prefix: 'DH-',
   job_number_next: '00001',
   inactivity_timeout_minutes: '5',
+  labour_schedule: JSON.stringify(labourSchedule),
+  labour_ot1_multiplier: '1.5',
+  labour_ot2_multiplier: '2',
+  labour_holiday_multiplier: '2.5',
+  labour_public_holidays: '[]',
 };
 
 module.exports = { users, contacts, suppliers, machines, qaLevels, tagData, settings };

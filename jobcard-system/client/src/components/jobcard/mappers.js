@@ -122,11 +122,103 @@ export function getDefaultCostingForm() {
     // True once the admin has typed their own labour hours over the calculated figure.
     labourHoursOverridden: false,
     labourRate: 0,
+    // Overtime tiers — hours auto-split from logged time, each hand-overridable. The
+    // multipliers come from settings; each tier charges labourRate × its multiplier.
+    labourOt1Hours: 0,
+    labourOt1HoursCalculated: 0,
+    labourOt1Overridden: false,
+    labourOt1Multiplier: 1.5,
+    labourOt2Hours: 0,
+    labourOt2HoursCalculated: 0,
+    labourOt2Overridden: false,
+    labourOt2Multiplier: 2,
+    labourHolidayHours: 0,
+    labourHolidayHoursCalculated: 0,
+    labourHolidayOverridden: false,
+    labourHolidayMultiplier: 2.5,
     labourSpecialHours: 0,
     labourSpecialRate: 0,
     materialsCost: 0,
     materialsProfitPercent: 100,
     subcontractorCost: 0,
-    subcontractorProfitPercent: 0
+    subcontractorProfitPercent: 0,
+    // True when the job is invoiced — costing is locked/frozen and can't be saved.
+    frozen: false
+  };
+}
+
+// Build the job-card save payload the server expects from the open form. Customer
+// details are only sent on a brand-new job (they're frozen and read-only once a job
+// exists, and the server ignores them on edit anyway).
+export function buildJobcardPayload({ formData, contactFormData, assignees, validItems, isAdmin, isEdit, contactId }) {
+  return {
+    status: formData.status,
+    ...(isAdmin && !isEdit && {
+      contactId,
+      contactName: contactFormData.contactName,
+      companyName: contactFormData.companyName,
+      contactPhone: contactFormData.phone,
+      contactEmail: contactFormData.email,
+    }),
+    qualityLevel: formData.qualityLevel,
+    qaLevelId: formData.qaLevelId || null,
+    priority: formData.priority,
+    poNumber: formData.poNumber,
+    quoteReference: formData.quoteReference,
+    description: formData.description,
+    dueDate: formData.dueDate,
+    isRepeatJob: formData.isRepeatJob,
+    repeatJobReference: formData.repeatJobReference,
+    assigneeIds: assignees.map(a => a.userId),
+    items: validItems.map((item, idx) => ({
+      // Send the line's saved id (only real, already-saved lines have an "item:" id)
+      // so the server keeps each line's identity across the edit and a worker's
+      // recorded time/scrap stays with the right line. New lines have a temporary
+      // local id and are left without one so the server makes one.
+      ...(typeof item.id === 'string' && item.id.startsWith('item:') ? { id: item.id } : {}),
+      itemNumber: item.itemNumber || idx + 1,
+      qty: item.qty,
+      description: item.description,
+      jobType: item.jobType || null,
+      material: item.material || null,
+      treatments: (item.treatments || []).map(t => ({
+        value: t.value,
+        supplierId: t.supplierId || '',
+        supplierName: t.supplierName || ''
+      })),
+      drawingsType: item.drawingsType || null,
+      customerProperty: item.customerProperty || null
+    }))
+  };
+}
+
+// Turn a costing response from the server into the plain data object the job card
+// modal holds and feeds to the costing hook. One place, so the modal's initial load
+// and its post-save refresh can't drift apart.
+export function mapCostingResponseToData(costingRes) {
+  return {
+    labourHours: costingRes.labourHours || 0,
+    labourHoursCalculated: costingRes.labourHoursCalculated || 0,
+    labourHoursOverride: costingRes.labourHoursOverride ?? null,
+    labourRate: costingRes.labourRate || 0,
+    labourOt1Hours: costingRes.labourOt1Hours || 0,
+    labourOt1HoursCalculated: costingRes.labourOt1HoursCalculated || 0,
+    labourOt1Override: costingRes.labourOt1Override ?? null,
+    labourOt1Multiplier: costingRes.labourOt1Multiplier ?? 1.5,
+    labourOt2Hours: costingRes.labourOt2Hours || 0,
+    labourOt2HoursCalculated: costingRes.labourOt2HoursCalculated || 0,
+    labourOt2Override: costingRes.labourOt2Override ?? null,
+    labourOt2Multiplier: costingRes.labourOt2Multiplier ?? 2,
+    labourHolidayHours: costingRes.labourHolidayHours || 0,
+    labourHolidayHoursCalculated: costingRes.labourHolidayHoursCalculated || 0,
+    labourHolidayOverride: costingRes.labourHolidayOverride ?? null,
+    labourHolidayMultiplier: costingRes.labourHolidayMultiplier ?? 2.5,
+    labourSpecialHours: costingRes.labourSpecialHours || 0,
+    labourSpecialRate: costingRes.labourSpecialRate || 0,
+    materialsCost: costingRes.materialsCost || 0,
+    materialsProfitPercent: costingRes.materialsProfitPercent ?? 100,
+    subcontractorCost: costingRes.subcontractorCost || 0,
+    subcontractorProfitPercent: costingRes.subcontractorProfitPercent ?? 0,
+    frozen: costingRes.frozen || false
   };
 }

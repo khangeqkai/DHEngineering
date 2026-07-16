@@ -70,6 +70,13 @@ const timeEntryQueries = {
     SELECT
       COALESCE(SUM((julianday(end_time) - julianday(start_time)) * 24), 0) as labour_hours
     FROM time_entries WHERE jobcard_id = ? AND end_time IS NOT NULL
+  `),
+
+  // Per-entry start/end for completed blocks — used to split logged time into
+  // overtime tiers by when the work happened (the single SUM above can't do that).
+  getCompletedByJobcard: db.prepare(`
+    SELECT start_time, end_time
+    FROM time_entries WHERE jobcard_id = ? AND end_time IS NOT NULL
   `)
 };
 
@@ -95,21 +102,50 @@ const jobNoteQueries = {
 const jobCostingQueries = {
   getByJobcard: db.prepare('SELECT * FROM job_costings WHERE jobcard_id = ?'),
 
+  // Named parameters (not positional): the row has 28 value columns, so binding by
+  // name removes any chance of a silent column-shift bug when the shape changes.
   createOrUpdate: db.prepare(`
     INSERT INTO job_costings (
       id, jobcard_id,
       labour_hours, labour_hours_override, labour_rate, labour_total,
+      labour_ot1_hours, labour_ot1_override, labour_ot1_total,
+      labour_ot2_hours, labour_ot2_override, labour_ot2_total,
+      labour_holiday_hours, labour_holiday_override, labour_holiday_total,
+      labour_ot1_multiplier, labour_ot2_multiplier, labour_holiday_multiplier,
       labour_special_hours, labour_special_rate, labour_special_total,
       materials_cost, materials_profit_percent, materials_total,
       subcontractor_cost, subcontractor_profit_percent, subcontractor_total,
       grand_total, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (
+      @id, @jobcard_id,
+      @labour_hours, @labour_hours_override, @labour_rate, @labour_total,
+      @labour_ot1_hours, @labour_ot1_override, @labour_ot1_total,
+      @labour_ot2_hours, @labour_ot2_override, @labour_ot2_total,
+      @labour_holiday_hours, @labour_holiday_override, @labour_holiday_total,
+      @labour_ot1_multiplier, @labour_ot2_multiplier, @labour_holiday_multiplier,
+      @labour_special_hours, @labour_special_rate, @labour_special_total,
+      @materials_cost, @materials_profit_percent, @materials_total,
+      @subcontractor_cost, @subcontractor_profit_percent, @subcontractor_total,
+      @grand_total, datetime('now'), datetime('now')
+    )
     ON CONFLICT(jobcard_id) DO UPDATE SET
       labour_hours = excluded.labour_hours,
       labour_hours_override = excluded.labour_hours_override,
       labour_rate = excluded.labour_rate,
       labour_total = excluded.labour_total,
+      labour_ot1_hours = excluded.labour_ot1_hours,
+      labour_ot1_override = excluded.labour_ot1_override,
+      labour_ot1_total = excluded.labour_ot1_total,
+      labour_ot2_hours = excluded.labour_ot2_hours,
+      labour_ot2_override = excluded.labour_ot2_override,
+      labour_ot2_total = excluded.labour_ot2_total,
+      labour_holiday_hours = excluded.labour_holiday_hours,
+      labour_holiday_override = excluded.labour_holiday_override,
+      labour_holiday_total = excluded.labour_holiday_total,
+      labour_ot1_multiplier = excluded.labour_ot1_multiplier,
+      labour_ot2_multiplier = excluded.labour_ot2_multiplier,
+      labour_holiday_multiplier = excluded.labour_holiday_multiplier,
       labour_special_hours = excluded.labour_special_hours,
       labour_special_rate = excluded.labour_special_rate,
       labour_special_total = excluded.labour_special_total,

@@ -199,6 +199,25 @@ db.exec(`
     labour_rate REAL DEFAULT 0,
     labour_total REAL DEFAULT 0,
 
+    -- Overtime tiers. The same base labour_rate applies to every tier; each tier's
+    -- charge is hours × labour_rate × that tier's multiplier. Tier hours are
+    -- auto-split from logged time against the weekly schedule (labour_*_hours), with
+    -- an optional hand override (labour_*_override, NULL = use the auto split).
+    -- The multipliers are copied here from settings so an invoiced job stays frozen
+    -- at the rates it was billed on even if the settings change later.
+    labour_ot1_hours REAL DEFAULT 0,
+    labour_ot1_override REAL,
+    labour_ot1_total REAL DEFAULT 0,
+    labour_ot2_hours REAL DEFAULT 0,
+    labour_ot2_override REAL,
+    labour_ot2_total REAL DEFAULT 0,
+    labour_holiday_hours REAL DEFAULT 0,
+    labour_holiday_override REAL,
+    labour_holiday_total REAL DEFAULT 0,
+    labour_ot1_multiplier REAL DEFAULT 1.5,
+    labour_ot2_multiplier REAL DEFAULT 2,
+    labour_holiday_multiplier REAL DEFAULT 2.5,
+
     -- Special labour is a manually-entered line: an admin types the hours and rate
     -- on the costing screen (it is NOT derived from time entries).
     labour_special_hours REAL DEFAULT 0,
@@ -370,6 +389,20 @@ const migrations = [
   { table: 'job_costings', column: 'labour_special_hours', type: 'REAL DEFAULT 0' },
   { table: 'job_costings', column: 'labour_special_rate', type: 'REAL DEFAULT 0' },
   { table: 'job_costings', column: 'labour_special_total', type: 'REAL DEFAULT 0' },
+  // Overtime tiers (present in CREATE TABLE; added here for existing databases, or
+  // the costing insert/update prepared statement fails to build at startup).
+  { table: 'job_costings', column: 'labour_ot1_hours', type: 'REAL DEFAULT 0' },
+  { table: 'job_costings', column: 'labour_ot1_override', type: 'REAL' },
+  { table: 'job_costings', column: 'labour_ot1_total', type: 'REAL DEFAULT 0' },
+  { table: 'job_costings', column: 'labour_ot2_hours', type: 'REAL DEFAULT 0' },
+  { table: 'job_costings', column: 'labour_ot2_override', type: 'REAL' },
+  { table: 'job_costings', column: 'labour_ot2_total', type: 'REAL DEFAULT 0' },
+  { table: 'job_costings', column: 'labour_holiday_hours', type: 'REAL DEFAULT 0' },
+  { table: 'job_costings', column: 'labour_holiday_override', type: 'REAL' },
+  { table: 'job_costings', column: 'labour_holiday_total', type: 'REAL DEFAULT 0' },
+  { table: 'job_costings', column: 'labour_ot1_multiplier', type: 'REAL DEFAULT 1.5' },
+  { table: 'job_costings', column: 'labour_ot2_multiplier', type: 'REAL DEFAULT 2' },
+  { table: 'job_costings', column: 'labour_holiday_multiplier', type: 'REAL DEFAULT 2.5' },
   { table: 'users', column: 'session_token', type: 'TEXT' },
   { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
   { table: 'time_entries', column: 'scrap_bin_qty', type: 'INTEGER DEFAULT 0' },

@@ -163,8 +163,22 @@ function toCamelCase(e) {
   };
 }
 
+// A hand-entered block longer than this is almost certainly a mistyped date. Such a
+// block would make overtime splitting walk an enormous span on every costing read, so
+// it's rejected at entry. Returns an error string, or null when the block is fine.
+const MAX_MANUAL_ENTRY_MS = 31 * 24 * 60 * 60 * 1000; // 31 days
+function checkEntryDuration(startTime, endTime) {
+  if (!startTime || !endTime) return null; // open block (no finish time) — nothing to check
+  const span = new Date(endTime).getTime() - new Date(startTime).getTime();
+  if (Number.isFinite(span) && span > MAX_MANUAL_ENTRY_MS) {
+    return 'That work block is longer than a month — please check the start and finish dates.';
+  }
+  return null;
+}
+
 module.exports = {
   normalizeTime,
+  checkEntryDuration,
   resolveItemId,
   resolveWorkerId,
   autoAssignWorker,

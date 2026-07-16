@@ -20,8 +20,9 @@ import StopTimerForm from './StopTimerForm';
 import JobPaperworkHub from './JobPaperworkHub';
 import JobIdentityStrip from './JobIdentityStrip';
 import { validateJobCardForm } from './jobCardValidation';
-import { mapTimeEntryFromApi } from './mappers';
-import { describeAttachmentGaps } from '../../utils/attachmentWarnings';
+import { mapTimeEntryFromApi, mapCostingResponseToData, buildJobcardPayload } from './mappers';
+import { confirmInvoiceAnyway, showFormErrors } from './jobCardPrompts';
+import { resolveJobContactId } from './jobCardContact';
 
 // Read a picked file into the base64 string the upload route expects.
 function fileToBase64(file) {
@@ -109,10 +110,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     currentLoadRef.current = jobCardId;
     setLoading(true);
     try {
-      const [jobcardRes, timeEntriesRes, costingRes] = await Promise.all([
+      const [jobcardRes, timeEntriesRes] = await Promise.all([
         api.getJobcard(jobCardId),
-        api.getTimeEntries(jobCardId),
-        isAdmin ? api.getCosting(jobCardId).catch(() => null) : Promise.resolve(null)
+        api.getTimeEntries(jobCardId)
       ]);
 
       if (currentLoadRef.current !== jobCardId) return;  // superseded by a newer load — ignore
@@ -125,20 +125,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
       loadNotes();
 
-      if (costingRes) {
-        setCostingData({
-          labourHours: costingRes.labourHours || 0,
-          labourHoursCalculated: costingRes.labourHoursCalculated || 0,
-          labourHoursOverride: costingRes.labourHoursOverride ?? null,
-          labourRate: costingRes.labourRate || 0,
-          labourSpecialHours: costingRes.labourSpecialHours || 0,
-          labourSpecialRate: costingRes.labourSpecialRate || 0,
-          materialsCost: costingRes.materialsCost || 0,
-          materialsProfitPercent: costingRes.materialsProfitPercent ?? 100,
-          subcontractorCost: costingRes.subcontractorCost || 0,
-          subcontractorProfitPercent: costingRes.subcontractorProfitPercent ?? 0
-        });
-      }
+      // Costing is loaded lazily when the Costing tab is opened (see effect below),
+      // not on every job-card open — the per-tier hours calc walks all logged time,
+      // so it only runs when someone is actually looking at the costing.
     } catch (err) {
       if (currentLoadRef.current !== jobCardId) return;  // stale failure for a closed job — don't disturb the current one
       toast.error('Failed to load job card. Please try again.');
@@ -146,7 +135,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     } finally {
       if (currentLoadRef.current === jobCardId) setLoading(false);
     }
-  }, [isEdit, jobCardId, isAdmin, setFormDataFromJobCard, setContactFromJobCard, loadNotes, onClose]);
+  }, [isEdit, jobCardId, setFormDataFromJobCard, setContactFromJobCard, loadNotes, onClose]);
 
   // Re-read just the "declared but no file" flags after a file is added, so the
   // per-item hints and the QA-forms note clear without reopening the job.
@@ -180,24 +169,34 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       loadHistory();
     }
   }, [isOpen, isEdit, activeTab, loadHistory]);
+
+  // Load costing only when the Costing tab is actually opened (admin-only), and only
+  // once per opening (costing stays non-null until the modal closes). Computing costing
+  // walks every logged minute to split it into rate tiers, so we keep it off the common
+  // open-a-job path and off timer events unless someone has looked at the costing.
+  const loadCosting = useCallback(async () => {
+    if (!isEdit || !jobCardId || !isAdmin) return;
+    try {
+      const costingRes = await api.getCosting(jobCardId);
+      if (costingRes) setCostingData(mapCostingResponseToData(costingRes));
+    } catch {
+      // Non-fatal — costing will load next time the tab is opened.
+    }
+  }, [isEdit, jobCardId, isAdmin]);
+
+  useEffect(() => {
+    if (isOpen && isEdit && isAdmin && activeTab === 'costing' && costing === null) {
+      loadCosting();
+    }
+  }, [isOpen, isEdit, isAdmin, activeTab, costing, loadCosting]);
+
   const apiCostingOperations = {
     costing: costing,
     updateCosting: async (data) => {
       await api.updateCosting(jobCardId, data);
       const costingRes = await api.getCosting(jobCardId);
       if (costingRes) {
-        setCostingData({
-          labourHours: costingRes.labourHours || 0,
-          labourHoursCalculated: costingRes.labourHoursCalculated || 0,
-          labourHoursOverride: costingRes.labourHoursOverride ?? null,
-          labourRate: costingRes.labourRate || 0,
-          labourSpecialHours: costingRes.labourSpecialHours || 0,
-          labourSpecialRate: costingRes.labourSpecialRate || 0,
-          materialsCost: costingRes.materialsCost || 0,
-          materialsProfitPercent: costingRes.materialsProfitPercent ?? 100,
-          subcontractorCost: costingRes.subcontractorCost || 0,
-          subcontractorProfitPercent: costingRes.subcontractorProfitPercent ?? 0
-        });
+        setCostingData(mapCostingResponseToData(costingRes));
       }
     }
   };
@@ -225,10 +224,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   const reloadTimeEntriesAndCosting = useCallback(async () => {
     await reloadTimeEntries();
-    // Costing endpoint is admin-only; skip for non-admin to avoid 403 toast
-    if (isAdmin && costingHookRef.current) await costingHookRef.current();
+    // Costing endpoint is admin-only; skip for non-admin to avoid 403 toast. Also skip
+    // unless the Costing tab has been opened (costing !== null) — refreshing it walks all
+    // logged time, and there's nothing on screen to update until someone views costing.
+    if (isAdmin && costing !== null && costingHookRef.current) await costingHookRef.current();
     await refreshJobStatus();
-  }, [reloadTimeEntries, isAdmin, refreshJobStatus]);
+  }, [reloadTimeEntries, isAdmin, costing, refreshJobStatus]);
 
   const handleSubmitEntryForm = useCallback(async () => {
     await timer.submitEntryForm(reloadTimeEntriesAndCosting);
@@ -354,105 +355,37 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     });
 
     if (errors.length > 0) {
-      toast.dismiss();
-      if (errors.length === 1) {
-        toast.error(errors[0]);
-      } else {
-        toast.error(
-          <div>
-            <strong>Please fix the following:</strong>
-            <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem' }}>
-              {errors.map((msg, i) => <li key={i}>{msg}</li>)}
-            </ul>
-          </div>
-        );
-      }
+      showFormErrors(errors);
       return;
     }
 
     setSaving(true);
 
     try {
-      let contactId = formHook.formData.contactId;
+      // Customer details are chosen once, at creation — resolve/create the contact
+      // for a brand-new job. On an existing job they're frozen and read-only.
+      const contactId = await resolveJobContactId({
+        initialContactId: formHook.formData.contactId,
+        isAdmin, isEdit, contactHook, showConfirm
+      });
 
-      // Customer details are chosen once, at creation. On an existing job they are
-      // frozen and read-only, so we neither create contacts nor send contact fields
-      // when editing — the server ignores them anyway.
-      if (isAdmin && !isEdit) {
-        // Smart detection: Check if user edited a selected contact and changed the company
-        if (contactHook.hasCompanyNameChanged()) {
-          const saveNew = await showConfirm({
-            title: 'Save New Contact',
-            message: `Save "${contactHook.contactFormData.companyName}" as a new contact?`,
-            confirmLabel: 'Save',
-            cancelLabel: 'No',
-            confirmVariant: 'primary'
-          });
-          if (saveNew) {
-            // Create new contact
-            const newContact = await api.createContact({
-              contactName: contactHook.contactFormData.contactName.trim() || null,
-              companyName: contactHook.contactFormData.companyName.trim(),
-              phone: contactHook.contactFormData.phone || null,
-              email: contactHook.contactFormData.email || null
-            });
-            contactId = newContact.id;
-            toast.success('New contact saved');
-          }
-          // If not saving as new, keep the original contactId but use override fields
-        }
-
-        // Create new contact if no contact selected and company name provided
-        if (!contactId && contactHook.contactFormData.companyName.trim()) {
-          const newContact = await api.createContact({
-            contactName: contactHook.contactFormData.contactName.trim() || null,
-            companyName: contactHook.contactFormData.companyName.trim(),
-            phone: contactHook.contactFormData.phone || null,
-            email: contactHook.contactFormData.email || null
-          });
-          contactId = newContact.id;
-        }
+      const jobcardData = buildJobcardPayload({
+        formData: formHook.formData,
+        contactFormData: contactHook.contactFormData,
+        assignees: formHook.assignees,
+        validItems,
+        isAdmin,
+        isEdit,
+        contactId
+      });
+      // Invoicing freezes the costing from the saved figures — flush any unsaved
+      // pricing edits first so this invoice bills what's on screen, not a stale row.
+      // If that save fails, abort: invoicing anyway would lock in the old numbers.
+      if (isEdit && formHook.formData.status === 'INVOICED' && costingHook.costingDirty) {
+        const saved = await costingHook.handleSaveCosting();
+        if (!saved) return; // save already reported why it failed
       }
 
-      const jobcardData = {
-        status: formHook.formData.status,
-        ...(isAdmin && !isEdit && {
-          contactId: contactId,
-          contactName: contactHook.contactFormData.contactName,
-          companyName: contactHook.contactFormData.companyName,
-          contactPhone: contactHook.contactFormData.phone,
-          contactEmail: contactHook.contactFormData.email,
-        }),
-        qualityLevel: formHook.formData.qualityLevel,
-        qaLevelId: formHook.formData.qaLevelId || null,
-        priority: formHook.formData.priority,
-        poNumber: formHook.formData.poNumber,
-        quoteReference: formHook.formData.quoteReference,
-        description: formHook.formData.description,
-        dueDate: formHook.formData.dueDate,
-        isRepeatJob: formHook.formData.isRepeatJob,
-        repeatJobReference: formHook.formData.repeatJobReference,
-        assigneeIds: formHook.assignees.map(a => a.userId),
-        items: validItems.map((item, idx) => ({
-          // Send the line's saved id (only real, already-saved lines have an
-          // "item:" id) so the server keeps each line's identity across the edit
-          // and a worker's recorded time/scrap stays with the right line. New lines
-          // have a temporary local id and are left without one so the server makes one.
-          ...(typeof item.id === 'string' && item.id.startsWith('item:') ? { id: item.id } : {}),
-          itemNumber: item.itemNumber || idx + 1,
-          qty: item.qty,
-          description: item.description,
-          jobType: item.jobType || null,
-          material: item.material || null,
-          treatments: (item.treatments || []).map(t => ({
-            value: t.value,
-            supplierId: t.supplierId || '',
-            supplierName: t.supplierName || ''
-          })),
-          drawingsType: item.drawingsType || null,
-          customerProperty: item.customerProperty || null
-        }))
-      };
       // Send the save; on an edit that would invoice with files still missing,
       // the server replies 409 with the gaps instead of saving. We then ask the
       // user to confirm and resend with an explicit "invoice anyway" flag.
@@ -465,22 +398,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         result = await submit(false);
       } catch (err) {
         if (isEdit && err.status === 409 && err.data?.attachmentWarnings) {
-          const gaps = describeAttachmentGaps(err.data.attachmentWarnings);
-          const proceed = await showConfirm({
-            title: 'Files not attached',
-            message: (
-              <span>
-                This job was marked as having the following, but no file is attached yet:
-                <br />
-                {gaps.map((g, i) => <span key={i}>• {g}<br /></span>)}
-                <br />
-                Invoice anyway?
-              </span>
-            ),
-            confirmLabel: 'Invoice anyway',
-            cancelLabel: 'Go back',
-            confirmVariant: 'warning'
-          });
+          const proceed = await confirmInvoiceAnyway(err.data.attachmentWarnings, showConfirm);
           if (!proceed) { setSaving(false); return; }
           result = await submit(true);
         } else {
@@ -521,6 +439,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       isOverdue={isOverdue}
       showConfirm={showConfirm}
       onSuccess={onSuccess}
+      costingDirty={isAdmin ? costingHook.costingDirty : false}
+      saveCosting={costingHook.handleSaveCosting}
     />
   );
 
@@ -623,7 +543,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 <CostingTab
                   costingForm={costingHook.costingForm}
                   handleCostingChange={costingHook.handleCostingChange}
-                  resetLabourHours={costingHook.resetLabourHours}
+                  resetTierHours={costingHook.resetTierHours}
                   calculateCostingTotals={costingHook.calculateCostingTotals}
                   handleSaveCosting={costingHook.handleSaveCosting}
                   savingCosting={costingHook.savingCosting}

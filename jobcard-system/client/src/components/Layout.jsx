@@ -13,6 +13,7 @@ import {
   LogOut,
   ShieldCheck,
   Tag,
+  DollarSign,
   PanelLeftClose,
   PanelLeftOpen,
   Search
@@ -184,6 +185,14 @@ export default function Layout() {
                       <ShieldCheck size={18} />
                     </span>
                     <span className="nav-text">QA Levels</span>
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/labour-rates" onClick={handleNavClick}>
+                    <span className="nav-icon">
+                      <DollarSign size={18} />
+                    </span>
+                    <span className="nav-text">Labour Rates</span>
                   </NavLink>
                 </li>
                 <li>

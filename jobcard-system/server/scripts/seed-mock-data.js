@@ -131,6 +131,7 @@ for (const [key, val] of Object.entries(refData.settings)) {
 const seededAt = new Date().toISOString();
 settingsQueries.upsert.run('time_entries_per_item_wiped_at', seededAt);
 settingsQueries.upsert.run('special_labour_manual_reset_at', seededAt);
+settingsQueries.upsert.run('labour_hours_override_reset_at', seededAt);
 console.log(`Settings configured (prefix: ${refData.settings.job_number_prefix}, starting: ${refData.settings.job_number_next}).`);
 
 // ─── QA LEVELS ───

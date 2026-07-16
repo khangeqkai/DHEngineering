@@ -44,6 +44,26 @@ function runMigrations() {
     logger.info({ updated: reset.changes }, 'Migration: Reset stored special-labour hours for manual entry');
   }
 
+  // Overtime tiers changed what a hand-typed labour-hours override means. Before, the
+  // auto-tally was ALL logged time, so an admin's override meant "bill this many total
+  // hours". Now the tally is split into normal + overtime tiers, and the override
+  // applies only to the normal tier while the overtime tiers are added on top — so an
+  // old override would double-count once overtime windows are configured. Clear the
+  // stored override ONCE (guarded by a settings flag) on jobs that aren't invoiced yet,
+  // so they fall back to the new auto-split; invoiced jobs are frozen and left alone.
+  // Never re-runs, so it can't wipe an override an admin types later.
+  const otOverrideResetKey = 'labour_hours_override_reset_at';
+  const otOverrideFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(otOverrideResetKey);
+  if (!otOverrideFlag) {
+    const reset = db.prepare(
+      `UPDATE job_costings SET labour_hours_override = NULL
+       WHERE jobcard_id IN (SELECT id FROM jobcards WHERE archived = 0)`
+    ).run();
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
+      .run(otOverrideResetKey, new Date().toISOString());
+    logger.info({ updated: reset.changes }, 'Migration: Cleared stale labour-hours overrides for overtime split');
+  }
+
   // Customers are archived, never deleted (track-and-trace) — add the flag to
   // databases created before this column existed.
   const contactCols = db.prepare("PRAGMA table_info(contacts)").all();
@@ -130,6 +150,17 @@ async function initializeDatabase() {
   settingsStmt.run('timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
   settingsStmt.run('job_number_prefix', '');
   settingsStmt.run('job_number_next', '');
+
+  // Overtime defaults: an all-normal week (every hour bills at the base rate) so
+  // existing/fresh installs behave exactly as before until an admin sets up blocks.
+  const allNormalDay = [{ start: '00:00', tier: 'normal' }];
+  const defaultSchedule = {};
+  for (const d of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']) defaultSchedule[d] = allNormalDay;
+  settingsStmt.run('labour_schedule', JSON.stringify(defaultSchedule));
+  settingsStmt.run('labour_ot1_multiplier', '1.5');
+  settingsStmt.run('labour_ot2_multiplier', '2');
+  settingsStmt.run('labour_holiday_multiplier', '2.5');
+  settingsStmt.run('labour_public_holidays', '[]');
 
   logger.info('Database initialization complete');
 }

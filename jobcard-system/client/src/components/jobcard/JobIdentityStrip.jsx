@@ -6,7 +6,7 @@ import { capitalizeFirst } from '../../utils/formatters';
 import { api } from '../../services/api';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from './constants';
 import { statusToken } from '../JobCardList.constants';
-import { describeAttachmentGaps } from '../../utils/attachmentWarnings';
+import { confirmInvoiceAnyway } from './jobCardPrompts';
 
 const PRIORITY_VALUES = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
 
@@ -28,7 +28,9 @@ export default function JobIdentityStrip({
   setFormData,
   isOverdue,
   showConfirm,
-  onSuccess
+  onSuccess,
+  costingDirty = false,
+  saveCosting
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
@@ -86,14 +88,28 @@ export default function JobIdentityStrip({
       return;
     }
     if (newStatus === 'INVOICED') {
+      // Invoicing freezes the costing from the SAVED figures. If the pricing screen
+      // has unsaved edits, warn — and if they go ahead, save those edits first so the
+      // frozen invoice reflects what's on screen instead of silently dropping them.
       const ok = await showConfirm?.({
         title: 'Mark as Invoiced',
-        message: 'This will archive the job card. Continue?',
+        message: costingDirty
+          ? 'This will archive the job card and lock its costing. You have unsaved costing changes — they will be saved and billed. Continue?'
+          : 'This will archive the job card. Continue?',
         confirmLabel: 'Archive',
         cancelLabel: 'Cancel',
         confirmVariant: 'danger'
       });
       if (!ok) return;
+      if (costingDirty && saveCosting) {
+        const saved = await saveCosting();
+        if (!saved) {
+          // Save already showed why it failed. Don't invoice: doing so would freeze
+          // the old figures instead of the edits the user just made.
+          toast.error('Could not save the costing — invoicing cancelled.');
+          return;
+        }
+      }
     }
     const applyLocally = () => {
       setField('status', newStatus);
@@ -106,22 +122,7 @@ export default function JobIdentityStrip({
     } catch (err) {
       // Invoicing with declared-but-missing files: confirm, then resend.
       if (err.status === 409 && err.data?.attachmentWarnings) {
-        const gaps = describeAttachmentGaps(err.data.attachmentWarnings);
-        const proceed = await showConfirm?.({
-          title: 'Files not attached',
-          message: (
-            <span>
-              This job was marked as having the following, but no file is attached yet:
-              <br />
-              {gaps.map((g, i) => <span key={i}>• {g}<br /></span>)}
-              <br />
-              Invoice anyway?
-            </span>
-          ),
-          confirmLabel: 'Invoice anyway',
-          cancelLabel: 'Go back',
-          confirmVariant: 'warning'
-        });
+        const proceed = await confirmInvoiceAnyway(err.data.attachmentWarnings, showConfirm);
         if (!proceed) return;
         try {
           await api.updateJobcardStatus(jobCardId, newStatus, true);

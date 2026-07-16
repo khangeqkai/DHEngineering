@@ -8,6 +8,7 @@ const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, r
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
 const {
   normalizeTime,
+  checkEntryDuration,
   resolveItemId,
   resolveWorkerId,
   autoAssignWorker,
@@ -256,6 +257,11 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
       return res.status(400).json({ error: 'Invalid start or finish time' });
     }
 
+    const durationError = checkEntryDuration(startTime, endTime);
+    if (durationError) {
+      return res.status(400).json({ error: durationError });
+    }
+
     const { itemId, error: itemError } = resolveItemId(id, data.itemNumber);
     if (itemError) {
       return res.status(400).json({ error: itemError });
@@ -404,6 +410,11 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     if (req.user.role !== 'admin') {
       startTime = existing.start_time;
       endTime = endTime === null ? null : existing.end_time;
+    }
+
+    const durationError = checkEntryDuration(startTime, endTime);
+    if (durationError) {
+      return res.status(400).json({ error: durationError });
     }
 
     // Scrap comes from the worker's stop-timer form or the admin's time-entry
@@ -564,11 +575,9 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireAdmin, (req, re
 
     timeEntryQueries.delete.run(entryId);
 
-    // Removing finished pieces changes completion — recompute the job's status (Done if
-    // every line is still counted, else In Progress) against the post-delete state and fold
-    // any change into this deletion's history so it reads as one event. Must run after the
-    // delete: isJobComplete sums the remaining blocks' pieces, so the removed block has to be
-    // gone first.
+    // Removing finished pieces changes completion — recompute the job's status against the
+    // post-delete state and fold any change into this deletion's history so it reads as one
+    // event. Must run after the delete: isJobComplete sums the remaining blocks' pieces.
     const statusChange = syncStatusToWork(id, req.user);
 
     const changes = {
