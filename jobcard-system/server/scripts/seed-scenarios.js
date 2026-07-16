@@ -148,13 +148,15 @@ function buildScenarios(contacts, qaLevels, opts = {}) {
       }
     }
 
+    // One INVOICED job carries a manually-entered special-labour line (weekend overtime).
+    const withOvertime = status === 'INVOICED' && jobIdx === 27;
+
     // Time entries, scaled to how far the job has progressed.
     const timeEntries = [];
     if (STARTED.has(status)) {
       const fullyDone = FULLY_MACHINED.has(status);
-      // One IN_PROGRESS job carries a live (still-running) timer; one INVOICED job a Saturday special-labour entry.
+      // One IN_PROGRESS job carries a live (still-running) timer.
       const liveTimer = status === 'IN_PROGRESS' && jobIdx === 12;
-      const withSpecial = status === 'INVOICED' && jobIdx === 27;
 
       items.forEach((it, idx) => {
         const itemNo = String(idx + 1);
@@ -178,9 +180,6 @@ function buildScenarios(contacts, qaLevels, opts = {}) {
       if (liveTimer) {
         timeEntries.push({ worker: assignees[0], item: String(items.length), machine: rot(machiningMachines, 'machine'), qty: '0', desc: `${items[items.length - 1].desc} — in progress`, active: true, startMinutesAgo: 75 });
       }
-      if (withSpecial) {
-        timeEntries.push({ worker: assignees[0], item: '1', machine: 'GRIND-01', qty: '0', desc: 'Saturday overtime — pre-grind before plating', daysAgo: daysAgoCreated - 4, startHour: 7, hours: 8, special: true });
-      }
     }
 
     // Pricing on anything past quoting/opening.
@@ -188,7 +187,9 @@ function buildScenarios(contacts, qaLevels, opts = {}) {
     if (COSTED.has(status)) {
       costing = {
         labourRate: 115,
-        labourSpecialRate: status === 'INVOICED' ? 172 : 0,
+        // One invoiced job shows the manually-entered special-labour line (e.g. weekend overtime).
+        labourSpecialHours: withOvertime ? 8 : 0,
+        labourSpecialRate: withOvertime ? 172 : 0,
         materialsCost: 1500 + (jobIdx % 6) * 2600,
         materialsProfitPercent: 25 + (jobIdx % 4) * 5,
         subcontractorCost: hasTreatment ? 1800 + (jobIdx % 5) * 900 : 0,

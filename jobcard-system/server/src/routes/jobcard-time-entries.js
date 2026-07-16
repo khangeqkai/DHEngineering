@@ -548,39 +548,6 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
   }
 });
 
-// Toggle special labour flag (admin only — costing concept)
-router.patch('/:id/time-entries/:entryId/toggle-special', authenticate, requireAdmin, (req, res) => {
-  try {
-    const { id, entryId } = req.params;
-
-    const existing = timeEntryQueries.getById.get(entryId);
-    if (!existing) {
-      return res.status(404).json({ error: 'Time entry not found' });
-    }
-
-    if (existing.jobcard_id !== id) {
-      return res.status(403).json({ error: 'Time entry does not belong to this job card' });
-    }
-
-    if (!existing.end_time) {
-      return res.status(400).json({ error: 'Cannot mark active entry as special labour' });
-    }
-
-    const newValue = existing.is_special_labour === 1 ? 0 : 1;
-    timeEntryQueries.toggleSpecialLabour.run(newValue, entryId);
-
-    recordHistory('jobcard', id, 'update_time_entry', req.user.userId, req.user.name || req.user.username, {
-      isSpecialLabour: { from: existing.is_special_labour, to: newValue }
-    }, { timeEntryId: entryId });
-
-    const entry = timeEntryQueries.getById.get(entryId);
-    res.json(toCamelCase(entry));
-  } catch (err) {
-    logger.error({ err }, 'Toggle special labour error');
-    res.status(500).json({ error: 'Failed to toggle special labour' });
-  }
-});
-
 // Delete time entry (admin only — manual time records affect labour hours and costs)
 router.delete('/:id/time-entries/:entryId', authenticate, requireAdmin, (req, res) => {
   try {

@@ -159,7 +159,6 @@ function toCamelCase(e) {
     equipmentChecksComments: e.equipment_checks_comments || null,
     startTime: e.start_time,
     endTime: e.end_time,
-    isSpecialLabour: e.is_special_labour === 1,
     createdAt: e.created_at
   };
 }

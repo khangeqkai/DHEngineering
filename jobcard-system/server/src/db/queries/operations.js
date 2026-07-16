@@ -25,12 +25,12 @@ const timeEntryQueries = {
     INSERT INTO time_entries (
       id, jobcard_id, user_id, item_id, machine_number, qty, description,
       start_time, end_time,
-      is_special_labour, scrap_bin_qty, scrap_recycle_qty,
+      scrap_bin_qty, scrap_recycle_qty,
       first_off_inspection, in_process_validation, measuring_equipment_verification,
       equipment_checks, equipment_checks_comments,
       created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `),
 
   update: db.prepare(`
@@ -66,15 +66,9 @@ const timeEntryQueries = {
     WHERE id = ?
   `),
 
-  toggleSpecialLabour: db.prepare(`
-    UPDATE time_entries SET is_special_labour = ?, updated_at = datetime('now')
-    WHERE id = ?
-  `),
-
   getHoursByJobcard: db.prepare(`
     SELECT
-      COALESCE(SUM(CASE WHEN COALESCE(is_special_labour, 0) = 0 THEN (julianday(end_time) - julianday(start_time)) * 24 ELSE 0 END), 0) as labour_hours,
-      COALESCE(SUM(CASE WHEN COALESCE(is_special_labour, 0) = 1 THEN (julianday(end_time) - julianday(start_time)) * 24 ELSE 0 END), 0) as labour_special_hours
+      COALESCE(SUM((julianday(end_time) - julianday(start_time)) * 24), 0) as labour_hours
     FROM time_entries WHERE jobcard_id = ? AND end_time IS NOT NULL
   `)
 };

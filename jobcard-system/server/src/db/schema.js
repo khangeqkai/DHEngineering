@@ -195,6 +195,8 @@ db.exec(`
     labour_rate REAL DEFAULT 0,
     labour_total REAL DEFAULT 0,
 
+    -- Special labour is a manually-entered line: an admin types the hours and rate
+    -- on the costing screen (it is NOT derived from time entries).
     labour_special_hours REAL DEFAULT 0,
     labour_special_rate REAL DEFAULT 0,
     labour_special_total REAL DEFAULT 0,
@@ -357,9 +359,14 @@ const migrations = [
   { table: 'time_entries', column: '_device_id', type: 'TEXT' },
   { table: 'job_costings', column: '_version', type: 'INTEGER DEFAULT 1' },
   { table: 'job_costings', column: '_device_id', type: 'TEXT' },
+  // Special labour (manually-entered costing line). Present in the CREATE TABLE, but
+  // databases created before these columns existed need them added, or the costing
+  // insert/update prepared statement fails to build at startup.
+  { table: 'job_costings', column: 'labour_special_hours', type: 'REAL DEFAULT 0' },
+  { table: 'job_costings', column: 'labour_special_rate', type: 'REAL DEFAULT 0' },
+  { table: 'job_costings', column: 'labour_special_total', type: 'REAL DEFAULT 0' },
   { table: 'users', column: 'session_token', type: 'TEXT' },
   { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
-  { table: 'time_entries', column: 'is_special_labour', type: 'INTEGER DEFAULT 0' },
   { table: 'time_entries', column: 'scrap_bin_qty', type: 'INTEGER DEFAULT 0' },
   { table: 'time_entries', column: 'scrap_recycle_qty', type: 'INTEGER DEFAULT 0' },
   { table: 'time_entries', column: 'first_off_inspection', type: 'INTEGER' },
@@ -426,6 +433,19 @@ try {
   }
 } catch (err) {
   logger.error({ err }, 'Migration: Failed to drop require_scanned_forms from qa_levels');
+}
+
+// Drop the time-entry special-labour flag: work blocks can no longer be marked
+// "special". Special labour is now a manually-entered costing line instead, so the
+// per-block flag is gone. Idempotent: a second run finds the column already gone.
+try {
+  const teCols = db.prepare('PRAGMA table_info(time_entries)').all();
+  if (teCols.some(c => c.name === 'is_special_labour')) {
+    db.exec('ALTER TABLE time_entries DROP COLUMN is_special_labour');
+    logger.info('Migration: Dropped is_special_labour from time_entries');
+  }
+} catch (err) {
+  logger.error({ err }, 'Migration: Failed to drop is_special_labour from time_entries');
 }
 
 // Drop legacy qa_forms + documents tables (replaced by disk-first folders)

@@ -361,9 +361,7 @@ router.delete('/:id', authenticate, requireAdmin, (req, res) => {
           entries.filter(e => e.end_time).map(e => e.user_name).filter(Boolean)
         )];
         const hrs = timeEntryQueries.getHoursByJobcard.get(id);
-        const loggedHours = Math.round(
-          ((hrs?.labour_hours || 0) + (hrs?.labour_special_hours || 0)) * 10
-        ) / 10;
+        const loggedHours = Math.round((hrs?.labour_hours || 0) * 10) / 10;
         workWarning = {
           hasActive: activeWorkers.length > 0,
           activeWorkers,

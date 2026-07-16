@@ -18,8 +18,7 @@ export function mapTimeEntryFromApi(e) {
     equipmentChecksComments: e.equipmentChecksComments || '',
     description: e.description,
     startTime: e.startTime,
-    endTime: e.endTime,
-    isSpecialLabour: e.isSpecialLabour || false
+    endTime: e.endTime
   };
 }
 

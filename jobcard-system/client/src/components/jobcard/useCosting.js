@@ -70,16 +70,13 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
     try {
       const costingRes = await api.getCosting(jobCardId);
       if (costingRes) {
+        // Only labour hours are auto-tallied from time entries; this runs after a
+        // timer event to pick that up. Every other field is manually entered, so
+        // leave the current form values alone — otherwise an admin's unsaved edits
+        // (rate, special-labour hours/rate, materials, etc.) get wiped by a refresh.
         setCostingForm(prev => ({
           ...prev,
-          labourHours: costingRes.labourHours || 0,
-          labourRate: costingRes.labourRate ?? prev.labourRate,
-          labourSpecialHours: costingRes.labourSpecialHours || 0,
-          labourSpecialRate: costingRes.labourSpecialRate ?? prev.labourSpecialRate,
-          materialsCost: costingRes.materialsCost ?? prev.materialsCost,
-          materialsProfitPercent: costingRes.materialsProfitPercent ?? prev.materialsProfitPercent,
-          subcontractorCost: costingRes.subcontractorCost ?? prev.subcontractorCost,
-          subcontractorProfitPercent: costingRes.subcontractorProfitPercent ?? prev.subcontractorProfitPercent
+          labourHours: costingRes.labourHours || 0
         }));
       }
     } catch (err) {

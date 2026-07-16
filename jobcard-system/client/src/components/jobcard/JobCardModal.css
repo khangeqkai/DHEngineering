@@ -2009,11 +2009,6 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--success-color) 15%, transparent);
 }
 
-/* Special labour — red tab on the left edge */
-.te-card--special {
-  border-left: 3px solid var(--danger-color, #ef4444);
-}
-
 /* Top bar: duration + actions */
 .te-topbar {
   display: flex;
@@ -2161,18 +2156,6 @@
 }
 .te-menu-item--del:hover {
   background: color-mix(in srgb, var(--danger-color, #ef4444) 10%, transparent);
-}
-
-/* Special toggle row — check is hidden until on, then red */
-.te-menu-item--special .te-menu-check {
-  opacity: 0;
-}
-.te-menu-item--special.is-on {
-  color: var(--danger-color, #ef4444);
-}
-.te-menu-item--special.is-on .te-menu-check {
-  opacity: 1;
-  color: var(--danger-color, #ef4444);
 }
 
 /* Body: just the worker's comment */
@@ -2499,27 +2482,6 @@
 
 .costing-entry-form {
   margin-bottom: 1rem;
-}
-
-/* Legacy special-labour-toggle kept for any other usage */
-.special-labour-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  cursor: pointer;
-  font-size: var(--text-xs);
-  margin-left: 0.5rem;
-}
-
-.special-labour-toggle input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
-  cursor: pointer;
-}
-
-.special-labour-label {
-  color: var(--text-secondary);
-  font-size: var(--text-xs);
 }
 
 /* QA Forms styles */

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MoreVertical, Pencil, Trash2, Check, ChevronDown } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, ChevronDown } from 'lucide-react';
 import ScrapStat from './ScrapStat';
 
 function formatElapsed(seconds) {
@@ -39,8 +39,7 @@ export default function TimeEntryCard({
   readOnly = false,
   onEdit,
   onDelete,
-  onStop,
-  onToggleSpecial
+  onStop
 }) {
   const isActive = !entry.endTime;
   const durationSec = entry.endTime
@@ -77,7 +76,7 @@ export default function TimeEntryCard({
     showQty && qtyNum > 0 && target != null && Number.isFinite(cumulativeAfter);
   const noteText = entry.description ? entry.description.trim() : '';
 
-  const showActions = !readOnly && (onEdit || onDelete || onStop || onToggleSpecial);
+  const showActions = !readOnly && (onEdit || onDelete || onStop);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -91,7 +90,7 @@ export default function TimeEntryCard({
   }, [menuOpen]);
 
   return (
-    <div className={`te-card${isActive ? ' te-card--active' : ''}${entry.isSpecialLabour ? ' te-card--special' : ''}`}>
+    <div className={`te-card${isActive ? ' te-card--active' : ''}`}>
       <div className="te-topbar">
         <div className="te-duration-zone">
           <span className="te-worker">{entry.userName}</span>
@@ -176,18 +175,6 @@ export default function TimeEntryCard({
                         onClick={() => { setMenuOpen(false); onEdit(entry); }}
                       >
                         <Pencil size={14} /> Edit
-                      </button>
-                    )}
-                    {onToggleSpecial && (
-                      <button
-                        type="button"
-                        role="menuitemcheckbox"
-                        aria-checked={!!entry.isSpecialLabour}
-                        className={`te-menu-item te-menu-item--special${entry.isSpecialLabour ? ' is-on' : ''}`}
-                        onClick={() => { setMenuOpen(false); onToggleSpecial(entry.id); }}
-                      >
-                        <Check size={14} className="te-menu-check" />
-                        {entry.isSpecialLabour ? 'Special labour' : 'Mark as special'}
                       </button>
                     )}
                     {onDelete && (

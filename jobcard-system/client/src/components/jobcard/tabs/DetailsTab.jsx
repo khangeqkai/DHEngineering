@@ -59,7 +59,6 @@ export default function DetailsTab({
   handleDeleteTimeEntry,
   handleStopEntryWithForm,
   resetTimeEntryForm,
-  onToggleSpecial,
   // Per-item timer
   activeTimer,
   timerElapsed,
@@ -256,7 +255,6 @@ export default function DetailsTab({
         handleDeleteTimeEntry={handleDeleteTimeEntry}
         handleStopEntryWithForm={handleStopEntryWithForm}
         resetTimeEntryForm={resetTimeEntryForm}
-        onToggleSpecial={onToggleSpecial}
         activeTimer={isEdit ? activeTimer : null}
         timerElapsed={timerElapsed}
         timerLoading={timerLoading}

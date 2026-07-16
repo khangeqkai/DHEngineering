@@ -26,6 +26,24 @@ function runMigrations() {
     logger.info({ deleted: result.changes }, 'Migration: Wiped legacy time_entries for per-item timer');
   }
 
+  // Special labour changed from an auto-tally of "special"-marked time blocks into a
+  // manually-entered costing line. Those blocks are being unmarked, so their hours now
+  // sit in the normal labour total. Any special hours stored on existing costings were
+  // that same auto-tally — leaving them would double-count. Zero the stored special
+  // hours/total ONCE (guarded by a settings flag) so the new manual line starts empty;
+  // the rate an admin previously typed is left intact. Never re-runs, so it can't wipe
+  // hours an admin enters later.
+  const specialResetKey = 'special_labour_manual_reset_at';
+  const specialFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(specialResetKey);
+  if (!specialFlag) {
+    const reset = db.prepare(
+      'UPDATE job_costings SET labour_special_hours = 0, labour_special_total = 0'
+    ).run();
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
+      .run(specialResetKey, new Date().toISOString());
+    logger.info({ updated: reset.changes }, 'Migration: Reset stored special-labour hours for manual entry');
+  }
+
   // Customers are archived, never deleted (track-and-trace) — add the flag to
   // databases created before this column existed.
   const contactCols = db.prepare("PRAGMA table_info(contacts)").all();

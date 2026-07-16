@@ -83,8 +83,7 @@ export default function LineItemProgress({
   onAdd,
   onEdit,
   onDelete,
-  onStop,
-  onToggleSpecial
+  onStop
 }) {
   const progress = useMemo(() => computeProgress(entries, targetQty), [entries, targetQty]);
 
@@ -102,7 +101,7 @@ export default function LineItemProgress({
   }, [progress.hasActive]);
 
   const cardProps = isAdmin
-    ? { onEdit, onDelete, onStop, onToggleSpecial }
+    ? { onEdit, onDelete, onStop }
     : { readOnly: true };
 
   const activeEntries = entries.filter(e => !e.endTime);

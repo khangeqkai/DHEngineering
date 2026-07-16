@@ -216,7 +216,6 @@ export default function SearchPage() {
     { key: 'durationHours', label: 'Hours', render: (v) => v != null ? `${v.toFixed(2)}h` : 'Active' },
     { key: 'startTime', label: 'Start', render: (v) => fmtDate(v) },
     { key: 'endTime', label: 'End', render: (v) => v ? fmtDate(v) : '-' },
-    { key: 'isSpecialLabour', label: 'Special', render: (v) => v ? 'Yes' : '' },
   ];
 
   const columnsMap = { jobs: jobColumns, people: peopleColumns, activity: activityColumns, time: timeColumns };
@@ -376,12 +375,6 @@ export default function SearchPage() {
                   <span className="search-date-sep">to</span>
                   <input type="date" className="search-date" value={filters.dateTo} onChange={e => updateFilter('dateTo', e.target.value)} />
                 </div>
-              </FilterRow>
-              <FilterRow label="">
-                <label className="search-checkbox">
-                  <input type="checkbox" checked={filters.specialOnly} onChange={e => updateFilter('specialOnly', e.target.checked)} />
-                  Special labour only
-                </label>
               </FilterRow>
             </>}
           </div>

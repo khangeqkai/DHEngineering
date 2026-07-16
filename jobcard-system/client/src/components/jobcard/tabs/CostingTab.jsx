@@ -34,13 +34,13 @@ export default function CostingTab({
           </div>
         </div>
 
-        {/* Labour Special */}
+        {/* Labour Special — hours and rate are both entered by hand */}
         <div className="costing-row">
           <span className="costing-label">Labour Special</span>
           <div className="costing-inputs">
             <div className="costing-field">
               <label>Hours</label>
-              <input type="number" name="labourSpecialHours" value={costingForm.labourSpecialHours} readOnly disabled className="input-readonly" />
+              <input type="number" name="labourSpecialHours" value={costingForm.labourSpecialHours} onChange={handleCostingChange} min="0" step="0.01" />
             </div>
             <div className="costing-field">
               <label>Rate ($/hr)</label>

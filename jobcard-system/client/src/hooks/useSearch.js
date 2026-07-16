@@ -23,7 +23,6 @@ const INITIAL_FILTERS = {
   // Time
   workerId: '',
   machineId: '',
-  specialOnly: false,
   jobNumber: '',
 };
 
@@ -113,7 +112,6 @@ export default function useSearch() {
           if (filters.machineId) params.machineId = filters.machineId;
           if (filters.dateFrom) params.dateFrom = filters.dateFrom;
           if (filters.dateTo) params.dateTo = filters.dateTo;
-          if (filters.specialOnly) params.specialOnly = 'true';
           if (filters.jobNumber) params.jobNumber = filters.jobNumber;
         }
 

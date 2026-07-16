@@ -124,6 +124,13 @@ console.log('Configuring settings...');
 for (const [key, val] of Object.entries(refData.settings)) {
   settingsQueries.upsert.run(key, val);
 }
+// Mark the one-shot startup conversions as already-done. The seed writes new-shape
+// data directly (per-item time entries, manually-entered special-labour lines), so
+// the first server boot must NOT run those conversions against it — otherwise it
+// would delete the seeded time entries and zero the seeded special-labour hours.
+const seededAt = new Date().toISOString();
+settingsQueries.upsert.run('time_entries_per_item_wiped_at', seededAt);
+settingsQueries.upsert.run('special_labour_manual_reset_at', seededAt);
 console.log(`Settings configured (prefix: ${refData.settings.job_number_prefix}, starting: ${refData.settings.job_number_next}).`);
 
 // ─── QA LEVELS ───
@@ -154,7 +161,7 @@ const insertJobcard = db.prepare(`INSERT INTO jobcards (
 const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments, drawings_type, customer_property) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
 const insertNote = db.prepare('INSERT INTO job_notes (id, jobcard_id, user_id, user_name, text, created_at) VALUES (?, ?, ?, ?, ?, ?)');
-const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, user_id, item_id, machine_number, qty, scrap_bin_qty, scrap_recycle_qty, description, start_time, end_time, is_special_labour) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, user_id, item_id, machine_number, qty, scrap_bin_qty, scrap_recycle_qty, description, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 const insertCosting = db.prepare(`INSERT INTO job_costings (
   id, jobcard_id,
   labour_hours, labour_rate, labour_total,
@@ -254,10 +261,9 @@ const createJobs = db.transaction(() => {
       noteHistory.push({ workerId: workers[n.worker].id, workerName: workers[n.worker].name, text: n.text, at: noteAt });
     }
 
-    // Sum completed labour hours (split regular/special) so seeded costing totals
-    // line up with the read endpoint's live recompute.
-    let regularHours = 0;
-    let specialHours = 0;
+    // Sum completed labour hours so seeded costing totals line up with the read
+    // endpoint's live recompute.
+    let labourHours = 0;
     const timerHistory = [];
     for (const e of s.timeEntries) {
       let start, endIso;
@@ -269,14 +275,13 @@ const createJobs = db.transaction(() => {
         const end = new Date(start);
         end.setHours(end.getHours() + e.hours);
         endIso = end.toISOString();
-        if (e.special) specialHours += e.hours; else regularHours += e.hours;
+        labourHours += e.hours;
       }
       insertTimeEntry.run(
         uid('timeentry'), jobId, workers[e.worker].id,
         itemIdByNumber[parseInt(e.item, 10)] || null, e.machine, e.qty,
         e.scrap || 0, 0, e.desc,
-        start.toISOString(), endIso,
-        e.special ? 1 : 0
+        start.toISOString(), endIso
       );
       if (endIso) {
         timerHistory.push({ workerId: workers[e.worker].id, workerName: workers[e.worker].name, desc: e.desc, at: endIso });
@@ -286,9 +291,12 @@ const createJobs = db.transaction(() => {
     if (s.costing) {
       const c = s.costing;
       const labourRate = c.labourRate || 0;
-      const labourTotal = regularHours * labourRate;
+      const labourTotal = labourHours * labourRate;
+      // Special labour is a manually-entered line: hours and rate come straight from
+      // the scenario, not from time entries.
+      const labourSpecialHours = c.labourSpecialHours || 0;
       const labourSpecialRate = c.labourSpecialRate || 0;
-      const labourSpecialTotal = specialHours * labourSpecialRate;
+      const labourSpecialTotal = labourSpecialHours * labourSpecialRate;
       const materialsCost = c.materialsCost || 0;
       const materialsProfit = c.materialsProfitPercent || 0;
       const materialsTotal = materialsCost * (1 + materialsProfit / 100);
@@ -298,8 +306,8 @@ const createJobs = db.transaction(() => {
       const grandTotal = labourTotal + labourSpecialTotal + materialsTotal + subcontractorTotal;
       insertCosting.run(
         uid('costing'), jobId,
-        regularHours, labourRate, labourTotal,
-        specialHours, labourSpecialRate, labourSpecialTotal,
+        labourHours, labourRate, labourTotal,
+        labourSpecialHours, labourSpecialRate, labourSpecialTotal,
         materialsCost, materialsProfit, materialsTotal,
         subcontractorCost, subcontractorProfit, subcontractorTotal,
         grandTotal
@@ -357,7 +365,7 @@ if (SKIP_JOBS) {
   console.log(`  - ${scenarios.length} job cards covering every status, job type, material, treatment, drawing, and customer-property value`);
   console.log('  - Repeat-job flag, every priority (incl. None), and a free-text "Other" treatment all represented');
   console.log('  - Quote references on all jobs; PO numbers on post-quote jobs');
-  console.log('  - Scrap pieces, a live running timer, and Saturday special labour recorded');
+  console.log('  - Scrap pieces and a live running timer recorded');
   console.log('  - Pricing on in-progress, treatment, done, and invoiced jobs');
   console.log('  - Activity history backfilled for setup, jobs, notes, and timers');
   console.log(`  - Job numbering: DH-00001 to ${lastJob}, next: ${nextJob}`);

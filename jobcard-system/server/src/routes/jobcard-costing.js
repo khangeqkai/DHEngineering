@@ -11,18 +11,19 @@ const router = express.Router();
 router.get('/:id/costing', authenticate, requireAdmin, (req, res) => {
   try {
     const costing = jobCostingQueries.getByJobcard.get(req.params.id);
-    const hours = timeEntryQueries.getHoursByJobcard.get(req.params.id) || { labour_hours: 0, labour_special_hours: 0 };
+    const hours = timeEntryQueries.getHoursByJobcard.get(req.params.id) || { labour_hours: 0 };
     // Round to thousandths of an hour (~3.6 s) so short entries still register instead of
     // rounding away to zero. Costs are derived from this, so tiny durations keep a tiny cost.
+    // Only normal labour hours are auto-tallied from time entries; special-labour hours are
+    // a manually-entered figure the admin types, read straight from the stored costing.
     const labourHours = Math.round(hours.labour_hours * 1000) / 1000;
-    const labourSpecialHours = Math.round(hours.labour_special_hours * 1000) / 1000;
 
     if (!costing) {
       return res.json({
         labourHours,
         labourRate: 0,
         labourTotal: 0,
-        labourSpecialHours,
+        labourSpecialHours: 0,
         labourSpecialRate: 0,
         labourSpecialTotal: 0,
         materialsCost: 0,
@@ -34,6 +35,9 @@ router.get('/:id/costing', authenticate, requireAdmin, (req, res) => {
         grandTotal: 0
       });
     }
+    // Special-labour hours are a manually-entered figure; guard against a stray null
+    // so the total never comes back NaN.
+    const labourSpecialHours = costing.labour_special_hours || 0;
     const labourTotal = labourHours * costing.labour_rate;
     const labourSpecialTotal = labourSpecialHours * costing.labour_special_rate;
     const materialsTotal = costing.materials_cost * (1 + costing.materials_profit_percent / 100);
@@ -74,15 +78,19 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
     // Get existing costing for diff
     const existing = jobCostingQueries.getByJobcard.get(id);
 
-    const hours = timeEntryQueries.getHoursByJobcard.get(id) || { labour_hours: 0, labour_special_hours: 0 };
+    const hours = timeEntryQueries.getHoursByJobcard.get(id) || { labour_hours: 0 };
     // Round to thousandths of an hour (~3.6 s) so short entries still register instead of
     // rounding away to zero. Costs are derived from this, so tiny durations keep a tiny cost.
     const labourHours = Math.round(hours.labour_hours * 1000) / 1000;
-    const labourSpecialHours = Math.round(hours.labour_special_hours * 1000) / 1000;
+
+    // Special-labour hours are entered by hand (not tallied from time entries), so take
+    // them from the submitted form and clamp to a non-negative number.
+    const labourSpecialHours = Math.max(0, Number(data.labourSpecialHours) || 0);
+    const labourSpecialRate = Math.max(0, Number(data.labourSpecialRate) || 0);
 
     // Calculate totals
     const labourTotal = labourHours * (data.labourRate || 0);
-    const labourSpecialTotal = labourSpecialHours * (data.labourSpecialRate || 0);
+    const labourSpecialTotal = labourSpecialHours * labourSpecialRate;
     const materialsTotal = (data.materialsCost || 0) * (1 + (data.materialsProfitPercent ?? 100) / 100);
     const subcontractorTotal = (data.subcontractorCost || 0) * (1 + (data.subcontractorProfitPercent || 0) / 100);
     const grandTotal = labourTotal + labourSpecialTotal + materialsTotal + subcontractorTotal;
@@ -94,7 +102,7 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
       data.labourRate || 0,
       labourTotal,
       labourSpecialHours,
-      data.labourSpecialRate || 0,
+      labourSpecialRate,
       labourSpecialTotal,
       data.materialsCost || 0,
       data.materialsProfitPercent ?? 100,
@@ -106,13 +114,14 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
     );
 
     // Build proper diff of changed fields.
-    // Labour hours and special hours are auto-calculated from time entries, not
-    // edited by the admin saving this screen — exclude them so the audit trail
-    // doesn't attribute an automatic recalculation to whoever opened and saved.
+    // Labour hours are auto-calculated from time entries, not edited by the admin
+    // saving this screen — exclude them so the audit trail doesn't attribute an
+    // automatic recalculation to whoever opened and saved.
     const changes = {};
     const fieldsToTrack = [
       ['labour_rate', 'labourRate', data.labourRate || 0],
-      ['labour_special_rate', 'labourSpecialRate', data.labourSpecialRate || 0],
+      ['labour_special_hours', 'labourSpecialHours', labourSpecialHours],
+      ['labour_special_rate', 'labourSpecialRate', labourSpecialRate],
       ['materials_cost', 'materialsCost', data.materialsCost || 0],
       ['materials_profit_percent', 'materialsProfitPercent', data.materialsProfitPercent ?? 100],
       ['subcontractor_cost', 'subcontractorCost', data.subcontractorCost || 0],

@@ -255,16 +255,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const { refreshCosting } = costingHook;
   costingHookRef.current = refreshCosting;
 
-  const handleToggleSpecial = useCallback(async (entryId) => {
-    try {
-      await api.toggleSpecialLabour(jobCardId, entryId);
-      await reloadTimeEntries();
-      await refreshCosting();
-    } catch (err) {
-      toast.error(err.message || 'Failed to toggle special labour');
-    }
-  }, [jobCardId, reloadTimeEntries, refreshCosting]);
-
   const { setAssignees } = formHook;
   const handleStartItemTimer = useCallback(async (itemNumber, workerId, workerName) => {
     await timer.startTimerWithConflictCheck(itemNumber, showConfirm, workerId, workerName);
@@ -622,7 +612,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   handleDeleteTimeEntry={timeEntry.handleDeleteTimeEntry}
                   handleStopEntryWithForm={handleStopEntryWithForm}
                   resetTimeEntryForm={timeEntry.resetTimeEntryForm}
-                  onToggleSpecial={handleToggleSpecial}
                 />
               )}
 

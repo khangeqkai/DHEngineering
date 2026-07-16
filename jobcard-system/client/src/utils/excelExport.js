@@ -215,7 +215,6 @@ const TIME_ENTRY_COLS = [
   { label: 'Start', value: r => fmtDateTime(r.startTime) },
   { label: 'End', value: r => fmtDateTime(r.endTime) },
   { label: 'Duration (hrs)', value: r => durationHrs(r.startTime, r.endTime) },
-  { label: 'Special Labour', value: r => r.isSpecialLabour ? 'Yes' : 'No' },
 ];
 
 const ITEM_COLS = [

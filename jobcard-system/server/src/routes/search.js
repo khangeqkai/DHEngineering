@@ -75,8 +75,7 @@ function formatTimeEntry(row) {
     description: row.description,
     startTime: row.start_time,
     endTime: row.end_time,
-    durationHours: row.duration_hours != null ? Math.round(row.duration_hours * 100) / 100 : null,
-    isSpecialLabour: row.is_special_labour === 1
+    durationHours: row.duration_hours != null ? Math.round(row.duration_hours * 100) / 100 : null
   };
 }
 
@@ -265,7 +264,7 @@ function searchActivity(req, res) {
 }
 
 function searchTime(req, res, isAdmin) {
-  const { q, workerId, machineId, dateFrom, dateTo, specialOnly, jobNumber } = req.query;
+  const { q, workerId, machineId, dateFrom, dateTo, jobNumber } = req.query;
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const conditions = [];
   const params = [];
@@ -286,7 +285,6 @@ function searchTime(req, res, isAdmin) {
     params.push(`%,${machineId},%`);
   }
   if (jobNumber) { conditions.push('j.job_number LIKE ?'); params.push(`%${jobNumber.trim()}%`); }
-  if (specialOnly === 'true') { conditions.push('te.is_special_labour = 1'); }
   if (dateFrom) { conditions.push('te.start_time >= ?'); params.push(dateFrom); }
   if (dateTo) { conditions.push('te.start_time <= ?'); params.push(dateTo + 'T23:59:59'); }
 

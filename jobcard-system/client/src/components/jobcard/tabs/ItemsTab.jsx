@@ -52,7 +52,6 @@ export default function ItemsTab({
   handleStopEntryWithForm,
   handleDeleteTimeEntry,
   resetTimeEntryForm,
-  onToggleSpecial,
   // Timer (per-item)
   activeTimer,
   timerElapsed,
@@ -424,7 +423,6 @@ export default function ItemsTab({
                       onEdit={isAdmin ? handleEditTimeEntry : undefined}
                       onDelete={isAdmin ? handleDeleteTimeEntry : undefined}
                       onStop={handleStopEntryWithForm}
-                      onToggleSpecial={isAdmin ? onToggleSpecial : undefined}
                     />
                   )}
                 </div>

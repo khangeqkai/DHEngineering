@@ -22,6 +22,7 @@ export const ACTIVITY_FIELDS = [
   { value: 'invoicedDate', label: 'Invoiced Date' },
   { value: 'assignees', label: 'Assignees' },
   { value: 'labourRate', label: 'Labour Rate' },
+  { value: 'labourSpecialHours', label: 'Special Labour Hours' },
   { value: 'labourSpecialRate', label: 'Special Labour Rate' },
   { value: 'materialsCost', label: 'Materials Cost' },
   { value: 'materialsProfitPercent', label: 'Materials Profit %' },
@@ -35,6 +36,5 @@ export const ACTIVITY_FIELDS = [
   { value: 'qty', label: 'Quantity' },
   { value: 'startTime', label: 'Start Time' },
   { value: 'endTime', label: 'End Time' },
-  { value: 'isSpecialLabour', label: 'Special Labour Flag' },
   { value: 'note', label: 'Note' },
 ];
