@@ -2397,87 +2397,239 @@
   color: var(--text-inverse);
 }
 
-/* Costing styles */
-.costing-row {
+/* ── Costing sheet — a ledger that reads cost → total ── */
+.costing-sheet {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.costing-sheet-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-elevated);
   border-bottom: 1px solid var(--border-color);
 }
 
-.costing-label {
-  min-width: 140px;
+.costing-sheet-title {
+  margin: 0;
+  font-size: var(--text-xs);
   font-weight: var(--font-semibold);
-  font-size: var(--text-sm);
-}
-
-.costing-inputs {
-  display: flex;
-  gap: 1rem;
-  flex: 1;
-}
-
-.costing-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.costing-field label {
-  font-size: var(--text-base);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
   color: var(--text-secondary);
 }
 
-.costing-field input {
-  width: 100px;
-  padding: 0.5rem;
+.costing-ledger {
+  padding: var(--space-2) var(--space-5);
+}
+
+/* One cost line: category · field × field = total, columns aligned across rows */
+.ledger-line {
+  display: grid;
+  grid-template-columns: 132px 92px 18px 116px 16px 1fr;
+  align-items: end;
+  column-gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ledger-line:last-child {
+  border-bottom: none;
+}
+
+/* When a note follows a line, the note carries the divider instead */
+.ledger-line:has(+ .ledger-note) {
+  border-bottom: none;
+  padding-bottom: var(--space-2);
+}
+
+.ledger-cat {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-normal);
+  padding-bottom: 0.42rem;
+}
+
+.ledger-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.ledger-field label {
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  font-weight: var(--font-medium);
+  color: var(--text-tertiary);
+}
+
+.ledger-field input {
+  width: 100%;
+  padding: 0.4rem 0.55rem;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-primary);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
+  text-align: right;
 }
 
-.costing-field.total {
-  min-width: 100px;
+.ledger-field input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring-sm);
 }
 
-.costing-total {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--font-semibold);
-  color: var(--primary-accent);
-  font-size: var(--text-base);
-  padding: 0.5rem 0;
-}
-
-.costing-grand-total {
+/* Wrapper that pins a $ or % marker beside the input */
+.ledger-affix {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin: 1rem;
-  padding: 1rem;
-  background: var(--primary-color);
-  border-radius: var(--radius-md);
-  color: var(--text-inverse);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow: hidden;
 }
 
-.costing-grand-total .costing-label {
-  color: var(--text-inverse);
-  font-size: var(--text-base);
+.ledger-affix:focus-within {
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring-sm);
 }
 
-.grand-total-value {
+.ledger-affix input {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ledger-affix input:focus {
+  box-shadow: none;
+}
+
+.ledger-affix-mark {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.ledger-affix--prefix .ledger-affix-mark {
+  padding-left: 0.55rem;
+}
+
+.ledger-affix--suffix .ledger-affix-mark {
+  padding-right: 0.55rem;
+}
+
+.ledger-op,
+.ledger-eq {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  text-align: center;
+  padding-bottom: 0.42rem;
+}
+
+.ledger-total {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: var(--text-2xl);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  text-align: right;
+  padding-bottom: 0.42rem;
+}
+
+/* Reference line under labour: the auto-tallied figure + reset link */
+.ledger-note {
+  padding: 0 0 var(--space-4) 144px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.ledger-note strong {
+  color: var(--text-secondary);
   font-weight: var(--font-semibold);
 }
 
-.input-readonly {
-  opacity: 0.6;
-  cursor: not-allowed;
+.ledger-note-flag {
+  color: var(--warning-color);
+  font-weight: var(--font-semibold);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Grand total — the hero figure */
+.costing-grand {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: var(--space-4) var(--space-5) var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: var(--primary-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.costing-grand-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.costing-grand-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  letter-spacing: var(--tracking-tight);
+  color: #fff;
+}
+
+/* Narrow widths: stack each line into two columns, drop the operators */
+@media (max-width: 600px) {
+  .ledger-line {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+    gap: var(--space-2) var(--space-3);
+  }
+  .ledger-cat {
+    grid-column: 1 / -1;
+    padding-bottom: 0;
+  }
+  .ledger-op,
+  .ledger-eq {
+    display: none;
+  }
+  .ledger-total {
+    grid-column: 1 / -1;
+    padding-bottom: 0;
+  }
+  .ledger-note {
+    padding-left: 0;
+  }
 }
 
 .costing-entry-form {

@@ -98,15 +98,16 @@ const jobCostingQueries = {
   createOrUpdate: db.prepare(`
     INSERT INTO job_costings (
       id, jobcard_id,
-      labour_hours, labour_rate, labour_total,
+      labour_hours, labour_hours_override, labour_rate, labour_total,
       labour_special_hours, labour_special_rate, labour_special_total,
       materials_cost, materials_profit_percent, materials_total,
       subcontractor_cost, subcontractor_profit_percent, subcontractor_total,
       grand_total, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     ON CONFLICT(jobcard_id) DO UPDATE SET
       labour_hours = excluded.labour_hours,
+      labour_hours_override = excluded.labour_hours_override,
       labour_rate = excluded.labour_rate,
       labour_total = excluded.labour_total,
       labour_special_hours = excluded.labour_special_hours,

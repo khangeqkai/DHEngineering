@@ -12,6 +12,8 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
     if (offlineCosting) {
       setCostingForm({
         labourHours: offlineCosting.labourHours || 0,
+        labourHoursCalculated: offlineCosting.labourHoursCalculated || 0,
+        labourHoursOverridden: offlineCosting.labourHoursOverride != null,
         labourRate: offlineCosting.labourRate || 0,
         labourSpecialHours: offlineCosting.labourSpecialHours || 0,
         labourSpecialRate: offlineCosting.labourSpecialRate || 0,
@@ -25,7 +27,22 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
 
   const handleCostingChange = useCallback((e) => {
     const { name, value } = e.target;
-    setCostingForm(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
+    setCostingForm(prev => ({
+      ...prev,
+      [name]: parseFloat(value) || 0,
+      // Typing in the labour-hours box marks it as a manual override so the calculated
+      // figure stops driving it (and a later timer refresh won't overwrite it).
+      ...(name === 'labourHours' ? { labourHoursOverridden: true } : {})
+    }));
+  }, []);
+
+  // Drop a manual labour-hours override and snap back to the auto-tallied figure.
+  const resetLabourHours = useCallback(() => {
+    setCostingForm(prev => ({
+      ...prev,
+      labourHours: prev.labourHoursCalculated,
+      labourHoursOverridden: false
+    }));
   }, []);
 
   const calculateCostingTotals = useCallback(() => {
@@ -46,6 +63,8 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
       const totals = calculateCostingTotals();
       const costingData = {
         ...costingForm,
+        // Send the manual hours only when overridden; null tells the server to use the tally.
+        labourHoursOverride: costingForm.labourHoursOverridden ? costingForm.labourHours : null,
         labourTotal: totals.labourTotal,
         labourSpecialTotal: totals.labourSpecialTotal,
         materialsTotal: totals.materialsTotal,
@@ -76,7 +95,11 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
         // (rate, special-labour hours/rate, materials, etc.) get wiped by a refresh.
         setCostingForm(prev => ({
           ...prev,
-          labourHours: costingRes.labourHours || 0
+          // Always refresh the calculated reference figure. Only push it into the
+          // editable box when the admin hasn't typed their own override, so a manual
+          // entry survives a timer tick.
+          labourHoursCalculated: costingRes.labourHoursCalculated || 0,
+          ...(prev.labourHoursOverridden ? {} : { labourHours: costingRes.labourHoursCalculated || 0 })
         }));
       }
     } catch (err) {
@@ -92,6 +115,7 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
     costingForm,
     savingCosting,
     handleCostingChange,
+    resetLabourHours,
     calculateCostingTotals,
     handleSaveCosting,
     refreshCosting,

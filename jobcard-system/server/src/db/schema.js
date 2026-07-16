@@ -192,6 +192,10 @@ db.exec(`
     jobcard_id TEXT UNIQUE NOT NULL,
 
     labour_hours REAL DEFAULT 0,
+    -- Manual override of the auto-tallied labour hours. NULL = use the live tally
+    -- from time entries; a number = the admin typed their own figure. The auto-tally
+    -- is always kept in labour_hours so the "original calculated time" can still be shown.
+    labour_hours_override REAL,
     labour_rate REAL DEFAULT 0,
     labour_total REAL DEFAULT 0,
 
@@ -362,6 +366,7 @@ const migrations = [
   // Special labour (manually-entered costing line). Present in the CREATE TABLE, but
   // databases created before these columns existed need them added, or the costing
   // insert/update prepared statement fails to build at startup.
+  { table: 'job_costings', column: 'labour_hours_override', type: 'REAL' },
   { table: 'job_costings', column: 'labour_special_hours', type: 'REAL DEFAULT 0' },
   { table: 'job_costings', column: 'labour_special_rate', type: 'REAL DEFAULT 0' },
   { table: 'job_costings', column: 'labour_special_total', type: 'REAL DEFAULT 0' },

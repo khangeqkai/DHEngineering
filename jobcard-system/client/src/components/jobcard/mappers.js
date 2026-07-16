@@ -116,6 +116,11 @@ export function getDefaultTimeEntryForm() {
 export function getDefaultCostingForm() {
   return {
     labourHours: 0,
+    // The auto-tallied hours from logged time — shown as a reference and used as the
+    // fallback when no manual override is in place.
+    labourHoursCalculated: 0,
+    // True once the admin has typed their own labour hours over the calculated figure.
+    labourHoursOverridden: false,
     labourRate: 0,
     labourSpecialHours: 0,
     labourSpecialRate: 0,

@@ -128,6 +128,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       if (costingRes) {
         setCostingData({
           labourHours: costingRes.labourHours || 0,
+          labourHoursCalculated: costingRes.labourHoursCalculated || 0,
+          labourHoursOverride: costingRes.labourHoursOverride ?? null,
           labourRate: costingRes.labourRate || 0,
           labourSpecialHours: costingRes.labourSpecialHours || 0,
           labourSpecialRate: costingRes.labourSpecialRate || 0,
@@ -186,6 +188,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       if (costingRes) {
         setCostingData({
           labourHours: costingRes.labourHours || 0,
+          labourHoursCalculated: costingRes.labourHoursCalculated || 0,
+          labourHoursOverride: costingRes.labourHoursOverride ?? null,
           labourRate: costingRes.labourRate || 0,
           labourSpecialHours: costingRes.labourSpecialHours || 0,
           labourSpecialRate: costingRes.labourSpecialRate || 0,
@@ -619,6 +623,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 <CostingTab
                   costingForm={costingHook.costingForm}
                   handleCostingChange={costingHook.handleCostingChange}
+                  resetLabourHours={costingHook.resetLabourHours}
                   calculateCostingTotals={costingHook.calculateCostingTotals}
                   handleSaveCosting={costingHook.handleSaveCosting}
                   savingCosting={costingHook.savingCosting}
