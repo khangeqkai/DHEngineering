@@ -19,14 +19,14 @@ const SCOPES = [
   { key: 'all', label: 'All', icon: Search },
   { key: 'jobs', label: 'Jobs', icon: Briefcase },
   { key: 'people', label: 'People', icon: UsersIcon, managementOnly: true },
-  { key: 'activity', label: 'Activity', icon: Clock, managementOnly: true },
+  { key: 'activity', label: 'Activity', icon: Clock, adminOnly: true },
   { key: 'time', label: 'Time', icon: Timer },
 ];
 const GROUP_LABELS = { jobs: 'Job Cards', contacts: 'Contacts', suppliers: 'Suppliers', activity: 'Activity' };
 const GROUP_TO_SCOPE = { jobs: 'jobs', contacts: 'people', suppliers: 'people', activity: 'activity' };
 
 const fmt = (s) => (s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-const fmtDate = (d) => d ? new Date(d).toLocaleString('en-AU') : '-';
+const fmtDate = (d) => d ? new Date(d).toLocaleString('en-AU', { hour12: false }) : '-';
 const fmtDateShort = (d) => d ? new Date(d).toLocaleDateString('en-AU') : '-';
 
 const ACTION_COLORS = {
@@ -105,6 +105,7 @@ const ACTION_TO_TAB = {
 export default function SearchPage() {
   const { user } = useAuth();
   const canManage = isManagement(user);
+  const isAdmin = user?.role === 'admin';
   const navigate = useNavigate();
   const inputRef = useRef(null);
   const {
@@ -235,7 +236,7 @@ export default function SearchPage() {
 
       {/* Scope tabs */}
       <div className="search-scope-tabs">
-        {SCOPES.filter(s => !s.managementOnly || canManage).map(s => (
+        {SCOPES.filter(s => (!s.managementOnly || canManage) && (!s.adminOnly || isAdmin)).map(s => (
           <button key={s.key} type="button" className={`search-scope-tab ${scope === s.key ? 'active' : ''}`}
             onClick={() => changeScope(s.key)}>
             <s.icon size={15} /> {s.label}

@@ -79,7 +79,7 @@ export default function ActivityLog() {
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
-    return date.toLocaleString('en-AU');
+    return date.toLocaleString('en-AU', { hour12: false });
   };
 
 

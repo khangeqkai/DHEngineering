@@ -85,6 +85,9 @@ router.get('/', authenticate, (req, res) => {
   try {
     const scope = req.query.scope || 'all';
     const canManage = isManagement(req.user.role);
+    // Activity results are drawn from the raw history trail, which carries pricing
+    // changes — admin-only, so a manager can't read money through search.
+    const isAdmin = req.user.role === 'admin';
 
     switch (scope) {
       case 'all': return searchAll(req, res, canManage);
@@ -94,7 +97,7 @@ router.get('/', authenticate, (req, res) => {
         return searchPeople(req, res);
       }
       case 'activity': {
-        if (!canManage) return res.status(403).json({ error: 'Management only' });
+        if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
         return searchActivity(req, res);
       }
       case 'time': return searchTime(req, res, canManage);
@@ -146,8 +149,11 @@ function searchAll(req, res, canManage) {
       count: db.prepare(`SELECT COUNT(*) as count FROM suppliers WHERE ${sWhere}`).get(like, like, like, like).count,
       results: db.prepare(`SELECT * FROM suppliers WHERE ${sWhere} ORDER BY name ASC LIMIT ?`).all(like, like, like, like, PREVIEW_LIMIT).map(formatSupplier)
     };
+  }
 
-    // Activity
+  // Activity — admin only (the history trail carries pricing changes, which managers
+  // are barred from seeing), so it sits outside the management block above.
+  if (req.user.role === 'admin') {
     const hWhere = '(user_name LIKE ? OR entity_id LIKE ? OR changes LIKE ?)';
     groups.activity = {
       count: db.prepare(`SELECT COUNT(*) as count FROM history WHERE ${hWhere}`).get(like, like, like).count,

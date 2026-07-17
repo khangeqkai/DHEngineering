@@ -179,9 +179,9 @@ function App() {
         <Route
           path="activity"
           element={
-            <ManagementRoute>
+            <AdminRoute>
               <ActivityLog />
-            </ManagementRoute>
+            </AdminRoute>
           }
         />
         <Route path="settings" element={<Settings />} />

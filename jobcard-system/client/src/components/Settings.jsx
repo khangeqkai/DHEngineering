@@ -149,12 +149,12 @@ export default function Settings() {
           </>
         )}
 
-        {s.canManage && (
-          <>
-            <SecurityCard s={s} />
-            <FoldersCard s={s} />
-          </>
-        )}
+        {s.canManage && <SecurityCard s={s} />}
+
+        {/* The job-folders base path stays admin-only: it decides where every job's
+            files (and backups) are written, so a manager can't repoint it to a
+            personal/removable drive. */}
+        {s.isAdmin && <FoldersCard s={s} />}
 
         {/* Backups stay admin-only: a backup carries the whole database, pricing included. */}
         {s.isAdmin && <DataBackupCard s={s} />}

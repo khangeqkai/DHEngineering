@@ -43,6 +43,23 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
     // excluded so an automatic recalculation isn't attributed to whoever saved; the
     // hand overrides and the resulting totals ARE admin actions, so they're tracked.
     const changes = {};
+    // Override columns are NULL when the job follows the automatic figure / standard
+    // multiplier. Reading them as a plain number would show a cleared override as
+    // "→ 0" (and hide a none→zero flip entirely), so they're audited with a word for
+    // the NULL state: 'auto' for hours, 'standard' for multipliers. Every other field
+    // is a real number.
+    const HOURS_OVERRIDES = new Set([
+      'labour_hours_override', 'labour_ot1_override', 'labour_ot2_override', 'labour_holiday_override',
+    ]);
+    const MULTIPLIER_OVERRIDES = new Set([
+      'labour_ot1_multiplier_override', 'labour_ot2_multiplier_override',
+    ]);
+    const auditValue = (dbField, row) => {
+      const raw = row ? row[dbField] : null;
+      if (HOURS_OVERRIDES.has(dbField)) return raw == null ? 'auto' : Number(raw) || 0;
+      if (MULTIPLIER_OVERRIDES.has(dbField)) return raw == null ? 'standard' : Number(raw) || 0;
+      return Number(raw) || 0;
+    };
     const fieldsToTrack = [
       ['labour_hours_override', 'labourHoursOverride'],
       ['labour_rate', 'labourRate'],
@@ -63,8 +80,8 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
       ['grand_total', 'grandTotal'],
     ];
     for (const [dbField, changeKey] of fieldsToTrack) {
-      const oldVal = existing ? Number(existing[dbField]) || 0 : 0;
-      const newVal = Number(computed.row[dbField]) || 0;
+      const oldVal = auditValue(dbField, existing);
+      const newVal = auditValue(dbField, computed.row);
       if (oldVal !== newVal) {
         changes[changeKey] = { from: oldVal, to: newVal };
       }

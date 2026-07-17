@@ -71,7 +71,7 @@ function fmtDateTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
   if (isNaN(d)) return iso;
-  return d.toLocaleString('en-AU');
+  return d.toLocaleString('en-AU', { hour12: false });
 }
 
 function durationHrs(start, end) {
@@ -303,7 +303,7 @@ async function fetchInBatches(ids, fetcher, batchSize = 5) {
   return results;
 }
 
-async function buildJobCardWorkbook(cards, onProgress) {
+async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
   if (!cards.length) return false;
 
   const ids = cards.map(c => c.id);
@@ -324,10 +324,16 @@ async function buildJobCardWorkbook(cards, onProgress) {
     api.getTimeEntries(id).then(entries => ({ id, entries })).catch(() => ({ id, entries: [] }))
   );
 
-  onProgress?.('Fetching costing...');
-  const costingPerJob = await fetchInBatches(ids, id =>
-    api.getCosting(id).then(costing => ({ id, costing })).catch(() => ({ id, costing: null }))
-  );
+  // Costing is admin-only (the endpoint refuses non-admins). Skip the fetch and the
+  // sheet entirely for anyone else so a manager's export doesn't carry an empty,
+  // pricing-shaped sheet.
+  let costingPerJob = [];
+  if (includeCosting) {
+    onProgress?.('Fetching costing...');
+    costingPerJob = await fetchInBatches(ids, id =>
+      api.getCosting(id).then(costing => ({ id, costing })).catch(() => ({ id, costing: null }))
+    );
+  }
 
   onProgress?.('Fetching notes...');
   const notesPerJob = await fetchInBatches(ids, id =>
@@ -372,23 +378,25 @@ async function buildJobCardWorkbook(cards, onProgress) {
   XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, enrichedCards, JOBCARD_SUMMARY_COLS), 'Summary');
   XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allItems, ITEM_COLS), 'Items');
   XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allTimeEntries, TIME_ENTRY_COLS), 'Time Entries');
-  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allCosting, COSTING_COLS), 'Costing');
+  if (includeCosting) {
+    XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allCosting, COSTING_COLS), 'Costing');
+  }
 
   return wb;
 }
 
-export async function exportJobCardList(cards, onProgress) {
-  const wb = await buildJobCardWorkbook(cards, onProgress);
+export async function exportJobCardList(cards, onProgress, includeCosting = true) {
+  const wb = await buildJobCardWorkbook(cards, onProgress, includeCosting);
   if (!wb) return false;
   return saveWorkbook(wb, `Job_Cards_${timestamp()}.xlsx`);
 }
 
-export async function exportJobCardsFull(onProgress) {
+export async function exportJobCardsFull(onProgress, includeCosting = true) {
   onProgress?.('Fetching job cards...');
   const cards = await api.getJobcards();
   if (!cards.length) return false;
 
-  const wb = await buildJobCardWorkbook(cards, onProgress);
+  const wb = await buildJobCardWorkbook(cards, onProgress, includeCosting);
   if (!wb) return false;
   return saveWorkbook(wb, `Job_Cards_Full_${timestamp()}.xlsx`);
 }

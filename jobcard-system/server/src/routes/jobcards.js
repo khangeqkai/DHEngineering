@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { deleteJobCardFolders } = require('../utils/folderCreation');
-const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
+const { authenticate, requireManagement, requireAdmin, isManagement } = require('../middleware/auth');
 const { validateJobcardListQuery, JOBCARD_STATUSES } = require('../middleware/validation');
 const {
   jobcardQueries,
@@ -120,8 +120,8 @@ router.get('/:id', authenticate, (req, res) => {
   }
 });
 
-// Get job card history
-router.get('/:id/history', authenticate, (req, res) => {
+// Get job card history (admin only — the trail carries pricing changes)
+router.get('/:id/history', authenticate, requireAdmin, (req, res) => {
   try {
     const history = historyQueries.getByEntity.all('jobcard', req.params.id);
 

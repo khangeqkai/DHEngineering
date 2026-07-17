@@ -54,7 +54,7 @@ export default function ActivityLogTab({ history = [], loading, onRefresh }) {
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
-    return date.toLocaleString('en-AU');
+    return date.toLocaleString('en-AU', { hour12: false });
   };
 
   if (loading) {

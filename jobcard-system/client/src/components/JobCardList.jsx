@@ -60,6 +60,7 @@ function penTabWithin(e, container) {
 export default function JobCardList() {
   const { user } = useAuth();
   const canManage = isManagement(user);
+  const isAdmin = user?.role === 'admin';
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [filter, setFilter] = useState(() => {
@@ -415,8 +416,8 @@ export default function JobCardList() {
         </label>
         {canManage && (
           <ExportButton
-            onExportView={() => displayedCards.length ? exportJobCardList(displayedCards) : false}
-            onExportAll={() => exportJobCardsFull()}
+            onExportView={() => displayedCards.length ? exportJobCardList(displayedCards, undefined, isAdmin) : false}
+            onExportAll={() => exportJobCardsFull(undefined, isAdmin)}
           />
         )}
         {!showArchived && canManage && (

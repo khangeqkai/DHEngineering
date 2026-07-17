@@ -34,7 +34,7 @@ const clockTime = (iso) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? null
-    : d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+    : d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: false });
 };
 
 // Small −/+ counter. The number itself is typeable (keyboard-first); the buttons

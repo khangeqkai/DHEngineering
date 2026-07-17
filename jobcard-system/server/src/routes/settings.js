@@ -72,6 +72,12 @@ router.put('/', requireManagement, (req, res) => {
       if (blocked) {
         return res.status(403).json({ error: 'Only admins can change labour rates and overtime settings' });
       }
+      // The job-folders base path decides where every job's files (and backups) are
+      // written; only admins can repoint it, so a manager can't redirect company
+      // files to a personal/removable drive.
+      if (req.body.jobFoldersBase !== undefined || req.body.job_folders_base !== undefined) {
+        return res.status(403).json({ error: 'Only admins can change the job folders base path' });
+      }
     }
 
     const jobFoldersBase = req.body.jobFoldersBase ?? req.body.job_folders_base;

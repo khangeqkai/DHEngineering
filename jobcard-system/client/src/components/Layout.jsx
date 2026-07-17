@@ -216,7 +216,7 @@ export default function Layout() {
                 <span className="nav-text">Search</span>
               </NavLink>
             </li>
-            {isManagement(user) && (
+            {user?.role === 'admin' && (
               <li>
                 <NavLink to="/activity" onClick={handleNavClick}>
                   <span className="nav-icon">

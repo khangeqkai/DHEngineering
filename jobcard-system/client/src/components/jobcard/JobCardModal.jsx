@@ -324,10 +324,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   useEffect(() => {
     if (isOpen) {
       // Only tabs this user can actually open are valid; anything else (a stale
-      // 'files', or 'costing' for a manager) lands on Details.
+      // 'costing' or 'activity' for a non-admin) lands on Details.
       const validTabs = isAdmin
         ? ['details', 'costing', 'activity']
-        : canManage ? ['details', 'activity'] : ['details'];
+        : ['details'];
       setActiveTab(validTabs.includes(initialTab) ? initialTab : 'details');
     }
   }, [isOpen, initialTab]);
@@ -494,7 +494,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT' && e.target.type !== 'submit') e.preventDefault(); }} style={{ display: 'contents' }}>
             <BottomSheet.Body>
               <div className="jc-zoom-root">
-              {isEdit && canManage && (
+              {isEdit && isAdmin && (
                 <div className="modal-tabs">
                   <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>
                     Details
@@ -503,7 +503,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   {isAdmin && (
                     <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>
                   )}
-                  <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>
+                  {isAdmin && (
+                    <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>
+                  )}
                 </div>
               )}
 
@@ -580,7 +582,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 />
               )}
 
-              {activeTab === 'activity' && isEdit && canManage && (
+              {activeTab === 'activity' && isEdit && isAdmin && (
                 <ActivityLogTab
                   history={activityLog.history}
                   loading={activityLog.loadingHistory}

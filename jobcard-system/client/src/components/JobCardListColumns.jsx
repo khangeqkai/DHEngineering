@@ -292,7 +292,7 @@ export function getJobCardColumns({
       align: 'right',
       renderCell: (card) => (
         <td key="createdAt" className="jc-align-right">
-          {card.createdAt ? new Date(card.createdAt).toLocaleString('en-AU') : '-'}
+          {card.createdAt ? new Date(card.createdAt).toLocaleString('en-AU', { hour12: false }) : '-'}
         </td>
       )
     },
@@ -302,7 +302,7 @@ export function getJobCardColumns({
       align: 'right',
       renderCell: (card) => (
         <td key="updatedAt" className="jc-align-right">
-          {card.updatedAt ? new Date(card.updatedAt).toLocaleString('en-AU') : '-'}
+          {card.updatedAt ? new Date(card.updatedAt).toLocaleString('en-AU', { hour12: false }) : '-'}
         </td>
       )
     },
