@@ -323,12 +323,14 @@ export function getJobCardColumns({
                 <ArchiveRestore size={14} /> Unarchive
               </button>
             )}
-            <button
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => handleDelete(card.id)}
-            >
-              <Trash2 size={14} /> Delete
-            </button>
+            {user?.role === 'admin' && (
+              <button
+                className="btn btn-outline-danger btn-sm"
+                onClick={() => handleDelete(card.id)}
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+            )}
           </div>
         </td>
       )

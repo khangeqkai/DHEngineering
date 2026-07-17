@@ -337,7 +337,7 @@ router.post('/:id/unarchive', authenticate, requireManagement, (req, res) => {
 });
 
 // Delete job card
-router.delete('/:id', authenticate, requireManagement, (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
 
