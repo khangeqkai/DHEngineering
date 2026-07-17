@@ -6,6 +6,7 @@ const logger = require('../utils/logger');
 const { authenticate } = require('../middleware/auth');
 const {
   jobcardQueries,
+  jobItemQueries,
   contactQueries,
   getSettings,
   recordHistory
@@ -133,6 +134,54 @@ function partFileCode(itemId) {
   if (!itemId || typeof itemId !== 'string' || !itemId.startsWith('item:')) return null;
   const slug = idSlug(itemId);
   return slug ? `p${slug}` : null;
+}
+
+/**
+ * Strip the trailing " [code]" tag (and any " (n)" clash suffix) that the upload
+ * route bakes onto a stored filename, returning the clean human-readable name the
+ * user originally uploaded ("ABC [p550e8400].pdf" → "ABC.pdf"). Used when showing
+ * a file's real name and when re-tagging a file for a different part.
+ */
+function stripStorageTag(name) {
+  const ext = path.extname(name);
+  const base = name.slice(0, name.length - ext.length);
+  return `${base.replace(/ \[[^\]]+\](?: \(\d+\))?$/, '')}${ext}`;
+}
+
+/**
+ * Regex that matches a part's "[p{code}]" tag only at the END of a base name
+ * (optionally followed by a " (n)" clash suffix) — the exact spot the upload
+ * route writes it, so a file whose human name merely contains the code can't
+ * masquerade as that part's attachment.
+ */
+function partTagRegex(code) {
+  const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\[${escaped}\\](?: \\(\\d+\\))?$`);
+}
+
+/**
+ * Annotate a list of file objects with which line item (if any) each belongs to,
+ * by matching the stored "[p{code}]" tag against every part on the job. A file with
+ * no matching part tag (e.g. a "[timestamp]" job-level file) comes back as
+ * whole-job (itemId: null). Adds `displayName` (tag stripped), `itemId`, and
+ * `itemNumber` to each file. All filename-tag knowledge stays server-side.
+ */
+function resolveFileOwners(jobcardId, files) {
+  const items = jobItemQueries.getByJobcard.all(jobcardId) || [];
+  const parts = items
+    .map(it => ({ itemId: it.id, itemNumber: it.item_number, code: partFileCode(it.id) }))
+    .filter(p => p.code)
+    .map(p => ({ ...p, re: partTagRegex(p.code) }));
+  return files.map(f => {
+    const base = f.name.slice(0, f.name.length - path.extname(f.name).length);
+    const owner = parts.find(p => p.re.test(base)) || null;
+    return {
+      ...f,
+      displayName: stripStorageTag(f.name),
+      itemId: owner ? owner.itemId : null,
+      itemNumber: owner ? owner.itemNumber : null
+    };
+  });
 }
 
 /**
@@ -296,7 +345,9 @@ router.get('/:id/files/:category', authenticate, validateCategory, (req, res) =>
     const { id, category } = req.params;
     const folderRes = resolveCategoryFolder(id, category);
     if (folderRes.error) return res.status(folderRes.status).json({ error: folderRes.error });
-    res.json(listFolderFiles(folderRes.folderPath));
+    // Tag each file with the part it belongs to (and its clean display name) so the
+    // paperwork hub can show a "For:" picker and reassign files to a part.
+    res.json(resolveFileOwners(id, listFolderFiles(folderRes.folderPath)));
   } catch (err) {
     logger.error({ err }, 'List jobcard files error');
     res.status(500).json({ error: 'Failed to list files' });
@@ -400,6 +451,77 @@ router.post('/:id/files/:category/upload', authenticate, validateCategory, valid
   } catch (err) {
     logger.error({ err }, 'Upload-to-files error');
     res.status(500).json({ error: 'Failed to upload file' });
+  }
+});
+
+// ─── Reassign a file to a part (or back to whole-job) by re-tagging its name ───
+// Renames the stored file so its trailing "[p{code}]" (part) / "[timestamp]"
+// (whole-job) tag matches the chosen owner. This is what makes a file added
+// through the paperwork hub count toward a part's missing-attachment warning.
+const validateAssignBody = [
+  body('itemId')
+    .optional({ nullable: true })
+    .isString().bail()
+    .matches(/^item:[A-Za-z0-9:-]+$/).withMessage('itemId must be a valid item reference'),
+  handleValidationErrors
+];
+
+router.post('/:id/files/:category/:filename/assign', authenticate, validateCategory, validateFilenameParam, validateAssignBody, (req, res) => {
+  try {
+    const { id, category, filename } = req.params;
+    const itemId = req.body.itemId || null;
+
+    const folderRes = resolveCategoryFolder(id, category);
+    if (folderRes.error) return res.status(folderRes.status).json({ error: folderRes.error });
+
+    const currentPath = path.join(folderRes.folderPath, filename);
+    if (!isWithinBase(folderRes.folderPath, currentPath)) {
+      return res.status(403).json({ error: 'Path traversal detected' });
+    }
+    if (!fs.existsSync(currentPath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // A chosen part must be a real line item on this job — otherwise a file could
+    // be tagged to a part that doesn't exist (and silently never match anything).
+    if (itemId) {
+      const parts = jobItemQueries.getByJobcard.all(id) || [];
+      if (!parts.some(it => it.id === itemId)) {
+        return res.status(400).json({ error: 'That part is not on this job card' });
+      }
+    }
+
+    const cleanName = stripStorageTag(filename);
+    const newName = buildStorageFilename(folderRes.folderPath, cleanName, partFileCode(itemId));
+
+    // Already tagged for this owner (same base + tag) → nothing to do. buildStorageFilename
+    // adds a " (n)" only on a real clash, so an unchanged owner reproduces the same name.
+    if (newName === filename) {
+      const [same] = resolveFileOwners(id, listFolderFiles(folderRes.folderPath)).filter(f => f.name === filename);
+      return res.json(same || { name: filename });
+    }
+
+    const newPath = path.join(folderRes.folderPath, newName);
+    if (!isWithinBase(folderRes.folderPath, newPath)) {
+      return res.status(403).json({ error: 'Path traversal detected' });
+    }
+    fs.renameSync(currentPath, newPath);
+
+    recordHistory('jobcard', id, 'reassign_file', req.user.userId, req.user.name || req.user.username,
+      { file: { from: filename, to: newName } },
+      { destination: CATEGORY_FOLDER[category], itemId: itemId ?? null }
+    );
+
+    const [owned] = resolveFileOwners(id, [{
+      name: newName,
+      size: fs.statSync(newPath).size,
+      mimeType: MIME_TYPES[path.extname(newName).toLowerCase()] || 'application/octet-stream',
+      modified: fs.statSync(newPath).mtime.toISOString()
+    }]);
+    return res.json(owned);
+  } catch (err) {
+    logger.error({ err }, 'Assign-file error');
+    res.status(500).json({ error: 'Failed to reassign file' });
   }
 });
 

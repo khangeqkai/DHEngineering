@@ -1,13 +1,14 @@
-import { useState, useEffect, useRef, useCallback, useId } from 'react';
+import { useState, useEffect, useRef, useCallback, useId, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import {
   FolderOpen, Upload, Camera, X, ArrowLeft, Check, Minus, Printer, Save,
-  FileText, Image as ImageIcon, FileStack, Eye, Loader2
+  FileStack, Eye
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCamera } from './useCamera';
 import { useJobFiles, CATEGORY_LABELS, ACCEPT_ATTR } from './useJobFiles';
 import { usePacketPrint } from './usePacketPrint';
+import HubFileRow from './HubFileRow';
 import { api } from '../../services/api';
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import './JobPaperworkHub.css';
@@ -61,10 +62,13 @@ function PickCircle({ state }) {
   );
 }
 
-export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarnings = null }) {
+function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarnings = null, parts = [] }, ref) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState('hub'); // 'hub' | 'camera'
   const [cameraCategory, setCameraCategory] = useState(null);
+  // When opened from a part's Attach button: the part any file added here should
+  // belong to, plus which section to highlight. Null = opened plainly (whole-job).
+  const [attachTarget, setAttachTarget] = useState(null); // { itemId, itemNumber, category }
   const [selected, setSelected] = useState(() => new Set());
   const [cardTicked, setCardTicked] = useState(true);
   const [cardPreview, setCardPreview] = useState(null); // generated job-card HTML, shown in the viewer
@@ -87,6 +91,19 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
   const files = useJobFiles(jobcardId);
   const camera = useCamera();
   const packet = usePacketPrint(jobcardId, jobNumber);
+
+  // Only saved parts (with a permanent "item:" id) can own a file.
+  const assignableParts = parts.filter(p => typeof p.id === 'string' && p.id.startsWith('item:'));
+
+  // Let the job card screen open this panel already pointed at a part, so the
+  // per-part Attach button lands here instead of a bare file dialog.
+  useImperativeHandle(ref, () => ({
+    openForPart(itemId, itemNumber, category) {
+      setAttachTarget({ itemId, itemNumber, category });
+      setView('hub');
+      setOpen(true);
+    }
+  }), []);
 
   const loadFiles = files.loadFiles;
   // Load every folder when the hub opens.
@@ -184,6 +201,7 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
     setCardPreview(null);
     setView('hub');
     setCameraCategory(null);
+    setAttachTarget(null);
     setOpen(false);
   }, [camera, files]);
 
@@ -238,23 +256,38 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
     onFilesChanged?.();
   }, [files, onFilesChanged]);
 
+  // If this section is the one a part's Attach button pointed us at, new files
+  // added here belong to that part; otherwise they're whole-job.
+  const ownerForCategory = (cat) => (attachTarget && attachTarget.category === cat ? attachTarget.itemId : null);
+  // Once a file is added to the targeted section, drop the target so later,
+  // unrelated uploads default back to whole-job.
+  const clearTargetIfMatches = (cat) => { if (attachTarget && attachTarget.category === cat) setAttachTarget(null); };
+
   // --- Upload (file picker) ---
   const pickFiles = (cat) => { pendingUploadCat.current = cat; fileInputRef.current?.click(); };
   const onFilesChosen = async (e) => {
     const chosen = e.target.files;
     const cat = pendingUploadCat.current;
-    await files.uploadPickedFiles(chosen, cat, () => { if (fileInputRef.current) fileInputRef.current.value = ''; });
+    await files.uploadPickedFiles(chosen, cat, () => { if (fileInputRef.current) fileInputRef.current.value = ''; }, ownerForCategory(cat));
     afterChange(cat);
+    clearTargetIfMatches(cat);
   };
 
   // --- Camera ---
   const openCamera = (cat) => { setCameraCategory(cat); setView('camera'); camera.startCamera(); };
   const saveCameraPhotos = async () => {
     if (camera.photos.length === 0) return;
-    await files.savePhotos(camera.photos, cameraCategory, () => camera.setPhotos([]));
+    await files.savePhotos(camera.photos, cameraCategory, () => camera.setPhotos([]), ownerForCategory(cameraCategory));
     afterChange(cameraCategory);
+    clearTargetIfMatches(cameraCategory);
   };
   const leaveCamera = () => { camera.stopCamera(); setView('hub'); setCameraCategory(null); };
+
+  // Re-tag a file to a part (or whole-job) then refresh the per-part missing-file hints.
+  const handleAssign = async (cat, name, itemId) => {
+    const ok = await files.assignFile(cat, name, itemId);
+    if (ok) onFilesChanged?.();
+  };
 
   // --- Print / save ---
   const printPacket = () => packet.printPacket({ items: selectedItems(), includeJobCard: cardTicked });
@@ -314,8 +347,16 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
     const state = sectionState(cat);
     const pickedHere = list.filter(f => selected.has(keyOf(cat, f.name))).length;
     const canToggleGroup = list.length > 0;
+    // The "For:" picker (which part a file belongs to) only makes sense for the two
+    // folders that drive the missing-attachment warning, and only if the job has
+    // saved parts to choose from.
+    const showOwnerPicker = (cat === 'job-files' || cat === 'customer-property-files') && assignableParts.length > 0;
+    const targeted = attachTarget && attachTarget.category === cat;
     return (
-      <div className="hub-group" key={cat}>
+      <div className={`hub-group${targeted ? ' hub-group--targeted' : ''}`} key={cat}>
+        {targeted && (
+          <div className="hub-group-hint">Adding to Part {attachTarget.itemNumber} — use Add or Photo below</div>
+        )}
         <div className="hub-group-head">
           {/* Quiet section label. Clicking it picks/clears the whole group. */}
           <button
@@ -342,41 +383,26 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
         <div className="hub-card">
           <ul className="hub-file-list">
             {isJobFiles && renderJobCardRow()}
-            {!loading && list.map(f => {
-              const isImage = f.mimeType?.startsWith('image/');
-              const thumb = files.thumbnails.get(`${cat}/${f.name}`);
-              const FileIcon = isImage ? ImageIcon : FileText;
-              const checked = selected.has(keyOf(cat, f.name));
-              const viewing = files.loadingFiles.has(`${cat}/${f.name}`);
-              return (
-                <li key={f.name} className={`hub-file-row${checked ? '' : ' off'}`}>
-                  <button
-                    type="button"
-                    className="hub-row-toggle"
-                    onClick={() => toggle(cat, f.name)}
-                    aria-pressed={checked}
-                    title={checked ? 'Tap to leave out of the packet' : 'Tap to add to the packet'}
-                  >
-                    <PickCircle state={checked} />
-                    <span className="hub-thumb">
-                      {isImage && thumb ? <img src={thumb} alt="" /> : <FileIcon size={18} />}
-                    </span>
-                    <span className="hub-namecell">
-                      <span className="hub-file-name">{cat === 'qa-form-files' ? cleanQaName(f.name) : f.name}</span>
-                      <span className="hub-file-sub">{fileKindLabel(f)}</span>
-                    </span>
-                  </button>
-                  <div className="hub-row-tools">
-                    <button type="button" className="hub-icon-btn" onClick={() => files.handleViewFile(f, cat)} disabled={viewing} title="Preview">
-                      {viewing ? <Loader2 size={15} className="hub-spin" /> : <Eye size={15} />}
-                    </button>
-                    <button type="button" className="hub-icon-btn" onClick={() => printOne(cat, f.name)} disabled={packet.building} title="Print just this one">
-                      <Printer size={15} />
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
+            {!loading && list.map(f => (
+              <HubFileRow
+                key={f.name}
+                nameText={cat === 'qa-form-files' ? cleanQaName(f.name) : (f.displayName || f.name)}
+                subText={fileKindLabel(f)}
+                isImage={f.mimeType?.startsWith('image/')}
+                thumb={files.thumbnails.get(`${cat}/${f.name}`)}
+                checked={selected.has(keyOf(cat, f.name))}
+                onToggle={() => toggle(cat, f.name)}
+                viewing={files.loadingFiles.has(`${cat}/${f.name}`)}
+                onView={() => files.handleViewFile(f, cat)}
+                onPrint={() => printOne(cat, f.name)}
+                printDisabled={packet.building}
+                showOwnerPicker={showOwnerPicker}
+                parts={assignableParts}
+                currentItemId={f.itemId}
+                assigning={files.assigningKeys.has(`${cat}/${f.name}`)}
+                onAssign={(itemId) => handleAssign(cat, f.name, itemId)}
+              />
+            ))}
           </ul>
           {loading && <div className="hub-loading"><div className="hub-loading-bar" /></div>}
           {!loading && list.length === 0 && !isJobFiles && (
@@ -515,3 +541,5 @@ export default function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, 
     </>
   );
 }
+
+export default forwardRef(JobPaperworkHub);

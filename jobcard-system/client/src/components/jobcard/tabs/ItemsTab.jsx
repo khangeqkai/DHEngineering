@@ -1,7 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
 import { capitalizeFirst } from '../../../utils/formatters';
-import { ACCEPT_ATTR } from '../useJobFiles';
 import { useTags } from '../../../hooks/useTags';
 import LineItemTreatment from './LineItemTreatment';
 import LineItemProgress from './LineItemProgress';
@@ -73,26 +72,6 @@ export default function ItemsTab({
   // a part added but not yet saved has no stable id to tie a file to.
   const isPersisted = (it) => typeof it.id === 'string' && it.id.startsWith('item:');
 
-  // One shared hidden file picker drives every per-part "Attach" button. The
-  // pending target (which part + which bucket) is held on a ref until the user
-  // picks a file, then handed to the parent's upload handler.
-  const attachInputRef = useRef(null);
-  const pendingAttachRef = useRef(null);
-  const triggerAttach = (itemId, category) => {
-    if (!onAttachItemFile) return;
-    pendingAttachRef.current = { itemId, category };
-    attachInputRef.current?.click();
-  };
-  const handleAttachChosen = (e) => {
-    const file = e.target.files?.[0];
-    const target = pendingAttachRef.current;
-    e.target.value = '';
-    pendingAttachRef.current = null;
-    if (file && target && onAttachItemFile) {
-      onAttachItemFile(target.itemId, target.category, file);
-    }
-  };
-
   // The add/edit time-entry form renders at the top of the Line Items section, but its
   // Edit buttons live down inside each line item's expanded list — so opening it can drop
   // the form above the current scroll position, out of sight. Bring it into view when it opens.
@@ -121,15 +100,6 @@ export default function ItemsTab({
 
   return (
     <div className="modal-form-grid">
-      {onAttachItemFile && (
-        <input
-          type="file"
-          ref={attachInputRef}
-          accept={ACCEPT_ATTR}
-          style={{ display: 'none' }}
-          onChange={handleAttachChosen}
-        />
-      )}
       <div className="form-section">
         <div className="form-section-header">
           <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
@@ -406,7 +376,7 @@ export default function ItemsTab({
                     onChange={(v) => updateLineItem(item.id, 'drawingsType', v)}
                     warning={!!warningByItem[item.itemNumber]?.missingDrawing}
                     attachedFiles={attachedByItem[item.itemNumber]?.drawings || []}
-                    onAttach={onAttachItemFile && isPersisted(item) ? () => triggerAttach(item.id, 'job-files') : undefined}
+                    onAttach={onAttachItemFile && isPersisted(item) ? () => onAttachItemFile(item.id, item.itemNumber, 'job-files') : undefined}
                   />
 
                   <LineItemTagSelect
@@ -420,7 +390,7 @@ export default function ItemsTab({
                     onChange={(v) => updateLineItem(item.id, 'customerProperty', v)}
                     warning={!!warningByItem[item.itemNumber]?.missingCustomerProperty}
                     attachedFiles={attachedByItem[item.itemNumber]?.customerProperty || []}
-                    onAttach={onAttachItemFile && isPersisted(item) ? () => triggerAttach(item.id, 'customer-property-files') : undefined}
+                    onAttach={onAttachItemFile && isPersisted(item) ? () => onAttachItemFile(item.id, item.itemNumber, 'customer-property-files') : undefined}
                   />
                   </div>
 

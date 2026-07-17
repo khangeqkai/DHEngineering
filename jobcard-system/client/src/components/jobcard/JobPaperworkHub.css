@@ -208,6 +208,48 @@
 .hub-group-warn { font-size: var(--text-xs); color: var(--warning-color, #d97706); font-weight: 700; }
 .hub-group-spacer { flex: 1; }
 
+/* Section highlighted because the job screen's Attach button pointed us here. */
+.hub-group--targeted {
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-action, #2563eb) 55%, transparent);
+}
+.hub-group-hint {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--accent-action, #2563eb);
+  background: color-mix(in srgb, var(--accent-action, #2563eb) 12%, var(--surface));
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+/* "For:" picker — ties a drawing / customer-property file to a specific part. */
+.hub-forpick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  margin: 0 0.4rem;
+}
+.hub-forpick-label {
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary, var(--text-secondary));
+}
+.hub-forpick-select {
+  max-width: 11rem;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border-strong, var(--border-color));
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.35rem;
+  cursor: pointer;
+}
+.hub-forpick-select:disabled { opacity: 0.6; cursor: default; }
+
 /* Pill buttons (Add / Photo) — kept quiet so the section title leads */
 .hub-pillbtn {
   display: inline-flex;

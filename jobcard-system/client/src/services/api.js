@@ -204,6 +204,10 @@ class ApiService {
     if (itemId != null) body.itemId = itemId;
     return this._post(`/jobcards/${jobcardId}/files/${category}/upload`, body);
   }
+  // Re-tag a stored file so it belongs to a part (itemId) or to the whole job (null).
+  assignJobcardFile(jobcardId, category, filename, itemId) {
+    return this._post(`/jobcards/${jobcardId}/files/${category}/${encodeURIComponent(filename)}/assign`, { itemId: itemId ?? null });
+  }
 
   // Contact endpoints (phone contacts style)
   getContacts(includeArchived = false) { return this.request(`/contacts${includeArchived ? '?includeArchived=true' : ''}`); }

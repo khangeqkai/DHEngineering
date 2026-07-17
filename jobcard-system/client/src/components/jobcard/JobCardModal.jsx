@@ -26,15 +26,6 @@ import { confirmInvoiceAnyway, showFormErrors } from './jobCardPrompts';
 import { resolveJobContactId } from './jobCardContact';
 
 // Read a picked file into the base64 string the upload route expects.
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || '').replace(/^data:[^;]*;base64,/, ''));
-    reader.onerror = () => reject(reader.error || new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
-}
-
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, initialTab = null }) {
   const { user } = useAuth();
   const isEdit = Boolean(jobCardId);
@@ -57,6 +48,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const activityLog = useActivityLog(jobCardId);
   const reloadTimeEntriesRef = useRef(null);
   const costingHookRef = useRef(null);
+  const hubRef = useRef(null);
   const onExternalStop = useCallback(() => {
     if (reloadTimeEntriesRef.current) reloadTimeEntriesRef.current();
   }, []);
@@ -153,20 +145,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   }, [jobCardId]);
 
-  // Attach a picked file to a specific part: uploads it tagged with the part's
-  // permanent id (so it's named for that part on disk and stays matched even if
-  // the parts are re-numbered) and refreshes the nudges.
-  const handleAttachItemFile = useCallback(async (itemId, category, file) => {
-    if (!jobCardId || !file) return;
-    try {
-      const raw = await fileToBase64(file);
-      await api.uploadToJobcardFiles(jobCardId, category, file.name, raw, itemId);
-      toast.success('File attached');
-      await refreshAttachmentWarnings();
-    } catch (err) {
-      toast.error(err.message || 'Failed to attach file');
-    }
-  }, [jobCardId, refreshAttachmentWarnings]);
+  // The per-part Attach button opens the paperwork hub pointed at that part, so
+  // adding a file there ties it to the part (instead of popping a bare file dialog
+  // whose upload lands as a whole-job file that never clears the part's warning).
+  const handleAttachItemFile = useCallback((itemId, itemNumber, category) => {
+    hubRef.current?.openForPart(itemId, itemNumber, category);
+  }, []);
 
   useEffect(() => {
     if (isOpen && isEdit && activeTab === 'activity') {
@@ -480,10 +464,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         headerActions={
           isEdit && jobCardId ? (
             <JobPaperworkHub
+              ref={hubRef}
               jobcardId={jobCardId}
               jobNumber={formHook.jobNumber}
               onFilesChanged={refreshAttachmentWarnings}
               attachmentWarnings={attachmentWarnings}
+              parts={formHook.lineItems}
             />
           ) : null
         }

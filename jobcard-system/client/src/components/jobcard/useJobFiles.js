@@ -56,6 +56,7 @@ export function useJobFiles(jobcardId) {
 
   const [savingPhotos, setSavingPhotos] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [assigningKeys, setAssigningKeys] = useState(new Set());
 
   const [thumbnails, setThumbnails] = useState(new Map());
   const [viewerUrl, setViewerUrl] = useState(null);
@@ -133,7 +134,7 @@ export function useJobFiles(jobcardId) {
     }
   }, [jobcardId, fetchList, loadThumbnails]);
 
-  const uploadPickedFiles = useCallback(async (fileList, category, onDone) => {
+  const uploadPickedFiles = useCallback(async (fileList, category, onDone, itemId = null) => {
     if (!jobcardId || !fileList || fileList.length === 0) return;
     const chosen = Array.from(fileList);
 
@@ -153,7 +154,7 @@ export function useJobFiles(jobcardId) {
       for (const file of valid) {
         try {
           const raw = await readFileAsBase64(file);
-          await api.uploadToJobcardFiles(jobcardId, category, file.name, raw);
+          await api.uploadToJobcardFiles(jobcardId, category, file.name, raw, itemId);
           saved++;
         } catch (err) {
           failed.push(file.name);
@@ -170,7 +171,7 @@ export function useJobFiles(jobcardId) {
     }
   }, [jobcardId, refreshCount]);
 
-  const savePhotos = useCallback(async (photos, category, clearPhotos) => {
+  const savePhotos = useCallback(async (photos, category, clearPhotos, itemId = null) => {
     if (!jobcardId || !photos || photos.length === 0) return;
     setSavingPhotos(true);
     try {
@@ -181,7 +182,7 @@ export function useJobFiles(jobcardId) {
         const suffix = photos.length > 1 ? `_${i + 1}` : '';
         const filename = `photo_${timestamp}${suffix}.jpg`;
         const raw = photo.data.replace(/^data:image\/\w+;base64,/, '');
-        await api.uploadToJobcardFiles(jobcardId, category, filename, raw);
+        await api.uploadToJobcardFiles(jobcardId, category, filename, raw, itemId);
       }
       toast.success(`${photos.length} photo(s) saved to ${CATEGORY_LABELS[category]}`);
       if (clearPhotos) clearPhotos();
@@ -192,6 +193,25 @@ export function useJobFiles(jobcardId) {
       setSavingPhotos(false);
     }
   }, [jobcardId, refreshCount]);
+
+  // Re-tag a stored file so it belongs to a part (itemId) or to the whole job
+  // (null), then reload that folder so the row shows its new owner/name. Returns
+  // true on success so the caller can refresh the per-part missing-file hints.
+  const assignFile = useCallback(async (category, filename, itemId) => {
+    if (!jobcardId) return false;
+    const key = `${category}/${filename}`;
+    setAssigningKeys(prev => new Set(prev).add(key));
+    try {
+      await api.assignJobcardFile(jobcardId, category, filename, itemId);
+      await loadFiles(category);
+      return true;
+    } catch (err) {
+      toast.error(err.message || 'Could not change which part this file is for');
+      return false;
+    } finally {
+      setAssigningKeys(prev => { const next = new Set(prev); next.delete(key); return next; });
+    }
+  }, [jobcardId, loadFiles]);
 
   const handleViewFile = useCallback(async (file, category) => {
     const cachedThumb = file.mimeType?.startsWith('image/') ? thumbnails.get(`${category}/${file.name}`) : null;
@@ -262,6 +282,7 @@ export function useJobFiles(jobcardId) {
     filesByCategory, loadingByCategory, loadFiles,
     uploading, uploadPickedFiles,
     savingPhotos, savePhotos,
+    assigningKeys, assignFile,
     thumbnails, loadingFiles, handleViewFile,
     viewerUrl, closeViewer,
     lightboxPhoto, closeLightbox,
