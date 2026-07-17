@@ -1,6 +1,7 @@
 import PageHeader from './common/PageHeader';
 import { useLabourRates } from '../hooks/useLabourRates';
 import ScheduleEditor from './settings/labour/ScheduleEditor';
+import DefaultRateCard from './settings/labour/DefaultRateCard';
 import MultiplierInputs from './settings/labour/MultiplierInputs';
 import PublicHolidaysCard from './settings/labour/PublicHolidaysCard';
 import TimezoneCard from './settings/labour/TimezoneCard';
@@ -25,6 +26,10 @@ export default function LabourRatesSettings() {
         <TimezoneCard
           timezone={lr.timezone} setTimezone={lr.setTimezone}
           onSave={lr.handleSaveTimezone} saving={lr.savingTimezone}
+        />
+        <DefaultRateCard
+          defaultRate={lr.defaultRate} setDefaultRate={lr.setDefaultRate}
+          onSave={lr.handleSaveDefaultRate} saving={lr.savingDefaultRate}
         />
         <MultiplierInputs
           ot1Mult={lr.ot1Mult} setOt1Mult={lr.setOt1Mult}

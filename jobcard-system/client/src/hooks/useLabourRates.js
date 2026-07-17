@@ -85,6 +85,7 @@ function normalize(raw) {
 export function useLabourRates() {
   const [loading, setLoading] = useState(true);
   const [schedule, setSchedule] = useState(emptySchedule());
+  const [defaultRate, setDefaultRate] = useState('0');
   const [ot1Mult, setOt1Mult] = useState('1.5');
   const [ot2Mult, setOt2Mult] = useState('2');
   const [holidayMult, setHolidayMult] = useState('2.5');
@@ -92,6 +93,7 @@ export function useLabourRates() {
 
   const [timezone, setTimezone] = useState('');
 
+  const [savingDefaultRate, setSavingDefaultRate] = useState(false);
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [savingMultipliers, setSavingMultipliers] = useState(false);
   const [savingHolidays, setSavingHolidays] = useState(false);
@@ -101,6 +103,7 @@ export function useLabourRates() {
     try {
       setLoading(true);
       const data = await api.getSettings();
+      if (data.labourDefaultRate != null) setDefaultRate(String(data.labourDefaultRate));
       setSchedule(normalize(data.labourSchedule));
       if (data.labourOt1Multiplier != null) setOt1Mult(String(data.labourOt1Multiplier));
       if (data.labourOt2Multiplier != null) setOt2Mult(String(data.labourOt2Multiplier));
@@ -168,6 +171,31 @@ export function useLabourRates() {
     }
   }, [schedule, load]);
 
+  const handleSaveDefaultRate = useCallback(async () => {
+    // An empty box is refused rather than treated as 0 (Number('') === 0) — the
+    // company-wide default seeding every new job's rate should never be zeroed by
+    // accident. A deliberately typed 0 still saves.
+    if (String(defaultRate).trim() === '') {
+      toast.error('Enter a default hourly rate (type 0 if labour should default to free)');
+      return;
+    }
+    const n = Number(defaultRate);
+    if (!Number.isFinite(n) || n < 0) {
+      toast.error('Default hourly rate must be a number of 0 or more');
+      return;
+    }
+    setSavingDefaultRate(true);
+    try {
+      await api.updateSettings({ labourDefaultRate: defaultRate });
+      await load();
+      toast.success('Default hourly rate saved');
+    } catch (err) {
+      toast.error(err.message || 'Failed to save default rate');
+    } finally {
+      setSavingDefaultRate(false);
+    }
+  }, [defaultRate, load]);
+
   const handleSaveMultipliers = useCallback(async () => {
     for (const [v, label] of [[ot1Mult, 'Overtime 1'], [ot2Mult, 'Overtime 2'], [holidayMult, 'Public holiday']]) {
       const n = Number(v);
@@ -233,6 +261,7 @@ export function useLabourRates() {
 
   return {
     loading,
+    defaultRate, setDefaultRate, handleSaveDefaultRate, savingDefaultRate,
     schedule, paintHour, copyDayToAll,
     handleSaveSchedule, savingSchedule,
     ot1Mult, setOt1Mult, ot2Mult, setOt2Mult, holidayMult, setHolidayMult,

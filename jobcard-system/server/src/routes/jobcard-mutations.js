@@ -10,50 +10,17 @@ const {
   jobItemQueries,
   jobAssigneeQueries,
   qaLevelQueries,
-  userQueries,
   timeEntryQueries,
+  getSettings,
   recordHistory
 } = require('../db/database');
-const { formatJobcard, buildChanges, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, copyQaTemplatesForJob, verifyQaTemplatesAvailable, computeAttachmentWarnings } = require('./jobcard-helpers');
-const { freezeCostingOnInvoice } = require('../utils/costingCompute');
+const { formatJobcard, buildChanges, createRelatedRecords, serializeTreatments, buildQaFillData, copyQaTemplatesForJob, verifyQaTemplatesAvailable, computeAttachmentWarnings } = require('./jobcard-helpers');
+const { itemSummary, assigneeNames, buildQaTemplateWarning } = require('./jobcard-audit-text');
+const { computeLiveCosting, persistCosting, freezeCostingOnInvoice } = require('../utils/costingCompute');
 const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
 const { db } = require('../db/connection');
 
 const router = express.Router();
-
-// Render a line item's treatments as a compact "Treatment→Supplier" string for
-// the audit log. Shared by create (starting items) and update (item changes).
-function treatmentsToText(treatments) {
-  const arr = Array.isArray(treatments) ? treatments : parseTreatments(treatments);
-  return arr.map(t => {
-    return `${t.value}→${t.supplierName || t.supplierId || '(no supplier)'}`;
-  }).join(', ');
-}
-
-function itemSummary(qty, description, jobType, material, treatments, drawingsType, customerProperty) {
-  const tStr = treatmentsToText(treatments);
-  const draw = drawingsType ? ` {draw: ${drawingsType}}` : '';
-  const prop = customerProperty ? ` {prop: ${customerProperty}}` : '';
-  return `${qty || ''}x ${description}${jobType ? ' <' + jobType + '>' : ''}${material ? ' (' + material + ')' : ''}${tStr ? ' [' + tStr + ']' : ''}${draw}${prop}`;
-}
-
-// Resolve a list of assignee user IDs to a comma-separated display name string.
-function assigneeNames(userIds) {
-  return userIds.map(userId => {
-    const user = userQueries.getById.get(userId);
-    return user ? (user.name || user.username) : userId;
-  }).join(', ');
-}
-
-function buildQaTemplateWarning(result) {
-  if (!result || !Array.isArray(result.failed) || result.failed.length === 0) return null;
-  const fatal = result.failed.find(f => f.fileName === '*');
-  if (fatal) {
-    return `QA template copy failed: ${fatal.reason || 'unknown error'}`;
-  }
-  const parts = result.failed.map(f => `${f.fileName} (${f.reason || 'unknown'})`);
-  return `${result.failed.length} QA template${result.failed.length > 1 ? 's' : ''} failed to copy: ${parts.join('; ')}`;
-}
 
 router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req, res) => {
   try {
@@ -170,6 +137,13 @@ router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req
       );
 
       createRelatedRecords(id, data);
+
+      // Seed this job's labour rate from the company default at creation time, then the
+      // job owns it. This is what makes the default apply to NEW jobs only — a later
+      // change to the company default reads this stored rate and never moves the job.
+      // Everything else on the costing starts at zero (no logged time yet).
+      const seedRate = Number(getSettings().labour_default_rate) || 0;
+      persistCosting(computeLiveCosting(id, { labourRate: seedRate }));
 
       bumpJobNumber(peek.nextNum, peek.width);
 

@@ -196,6 +196,9 @@ db.exec(`
     -- from time entries; a number = the admin typed their own figure. The auto-tally
     -- is always kept in labour_hours so the "original calculated time" can still be shown.
     labour_hours_override REAL,
+    -- Per-job base hourly rate. Seeded from the company default (labour_default_rate in
+    -- settings) when the job is created, then owned by the job: a later change to the
+    -- company default never moves an already-created job (the default only seeds new jobs).
     labour_rate REAL DEFAULT 0,
     labour_total REAL DEFAULT 0,
 
@@ -217,6 +220,11 @@ db.exec(`
     labour_ot1_multiplier REAL DEFAULT 1.5,
     labour_ot2_multiplier REAL DEFAULT 2,
     labour_holiday_multiplier REAL DEFAULT 2.5,
+    -- Optional per-job overtime multipliers (NULL = follow the company setting).
+    -- When set, labour_*_multiplier above holds this value (it is the effective
+    -- multiplier the job charges at), so the invoice-time freeze is unchanged.
+    labour_ot1_multiplier_override REAL,
+    labour_ot2_multiplier_override REAL,
 
     -- Special labour is a manually-entered line: an admin types the hours and rate
     -- on the costing screen (it is NOT derived from time entries).
@@ -403,6 +411,8 @@ const migrations = [
   { table: 'job_costings', column: 'labour_ot1_multiplier', type: 'REAL DEFAULT 1.5' },
   { table: 'job_costings', column: 'labour_ot2_multiplier', type: 'REAL DEFAULT 2' },
   { table: 'job_costings', column: 'labour_holiday_multiplier', type: 'REAL DEFAULT 2.5' },
+  { table: 'job_costings', column: 'labour_ot1_multiplier_override', type: 'REAL' },
+  { table: 'job_costings', column: 'labour_ot2_multiplier_override', type: 'REAL' },
   { table: 'users', column: 'session_token', type: 'TEXT' },
   { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
   { table: 'time_entries', column: 'scrap_bin_qty', type: 'INTEGER DEFAULT 0' },

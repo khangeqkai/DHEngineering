@@ -102,7 +102,7 @@ const jobNoteQueries = {
 const jobCostingQueries = {
   getByJobcard: db.prepare('SELECT * FROM job_costings WHERE jobcard_id = ?'),
 
-  // Named parameters (not positional): the row has 28 value columns, so binding by
+  // Named parameters (not positional): the row has 30 value columns, so binding by
   // name removes any chance of a silent column-shift bug when the shape changes.
   createOrUpdate: db.prepare(`
     INSERT INTO job_costings (
@@ -112,6 +112,7 @@ const jobCostingQueries = {
       labour_ot2_hours, labour_ot2_override, labour_ot2_total,
       labour_holiday_hours, labour_holiday_override, labour_holiday_total,
       labour_ot1_multiplier, labour_ot2_multiplier, labour_holiday_multiplier,
+      labour_ot1_multiplier_override, labour_ot2_multiplier_override,
       labour_special_hours, labour_special_rate, labour_special_total,
       materials_cost, materials_profit_percent, materials_total,
       subcontractor_cost, subcontractor_profit_percent, subcontractor_total,
@@ -124,6 +125,7 @@ const jobCostingQueries = {
       @labour_ot2_hours, @labour_ot2_override, @labour_ot2_total,
       @labour_holiday_hours, @labour_holiday_override, @labour_holiday_total,
       @labour_ot1_multiplier, @labour_ot2_multiplier, @labour_holiday_multiplier,
+      @labour_ot1_multiplier_override, @labour_ot2_multiplier_override,
       @labour_special_hours, @labour_special_rate, @labour_special_total,
       @materials_cost, @materials_profit_percent, @materials_total,
       @subcontractor_cost, @subcontractor_profit_percent, @subcontractor_total,
@@ -146,6 +148,8 @@ const jobCostingQueries = {
       labour_ot1_multiplier = excluded.labour_ot1_multiplier,
       labour_ot2_multiplier = excluded.labour_ot2_multiplier,
       labour_holiday_multiplier = excluded.labour_holiday_multiplier,
+      labour_ot1_multiplier_override = excluded.labour_ot1_multiplier_override,
+      labour_ot2_multiplier_override = excluded.labour_ot2_multiplier_override,
       labour_special_hours = excluded.labour_special_hours,
       labour_special_rate = excluded.labour_special_rate,
       labour_special_total = excluded.labour_special_total,

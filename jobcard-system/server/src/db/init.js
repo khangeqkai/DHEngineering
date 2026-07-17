@@ -8,6 +8,7 @@ const {
   userQueries,
   recordHistory
 } = require('./database');
+const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 
 // Canonicalise one day's blocks to whole-hour boundaries using the SAME cycle
 // semantics the schedule editor and the minute-splitter use: build the 24 hourly
@@ -149,6 +150,36 @@ function runMigrations() {
       .run(scheduleSnapKey, new Date().toISOString());
   }
 
+  // Jobs invoiced before freeze-on-invoice existed may have no costing row at all.
+  // The costing GET for an archived job returns the stored row verbatim — but with no
+  // row it falls back to a live compute, so a "locked" screen would quietly track the
+  // current default rate/multipliers. Stamp a stored snapshot ONCE (guarded by a
+  // settings flag) so every filed-away job reads its own frozen figures like any other
+  // invoiced job. Runs before the settings defaults are seeded, so a rowless legacy job
+  // freezes at rate 0 — exactly what its screen showed before the default-rate feature.
+  // New jobs always get a costing row at creation, so nothing new ever needs this.
+  const archivedCostingKey = 'archived_costing_backfill_at';
+  const archivedCostingFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(archivedCostingKey);
+  if (!archivedCostingFlag) {
+    const rowless = db.prepare(
+      'SELECT id FROM jobcards WHERE archived = 1 AND id NOT IN (SELECT jobcard_id FROM job_costings)'
+    ).all();
+    let stamped = 0;
+    for (const { id } of rowless) {
+      try {
+        persistCosting(computeLiveCosting(id, null));
+        stamped++;
+      } catch (err) {
+        logger.error({ err, jobcardId: id }, 'Migration: Failed to backfill frozen costing for archived job');
+      }
+    }
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
+      .run(archivedCostingKey, new Date().toISOString());
+    if (stamped > 0) {
+      logger.info({ stamped }, 'Migration: Backfilled frozen costing rows for archived jobs');
+    }
+  }
+
   logger.info('Migrations complete');
 }
 
@@ -227,6 +258,10 @@ async function initializeDatabase() {
   settingsStmt.run('labour_ot2_multiplier', '2');
   settingsStmt.run('labour_holiday_multiplier', '2.5');
   settingsStmt.run('labour_public_holidays', '[]');
+  // Company-wide default hourly rate — the starting base rate for any job still on the
+  // default. Seeded at 0 so behaviour matches the old "type it per job" flow until an
+  // admin sets a real figure on the Labour Rates & Overtime page.
+  settingsStmt.run('labour_default_rate', '0');
 
   logger.info('Database initialization complete');
 }

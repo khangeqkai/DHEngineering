@@ -123,6 +123,9 @@ const settings = {
   job_number_next: '00001',
   inactivity_timeout_minutes: '5',
   labour_schedule: JSON.stringify(labourSchedule),
+  // Matches the labour_rate the seeded jobs' costings bill at, so a new job created
+  // on a seeded database starts at the same rate as the existing ones.
+  labour_default_rate: '115',
   labour_ot1_multiplier: '1.5',
   labour_ot2_multiplier: '2',
   labour_holiday_multiplier: '2.5',

@@ -9,6 +9,8 @@ export default function CostingTab({
   costingForm,
   handleCostingChange,
   resetTierHours,
+  resetTierMultiplier,
+  useDefaultRate,
   calculateCostingTotals,
   handleSaveCosting,
   savingCosting
@@ -23,8 +25,9 @@ export default function CostingTab({
   const selectOnFocus = (e) => e.target.select();
 
   // The four labour tiers, split by WHEN the work happened. The base rate is set
-  // once (above the table) and each tier's rate derives from it via its multiplier;
-  // only the hours are editable. Normal is the baseline (multiplier 1).
+  // once (above the table) and each tier's rate derives from it via its multiplier.
+  // The hours are editable on every tier; the two overtime rows also let the admin
+  // type a job-specific multiplier over the company setting (multName set = editable).
   const tiers = [
     {
       label: 'Normal', multiplier: 1, tierKey: '',
@@ -34,12 +37,16 @@ export default function CostingTab({
     },
     {
       label: 'Overtime', multiplier: costingForm.labourOt1Multiplier, tierKey: 'Ot1',
+      multName: 'labourOt1Multiplier', multCalculated: costingForm.labourOt1MultiplierCalculated,
+      multOverridden: costingForm.labourOt1MultiplierOverridden,
       hoursName: 'labourOt1Hours', hoursValue: costingForm.labourOt1Hours,
       calculated: costingForm.labourOt1HoursCalculated, overridden: costingForm.labourOt1Overridden,
       total: totals.labourOt1Total
     },
     {
       label: 'Overtime', multiplier: costingForm.labourOt2Multiplier, tierKey: 'Ot2',
+      multName: 'labourOt2Multiplier', multCalculated: costingForm.labourOt2MultiplierCalculated,
+      multOverridden: costingForm.labourOt2MultiplierOverridden,
       hoursName: 'labourOt2Hours', hoursValue: costingForm.labourOt2Hours,
       calculated: costingForm.labourOt2HoursCalculated, overridden: costingForm.labourOt2Overridden,
       total: totals.labourOt2Total
@@ -54,23 +61,58 @@ export default function CostingTab({
 
   const labourSubtotal = totals.labourTotal + totals.labourOt1Total
     + totals.labourOt2Total + totals.labourHolidayTotal;
-  const anyOverridden = tiers.some(t => t.overridden);
+  const anyOverridden = tiers.some(t => t.overridden || t.multOverridden);
 
-  // Snap every tier's hours back to its auto-tallied figure. Resetting a tier that
-  // wasn't overridden is a harmless no-op, so one link covers all four.
-  const resetAllLabour = () => ['', 'Ot1', 'Ot2', 'Holiday'].forEach(resetTierHours);
+  // Snap every tier's hours (and the two OT multipliers) back to their auto figures.
+  // Resetting something that wasn't overridden is a harmless no-op, so one link covers all.
+  const resetAllLabour = () => {
+    ['', 'Ot1', 'Ot2', 'Holiday'].forEach(resetTierHours);
+    ['Ot1', 'Ot2'].forEach(resetTierMultiplier);
+  };
 
   // One tier row: when-worked · hours (editable) · derived rate · amount.
   // Called as a plain function (not a component) so React keeps the input elements
   // stable across renders and typing never loses focus.
   const tierRow = (t) => {
     const derivedRate = baseRate * (Number(t.multiplier) || 0);
+    const rowEdited = t.overridden || t.multOverridden;
     return (
       <div className={`tier-row${t.overridden ? ' tier-row--edited' : ''}`} key={t.hoursName}>
         <span className="tier-when">
-          {t.overridden && !frozen && <span className="tier-dot" aria-hidden="true" />}
+          {rowEdited && !frozen && <span className="tier-dot" aria-hidden="true" />}
           {t.label}
-          {t.multiplier !== 1 && <span className="tier-mult">×{mult(t.multiplier)}</span>}
+          {t.multName ? (
+            // Overtime rows: the multiplier is a job-editable box (typing overrides
+            // the company setting for this job only), with a snap-back link below.
+            <span className={`tier-mult-editable${t.multOverridden ? ' tier-mult-editable--edited' : ''}`}>
+              <span className="tier-mult-box">
+                ×
+                <input
+                  type="number"
+                  name={t.multName}
+                  value={t.multiplier}
+                  onChange={handleCostingChange}
+                  onFocus={selectOnFocus}
+                  min="1"
+                  step="0.1"
+                  aria-label={`${t.label} multiplier`}
+                  disabled={frozen}
+                />
+              </span>
+              {t.multOverridden && !frozen && (
+                <button
+                  type="button"
+                  className="tier-auto"
+                  title="Reset to the company-wide multiplier"
+                  onClick={() => resetTierMultiplier(t.tierKey)}
+                >
+                  standard ×{mult(t.multCalculated)}
+                </button>
+              )}
+            </span>
+          ) : (
+            t.multiplier !== 1 && <span className="tier-mult">×{mult(t.multiplier)}</span>
+          )}
         </span>
         <span className="tier-hours-cell">
           <input
@@ -147,7 +189,18 @@ export default function CostingTab({
               />
             </div>
             <span className="labour-rate-unit">/ hr</span>
-            <span className="labour-rate-hint">sets every tier below</span>
+            <span className="labour-rate-hint">
+              sets every tier below
+              {!frozen && Number(costingForm.labourDefaultRate) > 0
+                && Number(costingForm.labourDefaultRate) !== baseRate && (
+                <>
+                  {' · '}
+                  <button type="button" className="btn-link" onClick={useDefaultRate}>
+                    use company default ({money(costingForm.labourDefaultRate)})
+                  </button>
+                </>
+              )}
+            </span>
           </div>
 
           <div className="tier-table" role="table" aria-label="Labour by when it was worked">
@@ -166,7 +219,7 @@ export default function CostingTab({
               <span className="tier-foot-edited">
                 <span className="tier-dot" aria-hidden="true" /> Manually edited
                 {' · '}
-                <button type="button" className="btn-link" onClick={resetAllLabour}>Reset to logged</button>
+                <button type="button" className="btn-link" onClick={resetAllLabour}>Reset all to auto</button>
               </span>
             )}
           </div>

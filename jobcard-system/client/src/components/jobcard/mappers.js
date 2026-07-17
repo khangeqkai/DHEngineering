@@ -122,16 +122,25 @@ export function getDefaultCostingForm() {
     // True once the admin has typed their own labour hours over the calculated figure.
     labourHoursOverridden: false,
     labourRate: 0,
-    // Overtime tiers — hours auto-split from logged time, each hand-overridable. The
-    // multipliers come from settings; each tier charges labourRate × its multiplier.
+    // The current company default — shown only as a "use default" convenience; the job's
+    // rate (labourRate) is its own, seeded from this at creation.
+    labourDefaultRate: 0,
+    // Overtime tiers — hours auto-split from logged time, each hand-overridable. Each
+    // tier charges labourRate × its multiplier. The two overtime multipliers start on
+    // the company setting (the *Calculated figure) and can be hand-overridden per job,
+    // exactly like the hours.
     labourOt1Hours: 0,
     labourOt1HoursCalculated: 0,
     labourOt1Overridden: false,
     labourOt1Multiplier: 1.5,
+    labourOt1MultiplierCalculated: 1.5,
+    labourOt1MultiplierOverridden: false,
     labourOt2Hours: 0,
     labourOt2HoursCalculated: 0,
     labourOt2Overridden: false,
     labourOt2Multiplier: 2,
+    labourOt2MultiplierCalculated: 2,
+    labourOt2MultiplierOverridden: false,
     labourHolidayHours: 0,
     labourHolidayHoursCalculated: 0,
     labourHolidayOverridden: false,
@@ -201,14 +210,19 @@ export function mapCostingResponseToData(costingRes) {
     labourHoursCalculated: costingRes.labourHoursCalculated || 0,
     labourHoursOverride: costingRes.labourHoursOverride ?? null,
     labourRate: costingRes.labourRate || 0,
+    labourDefaultRate: costingRes.labourDefaultRate || 0,
     labourOt1Hours: costingRes.labourOt1Hours || 0,
     labourOt1HoursCalculated: costingRes.labourOt1HoursCalculated || 0,
     labourOt1Override: costingRes.labourOt1Override ?? null,
     labourOt1Multiplier: costingRes.labourOt1Multiplier ?? 1.5,
+    labourOt1MultiplierCalculated: costingRes.labourOt1MultiplierCalculated ?? 1.5,
+    labourOt1MultiplierOverride: costingRes.labourOt1MultiplierOverride ?? null,
     labourOt2Hours: costingRes.labourOt2Hours || 0,
     labourOt2HoursCalculated: costingRes.labourOt2HoursCalculated || 0,
     labourOt2Override: costingRes.labourOt2Override ?? null,
     labourOt2Multiplier: costingRes.labourOt2Multiplier ?? 2,
+    labourOt2MultiplierCalculated: costingRes.labourOt2MultiplierCalculated ?? 2,
+    labourOt2MultiplierOverride: costingRes.labourOt2MultiplierOverride ?? null,
     labourHolidayHours: costingRes.labourHolidayHours || 0,
     labourHolidayHoursCalculated: costingRes.labourHolidayHoursCalculated || 0,
     labourHolidayOverride: costingRes.labourHolidayOverride ?? null,
