@@ -7,6 +7,7 @@ import {
   PRIORITY_LABELS,
   getStatusBadgeClass
 } from './JobCardList.constants';
+import { formatDate, formatDateTime } from '../utils/formatters';
 
 export function getJobCardColumns({
   user,
@@ -281,7 +282,7 @@ export function getJobCardColumns({
       align: 'right',
       renderCell: (card, isOverdue) => (
         <td key="dueDate" className={`jc-align-right${isOverdue ? ' overdue-date' : ''}`}>
-          {card.dueDate ? new Date(card.dueDate).toLocaleDateString('en-AU') : '-'}
+          {card.dueDate ? formatDate(card.dueDate) : '-'}
           {isOverdue && <span className="overdue-label">OVERDUE</span>}
         </td>
       )
@@ -292,7 +293,7 @@ export function getJobCardColumns({
       align: 'right',
       renderCell: (card) => (
         <td key="createdAt" className="jc-align-right">
-          {card.createdAt ? new Date(card.createdAt).toLocaleString('en-AU', { hour12: false }) : '-'}
+          {card.createdAt ? formatDateTime(card.createdAt) : '-'}
         </td>
       )
     },
@@ -302,7 +303,7 @@ export function getJobCardColumns({
       align: 'right',
       renderCell: (card) => (
         <td key="updatedAt" className="jc-align-right">
-          {card.updatedAt ? new Date(card.updatedAt).toLocaleString('en-AU', { hour12: false }) : '-'}
+          {card.updatedAt ? formatDateTime(card.updatedAt) : '-'}
         </td>
       )
     },

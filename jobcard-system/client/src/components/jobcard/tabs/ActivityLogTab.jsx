@@ -1,4 +1,4 @@
-import { formatHistoryValue } from '../../../utils/formatters';
+import { formatHistoryValue, formatDateTime } from '../../../utils/formatters';
 
 export default function ActivityLogTab({ history = [], loading, onRefresh }) {
   const formatAction = (action) => {
@@ -52,10 +52,6 @@ export default function ActivityLogTab({ history = [], loading, onRefresh }) {
     ));
   };
 
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleString('en-AU', { hour12: false });
-  };
 
   if (loading) {
     return <div className="loading" style={{ padding: '2rem' }}>Loading activity log...</div>;
@@ -77,7 +73,7 @@ export default function ActivityLogTab({ history = [], loading, onRefresh }) {
               <div className="activity-log-meta">
                 <span className="activity-log-user">{entry.userName || 'System'}</span>
                 {formatAction(entry.action)}
-                <span className="activity-log-time">{formatDate(entry.createdAt)}</span>
+                <span className="activity-log-time">{formatDateTime(entry.createdAt)}</span>
               </div>
               {entry.changes && (
                 <div className="activity-log-changes">

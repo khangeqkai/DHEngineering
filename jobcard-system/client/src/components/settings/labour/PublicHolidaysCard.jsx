@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { CalendarPlus, X } from 'lucide-react';
 import CalendarPicker from '../../common/CalendarPicker';
+import { formatDate } from '../../../utils/formatters';
 
 // Show a stored YYYY-MM-DD as "Fri, 25 Dec 2026".
 function pretty(date) {
-  const d = new Date(date + 'T00:00:00');
-  if (isNaN(d)) return date;
-  return d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  return formatDate(date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) || date;
 }
 
 // Add/remove specific calendar dates that charge the whole day at the holiday rate,

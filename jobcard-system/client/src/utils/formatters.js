@@ -19,6 +19,42 @@ export function validatePassword(password) {
   return null;
 }
 
+// ── Date/time display ────────────────────────────────────────────────────────
+// One place formats every date and time shown on screen, so a given value always
+// lands on the same day and reads the same way everywhere.
+//
+// A value can be either a bare calendar date ("YYYY-MM-DD", e.g. a due date) or a
+// full timestamp. A bare calendar date is read as *local* midnight so it can't
+// slip to the day before in Australian (UTC+8..+11) time zones; a full timestamp
+// is read as the instant it represents. All output is Australian format; times
+// use the 24-hour clock.
+function parseDateValue(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    return new Date(value.trim() + 'T00:00:00');
+  }
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// Australian date, e.g. "17/07/2026". Returns '' for empty/invalid input.
+export function formatDate(value, options) {
+  const d = parseDateValue(value);
+  return d ? d.toLocaleDateString('en-AU', options) : '';
+}
+
+// Australian date + 24-hour time, e.g. "17/07/2026, 14:30".
+export function formatDateTime(value, options) {
+  const d = parseDateValue(value);
+  return d ? d.toLocaleString('en-AU', { hour12: false, ...options }) : '';
+}
+
+// Australian 24-hour time only, e.g. "14:30".
+export function formatTime(value, options) {
+  const d = parseDateValue(value);
+  return d ? d.toLocaleTimeString('en-AU', { hour12: false, ...options }) : '';
+}
+
 // History/activity-log values are stored as raw 1/0 (or true/false) for some
 // flags. These read better as Yes/No in the change list.
 const YES_NO_FIELDS = new Set(['isRepeatJob', 'is_repeat_job', 'repeatJob']);

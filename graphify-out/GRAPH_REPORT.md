@@ -1,12 +1,12 @@
 # Graph Report - DHEngineering  (2026-07-17)
 
 ## Corpus Check
-- 212 files · ~1,489,094 words
+- 212 files · ~1,489,222 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 906 nodes · 1459 edges · 49 communities detected
-- Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 118 edges (avg confidence: 0.8)
+- 910 nodes · 1491 edges · 49 communities detected
+- Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 125 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -65,12 +65,12 @@
 2. `useAuth()` - 25 edges
 3. `isWithinBase()` - 23 edges
 4. `useConfirmDialog()` - 17 edges
-5. `sanitizeFolderName()` - 14 edges
-6. `useTags()` - 13 edges
-7. `HardwareService` - 13 edges
-8. `JobCardModal()` - 12 edges
-9. `capitalizeFirst()` - 12 edges
-10. `copyTemplatesToJobFolder()` - 10 edges
+5. `formatDate()` - 15 edges
+6. `sanitizeFolderName()` - 14 edges
+7. `useTags()` - 13 edges
+8. `HardwareService` - 13 edges
+9. `JobCardModal()` - 12 edges
+10. `capitalizeFirst()` - 12 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `treatmentsToText()` --calls--> `parseTreatments()`  [INFERRED]
@@ -91,84 +91,84 @@ Cohesion: 0.03
 Nodes (1): ApiService
 
 ### Community 1 - "Community 1"
-Cohesion: 0.05
-Nodes (23): CalendarPicker(), toDateString(), isTopModal(), pushModal(), removeModal(), JobFilesMenu(), JobPaperworkHub(), LineItemFilesMenu() (+15 more)
+Cohesion: 0.09
+Nodes (55): buildStorageFilename(), listCategoryFileNames(), listFolderFiles(), nextQaFormNumber(), partFileCode(), resolveCategoryFolder(), resolveCustomerPropertyPath(), resolveJobFilesPath() (+47 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.06
-Nodes (30): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), UserManagement() (+22 more)
+Nodes (22): CalendarPicker(), toDateString(), isTopModal(), pushModal(), removeModal(), JobFilesMenu(), JobPaperworkHub(), LineItemFilesMenu() (+14 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.06
-Nodes (22): CreatableTagSelect(), ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), useConfirmDialog(), invalidateTagCache(), useTags() (+14 more)
+Nodes (23): CreatableTagSelect(), ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), UserManagement(), useConfirmDialog(), invalidateTagCache() (+15 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.06
-Nodes (28): resolveJobContactId(), JobCardModal(), confirmInvoiceAnyway(), showFormErrors(), validateJobCardForm(), formatDueDate(), JobIdentityStrip(), statusToken() (+20 more)
+Nodes (29): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), AuthProvider() (+21 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.08
-Nodes (29): bumpJobNumber(), getSettings(), peekNextJobNumber(), recordHistory(), updateSettings(), autoAssignWorker(), checkCriticalInspection(), flagToBool() (+21 more)
+Cohesion: 0.07
+Nodes (25): resolveJobContactId(), JobCardModal(), confirmInvoiceAnyway(), showFormErrors(), validateJobCardForm(), buildJobcardPayload(), getDefaultCostingForm(), getDefaultFormData() (+17 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.17
-Nodes (35): buildStorageFilename(), listCategoryFileNames(), listFolderFiles(), nextQaFormNumber(), partFileCode(), resolveCategoryFolder(), resolveCustomerPropertyPath(), resolveJobFilesPath() (+27 more)
+Cohesion: 0.07
+Nodes (22): getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), fmtDate(), fmtDateShort(), SearchPage(), StatusBadge() (+14 more)
 
 ### Community 7 - "Community 7"
 Cohesion: 0.08
-Nodes (28): LabourRatesSettings(), checkInterruptedRestore(), ensureBuiltInStandardLevel(), initializeDatabase(), runMigrations(), scheduleDayToWholeHours(), blocksFromGrid(), emptySchedule() (+20 more)
+Nodes (29): bumpJobNumber(), getSettings(), peekNextJobNumber(), recordHistory(), updateSettings(), autoAssignWorker(), checkCriticalInspection(), flagToBool() (+21 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.12
-Nodes (24): buildChanges(), buildJobCardView(), buildQaFillData(), computeAttachmentWarnings(), copyQaTemplatesForJob(), createRelatedRecords(), declaresValue(), formatAuDate() (+16 more)
+Cohesion: 0.08
+Nodes (28): LabourRatesSettings(), checkInterruptedRestore(), ensureBuiltInStandardLevel(), initializeDatabase(), runMigrations(), scheduleDayToWholeHours(), blocksFromGrid(), emptySchedule() (+20 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.08
-Nodes (8): getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), SearchPage(), StatusBadge(), useSearch(), formatHistoryValue()
-
-### Community 10 - "Community 10"
 Cohesion: 0.21
 Nodes (18): buildJobCardWorkbook(), buildSheet(), exportActivityLog(), exportContacts(), exportEquipment(), exportJobCardList(), exportJobCardsFull(), exportSuppliers() (+10 more)
 
-### Community 11 - "Community 11"
+### Community 10 - "Community 10"
 Cohesion: 0.22
 Nodes (21): buildGrandfatheredPairs(), buildGrandfatheredValues(), getSupplierQueries(), getTagQueries(), getTagValues(), handleValidationErrors(), optionalBoolean(), optionalEmail() (+13 more)
 
-### Community 12 - "Community 12"
+### Community 11 - "Community 11"
 Cohesion: 0.23
 Nodes (11): getAssigneesForJobcards(), formatActivity(), formatContact(), formatJob(), formatSupplier(), formatTimeEntry(), searchActivity(), searchAll() (+3 more)
 
-### Community 13 - "Community 13"
+### Community 12 - "Community 12"
 Cohesion: 0.31
 Nodes (11): discardBrowser(), getBrowser(), inElectron(), launchBrowser(), probeBrowser(), renderHtmlToPdf(), renderWithElectron(), renderWithPuppeteer() (+3 more)
 
-### Community 14 - "Community 14"
+### Community 13 - "Community 13"
 Cohesion: 0.19
 Nodes (1): HardwareService
 
-### Community 15 - "Community 15"
+### Community 14 - "Community 14"
 Cohesion: 0.25
 Nodes (4): camelToSnake(), convertKeysToCamel(), getTableColumns(), snakeToCamel()
 
-### Community 16 - "Community 16"
+### Community 15 - "Community 15"
 Cohesion: 0.25
 Nodes (2): Grad, Noise
 
-### Community 17 - "Community 17"
+### Community 16 - "Community 16"
 Cohesion: 0.27
 Nodes (4): buildTreatments(), makeDate(), tagValue(), uid()
 
-### Community 18 - "Community 18"
+### Community 17 - "Community 17"
 Cohesion: 0.2
 Nodes (4): DataTable(), useTableFilter(), useTableResize(), useTableSort()
 
-### Community 19 - "Community 19"
+### Community 18 - "Community 18"
 Cohesion: 0.33
 Nodes (7): checkNativeModules(), checkPdfBrowser(), checkPlatformMatch(), installDependencies(), log(), runChecks(), writePlatformMarker()
 
-### Community 20 - "Community 20"
+### Community 19 - "Community 19"
 Cohesion: 0.44
 Nodes (7): archiveBackup(), archiveBackupWithRetry(), bestEffortRemove(), copyDirRecursive(), listFilesRecursive(), partitionReadableFiles(), verifyStagedFiles()
+
+### Community 20 - "Community 20"
+Cohesion: 0.22
+Nodes (1): base64ToBytes()
 
 ### Community 21 - "Community 21"
 Cohesion: 0.39
@@ -187,16 +187,16 @@ Cohesion: 0.38
 Nodes (4): CostingTab(), formatElapsed(), LiveElapsed(), money()
 
 ### Community 26 - "Community 26"
+Cohesion: 0.6
+Nodes (4): assigneeNames(), buildQaTemplateWarning(), itemSummary(), treatmentsToText()
+
+### Community 27 - "Community 27"
 Cohesion: 0.47
 Nodes (4): computeProgress(), formatNum(), LineItemProgress(), parseQty()
 
-### Community 27 - "Community 27"
-Cohesion: 0.5
-Nodes (2): authenticate(), requireRole()
-
 ### Community 28 - "Community 28"
 Cohesion: 0.5
-Nodes (2): maintenanceGuard(), setMaintenance()
+Nodes (2): authenticate(), requireRole()
 
 ### Community 29 - "Community 29"
 Cohesion: 0.6
@@ -223,8 +223,8 @@ Cohesion: 0.8
 Nodes (3): appendImage(), appendPdf(), buildPacketPdf()
 
 ### Community 35 - "Community 35"
-Cohesion: 0.7
-Nodes (4): formatElapsed(), formatNum(), LiveElapsed(), TimeEntryCard()
+Cohesion: 0.5
+Nodes (2): maintenanceGuard(), setMaintenance()
 
 ### Community 36 - "Community 36"
 Cohesion: 0.5
@@ -285,13 +285,15 @@ Nodes (2): formatNum(), ScrapStat()
 ## Knowledge Gaps
 - **Thin community `Community 0`** (127 nodes): `ApiService`, `.activateMachine()`, `.activateSupplier()`, `.activateTag()`, `.activateUser()`, `.addAssignee()`, `.addJobNote()`, `.addQAForm()`, `.addTimeEntry()`, `.archiveContact()`, `.archiveMachine()`, `.archiveTag()`, `.buildPacket()`, `.changePassword()`, `.constructor()`, `.createContact()`, `.createJobcard()`, `.createMachine()`, `.createQaLevel()`, `.createSupplier()`, `.createTag()`, `.createUser()`, `.deactivateSupplier()`, `.deactivateUser()`, `._del()`, `.deleteContact()`, `.deleteDocument()`, `.deleteJobcard()`, `.deleteJobCardTemplate()`, `.deleteJobNote()`, `.deleteMachine()`, `.deleteQAForm()`, `.deleteQaLevel()`, `.deleteQaTemplate()`, `.deleteSupplier()`, `.deleteTag()`, `.deleteTimeEntry()`, `.deleteUser()`, `.exportBackup()`, `.getActiveTimer()`, `.getActivityHistory()`, `.getAttachmentWarnings()`, `.getContact()`, `.getContacts()`, `.getCosting()`, `.getCustomerPropertyFileData()`, `.getCustomerPropertyFiles()`, `.getDocument()`, `.getDocuments()`, `.getEmployees()`, `.getEntityHistory()`, `.getHardwareStatus()`, `.getInactivityTimeout()`, `.getJobcard()`, `.getJobcardFile()`, `.getJobcardHistory()`, `.getJobcards()`, `.getJobCardTemplate()`, `.getJobFileData()`, `.getJobFiles()`, `.getJobNotes()`, `.getMachines()`, `.getMe()`, `.getOverdueJobcards()`, `.getPrinters()`, `.getQaFormFileData()`, `.getQaFormFiles()`, `.getQAForms()`, `.getQaLevel()`, `.getQaLevels()`, `.getScannerFiles()`, `.getScanners()`, `.getSettings()`, `.getSupplier()`, `.getSuppliers()`, `.getTagCategories()`, `.getTags()`, `.getTimeEntries()`, `.getUser()`, `.getUserActivity()`, `.getUsers()`, `.importBackup()`, `._itemQuery()`, `.listJobcardFiles()`, `.login()`, `._patch()`, `._post()`, `.printJobCard()`, `._put()`, `.removeAssignee()`, `.request()`, `.scannerToCustomerPropertyFiles()`, `.scannerToJobcardFiles()`, `.scannerToJobFiles()`, `.scannerToQaFormFiles()`, `.search()`, `.searchContacts()`, `.selfAssign()`, `.selfUnassign()`, `.setItemFilesStatus()`, `.setOnSessionInvalidated()`, `.setToken()`, `.startTimer()`, `.stopTimer()`, `.toggleSpecialLabour()`, `.unarchiveContact()`, `.unarchiveJobcard()`, `.updateContact()`, `.updateCosting()`, `.updateJobcard()`, `.updateJobcardStatus()`, `.updateMachine()`, `.updatePreferences()`, `.updateQAForm()`, `.updateQaLevel()`, `.updateSettings()`, `.updateSupplier()`, `.updateTag()`, `.updateTimeEntry()`, `.updateUser()`, `.uploadDocument()`, `.uploadJobCardTemplate()`, `.uploadQaTemplate()`, `.uploadToCustomerPropertyFiles()`, `.uploadToJobcardFiles()`, `.uploadToJobFiles()`, `.uploadToQaFormFiles()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 14`** (14 nodes): `hardware.js`, `HardwareService`, `.capturePhoto()`, `.checkElectron()`, `.closeCamera()`, `.constructor()`, `.getAppInfo()`, `.getCameras()`, `.getPrinters()`, `.getScanners()`, `.openCamera()`, `.print()`, `.printToPDF()`, `.scan()`
+- **Thin community `Community 13`** (14 nodes): `hardware.js`, `HardwareService`, `.capturePhoto()`, `.checkElectron()`, `.closeCamera()`, `.constructor()`, `.getAppInfo()`, `.getCameras()`, `.getPrinters()`, `.getScanners()`, `.openCamera()`, `.print()`, `.printToPDF()`, `.scan()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 16`** (11 nodes): `Waves.jsx`, `Grad`, `.constructor()`, `.dot2()`, `Noise`, `.constructor()`, `.fade()`, `.lerp()`, `.perlin2()`, `.seed()`, `Waves()`
+- **Thin community `Community 15`** (11 nodes): `Waves.jsx`, `Grad`, `.constructor()`, `.dot2()`, `Noise`, `.constructor()`, `.fade()`, `.lerp()`, `.perlin2()`, `.seed()`, `Waves()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 27`** (5 nodes): `auth.js`, `authenticate()`, `isManagement()`, `requireRole()`, `auth.js`
+- **Thin community `Community 20`** (9 nodes): `usePacketPrint.js`, `api.js`, `downloadBytes()`, `isDesktop()`, `printHtmlInIframe()`, `printPdfInIframe()`, `reportSkipped()`, `showPdfInBrowser()`, `base64ToBytes()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 28`** (5 nodes): `maintenance.js`, `isMaintenance()`, `maintenanceGuard()`, `setMaintenance()`, `maintenance.js`
+- **Thin community `Community 28`** (5 nodes): `auth.js`, `authenticate()`, `isManagement()`, `requireRole()`, `auth.js`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 35`** (5 nodes): `maintenance.js`, `isMaintenance()`, `maintenanceGuard()`, `setMaintenance()`, `maintenance.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 36`** (5 nodes): `assigneeNames()`, `buildQaTemplateWarning()`, `itemSummary()`, `treatmentsToText()`, `jobcard-audit-text.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -323,17 +325,17 @@ Nodes (2): formatNum(), ScrapStat()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ApiService` connect `Community 0` to `Community 1`?**
-  _High betweenness centrality (0.101) - this node is a cross-community bridge._
+- **Why does `ApiService` connect `Community 0` to `Community 20`?**
+  _High betweenness centrality (0.104) - this node is a cross-community bridge._
+- **Why does `usePacketPrint()` connect `Community 2` to `Community 20`?**
+  _High betweenness centrality (0.091) - this node is a cross-community bridge._
 - **Are the 13 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 13 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 9 inferred relationships involving `isWithinBase()` (e.g. with `resolveJobFolder()` and `resolveCategoryFolder()`) actually correct?**
   _`isWithinBase()` has 9 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 8 inferred relationships involving `useConfirmDialog()` (e.g. with `ContactManagement()` and `JobCardList()`) actually correct?**
   _`useConfirmDialog()` has 8 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 4 inferred relationships involving `sanitizeFolderName()` (e.g. with `resolveJobFolder()` and `resolveCategoryFolder()`) actually correct?**
-  _`sanitizeFolderName()` has 4 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 4 inferred relationships involving `formatDate()` (e.g. with `fmtDateShort()` and `JobIdentityStrip()`) actually correct?**
+  _`formatDate()` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.03 - nodes in this community are weakly interconnected._
-- **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.05 - nodes in this community are weakly interconnected._

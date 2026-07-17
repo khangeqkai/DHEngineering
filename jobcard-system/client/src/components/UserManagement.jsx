@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { toTitleCase, validatePassword } from '../utils/formatters';
+import { toTitleCase, validatePassword, formatDate } from '../utils/formatters';
 import { Plus, Save, Archive, ArchiveRestore, History } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
@@ -319,7 +319,7 @@ export default function UserManagement() {
                 key: 'createdAt',
                 label: 'Created',
                 sortable: true,
-                render: (val) => new Date(val).toLocaleDateString('en-AU')
+                render: (val) => formatDate(val)
               },
               {
                 key: 'actions',

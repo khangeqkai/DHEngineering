@@ -5,7 +5,7 @@ import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
 import ExportButton from './common/ExportButton';
 import { exportActivityLog } from '../utils/excelExport';
-import { formatHistoryValue } from '../utils/formatters';
+import { formatHistoryValue, formatDateTime } from '../utils/formatters';
 
 export default function ActivityLog() {
   const [activities, setActivities] = useState([]);
@@ -77,12 +77,6 @@ export default function ActivityLog() {
     ));
   };
 
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleString('en-AU', { hour12: false });
-  };
-
-
   return (
     <div className="activity-log page-activity page-enter">
       <PageHeader title="Activity Log">
@@ -114,7 +108,7 @@ export default function ActivityLog() {
                 label: 'Time',
                 sortable: true,
                 render: (val) => (
-                  <span style={{ whiteSpace: 'nowrap' }}>{formatDate(val)}</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>{formatDateTime(val)}</span>
                 )
               },
               {

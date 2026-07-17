@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { History } from 'lucide-react';
 import BottomSheet from './BottomSheet';
-import { formatHistoryValue } from '../../utils/formatters';
+import { formatHistoryValue, formatDateTime } from '../../utils/formatters';
 
 const ACTION_COLORS = {
   create: 'var(--accent-ready)',
@@ -46,10 +46,6 @@ function formatChanges(changes) {
       )}
     </div>
   ));
-}
-
-function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleString('en-AU', { hour12: false });
 }
 
 function formatTarget(snapshot) {
@@ -144,7 +140,7 @@ export default function EntityActivityLog({ entityType, isOpen, onClose, refresh
                       <span className="eal-user">{entry.userName || 'System'}</span>
                       {formatAction(entry.action)}
                       {target && <span className="eal-target">{target}</span>}
-                      <span className="eal-time">{formatDate(entry.createdAt)}</span>
+                      <span className="eal-time">{formatDateTime(entry.createdAt)}</span>
                     </div>
                     {entry.changes && (
                       <div className="eal-changes">

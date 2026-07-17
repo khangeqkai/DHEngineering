@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { MoreVertical, Pencil, Trash2, ChevronDown } from 'lucide-react';
 import ScrapStat from './ScrapStat';
+import { formatDate, formatTime } from '../../../utils/formatters';
 
 function formatElapsed(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -100,11 +101,11 @@ export default function TimeEntryCard({
           ) : (
             <span className="te-duration-badge">{formatElapsed(durationSec)}</span>
           )}
-          <span className="te-date">{new Date(entry.startTime).toLocaleDateString('en-AU', { day: '2-digit', month: 'short' })}</span>
+          <span className="te-date">{formatDate(entry.startTime, { day: '2-digit', month: 'short' })}</span>
           <span className="te-timerange">
-            {new Date(entry.startTime).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false })}
+            {formatTime(entry.startTime, { hour: '2-digit', minute: '2-digit' })}
             {entry.endTime && (
-              <> — {new Date(entry.endTime).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false })}</>
+              <> — {formatTime(entry.endTime, { hour: '2-digit', minute: '2-digit' })}</>
             )}
           </span>
         </div>

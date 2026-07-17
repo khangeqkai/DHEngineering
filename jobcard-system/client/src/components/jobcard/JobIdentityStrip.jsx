@@ -2,22 +2,13 @@ import { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Calendar, ChevronDown } from 'lucide-react';
 import CalendarPicker from '../common/CalendarPicker';
-import { capitalizeFirst } from '../../utils/formatters';
+import { capitalizeFirst, formatDate } from '../../utils/formatters';
 import { api } from '../../services/api';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from './constants';
 import { statusToken } from '../JobCardList.constants';
 import { confirmInvoiceAnyway } from './jobCardPrompts';
 
 const PRIORITY_VALUES = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
-
-function formatDueDate(value) {
-  if (!value?.trim()) return null;
-  return new Date(value + 'T00:00:00').toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short'
-  });
-}
 
 export default function JobIdentityStrip({
   isEdit,
@@ -63,7 +54,7 @@ export default function JobIdentityStrip({
   const priorityLabel =
     PRIORITY_OPTIONS.find(p => p.value === priority)?.label || 'Priority';
   const priorityClass = `jc-strip-priority jc-strip-priority-${priority.toLowerCase()}`;
-  const formattedDate = formatDueDate(dueDate);
+  const formattedDate = formatDate(dueDate, { weekday: 'short', day: 'numeric', month: 'short' });
   const titleText = isEdit ? jobNumber : 'New Job Card';
 
   const baseStatusOptions = canManage

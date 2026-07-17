@@ -1,4 +1,5 @@
 import { api } from '../services/api';
+import { formatDate as fmtDate, formatDateTime as fmtDateTime } from './formatters';
 // Tag labels are now dynamic (DB-driven). For exports, convert values to readable labels.
 
 // xlsx is a heavy library (~430 kB) but is only ever needed when the user
@@ -59,20 +60,6 @@ function timestamp() {
 }
 
 // ── Formatters ───────────────────────────────────────────────────────────────
-
-function fmtDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (isNaN(d)) return iso;
-  return d.toLocaleDateString('en-AU');
-}
-
-function fmtDateTime(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (isNaN(d)) return iso;
-  return d.toLocaleString('en-AU', { hour12: false });
-}
 
 function durationHrs(start, end) {
   if (!start || !end) return '';

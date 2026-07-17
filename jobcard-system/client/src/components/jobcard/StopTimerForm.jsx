@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Minus, Plus } from 'lucide-react';
 import { api } from '../../services/api';
-import { capitalizeFirst } from '../../utils/formatters';
+import { capitalizeFirst, formatTime } from '../../utils/formatters';
 import ToggleTiles from '../common/ToggleTiles';
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import './StopTimerForm.css';
@@ -30,12 +30,7 @@ const formatDuration = (secs) => {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 };
 
-const clockTime = (iso) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime())
-    ? null
-    : d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: false });
-};
+const clockTime = (iso) => formatTime(iso, { hour: 'numeric', minute: '2-digit' }) || null;
 
 // Small −/+ counter. The number itself is typeable (keyboard-first); the buttons
 // are a mouse helper and are skipped by Tab so keyboard flows field-to-field.

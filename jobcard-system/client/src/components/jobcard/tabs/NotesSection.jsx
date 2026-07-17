@@ -1,4 +1,4 @@
-import { capitalizeFirst } from '../../../utils/formatters';
+import { capitalizeFirst, formatDate, formatTime } from '../../../utils/formatters';
 
 export default function NotesSection({
   notes,
@@ -62,7 +62,7 @@ export default function NotesSection({
               <div className="note-header">
                 <span className="note-author">{note.userName}</span>
                 <span className="note-time">
-                  {new Date(note.createdAt).toLocaleDateString('en-AU')} {new Date(note.createdAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                  {formatDate(note.createdAt)} {formatTime(note.createdAt, { hour: '2-digit', minute: '2-digit' })}
                 </span>
                 {canManage && (
                   <button
