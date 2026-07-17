@@ -10,7 +10,7 @@ import {
 
 export function getJobCardColumns({
   user,
-  isAdmin,
+  canManage,
   showArchived,
   activeTimerJobcardId,
   formattedElapsed,
@@ -80,13 +80,13 @@ export function getJobCardColumns({
     {
       id: 'company',
       label: 'Company',
-      adminOnly: true,
+      managementOnly: true,
       renderCell: (card) => <td key="company">{card.companyName || '-'}</td>
     },
     {
       id: 'customer',
       label: 'Customer',
-      adminOnly: true,
+      managementOnly: true,
       renderCell: (card) => <td key="customer">{card.contactName || '-'}</td>
     },
     {
@@ -185,7 +185,7 @@ export function getJobCardColumns({
               {statusPopoverId === card.id && (
                 <div className="status-popover">
                   {Object.entries(STATUS_LABELS)
-                    .filter(([value]) => isAdmin || value !== 'INVOICED')
+                    .filter(([value]) => canManage || value !== 'INVOICED')
                     .map(([value, label]) => (
                     <button
                       key={value}
@@ -309,7 +309,7 @@ export function getJobCardColumns({
     {
       id: 'actions',
       label: 'Actions',
-      adminOnly: true,
+      managementOnly: true,
       align: 'right',
       renderCell: (card) => (
         <td key="actions" className="jc-align-right">

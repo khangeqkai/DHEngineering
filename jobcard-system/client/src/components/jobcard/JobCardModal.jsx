@@ -4,6 +4,7 @@ import BottomSheet from '../common/BottomSheet';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { isManagement } from '../../utils/roles';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import './JobCardModal.css';
 import { useCosting } from './useCosting';
@@ -37,7 +38,10 @@ function fileToBase64(file) {
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, initialTab = null }) {
   const { user } = useAuth();
   const isEdit = Boolean(jobCardId);
+  // Two tiers: costing is admin-only money; everything else managerial on this
+  // screen (editing, tabs, time-entry corrections) is admin-or-manager.
   const isAdmin = user?.role === 'admin';
+  const canManage = isManagement(user);
   const [activeTab, setActiveTab] = useState('details');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -315,8 +319,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   }, [resetFormHook, resetContact, resetTimeEntries, resetCosting, resetTimer, resetNotes, resetHistory]);
   useEffect(() => {
     if (isOpen) {
-      // Only the real tabs are valid; anything else (e.g. a stale 'files') lands on Details.
-      const validTabs = ['details', 'costing', 'activity'];
+      // Only tabs this user can actually open are valid; anything else (a stale
+      // 'files', or 'costing' for a manager) lands on Details.
+      const validTabs = isAdmin
+        ? ['details', 'costing', 'activity']
+        : canManage ? ['details', 'activity'] : ['details'];
       setActiveTab(validTabs.includes(initialTab) ? initialTab : 'details');
     }
   }, [isOpen, initialTab]);
@@ -344,11 +351,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const handleContactFieldChange = (field, value) => contactHook.handleContactFieldChange(field, value, formHook.setFormData);
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isAdmin && isEdit) return;
+    if (!canManage && isEdit) return;
 
     // Validation
     const { errors, validItems } = validateJobCardForm({
-      isAdmin,
+      canManage,
       formData: formHook.formData,
       contactFormData: contactHook.contactFormData,
       lineItems: formHook.lineItems
@@ -366,7 +373,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       // for a brand-new job. On an existing job they're frozen and read-only.
       const contactId = await resolveJobContactId({
         initialContactId: formHook.formData.contactId,
-        isAdmin, isEdit, contactHook, showConfirm
+        canManage, isEdit, contactHook, showConfirm
       });
 
       const jobcardData = buildJobcardPayload({
@@ -374,7 +381,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         contactFormData: contactHook.contactFormData,
         assignees: formHook.assignees,
         validItems,
-        isAdmin,
+        canManage,
         isEdit,
         contactId
       });
@@ -431,7 +438,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const headerStrip = (
     <JobIdentityStrip
       isEdit={isEdit}
-      isAdmin={isAdmin}
+      canManage={canManage}
       jobCardId={jobCardId}
       jobNumber={formHook.jobNumber}
       formData={formHook.formData}
@@ -468,13 +475,15 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT' && e.target.type !== 'submit') e.preventDefault(); }} style={{ display: 'contents' }}>
             <BottomSheet.Body>
               <div className="jc-zoom-root">
-              {isEdit && isAdmin && (
+              {isEdit && canManage && (
                 <div className="modal-tabs">
                   <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>
                     Details
                     {jobNotes.notes.length > 0 && <span className="tab-badge">{jobNotes.notes.length}</span>}
                   </button>
-                  <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>
+                  {isAdmin && (
+                    <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>
+                  )}
                   <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>
                 </div>
               )}
@@ -482,7 +491,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               {(activeTab === 'details' || !isEdit) && (
                 <DetailsTab
                   isEdit={isEdit}
-                  isAdmin={isAdmin}
+                  canManage={canManage}
                   jobCardId={jobCardId}
                   jobNumber={formHook.jobNumber}
                   activeTimer={timer.activeTimer}
@@ -552,7 +561,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 />
               )}
 
-              {activeTab === 'activity' && isEdit && isAdmin && (
+              {activeTab === 'activity' && isEdit && canManage && (
                 <ActivityLogTab
                   history={activityLog.history}
                   loading={activityLog.loadingHistory}
@@ -562,7 +571,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               </div>
             </BottomSheet.Body>
 
-            {(isAdmin || !isEdit) && (
+            {(canManage || !isEdit) && (
               <BottomSheet.Footer>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}

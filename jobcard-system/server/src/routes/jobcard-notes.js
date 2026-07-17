@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireManagement } = require('../middleware/auth');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
 const { jobNoteQueries, recordHistory } = require('../db/database');
 
@@ -64,8 +64,8 @@ router.post('/:id/notes', authenticate, [
   }
 });
 
-// Delete a note (admin only)
-router.delete('/:id/notes/:noteId', authenticate, requireAdmin, (req, res) => {
+// Delete a note (admin or manager)
+router.delete('/:id/notes/:noteId', authenticate, requireManagement, (req, res) => {
   try {
     const { id, noteId } = req.params;
 

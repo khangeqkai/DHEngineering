@@ -15,6 +15,10 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog';
 
 export default function UserManagement() {
   const { user: currentUser } = useAuth();
+  // Managers reach this page too, but admin accounts are off-limits to them
+  // (no editing/archiving admins, no granting the admin role) — the server
+  // enforces the same rules.
+  const isAdmin = currentUser?.role === 'admin';
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
@@ -252,7 +256,8 @@ export default function UserManagement() {
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               >
                 <option value="user">User</option>
-                <option value="admin">Admin</option>
+                <option value="manager">Manager</option>
+                {isAdmin && <option value="admin">Admin</option>}
               </select>
             </div>
           </form>
@@ -278,9 +283,14 @@ export default function UserManagement() {
                 label: 'Username',
                 sortable: true,
                 render: (val, row) => (
-                  <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(row); }}>
+                  // A manager can't edit admin accounts, so don't offer the edit link.
+                  (row.role === 'admin' && !isAdmin) ? (
                     <strong>{val}</strong>
-                  </a>
+                  ) : (
+                    <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(row); }}>
+                      <strong>{val}</strong>
+                    </a>
+                  )
                 )
               },
               { key: 'name', label: 'Name', sortable: true },
@@ -290,7 +300,7 @@ export default function UserManagement() {
                 label: 'Role',
                 sortable: true,
                 render: (val) => (
-                  <span className={`badge ${val === 'admin' ? 'badge-in-progress' : 'badge-pending'}`}>
+                  <span className={`badge ${val === 'admin' ? 'badge-in-progress' : val === 'manager' ? 'badge-completed' : 'badge-pending'}`}>
                     {val}
                   </span>
                 )
@@ -316,7 +326,7 @@ export default function UserManagement() {
                 label: 'Actions',
                 render: (_, row) => (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {row.id !== currentUser?.id && (
+                    {row.id !== currentUser?.id && !(row.role === 'admin' && !isAdmin) && (
                       <>
                         {row.active ? (
                           <button className="btn btn-warning btn-sm" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); handleArchive(row); }}>

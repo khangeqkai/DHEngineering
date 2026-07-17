@@ -2,7 +2,7 @@ import { Calendar, List, User } from 'lucide-react';
 import { STATUS_OPTIONS } from './JobCardList.constants';
 
 export default function JobCardListFilters({
-  isAdmin,
+  canManage,
   showArchived,
   search,
   onSearchChange,
@@ -21,12 +21,12 @@ export default function JobCardListFilters({
     <div className="filters">
       <input
         type="text"
-        placeholder={isAdmin ? "Search by job #, company, customer, assignee, or description..." : "Search by job # or description..."}
+        placeholder={canManage ? "Search by job #, company, customer, assignee, or description..." : "Search by job # or description..."}
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         className="search-input"
       />
-      {isAdmin && !showArchived && (
+      {canManage && !showArchived && (
         <select
           className="assignee-filter"
           value={assigneeFilter}

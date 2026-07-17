@@ -1,7 +1,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateCreateContact, validateUpdateContact } = require('../middleware/validation');
 const { contactQueries, recordHistory } = require('../db/database');
 const { ensureCompanyFolder, renameCompanyFolder } = require('../utils/folderCreation');
@@ -25,9 +25,9 @@ const toApiFormat = (c) => ({
 // All routes require authentication
 router.use(authenticate);
 
-// GET /api/contacts - Get all contacts (admin only). Pass ?includeArchived=true
+// GET /api/contacts - Get all contacts (admin or manager). Pass ?includeArchived=true
 // to include archived customers (for the admin list's "Show archived" toggle).
-router.get('/', requireAdmin, (req, res) => {
+router.get('/', requireManagement, (req, res) => {
   try {
     const includeArchived = req.query.includeArchived === 'true';
     const contacts = includeArchived
@@ -40,8 +40,8 @@ router.get('/', requireAdmin, (req, res) => {
   }
 });
 
-// GET /api/contacts/search - Search contacts by name or company (admin only)
-router.get('/search', requireAdmin, (req, res) => {
+// GET /api/contacts/search - Search contacts by name or company (admin or manager)
+router.get('/search', requireManagement, (req, res) => {
   try {
     const { q } = req.query;
     if (!q) {
@@ -56,8 +56,8 @@ router.get('/search', requireAdmin, (req, res) => {
   }
 });
 
-// GET /api/contacts/:id - Get single contact (admin only)
-router.get('/:id', requireAdmin, (req, res) => {
+// GET /api/contacts/:id - Get single contact (admin or manager)
+router.get('/:id', requireManagement, (req, res) => {
   try {
     const contact = contactQueries.getById.get(req.params.id);
     if (!contact) {
@@ -71,7 +71,7 @@ router.get('/:id', requireAdmin, (req, res) => {
 });
 
 // POST /api/contacts - Create new contact
-router.post('/', requireAdmin, validateCreateContact, (req, res) => {
+router.post('/', requireManagement, validateCreateContact, (req, res) => {
   try {
     const { contactName, companyName, phone, email, address, notes } = req.body;
 
@@ -120,7 +120,7 @@ router.post('/', requireAdmin, validateCreateContact, (req, res) => {
 });
 
 // PUT /api/contacts/:id - Update contact
-router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
+router.put('/:id', requireManagement, validateUpdateContact, (req, res) => {
   try {
     const { id } = req.params;
     const { contactName, companyName, phone, email, address, notes } = req.body;
@@ -182,10 +182,10 @@ router.put('/:id', requireAdmin, validateUpdateContact, (req, res) => {
   }
 });
 
-// POST /api/contacts/:id/archive - Archive a customer (admin only). Customers
+// POST /api/contacts/:id/archive - Archive a customer (admin or manager). Customers
 // are never deleted (track-and-trace): archiving hides them from pickers but
 // keeps the record, the link from their jobs, and their files on disk intact.
-router.post('/:id/archive', requireAdmin, (req, res) => {
+router.post('/:id/archive', requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 
@@ -211,8 +211,8 @@ router.post('/:id/archive', requireAdmin, (req, res) => {
   }
 });
 
-// POST /api/contacts/:id/unarchive - Restore an archived customer (admin only).
-router.post('/:id/unarchive', requireAdmin, (req, res) => {
+// POST /api/contacts/:id/unarchive - Restore an archived customer (admin or manager).
+router.post('/:id/unarchive', requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 

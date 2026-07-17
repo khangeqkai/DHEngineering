@@ -159,10 +159,10 @@ export function getDefaultCostingForm() {
 // Build the job-card save payload the server expects from the open form. Customer
 // details are only sent on a brand-new job (they're frozen and read-only once a job
 // exists, and the server ignores them on edit anyway).
-export function buildJobcardPayload({ formData, contactFormData, assignees, validItems, isAdmin, isEdit, contactId }) {
+export function buildJobcardPayload({ formData, contactFormData, assignees, validItems, canManage, isEdit, contactId }) {
   return {
     status: formData.status,
-    ...(isAdmin && !isEdit && {
+    ...(canManage && !isEdit && {
       contactId,
       contactName: contactFormData.contactName,
       companyName: contactFormData.companyName,

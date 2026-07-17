@@ -25,7 +25,7 @@ export default function DetailsReadOnlyView({
         lineItems={lineItems}
         updateLineItem={updateLineItem}
         timeEntries={timeEntries}
-        isAdmin={false}
+        canManage={false}
         readOnly={true}
         attachmentWarnings={attachmentWarnings}
         onAttachItemFile={onAttachItemFile}

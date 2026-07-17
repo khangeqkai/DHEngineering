@@ -15,7 +15,7 @@ export default function LineItemTimerButton({
   loading,
   onStart,
   onStop,
-  isAdmin = false,
+  canManage = false,
   employees = [],
   currentUserId
 }) {
@@ -53,7 +53,7 @@ export default function LineItemTimerButton({
   }
 
   // Regular worker: one button that starts their own timer immediately.
-  if (!isAdmin || employees.length === 0) {
+  if (!canManage || employees.length === 0) {
     return (
       <button
         type="button"

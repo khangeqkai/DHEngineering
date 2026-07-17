@@ -3,16 +3,20 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { validatePassword } from '../utils/formatters';
+import { isManagement } from '../utils/roles';
 
 export function useSettings() {
   const { user, refreshInactivityTimeout } = useAuth();
+  // Managers see the management settings cards; backups stay admin-only
+  // (a backup carries the whole database, pricing included).
   const isAdmin = user?.role === 'admin';
+  const canManage = isManagement(user);
 
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [appInfo, setAppInfo] = useState(null);
   const [printers, setPrinters] = useState([]);
-  const [loadingPrinters, setLoadingPrinters] = useState(isAdmin);
+  const [loadingPrinters, setLoadingPrinters] = useState(canManage);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('darkMode') === 'true';
   });
@@ -36,7 +40,7 @@ export function useSettings() {
   const [pendingImportPath, setPendingImportPath] = useState(null);
 
   const loadSettings = useCallback(async () => {
-    if (!isAdmin) {
+    if (!canManage) {
       setLoading(false);
       return;
     }
@@ -55,11 +59,11 @@ export function useSettings() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin]);
+  }, [canManage]);
 
   useEffect(() => {
     loadSettings();
-    if (isAdmin) {
+    if (canManage) {
       if (window.electronAPI) {
         window.electronAPI.getAppInfo().then(setAppInfo);
         window.electronAPI.getPrinters()
@@ -70,7 +74,7 @@ export function useSettings() {
         setLoadingPrinters(false);
       }
     }
-  }, [isAdmin, loadSettings]);
+  }, [canManage, loadSettings]);
 
   useEffect(() => {
     if (darkMode) {
@@ -237,7 +241,7 @@ export function useSettings() {
   }, []);
 
   return {
-    user, isAdmin,
+    user, isAdmin, canManage,
     settings, loading, appInfo, printers, loadingPrinters,
     darkMode, toggleDarkMode,
     jobFoldersBase, setJobFoldersBase, handleSelectJobFolders, handleSaveJobFolders, savingJobFolders,

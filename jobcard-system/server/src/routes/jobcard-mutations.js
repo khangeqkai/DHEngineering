@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { createJobCardFolders } = require('../utils/folderCreation');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
 const { validateJobcardEnums, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions, validateItemQuantities } = require('../middleware/validation');
 const {
   jobcardQueries,
@@ -22,7 +22,7 @@ const { db } = require('../db/connection');
 
 const router = express.Router();
 
-router.post('/', authenticate, requireAdmin, ...validateJobcardEnums, async (req, res) => {
+router.post('/', authenticate, requireManagement, ...validateJobcardEnums, async (req, res) => {
   try {
     const data = req.body;
 
@@ -229,7 +229,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    if (req.user.role !== 'admin') {
+    if (!isManagement(req.user.role)) {
       const allowedFields = ['photos'];
       const submittedFields = Object.keys(data).filter(k => data[k] !== undefined);
       const disallowed = submittedFields.filter(f => !allowedFields.includes(f));
@@ -253,8 +253,8 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       return res.status(404).json({ error: 'Job card not found' });
     }
 
-    if (data.status !== undefined && data.status !== existing.status && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can change job card status' });
+    if (data.status !== undefined && data.status !== existing.status && !isManagement(req.user.role)) {
+      return res.status(403).json({ error: 'Only management can change job card status' });
     }
 
     // A filed-away (archived) job is locked: refuse a status change here too, so

@@ -5,7 +5,7 @@ const path = require('path');
 const os = require('os');
 const extractZip = require('extract-zip');
 const logger = require('../utils/logger');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireManagement } = require('../middleware/auth');
 const db = require('../db/database');
 const { recordHistory } = require('../db/helpers');
 const { setMaintenance } = require('../middleware/maintenance');
@@ -19,7 +19,7 @@ const {
   partitionReadableFiles,
   archiveBackupWithRetry
 } = require('./backup-helpers');
-const { collectOvertimeUpdates } = require('./settings-overtime');
+const { collectOvertimeUpdates, OVERTIME_BODY_KEYS, OVERTIME_DB_KEYS } = require('./settings-overtime');
 
 // All settings routes require authentication
 router.use(authenticate);
@@ -43,10 +43,16 @@ function convertKeysToCamel(obj) {
   return result;
 }
 
-// Get settings (admin only)
-router.get('/', requireAdmin, (req, res) => {
+// Get settings (admin or manager; labour rates & overtime stay admin-only)
+router.get('/', requireManagement, (req, res) => {
   try {
     const settings = db.getSettings();
+    // Labour rates & overtime are admin-only money settings: strip them for
+    // managers so the pricing never reaches a session that can't open the
+    // Labour Rates page. (getSettings builds a fresh object per call.)
+    if (req.user.role !== 'admin') {
+      for (const key of OVERTIME_DB_KEYS) delete settings[key];
+    }
     // Convert snake_case keys to camelCase
     const camelCaseSettings = convertKeysToCamel(settings);
     res.json(camelCaseSettings);
@@ -56,9 +62,18 @@ router.get('/', requireAdmin, (req, res) => {
   }
 });
 
-// Update settings (admin only)
-router.put('/', requireAdmin, (req, res) => {
+// Update settings (admin or manager; labour rates & overtime stay admin-only)
+router.put('/', requireManagement, (req, res) => {
   try {
+    // Reject a manager's attempt to save any overtime/labour-rate field outright
+    // rather than silently dropping it, so a stale client fails loudly.
+    if (req.user.role !== 'admin') {
+      const blocked = OVERTIME_BODY_KEYS.find(k => req.body[k] !== undefined);
+      if (blocked) {
+        return res.status(403).json({ error: 'Only admins can change labour rates and overtime settings' });
+      }
+    }
+
     const jobFoldersBase = req.body.jobFoldersBase ?? req.body.job_folders_base;
     const inactivityTimeoutMinutes = req.body.inactivityTimeoutMinutes ?? req.body.inactivity_timeout_minutes;
     const updates = {};

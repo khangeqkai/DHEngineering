@@ -21,7 +21,7 @@ function formatDueDate(value) {
 
 export default function JobIdentityStrip({
   isEdit,
-  isAdmin,
+  canManage,
   jobCardId,
   jobNumber,
   formData,
@@ -54,7 +54,7 @@ export default function JobIdentityStrip({
     };
   }, [showPriorityMenu]);
 
-  const editable = isAdmin;
+  const editable = canManage;
   const priority = formData.priority || 'NONE';
   const description = formData.description || '';
   const dueDate = formData.dueDate;
@@ -66,7 +66,7 @@ export default function JobIdentityStrip({
   const formattedDate = formatDueDate(dueDate);
   const titleText = isEdit ? jobNumber : 'New Job Card';
 
-  const baseStatusOptions = isAdmin
+  const baseStatusOptions = canManage
     ? STATUS_OPTIONS
     : STATUS_OPTIONS.filter(opt => opt.value !== 'INVOICED');
   const statusOptions = baseStatusOptions.some(o => o.value === status)

@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const logger = require('../utils/logger');
+const { isManagement } = require('../middleware/auth');
 const { sanitizeFolderName, isWithinBase, findQaLevelFolder, ensureCompanyFolder, resolveCompanyFolder } = require('../utils/folderCreation');
 const { fillPdfTemplate } = require('../utils/pdfFiller');
 const {
@@ -194,9 +195,9 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
 }
 
 function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
-  const isAdmin = userRole === 'admin';
+  const canManage = isManagement(userRole);
   // Customer fields are hidden from non-admins — same set as CUSTOMER_HISTORY_FIELDS.
-  const contactFields = isAdmin ? {
+  const contactFields = canManage ? {
     contactId: row.contact_id,
     contactName: row.contact_name,
     companyName: row.company_name,
@@ -284,7 +285,7 @@ function buildChanges(existing, data) {
 // filters the copy handed back to a non-admin. Non-customer fields (status,
 // priority, etc.) are left intact so the rest of the history still shows.
 function sanitizeHistoryForRole(record, userRole) {
-  if (userRole === 'admin') return record;
+  if (isManagement(userRole)) return record;
   for (const field of CUSTOMER_HISTORY_FIELDS) {
     if (record.changes) delete record.changes[field];
     if (record.snapshot) delete record.snapshot[field];

@@ -2,10 +2,10 @@
 // Pure function: takes form state, returns the list of error messages plus the
 // filtered valid line items (reused by the caller when building the payload).
 
-export function validateJobCardForm({ isAdmin, formData, contactFormData, lineItems }) {
+export function validateJobCardForm({ canManage, formData, contactFormData, lineItems }) {
   const errors = [];
 
-  if (isAdmin && !formData.contactId && !contactFormData.companyName.trim()) {
+  if (canManage && !formData.contactId && !contactFormData.companyName.trim()) {
     errors.push('Company name is required');
   }
   if (!formData.description?.trim()) {

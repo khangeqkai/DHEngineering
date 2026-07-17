@@ -1,12 +1,12 @@
 const express = require('express');
 const logger = require('../utils/logger');
-const { authenticate, requireRole } = require('../middleware/auth');
+const { authenticate, requireManagement } = require('../middleware/auth');
 const { historyQueries } = require('../db/database');
 
 const router = express.Router();
 
-// Get recent activity (admin only)
-router.get('/', authenticate, requireRole('admin'), (req, res) => {
+// Get recent activity (admin or manager)
+router.get('/', authenticate, requireManagement, (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
     const history = historyQueries.getRecent.all(limit);
@@ -28,8 +28,8 @@ router.get('/', authenticate, requireRole('admin'), (req, res) => {
   }
 });
 
-// Get activity by user (admin only)
-router.get('/user/:userId', authenticate, requireRole('admin'), (req, res) => {
+// Get activity by user (admin or manager)
+router.get('/user/:userId', authenticate, requireManagement, (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
     const history = historyQueries.getByUser.all(req.params.userId, limit);
@@ -51,8 +51,8 @@ router.get('/user/:userId', authenticate, requireRole('admin'), (req, res) => {
   }
 });
 
-// Get activity by entity type (admin only)
-router.get('/entity/:entityType', authenticate, requireRole('admin'), (req, res) => {
+// Get activity by entity type (admin or manager)
+router.get('/entity/:entityType', authenticate, requireManagement, (req, res) => {
   try {
     const allowedTypes = ['user', 'contact', 'supplier', 'machine'];
     const { entityType } = req.params;

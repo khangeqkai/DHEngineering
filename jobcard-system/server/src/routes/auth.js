@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 
 const config = require('../config');
 const logger = require('../utils/logger');
-const { authenticate, requireRole } = require('../middleware/auth');
+const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateLogin, validateCreateUser, validateUpdatePreferences } = require('../middleware/validation');
 const { userQueries, recordHistory } = require('../db/database');
 
@@ -215,8 +215,8 @@ router.get('/employees', authenticate, (req, res) => {
   }
 });
 
-// List all users (admin only)
-router.get('/users', authenticate, requireRole('admin'), (req, res) => {
+// List all users (admin or manager)
+router.get('/users', authenticate, requireManagement, (req, res) => {
   try {
     const includeInactive = req.query.includeInactive === 'true';
     const users = includeInactive
@@ -239,8 +239,8 @@ router.get('/users', authenticate, requireRole('admin'), (req, res) => {
   }
 });
 
-// Get single user (admin only)
-router.get('/users/:id', authenticate, requireRole('admin'), (req, res) => {
+// Get single user (admin or manager)
+router.get('/users/:id', authenticate, requireManagement, (req, res) => {
   try {
     const user = userQueries.getById.get(req.params.id);
     if (!user) {
@@ -263,10 +263,16 @@ router.get('/users/:id', authenticate, requireRole('admin'), (req, res) => {
   }
 });
 
-// Create user (admin only)
-router.post('/users', authenticate, requireRole('admin'), userCreationLimiter, validateCreateUser, async (req, res) => {
+// Create user (admin or manager; only admins can create admins)
+router.post('/users', authenticate, requireManagement, userCreationLimiter, validateCreateUser, async (req, res) => {
   try {
     const { username, password, role, name, email } = req.body;
+
+    // A manager can create accounts but never mint an admin — otherwise they
+    // could grant themselves the costing access managers are barred from.
+    if (role === 'admin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can create admin accounts' });
+    }
 
     // Check if username exists
     const existing = userQueries.getByUsername.get(username);
@@ -310,7 +316,7 @@ router.post('/users', authenticate, requireRole('admin'), userCreationLimiter, v
   }
 });
 
-// Update user (admin only, or self for limited fields)
+// Update user (admin/manager, or self for limited fields; admin accounts stay admin-only)
 router.put('/users/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
@@ -318,20 +324,34 @@ router.put('/users/:id', authenticate, async (req, res) => {
 
     // Check permissions
     const isAdmin = req.user.role === 'admin';
+    const isManager = req.user.role === 'manager';
     const isSelf = req.user.userId === id;
 
-    if (!isAdmin && !isSelf) {
+    if (!isAdmin && !isManager && !isSelf) {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
-    // Only admins can change roles
-    if (role && !isAdmin) {
-      return res.status(403).json({ error: 'Only admins can change roles' });
+    // Only admins and managers can change roles, and a role must be a real one.
+    if (role && !isAdmin && !isManager) {
+      return res.status(403).json({ error: 'Only admins or managers can change roles' });
+    }
+    if (role && !['admin', 'manager', 'user'].includes(role)) {
+      return res.status(400).json({ error: 'Role must be "admin", "manager" or "user"' });
+    }
+    // A manager can never promote anyone to admin — that would let them grant
+    // themselves the costing access managers are barred from.
+    if (role === 'admin' && !isAdmin) {
+      return res.status(403).json({ error: 'Only admins can grant the admin role' });
     }
 
     const user = userQueries.getById.get(id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Admin accounts are off-limits to managers (PIN resets, demotion, renames).
+    if (user.role === 'admin' && !isAdmin) {
+      return res.status(403).json({ error: 'Only admins can modify admin accounts' });
     }
 
     // Track changes for audit (normalize empty string / null for comparison)
@@ -390,8 +410,8 @@ router.put('/users/:id', authenticate, async (req, res) => {
   }
 });
 
-// Archive user (admin only) - soft delete
-router.post('/users/:id/deactivate', authenticate, requireRole('admin'), (req, res) => {
+// Archive user (admin or manager) - soft delete
+router.post('/users/:id/deactivate', authenticate, requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 
@@ -402,6 +422,11 @@ router.post('/users/:id/deactivate', authenticate, requireRole('admin'), (req, r
     const user = userQueries.getById.get(id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Admin accounts can only be archived by another admin.
+    if (user.role === 'admin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can archive admin accounts' });
     }
 
     userQueries.deactivate.run(id);
@@ -420,14 +445,19 @@ router.post('/users/:id/deactivate', authenticate, requireRole('admin'), (req, r
   }
 });
 
-// Restore archived user (admin only)
-router.post('/users/:id/activate', authenticate, requireRole('admin'), (req, res) => {
+// Restore archived user (admin or manager)
+router.post('/users/:id/activate', authenticate, requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 
     const user = userQueries.getById.get(id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Admin accounts can only be restored by another admin.
+    if (user.role === 'admin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can restore admin accounts' });
     }
 
     userQueries.activate.run(id);

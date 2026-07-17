@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Plus } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { isManagement } from '../utils/roles';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportJobCardList, exportJobCardsFull } from '../utils/excelExport';
@@ -58,7 +59,7 @@ function penTabWithin(e, container) {
 
 export default function JobCardList() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const canManage = isManagement(user);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [filter, setFilter] = useState(() => {
@@ -96,7 +97,7 @@ export default function JobCardList() {
       if (!hasLoadedOnceRef.current) setLoading(true);
       const filters = {};
       if (showArchived) filters.archived = true;
-      if (isAdmin && assigneeFilter !== 'all' && !showArchived) {
+      if (canManage && assigneeFilter !== 'all' && !showArchived) {
         filters.assigneeId = assigneeFilter;
       }
       const data = await api.getJobcards(filters);
@@ -107,16 +108,16 @@ export default function JobCardList() {
       hasLoadedOnceRef.current = true;
       setLoading(false);
     }
-  }, [showArchived, assigneeFilter, isAdmin]);
+  }, [showArchived, assigneeFilter, canManage]);
 
   useEffect(() => {
     loadJobcards();
   }, [loadJobcards]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!canManage) return;
     api.getEmployees().then(setEmployees).catch(() => {});
-  }, [isAdmin]);
+  }, [canManage]);
 
   const handleDelete = async (id) => {
     try {
@@ -287,13 +288,13 @@ export default function JobCardList() {
       const matchesSearch =
         !search ||
         card.jobNumber?.toLowerCase().includes(lowerSearch) ||
-        (isAdmin && card.contactName?.toLowerCase().includes(lowerSearch)) ||
-        (isAdmin && card.companyName?.toLowerCase().includes(lowerSearch)) ||
-        (isAdmin && card.assignees?.some(a => a.userName?.toLowerCase().includes(lowerSearch))) ||
+        (canManage && card.contactName?.toLowerCase().includes(lowerSearch)) ||
+        (canManage && card.companyName?.toLowerCase().includes(lowerSearch)) ||
+        (canManage && card.assignees?.some(a => a.userName?.toLowerCase().includes(lowerSearch))) ||
         card.description?.toLowerCase().includes(lowerSearch);
       return matchesFilter && matchesMine && matchesSearch;
     });
-  }, [jobcards, filter, myJobsOnly, showArchived, search, isAdmin, user?.id]);
+  }, [jobcards, filter, myJobsOnly, showArchived, search, canManage, user?.id]);
 
   const { sortBy, sortDir, handleSort, sortedCards } = useJobCardSort(filteredCards);
 
@@ -362,7 +363,7 @@ export default function JobCardList() {
 
   const columns = getJobCardColumns({
     user,
-    isAdmin,
+    canManage,
     showArchived,
     activeTimerJobcardId,
     formattedElapsed,
@@ -388,7 +389,7 @@ export default function JobCardList() {
   const permittedColumns = columnOrder
     .map(id => columns.find(c => c.id === id))
     .filter(Boolean)
-    .filter(col => !col.adminOnly || isAdmin);
+    .filter(col => !col.managementOnly || canManage);
 
   const toggleableColumns = permittedColumns
     .filter(col => col.id !== 'jobNumber')
@@ -412,13 +413,13 @@ export default function JobCardList() {
           />
           Show Archived
         </label>
-        {isAdmin && (
+        {canManage && (
           <ExportButton
             onExportView={() => displayedCards.length ? exportJobCardList(displayedCards) : false}
             onExportAll={() => exportJobCardsFull()}
           />
         )}
-        {!showArchived && isAdmin && (
+        {!showArchived && canManage && (
           <button className="btn btn-primary" onClick={openCreateModal}>
             <Plus size={16} /> New Job Card
           </button>
@@ -426,7 +427,7 @@ export default function JobCardList() {
       </PageHeader>
 
       <JobCardListFilters
-        isAdmin={isAdmin}
+        canManage={canManage}
         showArchived={showArchived}
         search={search}
         onSearchChange={setSearch}
@@ -467,8 +468,8 @@ export default function JobCardList() {
                   icon="jobcards"
                   title="No job cards yet"
                   description="Create your first job card to get started."
-                  actionLabel={isAdmin ? 'New Job Card' : undefined}
-                  onAction={isAdmin ? openCreateModal : undefined}
+                  actionLabel={canManage ? 'New Job Card' : undefined}
+                  onAction={canManage ? openCreateModal : undefined}
                 />
               ) : (
                 <EmptyState

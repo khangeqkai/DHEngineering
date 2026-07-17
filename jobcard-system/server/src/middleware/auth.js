@@ -61,4 +61,10 @@ function requireRole(...roles) {
 // Convenience middleware for admin-only routes
 const requireAdmin = requireRole('admin');
 
-module.exports = { authenticate, requireRole, requireAdmin };
+// Management roles: a manager can do everything an admin can except job
+// costing and the labour rates/overtime configuration (money stays admin-only).
+const MANAGEMENT_ROLES = ['admin', 'manager'];
+const isManagement = (role) => MANAGEMENT_ROLES.includes(role);
+const requireManagement = requireRole(...MANAGEMENT_ROLES);
+
+module.exports = { authenticate, requireRole, requireAdmin, requireManagement, isManagement, MANAGEMENT_ROLES };

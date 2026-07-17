@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { isManagement } from '../utils/roles';
 import InactivityWarningModal from './common/InactivityWarningModal';
 import dhLogo from '../assets/dh-logo.png';
 import {
@@ -153,7 +154,7 @@ export default function Layout() {
                 <span className="nav-text">Job Cards</span>
               </NavLink>
             </li>
-            {user?.role === 'admin' && (
+            {isManagement(user) && (
               <>
                 <li>
                   <NavLink to="/contacts" onClick={handleNavClick}>
@@ -187,14 +188,16 @@ export default function Layout() {
                     <span className="nav-text">QA Levels</span>
                   </NavLink>
                 </li>
-                <li>
-                  <NavLink to="/labour-rates" onClick={handleNavClick}>
-                    <span className="nav-icon">
-                      <DollarSign size={18} />
-                    </span>
-                    <span className="nav-text">Labour Rates</span>
-                  </NavLink>
-                </li>
+                {user?.role === 'admin' && (
+                  <li>
+                    <NavLink to="/labour-rates" onClick={handleNavClick}>
+                      <span className="nav-icon">
+                        <DollarSign size={18} />
+                      </span>
+                      <span className="nav-text">Labour Rates</span>
+                    </NavLink>
+                  </li>
+                )}
                 <li>
                   <NavLink to="/users" onClick={handleNavClick}>
                     <span className="nav-icon">
@@ -213,7 +216,7 @@ export default function Layout() {
                 <span className="nav-text">Search</span>
               </NavLink>
             </li>
-            {user?.role === 'admin' && (
+            {isManagement(user) && (
               <li>
                 <NavLink to="/activity" onClick={handleNavClick}>
                   <span className="nav-icon">

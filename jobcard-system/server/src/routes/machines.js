@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { machineQueries, recordHistory } = require('../db/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, isManagement } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -36,10 +36,10 @@ router.get('/', (req, res) => {
   }
 });
 
-// Create machine (admin only)
+// Create machine (admin or manager)
 router.post('/', (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
+  if (!isManagement(req.user.role)) {
+    return res.status(403).json({ error: 'Insufficient permissions' });
   }
 
   const { machineNumber, name, description } = req.body;
@@ -73,10 +73,10 @@ router.post('/', (req, res) => {
   }
 });
 
-// Update machine (admin only)
+// Update machine (admin or manager)
 router.put('/:id', (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
+  if (!isManagement(req.user.role)) {
+    return res.status(403).json({ error: 'Insufficient permissions' });
   }
 
   const { id } = req.params;
@@ -126,13 +126,13 @@ router.put('/:id', (req, res) => {
   }
 });
 
-// Archive machine (admin only)
+// Archive machine (admin or manager)
 // Machines are never permanently deleted: time entries record which machine ran a
 // job, so erasing one would leave that history pointing at nothing. Archiving keeps
 // the record (existing time entries stay valid) and frees its number for reuse.
 router.delete('/:id', (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
+  if (!isManagement(req.user.role)) {
+    return res.status(403).json({ error: 'Insufficient permissions' });
   }
 
   const { id } = req.params;
@@ -156,10 +156,10 @@ router.delete('/:id', (req, res) => {
   }
 });
 
-// Restore archived machine (admin only)
+// Restore archived machine (admin or manager)
 router.post('/:id/activate', (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
+  if (!isManagement(req.user.role)) {
+    return res.status(403).json({ error: 'Insufficient permissions' });
   }
 
   const { id } = req.params;

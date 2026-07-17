@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, ChevronLeft, ChevronRight, Briefcase, Users as UsersIcon, Clock, Timer, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { isManagement } from '../utils/roles';
 import useSearch from '../hooks/useSearch';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
@@ -17,8 +18,8 @@ const ENTITY_TYPES = ['jobcard', 'contact', 'supplier', 'user', 'machine', 'auth
 const SCOPES = [
   { key: 'all', label: 'All', icon: Search },
   { key: 'jobs', label: 'Jobs', icon: Briefcase },
-  { key: 'people', label: 'People', icon: UsersIcon, adminOnly: true },
-  { key: 'activity', label: 'Activity', icon: Clock, adminOnly: true },
+  { key: 'people', label: 'People', icon: UsersIcon, managementOnly: true },
+  { key: 'activity', label: 'Activity', icon: Clock, managementOnly: true },
   { key: 'time', label: 'Time', icon: Timer },
 ];
 const GROUP_LABELS = { jobs: 'Job Cards', contacts: 'Contacts', suppliers: 'Suppliers', activity: 'Activity' };
@@ -103,7 +104,7 @@ const ACTION_TO_TAB = {
 
 export default function SearchPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const canManage = isManagement(user);
   const navigate = useNavigate();
   const inputRef = useRef(null);
   const {
@@ -126,7 +127,7 @@ export default function SearchPage() {
   const navigateActivity = useCallback((row) => {
     if (row.entityType === 'jobcard') {
       const tab = ACTION_TO_TAB[row.action] || (row.action === 'create' || row.action === 'update' ? 'details' : 'activity');
-      openJobModal(row.entityId, isAdmin ? tab : null);
+      openJobModal(row.entityId, canManage ? tab : null);
     } else if (row.entityType === 'contact') {
       navigate('/contacts');
     } else if (row.entityType === 'supplier') {
@@ -138,7 +139,7 @@ export default function SearchPage() {
     } else if (row.entityType === 'qa_level') {
       navigate('/qa-levels');
     }
-  }, [navigate, openJobModal, isAdmin]);
+  }, [navigate, openJobModal, canManage]);
 
   const handleRowClick = useCallback((row) => {
     if (scope === 'jobs') {
@@ -172,7 +173,7 @@ export default function SearchPage() {
   // --- Column definitions ---
   const jobColumns = [
     { key: 'jobNumber', label: 'Job #' },
-    ...(isAdmin ? [{ key: 'companyName', label: 'Company', render: (v) => v || '-' }] : []),
+    ...(canManage ? [{ key: 'companyName', label: 'Company', render: (v) => v || '-' }] : []),
     { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v} /> },
     { key: 'priority', label: 'Priority', render: (v) => fmt(v) },
     { key: 'dueDate', label: 'Due Date', render: (v) => fmtDateShort(v) },
@@ -234,7 +235,7 @@ export default function SearchPage() {
 
       {/* Scope tabs */}
       <div className="search-scope-tabs">
-        {SCOPES.filter(s => !s.adminOnly || isAdmin).map(s => (
+        {SCOPES.filter(s => !s.managementOnly || canManage).map(s => (
           <button key={s.key} type="button" className={`search-scope-tab ${scope === s.key ? 'active' : ''}`}
             onClick={() => changeScope(s.key)}>
             <s.icon size={15} /> {s.label}
@@ -272,7 +273,7 @@ export default function SearchPage() {
               <FilterRow label="Status">
                 <Chips options={STATUSES} selected={filters.status} onToggle={(v) => toggleArrayFilter('status', v)} multi />
               </FilterRow>
-              {isAdmin && <FilterRow label="Assignee">
+              {canManage && <FilterRow label="Assignee">
                 <select className="search-select" value={filters.assigneeId} onChange={e => updateFilter('assigneeId', e.target.value)}>
                   <option value="">All</option>
                   <option value="UNASSIGNED">Unassigned</option>
@@ -400,7 +401,7 @@ export default function SearchPage() {
                   {key === 'jobs' && group.results.map(j => (
                     <div key={j.id} className="search-preview-item clickable" onClick={() => openJobModal(j.id)}>
                       <strong>{j.jobNumber}</strong>
-                      {isAdmin && j.companyName && <span className="search-preview-detail"> &middot; {j.companyName}</span>}
+                      {canManage && j.companyName && <span className="search-preview-detail"> &middot; {j.companyName}</span>}
                       <StatusBadge status={j.status} />
                       {j.dueDate && <span className="search-preview-meta">Due {fmtDateShort(j.dueDate)}</span>}
                     </div>

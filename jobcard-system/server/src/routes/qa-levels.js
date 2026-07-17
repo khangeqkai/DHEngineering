@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const logger = require('../utils/logger');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
 const {
   sanitizeFolderName,
@@ -53,9 +53,9 @@ function formatTemplate(row) {
 // GET /api/qa-levels - List all levels
 router.get('/', authenticate, (req, res) => {
   try {
-    const isAdmin = req.user.role === 'admin';
+    const canManage = isManagement(req.user.role);
 
-    if (isAdmin) {
+    if (canManage) {
       const levels = qaLevelQueries.getAll.all();
       const result = levels.map(level => {
         const templates = qaLevelTemplateQueries.getByLevel.all(level.id);
@@ -80,8 +80,8 @@ router.get('/', authenticate, (req, res) => {
   }
 });
 
-// GET /api/qa-levels/:id - Get level with templates (admin only)
-router.get('/:id', authenticate, requireAdmin, (req, res) => {
+// GET /api/qa-levels/:id - Get level with templates (admin or manager)
+router.get('/:id', authenticate, requireManagement, (req, res) => {
   try {
     const level = qaLevelQueries.getById.get(req.params.id);
     if (!level) {
@@ -99,10 +99,10 @@ router.get('/:id', authenticate, requireAdmin, (req, res) => {
   }
 });
 
-// POST /api/qa-levels - Create level (admin only)
+// POST /api/qa-levels - Create level (admin or manager)
 router.post('/',
   authenticate,
-  requireAdmin,
+  requireManagement,
   requiredString('name', 'Name'),
   handleValidationErrors,
   (req, res) => {
@@ -144,10 +144,10 @@ router.post('/',
   }
 );
 
-// PUT /api/qa-levels/:id - Update level (admin only)
+// PUT /api/qa-levels/:id - Update level (admin or manager)
 router.put('/:id',
   authenticate,
-  requireAdmin,
+  requireManagement,
   requiredString('name', 'Name'),
   handleValidationErrors,
   (req, res) => {
@@ -228,8 +228,8 @@ router.put('/:id',
   }
 );
 
-// DELETE /api/qa-levels/:id - Delete level (admin only, blocked if used)
-router.delete('/:id', authenticate, requireAdmin, (req, res) => {
+// DELETE /api/qa-levels/:id - Delete level (admin or manager, blocked if used)
+router.delete('/:id', authenticate, requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 
@@ -271,8 +271,8 @@ router.delete('/:id', authenticate, requireAdmin, (req, res) => {
   }
 });
 
-// POST /api/qa-levels/:id/templates - Upload template PDF (admin only)
-router.post('/:id/templates', authenticate, requireAdmin, (req, res) => {
+// POST /api/qa-levels/:id/templates - Upload template PDF (admin or manager)
+router.post('/:id/templates', authenticate, requireManagement, (req, res) => {
   try {
     const { id } = req.params;
     const { fileName, displayName, fileData } = req.body;
@@ -331,8 +331,8 @@ router.post('/:id/templates', authenticate, requireAdmin, (req, res) => {
   }
 });
 
-// GET /api/qa-levels/:id/templates - List templates (admin only)
-router.get('/:id/templates', authenticate, requireAdmin, (req, res) => {
+// GET /api/qa-levels/:id/templates - List templates (admin or manager)
+router.get('/:id/templates', authenticate, requireManagement, (req, res) => {
   try {
     const level = qaLevelQueries.getById.get(req.params.id);
     if (!level) {
@@ -347,8 +347,8 @@ router.get('/:id/templates', authenticate, requireAdmin, (req, res) => {
   }
 });
 
-// DELETE /api/qa-levels/:id/templates/:tid - Delete template (admin only)
-router.delete('/:id/templates/:tid', authenticate, requireAdmin, (req, res) => {
+// DELETE /api/qa-levels/:id/templates/:tid - Delete template (admin or manager)
+router.delete('/:id/templates/:tid', authenticate, requireManagement, (req, res) => {
   try {
     const { id, tid } = req.params;
 

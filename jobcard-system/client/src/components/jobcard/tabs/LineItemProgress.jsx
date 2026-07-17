@@ -79,7 +79,7 @@ function StatusPill({ state }) {
 export default function LineItemProgress({
   entries = [],
   targetQty = null,
-  isAdmin = false,
+  canManage = false,
   onAdd,
   onEdit,
   onDelete,
@@ -100,7 +100,7 @@ export default function LineItemProgress({
     prevHasActive.current = progress.hasActive;
   }, [progress.hasActive]);
 
-  const cardProps = isAdmin
+  const cardProps = canManage
     ? { onEdit, onDelete, onStop }
     : { readOnly: true };
 
@@ -163,7 +163,7 @@ export default function LineItemProgress({
           </span>
         </span>
 
-        {isAdmin && onAdd && (
+        {canManage && onAdd && (
           <button
             type="button"
             className="lip-add"

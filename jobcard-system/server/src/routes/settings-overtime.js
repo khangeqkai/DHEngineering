@@ -5,6 +5,20 @@
 const SCHEDULE_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const SCHEDULE_TIERS = ['normal', 'ot1', 'ot2'];
 
+// The overtime configuration is admin-only (managers get every other setting).
+// These lists let settings.js reject a manager's attempt to save any of these
+// fields and strip them from what a manager reads back.
+const OVERTIME_BODY_KEYS = [
+  'timezone', 'labourSchedule', 'labourDefaultRate',
+  'labourOt1Multiplier', 'labourOt2Multiplier', 'labourHolidayMultiplier',
+  'labourPublicHolidays'
+];
+const OVERTIME_DB_KEYS = [
+  'timezone', 'labour_schedule', 'labour_default_rate',
+  'labour_ot1_multiplier', 'labour_ot2_multiplier', 'labour_holiday_multiplier',
+  'labour_public_holidays'
+];
+
 // Validate a weekly schedule. Returns an error string, or null if valid.
 // Each day must be a non-empty, start-ordered (strictly increasing) block list. The
 // day is a 24-hour cycle: a block runs until the next block's start, and the time
@@ -125,4 +139,4 @@ function collectOvertimeUpdates(body) {
   return { updates };
 }
 
-module.exports = { collectOvertimeUpdates };
+module.exports = { collectOvertimeUpdates, OVERTIME_BODY_KEYS, OVERTIME_DB_KEYS };

@@ -9,7 +9,7 @@ export default function NotesSection({
   loading,
   loadError,
   onRetry,
-  isAdmin
+  canManage
 }) {
   return (
     <div className="form-section notes-section">
@@ -64,7 +64,7 @@ export default function NotesSection({
                 <span className="note-time">
                   {new Date(note.createdAt).toLocaleDateString('en-AU')} {new Date(note.createdAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
                 </span>
-                {isAdmin && (
+                {canManage && (
                   <button
                     type="button"
                     className="btn btn-danger btn-sm note-delete"

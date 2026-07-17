@@ -8,7 +8,7 @@ import ToggleTiles from '../../common/ToggleTiles';
 
 export default function DetailsTab({
   isEdit,
-  isAdmin,
+  canManage,
   jobCardId,
   jobNumber,
   formData,
@@ -67,7 +67,7 @@ export default function DetailsTab({
   onStopTimer,
   currentUserId
 }) {
-  const readOnly = isEdit && !isAdmin;
+  const readOnly = isEdit && !canManage;
 
   const jobSearch = useJobSearch({ excludeJobNumber: jobNumber });
   const { setQuery: setJobSearchQuery } = jobSearch;
@@ -108,7 +108,7 @@ export default function DetailsTab({
             loading={notesLoading}
             loadError={notesLoadError}
             onRetry={onRetryNotes}
-            isAdmin={isAdmin}
+            canManage={canManage}
           />
         )}
       </>
@@ -122,8 +122,8 @@ export default function DetailsTab({
 
   return (
     <div className="modal-form-grid">
-      {/* Contact Section — frozen after creation: pick on create, read-only on edit (admin only) */}
-      {isAdmin && isEdit && (
+      {/* Contact Section — frozen after creation: pick on create, read-only on edit (management only) */}
+      {canManage && isEdit && (
       <div className="form-section">
         <h3 className="form-section-title">
           Contact
@@ -156,8 +156,8 @@ export default function DetailsTab({
       </div>
       )}
 
-      {/* Contact Section - Inline Autocomplete (admin only, create mode) */}
-      {isAdmin && !isEdit && (
+      {/* Contact Section - Inline Autocomplete (management only, create mode) */}
+      {canManage && !isEdit && (
       <div className="form-section">
         <h3 className="form-section-title">
           Contact <span className="required">*</span>
@@ -243,7 +243,7 @@ export default function DetailsTab({
         timeEntries={timeEntries}
         machines={machines}
         employees={employees}
-        isAdmin={isAdmin && isEdit}
+        canManage={canManage && isEdit}
         isCritical={String(formData.qualityLevel || '').toUpperCase() === 'CRITICAL'}
         showTimeEntryForm={showTimeEntryForm}
         editingTimeEntryId={editingTimeEntryId}
@@ -378,7 +378,7 @@ export default function DetailsTab({
           loading={notesLoading}
           loadError={notesLoadError}
           onRetry={onRetryNotes}
-          isAdmin={isAdmin}
+          canManage={canManage}
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireManagement } = require('../middleware/auth');
 const { tagQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
@@ -72,7 +72,7 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/tags/:id - Get single tag
-router.get('/:id', requireAdmin, (req, res) => {
+router.get('/:id', requireManagement, (req, res) => {
   try {
     const tag = tagQueries.getById.get(req.params.id);
     if (!tag) {
@@ -85,8 +85,8 @@ router.get('/:id', requireAdmin, (req, res) => {
   }
 });
 
-// POST /api/tags - Create new tag (admin only)
-router.post('/', requireAdmin, (req, res) => {
+// POST /api/tags - Create new tag (admin or manager)
+router.post('/', requireManagement, (req, res) => {
   try {
     const { category, name } = req.body;
 
@@ -145,8 +145,8 @@ router.post('/', requireAdmin, (req, res) => {
   }
 });
 
-// PUT /api/tags/:id - Update tag (admin only)
-router.put('/:id', requireAdmin, (req, res) => {
+// PUT /api/tags/:id - Update tag (admin or manager)
+router.put('/:id', requireManagement, (req, res) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
@@ -214,10 +214,10 @@ router.put('/:id', requireAdmin, (req, res) => {
   }
 });
 
-// DELETE /api/tags/:id - Archive tag (admin only). We never hard-delete an option:
+// DELETE /api/tags/:id - Archive tag (admin or manager). We never hard-delete an option:
 // jobs reference it by value, so removing the row would strand it on every job that
 // used it. Archiving pulls it from the pickers for new work while keeping old jobs intact.
-router.delete('/:id', requireAdmin, (req, res) => {
+router.delete('/:id', requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 
@@ -242,8 +242,8 @@ router.delete('/:id', requireAdmin, (req, res) => {
   }
 });
 
-// POST /api/tags/:id/activate - Restore an archived tag (admin only)
-router.post('/:id/activate', requireAdmin, (req, res) => {
+// POST /api/tags/:id/activate - Restore an archived tag (admin or manager)
+router.post('/:id/activate', requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 

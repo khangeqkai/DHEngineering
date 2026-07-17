@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { deleteJobCardFolders } = require('../utils/folderCreation');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
 const { validateJobcardListQuery, JOBCARD_STATUSES } = require('../middleware/validation');
 const {
   jobcardQueries,
@@ -246,8 +246,8 @@ router.patch('/:id/status', authenticate, (req, res) => {
       return res.status(400).json({ error: 'Invalid status value' });
     }
 
-    if (status === 'INVOICED' && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can mark a job card as invoiced' });
+    if (status === 'INVOICED' && !isManagement(req.user.role)) {
+      return res.status(403).json({ error: 'Only management can mark a job card as invoiced' });
     }
 
     const existing = jobcardQueries.getById.get(id);
@@ -256,7 +256,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
     }
 
     // A filed-away (archived) job is locked: refuse any status change before any
-    // write. Re-opening goes through the admin-only unarchive action, which
+    // write. Re-opening goes through the management-only unarchive action, which
     // un-files the job and resets its status back to OPEN. We key off the
     // filed-away flag alone — invoicing always files a job away, and unarchive
     // clears both the flag and the INVOICED status, so once un-filed the job
@@ -310,7 +310,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
 });
 
 // Unarchive job card
-router.post('/:id/unarchive', authenticate, requireAdmin, (req, res) => {
+router.post('/:id/unarchive', authenticate, requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 
@@ -340,7 +340,7 @@ router.post('/:id/unarchive', authenticate, requireAdmin, (req, res) => {
 });
 
 // Delete job card
-router.delete('/:id', authenticate, requireAdmin, (req, res) => {
+router.delete('/:id', authenticate, requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 

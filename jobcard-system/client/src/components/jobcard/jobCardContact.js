@@ -6,10 +6,10 @@ import { api } from '../../services/api';
 // was hand-edited into a new one, offer to save it as a new contact; if none is
 // selected but a company was typed, create it. Returns the contact id to link (which
 // may be the originally selected one, a freshly created one, or empty).
-export async function resolveJobContactId({ initialContactId, isAdmin, isEdit, contactHook, showConfirm }) {
+export async function resolveJobContactId({ initialContactId, canManage, isEdit, contactHook, showConfirm }) {
   let contactId = initialContactId;
 
-  if (!isAdmin || isEdit) return contactId;
+  if (!canManage || isEdit) return contactId;
 
   const createFromForm = async () => {
     const c = await api.createContact({

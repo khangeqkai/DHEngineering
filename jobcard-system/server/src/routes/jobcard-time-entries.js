@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
 const { validateStartTimer, validateManualTimeEntry } = require('../middleware/validation');
 const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, recordHistory } = require('../db/database');
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
@@ -58,8 +58,8 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
     // someone up at a machine — so the hours land under the worker, not the admin.
     let targetWorkerId = req.user.userId;
     if (workerId && workerId !== req.user.userId) {
-      if (req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Only an admin can start a timer for another worker' });
+      if (!isManagement(req.user.role)) {
+        return res.status(403).json({ error: 'Only management can start a timer for another worker' });
       }
       const resolved = resolveWorkerId(workerId);
       if (resolved.error) {
@@ -190,8 +190,8 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
       return res.status(403).json({ error: 'Time entry does not belong to this job card' });
     }
 
-    // Only owner or admin can stop
-    if (existing.user_id !== req.user.userId && req.user.role !== 'admin') {
+    // Only the owner or an admin/manager can stop
+    if (existing.user_id !== req.user.userId && !isManagement(req.user.role)) {
       return res.status(403).json({ error: 'You can only stop your own timer' });
     }
 
@@ -243,8 +243,8 @@ router.get('/:id/time-entries', authenticate, (req, res) => {
   }
 });
 
-// Add time entry (admin only — manual time records affect labour hours and costs)
-router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTimeEntry, (req, res) => {
+// Add time entry (admin or manager — manual time records affect labour hours and costs)
+router.post('/:id/time-entries', authenticate, requireManagement, ...validateManualTimeEntry, (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -365,10 +365,10 @@ router.post('/:id/time-entries', authenticate, requireAdmin, ...validateManualTi
   }
 });
 
-// Update time entry (owner or admin — a worker may edit their own record, e.g.
+// Update time entry (owner or management — a worker may edit their own record, e.g.
 // filling in qty/machines/description after stopping their timer; editing anyone
-// else's stays admin-only since manual time records affect labour hours and costs).
-// A non-admin owner can never hand-edit the start/finish times (only an admin may
+// else's stays management-only since manual time records affect labour hours and costs).
+// A worker owner can never hand-edit the start/finish times (only management may
 // correct the clock) — see the role guard below.
 router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntry, (req, res) => {
   try {
@@ -384,8 +384,8 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       return res.status(403).json({ error: 'Time entry does not belong to this job card' });
     }
 
-    // Only the owner or an admin may edit a time entry
-    if (existing.user_id !== req.user.userId && req.user.role !== 'admin') {
+    // Only the owner or an admin/manager may edit a time entry
+    if (existing.user_id !== req.user.userId && !isManagement(req.user.role)) {
       return res.status(403).json({ error: 'You can only edit your own time entries' });
     }
 
@@ -406,8 +406,8 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     // them — they may only fill in qty/scrap/machine/description on their own record.
     // Keep their stored start time as-is, and honour a finish-time change only when it
     // clears the field (resuming/reopening their own timer), never a different time.
-    // Only admins may set an arbitrary start/finish time (manual corrections).
-    if (req.user.role !== 'admin') {
+    // Only admins/managers may set an arbitrary start/finish time (manual corrections).
+    if (!isManagement(req.user.role)) {
       startTime = existing.start_time;
       endTime = endTime === null ? null : existing.end_time;
     }
@@ -448,14 +448,14 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       return res.status(400).json({ error: inspectionError });
     }
 
-    // Only an admin may re-credit a block to a different worker, and only when they
+    // Only management may re-credit a block to a different worker, and only when they
     // actually send a worker. A regular worker editing their own block (filling in
     // qty/description after stopping) keeps it under themselves — they can't hand it
     // away. A change to a *different* worker must be a real, active account; leaving
     // the owner unchanged is always allowed (so an old block owned by a since-
     // deactivated worker can still have its other fields corrected).
     let workerId = existing.user_id;
-    if (req.user.role === 'admin' && data.workerId !== undefined &&
+    if (isManagement(req.user.role) && data.workerId !== undefined &&
         String(data.workerId) !== String(existing.user_id)) {
       const resolved = resolveWorkerId(data.workerId);
       if (resolved.error) {
@@ -559,8 +559,8 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
   }
 });
 
-// Delete time entry (admin only — manual time records affect labour hours and costs)
-router.delete('/:id/time-entries/:entryId', authenticate, requireAdmin, (req, res) => {
+// Delete time entry (admin or manager — manual time records affect labour hours and costs)
+router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (req, res) => {
   try {
     const { id, entryId } = req.params;
 

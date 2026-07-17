@@ -1,6 +1,6 @@
 const express = require('express');
 const { db } = require('../db/connection');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, isManagement } = require('../middleware/auth');
 const { getAssigneesForJobcards } = require('../db/database');
 const logger = require('../utils/logger');
 
@@ -10,12 +10,12 @@ const PREVIEW_LIMIT = 5;
 
 // --- Formatters (snake_case → camelCase) ---
 
-function formatJob(row, assignees, isAdmin) {
+function formatJob(row, assignees, canManage) {
   return {
     id: row.id,
     jobNumber: row.job_number,
-    companyName: isAdmin ? row.company_name : null,
-    contactName: isAdmin ? row.contact_name : null,
+    companyName: canManage ? row.company_name : null,
+    contactName: canManage ? row.contact_name : null,
     status: row.status,
     priority: row.priority,
     qualityLevel: row.quality_level,
@@ -84,20 +84,20 @@ function formatTimeEntry(row) {
 router.get('/', authenticate, (req, res) => {
   try {
     const scope = req.query.scope || 'all';
-    const isAdmin = req.user.role === 'admin';
+    const canManage = isManagement(req.user.role);
 
     switch (scope) {
-      case 'all': return searchAll(req, res, isAdmin);
-      case 'jobs': return searchJobs(req, res, isAdmin);
+      case 'all': return searchAll(req, res, canManage);
+      case 'jobs': return searchJobs(req, res, canManage);
       case 'people': {
-        if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
+        if (!canManage) return res.status(403).json({ error: 'Management only' });
         return searchPeople(req, res);
       }
       case 'activity': {
-        if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
+        if (!canManage) return res.status(403).json({ error: 'Management only' });
         return searchActivity(req, res);
       }
-      case 'time': return searchTime(req, res, isAdmin);
+      case 'time': return searchTime(req, res, canManage);
       default: return res.status(400).json({ error: 'Invalid scope' });
     }
   } catch (err) {
@@ -108,7 +108,7 @@ router.get('/', authenticate, (req, res) => {
 
 // --- Handlers ---
 
-function searchAll(req, res, isAdmin) {
+function searchAll(req, res, canManage) {
   const q = (req.query.q || '').trim();
   if (!q) return res.json({ groups: {} });
   const like = `%${q}%`;
@@ -118,11 +118,11 @@ function searchAll(req, res, isAdmin) {
   // the dedicated Jobs search. The combined view has its own "include archived"
   // toggle that flips this, and that choice is carried through on "see all".
   const includeArchived = req.query.includeArchived === 'true';
-  const jobMatch = isAdmin
+  const jobMatch = canManage
     ? '(j.job_number LIKE ? OR j.description LIKE ? OR j.company_name LIKE ? OR j.contact_name LIKE ? OR j.po_number LIKE ?)'
     : '(j.job_number LIKE ? OR j.description LIKE ?)';
   const jobWhere = includeArchived ? jobMatch : `${jobMatch} AND j.archived = 0`;
-  const jobParams = isAdmin ? [like, like, like, like, like] : [like, like];
+  const jobParams = canManage ? [like, like, like, like, like] : [like, like];
   const jobFrom = 'FROM jobcards j';
 
   const jobCount = db.prepare(`SELECT COUNT(*) as count ${jobFrom} WHERE ${jobWhere}`).get(...jobParams).count;
@@ -130,9 +130,9 @@ function searchAll(req, res, isAdmin) {
     `SELECT j.* ${jobFrom} WHERE ${jobWhere} ORDER BY j.created_at DESC LIMIT ?`
   ).all(...jobParams, PREVIEW_LIMIT);
   const assigneeMap = getAssigneesForJobcards(jobRows.map(j => j.id));
-  groups.jobs = { count: jobCount, results: jobRows.map(j => formatJob(j, assigneeMap[j.id], isAdmin)) };
+  groups.jobs = { count: jobCount, results: jobRows.map(j => formatJob(j, assigneeMap[j.id], canManage)) };
 
-  if (isAdmin) {
+  if (canManage) {
     // Contacts (archived customers are hidden from search, like suppliers)
     const cWhere = 'archived = 0 AND (company_name LIKE ? OR contact_name LIKE ? OR phone LIKE ? OR email LIKE ?)';
     groups.contacts = {
@@ -158,7 +158,7 @@ function searchAll(req, res, isAdmin) {
   res.json({ groups });
 }
 
-function searchJobs(req, res, isAdmin) {
+function searchJobs(req, res, canManage) {
   const { q, status, assigneeId, priority, jobType, qaLevel, dateFrom, dateTo, dateField, includeArchived } = req.query;
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const conditions = [];
@@ -166,7 +166,7 @@ function searchJobs(req, res, isAdmin) {
 
   if (q) {
     const like = `%${q.trim()}%`;
-    if (isAdmin) {
+    if (canManage) {
       conditions.push('(j.job_number LIKE ? OR j.description LIKE ? OR j.company_name LIKE ? OR j.contact_name LIKE ? OR j.po_number LIKE ?)');
       params.push(like, like, like, like, like);
     } else {
@@ -203,7 +203,7 @@ function searchJobs(req, res, isAdmin) {
   ).all(...params, PAGE_SIZE, offset);
   const assigneeMap = getAssigneesForJobcards(rows.map(j => j.id));
 
-  res.json({ results: rows.map(j => formatJob(j, assigneeMap[j.id], isAdmin)), total, page, totalPages: Math.ceil(total / PAGE_SIZE) });
+  res.json({ results: rows.map(j => formatJob(j, assigneeMap[j.id], canManage)), total, page, totalPages: Math.ceil(total / PAGE_SIZE) });
 }
 
 function searchPeople(req, res) {
@@ -263,13 +263,13 @@ function searchActivity(req, res) {
   res.json({ results: rows.map(formatActivity), total, page, totalPages: Math.ceil(total / PAGE_SIZE) });
 }
 
-function searchTime(req, res, isAdmin) {
+function searchTime(req, res, canManage) {
   const { q, workerId, machineId, dateFrom, dateTo, jobNumber } = req.query;
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const conditions = [];
   const params = [];
 
-  if (!isAdmin) { conditions.push('te.user_id = ?'); params.push(req.user.userId); }
+  if (!canManage) { conditions.push('te.user_id = ?'); params.push(req.user.userId); }
 
   if (q) {
     const like = `%${q.trim()}%`;

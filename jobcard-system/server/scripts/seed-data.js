@@ -11,10 +11,11 @@
  * never drift apart.
  */
 
-// ─── USERS: 2 admins + 10 floor workers (workers are indices 0-9 after filter) ───
+// ─── USERS: 2 admins + 1 manager + 10 floor workers (workers are indices 0-9 after filter) ───
 const users = [
   { username: 'admin',   role: 'admin', name: 'David Henderson',    email: 'david@dhengineering.com.au',  employeeId: 'EMP001' },
   { username: 'sandra',  role: 'admin', name: 'Sandra Phillips',    email: 'sandra@dhengineering.com.au', employeeId: 'EMP002' },
+  { username: 'grant',   role: 'manager', name: 'Grant Sullivan',   email: 'grant@dhengineering.com.au',  employeeId: 'EMP013' },
   { username: 'liam',    role: 'user',  name: 'Liam Murphy',        email: null, employeeId: 'EMP003' },
   { username: 'jack',    role: 'user',  name: 'Jack Wilson',        email: null, employeeId: 'EMP004' },
   { username: 'ethan',   role: 'user',  name: 'Ethan Nguyen',       email: null, employeeId: 'EMP005' },

@@ -61,7 +61,7 @@ export default function Settings() {
           </div>
         </div>
 
-        {s.isAdmin && (
+        {s.canManage && (
           <>
             <div className="card">
               <div className="card-header">
@@ -149,16 +149,17 @@ export default function Settings() {
           </>
         )}
 
-        {s.isAdmin && (
+        {s.canManage && (
           <>
             <SecurityCard s={s} />
             <FoldersCard s={s} />
           </>
         )}
 
+        {/* Backups stay admin-only: a backup carries the whole database, pricing included. */}
         {s.isAdmin && <DataBackupCard s={s} />}
 
-        {s.isAdmin && (
+        {s.canManage && (
           <div className="card full-width">
             <div className="card-header">
               <h2>Server Connection</h2>

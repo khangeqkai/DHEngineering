@@ -203,8 +203,8 @@ const validateCreateUser = [
   requiredString('name', 'Name').isLength({ max: 100 }).withMessage('Name cannot exceed 100 characters'),
   body('role')
     .optional()
-    .isIn(['admin', 'user'])
-    .withMessage('Role must be either "admin" or "user"'),
+    .isIn(['admin', 'manager', 'user'])
+    .withMessage('Role must be "admin", "manager" or "user"'),
   handleValidationErrors
 ];
 

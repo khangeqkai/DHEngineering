@@ -1,7 +1,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
 const { supplierQueries, tagQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
@@ -13,15 +13,15 @@ router.use(authenticate);
 // Non-admins must not receive a supplier's private phone/email (same privacy
 // rule already applied to customer contact details), so blank them out unless
 // the requester is an admin.
-function toApiFormat(supplier, isAdmin = true) {
+function toApiFormat(supplier, canManage = true) {
   if (!supplier) return null;
   const tags = tagQueries.getForSupplier.all(supplier.id);
   return {
     id: supplier.id,
     name: supplier.name,
     contactName: supplier.contact_name,
-    contactPhone: isAdmin ? supplier.contact_phone : null,
-    contactEmail: isAdmin ? supplier.contact_email : null,
+    contactPhone: canManage ? supplier.contact_phone : null,
+    contactEmail: canManage ? supplier.contact_email : null,
     address: supplier.address,
     services: supplier.services,
     approved: supplier.approved,
@@ -36,21 +36,21 @@ function toApiFormat(supplier, isAdmin = true) {
 }
 
 // Helper to get supplier with its service tags (in API format)
-function getSupplierWithTags(supplierId, isAdmin = true) {
+function getSupplierWithTags(supplierId, canManage = true) {
   const supplier = supplierQueries.getById.get(supplierId);
-  return toApiFormat(supplier, isAdmin);
+  return toApiFormat(supplier, canManage);
 }
 
 // GET /api/suppliers - Get all suppliers
 router.get('/', (req, res) => {
   try {
-    const isAdmin = req.user.role === 'admin';
+    const canManage = isManagement(req.user.role);
     const includeInactive = req.query.includeInactive === 'true';
     const suppliers = includeInactive
       ? supplierQueries.getAllIncludeInactive.all()
       : supplierQueries.getAll.all();
     // Convert each supplier to API format with service tags
-    const result = suppliers.map(s => toApiFormat(s, isAdmin));
+    const result = suppliers.map(s => toApiFormat(s, canManage));
     res.json(result);
   } catch (err) {
     logger.error({ err }, 'Failed to get suppliers');
@@ -61,7 +61,7 @@ router.get('/', (req, res) => {
 // GET /api/suppliers/:id - Get single supplier
 router.get('/:id', (req, res) => {
   try {
-    const supplier = getSupplierWithTags(req.params.id, req.user.role === 'admin');
+    const supplier = getSupplierWithTags(req.params.id, isManagement(req.user.role));
     if (!supplier) {
       return res.status(404).json({ error: 'Supplier not found' });
     }
@@ -72,8 +72,8 @@ router.get('/:id', (req, res) => {
   }
 });
 
-// POST /api/suppliers - Create new supplier (admin only)
-router.post('/', requireAdmin, (req, res) => {
+// POST /api/suppliers - Create new supplier (admin or manager)
+router.post('/', requireManagement, (req, res) => {
   try {
     const { name, contactName, contactPhone, contactEmail, address, notes, serviceTagIds } = req.body;
 
@@ -115,8 +115,8 @@ router.post('/', requireAdmin, (req, res) => {
   }
 });
 
-// PUT /api/suppliers/:id - Update supplier (admin only)
-router.put('/:id', requireAdmin, (req, res) => {
+// PUT /api/suppliers/:id - Update supplier (admin or manager)
+router.put('/:id', requireManagement, (req, res) => {
   try {
     const { id } = req.params;
     const { name, contactName, contactPhone, contactEmail, address, notes, serviceTagIds } = req.body;
@@ -183,11 +183,11 @@ router.put('/:id', requireAdmin, (req, res) => {
   }
 });
 
-// POST /api/suppliers/:id/deactivate - Archive supplier (admin only)
+// POST /api/suppliers/:id/deactivate - Archive supplier (admin or manager)
 // Suppliers are never permanently deleted: jobs snapshot a supplier's id/name onto
 // their treatments, so erasing a supplier would leave those jobs pointing at nothing.
 // Archiving keeps the record (existing jobs stay valid) but drops it from the picker.
-router.post('/:id/deactivate', requireAdmin, (req, res) => {
+router.post('/:id/deactivate', requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 
@@ -209,8 +209,8 @@ router.post('/:id/deactivate', requireAdmin, (req, res) => {
   }
 });
 
-// POST /api/suppliers/:id/activate - Restore archived supplier (admin only)
-router.post('/:id/activate', requireAdmin, (req, res) => {
+// POST /api/suppliers/:id/activate - Restore archived supplier (admin or manager)
+router.post('/:id/activate', requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 

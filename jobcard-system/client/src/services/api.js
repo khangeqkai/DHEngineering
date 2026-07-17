@@ -236,7 +236,7 @@ class ApiService {
   archiveTag(id) { return this._del(`/tags/${id}`); }
   activateTag(id) { return this._post(`/tags/${id}/activate`); }
 
-  // Activity history (admin only)
+  // Activity history (management only)
   getActivityHistory(limit = 50) { return this.request(`/history?limit=${limit}`); }
   getUserActivity(userId, limit = 50) { return this.request(`/history/user/${userId}?limit=${limit}`); }
   getEntityHistory(entityType, page = 1) { return this.request(`/history/entity/${entityType}?page=${page}`); }
@@ -252,7 +252,7 @@ class ApiService {
   getPrinters() { return this.request('/hardware/printers'); }
   getHardwareStatus() { return this.request('/hardware/status'); }
 
-  // Settings (admin only)
+  // Settings (management only; backup export/import stays admin-only)
   getSettings() { return this.request('/settings'); }
   updateSettings(data) { return this._put('/settings', data); }
   getInactivityTimeout() { return this.request('/settings/inactivity-timeout'); }

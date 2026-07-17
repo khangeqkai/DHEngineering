@@ -36,7 +36,7 @@ export default function ItemsTab({
   onSuppliersChanged,
   employees = [],
   timeEntries = [],
-  isAdmin = false,
+  canManage = false,
   isCritical = false,
   readOnly = false,
   attachmentWarnings = null,
@@ -114,7 +114,7 @@ export default function ItemsTab({
           )}
         </div>
 
-        {isAdmin && showTimeEntryForm && timeEntryForm && (
+        {canManage && showTimeEntryForm && timeEntryForm && (
           <div className="time-entry-form costing-entry-form">
             <div className="form-section-header">
               <h3 className="form-section-title">
@@ -407,7 +407,7 @@ export default function ItemsTab({
                         loading={timerLoading}
                         onStart={onStartTimer}
                         onStop={onStopTimer}
-                        isAdmin={isAdmin}
+                        canManage={canManage}
                         employees={employees}
                         currentUserId={currentUserId}
                       />
@@ -418,10 +418,10 @@ export default function ItemsTab({
                     <LineItemProgress
                       entries={itemEntries}
                       targetQty={item.qty}
-                      isAdmin={isAdmin}
-                      onAdd={isAdmin && handleAddTimeEntry ? () => handleAddTimeEntry(item.itemNumber) : undefined}
-                      onEdit={isAdmin ? handleEditTimeEntry : undefined}
-                      onDelete={isAdmin ? handleDeleteTimeEntry : undefined}
+                      canManage={canManage}
+                      onAdd={canManage && handleAddTimeEntry ? () => handleAddTimeEntry(item.itemNumber) : undefined}
+                      onEdit={canManage ? handleEditTimeEntry : undefined}
+                      onDelete={canManage ? handleDeleteTimeEntry : undefined}
                       onStop={handleStopEntryWithForm}
                     />
                   )}
