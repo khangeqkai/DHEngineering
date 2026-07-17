@@ -1753,7 +1753,7 @@
       "label": "renderItem()",
       "file_type": "code",
       "source_file": "server/src/utils/jobCardHtml.js",
-      "source_location": "L86",
+      "source_location": "L87",
       "id": "utils_jobcardhtml_renderitem",
       "community": 32,
       "norm_label": "renderitem()"
@@ -1762,7 +1762,7 @@
       "label": "renderJobCardHtml()",
       "file_type": "code",
       "source_file": "server/src/utils/jobCardHtml.js",
-      "source_location": "L130",
+      "source_location": "L131",
       "id": "utils_jobcardhtml_renderjobcardhtml",
       "community": 32,
       "norm_label": "renderjobcardhtml()"

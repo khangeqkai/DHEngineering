@@ -32,6 +32,7 @@ const CSS = `
   .jobdesc { text-align:left; max-width:54%; }
   .jobdesc .txt { font-size:13pt; font-weight:600; color:var(--navy);
     line-height:1.25; overflow-wrap:anywhere; }
+  .jobdesc .pill { margin-left:8px; vertical-align:middle; white-space:nowrap; }
   .pill { font-size:8pt; font-weight:800; letter-spacing:1px; text-transform:uppercase;
     padding:3px 10px; border-radius:999px; border:1.5px solid currentColor; }
   .pill.high { color:#dc2626; background:#fef2f2; border-color:#fecaca; }
@@ -141,10 +142,10 @@ function renderJobCardHtml(view) {
 <div class="sheet">
   <div class="head">
     <div class="jobdesc">
-      <div class="txt">${esc(v.description) || '&mdash;'}</div>
+      <div class="txt">${esc(v.description) || '&mdash;'}${pill ? ' ' + pill : ''}</div>
     </div>
     <div class="ident">
-      <div class="numrow"><span class="num">${esc(v.jobNumber)}</span>${pill}</div>
+      <div class="numrow"><span class="num">${esc(v.jobNumber)}</span></div>
     </div>
   </div>
   <div class="meta">
