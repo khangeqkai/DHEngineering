@@ -16,7 +16,6 @@ export default function CostingTab({
   savingCosting
 }) {
   const totals = calculateCostingTotals();
-  const frozen = !!costingForm.frozen;
   const baseRate = Number(costingForm.labourRate) || 0;
 
   // Select a field's contents when it gains focus, so clicking in and typing REPLACES
@@ -79,7 +78,7 @@ export default function CostingTab({
     return (
       <div className={`tier-row${t.overridden ? ' tier-row--edited' : ''}`} key={t.hoursName}>
         <span className="tier-when">
-          {rowEdited && !frozen && <span className="tier-dot" aria-hidden="true" />}
+          {rowEdited && <span className="tier-dot" aria-hidden="true" />}
           {t.label}
           {t.multName ? (
             // Overtime rows: the multiplier is a job-editable box (typing overrides
@@ -96,10 +95,9 @@ export default function CostingTab({
                   min="1"
                   step="0.1"
                   aria-label={`${t.label} multiplier`}
-                  disabled={frozen}
                 />
               </span>
-              {t.multOverridden && !frozen && (
+              {t.multOverridden && (
                 <button
                   type="button"
                   className="tier-auto"
@@ -124,9 +122,8 @@ export default function CostingTab({
             min="0"
             step="0.01"
             aria-label={`${t.label} hours`}
-            disabled={frozen}
           />
-          {t.overridden && !frozen && (
+          {t.overridden && (
             <button
               type="button"
               className="tier-auto"
@@ -148,16 +145,10 @@ export default function CostingTab({
       <div className="costing-sheet">
         <div className="costing-sheet-header">
           <h3 className="costing-sheet-title">Job costing</h3>
-          <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveCosting} disabled={savingCosting || frozen}>
+          <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveCosting} disabled={savingCosting}>
             {savingCosting ? 'Saving…' : 'Save costing'}
           </button>
         </div>
-
-        {frozen && (
-          <div className="costing-frozen-banner">
-            This job is invoiced — its costing is locked at the rates it was billed on.
-          </div>
-        )}
 
         {/* Labour — one panel: base rate up top, tiers as a rate ladder, subtotal in the header */}
         <section className="labour-block">
@@ -185,13 +176,12 @@ export default function CostingTab({
                 onFocus={selectOnFocus}
                 min="0"
                 step="0.01"
-                disabled={frozen}
               />
             </div>
             <span className="labour-rate-unit">/ hr</span>
             <span className="labour-rate-hint">
               sets every tier below
-              {!frozen && Number(costingForm.labourDefaultRate) > 0
+              {Number(costingForm.labourDefaultRate) > 0
                 && Number(costingForm.labourDefaultRate) !== baseRate && (
                 <>
                   {' · '}
@@ -215,7 +205,7 @@ export default function CostingTab({
 
           <div className="tier-foot">
             <span>Hours are split from logged time.</span>
-            {anyOverridden && !frozen && (
+            {anyOverridden && (
               <span className="tier-foot-edited">
                 <span className="tier-dot" aria-hidden="true" /> Manually edited
                 {' · '}
@@ -232,14 +222,14 @@ export default function CostingTab({
             <span className="ledger-cat">Special labour</span>
             <div className="ledger-field">
               <label>Hours</label>
-              <input type="number" name="labourSpecialHours" value={costingForm.labourSpecialHours} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" disabled={frozen} />
+              <input type="number" name="labourSpecialHours" value={costingForm.labourSpecialHours} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
             </div>
             <span className="ledger-op">×</span>
             <div className="ledger-field">
               <label>Rate / hr</label>
               <div className="ledger-affix ledger-affix--prefix">
                 <span className="ledger-affix-mark">$</span>
-                <input type="number" name="labourSpecialRate" value={costingForm.labourSpecialRate} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" disabled={frozen} />
+                <input type="number" name="labourSpecialRate" value={costingForm.labourSpecialRate} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
               </div>
             </div>
             <span className="ledger-eq">=</span>
@@ -253,14 +243,14 @@ export default function CostingTab({
               <label>Cost</label>
               <div className="ledger-affix ledger-affix--prefix">
                 <span className="ledger-affix-mark">$</span>
-                <input type="number" name="materialsCost" value={costingForm.materialsCost} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" disabled={frozen} />
+                <input type="number" name="materialsCost" value={costingForm.materialsCost} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
               </div>
             </div>
             <span className="ledger-op">+</span>
             <div className="ledger-field">
               <label>Margin</label>
               <div className="ledger-affix ledger-affix--suffix">
-                <input type="number" name="materialsProfitPercent" value={costingForm.materialsProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" disabled={frozen} />
+                <input type="number" name="materialsProfitPercent" value={costingForm.materialsProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" />
                 <span className="ledger-affix-mark">%</span>
               </div>
             </div>
@@ -275,14 +265,14 @@ export default function CostingTab({
               <label>Cost</label>
               <div className="ledger-affix ledger-affix--prefix">
                 <span className="ledger-affix-mark">$</span>
-                <input type="number" name="subcontractorCost" value={costingForm.subcontractorCost} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" disabled={frozen} />
+                <input type="number" name="subcontractorCost" value={costingForm.subcontractorCost} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
               </div>
             </div>
             <span className="ledger-op">+</span>
             <div className="ledger-field">
               <label>Margin</label>
               <div className="ledger-affix ledger-affix--suffix">
-                <input type="number" name="subcontractorProfitPercent" value={costingForm.subcontractorProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" disabled={frozen} />
+                <input type="number" name="subcontractorProfitPercent" value={costingForm.subcontractorProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" />
                 <span className="ledger-affix-mark">%</span>
               </div>
             </div>

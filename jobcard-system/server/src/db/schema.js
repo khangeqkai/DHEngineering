@@ -206,8 +206,9 @@ db.exec(`
     -- charge is hours × labour_rate × that tier's multiplier. Tier hours are
     -- auto-split from logged time against the weekly schedule (labour_*_hours), with
     -- an optional hand override (labour_*_override, NULL = use the auto split).
-    -- The multipliers are copied here from settings so an invoiced job stays frozen
-    -- at the rates it was billed on even if the settings change later.
+    -- The effective multiplier each tier charged at is stored here (labour_*_multiplier),
+    -- taken from the job's own captured baseline (or its per-job override), so recomputing
+    -- always reproduces the billed rate even if the company settings change later.
     labour_ot1_hours REAL DEFAULT 0,
     labour_ot1_override REAL,
     labour_ot1_total REAL DEFAULT 0,
@@ -220,11 +221,26 @@ db.exec(`
     labour_ot1_multiplier REAL DEFAULT 1.5,
     labour_ot2_multiplier REAL DEFAULT 2,
     labour_holiday_multiplier REAL DEFAULT 2.5,
-    -- Optional per-job overtime multipliers (NULL = follow the company setting).
-    -- When set, labour_*_multiplier above holds this value (it is the effective
-    -- multiplier the job charges at), so the invoice-time freeze is unchanged.
+    -- Optional per-job overtime multipliers (NULL = follow this job's own captured
+    -- baseline below). When set, labour_*_multiplier above holds this value (the
+    -- effective multiplier the job charges at).
     labour_ot1_multiplier_override REAL,
     labour_ot2_multiplier_override REAL,
+
+    -- This job's OWN captured copy of the overtime rules, taken from company settings
+    -- the day the job was created and never touched again. Every costing figure is
+    -- computed from these (not from live settings), so a later change to the company
+    -- overtime rules never moves an already-created job — exactly how labour_rate
+    -- already works. labour_base_*_multiplier are the company multipliers as captured
+    -- (the value a per-job override snaps back to); labour_schedule / _public_holidays
+    -- / _timezone drive the tier split. NULL on these means "not captured yet" (only
+    -- old pre-feature rows), which falls back to live settings until first written.
+    labour_schedule TEXT,
+    labour_public_holidays TEXT,
+    labour_timezone TEXT,
+    labour_base_ot1_multiplier REAL,
+    labour_base_ot2_multiplier REAL,
+    labour_base_holiday_multiplier REAL,
 
     -- Special labour is a manually-entered line: an admin types the hours and rate
     -- on the costing screen (it is NOT derived from time entries).
@@ -413,6 +429,15 @@ const migrations = [
   { table: 'job_costings', column: 'labour_holiday_multiplier', type: 'REAL DEFAULT 2.5' },
   { table: 'job_costings', column: 'labour_ot1_multiplier_override', type: 'REAL' },
   { table: 'job_costings', column: 'labour_ot2_multiplier_override', type: 'REAL' },
+  // Per-job captured overtime rules (present in CREATE TABLE; added here for existing
+  // databases). A job computes its costing from these, not from live settings, so a
+  // later change to the company overtime rules never moves an already-created job.
+  { table: 'job_costings', column: 'labour_schedule', type: 'TEXT' },
+  { table: 'job_costings', column: 'labour_public_holidays', type: 'TEXT' },
+  { table: 'job_costings', column: 'labour_timezone', type: 'TEXT' },
+  { table: 'job_costings', column: 'labour_base_ot1_multiplier', type: 'REAL' },
+  { table: 'job_costings', column: 'labour_base_ot2_multiplier', type: 'REAL' },
+  { table: 'job_costings', column: 'labour_base_holiday_multiplier', type: 'REAL' },
   { table: 'users', column: 'session_token', type: 'TEXT' },
   { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
   { table: 'time_entries', column: 'scrap_bin_qty', type: 'INTEGER DEFAULT 0' },

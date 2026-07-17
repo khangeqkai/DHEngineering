@@ -133,6 +133,9 @@ settingsQueries.upsert.run('time_entries_per_item_wiped_at', seededAt);
 settingsQueries.upsert.run('special_labour_manual_reset_at', seededAt);
 settingsQueries.upsert.run('labour_hours_override_reset_at', seededAt);
 settingsQueries.upsert.run('labour_schedule_whole_hours_at', seededAt);
+// Seeded costings already carry their own captured overtime rules (below), so the
+// one-time rule-capture migration has nothing to do — stamp its flag so it never runs.
+settingsQueries.upsert.run('overtime_ownership_at', seededAt);
 console.log(`Settings configured (prefix: ${refData.settings.job_number_prefix}, starting: ${refData.settings.job_number_next}).`);
 
 // ─── QA LEVELS ───
@@ -167,11 +170,13 @@ const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, us
 const insertCosting = db.prepare(`INSERT INTO job_costings (
   id, jobcard_id,
   labour_hours, labour_rate, labour_total,
+  labour_schedule, labour_public_holidays, labour_timezone,
+  labour_base_ot1_multiplier, labour_base_ot2_multiplier, labour_base_holiday_multiplier,
   labour_special_hours, labour_special_rate, labour_special_total,
   materials_cost, materials_profit_percent, materials_total,
   subcontractor_cost, subcontractor_profit_percent, subcontractor_total,
   grand_total
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
 const workers = users.filter(u => u.role === 'user'); // floor staff, referenced by index in scenarios
 const now = new Date();
@@ -309,6 +314,10 @@ const createJobs = db.transaction(() => {
       insertCosting.run(
         uid('costing'), jobId,
         labourHours, labourRate, labourTotal,
+        // Each seeded job owns its own copy of the overtime rules, exactly like a real
+        // new job — so a later change to the company rules never moves a seeded job.
+        refData.settings.labour_schedule, refData.settings.labour_public_holidays, refData.settings.timezone,
+        Number(refData.settings.labour_ot1_multiplier), Number(refData.settings.labour_ot2_multiplier), Number(refData.settings.labour_holiday_multiplier),
         labourSpecialHours, labourSpecialRate, labourSpecialTotal,
         materialsCost, materialsProfit, materialsTotal,
         subcontractorCost, subcontractorProfit, subcontractorTotal,

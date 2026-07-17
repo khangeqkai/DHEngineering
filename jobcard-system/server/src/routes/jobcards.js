@@ -15,7 +15,6 @@ const {
   recordHistory
 } = require('../db/database');
 const { formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings } = require('./jobcard-helpers');
-const { freezeCostingOnInvoice } = require('../utils/costingCompute');
 const jobcardMutationsRoutes = require('./jobcard-mutations');
 const jobcardPrintoutRoutes = require('./jobcard-printout');
 
@@ -289,11 +288,9 @@ router.patch('/:id/status', authenticate, (req, res) => {
       jobcardQueries.archive.run(invoicedDate, req.user.userId, id);
       changes.archived = { from: false, to: true };
       changes.invoicedDate = { from: null, to: invoicedDate };
-      // Freeze the costing at the rates it was billed on, so a later rate/schedule
-      // change never moves this invoice. Never let a costing hiccup break invoicing.
-      try {
-        freezeCostingOnInvoice(id, { userId: req.user.userId, userName: req.user.name || req.user.username });
-      } catch (e) { logger.error({ err: e }, 'Freeze costing on invoice failed'); }
+      // Invoicing just files the job away — no costing snapshot needed. The job owns its
+      // own overtime rules and rate, so its costing always recomputes to the billed
+      // number; a later settings change can't move it.
     }
 
     recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, changes, null);

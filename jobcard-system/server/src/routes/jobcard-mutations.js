@@ -16,7 +16,7 @@ const {
 } = require('../db/database');
 const { formatJobcard, buildChanges, createRelatedRecords, serializeTreatments, buildQaFillData, copyQaTemplatesForJob, verifyQaTemplatesAvailable, computeAttachmentWarnings } = require('./jobcard-helpers');
 const { itemSummary, assigneeNames, buildQaTemplateWarning } = require('./jobcard-audit-text');
-const { computeLiveCosting, persistCosting, freezeCostingOnInvoice } = require('../utils/costingCompute');
+const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
 const { db } = require('../db/connection');
 
@@ -458,14 +458,9 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     });
     applyUpdate();
 
-    // Invoicing files the job away — freeze its costing at the billed rates now, so a
-    // later rate/schedule change never moves this invoice. Done after the write
-    // commits; a costing hiccup must never break the update.
-    if (shouldArchive) {
-      try {
-        freezeCostingOnInvoice(id, { userId: req.user.userId, userName: req.user.name || req.user.username });
-      } catch (e) { logger.error({ err: e }, 'Freeze costing on invoice failed'); }
-    }
+    // Invoicing just files the job away. No costing snapshot is taken: the job owns its
+    // own overtime rules and rate, so recomputing its costing later always reproduces
+    // the billed number — there is nothing a settings change could move.
 
     // ---- Change tracking (pure computation; uses the snapshots captured above) ----
     if (data.photos !== undefined) {

@@ -82,8 +82,9 @@ function runMigrations() {
   // applies only to the normal tier while the overtime tiers are added on top — so an
   // old override would double-count once overtime windows are configured. Clear the
   // stored override ONCE (guarded by a settings flag) on jobs that aren't invoiced yet,
-  // so they fall back to the new auto-split; invoiced jobs are frozen and left alone.
-  // Never re-runs, so it can't wipe an override an admin types later.
+  // so they fall back to the new auto-split; already-invoiced jobs are left untouched so a
+  // billed total never moves on its own. Never re-runs, so it can't wipe an override an
+  // admin types later.
   const otOverrideResetKey = 'labour_hours_override_reset_at';
   const otOverrideFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(otOverrideResetKey);
   if (!otOverrideFlag) {
@@ -150,14 +151,14 @@ function runMigrations() {
       .run(scheduleSnapKey, new Date().toISOString());
   }
 
-  // Jobs invoiced before freeze-on-invoice existed may have no costing row at all.
-  // The costing GET for an archived job returns the stored row verbatim — but with no
-  // row it falls back to a live compute, so a "locked" screen would quietly track the
-  // current default rate/multipliers. Stamp a stored snapshot ONCE (guarded by a
-  // settings flag) so every filed-away job reads its own frozen figures like any other
-  // invoiced job. Runs before the settings defaults are seeded, so a rowless legacy job
-  // freezes at rate 0 — exactly what its screen showed before the default-rate feature.
-  // New jobs always get a costing row at creation, so nothing new ever needs this.
+  // Old jobs invoiced before per-job rule ownership may have no costing row at all.
+  // Without a row, viewing one recomputes from live settings and would track a later
+  // rate/schedule change instead of staying put. Give every rowless archived job a stored
+  // row ONCE (guarded by a settings flag) — computeLiveCosting captures today's rate/rules
+  // onto the row (best available; the originals were never recorded), so from then on the
+  // job owns them. Any DB that has archived jobs already has its settings, so the captured
+  // rate is the current company rate, not 0. New jobs always get a costing row at creation,
+  // so nothing new ever needs this.
   const archivedCostingKey = 'archived_costing_backfill_at';
   const archivedCostingFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(archivedCostingKey);
   if (!archivedCostingFlag) {
@@ -170,13 +171,61 @@ function runMigrations() {
         persistCosting(computeLiveCosting(id, null));
         stamped++;
       } catch (err) {
-        logger.error({ err, jobcardId: id }, 'Migration: Failed to backfill frozen costing for archived job');
+        logger.error({ err, jobcardId: id }, 'Migration: Failed to backfill costing row for archived job');
       }
     }
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
       .run(archivedCostingKey, new Date().toISOString());
     if (stamped > 0) {
-      logger.info({ stamped }, 'Migration: Backfilled frozen costing rows for archived jobs');
+      logger.info({ stamped }, 'Migration: Backfilled costing rows for archived jobs');
+    }
+  }
+
+  // Per-job overtime-rule ownership. Overtime rules (schedule, holidays, timezone, base
+  // multipliers) used to be read live from settings on every costing compute, so changing
+  // them moved every existing job. Now each job owns its own captured copy — but existing
+  // jobs never recorded theirs. Stamp every costing row that hasn't captured its rules yet
+  // with TODAY's company rules as its own copy (the originals are unrecoverable — best
+  // available), so from then on the job owns them and a later settings change never moves
+  // it. This runs ONCE (guarded) and is idempotent (a row that already has rules is
+  // skipped). Every job created afterwards owns its rules from creation.
+  const otOwnershipKey = 'overtime_ownership_at';
+  const otOwnershipFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(otOwnershipKey);
+  if (!otOwnershipFlag) {
+    try {
+      const getS = (k) => {
+        const r = db.prepare('SELECT value FROM settings WHERE key = ?').get(k);
+        return r ? r.value : null;
+      };
+      const params = {
+        schedule: getS('labour_schedule'),
+        holidays: getS('labour_public_holidays'),
+        timezone: getS('timezone') || 'UTC',
+        ot1: Number(getS('labour_ot1_multiplier')) || 1.5,
+        ot2: Number(getS('labour_ot2_multiplier')) || 2,
+        hol: Number(getS('labour_holiday_multiplier')) || 2.5
+      };
+      const stampRules = db.prepare(
+        `UPDATE job_costings SET
+           labour_schedule = @schedule,
+           labour_public_holidays = @holidays,
+           labour_timezone = @timezone,
+           labour_base_ot1_multiplier = @ot1,
+           labour_base_ot2_multiplier = @ot2,
+           labour_base_holiday_multiplier = @hol
+         WHERE labour_schedule IS NULL`
+      ).run(params);
+      logger.info(
+        { stamped: stampRules.changes },
+        'Migration: Captured per-job overtime rules onto existing costing rows'
+      );
+      // Mark done only after the capture actually succeeded, so a failure retries on the
+      // next boot instead of leaving old rows on live settings. The UPDATE only touches
+      // un-captured rows, so a retry is a safe no-op for rows already stamped.
+      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
+        .run(otOwnershipKey, new Date().toISOString());
+    } catch (err) {
+      logger.error({ err }, 'Migration: Failed to capture per-job overtime rules');
     }
   }
 

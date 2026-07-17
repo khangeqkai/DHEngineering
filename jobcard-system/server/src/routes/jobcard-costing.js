@@ -2,12 +2,11 @@ const express = require('express');
 
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { jobCostingQueries, jobcardQueries, recordHistory } = require('../db/database');
+const { jobCostingQueries, recordHistory } = require('../db/database');
 const {
   computeLiveCosting,
   persistCosting,
-  buildCostingResponse,
-  buildFrozenResponse
+  buildCostingResponse
 } = require('../utils/costingCompute');
 
 const router = express.Router();
@@ -16,24 +15,11 @@ const router = express.Router();
 router.get('/:id/costing', authenticate, requireAdmin, (req, res) => {
   try {
     const jobId = req.params.id;
-    const job = jobcardQueries.getById.get(jobId);
-    const existing = jobCostingQueries.getByJobcard.get(jobId);
 
-    // A filed-away (invoiced) job is locked: return a frozen response so the screen
-    // shows the "locked" state and never looks editable. With a stored snapshot we
-    // return it verbatim (no recompute, so a later rate/schedule change never moves
-    // an already-billed total); a job invoiced with nothing costed has no row, so we
-    // hand back an all-zero response still flagged frozen rather than an editable one.
-    if (job && job.archived === 1) {
-      if (existing) return res.json(buildFrozenResponse(existing));
-      const computed = computeLiveCosting(jobId, null);
-      const response = buildCostingResponse(jobId, computed);
-      response.frozen = true;
-      return res.json(response);
-    }
-
-    // Open job: recompute live from logged time + current overtime settings. Read-only
-    // here (nothing is written); the stored snapshot is saved on Save and at invoicing.
+    // Every job — open or invoiced — owns its own overtime rules and rate, so recomputing
+    // on the spot from logged time + those captured rules always reproduces the billed
+    // number. There is nothing to lock or freeze; an invoiced job is edited behind an
+    // on-screen confirm, not blocked here.
     const computed = computeLiveCosting(jobId, null);
     res.json(buildCostingResponse(jobId, computed));
   } catch (err) {
@@ -46,16 +32,10 @@ router.get('/:id/costing', authenticate, requireAdmin, (req, res) => {
 router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
   try {
     const jobId = req.params.id;
-    const job = jobcardQueries.getById.get(jobId);
-
-    // Invoiced costing is frozen — refuse edits so the billed figures can't move.
-    if (job && job.archived === 1) {
-      return res.status(409).json({
-        error: 'This job is invoiced and filed away — its costing is locked.'
-      });
-    }
-
     const existing = jobCostingQueries.getByJobcard.get(jobId);
+
+    // An invoiced job is not blocked here: the screen asks the user to confirm before
+    // saving, and the edit simply recalculates from the job's own captured rules.
     const computed = computeLiveCosting(jobId, req.body);
     persistCosting(computed);
 

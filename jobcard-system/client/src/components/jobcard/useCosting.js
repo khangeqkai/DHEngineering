@@ -31,7 +31,7 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
   const [costingForm, setCostingForm] = useState(getDefaultCostingForm());
   const [savingCosting, setSavingCosting] = useState(false);
   // True when the pricing screen has hand edits that haven't been saved yet. Used to
-  // warn/save before invoicing, since invoicing freezes from the SAVED figures.
+  // warn/save before invoicing so unsaved edits aren't lost when the job is filed away.
   const [costingDirty, setCostingDirty] = useState(false);
 
   // Sync costingForm from costing data (from useOfflineJobcard)
@@ -65,8 +65,7 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
         materialsCost: offlineCosting.materialsCost || 0,
         materialsProfitPercent: offlineCosting.materialsProfitPercent ?? 100,
         subcontractorCost: offlineCosting.subcontractorCost || 0,
-        subcontractorProfitPercent: offlineCosting.subcontractorProfitPercent ?? 0,
-        frozen: offlineCosting.frozen || false
+        subcontractorProfitPercent: offlineCosting.subcontractorProfitPercent ?? 0
       });
     }
   }, [offlineCosting]);
@@ -147,8 +146,8 @@ export function useCosting(jobCardId, { costing: offlineCosting, updateCosting }
   }, [costingForm]);
 
   // Returns true when the costing is safely saved, false when the save failed.
-  // Callers that gate an irreversible step on the save (invoicing freezes these
-  // figures) rely on this to abort instead of locking in stale numbers.
+  // Callers that gate an irreversible step on the save (invoicing files the job away)
+  // rely on this to abort instead of proceeding with unsaved numbers.
   const handleSaveCosting = useCallback(async () => {
     if (!jobCardId) return true; // nothing to save (new card) — not a failure
 

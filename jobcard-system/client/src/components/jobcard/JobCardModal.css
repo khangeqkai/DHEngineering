@@ -2525,18 +2525,6 @@
   padding-right: 0.55rem;
 }
 
-/* Banner shown when an invoiced job's costing is frozen/locked */
-.costing-frozen-banner {
-  margin: var(--space-4) var(--space-5) 0;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid var(--border-color);
-  border-left: 3px solid var(--warning-color, #d97706);
-  border-radius: var(--radius-sm);
-  background: var(--surface-alt, var(--surface));
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-}
-
 /* ── Labour panel — base rate set once, tiers as a rate ladder ── */
 .labour-block {
   margin: var(--space-4) var(--space-5) var(--space-3);
@@ -2942,8 +2930,7 @@
     grid-column: 1 / -1;
     padding-bottom: 0;
   }
-  .labour-block,
-  .costing-frozen-banner {
+  .labour-block {
     margin-left: var(--space-3);
     margin-right: var(--space-3);
   }

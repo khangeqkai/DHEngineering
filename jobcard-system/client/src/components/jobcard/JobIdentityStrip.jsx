@@ -88,13 +88,12 @@ export default function JobIdentityStrip({
       return;
     }
     if (newStatus === 'INVOICED') {
-      // Invoicing freezes the costing from the SAVED figures. If the pricing screen
-      // has unsaved edits, warn — and if they go ahead, save those edits first so the
-      // frozen invoice reflects what's on screen instead of silently dropping them.
+      // Invoicing files the job away. If the pricing screen has unsaved edits, warn —
+      // and if they go ahead, save those edits first so they aren't silently dropped.
       const ok = await showConfirm?.({
         title: 'Mark as Invoiced',
         message: costingDirty
-          ? 'This will archive the job card and lock its costing. You have unsaved costing changes — they will be saved and billed. Continue?'
+          ? 'This will archive the job card. You have unsaved costing changes — they will be saved and billed. Continue?'
           : 'This will archive the job card. Continue?',
         confirmLabel: 'Archive',
         cancelLabel: 'Cancel',
@@ -104,8 +103,8 @@ export default function JobIdentityStrip({
       if (costingDirty && saveCosting) {
         const saved = await saveCosting();
         if (!saved) {
-          // Save already showed why it failed. Don't invoice: doing so would freeze
-          // the old figures instead of the edits the user just made.
+          // Save already showed why it failed. Don't invoice: doing so would file the
+          // job away without the edits the user just made.
           toast.error('Could not save the costing — invoicing cancelled.');
           return;
         }

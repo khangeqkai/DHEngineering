@@ -300,7 +300,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (onTimerChange) onTimerChange();
   }, [timer, reloadTimeEntries, refreshJobStatus, onTimerChange]);
 
-  const timeEntry = useTimeEntries(jobCardId, { ...apiTimeEntryOperations, showConfirm });
+  const timeEntry = useTimeEntries(jobCardId, {
+    ...apiTimeEntryOperations,
+    showConfirm,
+    isInvoiced: formHook.formData.status === 'INVOICED'
+  });
   const { resetTimeEntries } = timeEntry;
   const { resetCosting } = costingHook;
   const { resetTimer } = timer;
@@ -385,9 +389,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         isEdit,
         contactId
       });
-      // Invoicing freezes the costing from the saved figures — flush any unsaved
-      // pricing edits first so this invoice bills what's on screen, not a stale row.
-      // If that save fails, abort: invoicing anyway would lock in the old numbers.
+      // Flush any unsaved pricing edits before invoicing so they aren't lost when the job
+      // is filed away. If that save fails, abort rather than invoicing with lost edits.
       if (isEdit && formHook.formData.status === 'INVOICED' && costingHook.costingDirty) {
         const saved = await costingHook.handleSaveCosting();
         if (!saved) return; // save already reported why it failed
@@ -435,6 +438,22 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const isOverdue = formHook.formData.dueDate?.trim() &&
     new Date(formHook.formData.dueDate + 'T00:00:00') < today &&
     !['DONE', 'INVOICED'].includes(formHook.formData.status);
+
+  // Editing an invoiced job's pricing isn't blocked — it just asks first, then saves and
+  // recalculates from the job's own captured rules.
+  const saveCostingWithConfirm = async () => {
+    if (formHook.formData.status === 'INVOICED') {
+      const ok = await showConfirm({
+        title: 'Change an invoiced job?',
+        message: 'This job has been invoiced. Changing its pricing will update the final total. Are you sure you want to continue?',
+        confirmLabel: 'Yes, change it',
+        cancelLabel: 'Cancel',
+        confirmVariant: 'danger'
+      });
+      if (!ok) return false;
+    }
+    return costingHook.handleSaveCosting();
+  };
   const headerStrip = (
     <JobIdentityStrip
       isEdit={isEdit}
@@ -556,7 +575,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   resetTierMultiplier={costingHook.resetTierMultiplier}
                   useDefaultRate={costingHook.useDefaultRate}
                   calculateCostingTotals={costingHook.calculateCostingTotals}
-                  handleSaveCosting={costingHook.handleSaveCosting}
+                  handleSaveCosting={saveCostingWithConfirm}
                   savingCosting={costingHook.savingCosting}
                 />
               )}

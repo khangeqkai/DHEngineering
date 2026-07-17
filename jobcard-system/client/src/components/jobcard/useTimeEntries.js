@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { getDefaultTimeEntryForm, isoToLocalInput, localInputToIso } from './mappers';
 
-export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, showConfirm }) {
+export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, showConfirm, isInvoiced = false }) {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
   const [editingTimeEntryId, setEditingTimeEntryId] = useState(null);
   const [timeEntryForm, setTimeEntryForm] = useState(getDefaultTimeEntryForm());
@@ -90,6 +90,19 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       }
     }
 
+    // Editing recorded time on an invoiced job isn't blocked, but it changes the job's
+    // final total — so ask first, then save and let the total recalculate.
+    if (isInvoiced) {
+      const ok = await showConfirm({
+        title: 'Change an invoiced job?',
+        message: "This job has been invoiced. Changing its recorded time will update the job's final total. Are you sure you want to continue?",
+        confirmLabel: 'Yes, change it',
+        cancelLabel: 'Cancel',
+        confirmVariant: 'danger'
+      });
+      if (!ok) return;
+    }
+
     try {
       const entryData = {
         ...timeEntryForm,
@@ -110,7 +123,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     } catch (err) {
       toast.error(err.message || 'Failed to save time entry');
     }
-  }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry]);
+  }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry, isInvoiced, showConfirm]);
 
   const handleDeleteTimeEntry = useCallback(async (entry) => {
     if (!jobCardId) return;

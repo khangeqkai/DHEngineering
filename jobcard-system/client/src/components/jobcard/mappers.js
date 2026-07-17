@@ -150,9 +150,7 @@ export function getDefaultCostingForm() {
     materialsCost: 0,
     materialsProfitPercent: 100,
     subcontractorCost: 0,
-    subcontractorProfitPercent: 0,
-    // True when the job is invoiced — costing is locked/frozen and can't be saved.
-    frozen: false
+    subcontractorProfitPercent: 0
   };
 }
 
@@ -232,7 +230,6 @@ export function mapCostingResponseToData(costingRes) {
     materialsCost: costingRes.materialsCost || 0,
     materialsProfitPercent: costingRes.materialsProfitPercent ?? 100,
     subcontractorCost: costingRes.subcontractorCost || 0,
-    subcontractorProfitPercent: costingRes.subcontractorProfitPercent ?? 0,
-    frozen: costingRes.frozen || false
+    subcontractorProfitPercent: costingRes.subcontractorProfitPercent ?? 0
   };
 }

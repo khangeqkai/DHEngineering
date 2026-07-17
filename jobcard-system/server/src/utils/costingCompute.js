@@ -1,10 +1,9 @@
-// Shared costing computation. Turns a job's logged time + the current overtime
-// settings + the submitted (or stored) form into the full set of costing values.
-// Used by the costing GET/PUT routes and by the invoice-time freeze so the numbers
-// are worked out in exactly one place.
+// Shared costing computation. Turns a job's logged time + the job's own captured
+// overtime rules + the submitted (or stored) form into the full set of costing values.
+// Used by the costing GET/PUT routes so the numbers are worked out in exactly one place.
 
 const { v4: uuidv4 } = require('uuid');
-const { jobCostingQueries, timeEntryQueries, getSettings, recordHistory } = require('../db/database');
+const { jobCostingQueries, timeEntryQueries, getSettings } = require('../db/database');
 const { splitHours } = require('./overtimeSplit');
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
@@ -51,17 +50,40 @@ function readOtSettings() {
   };
 }
 
-// Compute all costing values for an OPEN job from live settings + logged time.
-// `incoming` is the submitted form (PUT); pass null to recompute purely from the
-// stored row (invoice-time freeze), keeping the admin's saved rate/overrides.
+// Compute all costing values for a job from its OWN captured overtime rules + logged
+// time. `incoming` is the submitted form (PUT); pass null to recompute purely from the
+// stored row, keeping the admin's saved rate/overrides.
+//
+// The overtime rules (schedule, holidays, timezone, base multipliers) are read from the
+// job's own stored copy — captured once when the job was created and never moved by a
+// later change to the company settings, exactly how labour_rate already works. Live
+// settings are used only as the fallback for a job that has no captured copy yet (a
+// brand-new job on its first compute, or an old pre-feature row), and that first compute
+// writes the captured copy into the row, so from then on the job owns its rules.
 function computeLiveCosting(jobId, incoming) {
   const existing = jobCostingQueries.getByJobcard.get(jobId) || null;
   const src = incoming || {};
   const hasIncoming = !!incoming;
 
   const ot = readOtSettings();
+  // This job's own overtime rules: its captured copy when it has one, else live settings.
+  // Never taken from the submitted form — the client can't change a job's rules, only its
+  // rate/overrides — so the rules stay write-once from creation.
+  const baseline = {
+    schedule: existing && existing.labour_schedule
+      ? parseSchedule(existing.labour_schedule) : ot.schedule,
+    holidays: existing && existing.labour_public_holidays
+      ? parseHolidays(existing.labour_public_holidays) : ot.holidays,
+    timezone: (existing && existing.labour_timezone) || ot.timezone,
+    ot1Mult: existing && existing.labour_base_ot1_multiplier != null
+      ? num(existing.labour_base_ot1_multiplier, ot.ot1Mult) : ot.ot1Mult,
+    ot2Mult: existing && existing.labour_base_ot2_multiplier != null
+      ? num(existing.labour_base_ot2_multiplier, ot.ot2Mult) : ot.ot2Mult,
+    holidayMult: existing && existing.labour_base_holiday_multiplier != null
+      ? num(existing.labour_base_holiday_multiplier, ot.holidayMult) : ot.holidayMult
+  };
   const entries = timeEntryQueries.getCompletedByJobcard.all(jobId);
-  const split = splitHours(entries, ot);
+  const split = splitHours(entries, baseline);
 
   const normalCalc = round3(split.normalHours);
   const ot1Calc = round3(split.ot1Hours);
@@ -97,13 +119,12 @@ function computeLiveCosting(jobId, incoming) {
   const holidayOverride = pickOverride('labourHolidayOverride', 'labour_holiday_override');
 
   // Per-job overtime multipliers — same override pattern as the hours: NULL means
-  // "follow the company setting", a number is this job's own multiplier. The job's
-  // effective multiplier is what gets stored in labour_*_multiplier, so the
-  // invoice-time freeze keeps billing at exactly the multiplier that was charged.
+  // "follow this job's own captured baseline", a number is a hand-typed deviation. The
+  // effective multiplier is what gets stored in labour_*_multiplier and charged.
   const ot1MultOverride = pickOverride('labourOt1MultiplierOverride', 'labour_ot1_multiplier_override', 1);
   const ot2MultOverride = pickOverride('labourOt2MultiplierOverride', 'labour_ot2_multiplier_override', 1);
-  const effOt1Mult = ot1MultOverride == null ? ot.ot1Mult : ot1MultOverride;
-  const effOt2Mult = ot2MultOverride == null ? ot.ot2Mult : ot2MultOverride;
+  const effOt1Mult = ot1MultOverride == null ? baseline.ot1Mult : ot1MultOverride;
+  const effOt2Mult = ot2MultOverride == null ? baseline.ot2Mult : ot2MultOverride;
 
   // Per-job base hourly rate. A saved job owns its rate (stored in labour_rate); a job
   // that has never been costed yet has no row, so it falls back to the current company
@@ -119,7 +140,7 @@ function computeLiveCosting(jobId, incoming) {
   const normalTotal = effNormal * rate;
   const ot1Total = effOt1 * rate * effOt1Mult;
   const ot2Total = effOt2 * rate * effOt2Mult;
-  const holidayTotal = effHoliday * rate * ot.holidayMult;
+  const holidayTotal = effHoliday * rate * baseline.holidayMult;
 
   const specialHours = pickNum('labourSpecialHours', 'labour_special_hours', 0);
   const specialRate = pickNum('labourSpecialRate', 'labour_special_rate', 0);
@@ -154,9 +175,17 @@ function computeLiveCosting(jobId, incoming) {
     labour_holiday_total: holidayTotal,
     labour_ot1_multiplier: effOt1Mult,
     labour_ot2_multiplier: effOt2Mult,
-    labour_holiday_multiplier: ot.holidayMult,
+    labour_holiday_multiplier: baseline.holidayMult,
     labour_ot1_multiplier_override: ot1MultOverride,
     labour_ot2_multiplier_override: ot2MultOverride,
+    // The job's own captured overtime rules (write-once at creation). Storing them back
+    // every compute is a no-op once set — read-from-existing feeds the same values in.
+    labour_schedule: JSON.stringify(baseline.schedule),
+    labour_public_holidays: JSON.stringify(baseline.holidays),
+    labour_timezone: baseline.timezone,
+    labour_base_ot1_multiplier: baseline.ot1Mult,
+    labour_base_ot2_multiplier: baseline.ot2Mult,
+    labour_base_holiday_multiplier: baseline.holidayMult,
     labour_special_hours: specialHours,
     labour_special_rate: specialRate,
     labour_special_total: specialTotal,
@@ -173,11 +202,12 @@ function computeLiveCosting(jobId, incoming) {
     row,
     calc: { normalCalc, ot1Calc, ot2Calc, holidayCalc },
     effective: { effNormal, effOt1, effOt2, effHoliday },
-    // Effective multipliers drive the boxes; the *Calc values are the company
-    // settings shown as the "standard" reference under an overridden multiplier.
+    // Effective multipliers drive the boxes; the *Calc values are this job's own
+    // captured baseline, shown as the "standard" reference (what the job was created
+    // under) that an overridden multiplier snaps back to.
     multipliers: {
-      ot1: effOt1Mult, ot2: effOt2Mult, holiday: ot.holidayMult,
-      ot1Calc: ot.ot1Mult, ot2Calc: ot.ot2Mult
+      ot1: effOt1Mult, ot2: effOt2Mult, holiday: baseline.holidayMult,
+      ot1Calc: baseline.ot1Mult, ot2Calc: baseline.ot2Mult
     },
     defaultRate: ot.defaultRate
   };
@@ -234,93 +264,12 @@ function buildCostingResponse(jobId, computed) {
     subcontractorCost: row.subcontractor_cost,
     subcontractorProfitPercent: row.subcontractor_profit_percent,
     subcontractorTotal: row.subcontractor_total,
-    grandTotal: row.grand_total,
-    frozen: false
+    grandTotal: row.grand_total
   };
-}
-
-// An invoiced (archived) job returns its stored snapshot verbatim — no recompute —
-// so a later rate/schedule change never moves an already-billed total.
-function buildFrozenResponse(c) {
-  const eff = (hours, override) => (override == null ? hours : override);
-  return {
-    id: c.id,
-    jobcardId: c.jobcard_id,
-    labourHours: eff(c.labour_hours, c.labour_hours_override),
-    labourHoursCalculated: c.labour_hours,
-    labourHoursOverride: c.labour_hours_override,
-    labourRate: c.labour_rate,
-    // Frozen job — the "use default" convenience never applies (inputs are locked), so
-    // the reference just mirrors the billed rate.
-    labourDefaultRate: c.labour_rate,
-    labourTotal: c.labour_total,
-
-    labourOt1Hours: eff(c.labour_ot1_hours, c.labour_ot1_override),
-    labourOt1HoursCalculated: c.labour_ot1_hours,
-    labourOt1Override: c.labour_ot1_override,
-    labourOt1Total: c.labour_ot1_total,
-    // Frozen job — the multiplier is locked at what was billed, so the "standard"
-    // reference just mirrors it and no override marker shows.
-    labourOt1Multiplier: num(c.labour_ot1_multiplier, DEFAULT_MULT.ot1),
-    labourOt1MultiplierCalculated: num(c.labour_ot1_multiplier, DEFAULT_MULT.ot1),
-    labourOt1MultiplierOverride: null,
-
-    labourOt2Hours: eff(c.labour_ot2_hours, c.labour_ot2_override),
-    labourOt2HoursCalculated: c.labour_ot2_hours,
-    labourOt2Override: c.labour_ot2_override,
-    labourOt2Total: c.labour_ot2_total,
-    labourOt2Multiplier: num(c.labour_ot2_multiplier, DEFAULT_MULT.ot2),
-    labourOt2MultiplierCalculated: num(c.labour_ot2_multiplier, DEFAULT_MULT.ot2),
-    labourOt2MultiplierOverride: null,
-
-    labourHolidayHours: eff(c.labour_holiday_hours, c.labour_holiday_override),
-    labourHolidayHoursCalculated: c.labour_holiday_hours,
-    labourHolidayOverride: c.labour_holiday_override,
-    labourHolidayTotal: c.labour_holiday_total,
-    labourHolidayMultiplier: num(c.labour_holiday_multiplier, DEFAULT_MULT.holiday),
-
-    labourSpecialHours: c.labour_special_hours,
-    labourSpecialRate: c.labour_special_rate,
-    labourSpecialTotal: c.labour_special_total,
-    materialsCost: c.materials_cost,
-    materialsProfitPercent: c.materials_profit_percent,
-    materialsTotal: c.materials_total,
-    subcontractorCost: c.subcontractor_cost,
-    subcontractorProfitPercent: c.subcontractor_profit_percent,
-    subcontractorTotal: c.subcontractor_total,
-    grandTotal: c.grand_total,
-    frozen: true
-  };
-}
-
-// Snapshot the costing at invoice time so it stays frozen at the billed rates.
-// The snapshot is ALWAYS written — even an all-zero one — so an archived job always
-// reads stored figures and can never fall back to a live compute that would track a
-// later settings change. The audit entry is only recorded when there was actually
-// something to freeze (an existing row or logged hours), keeping the trail free of
-// zero-to-zero noise. `user` ({ userId, userName }) is the admin doing the invoicing —
-// the frozen figure is written to the audit trail so the exact billed total is on record.
-function freezeCostingOnInvoice(jobId, user = {}) {
-  const existing = jobCostingQueries.getByJobcard.get(jobId);
-  const computed = computeLiveCosting(jobId, null);
-  persistCosting(computed);
-  const c = computed.calc;
-  const hasHours = c.normalCalc || c.ot1Calc || c.ot2Calc || c.holidayCalc;
-  if (existing || hasHours) {
-    const from = existing ? (Number(existing.grand_total) || 0) : 0;
-    const to = Number(computed.row.grand_total) || 0;
-    recordHistory(
-      'jobcard', jobId, 'freeze_costing',
-      user.userId || null, user.userName || 'system',
-      { grandTotal: { from, to } }, null
-    );
-  }
 }
 
 module.exports = {
   computeLiveCosting,
   persistCosting,
-  buildCostingResponse,
-  buildFrozenResponse,
-  freezeCostingOnInvoice
+  buildCostingResponse
 };
