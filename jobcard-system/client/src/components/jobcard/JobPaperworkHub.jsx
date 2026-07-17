@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useId, forwardRef, useImperat
 import { createPortal } from 'react-dom';
 import {
   FolderOpen, Upload, Camera, X, ArrowLeft, Check, Minus, Printer, Save,
-  FileStack, Eye
+  FileStack, Eye, ChevronDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCamera } from './useCamera';
@@ -71,6 +71,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarni
   const [attachTarget, setAttachTarget] = useState(null); // { itemId, itemNumber, category }
   const [selected, setSelected] = useState(() => new Set());
   const [cardTicked, setCardTicked] = useState(true);
+  const [pickMenuOpen, setPickMenuOpen] = useState(false); // per-part "Select all" menu (only when 2+ parts)
   const [cardPreview, setCardPreview] = useState(null); // generated job-card HTML, shown in the viewer
   const [cardPreviewLoading, setCardPreviewLoading] = useState(false);
   const seenRef = useRef(new Set());
@@ -192,12 +193,28 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarni
   const clearAll = () => { setCardTicked(false); setSelected(new Set()); };
   const toggleMaster = () => { if (masterState === 'all') clearAll(); else selectAll(); };
 
+  // Every file (across all folders) tied to one part, for the per-part "Select all
+  // Part N" option when a job has more than one part.
+  const partFileKeys = useCallback((partId) => {
+    const keys = [];
+    for (const cat of ORDER) {
+      for (const f of files.filesByCategory[cat] || []) {
+        if (f.itemId === partId) keys.push(keyOf(cat, f.name));
+      }
+    }
+    return keys;
+  }, [files.filesByCategory]);
+
+  // Pick exactly one part's files (plus the job card, which the packet leads with).
+  const selectPart = (partId) => { setCardTicked(true); setSelected(new Set(partFileKeys(partId))); };
+
   const closeAll = useCallback(() => {
     camera.stopCamera();
     files.reset();
     seenRef.current = new Set();
     setSelected(new Set());
     setCardTicked(true);
+    setPickMenuOpen(false);
     setCardPreview(null);
     setView('hub');
     setCameraCategory(null);
@@ -213,6 +230,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarni
       // Only the top-most dialog reacts to global keys.
       if (!isTopModal(modalId)) return;
       if (e.key === 'Escape') {
+        if (pickMenuOpen) { setPickMenuOpen(false); return; }
         if (cardPreview) { setCardPreview(null); return; }
         if (files.viewerUrl) { files.closeViewer(); return; }
         if (files.lightboxPhoto) { files.closeLightbox(); return; }
@@ -239,7 +257,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarni
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, view, files, camera, closeAll, cardPreview, modalId]);
+  }, [open, view, files, camera, closeAll, cardPreview, pickMenuOpen, modalId]);
 
   // Move focus into the panel when it opens so Tab is trapped from the first press.
   useEffect(() => {
@@ -445,11 +463,66 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarni
                   <span className="hub-toolbar-count">
                     <strong>{tickedCount}</strong> of {totalSelectable} documents selected
                   </span>
-                  <button type="button" className="hub-selectall" onClick={toggleMaster}>
-                    {masterState === 'all'
-                      ? <><X size={15} /> Clear all</>
-                      : <><Check size={15} /> Select all</>}
-                  </button>
+                  {assignableParts.length >= 2 ? (
+                    // More than one part: "Select all" opens a menu so you can pick
+                    // everything, or just one part's files, or clear it all.
+                    <div className="hub-selectall-wrap">
+                      <button
+                        type="button"
+                        className="hub-selectall"
+                        onClick={() => setPickMenuOpen(o => !o)}
+                        aria-haspopup="true"
+                        aria-expanded={pickMenuOpen}
+                      >
+                        <Check size={15} /> Select
+                        <ChevronDown size={14} />
+                      </button>
+                      {pickMenuOpen && (
+                        <>
+                          <button
+                            type="button"
+                            className="hub-pickmenu-backdrop"
+                            aria-hidden="true"
+                            tabIndex={-1}
+                            onClick={() => setPickMenuOpen(false)}
+                          />
+                          <div className="hub-pickmenu" role="menu">
+                            <button type="button" role="menuitem" className="hub-pickmenu-item" onClick={() => { selectAll(); setPickMenuOpen(false); }}>
+                              <span>Everything</span>
+                              <span className="hub-pickmenu-count">{totalSelectable}</span>
+                            </button>
+                            <div className="hub-pickmenu-sep" />
+                            {assignableParts.map(p => {
+                              const n = partFileKeys(p.id).length;
+                              return (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  role="menuitem"
+                                  className="hub-pickmenu-item"
+                                  disabled={n === 0}
+                                  onClick={() => { selectPart(p.id); setPickMenuOpen(false); }}
+                                >
+                                  <span>All of Part {p.itemNumber}</span>
+                                  <span className="hub-pickmenu-count">{n === 0 ? 'none' : n}</span>
+                                </button>
+                              );
+                            })}
+                            <div className="hub-pickmenu-sep" />
+                            <button type="button" role="menuitem" className="hub-pickmenu-item" onClick={() => { clearAll(); setPickMenuOpen(false); }}>
+                              <span>Clear all</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <button type="button" className="hub-selectall" onClick={toggleMaster}>
+                      {masterState === 'all'
+                        ? <><X size={15} /> Clear all</>
+                        : <><Check size={15} /> Select all</>}
+                    </button>
+                  )}
                 </div>
 
                 <div className="hub-body">
