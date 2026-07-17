@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
 import { capitalizeFirst } from '../../../utils/formatters';
 import { ACCEPT_ATTR } from '../useJobFiles';
@@ -93,6 +93,32 @@ export default function ItemsTab({
     }
   };
 
+  // The add/edit time-entry form renders at the top of the Line Items section, but its
+  // Edit buttons live down inside each line item's expanded list — so opening it can drop
+  // the form above the current scroll position, out of sight. Bring it into view when it opens.
+  const timeEntryFormRef = useRef(null);
+  useEffect(() => {
+    if (showTimeEntryForm && timeEntryFormRef.current) {
+      timeEntryFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [showTimeEntryForm, editingTimeEntryId]);
+
+  // Adding a part appends its card to the bottom of the list, which can be below the fold
+  // on a long job (the Add button sits at the top). Scroll the new card into view, but only
+  // when the user actually clicked Add — not when a job's saved parts first load in.
+  const listRef = useRef(null);
+  const scrollToNewItemRef = useRef(false);
+  const handleAddLineItem = () => {
+    scrollToNewItemRef.current = true;
+    addLineItem();
+  };
+  useEffect(() => {
+    if (scrollToNewItemRef.current && listRef.current) {
+      scrollToNewItemRef.current = false;
+      listRef.current.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [lineItems.length]);
+
   return (
     <div className="modal-form-grid">
       {onAttachItemFile && (
@@ -108,14 +134,14 @@ export default function ItemsTab({
         <div className="form-section-header">
           <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
           {!fieldsLocked && (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={addLineItem}>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddLineItem}>
               <Plus size={14} /> Add Item
             </button>
           )}
         </div>
 
         {canManage && showTimeEntryForm && timeEntryForm && (
-          <div className="time-entry-form costing-entry-form">
+          <div className="time-entry-form costing-entry-form" ref={timeEntryFormRef}>
             <div className="form-section-header">
               <h3 className="form-section-title">
                 {editingTimeEntryId ? 'Edit Time Entry' : 'New Time Entry'}
@@ -257,7 +283,7 @@ export default function ItemsTab({
           </div>
         )}
 
-        <div className="line-items-list">
+        <div className="line-items-list" ref={listRef}>
           {lineItems.map(item => {
             const itemEntries = entriesForItem(timeEntries, item.itemNumber);
             // A saved value whose option was archived isn't in the active list — flag it
