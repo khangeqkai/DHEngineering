@@ -1,9 +1,8 @@
-import { Trash2, ArchiveRestore, Check } from 'lucide-react';
+import { Trash2, ArchiveRestore, Check, AlertTriangle, Paperclip } from 'lucide-react';
 import { getInitials, getAvatarColor } from '../utils/initials';
 import { describeAttachmentGaps, attachmentSeverity } from '../utils/attachmentWarnings';
 import {
   STATUS_LABELS,
-  PRIORITY_COLORS,
   PRIORITY_LABELS,
   getStatusBadgeClass
 } from './JobCardList.constants';
@@ -218,13 +217,16 @@ export function getJobCardColumns({
     {
       id: 'priority',
       label: 'Priority',
-      renderCell: (card) => (
-        <td key="priority">
-          <span style={{ color: PRIORITY_COLORS[card.priority] || PRIORITY_COLORS.NONE, fontWeight: 500 }}>
-            {PRIORITY_LABELS[card.priority] || 'None'}
-          </span>
-        </td>
-      )
+      renderCell: (card) => {
+        const priority = card.priority || 'NONE';
+        return (
+          <td key="priority">
+            <span className={`badge priority-${priority.toLowerCase()}`}>
+              {PRIORITY_LABELS[card.priority] || 'None'}
+            </span>
+          </td>
+        );
+      }
     },
     {
       id: 'attachments',
@@ -261,7 +263,10 @@ export function getJobCardColumns({
               tabIndex={0}
               aria-label={`${title}: ${gaps.join(', ')}`}
             >
-              ⚠
+              {/* Shape carries the meaning, not just colour: an angular warning
+                 triangle for a blocking gap vs a paperclip for a not-yet-attached
+                 reminder, so the two read apart for colour-blind users too. */}
+              {blocking ? <AlertTriangle size={12} /> : <Paperclip size={12} />}
               <span className="mf-tooltip" role="tooltip">
                 <span className="mf-tooltip-title">{title}</span>
                 {gaps.map((g, i) => (

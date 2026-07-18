@@ -1,12 +1,12 @@
-# Graph Report - DHEngineering  (2026-07-17)
+# Graph Report - DHEngineering  (2026-07-18)
 
 ## Corpus Check
-- 213 files · ~1,490,931 words
+- 215 files · ~1,491,204 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 917 nodes · 1498 edges · 48 communities detected
-- Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 125 edges (avg confidence: 0.8)
+- 923 nodes · 1509 edges · 48 communities detected
+- Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 127 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -67,9 +67,9 @@
 5. `formatDate()` - 15 edges
 6. `sanitizeFolderName()` - 14 edges
 7. `useTags()` - 13 edges
-8. `HardwareService` - 13 edges
-9. `JobCardModal()` - 12 edges
-10. `capitalizeFirst()` - 12 edges
+8. `capitalizeFirst()` - 13 edges
+9. `HardwareService` - 13 edges
+10. `JobCardModal()` - 12 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `treatmentsToText()` --calls--> `parseTreatments()`  [INFERRED]
@@ -78,8 +78,8 @@
   server/src/db/init.js → client/src/hooks/useLabourRates.js
 - `scheduleDayToWholeHours()` --calls--> `hourLabel()`  [INFERRED]
   server/src/db/init.js → client/src/hooks/useLabourRates.js
-- `start()` --calls--> `initializeDatabase()`  [INFERRED]
-  server/index.js → server/src/db/init.js
+- `start()` --calls--> `verifyPdfEngine()`  [INFERRED]
+  server/index.js → server/src/utils/pdfEngine.js
 - `initializeDatabase()` --calls--> `recordHistory()`  [INFERRED]
   server/src/db/init.js → server/src/db/helpers.js
 
@@ -94,20 +94,20 @@ Cohesion: 0.08
 Nodes (55): buildStorageFilename(), listCategoryFileNames(), listFolderFiles(), nextQaFormNumber(), partFileCode(), resolveCategoryFolder(), resolveCustomerPropertyPath(), resolveJobFilesPath() (+47 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.06
-Nodes (26): CreatableTagSelect(), ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), useConfirmDialog(), invalidateTagCache(), useTags() (+18 more)
+Cohesion: 0.05
+Nodes (23): CalendarPicker(), toDateString(), isTopModal(), pushModal(), removeModal(), JobFilesMenu(), JobPaperworkHub(), LineItemFilesMenu() (+15 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.06
-Nodes (30): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), UserManagement() (+22 more)
+Nodes (29): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), AuthProvider() (+21 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.06
-Nodes (22): CalendarPicker(), toDateString(), isTopModal(), pushModal(), removeModal(), JobFilesMenu(), JobPaperworkHub(), LineItemFilesMenu() (+14 more)
+Nodes (25): CreatableTagSelect(), ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), UserManagement(), useConfirmDialog(), invalidateTagCache() (+17 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.07
-Nodes (22): getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), fmtDate(), fmtDateShort(), SearchPage(), StatusBadge() (+14 more)
+Cohesion: 0.06
+Nodes (25): formatAction(), getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), fmtDate(), fmtDateShort(), PriorityBadge() (+17 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.07
@@ -118,8 +118,8 @@ Cohesion: 0.08
 Nodes (29): bumpJobNumber(), getSettings(), peekNextJobNumber(), recordHistory(), updateSettings(), autoAssignWorker(), checkCriticalInspection(), flagToBool() (+21 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.09
-Nodes (27): LabourRatesSettings(), checkInterruptedRestore(), ensureBuiltInStandardLevel(), initializeDatabase(), runMigrations(), scheduleDayToWholeHours(), blocksFromGrid(), emptySchedule() (+19 more)
+Cohesion: 0.08
+Nodes (28): LabourRatesSettings(), checkInterruptedRestore(), ensureBuiltInStandardLevel(), initializeDatabase(), runMigrations(), scheduleDayToWholeHours(), blocksFromGrid(), emptySchedule() (+20 more)
 
 ### Community 9 - "Community 9"
 Cohesion: 0.21
@@ -130,12 +130,12 @@ Cohesion: 0.22
 Nodes (21): buildGrandfatheredPairs(), buildGrandfatheredValues(), getSupplierQueries(), getTagQueries(), getTagValues(), handleValidationErrors(), optionalBoolean(), optionalEmail() (+13 more)
 
 ### Community 11 - "Community 11"
-Cohesion: 0.24
-Nodes (12): start(), discardBrowser(), getBrowser(), inElectron(), launchBrowser(), probeBrowser(), renderHtmlToPdf(), renderWithElectron() (+4 more)
-
-### Community 12 - "Community 12"
 Cohesion: 0.23
 Nodes (11): getAssigneesForJobcards(), formatActivity(), formatContact(), formatJob(), formatSupplier(), formatTimeEntry(), searchActivity(), searchAll() (+3 more)
+
+### Community 12 - "Community 12"
+Cohesion: 0.31
+Nodes (11): discardBrowser(), getBrowser(), inElectron(), launchBrowser(), probeBrowser(), renderHtmlToPdf(), renderWithElectron(), renderWithPuppeteer() (+3 more)
 
 ### Community 13 - "Community 13"
 Cohesion: 0.19
@@ -170,16 +170,16 @@ Cohesion: 0.39
 Nodes (8): buildClientIfNeeded(), cmdLan(), cmdSeed(), confirm(), findLanIp(), newestMtime(), runSetup(), waitForHealth()
 
 ### Community 21 - "Community 21"
-Cohesion: 0.22
-Nodes (1): base64ToBytes()
-
-### Community 22 - "Community 22"
 Cohesion: 0.31
 Nodes (5): buildMenu(), errorPage(), escapeHtml(), showMain(), showSetup()
 
-### Community 23 - "Community 23"
+### Community 22 - "Community 22"
 Cohesion: 0.52
 Nodes (5): checkLoginRateLimit(), clearLoginFailures(), cooldownMsForCount(), normalizeEmpty(), recordLoginFailure()
+
+### Community 23 - "Community 23"
+Cohesion: 0.38
+Nodes (4): CostingTab(), formatElapsed(), LiveElapsed(), money()
 
 ### Community 25 - "Community 25"
 Cohesion: 0.6
@@ -284,8 +284,6 @@ Nodes (2): formatNum(), ScrapStat()
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 15`** (11 nodes): `Waves.jsx`, `Grad`, `.constructor()`, `.dot2()`, `Noise`, `.constructor()`, `.fade()`, `.lerp()`, `.perlin2()`, `.seed()`, `Waves()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 21`** (9 nodes): `usePacketPrint.js`, `api.js`, `downloadBytes()`, `isDesktop()`, `printHtmlInIframe()`, `printPdfInIframe()`, `reportSkipped()`, `showPdfInBrowser()`, `base64ToBytes()`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 27`** (5 nodes): `auth.js`, `authenticate()`, `isManagement()`, `requireRole()`, `auth.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 28`** (5 nodes): `maintenance.js`, `isMaintenance()`, `maintenanceGuard()`, `setMaintenance()`, `maintenance.js`
@@ -320,10 +318,8 @@ Nodes (2): formatNum(), ScrapStat()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ApiService` connect `Community 0` to `Community 21`?**
+- **Why does `ApiService` connect `Community 0` to `Community 2`?**
   _High betweenness centrality (0.103) - this node is a cross-community bridge._
-- **Why does `usePacketPrint()` connect `Community 4` to `Community 21`?**
-  _High betweenness centrality (0.091) - this node is a cross-community bridge._
 - **Are the 13 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 13 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 9 inferred relationships involving `isWithinBase()` (e.g. with `resolveJobFolder()` and `resolveCategoryFolder()`) actually correct?**
@@ -334,3 +330,5 @@ _Questions this graph is uniquely positioned to answer:_
   _`formatDate()` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.03 - nodes in this community are weakly interconnected._
+- **Should `Community 1` be split into smaller, more focused modules?**
+  _Cohesion score 0.08 - nodes in this community are weakly interconnected._

@@ -18,13 +18,6 @@ export const STATUS_LABELS = {
   INVOICED: 'Invoiced'
 };
 
-export const PRIORITY_COLORS = {
-  NONE: 'var(--text-secondary)',
-  LOW: 'var(--badge-progress-text)',
-  MEDIUM: 'var(--badge-pending-text)',
-  HIGH: 'var(--badge-cancelled-text)'
-};
-
 export const PRIORITY_LABELS = { NONE: 'None', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' };
 
 export const PAGE_SIZE = 20;

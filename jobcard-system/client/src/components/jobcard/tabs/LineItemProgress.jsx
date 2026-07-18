@@ -80,6 +80,7 @@ export default function LineItemProgress({
   entries = [],
   targetQty = null,
   canManage = false,
+  activeTimerId = null,
   onAdd,
   onEdit,
   onDelete,
@@ -100,23 +101,28 @@ export default function LineItemProgress({
     prevHasActive.current = progress.hasActive;
   }, [progress.hasActive]);
 
-  const cardProps = canManage
-    ? { onEdit, onDelete, onStop }
-    : { readOnly: true };
-
   const activeEntries = entries.filter(e => !e.endTime);
   const completedEntries = entries.filter(e => e.endTime);
   const showGroupLabels = activeEntries.length > 0 && completedEntries.length > 0;
 
-  const renderCard = (e) => (
-    <TimeEntryCard
-      key={e.id}
-      entry={e}
-      cumulativeAfter={progress.cumulativeMap.get(e.id)}
-      target={progress.hasTarget ? progress.target : null}
-      {...cardProps}
-    />
-  );
+  const renderCard = (e) => {
+    // The part's own Stop button already covers the current user's running timer, so
+    // don't show a second Stop for it here. Another worker's active run (e.g. one an
+    // admin started for them) keeps its Stop — that's the only place to stop it.
+    const ownActiveTimer = activeTimerId && e.id === activeTimerId;
+    const cardProps = canManage
+      ? { onEdit, onDelete, onStop: ownActiveTimer ? undefined : onStop }
+      : { readOnly: true };
+    return (
+      <TimeEntryCard
+        key={e.id}
+        entry={e}
+        cumulativeAfter={progress.cumulativeMap.get(e.id)}
+        target={progress.hasTarget ? progress.target : null}
+        {...cardProps}
+      />
+    );
+  };
 
   return (
     <details

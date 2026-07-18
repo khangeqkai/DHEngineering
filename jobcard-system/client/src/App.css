@@ -978,7 +978,6 @@ select.has-retired option.retired-option {
 .badge-pending::before {
   background: var(--warning-color);
   box-shadow: 0 0 6px var(--warning-color);
-  animation: pulse-glow 2s ease-in-out infinite;
 }
 
 .badge-in-progress {
@@ -990,7 +989,6 @@ select.has-retired option.retired-option {
 .badge-in-progress::before {
   background: var(--accent-info);
   box-shadow: 0 0 6px var(--accent-info);
-  animation: pulse-glow 1s ease-in-out infinite;
 }
 
 .badge-completed {
@@ -1057,25 +1055,28 @@ select.has-retired option.retired-option {
   --s-border: var(--status-invoiced-border); --s-dot: var(--status-invoiced-dot);
 }
 
-/* Priority badges */
-.badge-priority-high {
-  background: var(--accent-caution);
-  color: var(--text-inverse);
+/* Priority badges — same soft-tinted pill treatment as the status badges, so
+   priority and status read as one system in the list. Dot follows currentColor
+   (via .badge::before). Colours reuse the badge palette so dark mode is covered. */
+.priority-none {
+  background: rgba(100, 116, 139, 0.10);
+  color: var(--text-tertiary);
+  border-color: rgba(100, 116, 139, 0.22);
 }
-
-.badge-priority-high::before {
-  background: var(--text-inverse);
-  animation: pulse-glow 0.5s ease-in-out infinite;
+.priority-low {
+  background: var(--badge-progress-bg);
+  color: var(--badge-progress-text);
+  border-color: rgba(var(--info-rgb), 0.2);
 }
-
-.badge-critical {
-  background: var(--primary-accent);
-  color: #ffffff;
-  font-weight: 600;
+.priority-medium {
+  background: var(--badge-pending-bg);
+  color: var(--badge-pending-text);
+  border-color: rgba(var(--warning-rgb), 0.2);
 }
-
-.badge-critical::before {
-  background: #ffffff;
+.priority-high {
+  background: var(--badge-cancelled-bg);
+  color: var(--badge-cancelled-text);
+  border-color: rgba(var(--danger-rgb), 0.2);
 }
 
 @keyframes pulse-glow {

@@ -112,7 +112,9 @@
   /* Text — clean hierarchy */
   --text-primary: #0f1729;
   --text-secondary: #3b4563;
-  --text-tertiary: #7c869b;
+  /* Tertiary/meta text — darkened to clear WCAG AA (4.5:1) on both the white
+     surface and the faint-grey page background; was too light to read. */
+  --text-tertiary: #5f6a80;
   --text-inverse: #f8f9fb;
 
   /* Borders — subtle */
@@ -267,7 +269,9 @@
   /* Text */
   --text-primary: #eaecf2;
   --text-secondary: #94a3c0;
-  --text-tertiary: #5a6d8a;
+  /* Tertiary/meta text — lightened for readable contrast on the dark navy
+     surfaces (was too dim against the background). */
+  --text-tertiary: #7688a3;
   --text-inverse: #0b1e36;
 
   /* Borders */

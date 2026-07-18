@@ -11,6 +11,7 @@ import { ACTIVITY_FIELDS } from './searchFields';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { formatHistoryValue } from '../utils/formatters';
 import { statusToken } from './JobCardList.constants';
+import { actionColor } from '../utils/activityColors';
 
 const STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'DONE', 'INVOICED'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
@@ -29,19 +30,6 @@ const GROUP_TO_SCOPE = { jobs: 'jobs', contacts: 'people', suppliers: 'people', 
 const fmt = (s) => (s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 const fmtDate = (d) => formatDateTime(d) || '-';
 const fmtDateShort = (d) => formatDate(d) || '-';
-
-const ACTION_COLORS = {
-  create: 'var(--accent-ready)', update: 'var(--primary-accent)', delete: 'var(--accent-caution)',
-  archive: 'var(--accent-safety)', unarchive: 'var(--primary-accent)',
-  start_timer: 'var(--accent-ready)', stop_timer: 'var(--primary-accent)', discard_timer: 'var(--accent-caution)',
-  add_time_entry: 'var(--accent-ready)', update_time_entry: 'var(--primary-accent)', delete_time_entry: 'var(--accent-caution)',
-  add_note: 'var(--accent-ready)', delete_note: 'var(--accent-caution)',
-  update_costing: 'var(--primary-accent)',
-  update_qa_form: 'var(--primary-accent)', add_template: 'var(--accent-ready)', remove_template: 'var(--accent-caution)',
-  upload_file: 'var(--accent-ready)', add_document: 'var(--accent-ready)',
-  login: 'var(--accent-info)', login_failed: 'var(--accent-caution)',
-  data_export: 'var(--accent-info)', data_import: 'var(--accent-info)',
-};
 
 function Chips({ options, selected, onToggle, multi = false, formatLabel }) {
   return (
@@ -72,8 +60,14 @@ function StatusBadge({ status }) {
   return <span className={`badge status-${statusToken(status)}`}>{fmt(status)}</span>;
 }
 
+// Same soft-tinted pill as the job list, so status and priority read as one set here too.
+function PriorityBadge({ priority }) {
+  const p = priority || 'NONE';
+  return <span className={`badge priority-${p.toLowerCase()}`}>{fmt(p)}</span>;
+}
+
 function ActionBadge({ action }) {
-  return <span className="search-badge" style={{ color: ACTION_COLORS[action] || 'var(--text-secondary)', fontWeight: 600 }}>{fmt(action)}</span>;
+  return <span className="search-badge" style={{ color: actionColor(action), fontWeight: 600 }}>{fmt(action)}</span>;
 }
 
 function Pagination({ page, totalPages, total, onPageChange }) {
@@ -177,7 +171,7 @@ export default function SearchPage() {
     { key: 'jobNumber', label: 'Job #' },
     ...(canManage ? [{ key: 'companyName', label: 'Company', render: (v) => v || '-' }] : []),
     { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v} /> },
-    { key: 'priority', label: 'Priority', render: (v) => fmt(v) },
+    { key: 'priority', label: 'Priority', render: (v) => <PriorityBadge priority={v} /> },
     { key: 'dueDate', label: 'Due Date', render: (v) => fmtDateShort(v) },
     { key: 'description', label: 'Description', render: (v) => <span className="search-truncate">{v || '-'}</span> },
   ];

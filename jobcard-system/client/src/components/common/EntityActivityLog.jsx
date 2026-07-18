@@ -4,23 +4,13 @@ import { api } from '../../services/api';
 import { History } from 'lucide-react';
 import BottomSheet from './BottomSheet';
 import { formatHistoryValue, formatDateTime } from '../../utils/formatters';
-
-const ACTION_COLORS = {
-  create: 'var(--accent-ready)',
-  update: 'var(--primary-accent)',
-  delete: 'var(--accent-caution)',
-  login: 'var(--accent-info)',
-  archive: 'var(--accent-safety)',
-  unarchive: 'var(--accent-ready)',
-  add_photo: 'var(--accent-ready)',
-  remove_photo: 'var(--accent-caution)'
-};
+import { actionColor } from '../../utils/activityColors';
 
 const PAGE_SIZE = 50;
 
 function formatAction(action) {
   return (
-    <span className="eal-action" style={{ color: ACTION_COLORS[action] || 'var(--text-secondary)' }}>
+    <span className="eal-action" style={{ color: actionColor(action) }}>
       {action.replace(/_/g, ' ')}
     </span>
   );
