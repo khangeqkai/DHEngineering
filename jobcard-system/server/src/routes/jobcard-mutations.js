@@ -72,6 +72,14 @@ router.post('/', authenticate, requireManagement, ...validateJobcardEnums, async
     const id = `jobcard:${uuidv4()}`;
     const status = data.status || 'OPEN';
 
+    // A job is never born invoiced. Invoicing must file the job away (archive +
+    // invoiced date) and run the missing-files check, which only the update/status
+    // paths do — allowing it here would strand a job in the "invoiced but still
+    // open" limbo the status-lock exists to prevent.
+    if (status === 'INVOICED') {
+      return res.status(400).json({ error: 'A new job cannot be created as Invoiced. Save it first, then invoice it.' });
+    }
+
     // No level chosen means the plain "Standard" baseline (no special quality form),
     // which is stored as the label STANDARD with no level id.
     const qaLevelId = data.qaLevelId || null;

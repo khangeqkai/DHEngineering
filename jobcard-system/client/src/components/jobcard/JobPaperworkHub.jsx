@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useId, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  FolderOpen, Upload, Camera, X, ArrowLeft, Check, Minus, Printer, Save,
+  FolderOpen, Upload, Camera, X, ArrowLeft, Check, Printer, Save,
   FileStack, Eye, ChevronDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -9,6 +9,8 @@ import { useCamera } from './useCamera';
 import { useJobFiles, CATEGORY_LABELS, ACCEPT_ATTR } from './useJobFiles';
 import { usePacketPrint } from './usePacketPrint';
 import HubFileRow from './HubFileRow';
+import HubCameraView from './HubCameraView';
+import { ORDER, MAX_PACKET_FILES, keyOf, cleanQaName, fileKindLabel, PickCircle } from './paperworkHubHelpers';
 import { api } from '../../services/api';
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import './JobPaperworkHub.css';
@@ -17,50 +19,6 @@ import './JobPaperworkHub.css';
 // folders. View, upload (file or camera) per folder, print a single item, or weld
 // a ticked selection into one combined packet to print or save. Available to every
 // user (workers included), so it lives on a header button, not an admin-only tab.
-
-// Order the packet (and the folder sections) follow: job files, customer
-// property, then QA forms last.
-const ORDER = ['job-files', 'customer-property-files', 'qa-form-files'];
-// Most files that can go in one combined packet (matches the server's cap). The
-// job card itself rides separately and doesn't count toward this.
-const MAX_PACKET_FILES = 20;
-
-const keyOf = (category, filename) => `${category}::${filename}`;
-
-// Returned quality forms are stored with a hidden tag on the end of the name
-// (e.g. "Completed Form 1 [20260614153027].pdf") so the system can tell a
-// completed form apart from a blank template. Strip that trailing tag for
-// display so the list reads cleanly as "Completed Form 1.pdf". The real name is
-// still used everywhere else (selection, view, print).
-function cleanQaName(name) {
-  const dot = name.lastIndexOf('.');
-  const ext = dot > 0 ? name.slice(dot) : '';
-  const base = dot > 0 ? name.slice(0, dot) : name;
-  return `${base.replace(/ \[[^\]]+\](?: \(\d+\))?$/, '')}${ext}`;
-}
-
-// A friendly one-word "what kind of file" line shown under each name.
-function fileKindLabel(f) {
-  if ((f.mimeType || '').startsWith('image/')) return 'Image';
-  const dot = f.name.lastIndexOf('.');
-  const ext = dot > 0 ? f.name.slice(dot + 1).toUpperCase() : '';
-  if (ext === 'PDF') return 'PDF document';
-  return ext ? `${ext} file` : 'File';
-}
-
-// The one selection control used everywhere (rows, groups, the job card and the
-// master switch) so the whole panel reads consistently. `state` is a tri-state:
-// 'all' shows a tick, 'some' shows a dash (a group only partly picked), 'none' is
-// empty. A plain boolean works too for single items.
-function PickCircle({ state }) {
-  const s = state === true ? 'all' : state === false ? 'none' : state;
-  return (
-    <span className={`hub-check hub-check--${s}`} aria-hidden="true">
-      {s === 'all' && <Check size={13} strokeWidth={3} />}
-      {s === 'some' && <Minus size={13} strokeWidth={3} />}
-    </span>
-  );
-}
 
 function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarnings = null, parts = [] }, ref) {
   const [open, setOpen] = useState(false);
@@ -302,9 +260,26 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarni
   const leaveCamera = () => { camera.stopCamera(); setView('hub'); setCameraCategory(null); };
 
   // Re-tag a file to a part (or whole-job) then refresh the per-part missing-file hints.
+  // Re-tagging renames the file, so carry the row's current ticked/unticked state
+  // over to the new name — otherwise the renamed file looks brand-new and gets
+  // silently re-ticked, dragging a file the user deliberately excluded back into
+  // the packet.
   const handleAssign = async (cat, name, itemId) => {
-    const ok = await files.assignFile(cat, name, itemId);
-    if (ok) onFilesChanged?.();
+    const oldKey = keyOf(cat, name);
+    const wasTicked = selected.has(oldKey);
+    const newName = await files.assignFile(cat, name, itemId);
+    if (!newName) return;
+    const newKey = keyOf(cat, newName);
+    // Mark the new name as already-seen so the pre-tick effect leaves it alone,
+    // then set its tick to match what the old row had.
+    seenRef.current.add(newKey);
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.delete(oldKey);
+      if (wasTicked) next.add(newKey); else next.delete(newKey);
+      return next;
+    });
+    onFilesChanged?.();
   };
 
   // --- Print / save ---
@@ -550,43 +525,13 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarni
             )}
 
             {view === 'camera' && (
-              <div className="hub-body">
-                <div className="hub-camera-sub">Adding to {CATEGORY_LABELS[cameraCategory]}</div>
-                {camera.cameraError ? (
-                  <div className="hub-camera-error">
-                    <Camera size={32} />
-                    <p>{camera.cameraError}</p>
-                    <div className="hub-camera-error-actions">
-                      <button className="btn btn-secondary" onClick={leaveCamera}><ArrowLeft size={16} /> Go back</button>
-                      <button className="btn btn-primary" onClick={() => camera.startCamera()}>Try again</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="hub-camera">
-                    <div className="hub-video-wrap"><video ref={camera.videoRef} autoPlay playsInline className="hub-video" /></div>
-                    <div className="hub-camera-actions">
-                      <button className="btn btn-primary" onClick={camera.capturePhoto} disabled={!camera.cameraReady}>
-                        <Camera size={16} /> Capture
-                      </button>
-                      {camera.photos.length > 0 && (
-                        <button className="btn btn-success" onClick={saveCameraPhotos} disabled={files.savingPhotos}>
-                          <Check size={16} /> Save {camera.photos.length} to {CATEGORY_LABELS[cameraCategory]}
-                        </button>
-                      )}
-                    </div>
-                    {camera.photos.length > 0 && (
-                      <div className="hub-photo-strip">
-                        {camera.photos.map(p => (
-                          <div key={p.id} className="hub-photo-thumb">
-                            <img src={p.data} alt="Captured" />
-                            <button className="hub-photo-remove" onClick={() => camera.removePhoto(p.id)}><X size={12} /></button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <HubCameraView
+                camera={camera}
+                cameraCategory={cameraCategory}
+                savingPhotos={files.savingPhotos}
+                onBack={leaveCamera}
+                onSave={saveCameraPhotos}
+              />
             )}
           </div>
 

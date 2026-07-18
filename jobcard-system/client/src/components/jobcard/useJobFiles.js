@@ -195,19 +195,21 @@ export function useJobFiles(jobcardId) {
   }, [jobcardId, refreshCount]);
 
   // Re-tag a stored file so it belongs to a part (itemId) or to the whole job
-  // (null), then reload that folder so the row shows its new owner/name. Returns
-  // true on success so the caller can refresh the per-part missing-file hints.
+  // (null), then reload that folder so the row shows its new owner/name. Re-tagging
+  // renames the file on disk, so this returns the file's NEW name on success (or
+  // the unchanged name) — the caller uses it to keep any per-file UI state (e.g. a
+  // packet tick) attached across the rename. Returns null on failure.
   const assignFile = useCallback(async (category, filename, itemId) => {
-    if (!jobcardId) return false;
+    if (!jobcardId) return null;
     const key = `${category}/${filename}`;
     setAssigningKeys(prev => new Set(prev).add(key));
     try {
-      await api.assignJobcardFile(jobcardId, category, filename, itemId);
+      const updated = await api.assignJobcardFile(jobcardId, category, filename, itemId);
       await loadFiles(category);
-      return true;
+      return updated?.name || filename;
     } catch (err) {
       toast.error(err.message || 'Could not change which part this file is for');
-      return false;
+      return null;
     } finally {
       setAssigningKeys(prev => { const next = new Set(prev); next.delete(key); return next; });
     }

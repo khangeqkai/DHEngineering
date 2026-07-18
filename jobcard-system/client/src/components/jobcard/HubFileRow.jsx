@@ -1,15 +1,5 @@
-import { Check, Minus, Eye, Printer, Loader2, FileText, Image as ImageIcon } from 'lucide-react';
-
-// The tick circle, matching the rest of the panel (tick / dash / empty).
-function PickCircle({ state }) {
-  const s = state === true ? 'all' : state === false ? 'none' : state;
-  return (
-    <span className={`hub-check hub-check--${s}`} aria-hidden="true">
-      {s === 'all' && <Check size={13} strokeWidth={3} />}
-      {s === 'some' && <Minus size={13} strokeWidth={3} />}
-    </span>
-  );
-}
+import { Eye, Printer, Loader2, FileText, Image as ImageIcon } from 'lucide-react';
+import { PickCircle } from './paperworkHubHelpers';
 
 // One file line in the paperwork hub: tick to include in the packet, thumbnail,
 // name + kind, an optional "For:" picker (drawings / customer property only) that

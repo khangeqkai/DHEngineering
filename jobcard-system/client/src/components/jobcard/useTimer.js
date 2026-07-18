@@ -75,6 +75,12 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
   useEffect(() => {
     if (!activeTimer || !jobcardId) return;
 
+    // A freshly-adopted timer is ours from this moment on. Clear any leftover
+    // "I stopped it myself" latch from a previous timer — otherwise the first
+    // time an admin stops this new timer, the poll below would silently swallow
+    // the "stopped by an admin" alert and leave a phantom running timer on screen.
+    selfStoppedRef.current = false;
+
     const poll = setInterval(async () => {
       if (document.visibilityState === 'hidden') return;
       // Guard against overlapping checks: a slow check (>5s) would otherwise let

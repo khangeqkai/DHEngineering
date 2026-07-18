@@ -49,11 +49,26 @@ class ApiService {
           this.sessionInvalidated = true;
           this.onSessionInvalidated(errorData.code);
         }
-        throw new Error(errorData.code);
+        // The forced-sign-out handler above shows the real, friendly message. Give
+        // this thrown error a human message too (not the raw code) so any caller
+        // that falls back to showing err.message never flashes "SESSION_REPLACED".
+        const signedOut = new Error(errorData.code === 'ACCOUNT_DEACTIVATED'
+          ? 'You have been signed out because your account was turned off.'
+          : 'You have been signed out because your account was logged in from another device.');
+        signedOut.code = errorData.code;
+        throw signedOut;
       }
 
       const details = errorData.details?.join('. ') || '';
-      const message = details || errorData.error || 'Request failed';
+      let message = details || errorData.error || 'Request failed';
+      // Callers branch on error.status / error.data (e.g. a 409 close-out warning),
+      // so the visible message must never be a raw machine code like
+      // "MISSING_ATTACHMENTS" or "CONFIRM_DELETE". If the message looks like one of
+      // those all-caps codes, swap in plain wording — the real handling still keys
+      // off error.data.
+      if (/^[A-Z][A-Z0-9_]*$/.test(message)) {
+        message = 'Something went wrong. Please try again.';
+      }
       // Carry the status and parsed body on the error so callers can react to
       // specific cases (e.g. a 409 close-out warning that includes the gaps).
       const error = new Error(message);

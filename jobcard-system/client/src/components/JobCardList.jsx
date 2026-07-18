@@ -177,14 +177,21 @@ export default function JobCardList() {
 
   const handleQuickStatusChange = useCallback(async (cardId, newStatus) => {
     setStatusPopoverId(null);
-    const applyLocally = () => {
+    const applyLocally = async () => {
       toast.success(`Status updated to ${STATUS_LABELS[newStatus]}`);
+      // Invoicing files the job away, so it drops out of the active list — reload
+      // rather than leaving a stale "Invoiced" row that then errors ("un-file it
+      // first") when clicked. Other status changes update in place for snappiness.
+      if (newStatus === 'INVOICED') {
+        await loadJobcards();
+        return;
+      }
       setJobcards(prev => prev.map(c => c.id === cardId ? { ...c, status: newStatus } : c));
       refreshMissingFiles([cardId]);
     };
     try {
       await api.updateJobcardStatus(cardId, newStatus);
-      applyLocally();
+      await applyLocally();
     } catch (err) {
       // Invoicing with declared-but-missing files: confirm, then resend.
       if (err.status === 409 && err.data?.attachmentWarnings) {
@@ -207,7 +214,7 @@ export default function JobCardList() {
         if (!proceed) return;
         try {
           await api.updateJobcardStatus(cardId, newStatus, true);
-          applyLocally();
+          await applyLocally();
         } catch (e2) {
           toast.error(e2.message || 'Failed to update status');
         }
@@ -215,7 +222,7 @@ export default function JobCardList() {
       }
       toast.error(err.message || 'Failed to update status');
     }
-  }, [showConfirm, refreshMissingFiles]);
+  }, [showConfirm, refreshMissingFiles, loadJobcards]);
 
   useEffect(() => {
     if (!statusPopoverId) return;

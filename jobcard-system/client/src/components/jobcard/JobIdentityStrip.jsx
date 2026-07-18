@@ -57,9 +57,13 @@ export default function JobIdentityStrip({
   const formattedDate = formatDate(dueDate, { weekday: 'short', day: 'numeric', month: 'short' });
   const titleText = isEdit ? jobNumber : 'New Job Card';
 
-  const baseStatusOptions = canManage
-    ? STATUS_OPTIONS
-    : STATUS_OPTIONS.filter(opt => opt.value !== 'INVOICED');
+  const baseStatusOptions = STATUS_OPTIONS.filter(opt => {
+    if (opt.value !== 'INVOICED') return true;
+    // Invoicing files a job away and runs the missing-files check + auto-archive,
+    // which only happen on an existing job. Never offer it while creating a new
+    // job (and never to non-management).
+    return isEdit && canManage;
+  });
   const statusOptions = baseStatusOptions.some(o => o.value === status)
     ? baseStatusOptions
     : [
