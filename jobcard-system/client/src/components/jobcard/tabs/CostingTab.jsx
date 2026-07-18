@@ -1,9 +1,12 @@
+import { useState } from 'react';
+
 // Format a number as Australian currency with thousands separators.
 const money = (n) =>
   `$${(Number(n) || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// Trim a multiplier for display: 1.5 → "1.5", 2 → "2", 1.75 → "1.75".
-const mult = (n) => String(Number(n) || 0);
+// Format a multiplier for the read-only chips at a fixed two decimals, so the whole
+// multiplier column lines up spreadsheet-style: 1 → "1.00", 2.5 → "2.50", 1.75 → "1.75".
+const mult = (n) => (Number(n) || 0).toFixed(2);
 
 export default function CostingTab({
   costingForm,
@@ -22,6 +25,25 @@ export default function CostingTab({
   // the existing number instead of inserting in front of it (which turned 100 into
   // 120100). Applies to every money/hours box below.
   const selectOnFocus = (e) => e.target.select();
+
+  // The two overtime multiplier boxes are text fields (not number boxes) so they can
+  // sit in the column at a fixed two decimals — ×2.00, not ×2 — since a number box
+  // always strips a trailing zero. While a box is focused we show the raw keystrokes
+  // (held in `multEditing`) so typing "2.5" isn't reformatted mid-entry; the moment it
+  // loses focus it snaps back to the two-decimal display. The value itself still commits
+  // live through the normal change handler, so the amount updates as you type.
+  const [multEditing, setMultEditing] = useState(null); // { name, value } | null
+  const multDisplay = (t) =>
+    multEditing && multEditing.name === t.multName ? multEditing.value : mult(t.multiplier);
+  const onMultFocus = (t) => (e) => {
+    setMultEditing({ name: t.multName, value: String(t.multiplier) });
+    e.target.select();
+  };
+  const onMultChange = (e) => {
+    setMultEditing({ name: e.target.name, value: e.target.value });
+    handleCostingChange(e);
+  };
+  const onMultBlur = () => setMultEditing(null);
 
   // The four labour tiers, split by WHEN the work happened. The base rate is set
   // once (above the table) and each tier's rate derives from it via its multiplier.
@@ -69,9 +91,9 @@ export default function CostingTab({
     ['Ot1', 'Ot2'].forEach(resetTierMultiplier);
   };
 
-  // One tier row: when-worked · hours (editable) · derived rate · amount.
-  // Called as a plain function (not a component) so React keeps the input elements
-  // stable across renders and typing never loses focus.
+  // One tier row: when-worked · multiplier (its own column) · hours (editable) ·
+  // derived rate · amount. Called as a plain function (not a component) so React keeps
+  // the input elements stable across renders and typing never loses focus.
   const tierRow = (t) => {
     const derivedRate = baseRate * (Number(t.multiplier) || 0);
     const rowEdited = t.overridden || t.multOverridden;
@@ -80,6 +102,8 @@ export default function CostingTab({
         <span className="tier-when">
           {rowEdited && <span className="tier-dot" aria-hidden="true" />}
           {t.label}
+        </span>
+        <span className="tier-mult-cell">
           {t.multName ? (
             // Overtime rows: the multiplier is a job-editable box (typing overrides
             // the company setting for this job only), with a snap-back link below.
@@ -87,13 +111,13 @@ export default function CostingTab({
               <span className="tier-mult-box">
                 ×
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   name={t.multName}
-                  value={t.multiplier}
-                  onChange={handleCostingChange}
-                  onFocus={selectOnFocus}
-                  min="1"
-                  step="0.1"
+                  value={multDisplay(t)}
+                  onChange={onMultChange}
+                  onFocus={onMultFocus(t)}
+                  onBlur={onMultBlur}
                   aria-label={`${t.label} multiplier`}
                 />
               </span>
@@ -109,7 +133,12 @@ export default function CostingTab({
               )}
             </span>
           ) : (
-            t.multiplier !== 1 && <span className="tier-mult">×{mult(t.multiplier)}</span>
+            // Fixed-multiplier rows (normal, public holiday): the same box shape as the
+            // editable overtime ones (just not typeable), so the whole column is one
+            // uniform-width, right-aligned ladder — ×1.00 / ×1.50 / ×2.00 / ×2.50.
+            <span className="tier-mult-box tier-mult-box--static">
+              ×<span className="tier-mult-static">{mult(t.multiplier)}</span>
+            </span>
           )}
         </span>
         <span className="tier-hours-cell">
@@ -196,6 +225,7 @@ export default function CostingTab({
           <div className="tier-table" role="table" aria-label="Labour by when it was worked">
             <div className="tier-head" role="row">
               <span role="columnheader">When worked</span>
+              <span role="columnheader">Mult</span>
               <span role="columnheader">Hours</span>
               <span role="columnheader">Rate / hr</span>
               <span role="columnheader">Amount</span>

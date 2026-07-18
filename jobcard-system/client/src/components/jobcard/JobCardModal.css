@@ -2639,7 +2639,7 @@
 .tier-head,
 .tier-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 92px 92px 108px;
+  grid-template-columns: minmax(0, 1fr) 84px 88px 92px 104px;
   align-items: center;
   column-gap: var(--space-3);
 }
@@ -2679,16 +2679,14 @@
   color: var(--text-primary);
 }
 
-.tier-mult {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-xs);
-  font-weight: var(--font-medium);
-  color: var(--text-tertiary);
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 1px 6px;
+/* The multiplier column: a right-aligned cell holding either a fixed ×N chip
+   (normal / public holiday) or the editable overtime box, so the factor reads as its
+   own spreadsheet column. */
+.tier-mult-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
 }
 
 /* Editable overtime multiplier — the ×N chip becomes a small typeable box, with the
@@ -2696,7 +2694,7 @@
 .tier-mult-editable {
   display: inline-flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 2px;
 }
 
@@ -2715,7 +2713,10 @@
   padding: 1px 4px 1px 6px;
 }
 
-.tier-mult-box input {
+/* The number inside every multiplier box — the live input and the read-only static
+   span share the exact width + right alignment, so all four rows line up as one column. */
+.tier-mult-box input,
+.tier-mult-static {
   width: 3.2em;
   border: none;
   background: transparent;
@@ -2724,11 +2725,16 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
-  text-align: left;
+  text-align: right;
 }
 
 .tier-mult-box input:focus {
   outline: none;
+}
+
+/* A fixed (non-typeable) multiplier cell — same box shell, just no focus ring */
+.tier-mult-box--static {
+  cursor: default;
 }
 
 /* The box is too small for the browser's up/down steppers — type the number instead */
@@ -2755,7 +2761,7 @@
 }
 
 .tier-mult-editable .tier-auto {
-  align-self: flex-start;
+  align-self: flex-end;
 }
 
 .tier-hours-cell {
@@ -2934,13 +2940,13 @@
     margin-left: var(--space-3);
     margin-right: var(--space-3);
   }
-  /* Tighten the rate ladder: rate column drops off, hours + amount stay */
+  /* Tighten the rate ladder: rate column drops off, when + mult + hours + amount stay */
   .tier-head,
   .tier-row {
-    grid-template-columns: minmax(0, 1fr) 78px 96px;
+    grid-template-columns: minmax(0, 1fr) 60px 72px 92px;
     column-gap: var(--space-2);
   }
-  .tier-head span:nth-child(3),
+  .tier-head span:nth-child(4),
   .tier-rate {
     display: none;
   }

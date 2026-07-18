@@ -10,7 +10,7 @@ const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const DEFAULT_DAY = [{ start: '00:00', tier: 'normal' }];
 const DEFAULT_MULT = { ot1: 1.5, ot2: 2.0, holiday: 2.5 };
 
-const round3 = (n) => Math.round((Number(n) || 0) * 1000) / 1000;
+const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const num = (v, dflt) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : dflt;
@@ -85,10 +85,10 @@ function computeLiveCosting(jobId, incoming) {
   const entries = timeEntryQueries.getCompletedByJobcard.all(jobId);
   const split = splitHours(entries, baseline);
 
-  const normalCalc = round3(split.normalHours);
-  const ot1Calc = round3(split.ot1Hours);
-  const ot2Calc = round3(split.ot2Hours);
-  const holidayCalc = round3(split.holidayHours);
+  const normalCalc = round2(split.normalHours);
+  const ot1Calc = round2(split.ot1Hours);
+  const ot2Calc = round2(split.ot2Hours);
+  const holidayCalc = round2(split.holidayHours);
 
   // An override is null (= use the auto value) or a hand-typed number floored at
   // `min` (0 for hours; 1 for multipliers, since below 1 would undercharge OT).
