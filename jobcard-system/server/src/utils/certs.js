@@ -142,6 +142,19 @@ function leafSanCoversIps(cert, ips) {
   return ips.every((ip) => present.has(ip));
 }
 
+// True only if the leaf already vouches for every extra DNS name (e.g. the
+// friendly jobcards.local name). Adding a new name returns false → re-mint the
+// leaf. The CA is untouched, so trust installed on clients keeps holding.
+function leafSanCoversNames(cert, names) {
+  if (!names || !names.length) return true;
+  const ext = cert.getExtension('subjectAltName');
+  if (!ext || !ext.altNames) return false;
+  const present = new Set(
+    ext.altNames.filter((a) => a.type === 2).map((a) => (a.value || '').toLowerCase())
+  );
+  return names.every((n) => present.has(n.toLowerCase()));
+}
+
 // Private keys are written owner-only. On Windows the POSIX mode is largely
 // cosmetic, so this is best-effort and never fatal.
 function writeSecret(filePath, contents) {
@@ -159,8 +172,9 @@ function writeSecret(filePath, contents) {
  * IPs drifted (or the leaf is missing/unreadable). Never re-mints the CA once
  * it exists — installed trust must keep holding.
  */
-function ensureCertificates(dataDir) {
+function ensureCertificates(dataDir, options = {}) {
   try {
+    const extraDns = (options.extraDns || []).filter(Boolean);
     const caCrtPath = path.join(dataDir, 'ca.crt');
     const caKeyPath = path.join(dataDir, 'ca.key');
     const serverCrtPath = path.join(dataDir, 'server.crt');
@@ -187,8 +201,13 @@ function ensureCertificates(dataDir) {
       caKey = forge.pki.privateKeyFromPem(fs.readFileSync(caKeyPath, 'utf-8'));
     }
 
-    // --- Leaf: (re)mint when missing, unreadable, IP-drifted, or CA is new ---
+    // --- Leaf: (re)mint when missing, unreadable, IP-drifted, name added, or CA is new ---
     const san = collectSanHosts();
+    // Fold in any extra friendly names (e.g. jobcards.local) so the padlock is
+    // valid when a browser uses the name instead of the number.
+    for (const name of extraDns) {
+      if (!san.dns.some((d) => d.toLowerCase() === name.toLowerCase())) san.dns.push(name);
+    }
     let needLeaf = freshCa || !(fs.existsSync(serverCrtPath) && fs.existsSync(serverKeyPath));
     let leafPem;
     let leafKeyPem;
@@ -199,6 +218,7 @@ function ensureCertificates(dataDir) {
         leafKeyPem = fs.readFileSync(serverKeyPath, 'utf-8');
         const leafCert = forge.pki.certificateFromPem(leafPem);
         if (!leafSanCoversIps(leafCert, san.ips)) needLeaf = true;
+        if (!leafSanCoversNames(leafCert, extraDns)) needLeaf = true;
       } catch {
         needLeaf = true;
       }

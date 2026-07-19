@@ -7,6 +7,9 @@ const https = require('https');
 
 const config = require('./src/config');
 const { ensureCertificates } = require('./src/utils/certs');
+const { startMdnsResponder } = require('./src/utils/mdnsResponder');
+const { hostWithoutPort } = require('./src/utils/netHost');
+const setupTrustRoutes = require('./src/routes/setup-trust');
 const logger = require('./src/utils/logger');
 const { requestLogger } = require('./src/utils/logger');
 const authRoutes = require('./src/routes/auth');
@@ -47,6 +50,12 @@ app.get('/health', (req, res) => {
     pdfEngine: getPdfEngineStatus()
   });
 });
+
+// Public, secretless one-time "set up this computer" flow for other PCs.
+// Mounted before the login-guarded routers so a browser that does not yet
+// trust this computer can reach it. Read-only; serves only the public trust
+// file, never a private key.
+app.use(setupTrustRoutes);
 
 // Turn away mutating requests from other clients while a restore is in progress
 app.use(maintenanceGuard);
@@ -90,27 +99,21 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Strip any :port from a Host header, preserving bracketed IPv6 literals, so an
-// old plain link like http://192.168.1.5:3000/foo forwards to https://192.168.1.5/foo
-// (HTTPS on the default 443 needs no port in the address).
-function hostWithoutPort(hostHeader) {
-  const host = hostHeader || 'localhost';
-  if (host.startsWith('[')) {
-    // IPv6 literal: [::1] or [::1]:3000 — keep through the closing bracket
-    return host.slice(0, host.indexOf(']') + 1) || host;
-  }
-  return host.split(':')[0];
-}
+// A tiny plain-HTTP app used by the port 80 / 3000 listeners. It serves ONLY
+// the public, secretless "set up this computer" paths (so a browser that does
+// not yet trust this computer can load them without a warning — that warning is
+// what the flow removes) and 301-redirects everything else to the HTTPS
+// address, so old http://…:80 / http://…:3000 app links keep working.
+const httpBootstrapApp = express();
+httpBootstrapApp.use(setupTrustRoutes);
+httpBootstrapApp.use((req, res) => {
+  const location = `https://${hostWithoutPort(req.headers.host)}${req.url}`;
+  res.writeHead(301, { Location: location });
+  res.end();
+});
 
-// A tiny HTTP app that answers every request with a 301 to the HTTPS address.
-// These listeners carry no application data — they exist only so old
-// http://…:80 / http://…:3000 links keep working after the switch to HTTPS.
 function startRedirectListener(portNum) {
-  const redirectServer = http.createServer((req, res) => {
-    const location = `https://${hostWithoutPort(req.headers.host)}${req.url}`;
-    res.writeHead(301, { Location: location });
-    res.end();
-  });
+  const redirectServer = http.createServer(httpBootstrapApp);
   redirectServer.on('error', (err) => {
     // A blocked redirect port (e.g. 80 held by IIS) must not take the app down —
     // the secure address still works; only the auto-forward from that one port is lost.
@@ -135,7 +138,8 @@ async function start() {
       let server;
       if (config.secure) {
         // Production: serve HTTPS on 443 using our locally-minted certificate.
-        const { key, cert } = ensureCertificates(config.dataDir);
+        // The certificate also vouches for the friendly name (jobcards.local).
+        const { key, cert } = ensureCertificates(config.dataDir, { extraDns: [config.mdnsName] });
         server = https.createServer({ key, cert }, app);
         server.listen(config.httpsPort, config.host, () => {
           logger.info({
@@ -145,8 +149,12 @@ async function start() {
           }, 'Job Card Server started (secure)');
           resolve();
         });
-        // Old plain-HTTP links keep working: 301 them to HTTPS.
+        // Plain-HTTP listeners: serve the public trust-setup pages and 301 old
+        // http://…:80 / http://…:3000 app links to HTTPS.
         for (const p of config.redirectPorts) startRedirectListener(p);
+        // Announce the app on the local network by name (best-effort, non-fatal),
+        // so other computers can use https://jobcards.local with no router setup.
+        startMdnsResponder(config.mdnsName);
       } else {
         // Dev: plain HTTP, unchanged.
         server = app.listen(config.port, config.host, () => {

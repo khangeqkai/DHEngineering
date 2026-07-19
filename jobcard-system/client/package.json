@@ -50,6 +50,7 @@
         "filter": [
           "**/*",
           "!node_modules/.cache/**",
+          "!node_modules/.bin/**",
           "!.chrome/**"
         ]
       }

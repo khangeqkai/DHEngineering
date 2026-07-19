@@ -170,10 +170,66 @@ export default function Settings() {
                   <dt>This computer</dt>
                   <dd>Runs the shared system for everyone</dd>
                 </div>
-                <div className="info-item">
-                  <dt>Open it from another computer</dt>
-                  <dd>Type this computer's private web address, shown with a padlock, into a web browser on the same office network.</dd>
-                </div>
+                {(() => {
+                  const addrs = s.settings?.serverAddresses || [];
+                  const secure = s.settings?.secureServing;
+                  const name = s.settings?.mdnsName;
+                  const listStyle = { marginTop: '.4rem', lineHeight: 1.8 };
+                  const hintStyle = { marginTop: '.3rem', fontSize: '.85rem', opacity: 0.7 };
+                  if (!secure) {
+                    return (
+                      <div className="info-item">
+                        <dt>Open it from another computer</dt>
+                        <dd>
+                          In a web browser on the same office network, go to:
+                          <div style={listStyle}>
+                            {addrs.length
+                              ? addrs.map((ip) => <div key={ip}><strong>{`http://${ip}:3000`}</strong></div>)
+                              : <em>address not showing yet — reopen this page in a moment</em>}
+                          </div>
+                        </dd>
+                      </div>
+                    );
+                  }
+                  const openLines = [];
+                  if (name) openLines.push(`https://${name}`);
+                  addrs.forEach((ip) => openLines.push(`https://${ip}`));
+                  const setupLines = [];
+                  if (name) setupLines.push(`http://${name}/setup`);
+                  addrs.forEach((ip) => setupLines.push(`http://${ip}/setup`));
+                  if (!openLines.length) {
+                    return (
+                      <div className="info-item">
+                        <dt>Open it from another computer</dt>
+                        <dd>Type this computer's private web address into a web browser on the same office network. (The address isn't showing yet — reopen this page in a moment.)</dd>
+                      </div>
+                    );
+                  }
+                  return (
+                    <>
+                      <div className="info-item">
+                        <dt>Open it from another computer</dt>
+                        <dd>
+                          In a web browser on the same office network, go to{openLines.length > 1 ? ' one of these' : ''}:
+                          <div style={listStyle}>
+                            {openLines.map((a) => <div key={a}><strong>{a}</strong></div>)}
+                          </div>
+                          {name && <div style={hintStyle}>The name usually works best. If it doesn't on some computer, use one of the number addresses instead.</div>}
+                        </dd>
+                      </div>
+                      <div className="info-item">
+                        <dt>Set up another computer (first time)</dt>
+                        <dd>
+                          Before the address above works, set up each computer once. In its web browser, go to:
+                          <div style={listStyle}>
+                            {setupLines.map((a) => <div key={a}><strong>{a}</strong></div>)}
+                          </div>
+                          It walks you through a one-time setup so the camera works and downloads aren't blocked. If the browser shows a safety warning, choose <strong>Continue</strong> to reach the page.
+                        </dd>
+                      </div>
+                    </>
+                  );
+                })()}
                 <div className="info-item">
                   <dt>Records</dt>
                   <dd>Kept safely on this computer</dd>

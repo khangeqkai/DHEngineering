@@ -7,6 +7,8 @@ const extractZip = require('extract-zip');
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin, requireManagement } = require('../middleware/auth');
 const db = require('../db/database');
+const config = require('../config');
+const { lanIpv4s } = require('../utils/netHost');
 const { recordHistory } = require('../db/helpers');
 const { setMaintenance } = require('../middleware/maintenance');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
@@ -55,6 +57,12 @@ router.get('/', requireManagement, (req, res) => {
     }
     // Convert snake_case keys to camelCase
     const camelCaseSettings = convertKeysToCamel(settings);
+    // Tell the admin exactly what address the OTHER computers should type: the
+    // server's own LAN address(es), plus whether it's serving the padlock
+    // (secure) address yet — so the Server Connection card can show it verbatim.
+    camelCaseSettings.serverAddresses = lanIpv4s();
+    camelCaseSettings.secureServing = config.secure;
+    camelCaseSettings.mdnsName = config.mdnsName;
     res.json(camelCaseSettings);
   } catch (err) {
     logger.error({ err }, 'Error getting settings');

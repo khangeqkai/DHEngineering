@@ -50,8 +50,13 @@ module.exports = {
   // HTTPS (production only)
   secure,
   httpsPort: process.env.HTTPS_PORT || 443,
-  // Plain-HTTP listeners that only 301 old links to https://<host>/… (no app data)
+  // Plain-HTTP listeners that serve the public "set up this computer" pages and
+  // 301 everything else to https://<host>/… (so old plain links keep working)
   redirectPorts: [80, 3000],
+  // Friendly local-network name the server announces itself under (Bonjour/mDNS),
+  // so other computers can reach it as https://<name> without any router setup.
+  // Must end in .local for local-name announcing to work.
+  mdnsName: process.env.MDNS_NAME || 'jobcards.local',
 
   // Where the local CA + leaf certificate live (same dir as config.json)
   dataDir: DATA_DIR,
