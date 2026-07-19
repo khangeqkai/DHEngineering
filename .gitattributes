@@ -1,0 +1,22 @@
+# Normalize line endings across all machines.
+# Every text file is stored in the repository with LF endings, regardless of
+# whether it was saved on Windows or Mac/Linux. This stops "whole file changed"
+# noise when a file is re-saved by a different editor or OS.
+* text=auto eol=lf
+
+# Windows batch files must keep CRLF endings to run correctly.
+*.bat text eol=crlf
+
+# Treat these as binary — never touch their bytes.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.otf binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.zip binary
+*.node binary
