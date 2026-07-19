@@ -2,8 +2,11 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const https = require('https');
 
 const config = require('./src/config');
+const { ensureCertificates } = require('./src/utils/certs');
 const logger = require('./src/utils/logger');
 const { requestLogger } = require('./src/utils/logger');
 const authRoutes = require('./src/routes/auth');
@@ -87,6 +90,40 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Strip any :port from a Host header, preserving bracketed IPv6 literals, so an
+// old plain link like http://192.168.1.5:3000/foo forwards to https://192.168.1.5/foo
+// (HTTPS on the default 443 needs no port in the address).
+function hostWithoutPort(hostHeader) {
+  const host = hostHeader || 'localhost';
+  if (host.startsWith('[')) {
+    // IPv6 literal: [::1] or [::1]:3000 — keep through the closing bracket
+    return host.slice(0, host.indexOf(']') + 1) || host;
+  }
+  return host.split(':')[0];
+}
+
+// A tiny HTTP app that answers every request with a 301 to the HTTPS address.
+// These listeners carry no application data — they exist only so old
+// http://…:80 / http://…:3000 links keep working after the switch to HTTPS.
+function startRedirectListener(portNum) {
+  const redirectServer = http.createServer((req, res) => {
+    const location = `https://${hostWithoutPort(req.headers.host)}${req.url}`;
+    res.writeHead(301, { Location: location });
+    res.end();
+  });
+  redirectServer.on('error', (err) => {
+    // A blocked redirect port (e.g. 80 held by IIS) must not take the app down —
+    // the secure address still works; only the auto-forward from that one port is lost.
+    logger.warn(
+      { err, port: portNum },
+      `Could not start the plain-web auto-forwarder on port ${portNum} ` +
+      `(likely another program is using it). The secure web address still works; ` +
+      `only old links using that port won't auto-forward. Free the port to restore it.`
+    );
+  });
+  redirectServer.listen(portNum, config.host);
+}
+
 // Initialize and start server
 async function start() {
   try {
@@ -95,14 +132,33 @@ async function start() {
 
     // Start the server and wait for it to be ready
     await new Promise((resolve, reject) => {
-      const server = app.listen(config.port, config.host, () => {
-        logger.info({
-          host: config.host,
-          port: config.port,
-          url: `http://${config.host}:${config.port}`
-        }, 'Job Card Server started');
-        resolve();
-      });
+      let server;
+      if (config.secure) {
+        // Production: serve HTTPS on 443 using our locally-minted certificate.
+        const { key, cert } = ensureCertificates(config.dataDir);
+        server = https.createServer({ key, cert }, app);
+        server.listen(config.httpsPort, config.host, () => {
+          logger.info({
+            host: config.host,
+            port: config.httpsPort,
+            url: `https://${config.host}:${config.httpsPort}`
+          }, 'Job Card Server started (secure)');
+          resolve();
+        });
+        // Old plain-HTTP links keep working: 301 them to HTTPS.
+        for (const p of config.redirectPorts) startRedirectListener(p);
+      } else {
+        // Dev: plain HTTP, unchanged.
+        server = app.listen(config.port, config.host, () => {
+          logger.info({
+            host: config.host,
+            port: config.port,
+            url: `http://${config.host}:${config.port}`
+          }, 'Job Card Server started');
+          resolve();
+        });
+      }
+      // A failure of the primary (HTTPS in prod, HTTP in dev) listener stays fatal.
       server.on('error', reject);
     });
 

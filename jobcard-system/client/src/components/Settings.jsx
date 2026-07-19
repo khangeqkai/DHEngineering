@@ -167,12 +167,16 @@ export default function Settings() {
             <div className="card-body">
               <dl className="info-list">
                 <div className="info-item">
-                  <dt>API Server</dt>
-                  <dd>http://localhost:3000</dd>
+                  <dt>This computer</dt>
+                  <dd>Runs the shared system for everyone</dd>
                 </div>
                 <div className="info-item">
-                  <dt>Database</dt>
-                  <dd>SQLite (embedded)</dd>
+                  <dt>Open it from another computer</dt>
+                  <dd>Type this computer's private web address, shown with a padlock, into a web browser on the same office network.</dd>
+                </div>
+                <div className="info-item">
+                  <dt>Records</dt>
+                  <dd>Kept safely on this computer</dd>
                 </div>
               </dl>
             </div>

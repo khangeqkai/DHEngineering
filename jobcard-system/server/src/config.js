@@ -38,10 +38,29 @@ function getOrCreateJwtSecret() {
   return secret;
 }
 
+// HTTPS is production-only: the packaged desktop app sets NODE_ENV=production.
+// Dev (npm start / Vite) stays plain HTTP and is left untouched.
+const secure = process.env.NODE_ENV === 'production';
+
 module.exports = {
   // Server settings
   port: process.env.PORT || 3000,
   host: process.env.HOST || '0.0.0.0', // Listen on all interfaces for LAN access
+
+  // HTTPS (production only)
+  secure,
+  httpsPort: process.env.HTTPS_PORT || 443,
+  // Plain-HTTP listeners that only 301 old links to https://<host>/… (no app data)
+  redirectPorts: [80, 3000],
+
+  // Where the local CA + leaf certificate live (same dir as config.json)
+  dataDir: DATA_DIR,
+  certPaths: {
+    caCert: path.join(DATA_DIR, 'ca.crt'),
+    caKey: path.join(DATA_DIR, 'ca.key'),
+    serverCert: path.join(DATA_DIR, 'server.crt'),
+    serverKey: path.join(DATA_DIR, 'server.key')
+  },
 
   // JWT settings
   jwt: {

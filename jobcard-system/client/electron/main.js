@@ -1,6 +1,7 @@
-const { app, BrowserWindow, ipcMain, Menu, globalShortcut, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, globalShortcut, dialog, shell, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { X509Certificate } = require('crypto');
 
 // A packaged GUI app has no attached console, so writing to stdout/stderr can
 // throw EBADF ("bad file descriptor") and crash the whole process on the very
@@ -43,6 +44,54 @@ let printerModule = null;
 
 const isDev = !app.isPackaged;
 
+// The data folder the server writes its local certificate authority into. Mirrors
+// the path startServer() sets as DATA_DIR, but computed independently so it's
+// available even before startServer runs.
+function dataDir() {
+  return isDev
+    ? path.join(__dirname, '..', '..', 'data')
+    : path.join(app.getPath('userData'), 'data');
+}
+
+function caCertPath() {
+  return path.join(dataDir(), 'ca.crt');
+}
+
+// The server PC's own window loads https://localhost, but Chromium doesn't know
+// our locally-minted certificate authority, so it would show a security warning.
+// Vouch for our own local server ourselves — and ONLY our own local server:
+// for any other address we defer to Chromium's normal public-web checks, so
+// this never becomes a blanket "trust everything" hole.
+function installLocalCertTrust() {
+  let caCert = null;
+  const loadCa = () => {
+    try {
+      caCert = new X509Certificate(fs.readFileSync(caCertPath(), 'utf-8'));
+    } catch {
+      caCert = null; // written during server startup; may not exist yet on first check
+    }
+    return caCert;
+  };
+  session.defaultSession.setCertificateVerifyProc((request, callback) => {
+    // 0 = trust, -2 = reject, -3 = use Chromium's own verification result.
+    if (request.hostname !== 'localhost') {
+      callback(-3);
+      return;
+    }
+    try {
+      const ca = caCert || loadCa();
+      const presented = new X509Certificate(request.certificate.data);
+      if (ca && presented.checkIssued(ca) && presented.verify(ca.publicKey)) {
+        callback(0); // this cert chains to our own CA — trust it
+        return;
+      }
+    } catch {
+      /* fall through to reject */
+    }
+    callback(-2);
+  });
+}
+
 async function startServer() {
   // Set environment before requiring server
   process.env.ELECTRON_MODE = '1';
@@ -75,7 +124,18 @@ async function startServer() {
         const start = Date.now();
         const check = () => {
           if (cancelPolling) return;
-          const req = require('http').get('http://localhost:3000/health', (res) => {
+          // The server now serves HTTPS. Trust it via our own local CA (written
+          // to disk during server startup). If ca.crt isn't there yet, the
+          // request fails its security check and we simply retry until it is.
+          let ca;
+          try { ca = fs.readFileSync(caCertPath(), 'utf-8'); } catch { ca = undefined; }
+          const req = require('https').get({
+            hostname: 'localhost',
+            port: 443,
+            path: '/health',
+            ca,
+            rejectUnauthorized: true
+          }, (res) => {
             res.resume();
             if (!cancelPolling && res.statusCode === 200) { cancelPolling = true; resolve(); }
             else if (!cancelPolling) { retry(); }
@@ -125,7 +185,7 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadURL('http://localhost:3000');
+    mainWindow.loadURL('https://localhost');
   }
 
   // Developer tools shortcut — only in development. The packaged app must not
@@ -208,6 +268,9 @@ app.whenReady().then(async () => {
   createMenu();
 
   if (!isDev) {
+    // Teach this window to trust our own local server's certificate before it
+    // loads https://localhost, so it opens cleanly with no security warning.
+    installLocalCertTrust();
     try {
       await startServer();
     } catch (err) {
