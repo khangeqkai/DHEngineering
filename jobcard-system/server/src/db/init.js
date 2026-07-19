@@ -9,6 +9,7 @@ const {
   recordHistory
 } = require('./database');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
+const { DEFAULT_VIC_PUBLIC_HOLIDAYS_2026 } = require('../utils/defaultHolidays');
 
 // Canonicalise one day's blocks to whole-hour boundaries using the SAME cycle
 // semantics the schedule editor and the minute-splitter use: build the 24 hourly
@@ -181,6 +182,30 @@ function runMigrations() {
     }
   }
 
+  // Seed the Victorian (VIC) 2026 public holidays onto existing databases that never
+  // had a holiday list. Runs ONCE (guarded) and only fills the list when it is still
+  // empty, so an admin who already added or cleared their own holidays is never
+  // overwritten. New installs get the same list from the default-settings block above.
+  const vicHolidaysKey = 'vic_2026_holidays_seeded_at';
+  const vicHolidaysFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(vicHolidaysKey);
+  if (!vicHolidaysFlag) {
+    try {
+      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('labour_public_holidays');
+      let current = [];
+      try { current = JSON.parse(row && row.value ? row.value : '[]'); } catch { current = []; }
+      const isEmpty = !Array.isArray(current) || current.length === 0;
+      if (isEmpty) {
+        db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)')
+          .run('labour_public_holidays', JSON.stringify(DEFAULT_VIC_PUBLIC_HOLIDAYS_2026));
+        logger.info('Migration: Seeded Victorian 2026 public holidays');
+      }
+      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
+        .run(vicHolidaysKey, new Date().toISOString());
+    } catch (err) {
+      logger.error({ err }, 'Migration: Failed to seed Victorian public holidays');
+    }
+  }
+
   // Per-job overtime-rule ownership. Overtime rules (schedule, holidays, timezone, base
   // multipliers) used to be read live from settings on every costing compute, so changing
   // them moved every existing job. Now each job owns its own captured copy — but existing
@@ -306,7 +331,9 @@ async function initializeDatabase() {
   settingsStmt.run('labour_ot1_multiplier', '1.5');
   settingsStmt.run('labour_ot2_multiplier', '2');
   settingsStmt.run('labour_holiday_multiplier', '2.5');
-  settingsStmt.run('labour_public_holidays', '[]');
+  // Ship the Victorian (VIC) 2026 public holidays as the starting list. Admins can
+  // add or remove any of these on the Labour Rates & Overtime page.
+  settingsStmt.run('labour_public_holidays', JSON.stringify(DEFAULT_VIC_PUBLIC_HOLIDAYS_2026));
   // Company-wide default hourly rate — the starting base rate for any job still on the
   // default. Seeded at 0 so behaviour matches the old "type it per job" flow until an
   // admin sets a real figure on the Labour Rates & Overtime page.

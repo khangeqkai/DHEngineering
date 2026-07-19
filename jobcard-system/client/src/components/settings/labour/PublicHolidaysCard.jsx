@@ -4,8 +4,11 @@ import CalendarPicker from '../../common/CalendarPicker';
 import { formatDate } from '../../../utils/formatters';
 
 // Show a stored YYYY-MM-DD as "Fri, 25 Dec 2026".
+// The Australian format spells September as the 4-letter "Sept"; trim it back to
+// "Sep" so every month reads as a consistent 3-letter abbreviation.
 function pretty(date) {
-  return formatDate(date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) || date;
+  const out = formatDate(date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  return out ? out.replace('Sept', 'Sep') : date;
 }
 
 // Add/remove specific calendar dates that charge the whole day at the holiday rate,

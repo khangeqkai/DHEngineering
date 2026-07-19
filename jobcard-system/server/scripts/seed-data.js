@@ -11,6 +11,8 @@
  * never drift apart.
  */
 
+const { DEFAULT_VIC_PUBLIC_HOLIDAYS_2026 } = require('../src/utils/defaultHolidays');
+
 // ─── USERS: 2 admins + 1 manager + 10 floor workers (workers are indices 0-9 after filter) ───
 const users = [
   { username: 'admin',   role: 'admin', name: 'David Henderson',    email: 'david@dhengineering.com.au',  employeeId: 'EMP001' },
@@ -130,7 +132,7 @@ const settings = {
   labour_ot1_multiplier: '1.5',
   labour_ot2_multiplier: '2',
   labour_holiday_multiplier: '2.5',
-  labour_public_holidays: '[]',
+  labour_public_holidays: JSON.stringify(DEFAULT_VIC_PUBLIC_HOLIDAYS_2026),
 };
 
 module.exports = { users, contacts, suppliers, machines, qaLevels, tagData, settings };

@@ -313,7 +313,7 @@
       "label": "scheduleDayToWholeHours()",
       "file_type": "code",
       "source_file": "server/src/db/init.js",
-      "source_location": "L20",
+      "source_location": "L21",
       "id": "db_init_scheduledaytowholehours",
       "community": 8,
       "norm_label": "scheduledaytowholehours()"
@@ -322,7 +322,7 @@
       "label": "runMigrations()",
       "file_type": "code",
       "source_file": "server/src/db/init.js",
-      "source_location": "L45",
+      "source_location": "L46",
       "id": "db_init_runmigrations",
       "community": 8,
       "norm_label": "runmigrations()"
@@ -331,7 +331,7 @@
       "label": "checkInterruptedRestore()",
       "file_type": "code",
       "source_file": "server/src/db/init.js",
-      "source_location": "L237",
+      "source_location": "L262",
       "id": "db_init_checkinterruptedrestore",
       "community": 8,
       "norm_label": "checkinterruptedrestore()"
@@ -340,7 +340,7 @@
       "label": "initializeDatabase()",
       "file_type": "code",
       "source_file": "server/src/db/init.js",
-      "source_location": "L255",
+      "source_location": "L280",
       "id": "db_init_initializedatabase",
       "community": 8,
       "norm_label": "initializedatabase()"
@@ -4651,7 +4651,7 @@
       "label": "pretty()",
       "file_type": "code",
       "source_file": "client/src/components/settings/labour/PublicHolidaysCard.jsx",
-      "source_location": "L7",
+      "source_location": "L9",
       "id": "labour_publicholidayscard_pretty",
       "community": 5,
       "norm_label": "pretty()"
@@ -4660,7 +4660,7 @@
       "label": "PublicHolidaysCard()",
       "file_type": "code",
       "source_file": "client/src/components/settings/labour/PublicHolidaysCard.jsx",
-      "source_location": "L13",
+      "source_location": "L16",
       "id": "labour_publicholidayscard_publicholidayscard",
       "community": 5,
       "norm_label": "publicholidayscard()"
@@ -6880,6 +6880,15 @@
       "norm_label": "costingcompute.js"
     },
     {
+      "label": "defaultHolidays.js",
+      "file_type": "code",
+      "source_file": "server/src/utils/defaultHolidays.js",
+      "source_location": "L1",
+      "id": "server_src_utils_defaultholidays_js",
+      "community": 109,
+      "norm_label": "defaultholidays.js"
+    },
+    {
       "label": "fileValidation.js",
       "file_type": "code",
       "source_file": "server/src/utils/fileValidation.js",
@@ -7856,7 +7865,7 @@
       "file_type": "code",
       "source_file": "worker-client/preload.js",
       "source_location": "L1",
-      "community": 109,
+      "community": 110,
       "norm_label": "preload.js",
       "id": "worker_client_preload_js"
     },
@@ -7883,7 +7892,7 @@
       "file_type": "code",
       "source_file": "server/scripts/backfill-folders.js",
       "source_location": "L1",
-      "community": 110,
+      "community": 111,
       "norm_label": "backfill-folders.js",
       "id": "server_scripts_backfill_folders_js"
     },
@@ -8522,7 +8531,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-documents.js",
       "source_location": "L1",
-      "community": 111,
+      "community": 112,
       "norm_label": "jobcard-documents.js",
       "id": "server_src_routes_jobcard_documents_js"
     },
@@ -8603,7 +8612,7 @@
       "file_type": "code",
       "source_file": "server/src/routes/jobcard-qa-forms.js",
       "source_location": "L1",
-      "community": 112,
+      "community": 113,
       "norm_label": "jobcard-qa-forms.js",
       "id": "server_src_routes_jobcard_qa_forms_js"
     },
