@@ -150,7 +150,11 @@ export function getDefaultCostingForm() {
     materialsCost: 0,
     materialsProfitPercent: 100,
     subcontractorCost: 0,
-    subcontractorProfitPercent: 0
+    subcontractorProfitPercent: 0,
+    // Free-text note beside each manual cost line, saying what the cost covers.
+    labourSpecialDescription: '',
+    materialsDescription: '',
+    subcontractorDescription: ''
   };
 }
 
@@ -230,6 +234,10 @@ export function mapCostingResponseToData(costingRes) {
     materialsCost: costingRes.materialsCost || 0,
     materialsProfitPercent: costingRes.materialsProfitPercent ?? 100,
     subcontractorCost: costingRes.subcontractorCost || 0,
-    subcontractorProfitPercent: costingRes.subcontractorProfitPercent ?? 0
+    subcontractorProfitPercent: costingRes.subcontractorProfitPercent ?? 0,
+    // The free-text note on each manual cost line ("what this covers").
+    labourSpecialDescription: costingRes.labourSpecialDescription || '',
+    materialsDescription: costingRes.materialsDescription || '',
+    subcontractorDescription: costingRes.subcontractorDescription || ''
   };
 }

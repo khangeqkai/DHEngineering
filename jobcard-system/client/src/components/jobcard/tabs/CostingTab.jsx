@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { capitalizeFirst } from '../../../utils/formatters';
 
 // Format a number as Australian currency with thousands separators.
 const money = (n) =>
@@ -8,6 +9,16 @@ const money = (n) =>
 // multiplier column lines up spreadsheet-style: 1 → "1.00", 2.5 → "2.50", 1.75 → "1.75".
 const mult = (n) => (Number(n) || 0).toFixed(2);
 
+// What the line beside the grand total says while the screen saves itself. There is no
+// Save button: an edit saves about a second after the last keystroke, or straight away
+// on Enter / leaving the screen.
+const SAVE_STATUS = {
+  pending: { text: 'Unsaved…', className: 'costing-save-status--pending' },
+  saving: { text: 'Saving…', className: 'costing-save-status--saving' },
+  saved: { text: 'Saved', className: 'costing-save-status--saved' },
+  error: { text: 'Not saved', className: 'costing-save-status--error' }
+};
+
 export default function CostingTab({
   costingForm,
   handleCostingChange,
@@ -15,9 +26,49 @@ export default function CostingTab({
   resetTierMultiplier,
   useDefaultRate,
   calculateCostingTotals,
-  handleSaveCosting,
-  savingCosting
+  saveState = 'idle',
+  onFlushCosting,
+  loaded = true,
+  loadFailed = false,
+  onRetryLoad
 }) {
+  // The two overtime multiplier boxes are text fields (not number boxes) so they can
+  // sit in the column at a fixed two decimals — ×2.00, not ×2 — since a number box
+  // always strips a trailing zero. While a box is focused we show the raw keystrokes
+  // (held in `multEditing`) so typing "2.5" isn't reformatted mid-entry; the moment it
+  // loses focus it snaps back to the two-decimal display. The value itself still commits
+  // live through the normal change handler, so the amount updates as you type.
+  // Declared up here, ahead of the not-yet-loaded return below, so the same hooks run
+  // on every render of this screen.
+  const [multEditing, setMultEditing] = useState(null); // { name, value } | null
+
+  // Until the job's stored pricing arrives, show a plain message rather than a sheet of
+  // zeros. A zero sheet reads as real figures, and this screen saves itself — one
+  // keystroke on it would write those zeros over what the job is actually worth.
+  if (!loaded) {
+    return (
+      <div className="modal-form-grid">
+        <div className="costing-sheet">
+          <div className="costing-sheet-header">
+            <h3 className="costing-sheet-title">Job costing</h3>
+          </div>
+          <div className="costing-placeholder">
+            {loadFailed ? (
+              <>
+                <p>This job's pricing couldn't be loaded, so it can't be changed right now.</p>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => onRetryLoad?.()}>
+                  Try again
+                </button>
+              </>
+            ) : (
+              <p>Loading pricing…</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const totals = calculateCostingTotals();
   const baseRate = Number(costingForm.labourRate) || 0;
 
@@ -26,13 +77,33 @@ export default function CostingTab({
   // 120100). Applies to every money/hours box below.
   const selectOnFocus = (e) => e.target.select();
 
-  // The two overtime multiplier boxes are text fields (not number boxes) so they can
-  // sit in the column at a fixed two decimals — ×2.00, not ×2 — since a number box
-  // always strips a trailing zero. While a box is focused we show the raw keystrokes
-  // (held in `multEditing`) so typing "2.5" isn't reformatted mid-entry; the moment it
-  // loses focus it snaps back to the two-decimal display. The value itself still commits
-  // live through the normal change handler, so the amount updates as you type.
-  const [multEditing, setMultEditing] = useState(null); // { name, value } | null
+  // Tidy a cost note when the field is left, matching the rest of the app's text fields.
+  const capitalizeOnBlur = (e) => {
+    const formatted = capitalizeFirst(e.target.value);
+    if (formatted !== e.target.value) {
+      handleCostingChange({ target: { name: e.target.name, value: formatted } });
+    }
+  };
+
+  // The "what this cost covers" note that sits under each manual cost line. Called as a
+  // plain function (not a component) so React keeps the input stable and typing never
+  // loses focus — same reason as the tier rows below.
+  const costNote = (name, placeholder) => (
+    <div className="ledger-note">
+      <label htmlFor={name}>What this covers</label>
+      <input
+        id={name}
+        type="text"
+        name={name}
+        value={costingForm[name] || ''}
+        onChange={handleCostingChange}
+        onBlur={capitalizeOnBlur}
+        placeholder={placeholder}
+        maxLength={300}
+      />
+    </div>
+  );
+
   const multDisplay = (t) =>
     multEditing && multEditing.name === t.multName ? multEditing.value : mult(t.multiplier);
   const onMultFocus = (t) => (e) => {
@@ -169,14 +240,36 @@ export default function CostingTab({
     );
   };
 
+  const status = SAVE_STATUS[saveState];
+
+  // Enter anywhere in the sheet saves straight away instead of waiting out the
+  // save countdown. The surrounding job form already swallows Enter, so nothing else
+  // fires off the same keypress.
+  const saveOnEnter = (e) => {
+    if (e.key === 'Enter') onFlushCosting?.();
+  };
+
   return (
     <div className="modal-form-grid">
-      <div className="costing-sheet">
+      <div className="costing-sheet" onKeyDown={saveOnEnter}>
+        {/* Sticky top bar: the grand total stays on screen while the sheet is scrolled */}
         <div className="costing-sheet-header">
           <h3 className="costing-sheet-title">Job costing</h3>
-          <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveCosting} disabled={savingCosting}>
-            {savingCosting ? 'Saving…' : 'Save costing'}
-          </button>
+          <div className="costing-grand">
+            <span className="costing-grand-label">Grand total</span>
+            <span className="costing-grand-value">{money(totals.grandTotal)}</span>
+          </div>
+          {status && (
+            <span className={`costing-save-status ${status.className}`} role="status" aria-live="polite">
+              {status.text}
+              {saveState === 'error' && (
+                <>
+                  {' — '}
+                  <button type="button" className="btn-link" onClick={() => onFlushCosting?.()}>try again</button>
+                </>
+              )}
+            </span>
+          )}
         </div>
 
         {/* Labour — one panel: base rate up top, tiers as a rate ladder, subtotal in the header */}
@@ -264,6 +357,7 @@ export default function CostingTab({
             </div>
             <span className="ledger-eq">=</span>
             <span className="ledger-total">{money(totals.labourSpecialTotal)}</span>
+            {costNote('labourSpecialDescription', 'e.g. Weekend shift to hit the shutdown date')}
           </div>
 
           {/* Materials — cost + margin % */}
@@ -286,6 +380,7 @@ export default function CostingTab({
             </div>
             <span className="ledger-eq">=</span>
             <span className="ledger-total">{money(totals.materialsTotal)}</span>
+            {costNote('materialsDescription', 'e.g. 316 stainless bar supplied for 4 parts')}
           </div>
 
           {/* Subcontractor — cost + margin % */}
@@ -308,13 +403,8 @@ export default function CostingTab({
             </div>
             <span className="ledger-eq">=</span>
             <span className="ledger-total">{money(totals.subcontractorTotal)}</span>
+            {costNote('subcontractorDescription', 'e.g. Hard chrome plating and freight both ways')}
           </div>
-        </div>
-
-        {/* Grand total — the hero figure */}
-        <div className="costing-grand">
-          <span className="costing-grand-label">Grand total</span>
-          <span className="costing-grand-value">{money(totals.grandTotal)}</span>
         </div>
       </div>
     </div>

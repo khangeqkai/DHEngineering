@@ -173,11 +173,11 @@ const insertCosting = db.prepare(`INSERT INTO job_costings (
   labour_hours, labour_rate, labour_total,
   labour_schedule, labour_public_holidays, labour_timezone,
   labour_base_ot1_multiplier, labour_base_ot2_multiplier, labour_base_holiday_multiplier,
-  labour_special_hours, labour_special_rate, labour_special_total,
-  materials_cost, materials_profit_percent, materials_total,
-  subcontractor_cost, subcontractor_profit_percent, subcontractor_total,
+  labour_special_hours, labour_special_rate, labour_special_total, labour_special_description,
+  materials_cost, materials_profit_percent, materials_total, materials_description,
+  subcontractor_cost, subcontractor_profit_percent, subcontractor_total, subcontractor_description,
   grand_total
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
 const workers = users.filter(u => u.role === 'user'); // floor staff, referenced by index in scenarios
 const now = new Date();
@@ -323,9 +323,9 @@ const createJobs = db.transaction(() => {
         // new job — so a later change to the company rules never moves a seeded job.
         refData.settings.labour_schedule, refData.settings.labour_public_holidays, refData.settings.timezone,
         Number(refData.settings.labour_ot1_multiplier), Number(refData.settings.labour_ot2_multiplier), Number(refData.settings.labour_holiday_multiplier),
-        labourSpecialHours, labourSpecialRate, labourSpecialTotal,
-        materialsCost, materialsProfit, materialsTotal,
-        subcontractorCost, subcontractorProfit, subcontractorTotal,
+        labourSpecialHours, labourSpecialRate, labourSpecialTotal, c.labourSpecialDescription || null,
+        materialsCost, materialsProfit, materialsTotal, c.materialsDescription || null,
+        subcontractorCost, subcontractorProfit, subcontractorTotal, c.subcontractorDescription || null,
         grandTotal
       );
     }

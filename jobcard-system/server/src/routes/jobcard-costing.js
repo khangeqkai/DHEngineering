@@ -54,8 +54,15 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
     const MULTIPLIER_OVERRIDES = new Set([
       'labour_ot1_multiplier_override', 'labour_ot2_multiplier_override',
     ]);
+    // The three manual cost lines carry a free-text note saying what the cost covers.
+    // They're text, so they're read as a string (an empty note shows as a dash rather
+    // than the "0" a numeric read would produce).
+    const TEXT_FIELDS = new Set([
+      'labour_special_description', 'materials_description', 'subcontractor_description',
+    ]);
     const auditValue = (dbField, row) => {
       const raw = row ? row[dbField] : null;
+      if (TEXT_FIELDS.has(dbField)) return raw == null || raw === '' ? '—' : String(raw);
       if (HOURS_OVERRIDES.has(dbField)) return raw == null ? 'auto' : Number(raw) || 0;
       if (MULTIPLIER_OVERRIDES.has(dbField)) return raw == null ? 'standard' : Number(raw) || 0;
       return Number(raw) || 0;
@@ -73,10 +80,13 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
       ['labour_holiday_total', 'labourHolidayTotal'],
       ['labour_special_hours', 'labourSpecialHours'],
       ['labour_special_rate', 'labourSpecialRate'],
+      ['labour_special_description', 'labourSpecialDescription'],
       ['materials_cost', 'materialsCost'],
       ['materials_profit_percent', 'materialsProfitPercent'],
+      ['materials_description', 'materialsDescription'],
       ['subcontractor_cost', 'subcontractorCost'],
       ['subcontractor_profit_percent', 'subcontractorProfitPercent'],
+      ['subcontractor_description', 'subcontractorDescription'],
       ['grand_total', 'grandTotal'],
     ];
     for (const [dbField, changeKey] of fieldsToTrack) {
@@ -91,7 +101,12 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
       recordHistory('jobcard', jobId, 'update_costing', req.user.userId, req.user.name || req.user.username, changes, null);
     }
 
-    res.json({ success: true, grandTotal: computed.row.grand_total });
+    // Hand back the freshly computed figures, not just an acknowledgement: the server
+    // folds in any time logged since the screen loaded, so the totals it just stored can
+    // differ from the ones the screen worked out. The screen adopts these when nothing
+    // was typed while the save was in flight, which keeps what's shown and what's stored
+    // the same figure.
+    res.json({ success: true, costing: buildCostingResponse(jobId, computed) });
   } catch (err) {
     logger.error({ err }, 'Update costing error');
     res.status(500).json({ error: 'Failed to update costing' });

@@ -141,9 +141,9 @@ const jobCostingQueries = {
       labour_ot1_multiplier_override, labour_ot2_multiplier_override,
       labour_schedule, labour_public_holidays, labour_timezone,
       labour_base_ot1_multiplier, labour_base_ot2_multiplier, labour_base_holiday_multiplier,
-      labour_special_hours, labour_special_rate, labour_special_total,
-      materials_cost, materials_profit_percent, materials_total,
-      subcontractor_cost, subcontractor_profit_percent, subcontractor_total,
+      labour_special_hours, labour_special_rate, labour_special_total, labour_special_description,
+      materials_cost, materials_profit_percent, materials_total, materials_description,
+      subcontractor_cost, subcontractor_profit_percent, subcontractor_total, subcontractor_description,
       grand_total, created_at, updated_at
     )
     VALUES (
@@ -156,9 +156,9 @@ const jobCostingQueries = {
       @labour_ot1_multiplier_override, @labour_ot2_multiplier_override,
       @labour_schedule, @labour_public_holidays, @labour_timezone,
       @labour_base_ot1_multiplier, @labour_base_ot2_multiplier, @labour_base_holiday_multiplier,
-      @labour_special_hours, @labour_special_rate, @labour_special_total,
-      @materials_cost, @materials_profit_percent, @materials_total,
-      @subcontractor_cost, @subcontractor_profit_percent, @subcontractor_total,
+      @labour_special_hours, @labour_special_rate, @labour_special_total, @labour_special_description,
+      @materials_cost, @materials_profit_percent, @materials_total, @materials_description,
+      @subcontractor_cost, @subcontractor_profit_percent, @subcontractor_total, @subcontractor_description,
       @grand_total, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')
     )
     ON CONFLICT(jobcard_id) DO UPDATE SET
@@ -189,12 +189,15 @@ const jobCostingQueries = {
       labour_special_hours = excluded.labour_special_hours,
       labour_special_rate = excluded.labour_special_rate,
       labour_special_total = excluded.labour_special_total,
+      labour_special_description = excluded.labour_special_description,
       materials_cost = excluded.materials_cost,
       materials_profit_percent = excluded.materials_profit_percent,
       materials_total = excluded.materials_total,
+      materials_description = excluded.materials_description,
       subcontractor_cost = excluded.subcontractor_cost,
       subcontractor_profit_percent = excluded.subcontractor_profit_percent,
       subcontractor_total = excluded.subcontractor_total,
+      subcontractor_description = excluded.subcontractor_description,
       grand_total = excluded.grand_total,
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
   `),

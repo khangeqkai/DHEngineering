@@ -8,7 +8,7 @@ import { isManagement } from '../../utils/roles';
 import { todayIsoDate } from '../../utils/formatters';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import './JobCardModal.css';
-import { useCosting } from './useCosting';
+import { useJobCardCosting } from './useJobCardCosting';
 import { useTimeEntries } from './useTimeEntries';
 import { useContactSearch } from './useContactSearch';
 import { useJobCardForm } from './useJobCardForm';
@@ -22,7 +22,7 @@ import StopTimerForm from './StopTimerForm';
 import JobPaperworkHub from './JobPaperworkHub';
 import JobIdentityStrip from './JobIdentityStrip';
 import { validateJobCardForm } from './jobCardValidation';
-import { mapTimeEntryFromApi, mapCostingResponseToData, buildJobcardPayload } from './mappers';
+import { mapTimeEntryFromApi, buildJobcardPayload } from './mappers';
 import { confirmInvoiceAnyway, showFormErrors } from './jobCardPrompts';
 import { resolveJobContactId } from './jobCardContact';
 
@@ -42,13 +42,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const [machines, setMachines] = useState([]);
   const [timeEntries, setTimeEntries] = useState([]);
   const [qaLevels, setQaLevels] = useState([]);
-  const [costing, setCostingData] = useState(null);
   const [attachmentWarnings, setAttachmentWarnings] = useState(null);
   const contactHook = useContactSearch();
   const formHook = useJobCardForm();
   const activityLog = useActivityLog(jobCardId);
   const reloadTimeEntriesRef = useRef(null);
-  const costingHookRef = useRef(null);
   const hubRef = useRef(null);
   const onExternalStop = useCallback(() => {
     if (reloadTimeEntriesRef.current) reloadTimeEntriesRef.current();
@@ -56,6 +54,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const timer = useTimer(isEdit ? jobCardId : null, { onExternalStop });
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm, onNotesChange);
+  // Pricing: the lazy load, the invoiced-job question, and the save-on-the-way-out
+  // paths all live in this hook — see useJobCardCosting.js.
+  const costingHook = useJobCardCosting({
+    isOpen, isEdit, isAdmin, jobCardId, activeTab, showConfirm,
+    isInvoiced: formHook.formData.status === 'INVOICED'
+  });
 
   // Re-fetch suppliers after one is created or linked to a treatment on a line item,
   // so the new name and its updated services show up in the pickers right away.
@@ -159,37 +163,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   }, [isOpen, isEdit, activeTab, loadHistory]);
 
-  // Load costing only when the Costing tab is actually opened (admin-only), and only
-  // once per opening (costing stays non-null until the modal closes). Computing costing
-  // walks every logged minute to split it into rate tiers, so we keep it off the common
-  // open-a-job path and off timer events unless someone has looked at the costing.
-  const loadCosting = useCallback(async () => {
-    if (!isEdit || !jobCardId || !isAdmin) return;
-    try {
-      const costingRes = await api.getCosting(jobCardId);
-      if (costingRes) setCostingData(mapCostingResponseToData(costingRes));
-    } catch {
-      // Non-fatal — costing will load next time the tab is opened.
-    }
-  }, [isEdit, jobCardId, isAdmin]);
-
-  useEffect(() => {
-    if (isOpen && isEdit && isAdmin && activeTab === 'costing' && costing === null) {
-      loadCosting();
-    }
-  }, [isOpen, isEdit, isAdmin, activeTab, costing, loadCosting]);
-
-  const apiCostingOperations = {
-    costing: costing,
-    updateCosting: async (data) => {
-      await api.updateCosting(jobCardId, data);
-      const costingRes = await api.getCosting(jobCardId);
-      if (costingRes) {
-        setCostingData(mapCostingResponseToData(costingRes));
-      }
-    }
-  };
-
   const reloadTimeEntries = useCallback(async () => {
     const res = await api.getTimeEntries(jobCardId);
     setTimeEntries((res || []).map(mapTimeEntryFromApi));
@@ -211,14 +184,15 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   }, [isEdit, jobCardId, setFormData]);
 
+  const { costingLoaded, refreshCosting } = costingHook;
   const reloadTimeEntriesAndCosting = useCallback(async () => {
     await reloadTimeEntries();
     // Costing endpoint is admin-only; skip for non-admin to avoid 403 toast. Also skip
-    // unless the Costing tab has been opened (costing !== null) — refreshing it walks all
-    // logged time, and there's nothing on screen to update until someone views costing.
-    if (isAdmin && costing !== null && costingHookRef.current) await costingHookRef.current();
+    // unless the Costing tab has been opened — refreshing it walks all logged time, and
+    // there's nothing on screen to update until someone views costing.
+    if (isAdmin && costingLoaded) await refreshCosting();
     await refreshJobStatus();
-  }, [reloadTimeEntries, isAdmin, costing, refreshJobStatus]);
+  }, [reloadTimeEntries, isAdmin, costingLoaded, refreshCosting, refreshJobStatus]);
 
   const handleSubmitEntryForm = useCallback(async () => {
     await timer.submitEntryForm(reloadTimeEntriesAndCosting);
@@ -244,10 +218,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       await reloadTimeEntriesAndCosting();
     }
   };
-
-  const costingHook = useCosting(jobCardId, apiCostingOperations);
-  const { refreshCosting } = costingHook;
-  costingHookRef.current = refreshCosting;
 
   const { setAssignees } = formHook;
   const handleStartItemTimer = useCallback(async (itemNumber, workerId, workerName) => {
@@ -298,7 +268,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     resetFormHook();
     resetContact();
     setTimeEntries([]);
-    setCostingData(null);
     setAttachmentWarnings(null);
     resetTimeEntries();
     resetCosting();
@@ -383,10 +352,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         contactId
       });
       // Flush any unsaved pricing edits before invoicing so they aren't lost when the job
-      // is filed away. If that save fails, abort rather than invoicing with lost edits.
+      // is filed away. This goes through the same path the pricing screen uses, so a job
+      // that has already been billed still asks "change an invoiced job?" first rather
+      // than quietly restating the final total. Only a failed save aborts here — turning
+      // the pricing change down puts the billed figures back and says so, and the rest of
+      // this save (dates, notes, parts) has nothing to do with pricing, so it carries on.
       if (isEdit && formHook.formData.status === 'INVOICED' && costingHook.costingDirty) {
-        const saved = await costingHook.handleSaveCosting();
-        if (!saved) return; // save already reported why it failed
+        const saved = await costingHook.flushCosting();
+        if (saved === false) return; // the save already reported why it failed
       }
 
       // Send the save; on an edit that would invoice with files still missing,
@@ -432,21 +405,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     formHook.formData.dueDate < today &&
     !['DONE', 'INVOICED'].includes(formHook.formData.status);
 
-  // Editing an invoiced job's pricing isn't blocked — it just asks first, then saves and
-  // recalculates from the job's own captured rules.
-  const saveCostingWithConfirm = async () => {
-    if (formHook.formData.status === 'INVOICED') {
-      const ok = await showConfirm({
-        title: 'Change an invoiced job?',
-        message: 'This job has been invoiced. Changing its pricing will update the final total. Are you sure you want to continue?',
-        confirmLabel: 'Yes, change it',
-        cancelLabel: 'Cancel',
-        confirmVariant: 'danger'
-      });
-      if (!ok) return false;
-    }
-    return costingHook.handleSaveCosting();
-  };
   const headerStrip = (
     <JobIdentityStrip
       isEdit={isEdit}
@@ -572,8 +530,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   resetTierMultiplier={costingHook.resetTierMultiplier}
                   useDefaultRate={costingHook.useDefaultRate}
                   calculateCostingTotals={costingHook.calculateCostingTotals}
-                  handleSaveCosting={saveCostingWithConfirm}
-                  savingCosting={costingHook.savingCosting}
+                  saveState={costingHook.costingSaveState}
+                  onFlushCosting={costingHook.flushCosting}
+                  loaded={costingHook.costingLoaded}
+                  loadFailed={costingHook.costingLoadFailed}
+                  onRetryLoad={costingHook.retryLoadCosting}
                 />
               )}
 

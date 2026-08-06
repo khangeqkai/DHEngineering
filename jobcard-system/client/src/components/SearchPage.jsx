@@ -111,13 +111,17 @@ export default function SearchPage() {
     filtersError, retryFilters, refresh,
   } = useSearch(user?.role);
 
-  // Job card modal state
+  // Job card modal state. Open/closed is tracked separately from which job is open, so
+  // closing doesn't clear the job id in the same breath: the job screen saves pending
+  // pricing edits on the way out, and that save needs to know which job it belongs to.
   const [modalJobId, setModalJobId] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const [modalTab, setModalTab] = useState(null);
 
   const openJobModal = useCallback((jobId, tab = null) => {
     setModalTab(tab);
     setModalJobId(jobId);
+    setModalOpen(true);
   }, []);
 
   const navigateActivity = useCallback((row) => {
@@ -454,8 +458,8 @@ export default function SearchPage() {
       )}
 
       <JobCardModal
-        isOpen={!!modalJobId}
-        onClose={() => setModalJobId(null)}
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
         jobCardId={modalJobId}
         initialTab={modalTab}
         onSuccess={refresh}

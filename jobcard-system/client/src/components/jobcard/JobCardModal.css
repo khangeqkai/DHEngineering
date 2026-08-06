@@ -2398,23 +2398,30 @@
 }
 
 /* ── Costing sheet — a ledger that reads cost → total ── */
+/* No overflow clipping here: the header below pins itself to the top of the scrolling
+   panel, which a clipped ancestor would silently disable. */
 .costing-sheet {
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  overflow: hidden;
   box-shadow: var(--shadow-sm);
 }
 
+/* Stays put at the top of the panel while the sheet scrolls, so the grand total is
+   readable at all times. */
 .costing-sheet-header {
+  position: sticky;
+  top: 0;
+  z-index: 4;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--space-5);
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-5);
   background: var(--surface-elevated);
   border-bottom: 1px solid var(--border-color);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .costing-sheet-title {
@@ -2424,6 +2431,43 @@
   text-transform: uppercase;
   letter-spacing: var(--tracking-wider);
   color: var(--text-secondary);
+}
+
+/* Save status — the sheet saves itself, so this just reports where that is up to. */
+.costing-save-status {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* Edited, save due — and mid-send. Both deliberately quiet: they're the resting states
+   while typing, so they shouldn't pull the eye off the figures. */
+.costing-save-status--pending,
+.costing-save-status--saving {
+  color: var(--text-tertiary);
+}
+
+.costing-save-status--saved {
+  color: var(--accent-ready);
+}
+
+.costing-save-status--error {
+  color: var(--accent-caution);
+}
+
+/* Shown in place of the sheet while the job's pricing is still loading, or when it
+   couldn't be loaded at all. */
+.costing-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
 }
 
 .costing-ledger {
@@ -2481,6 +2525,45 @@
 }
 
 .ledger-field input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring-sm);
+}
+
+/* "What this covers" note — drops onto its own row under the line's figures, running
+   from the first field across to the total so it reads as part of that cost line. */
+.ledger-note {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  min-width: 0;
+}
+
+.ledger-note label {
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  font-weight: var(--font-medium);
+  color: var(--text-tertiary);
+}
+
+.ledger-note input {
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+
+.ledger-note input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.ledger-note input:focus {
   outline: none;
   border-color: var(--border-focus);
   box-shadow: var(--focus-ring-sm);
@@ -2887,34 +2970,35 @@
   cursor: pointer;
 }
 
-/* Grand total — the hero figure */
+/* Grand total — the hero figure, riding in the sticky header so it never scrolls away */
 .costing-grand {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin: var(--space-4) var(--space-5) var(--space-5);
-  padding: var(--space-4) var(--space-5);
+  gap: var(--space-3);
+  margin-left: auto;
+  padding: 0.4rem 0.95rem;
   background: var(--primary-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .costing-grand-label {
-  font-size: var(--text-xs);
+  font-size: var(--text-2xs);
   font-weight: var(--font-semibold);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wider);
   color: rgba(255, 255, 255, 0.72);
+  white-space: nowrap;
 }
 
 .costing-grand-value {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: var(--text-3xl);
+  font-size: var(--text-xl);
   font-weight: var(--font-bold);
   letter-spacing: var(--tracking-tight);
   color: #fff;
+  white-space: nowrap;
 }
 
 /* Narrow widths: stack each line into two columns, drop the operators */
@@ -2935,6 +3019,15 @@
   .ledger-total {
     grid-column: 1 / -1;
     padding-bottom: 0;
+  }
+  .ledger-note {
+    grid-column: 1 / -1;
+  }
+  /* The grand total takes its own line above the save status on a narrow screen */
+  .costing-grand {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
   }
   .labour-block {
     margin-left: var(--space-3);

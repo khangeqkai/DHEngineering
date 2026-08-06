@@ -236,12 +236,15 @@ const COSTING_COLS = [
   { label: 'Special Hours', value: r => r.labourSpecialHours },
   { label: 'Special Rate', value: r => r.labourSpecialRate },
   { label: 'Special Total', value: r => r.labourSpecialTotal },
+  { label: 'Special Covers', value: r => r.labourSpecialDescription },
   { label: 'Materials Cost', value: r => r.materialsCost },
   { label: 'Materials Markup %', value: r => r.materialsProfitPercent },
   { label: 'Materials Total', value: r => r.materialsTotal },
+  { label: 'Materials Covers', value: r => r.materialsDescription },
   { label: 'Subcontractor Cost', value: r => r.subcontractorCost },
   { label: 'Subcontractor Markup %', value: r => r.subcontractorProfitPercent },
   { label: 'Subcontractor Total', value: r => r.subcontractorTotal },
+  { label: 'Subcontractor Covers', value: r => r.subcontractorDescription },
   { label: 'Grand Total', value: r => r.grandTotal },
 ];
 

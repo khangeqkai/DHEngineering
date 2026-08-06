@@ -112,6 +112,13 @@ function computeLiveCosting(jobId, incoming) {
     if (hasIncoming) return Math.max(0, num(src[incomingKey], dflt));
     return existing ? num(existing[existingCol], dflt) : dflt;
   };
+  // Free-text note on a manual cost line. Trimmed and length-capped; an empty note is
+  // stored as NULL so "no note" is one value rather than a mix of null and ''.
+  const pickText = (incomingKey, existingCol) => {
+    const raw = hasIncoming ? src[incomingKey] : (existing ? existing[existingCol] : null);
+    const text = typeof raw === 'string' ? raw.trim().slice(0, 300) : '';
+    return text || null;
+  };
 
   const normalOverride = pickOverride('labourHoursOverride', 'labour_hours_override');
   const ot1Override = pickOverride('labourOt1Override', 'labour_ot1_override');
@@ -145,14 +152,17 @@ function computeLiveCosting(jobId, incoming) {
   const specialHours = pickNum('labourSpecialHours', 'labour_special_hours', 0);
   const specialRate = pickNum('labourSpecialRate', 'labour_special_rate', 0);
   const specialTotal = specialHours * specialRate;
+  const specialDescription = pickText('labourSpecialDescription', 'labour_special_description');
 
   const materialsCost = pickNum('materialsCost', 'materials_cost', 0);
   const materialsProfit = pickRaw('materialsProfitPercent', 'materials_profit_percent', 100);
   const materialsTotal = materialsCost * (1 + materialsProfit / 100);
+  const materialsDescription = pickText('materialsDescription', 'materials_description');
 
   const subCost = pickNum('subcontractorCost', 'subcontractor_cost', 0);
   const subProfit = pickRaw('subcontractorProfitPercent', 'subcontractor_profit_percent', 0);
   const subTotal = subCost * (1 + subProfit / 100);
+  const subDescription = pickText('subcontractorDescription', 'subcontractor_description');
 
   const grandTotal =
     normalTotal + ot1Total + ot2Total + holidayTotal + specialTotal + materialsTotal + subTotal;
@@ -189,12 +199,15 @@ function computeLiveCosting(jobId, incoming) {
     labour_special_hours: specialHours,
     labour_special_rate: specialRate,
     labour_special_total: specialTotal,
+    labour_special_description: specialDescription,
     materials_cost: materialsCost,
     materials_profit_percent: materialsProfit,
     materials_total: materialsTotal,
+    materials_description: materialsDescription,
     subcontractor_cost: subCost,
     subcontractor_profit_percent: subProfit,
     subcontractor_total: subTotal,
+    subcontractor_description: subDescription,
     grand_total: grandTotal
   };
 
@@ -258,12 +271,15 @@ function buildCostingResponse(jobId, computed) {
     labourSpecialHours: row.labour_special_hours,
     labourSpecialRate: row.labour_special_rate,
     labourSpecialTotal: row.labour_special_total,
+    labourSpecialDescription: row.labour_special_description,
     materialsCost: row.materials_cost,
     materialsProfitPercent: row.materials_profit_percent,
     materialsTotal: row.materials_total,
+    materialsDescription: row.materials_description,
     subcontractorCost: row.subcontractor_cost,
     subcontractorProfitPercent: row.subcontractor_profit_percent,
     subcontractorTotal: row.subcontractor_total,
+    subcontractorDescription: row.subcontractor_description,
     grandTotal: row.grand_total
   };
 }

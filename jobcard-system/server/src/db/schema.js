@@ -249,18 +249,22 @@ db.exec(`
     labour_base_holiday_multiplier REAL,
 
     -- Special labour is a manually-entered line: an admin types the hours and rate
-    -- on the costing screen (it is NOT derived from time entries).
+    -- on the costing screen (it is NOT derived from time entries). The *_description
+    -- columns on the three manual lines are free text saying what the cost covers.
     labour_special_hours REAL DEFAULT 0,
     labour_special_rate REAL DEFAULT 0,
     labour_special_total REAL DEFAULT 0,
+    labour_special_description TEXT,
 
     materials_cost REAL DEFAULT 0,
     materials_profit_percent REAL DEFAULT 100,
     materials_total REAL DEFAULT 0,
+    materials_description TEXT,
 
     subcontractor_cost REAL DEFAULT 0,
     subcontractor_profit_percent REAL DEFAULT 0,
     subcontractor_total REAL DEFAULT 0,
+    subcontractor_description TEXT,
 
     grand_total REAL DEFAULT 0,
 
@@ -394,24 +398,7 @@ const migrations = [
   { table: 'jobcards', column: 'contact_phone', type: 'TEXT' },
   { table: 'jobcards', column: 'contact_email', type: 'TEXT' },
   { table: 'jobcards', column: 'contact_id', type: 'TEXT' },
-  // Sync-related columns for offline-first support
-  { table: 'contacts', column: '_version', type: 'INTEGER DEFAULT 1' },
-  { table: 'contacts', column: '_device_id', type: 'TEXT' },
-  { table: 'suppliers', column: '_version', type: 'INTEGER DEFAULT 1' },
-  { table: 'suppliers', column: '_device_id', type: 'TEXT' },
-  { table: 'users', column: '_version', type: 'INTEGER DEFAULT 1' },
-  { table: 'users', column: '_device_id', type: 'TEXT' },
-  { table: 'machines', column: '_version', type: 'INTEGER DEFAULT 1' },
-  { table: 'machines', column: '_device_id', type: 'TEXT' },
   { table: 'machines', column: 'updated_at', type: 'TEXT' },
-  { table: 'jobcards', column: '_version', type: 'INTEGER DEFAULT 1' },
-  { table: 'jobcards', column: '_device_id', type: 'TEXT' },
-  { table: 'job_items', column: '_version', type: 'INTEGER DEFAULT 1' },
-  { table: 'job_items', column: '_device_id', type: 'TEXT' },
-  { table: 'time_entries', column: '_version', type: 'INTEGER DEFAULT 1' },
-  { table: 'time_entries', column: '_device_id', type: 'TEXT' },
-  { table: 'job_costings', column: '_version', type: 'INTEGER DEFAULT 1' },
-  { table: 'job_costings', column: '_device_id', type: 'TEXT' },
   // Special labour (manually-entered costing line). Present in the CREATE TABLE, but
   // databases created before these columns existed need them added, or the costing
   // insert/update prepared statement fails to build at startup.
@@ -444,6 +431,10 @@ const migrations = [
   { table: 'job_costings', column: 'labour_base_ot1_multiplier', type: 'REAL' },
   { table: 'job_costings', column: 'labour_base_ot2_multiplier', type: 'REAL' },
   { table: 'job_costings', column: 'labour_base_holiday_multiplier', type: 'REAL' },
+  // Free-text note on each manual cost line (what the cost covers).
+  { table: 'job_costings', column: 'labour_special_description', type: 'TEXT' },
+  { table: 'job_costings', column: 'materials_description', type: 'TEXT' },
+  { table: 'job_costings', column: 'subcontractor_description', type: 'TEXT' },
   { table: 'users', column: 'session_token', type: 'TEXT' },
   { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
   { table: 'time_entries', column: 'scrap_bin_qty', type: 'INTEGER DEFAULT 0' },

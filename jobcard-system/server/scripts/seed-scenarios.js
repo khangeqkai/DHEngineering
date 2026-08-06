@@ -190,10 +190,13 @@ function buildScenarios(contacts, qaLevels, opts = {}) {
         // One invoiced job shows the manually-entered special-labour line (e.g. weekend overtime).
         labourSpecialHours: withOvertime ? 8 : 0,
         labourSpecialRate: withOvertime ? 172 : 0,
+        labourSpecialDescription: withOvertime ? 'Weekend shift to hit the shutdown date' : null,
         materialsCost: 1500 + (jobIdx % 6) * 2600,
         materialsProfitPercent: 25 + (jobIdx % 4) * 5,
+        materialsDescription: `${(items[0].material || 'Bar stock').replace(/_/g, ' ').toLowerCase()} stock for ${items.length} part${items.length > 1 ? 's' : ''}`,
         subcontractorCost: hasTreatment ? 1800 + (jobIdx % 5) * 900 : 0,
         subcontractorProfitPercent: hasTreatment ? 15 : 0,
+        subcontractorDescription: hasTreatment ? 'Outsourced treatment and freight both ways' : null,
       };
     }
 
