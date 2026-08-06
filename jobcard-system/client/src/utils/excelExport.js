@@ -187,7 +187,9 @@ const JOBCARD_SUMMARY_COLS = [
     return parts.join(', ');
   }},
   { label: 'Customer Property', value: r => fmtItemTagList(r.items, 'customerProperty') },
-  { label: 'Notes', value: r => (r._notes || []).map(n => n.text).join(' | ') },
+  // Comments arrive newest-first (the on-screen thread reads that way), but an
+  // exported record should read oldest-first like a diary, so flip them back.
+  { label: 'Notes', value: r => (r._notes || []).slice().reverse().map(n => n.text).join(' | ') },
   { label: 'Repeat Job', value: r => r.isRepeatJob ? 'Yes' : 'No' },
   { label: 'Repeat Job Ref', value: r => r.repeatJobReference },
   { label: 'Invoiced Date', value: r => fmtDate(r.invoicedDate) },

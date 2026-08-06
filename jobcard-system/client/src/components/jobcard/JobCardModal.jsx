@@ -27,7 +27,7 @@ import { confirmInvoiceAnyway, showFormErrors } from './jobCardPrompts';
 import { resolveJobContactId } from './jobCardContact';
 
 // Read a picked file into the base64 string the upload route expects.
-export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, initialTab = null }) {
+export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, initialTab = null }) {
   const { user } = useAuth();
   const isEdit = Boolean(jobCardId);
   // Two tiers: costing is admin-only money; everything else managerial on this
@@ -55,7 +55,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   }, []);
   const timer = useTimer(isEdit ? jobCardId : null, { onExternalStop });
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
-  const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm);
+  const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm, onNotesChange);
 
   // Re-fetch suppliers after one is created or linked to a treatment on a line item,
   // so the new name and its updated services show up in the pickers right away.

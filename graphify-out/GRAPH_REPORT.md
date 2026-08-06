@@ -1,11 +1,11 @@
 # Graph Report - DHEngineering  (2026-08-06)
 
 ## Corpus Check
-- 232 files · ~1,513,271 words
+- 232 files · ~1,514,190 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 794 nodes · 1297 edges · 59 communities detected
+- 795 nodes · 1298 edges · 59 communities detected
 - Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 76 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
@@ -101,8 +101,8 @@ Cohesion: 0.04
 Nodes (1): ApiService
 
 ### Community 1 - "Community 1"
-Cohesion: 0.06
-Nodes (26): formatAction(), getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), fmtDate(), fmtDateShort(), PriorityBadge() (+18 more)
+Cohesion: 0.07
+Nodes (23): formatAction(), getStatusBadgeClass(), statusToken(), ActionBadge(), fmt(), fmtDate(), fmtDateShort(), PriorityBadge() (+15 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.07
@@ -121,8 +121,8 @@ Cohesion: 0.09
 Nodes (21): resolveJobContactId(), JobCardModal(), validateJobCardForm(), buildJobcardPayload(), getDefaultCostingForm(), getDefaultFormData(), getDefaultTimeEntryForm(), isoToLocalInput() (+13 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.1
-Nodes (15): CreatableTagSelect(), ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), useConfirmDialog(), invalidateTagCache(), useTags() (+7 more)
+Cohesion: 0.09
+Nodes (18): CreatableTagSelect(), ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), useConfirmDialog(), invalidateTagCache(), useTags() (+10 more)
 
 ### Community 7 - "Community 7"
 Cohesion: 0.15
@@ -153,12 +153,12 @@ Cohesion: 0.37
 Nodes (11): buildStorageFilename(), listCategoryFileNames(), listFolderFiles(), nextQaFormNumber(), partFileCode(), partTagRegex(), resolveCategoryFolder(), resolveFileOwners() (+3 more)
 
 ### Community 14 - "Community 14"
-Cohesion: 0.47
-Nodes (10): buildAltNames(), collectSanHosts(), ensureCertificates(), generateCa(), generateLeaf(), leafSanCoversIps(), leafSanCoversNames(), makeSerial() (+2 more)
-
-### Community 15 - "Community 15"
 Cohesion: 0.27
 Nodes (8): buildHelperScript(), buildSetupPage(), plainTrustFileUrl(), secureAddress(), hostWithoutPort(), isVirtualIface(), lanIpv4s(), safeHost()
+
+### Community 15 - "Community 15"
+Cohesion: 0.47
+Nodes (10): buildAltNames(), collectSanHosts(), ensureCertificates(), generateCa(), generateLeaf(), leafSanCoversIps(), leafSanCoversNames(), makeSerial() (+2 more)
 
 ### Community 16 - "Community 16"
 Cohesion: 0.49
@@ -262,31 +262,31 @@ Nodes (2): normalizeEmpty(), toApiFormat()
 
 ### Community 41 - "Community 41"
 Cohesion: 0.67
-Nodes (2): normalizeEmpty(), toResponseFormat()
-
-### Community 42 - "Community 42"
-Cohesion: 0.67
 Nodes (2): formatTag(), nameToValue()
 
-### Community 43 - "Community 43"
+### Community 42 - "Community 42"
 Cohesion: 0.83
 Nodes (2): isJobComplete(), syncStatusToWork()
 
-### Community 44 - "Community 44"
+### Community 43 - "Community 43"
 Cohesion: 0.67
 Nodes (2): getPdfEngineStatus(), verifyPdfEngine()
 
-### Community 45 - "Community 45"
+### Community 44 - "Community 44"
 Cohesion: 0.67
 Nodes (2): CostingTab(), money()
 
-### Community 46 - "Community 46"
+### Community 45 - "Community 45"
 Cohesion: 0.67
 Nodes (2): maintenanceGuard(), setMaintenance()
 
-### Community 47 - "Community 47"
+### Community 46 - "Community 46"
 Cohesion: 0.67
 Nodes (2): normalizeEmpty(), readFlag()
+
+### Community 47 - "Community 47"
+Cohesion: 0.67
+Nodes (2): normalizeEmpty(), toResponseFormat()
 
 ### Community 48 - "Community 48"
 Cohesion: 0.67
@@ -343,19 +343,19 @@ Nodes (2): formatNum(), ScrapStat()
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 40`** (4 nodes): `contacts.js`, `normalizeEmpty()`, `toApiFormat()`, `contacts.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 41`** (4 nodes): `machines.js`, `normalizeEmpty()`, `toResponseFormat()`, `machines.js`
+- **Thin community `Community 41`** (4 nodes): `tags.js`, `formatTag()`, `nameToValue()`, `tags.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 42`** (4 nodes): `tags.js`, `formatTag()`, `nameToValue()`, `tags.js`
+- **Thin community `Community 42`** (4 nodes): `jobStatusAuto.js`, `jobStatusAuto.js`, `isJobComplete()`, `syncStatusToWork()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 43`** (4 nodes): `jobStatusAuto.js`, `jobStatusAuto.js`, `isJobComplete()`, `syncStatusToWork()`
+- **Thin community `Community 43`** (4 nodes): `pdfEngine.js`, `pdfEngine.js`, `getPdfEngineStatus()`, `verifyPdfEngine()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 44`** (4 nodes): `pdfEngine.js`, `pdfEngine.js`, `getPdfEngineStatus()`, `verifyPdfEngine()`
+- **Thin community `Community 44`** (4 nodes): `CostingTab.jsx`, `CostingTab()`, `money()`, `mult()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 45`** (4 nodes): `CostingTab.jsx`, `CostingTab()`, `money()`, `mult()`
+- **Thin community `Community 45`** (4 nodes): `maintenance.js`, `maintenanceGuard()`, `setMaintenance()`, `maintenance.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 46`** (4 nodes): `maintenance.js`, `maintenanceGuard()`, `setMaintenance()`, `maintenance.js`
+- **Thin community `Community 46`** (4 nodes): `jobcard-time-entries.js`, `normalizeEmpty()`, `readFlag()`, `jobcard-time-entries.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 47`** (4 nodes): `jobcard-time-entries.js`, `normalizeEmpty()`, `readFlag()`, `jobcard-time-entries.js`
+- **Thin community `Community 47`** (4 nodes): `machines.js`, `normalizeEmpty()`, `toResponseFormat()`, `machines.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 48`** (3 nodes): `seed-history.js`, `seedHistory()`, `seed-history.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -384,7 +384,7 @@ Nodes (2): formatNum(), ScrapStat()
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `ApiService` connect `Community 0` to `Community 2`?**
-  _High betweenness centrality (0.080) - this node is a cross-community bridge._
+  _High betweenness centrality (0.079) - this node is a cross-community bridge._
 - **Are the 13 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 13 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 7 inferred relationships involving `useConfirmDialog()` (e.g. with `ContactManagement()` and `JobCardList()`) actually correct?**
@@ -394,6 +394,6 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.04 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.06 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
   _Cohesion score 0.07 - nodes in this community are weakly interconnected._

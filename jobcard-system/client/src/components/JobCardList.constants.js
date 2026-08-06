@@ -29,6 +29,7 @@ export const DEFAULT_COLUMN_ORDER = [
   'customer',
   'assignedTo',
   'status',
+  'latestNote',
   'priority',
   'attachments',
   'dueDate',
@@ -56,13 +57,38 @@ export const normalizeHiddenColumns = (saved) => {
   return out;
 };
 
+// Folds any column the saved order doesn't know about into it, dropped in the
+// place it sits by default (right after the column it normally follows) rather
+// than tacked on the end — so someone who once dragged their columns around
+// still gets a new column where it was designed to go, not lost at the far
+// right. A new first column, or one whose neighbours were all hidden away,
+// falls back to the front. The row buttons always end up last, whatever the
+// saved order says — a new column must never land to the right of them.
 export const mergeColumnOrder = (saved) => {
   if (!Array.isArray(saved) || saved.length === 0) return DEFAULT_COLUMN_ORDER;
   const missing = DEFAULT_COLUMN_ORDER.filter(c => !saved.includes(c));
   if (missing.length === 0) return saved;
-  const actionsIdx = saved.indexOf('actions');
-  if (actionsIdx === -1) return [...saved, ...missing];
-  return [...saved.slice(0, actionsIdx), ...missing, ...saved.slice(actionsIdx)];
+
+  const merged = [...saved];
+  for (const id of missing) {
+    const defaultIdx = DEFAULT_COLUMN_ORDER.indexOf(id);
+    let insertAt = 0;
+    for (let i = defaultIdx - 1; i >= 0; i--) {
+      const anchor = merged.indexOf(DEFAULT_COLUMN_ORDER[i]);
+      if (anchor !== -1) {
+        insertAt = anchor + 1;
+        break;
+      }
+    }
+    merged.splice(insertAt, 0, id);
+  }
+
+  const actionsIdx = merged.indexOf('actions');
+  if (actionsIdx !== -1 && actionsIdx !== merged.length - 1) {
+    merged.splice(actionsIdx, 1);
+    merged.push('actions');
+  }
+  return merged;
 };
 
 // Normalize a status value (e.g. 'AWAITING_MATERIAL') into its color-class token

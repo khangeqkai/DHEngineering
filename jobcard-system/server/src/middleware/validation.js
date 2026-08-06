@@ -164,9 +164,12 @@ const JOBCARD_STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', '
 const PRIORITY_OPTIONS = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
 
 
+// Mirrors DEFAULT_COLUMN_ORDER in client/src/components/JobCardList.constants.js —
+// a column added there must be added here too, or saving a reordered/hidden
+// column list fails validation for every user.
 const JOBCARD_COLUMN_IDS = [
   'jobNumber', 'description', 'company', 'customer', 'assignedTo',
-  'status', 'priority', 'attachments', 'dueDate', 'createdAt', 'updatedAt', 'actions'
+  'status', 'latestNote', 'priority', 'attachments', 'dueDate', 'createdAt', 'updatedAt', 'actions'
 ];
 
 // The job number column is the click-through to open a job, so it can never be

@@ -284,6 +284,12 @@ export default function JobCardList() {
     }
   }, [user]);
 
+  // A comment added or deleted in the job screen only changes that job's Latest
+  // Comment cell, so patch the one row rather than re-fetching the whole list.
+  const handleNotesChange = useCallback((latestNote) => {
+    setJobcards(prev => prev.map(c => c.id === editingCardId ? { ...c, latestNote } : c));
+  }, [editingCardId]);
+
   const filteredCards = useMemo(() => {
     const today = todayIsoDate();
     return jobcards.filter((card) => {
@@ -540,7 +546,8 @@ export default function JobCardList() {
           className="assignee-tooltip description-tooltip"
           style={{ top: hoverDesc.top, left: hoverDesc.left }}
         >
-          <span className="mf-tooltip-title">Description</span>
+          <span className="mf-tooltip-title">{hoverDesc.title || 'Description'}</span>
+          {hoverDesc.meta && <span className="tooltip-meta">{hoverDesc.meta}</span>}
           {hoverDesc.text}
         </div>,
         document.body
@@ -557,6 +564,7 @@ export default function JobCardList() {
         jobCardId={editingCardId}
         onSuccess={handleModalSuccess}
         onTimerChange={() => { refreshTimer(); loadJobcards(); }}
+        onNotesChange={handleNotesChange}
       />
 
       <ConfirmDialog

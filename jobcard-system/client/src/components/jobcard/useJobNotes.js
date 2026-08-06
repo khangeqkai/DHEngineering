@@ -2,7 +2,11 @@ import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 
-export function useJobNotes(jobcardId, showConfirm) {
+// onChange fires whenever the comment thread gains or loses a comment, handing
+// over the job's newest remaining comment (or null when the last one is gone),
+// so a list showing that comment can patch the one row instead of re-fetching
+// every job.
+export function useJobNotes(jobcardId, showConfirm, onChange) {
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,14 +19,22 @@ export function useJobNotes(jobcardId, showConfirm) {
       const result = await api.getJobNotes(jobcardId);
       setNotes(result || []);
       setLoadError(false);
+      return result || [];
     } catch (err) {
       // Surface the failure instead of looking like an empty list
       setLoadError(true);
       toast.error(err.message || 'Failed to load comments');
+      return null;
     } finally {
       setLoading(false);
     }
   }, [jobcardId]);
+
+  // The thread is newest-first, so the head of the list is the job's latest word.
+  const latestOf = (list) => {
+    const note = list?.[0];
+    return note ? { text: note.text, userName: note.userName, createdAt: note.createdAt } : null;
+  };
 
   const addNote = useCallback(async () => {
     if (!newNote.trim()) return;
@@ -30,13 +42,14 @@ export function useJobNotes(jobcardId, showConfirm) {
     try {
       await api.addJobNote(jobcardId, newNote.trim());
       setNewNote('');
-      await loadNotes();
+      const list = await loadNotes();
+      if (list) onChange?.(latestOf(list));
     } catch (err) {
       toast.error(err.message || 'Failed to add note');
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, newNote, loadNotes]);
+  }, [jobcardId, newNote, loadNotes, onChange]);
 
   const deleteNote = useCallback(async (noteId) => {
     // Deleting a comment is permanent, so confirm first (naming the author when
@@ -55,13 +68,14 @@ export function useJobNotes(jobcardId, showConfirm) {
     setLoading(true);
     try {
       await api.deleteJobNote(jobcardId, noteId);
-      await loadNotes();
+      const list = await loadNotes();
+      if (list) onChange?.(latestOf(list));
     } catch (err) {
       toast.error(err.message || 'Failed to delete note');
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, loadNotes, notes, showConfirm]);
+  }, [jobcardId, loadNotes, notes, showConfirm, onChange]);
 
   const resetNotes = useCallback(() => {
     setNotes([]);

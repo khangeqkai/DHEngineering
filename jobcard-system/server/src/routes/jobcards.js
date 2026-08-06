@@ -11,6 +11,7 @@ const {
   jobAssigneeQueries,
   timeEntryQueries,
   getAssigneesForJobcards,
+  getLatestNotesForJobcards,
   historyQueries,
   recordHistory
 } = require('../db/database');
@@ -47,9 +48,20 @@ router.get('/', authenticate, validateJobcardListQuery, (req, res) => {
       jobcards = jobcardQueries.getAll.all();
     }
 
-    const assigneeMap = getAssigneesForJobcards(jobcards.map(jc => jc.id));
+    const ids = jobcards.map(jc => jc.id);
+    const assigneeMap = getAssigneesForJobcards(ids);
+    // The list shows each job's newest comment as its own column.
+    const latestNoteMap = getLatestNotesForJobcards(ids);
 
-    res.json(jobcards.map(jc => formatJobcard(jc, [], assigneeMap[jc.id] || [], req.user.role)));
+    res.json(jobcards.map(jc => {
+      const note = latestNoteMap[jc.id];
+      return {
+        ...formatJobcard(jc, [], assigneeMap[jc.id] || [], req.user.role),
+        latestNote: note
+          ? { text: note.text, userName: note.user_name, createdAt: note.created_at }
+          : null
+      };
+    }));
   } catch (err) {
     logger.error({ err }, 'Get jobcards error');
     res.status(500).json({ error: 'Failed to get job cards' });

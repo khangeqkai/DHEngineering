@@ -82,10 +82,13 @@ const timeEntryQueries = {
 
 // Job note queries
 const jobNoteQueries = {
+  // Newest first — the comment thread reads top-down like a feed, so the latest
+  // word on the job is the first thing seen. rowid breaks ties for two comments
+  // written in the same millisecond.
   getByJobcard: db.prepare(`
     SELECT * FROM job_notes
     WHERE jobcard_id = ?
-    ORDER BY created_at ASC
+    ORDER BY created_at DESC, rowid DESC
   `),
 
   create: db.prepare(`
@@ -97,6 +100,29 @@ const jobNoteQueries = {
 
   delete: db.prepare('DELETE FROM job_notes WHERE id = ?')
 };
+
+// Latest comment per job card, in one pass — the job list shows it as a column,
+// so fetching per row would be one query per visible job. Ranks each job's
+// comments by the same order the thread uses (created_at DESC, rowid DESC) and
+// keeps the top one, so the column can never show a different comment than the
+// one sitting at the top of the thread when two share a timestamp.
+function getLatestNotesForJobcards(jobcardIds) {
+  if (jobcardIds.length === 0) return {};
+  const placeholders = jobcardIds.map(() => '?').join(',');
+  const rows = db.prepare(`
+    SELECT jobcard_id, text, user_name, created_at FROM (
+      SELECT jobcard_id, text, user_name, created_at,
+             ROW_NUMBER() OVER (
+               PARTITION BY jobcard_id ORDER BY created_at DESC, rowid DESC
+             ) AS rn
+      FROM job_notes
+      WHERE jobcard_id IN (${placeholders})
+    ) WHERE rn = 1
+  `).all(...jobcardIds);
+  const map = {};
+  for (const row of rows) map[row.jobcard_id] = row;
+  return map;
+}
 
 // Job costing queries
 const jobCostingQueries = {
@@ -179,5 +205,6 @@ const jobCostingQueries = {
 module.exports = {
   timeEntryQueries,
   jobNoteQueries,
+  getLatestNotesForJobcards,
   jobCostingQueries
 };

@@ -215,6 +215,36 @@ export function getJobCardColumns({
       )
     },
     {
+      id: 'latestNote',
+      label: 'Latest Comment',
+      renderCell: (card) => {
+        const note = card.latestNote;
+        return (
+          <td
+            key="latestNote"
+            className="latest-note-cell"
+            onMouseEnter={(e) => {
+              const el = e.currentTarget;
+              // Only float the full comment when the row actually cuts it off.
+              if (!note?.text || el.scrollWidth <= el.clientWidth) return;
+              const r = el.getBoundingClientRect();
+              setHoverDesc({
+                top: r.bottom + 6,
+                left: r.left,
+                title: 'Latest comment',
+                meta: [note.userName, note.createdAt ? formatDateTime(note.createdAt) : '']
+                  .filter(Boolean).join(' · '),
+                text: note.text
+              });
+            }}
+            onMouseLeave={() => setHoverDesc(null)}
+          >
+            {note?.text || '-'}
+          </td>
+        );
+      }
+    },
+    {
       id: 'priority',
       label: 'Priority',
       renderCell: (card) => {
