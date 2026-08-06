@@ -33,7 +33,15 @@ function authenticate(req, res, next) {
       return res.status(401).json({ error: 'Session invalidated', code: 'SESSION_REPLACED' });
     }
 
-    req.user = decoded;
+    // Build req.user explicitly so a role can never arrive from the token: the
+    // role comes from the row just read, so a demotion applies on the very next
+    // request instead of at next sign-in. sessionToken is consumed above only.
+    req.user = {
+      userId: decoded.userId,
+      username: decoded.username,
+      name: decoded.name,
+      role: row.role
+    };
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {

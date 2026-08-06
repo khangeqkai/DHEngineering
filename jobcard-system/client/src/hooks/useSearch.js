@@ -26,7 +26,7 @@ const INITIAL_FILTERS = {
   jobNumber: '',
 };
 
-export default function useSearch() {
+export default function useSearch(role) {
   const [q, setQ] = useState('');
   const [scope, setScope] = useState('all');
   const [filters, setFilters] = useState(INITIAL_FILTERS);
@@ -141,6 +141,21 @@ export default function useSearch() {
     setPage(1);
     setResults(null);
   }, []);
+
+  // A role change lands mid-session (someone demotes this person while the
+  // screen is open). Results fetched under the old role must not linger — the
+  // scope tabs re-gate on their own, but the rows already on screen would stay
+  // until the next keystroke, still showing costing or contact details this
+  // person no longer has. Drop them and restart from the combined view, which
+  // every role can use. Bumping refreshKey also invalidates the in-flight
+  // request, so a reply to the old role's query can never paint over this.
+  const knownRole = useRef(role);
+  useEffect(() => {
+    if (knownRole.current === role) return;
+    knownRole.current = role;
+    changeScope('all');
+    setRefreshKey(k => k + 1);
+  }, [role, changeScope]);
 
   const updateFilter = useCallback((key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));

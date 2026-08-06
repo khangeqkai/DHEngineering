@@ -109,7 +109,7 @@ export default function SearchPage() {
     page, setPage, results, loading,
     employees, machines, qaLevels, jobTypes,
     filtersError, retryFilters, refresh,
-  } = useSearch();
+  } = useSearch(user?.role);
 
   // Job card modal state
   const [modalJobId, setModalJobId] = useState(null);

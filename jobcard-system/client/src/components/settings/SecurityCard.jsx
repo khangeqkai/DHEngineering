@@ -12,6 +12,7 @@ export default function SecurityCard({ s }) {
               <div className="setting-description">
                 Automatically log out users after this many minutes of inactivity.
                 A warning will appear 30 seconds before logout. (1-60 minutes)
+                Admin accounts are never logged out for inactivity.
               </div>
             </div>
           </div>

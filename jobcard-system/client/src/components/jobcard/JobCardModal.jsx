@@ -316,6 +316,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   }, [isOpen, initialTab]);
 
+  // Admin access can also be lost while the modal is already open. The tab strip
+  // and the Costing/Activity panels vanish on that render, so without this the
+  // body would draw nothing at all. Kept separate from the effect above so it
+  // never re-applies initialTab mid-session.
+  useEffect(() => {
+    if (!isAdmin && activeTab !== 'details') setActiveTab('details');
+  }, [isAdmin, activeTab]);
+
   const resetFormRef = useRef(resetForm);
   const loadJobCardRef = useRef(loadJobCard);
   const loadActiveTimerRef = useRef(timer.loadActiveTimer);

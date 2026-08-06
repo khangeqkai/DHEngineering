@@ -37,7 +37,10 @@ const userQueries = {
     WHERE id = ?
   `),
 
-  getAuthState: db.prepare('SELECT session_token AS sessionToken, active FROM users WHERE id = ?'),
+  // Live per-request auth state. Role is read here rather than from the token,
+  // because a token is a snapshot taken at sign-in and roles change while
+  // people are signed in.
+  getAuthState: db.prepare('SELECT session_token AS sessionToken, active, role FROM users WHERE id = ?'),
 
   updateJobcardColumnOrder: db.prepare(`
     UPDATE users SET jobcard_column_order = ?, updated_at = datetime('now')

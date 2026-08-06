@@ -1,11 +1,11 @@
 # Graph Report - DHEngineering  (2026-08-06)
 
 ## Corpus Check
-- 230 files · ~1,509,858 words
+- 230 files · ~1,510,833 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 968 nodes · 1606 edges · 54 communities detected
+- 968 nodes · 1607 edges · 54 communities detected
 - Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 129 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
@@ -105,11 +105,11 @@ Nodes (26): CalendarPicker(), toDateString(), isTopModal(), pushModal(), removeM
 
 ### Community 3 - "Community 3"
 Cohesion: 0.05
-Nodes (29): CreatableTagSelect(), ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), UserManagement(), useConfirmDialog(), invalidateTagCache() (+21 more)
+Nodes (28): CreatableTagSelect(), ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), useConfirmDialog(), invalidateTagCache(), useTags() (+20 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.06
-Nodes (32): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), AuthProvider() (+24 more)
+Nodes (33): JobCardList(), mergeColumnOrder(), getJobCardColumns(), useJobCardListDensity(), Layout(), Login(), Settings(), UserManagement() (+25 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.06

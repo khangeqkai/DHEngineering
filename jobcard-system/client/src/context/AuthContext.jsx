@@ -43,15 +43,33 @@ export function AuthProvider({ children }) {
     return () => api.setOnSessionInvalidated(null);
   }, []);
 
-  // Poll session validity so stale sessions get kicked promptly
+  // Swap ONLY the role. Never adopt the whole fresh profile: an in-flight
+  // preference save (updatePreferences) would be reverted by a profile that was
+  // fetched just before it landed.
+  const applyRole = useCallback((role) => {
+    setUser(prev => (prev && role && prev.role !== role ? { ...prev, role } : prev));
+  }, []);
+
+  // Poll session validity so stale sessions get kicked promptly, and pick up a
+  // role change (someone demoted/promoted us) without forcing a sign-out. The
+  // effect re-runs on every user change, so knownRole is never stale.
   useEffect(() => {
-    if (user) {
-      pollRef.current = setInterval(() => {
-        api.getMe().catch(() => {});
-      }, SESSION_POLL_MS);
-    }
+    if (!user) return undefined;
+    const knownRole = user.role;
+    pollRef.current = setInterval(async () => {
+      try {
+        const fresh = await api.getMe();
+        if (fresh?.role && fresh.role !== knownRole) {
+          applyRole(fresh.role);
+          toast('Your access level was changed. The screen has been updated to match.', { duration: 6000 });
+        }
+      } catch {
+        // A 401 is handled by the forced sign-out handler above; anything else
+        // is a blip and the next tick retries.
+      }
+    }, SESSION_POLL_MS);
     return () => clearInterval(pollRef.current);
-  }, [user]);
+  }, [user, applyRole]);
 
   // Load inactivity timeout from server
   const loadInactivityTimeout = useCallback(async () => {
@@ -64,7 +82,8 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Inactivity timer - only active when user is logged in
+  // Inactivity timer - active while logged in, except for admins (they stay
+  // signed in; the timeout exists for shared shop-floor workstations)
   const {
     isWarningActive,
     secondsRemaining,
@@ -72,7 +91,7 @@ export function AuthProvider({ children }) {
     handleActivity
   } = useInactivityTimer({
     onTimeout: logout,
-    enabled: !!user,
+    enabled: !!user && user.role !== 'admin',
     timeoutMs: inactivityTimeoutMs
   });
 
@@ -104,6 +123,7 @@ export function AuthProvider({ children }) {
       resetInactivityTimer: resetTimer,
       handleActivity,
       refreshInactivityTimeout: loadInactivityTimeout,
+      applyRole,
       registerBeforeLogout,
       updatePreferences
     }}>

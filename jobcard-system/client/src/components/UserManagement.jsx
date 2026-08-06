@@ -12,9 +12,10 @@ import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import EntityActivityLog from './common/EntityActivityLog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import { isManagement } from '../utils/roles';
 
 export default function UserManagement() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, applyRole } = useAuth();
   // Managers reach this page too, but admin accounts are off-limits to them
   // (no editing/archiving admins, no granting the admin role) — the server
   // enforces the same rules.
@@ -77,11 +78,30 @@ export default function UserManagement() {
     setSaving(true);
 
     try {
+      let ownNewRole = null;
       if (editingUser) {
-        await api.updateUser(editingUser.id, formData);
+        const updated = await api.updateUser(editingUser.id, formData);
+        // Changing your own access level takes effect immediately, so adopt it
+        // rather than carrying on as the role you no longer have.
+        if (updated.id === currentUser?.id && updated.role !== currentUser?.role) {
+          ownNewRole = updated.role;
+          applyRole(ownNewRole);
+          toast.success('Your own access level changed. Some screens are no longer available to you.');
+        }
       } else {
         await api.createUser(formData);
       }
+
+      // Demoting yourself out of management puts this page out of reach: the
+      // route guard is about to move us off it and the reload would be refused,
+      // so stop here. Demoting yourself to manager leaves you sitting on the
+      // page, so the list still has to be reloaded — otherwise it keeps showing
+      // you as an admin on a row you can no longer open.
+      if (ownNewRole && !isManagement({ role: ownNewRole })) {
+        resetForm();
+        return;
+      }
+
       await loadUsers();
       setActivityRefreshKey(k => k + 1);
       resetForm();

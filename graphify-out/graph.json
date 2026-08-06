@@ -457,7 +457,7 @@
       "label": "requireRole()",
       "file_type": "code",
       "source_file": "server/src/middleware/auth.js",
-      "source_location": "L47",
+      "source_location": "L55",
       "id": "middleware_auth_requirerole",
       "community": 31,
       "norm_label": "requirerole()"
@@ -466,7 +466,7 @@
       "label": "isManagement()",
       "file_type": "code",
       "source_file": "server/src/middleware/auth.js",
-      "source_location": "L67",
+      "source_location": "L75",
       "id": "middleware_auth_ismanagement",
       "community": 31,
       "norm_label": "ismanagement()"
@@ -3024,16 +3024,16 @@
       "source_file": "client/src/components/UserManagement.jsx",
       "source_location": "L1",
       "id": "client_src_components_usermanagement_jsx",
-      "community": 3,
+      "community": 4,
       "norm_label": "usermanagement.jsx"
     },
     {
       "label": "UserManagement()",
       "file_type": "code",
       "source_file": "client/src/components/UserManagement.jsx",
-      "source_location": "L16",
+      "source_location": "L17",
       "id": "components_usermanagement_usermanagement",
-      "community": 3,
+      "community": 4,
       "norm_label": "usermanagement()"
     },
     {
@@ -4723,7 +4723,7 @@
       "label": "useAuth()",
       "file_type": "code",
       "source_file": "client/src/context/AuthContext.jsx",
-      "source_location": "L115",
+      "source_location": "L135",
       "id": "context_authcontext_useauth",
       "community": 4,
       "norm_label": "useauth()"
@@ -16444,6 +16444,17 @@
       "confidence_score": 1.0,
       "source": "client_src_components_usermanagement_jsx",
       "target": "hooks_useconfirmdialog_useconfirmdialog"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "client/src/components/UserManagement.jsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "client_src_components_usermanagement_jsx",
+      "target": "utils_roles_ismanagement"
     },
     {
       "relation": "contains",

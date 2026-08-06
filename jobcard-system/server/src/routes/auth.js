@@ -128,12 +128,12 @@ router.post('/login', validateLogin, async (req, res) => {
     const sessionToken = uuidv4();
     userQueries.updateSessionToken.run(sessionToken, user.id);
 
-    // Generate token
+    // Generate token. Identity only — role is looked up per request from the DB
+    // (see middleware/auth.js), so a token can never carry a stale access level.
     const token = jwt.sign(
       {
         userId: user.id,
         username: user.username,
-        role: user.role,
         name: user.name,
         sessionToken
       },
@@ -507,7 +507,6 @@ router.put('/change-password', authenticate, async (req, res) => {
       {
         userId: user.id,
         username: user.username,
-        role: user.role,
         name: user.name,
         sessionToken
       },
