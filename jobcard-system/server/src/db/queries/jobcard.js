@@ -33,13 +33,6 @@ const jobcardQueries = {
     ORDER BY j.created_at DESC
   `),
 
-  getOverdue: db.prepare(`
-    SELECT j.*
-    FROM jobcards j
-    WHERE j.due_date < date('now') AND j.status NOT IN ('DONE', 'INVOICED') AND j.archived = 0
-    ORDER BY j.due_date ASC
-  `),
-
   getByAssignee: db.prepare(`
     SELECT DISTINCT j.*
     FROM jobcards j
@@ -82,7 +75,7 @@ const jobcardQueries = {
       is_repeat_job, repeat_job_reference,
       photos, created_by, updated_by, qa_level_id, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare(`
@@ -92,22 +85,22 @@ const jobcardQueries = {
       quality_level = ?, priority = ?, po_number = ?, quote_reference = ?,
       description = ?, due_date = ?,
       is_repeat_job = ?, repeat_job_reference = ?,
-      photos = ?, updated_by = ?, qa_level_id = ?, updated_at = datetime('now')
+      photos = ?, updated_by = ?, qa_level_id = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
   updateStatus: db.prepare(`
-    UPDATE jobcards SET status = ?, updated_by = ?, updated_at = datetime('now')
+    UPDATE jobcards SET status = ?, updated_by = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
   archive: db.prepare(`
-    UPDATE jobcards SET archived = 1, invoiced_date = ?, updated_by = ?, updated_at = datetime('now')
+    UPDATE jobcards SET archived = 1, invoiced_date = ?, updated_by = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
   unarchive: db.prepare(`
-    UPDATE jobcards SET archived = 0, invoiced_date = NULL, status = 'OPEN', updated_by = ?, updated_at = datetime('now')
+    UPDATE jobcards SET archived = 0, invoiced_date = NULL, status = 'OPEN', updated_by = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
@@ -120,7 +113,7 @@ const jobItemQueries = {
 
   create: db.prepare(`
     INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments, drawings_type, customer_property, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   // Update a line in place by its stable id, so the line keeps its identity (and the
@@ -129,7 +122,7 @@ const jobItemQueries = {
     UPDATE job_items SET
       item_number = ?, qty = ?, description = ?, job_type = ?, material = ?, treatments = ?,
       drawings_type = ?, customer_property = ?,
-      updated_at = datetime('now')
+      updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
@@ -148,7 +141,7 @@ const jobAssigneeQueries = {
 
   create: db.prepare(`
     INSERT INTO job_assignees (id, jobcard_id, user_id, assigned_at)
-    VALUES (?, ?, ?, datetime('now'))
+    VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   delete: db.prepare('DELETE FROM job_assignees WHERE id = ?'),

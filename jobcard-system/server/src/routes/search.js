@@ -2,11 +2,34 @@ const express = require('express');
 const { db } = require('../db/connection');
 const { authenticate, isManagement } = require('../middleware/auth');
 const { getAssigneesForJobcards } = require('../db/database');
+const { officeTimeZone, officeDayStart, officeDayEnd } = require('../utils/officeTime');
 const logger = require('../utils/logger');
 
 const router = express.Router();
 const PAGE_SIZE = 25;
 const PREVIEW_LIMIT = 5;
+
+// Turn the calendar days someone picked in the date boxes into the range of stored
+// moments they mean. The picked day is the office's day, but moments are stored as UTC
+// instants, so the bounds are the instants that day starts and ends at on the office
+// clock — comparing the picked date as a plain string would shift the whole window by
+// the office's offset (in Melbourne, "6 August" quietly returned 6 Aug 10am → 7 Aug 10am,
+// dropping the morning's work and pulling in the next morning's).
+// Returns nulls for anything unparseable so the filter is simply skipped.
+function momentRange(dateFrom, dateTo) {
+  const timeZone = officeTimeZone();
+  return {
+    from: dateFrom ? officeDayStart(dateFrom, timeZone) : null,
+    to: dateTo ? officeDayEnd(dateTo, timeZone) : null
+  };
+}
+
+// Add a date-range filter over a column holding a stored moment.
+function pushMomentRange(conditions, params, column, dateFrom, dateTo) {
+  const { from, to } = momentRange(dateFrom, dateTo);
+  if (from) { conditions.push(`${column} >= ?`); params.push(from); }
+  if (to) { conditions.push(`${column} <= ?`); params.push(to); }
+}
 
 // --- Formatters (snake_case → camelCase) ---
 
@@ -193,10 +216,13 @@ function searchJobs(req, res, canManage) {
   if (priority) { conditions.push('j.priority = ?'); params.push(priority); }
   if (jobType) { conditions.push('j.id IN (SELECT jobcard_id FROM job_items WHERE job_type = ?)'); params.push(jobType); }
   if (qaLevel) { conditions.push('j.quality_level = ?'); params.push(qaLevel); }
-  if (dateFrom || dateTo) {
-    const col = dateField === 'due' ? 'j.due_date' : 'j.created_at';
-    if (dateFrom) { conditions.push(`${col} >= ?`); params.push(dateFrom); }
-    if (dateTo) { conditions.push(`${col} <= ?`); params.push(dateTo + 'T23:59:59'); }
+  if (dateField === 'due') {
+    // A due date is a calendar day, not a moment, so it compares straight against the
+    // picked day with no time-zone step.
+    if (dateFrom) { conditions.push('j.due_date >= ?'); params.push(dateFrom); }
+    if (dateTo) { conditions.push('j.due_date <= ?'); params.push(dateTo); }
+  } else {
+    pushMomentRange(conditions, params, 'j.created_at', dateFrom, dateTo);
   }
   if (includeArchived !== 'true') conditions.push('j.archived = 0');
 
@@ -258,8 +284,7 @@ function searchActivity(req, res) {
     conditions.push("changes LIKE ? ESCAPE '\\'");
     params.push(`%"${escaped}"%`);
   }
-  if (dateFrom) { conditions.push('created_at >= ?'); params.push(dateFrom); }
-  if (dateTo) { conditions.push('created_at <= ?'); params.push(dateTo + 'T23:59:59'); }
+  pushMomentRange(conditions, params, 'created_at', dateFrom, dateTo);
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const total = db.prepare(`SELECT COUNT(*) as count FROM history ${where}`).get(...params).count;
@@ -291,8 +316,7 @@ function searchTime(req, res, canManage) {
     params.push(`%,${machineId},%`);
   }
   if (jobNumber) { conditions.push('j.job_number LIKE ?'); params.push(`%${jobNumber.trim()}%`); }
-  if (dateFrom) { conditions.push('te.start_time >= ?'); params.push(dateFrom); }
-  if (dateTo) { conditions.push('te.start_time <= ?'); params.push(dateTo + 'T23:59:59'); }
+  pushMomentRange(conditions, params, 'te.start_time', dateFrom, dateTo);
 
   const from = 'FROM time_entries te JOIN users u ON te.user_id = u.id JOIN jobcards j ON te.jobcard_id = j.id LEFT JOIN job_items ji ON te.item_id = ji.id';
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

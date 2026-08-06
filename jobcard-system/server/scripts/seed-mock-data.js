@@ -12,6 +12,7 @@ process.env.DATA_DIR = path.join(__dirname, '..', '..', 'data');
 const { db } = require('../src/db/connection');
 require('../src/db/schema'); // run migrations so new columns exist before prepare
 const { settingsQueries } = require('../src/db/queries/support');
+const { normalizeStoredTimestamps } = require('../src/db/normalizeTimestamps');
 const { seedHistory } = require('./seed-history');
 const { buildScenarios } = require('./seed-scenarios');
 const refData = require('./seed-data');
@@ -229,9 +230,13 @@ const createJobs = db.transaction(() => {
     const jobNumber = `DH-${String(jobNum++).padStart(5, '0')}`;
     const createdAt = makeDate(s.daysAgoCreated, 8, 30).toISOString();
     const dueDate = (() => {
+      // Built off the LOCAL calendar day, not the UTC one — a due date is a day, and in
+      // Australia the UTC day is still yesterday all morning, which would seed a job
+      // that's meant to be due today as already overdue.
       const d = new Date(now);
       d.setDate(d.getDate() + s.daysFromNowDue);
-      return d.toISOString().split('T')[0];
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     })();
     const archived = s.status === 'INVOICED' ? 1 : 0;
     const invoicedDate = s.status === 'INVOICED'
@@ -360,6 +365,13 @@ for (const s of suppliers) {
   }
 }
 console.log('Supplier tags linked.');
+
+// Several inserts above leave created_at/updated_at to the column default. On a
+// database that already existed before timestamps moved to ISO-8601 UTC that default
+// is still the old time-zone-less one (CREATE TABLE IF NOT EXISTS can't change it), so
+// fold the freshly seeded rows into the current shape here rather than leaving the
+// seeded data wrong until the server is next started.
+normalizeStoredTimestamps();
 
 console.log('\n✓ Mock data seeded successfully!');
 console.log(`  - ${users.length} users (all PIN 1234): ${users.map(u => u.username).join(', ')}`);

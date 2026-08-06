@@ -56,17 +56,6 @@ router.get('/', authenticate, validateJobcardListQuery, (req, res) => {
   }
 });
 
-// Get overdue job cards
-router.get('/overdue', authenticate, (req, res) => {
-  try {
-    const jobcards = jobcardQueries.getOverdue.all();
-    res.json(jobcards.map(jc => formatJobcard(jc, [], [], req.user.role)));
-  } catch (err) {
-    logger.error({ err }, 'Get overdue jobcards error');
-    res.status(500).json({ error: 'Failed to get overdue job cards' });
-  }
-});
-
 // Per-page "missing files" check for the job list. Takes the ids of just the
 // rows currently on screen and checks only those, so the cost never grows with
 // the total job count. Returns the full set of ids that were checked (so the

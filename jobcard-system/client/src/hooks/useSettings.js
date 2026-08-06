@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { validatePassword } from '../utils/formatters';
+import { validatePassword, todayIsoDate } from '../utils/formatters';
 import { isManagement } from '../utils/roles';
 
 export function useSettings() {
@@ -177,7 +177,7 @@ export function useSettings() {
       return;
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayIsoDate();
     const outputPath = await window.electronAPI.showSaveDialog(
       `dh-engineering-backup-${today}.zip`,
       [{ name: 'ZIP Archive', extensions: ['zip'] }]

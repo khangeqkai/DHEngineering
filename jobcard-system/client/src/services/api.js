@@ -172,10 +172,6 @@ class ApiService {
     return this._del(`/jobcards/${id}`, confirmDelete ? { confirmDelete: true } : undefined);
   }
 
-  getOverdueJobcards() {
-    return this.request('/jobcards/overdue');
-  }
-
   // Job Assignees
   addAssignee(jobcardId, userId) { return this._post(`/jobcards/${jobcardId}/assignees`, { userId }); }
   removeAssignee(jobcardId, userId) { return this._del(`/jobcards/${jobcardId}/assignees/${userId}`); }

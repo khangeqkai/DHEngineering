@@ -1,5 +1,5 @@
 import { api } from '../services/api';
-import { formatDate as fmtDate, formatDateTime as fmtDateTime } from './formatters';
+import { formatDate as fmtDate, formatDateTime as fmtDateTime, todayIsoDate } from './formatters';
 // Tag labels are now dynamic (DB-driven). For exports, convert values to readable labels.
 
 // xlsx is a heavy library (~430 kB) but is only ever needed when the user
@@ -55,8 +55,10 @@ function buildSheet(XLSX, rows, columns) {
   return ws;
 }
 
+// The local calendar day, not the UTC one — an export made in the morning in Australia
+// would otherwise be filed under yesterday's date.
 function timestamp() {
-  return new Date().toISOString().slice(0, 10);
+  return todayIsoDate();
 }
 
 // ── Formatters ───────────────────────────────────────────────────────────────

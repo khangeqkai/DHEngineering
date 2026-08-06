@@ -1,6 +1,12 @@
 const { db } = require('./connection');
 const logger = require('../utils/logger');
 
+// Stored moments are always full ISO-8601 UTC ("YYYY-MM-DDTHH:MM:SS.sssZ"), written with
+// strftime('%Y-%m-%dT%H:%M:%fZ','now') — the same shape as JavaScript's toISOString().
+// Never use datetime('now') / CURRENT_TIMESTAMP: they produce "YYYY-MM-DD HH:MM:SS" in UTC
+// with no time-zone marker, which JavaScript reads back as LOCAL time, so every displayed
+// time shifts by the machine's UTC offset. See db/normalizeTimestamps.js.
+
 // Create tables
 db.exec(`
   -- Users table (employees)
@@ -15,8 +21,8 @@ db.exec(`
     employee_id TEXT,
     active INTEGER DEFAULT 1,
     session_token TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   );
 
   -- Contacts table (phone contacts style - each contact is standalone)
@@ -29,8 +35,8 @@ db.exec(`
     address TEXT,
     notes TEXT,
     archived INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   );
 
   -- Suppliers table (linked to per-line-item treatments via treatments JSON)
@@ -45,8 +51,8 @@ db.exec(`
     approved INTEGER DEFAULT 1,
     notes TEXT,
     active INTEGER DEFAULT 1,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   );
 
   -- Tags table (dynamic dropdown/multi-select options)
@@ -57,7 +63,7 @@ db.exec(`
     value TEXT NOT NULL,
     sort_order INTEGER DEFAULT 0,
     archived INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     UNIQUE(category, value)
   );
   CREATE INDEX IF NOT EXISTS idx_tags_category ON tags(category);
@@ -115,8 +121,8 @@ db.exec(`
     -- Audit fields
     created_by TEXT,
     updated_by TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
 
     FOREIGN KEY (contact_id) REFERENCES contacts(id),
     FOREIGN KEY (created_by) REFERENCES users(id),
@@ -139,8 +145,8 @@ db.exec(`
     treatments TEXT,
     drawings_type TEXT,
     customer_property TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE
   );
 
@@ -149,7 +155,7 @@ db.exec(`
     id TEXT PRIMARY KEY,
     jobcard_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
-    assigned_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    assigned_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id),
     UNIQUE(jobcard_id, user_id)
@@ -179,8 +185,8 @@ db.exec(`
     equipment_checks INTEGER,
     equipment_checks_comments TEXT,
 
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (item_id) REFERENCES job_items(id) ON DELETE SET NULL
@@ -258,8 +264,8 @@ db.exec(`
 
     grand_total REAL DEFAULT 0,
 
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE
   );
 
@@ -273,7 +279,7 @@ db.exec(`
     name TEXT,
     description TEXT,
     active INTEGER DEFAULT 1,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   );
 
   -- Audit history table
@@ -286,7 +292,7 @@ db.exec(`
     user_name TEXT,
     changes TEXT,
     snapshot TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
@@ -294,7 +300,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   );
 
   -- Create indexes for faster queries
@@ -323,7 +329,7 @@ db.exec(`
     user_id TEXT NOT NULL,
     user_name TEXT NOT NULL,
     text TEXT NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE
   );
   CREATE INDEX IF NOT EXISTS idx_job_notes_jobcard ON job_notes(jobcard_id);
@@ -338,8 +344,8 @@ db.exec(`
     name_lower TEXT UNIQUE NOT NULL,
     is_active INTEGER DEFAULT 1,
     requires_returned_form INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   );
 
   -- QA Level Templates (PDF templates per level)
@@ -348,7 +354,7 @@ db.exec(`
     qa_level_id TEXT NOT NULL,
     file_name TEXT NOT NULL,
     display_name TEXT NOT NULL,
-    uploaded_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    uploaded_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     FOREIGN KEY (qa_level_id) REFERENCES qa_levels(id) ON DELETE CASCADE
   );
   CREATE INDEX IF NOT EXISTS idx_qa_level_templates_level ON qa_level_templates(qa_level_id);
@@ -363,7 +369,7 @@ db.exec(`
 try {
   db.exec(`
     UPDATE time_entries
-    SET end_time = start_time, updated_at = datetime('now')
+    SET end_time = start_time, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE end_time IS NULL
       AND id NOT IN (
         SELECT id FROM (

@@ -40,8 +40,8 @@ const settingsQueries = {
   getByKey: db.prepare('SELECT value FROM settings WHERE key = ?'),
   upsert: db.prepare(`
     INSERT INTO settings (key, value, updated_at)
-    VALUES (?, ?, datetime('now'))
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
+    VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
   `)
 };
 

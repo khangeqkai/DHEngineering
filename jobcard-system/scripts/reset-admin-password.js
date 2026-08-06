@@ -156,7 +156,7 @@ async function main() {
   // Record in history table
   db.prepare(`
     INSERT INTO history (entity_type, entity_id, action, user_id, user_name, changes, snapshot, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `).run(
     'user',
     selected.id,

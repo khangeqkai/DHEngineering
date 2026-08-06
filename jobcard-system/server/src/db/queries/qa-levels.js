@@ -9,11 +9,11 @@ const qaLevelQueries = {
 
   create: db.prepare(`
     INSERT INTO qa_levels (id, name, name_lower, is_active, requires_returned_form, created_at, updated_at)
-    VALUES (?, ?, ?, 1, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, 1, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare(`
-    UPDATE qa_levels SET name = ?, name_lower = ?, requires_returned_form = ?, updated_at = datetime('now')
+    UPDATE qa_levels SET name = ?, name_lower = ?, requires_returned_form = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
@@ -30,7 +30,7 @@ const qaLevelTemplateQueries = {
 
   create: db.prepare(`
     INSERT INTO qa_level_templates (id, qa_level_id, file_name, display_name, uploaded_at)
-    VALUES (?, ?, ?, ?, datetime('now'))
+    VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   delete: db.prepare('DELETE FROM qa_level_templates WHERE id = ?')

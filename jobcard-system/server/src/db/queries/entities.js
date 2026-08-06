@@ -9,31 +9,31 @@ const userQueries = {
 
   create: db.prepare(`
     INSERT INTO users (id, username, password, role, name, email, phone, employee_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare(`
-    UPDATE users SET name = ?, email = ?, phone = ?, employee_id = ?, role = ?, updated_at = datetime('now')
+    UPDATE users SET name = ?, email = ?, phone = ?, employee_id = ?, role = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
   updatePassword: db.prepare(`
-    UPDATE users SET password = ?, updated_at = datetime('now')
+    UPDATE users SET password = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
   deactivate: db.prepare(`
-    UPDATE users SET active = 0, updated_at = datetime('now')
+    UPDATE users SET active = 0, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
   activate: db.prepare(`
-    UPDATE users SET active = 1, updated_at = datetime('now')
+    UPDATE users SET active = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
   updateSessionToken: db.prepare(`
-    UPDATE users SET session_token = ?, updated_at = datetime('now')
+    UPDATE users SET session_token = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
@@ -43,12 +43,12 @@ const userQueries = {
   getAuthState: db.prepare('SELECT session_token AS sessionToken, active, role FROM users WHERE id = ?'),
 
   updateJobcardColumnOrder: db.prepare(`
-    UPDATE users SET jobcard_column_order = ?, updated_at = datetime('now')
+    UPDATE users SET jobcard_column_order = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
   updateJobcardHiddenColumns: db.prepare(`
-    UPDATE users SET jobcard_hidden_columns = ?, updated_at = datetime('now')
+    UPDATE users SET jobcard_hidden_columns = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `)
 };
@@ -77,17 +77,17 @@ const contactQueries = {
 
   create: db.prepare(`
     INSERT INTO contacts (id, contact_name, company_name, phone, email, address, notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare(`
     UPDATE contacts
-    SET contact_name = ?, company_name = ?, phone = ?, email = ?, address = ?, notes = ?, updated_at = datetime('now')
+    SET contact_name = ?, company_name = ?, phone = ?, email = ?, address = ?, notes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
-  archive: db.prepare("UPDATE contacts SET archived = 1, updated_at = datetime('now') WHERE id = ?"),
-  unarchive: db.prepare("UPDATE contacts SET archived = 0, updated_at = datetime('now') WHERE id = ?")
+  archive: db.prepare("UPDATE contacts SET archived = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?"),
+  unarchive: db.prepare("UPDATE contacts SET archived = 0, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?")
 };
 
 // Supplier queries (approved field deprecated - all suppliers are approved when added)
@@ -98,16 +98,16 @@ const supplierQueries = {
 
   create: db.prepare(`
     INSERT INTO suppliers (id, name, contact_name, contact_phone, contact_email, address, services, approved, notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare(`
-    UPDATE suppliers SET name = ?, contact_name = ?, contact_phone = ?, contact_email = ?, address = ?, services = ?, notes = ?, updated_at = datetime('now')
+    UPDATE suppliers SET name = ?, contact_name = ?, contact_phone = ?, contact_email = ?, address = ?, services = ?, notes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
-  deactivate: db.prepare(`UPDATE suppliers SET active = 0, updated_at = datetime('now') WHERE id = ?`),
-  activate: db.prepare(`UPDATE suppliers SET active = 1, updated_at = datetime('now') WHERE id = ?`)
+  deactivate: db.prepare(`UPDATE suppliers SET active = 0, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`),
+  activate: db.prepare(`UPDATE suppliers SET active = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`)
 };
 
 // Tag queries
@@ -124,7 +124,7 @@ const tagQueries = {
 
   create: db.prepare(`
     INSERT INTO tags (id, category, name, value, sort_order, created_at)
-    VALUES (?, ?, ?, ?, ?, datetime('now'))
+    VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare('UPDATE tags SET name = ?, value = ? WHERE id = ?'),
@@ -202,7 +202,7 @@ const machineQueries = {
 
   create: db.prepare(`
     INSERT INTO machines (id, machine_number, name, description, created_at)
-    VALUES (?, ?, ?, ?, datetime('now'))
+    VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare(`

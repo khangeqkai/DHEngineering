@@ -6,8 +6,10 @@ const logger = require('../utils/logger');
 const {
   db,
   userQueries,
+  settingsQueries,
   recordHistory
 } = require('./database');
+const { normalizeStoredTimestamps } = require('./normalizeTimestamps');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { DEFAULT_VIC_PUBLIC_HOLIDAYS_2026 } = require('../utils/defaultHolidays');
 
@@ -54,8 +56,7 @@ function runMigrations() {
   const flag = db.prepare('SELECT value FROM settings WHERE key = ?').get(wipeFlagKey);
   if (!flag) {
     const result = db.prepare('DELETE FROM time_entries').run();
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
-      .run(wipeFlagKey, new Date().toISOString());
+    settingsQueries.upsert.run(wipeFlagKey, new Date().toISOString());
     logger.info({ deleted: result.changes }, 'Migration: Wiped legacy time_entries for per-item timer');
   }
 
@@ -72,8 +73,7 @@ function runMigrations() {
     const reset = db.prepare(
       'UPDATE job_costings SET labour_special_hours = 0, labour_special_total = 0'
     ).run();
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
-      .run(specialResetKey, new Date().toISOString());
+    settingsQueries.upsert.run(specialResetKey, new Date().toISOString());
     logger.info({ updated: reset.changes }, 'Migration: Reset stored special-labour hours for manual entry');
   }
 
@@ -93,8 +93,7 @@ function runMigrations() {
       `UPDATE job_costings SET labour_hours_override = NULL
        WHERE jobcard_id IN (SELECT id FROM jobcards WHERE archived = 0)`
     ).run();
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
-      .run(otOverrideResetKey, new Date().toISOString());
+    settingsQueries.upsert.run(otOverrideResetKey, new Date().toISOString());
     logger.info({ updated: reset.changes }, 'Migration: Cleared stale labour-hours overrides for overtime split');
   }
 
@@ -148,8 +147,7 @@ function runMigrations() {
     } catch (err) {
       logger.error({ err }, 'Migration: Failed to snap labour schedule to whole hours');
     }
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
-      .run(scheduleSnapKey, new Date().toISOString());
+    settingsQueries.upsert.run(scheduleSnapKey, new Date().toISOString());
   }
 
   // Old jobs invoiced before per-job rule ownership may have no costing row at all.
@@ -175,8 +173,7 @@ function runMigrations() {
         logger.error({ err, jobcardId: id }, 'Migration: Failed to backfill costing row for archived job');
       }
     }
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
-      .run(archivedCostingKey, new Date().toISOString());
+    settingsQueries.upsert.run(archivedCostingKey, new Date().toISOString());
     if (stamped > 0) {
       logger.info({ stamped }, 'Migration: Backfilled costing rows for archived jobs');
     }
@@ -195,12 +192,10 @@ function runMigrations() {
       try { current = JSON.parse(row && row.value ? row.value : '[]'); } catch { current = []; }
       const isEmpty = !Array.isArray(current) || current.length === 0;
       if (isEmpty) {
-        db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)')
-          .run('labour_public_holidays', JSON.stringify(DEFAULT_VIC_PUBLIC_HOLIDAYS_2026));
+        settingsQueries.upsert.run('labour_public_holidays', JSON.stringify(DEFAULT_VIC_PUBLIC_HOLIDAYS_2026));
         logger.info('Migration: Seeded Victorian 2026 public holidays');
       }
-      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
-        .run(vicHolidaysKey, new Date().toISOString());
+      settingsQueries.upsert.run(vicHolidaysKey, new Date().toISOString());
     } catch (err) {
       logger.error({ err }, 'Migration: Failed to seed Victorian public holidays');
     }
@@ -247,8 +242,7 @@ function runMigrations() {
       // Mark done only after the capture actually succeeded, so a failure retries on the
       // next boot instead of leaving old rows on live settings. The UPDATE only touches
       // un-captured rows, so a retry is a safe no-op for rows already stamped.
-      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
-        .run(otOwnershipKey, new Date().toISOString());
+      settingsQueries.upsert.run(otOwnershipKey, new Date().toISOString());
     } catch (err) {
       logger.error({ err }, 'Migration: Failed to capture per-job overtime rules');
     }
@@ -279,6 +273,20 @@ function checkInterruptedRestore() {
 
 async function initializeDatabase() {
   logger.info('Initializing database...');
+
+  // Fold any timestamp still stored in an old time-zone-less shape into ISO-8601 UTC, so
+  // a stored moment always reads back as the instant it was recorded (see
+  // normalizeTimestamps.js). Runs FIRST, before the migrations below, because some of
+  // them READ stored moments and persist a figure derived from them — the archived-job
+  // costing backfill splits work blocks into overtime tiers, and a job owns its costing
+  // for good once written, so a block converted afterwards would leave a permanently
+  // wrong labour total. Naturally idempotent, so it needs no run-once flag — that also
+  // repairs a database restored from a backup taken before the change.
+  try {
+    db.transaction(normalizeStoredTimestamps)();
+  } catch (err) {
+    logger.error({ err }, 'Failed to convert stored timestamps to ISO-8601 UTC');
+  }
 
   // Run migrations for existing databases
   runMigrations();

@@ -10,6 +10,7 @@ const db = require('../db/database');
 const config = require('../config');
 const { lanIpv4s } = require('../utils/netHost');
 const { recordHistory } = require('../db/helpers');
+const { normalizeStoredTimestamps } = require('../db/normalizeTimestamps');
 const { setMaintenance } = require('../middleware/maintenance');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
 const { version: appVersion } = require('../../package.json');
@@ -430,11 +431,19 @@ router.post('/import-backup', requireAdmin, [
           // Keep THIS machine's folder locations (the backup may carry another
           // machine's paths). Done inside the transaction so the live paths never
           // briefly point at the backup machine's folders.
-          const upsertSetting = db.db.prepare(
-            `INSERT INTO settings (key, value) VALUES (?, ?)
-             ON CONFLICT(key) DO UPDATE SET value = excluded.value`
-          );
-          upsertSetting.run('job_folders_base', currentJobBase || '');
+          db.settingsQueries.upsert.run('job_folders_base', currentJobBase || '');
+
+          // A backup taken before timestamps moved to ISO-8601 UTC carries the old
+          // time-zone-less shape, which would display shifted by the UTC offset. Fold
+          // the restored rows into the current shape here rather than waiting for the
+          // next restart. Tidy-up only: a failure here must never throw away a restore
+          // whose records already loaded correctly (the next boot converts them anyway),
+          // so it is caught the same way the startup call is.
+          try {
+            normalizeStoredTimestamps();
+          } catch (tsErr) {
+            logger.error({ err: tsErr }, 'Backup restore: failed to convert stored timestamps to ISO-8601 UTC (records restored; next restart will retry)');
+          }
         });
 
         importTransaction();

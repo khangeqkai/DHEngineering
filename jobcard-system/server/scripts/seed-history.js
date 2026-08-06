@@ -6,7 +6,7 @@
  * entity history pages, and the activity/time search scopes would all be empty.
  *
  * Rows are inserted with an EXPLICIT created_at (the shared recordHistory helper
- * always stamps datetime('now') and so cannot backdate). The `changes` column uses
+ * always stamps the current time and so cannot backdate). The `changes` column uses
  * the audit-trail { field: { from, to } } shape that the activity log and search
  * UI expect — see formatChanges in client/src/components/ActivityLog.jsx.
  *

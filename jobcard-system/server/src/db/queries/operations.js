@@ -30,7 +30,7 @@ const timeEntryQueries = {
       equipment_checks, equipment_checks_comments,
       created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare(`
@@ -40,7 +40,7 @@ const timeEntryQueries = {
       first_off_inspection = ?, in_process_validation = ?,
       measuring_equipment_verification = ?, equipment_checks = ?, equipment_checks_comments = ?,
       start_time = ?, end_time = ?,
-      updated_at = datetime('now')
+      updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
@@ -62,7 +62,7 @@ const timeEntryQueries = {
   `),
 
   stop: db.prepare(`
-    UPDATE time_entries SET end_time = ?, updated_at = datetime('now')
+    UPDATE time_entries SET end_time = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
@@ -90,7 +90,7 @@ const jobNoteQueries = {
 
   create: db.prepare(`
     INSERT INTO job_notes (id, jobcard_id, user_id, user_name, text, created_at)
-    VALUES (?, ?, ?, ?, ?, datetime('now'))
+    VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   getById: db.prepare('SELECT * FROM job_notes WHERE id = ?'),
@@ -133,7 +133,7 @@ const jobCostingQueries = {
       @labour_special_hours, @labour_special_rate, @labour_special_total,
       @materials_cost, @materials_profit_percent, @materials_total,
       @subcontractor_cost, @subcontractor_profit_percent, @subcontractor_total,
-      @grand_total, datetime('now'), datetime('now')
+      @grand_total, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')
     )
     ON CONFLICT(jobcard_id) DO UPDATE SET
       labour_hours = excluded.labour_hours,
@@ -170,7 +170,7 @@ const jobCostingQueries = {
       subcontractor_profit_percent = excluded.subcontractor_profit_percent,
       subcontractor_total = excluded.subcontractor_total,
       grand_total = excluded.grand_total,
-      updated_at = datetime('now')
+      updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
   `),
 
   delete: db.prepare('DELETE FROM job_costings WHERE jobcard_id = ?')

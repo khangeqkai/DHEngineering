@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { isManagement } from '../utils/roles';
+import { todayIsoDate } from '../utils/formatters';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportJobCardList, exportJobCardsFull } from '../utils/excelExport';
@@ -284,7 +285,7 @@ export default function JobCardList() {
   }, [user]);
 
   const filteredCards = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayIsoDate();
     return jobcards.filter((card) => {
       let matchesFilter;
       if (filter === 'all') {

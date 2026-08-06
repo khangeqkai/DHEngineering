@@ -37,6 +37,16 @@ function parseDateValue(value) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+// Today's calendar date as "YYYY-MM-DD", read off the local clock so it can be compared
+// straight against a stored due date. Deliberately not toISOString(), which gives the
+// UTC day — in Australia that is still yesterday for the first hours of the morning, so
+// "overdue" would turn over mid-morning instead of at local midnight.
+export function todayIsoDate() {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 // Australian date, e.g. "17/07/2026". Returns '' for empty/invalid input.
 export function formatDate(value, options) {
   const d = parseDateValue(value);

@@ -5,6 +5,7 @@ import ConfirmDialog from '../common/ConfirmDialog';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { isManagement } from '../../utils/roles';
+import { todayIsoDate } from '../../utils/formatters';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import './JobCardModal.css';
 import { useCosting } from './useCosting';
@@ -425,10 +426,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   };
   if (!isOpen) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Same plain calendar-date comparison the job list uses, so the two never disagree.
+  const today = todayIsoDate();
   const isOverdue = formHook.formData.dueDate?.trim() &&
-    new Date(formHook.formData.dueDate + 'T00:00:00') < today &&
+    formHook.formData.dueDate < today &&
     !['DONE', 'INVOICED'].includes(formHook.formData.status);
 
   // Editing an invoiced job's pricing isn't blocked — it just asks first, then saves and
