@@ -170,6 +170,10 @@ export default function JobCardList() {
       await api.unarchiveJobcard(id);
       toast.success('Job card unarchived');
       await loadJobcards();
+      // An archived job is reported as checked-clean, and that answer is
+      // remembered — so re-check it now that it's a working job again,
+      // otherwise its missing-files marker stays off for the whole session.
+      refreshMissingFiles([id]);
     } catch (err) {
       toast.error(err.message || 'Failed to unarchive job card');
     }
@@ -364,9 +368,12 @@ export default function JobCardList() {
 
   const handleModalSuccess = () => {
     loadJobcards();
-    // Re-check the rows on screen plus the job that was just edited, so its
-    // marker reflects any files attached or items changed in the modal.
-    refreshMissingFiles([editingCardId, ...visibleIds].filter(Boolean));
+    // Re-check only the job that was open, so its marker reflects any files
+    // attached or items changed in the modal. The other rows on screen can't
+    // have changed, and re-checking them would re-walk their folders on disk.
+    // A newly created job has no id here — it gets checked by `ensure` once it
+    // lands in the list.
+    if (editingCardId) refreshMissingFiles([editingCardId]);
   };
 
   const columns = getJobCardColumns({
@@ -540,7 +547,12 @@ export default function JobCardList() {
 
       <JobCardModal
         isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); refreshMissingFiles([editingCardId, ...visibleIds].filter(Boolean)); }}
+        onClose={() => {
+          setIsModalOpen(false);
+          // Only the job that was open can have changed (files may have been
+          // attached without saving), so re-check just that one.
+          if (editingCardId) refreshMissingFiles([editingCardId]);
+        }}
         jobCardId={editingCardId}
         onSuccess={handleModalSuccess}
         onTimerChange={() => { refreshTimer(); loadJobcards(); }}

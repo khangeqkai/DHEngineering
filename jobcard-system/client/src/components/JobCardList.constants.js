@@ -20,7 +20,7 @@ export const STATUS_LABELS = {
 
 export const PRIORITY_LABELS = { NONE: 'None', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' };
 
-export const PAGE_SIZE = 20;
+export const PAGE_SIZE = 50;
 
 export const DEFAULT_COLUMN_ORDER = [
   'jobNumber',

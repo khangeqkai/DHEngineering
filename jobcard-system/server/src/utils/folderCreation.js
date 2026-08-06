@@ -113,21 +113,32 @@ function findCompanyFolder(basePath, contactId) {
 
 /**
  * Resolve (read-only, never creates) where a customer's company folder lives.
- * With a contact id: match by code, else the computed "Name [code]" path (which
- * may not exist yet). With no contact id (a job whose contact was unlinked):
- * fall back to the plain name-built path. Used by read/delete/QA-copy callers.
+ * With a contact id: take the computed "Name [code]" path when it already
+ * exists, else match by code, else return that computed path (which may not
+ * exist yet). With no contact id (a job whose contact was unlinked): fall back
+ * to the plain name-built path. Used by read/delete/QA-copy callers.
  */
 function resolveCompanyFolder(basePath, contactId, companyName) {
   try {
     if (!basePath) return null;
 
     if (contactId) {
+      // Fast path: the folder is normally named exactly "Name [code]" (a rename
+      // renames the folder), so try that path directly before listing the whole
+      // base. Matters when a caller resolves many jobs in a row — a batch would
+      // otherwise re-list every company folder once per job, which is the
+      // expensive part on a network drive. The code is still what identifies the
+      // folder; this only skips the search when the name also lines up.
+      const name = companyFolderName(companyName, contactId);
+      const target = name ? path.join(basePath, name) : null;
+      if (target && isWithinBase(basePath, target) && fs.existsSync(target)) return target;
+
+      // Otherwise fall back to matching by code, so a folder whose name drifted
+      // from the customer's (a rename that didn't reach disk) is still found.
       const bySlug = findCompanyFolder(basePath, contactId);
       if (bySlug) return bySlug;
-      const name = companyFolderName(companyName, contactId);
-      if (!name) return null;
-      const target = path.join(basePath, name);
-      return isWithinBase(basePath, target) ? target : null;
+
+      return target && isWithinBase(basePath, target) ? target : null;
     }
 
     return companyPathByName(basePath, companyName);
