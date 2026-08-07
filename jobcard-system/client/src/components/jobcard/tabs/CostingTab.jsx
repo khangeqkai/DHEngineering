@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Info } from 'lucide-react';
+import CostingBreakdown from './CostingBreakdown';
 import { capitalizeFirst } from '../../../utils/formatters';
 
 // Format a number as Australian currency with thousands separators.
@@ -30,8 +32,13 @@ export default function CostingTab({
   onFlushCosting,
   loaded = true,
   loadFailed = false,
-  onRetryLoad
+  onRetryLoad,
+  lineItems,
+  timeEntries
 }) {
+  // The info panel under the header: what the job has actually used, part by part.
+  // Read-only, closed by default, and folded away again by the same button.
+  const [showBreakdown, setShowBreakdown] = useState(false);
   // The two overtime multiplier boxes are text fields (not number boxes) so they can
   // sit in the column at a fixed two decimals — ×2.00, not ×2 — since a number box
   // always strips a trailing zero. While a box is focused we show the raw keystrokes
@@ -255,6 +262,16 @@ export default function CostingTab({
         {/* Sticky top bar: the grand total stays on screen while the sheet is scrolled */}
         <div className="costing-sheet-header">
           <h3 className="costing-sheet-title">Job costing</h3>
+          <button
+            type="button"
+            className={`costing-info-btn${showBreakdown ? ' costing-info-btn--on' : ''}`}
+            onClick={() => setShowBreakdown(v => !v)}
+            aria-expanded={showBreakdown}
+            aria-label={showBreakdown ? 'Hide what this job used' : 'Show what this job used'}
+            title="What this job used — time per part and machine, material and treatment"
+          >
+            <Info size={16} />
+          </button>
           <div className="costing-grand">
             <span className="costing-grand-label">Grand total</span>
             <span className="costing-grand-value">{money(totals.grandTotal)}</span>
@@ -271,6 +288,10 @@ export default function CostingTab({
             </span>
           )}
         </div>
+
+        {showBreakdown && (
+          <CostingBreakdown lineItems={lineItems} timeEntries={timeEntries} />
+        )}
 
         {/* Labour — one panel: base rate up top, tiers as a rate ladder, subtotal in the header */}
         <section className="labour-block">

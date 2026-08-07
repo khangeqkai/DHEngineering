@@ -2474,6 +2474,295 @@
   padding: var(--space-2) var(--space-5);
 }
 
+/* ── "What this job used" — the table that folds out under the costing header ──
+   ONE table, read left to right: the part on the far left, then what has to be bought
+   in for it, then who ran it on what, then the hours on the far right. A part's
+   material, treatment and supplier are merged down its machine rows, so however many
+   runs a part took it still reads as one horizontal band and nothing about it has to
+   be looked up somewhere else. */
+.costing-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-left: calc(var(--space-2) * -1);
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-smooth),
+              border-color var(--duration-fast) var(--ease-smooth),
+              background var(--duration-fast) var(--ease-smooth);
+}
+
+.costing-info-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.costing-info-btn--on {
+  color: var(--text-on-saturated);
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.costing-info-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.cost-brief {
+  margin: var(--space-4) var(--space-5) 0;
+  animation: cost-brief-open var(--duration-normal) var(--ease-mechanical);
+}
+
+@keyframes cost-brief-open {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cost-brief { animation: none; }
+}
+
+.cb-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  padding: 0 var(--space-1) var(--space-2);
+}
+
+.cb-title {
+  margin: 0;
+  font-size: var(--text-2xs);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--text-secondary);
+}
+
+.cb-note {
+  font-size: var(--text-2xs);
+  color: var(--text-tertiary);
+}
+
+.cb-empty {
+  margin: 0;
+  padding: var(--space-5) var(--space-3);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* A wide table narrows itself by wrapping words, which pushes the hours off the right
+   edge. Cells never wrap; the wrapper scrolls sideways instead. */
+.cb-scroll {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.cb-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.cb-table thead th {
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-elevated);
+  border-bottom: 1px solid var(--border-strong);
+  font-size: 0.5625rem;
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--text-tertiary);
+  text-align: left;
+}
+
+.cb-table tbody th,
+.cb-table tbody td,
+.cb-table tfoot th,
+.cb-table tfoot td {
+  padding: 0.35rem var(--space-3);
+  text-align: left;
+  vertical-align: top;
+}
+
+/* A rule only where a new part starts, so a part's rows hold together as one band. */
+.cb-row--first > * {
+  border-top: 1px solid var(--border-color);
+}
+
+.cb-table tbody tr:first-child > * {
+  border-top: none;
+}
+
+.cb-table tbody tr:hover > * {
+  background: var(--surface-inset);
+}
+
+/* ── Far left: the part, with its own total under its name ── */
+.cb-c-item {
+  width: 24%;
+  min-width: 168px;
+  max-width: 0;
+  overflow: hidden;
+  font-weight: var(--font-regular) !important;
+}
+
+.cb-item-line {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cb-item-no {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-right: var(--space-2);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-bold);
+  color: var(--text-tertiary);
+  text-align: right;
+}
+
+.cb-item-name {
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.cb-item-sub {
+  display: block;
+  margin-left: calc(1.4em + var(--space-2));
+  font-size: var(--text-2xs);
+}
+
+.cb-item-total {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+}
+
+.cb-item-total + .cb-item-note::before {
+  content: ' · ';
+  color: var(--text-tertiary);
+}
+
+.cb-item-note {
+  color: var(--text-tertiary);
+}
+
+/* ── Middle: what gets bought in, then who ran it on what ── */
+.cb-c-mat,
+.cb-c-treat,
+.cb-c-mach {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.cb-c-mat { width: 21%; }
+.cb-c-treat { width: 19%; }
+.cb-c-mach { width: 17%; }
+
+/* The supplier sits under its treatment: the two are one fact — who is doing what to
+   this part — and stacking them costs no width. */
+.cb-supp {
+  display: block;
+  font-size: var(--text-2xs);
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cb-c-who {
+  width: 14%;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-tertiary);
+}
+
+/* ── Far right: the hours ── */
+.cb-c-hours {
+  width: 74px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right !important;
+  white-space: nowrap;
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.cb-hours-hm {
+  display: block;
+  font-size: var(--text-2xs);
+  font-weight: var(--font-regular);
+  color: var(--text-tertiary);
+}
+
+.cb-table tfoot th,
+.cb-table tfoot td {
+  background: var(--surface-elevated);
+  border-top: 1px solid var(--border-strong);
+}
+
+.cb-c-foot {
+  font-size: var(--text-2xs);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--text-tertiary);
+  text-align: right !important;
+}
+
+.cb-table tfoot .cb-c-hours {
+  font-size: var(--text-sm);
+}
+
+.cb-nil {
+  color: var(--text-tertiary);
+}
+
+/* A treatment with nobody to do it can't be priced, so it is called out rather than
+   left looking like an ordinary blank. */
+.cb-gap {
+  color: var(--warning-color);
+}
+
+/* A running timer is live work, so it borrows the app's "in progress" amber. */
+.cb-running {
+  margin: var(--space-2) var(--space-1) 0;
+  font-size: var(--text-2xs);
+  color: var(--badge-pending-text);
+}
+
+@media (max-width: 700px) {
+  .cost-brief {
+    margin-left: var(--space-3);
+    margin-right: var(--space-3);
+  }
+  .cb-table tbody th,
+  .cb-table tbody td,
+  .cb-table thead th,
+  .cb-table tfoot th,
+  .cb-table tfoot td {
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+  }
+}
+
 /* One cost line: category · field × field = total, columns aligned across rows */
 .ledger-line {
   display: grid;

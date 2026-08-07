@@ -388,6 +388,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       }
       setAttachmentWarnings(result?.attachmentWarnings || null);
       if (isEdit) {
+        // The job stays open after a save, so the parts on screen still carry the
+        // temporary ids they were added with. Take the stored ids back, or work
+        // logged from here on won't line up with the part it was logged against.
+        formHook.setLineItemsFromApi(result?.items);
         toast.success('Job card updated');
       } else {
         onClose();
@@ -535,6 +539,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   loaded={costingHook.costingLoaded}
                   loadFailed={costingHook.costingLoadFailed}
                   onRetryLoad={costingHook.retryLoadCosting}
+                  lineItems={formHook.lineItems}
+                  timeEntries={timeEntries}
                 />
               )}
 

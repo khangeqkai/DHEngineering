@@ -105,6 +105,15 @@ export function useJobCardForm() {
     setLineItems(mappedItems.length > 0 ? mappedItems : [makeEmptyLineItem(1)]);
   }, []);
 
+  // Adopt the stored line items back after a save that leaves the job open. A part
+  // added on screen carries a temporary id until it is saved; work is matched to a
+  // part by its stored id, so without this the hours logged from here on would look
+  // like work on a part that no longer exists.
+  const setLineItemsFromApi = useCallback((apiItems) => {
+    const mapped = (apiItems || []).map(mapLineItemFromApi);
+    setLineItems(prev => (mapped.length > 0 ? mapped : prev));
+  }, []);
+
   const resetForm = useCallback(() => {
     setFormData(getDefaultFormData());
     setJobNumber('');
@@ -130,6 +139,7 @@ export function useJobCardForm() {
     removeLineItem,
     toggleAssignee,
     setFormDataFromJobCard,
+    setLineItemsFromApi,
     resetForm
   };
 }

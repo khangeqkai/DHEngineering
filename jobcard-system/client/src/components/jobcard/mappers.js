@@ -7,6 +7,9 @@ export function mapTimeEntryFromApi(e) {
     userId: e.userId,
     userName: e.userName,
     itemNumber: e.itemNumber,
+    // The part's permanent id. item_number is only a display position derived from it,
+    // so anything matching a block to a part should key off this.
+    itemId: e.itemId,
     machineNumber: e.machineNumber,
     qty: e.qty,
     scrapBinQty: e.scrapBinQty != null ? e.scrapBinQty : 0,

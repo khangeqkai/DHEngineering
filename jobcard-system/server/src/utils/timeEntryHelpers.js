@@ -146,6 +146,10 @@ function toCamelCase(e) {
     userId: e.user_id,
     jobcardId: e.jobcard_id,
     userName: e.user_name,
+    // The part's permanent id, plus its display position. Anything matching a block
+    // back to a part must key off itemId — item_number shifts as parts are added or
+    // removed, so it only ever says where the part currently sits on screen.
+    itemId: e.item_id,
     itemNumber: e.item_number,
     machineNumber: e.machine_number,
     qty: e.qty,
