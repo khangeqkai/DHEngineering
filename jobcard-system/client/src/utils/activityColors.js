@@ -10,6 +10,7 @@ export const ACTION_COLORS = {
   update_costing: 'var(--primary-accent)',
   update_qa_form: 'var(--primary-accent)', add_template: 'var(--accent-ready)', remove_template: 'var(--accent-caution)',
   upload_file: 'var(--accent-ready)', add_document: 'var(--accent-ready)',
+  delete_file: 'var(--accent-caution)',
   add_photo: 'var(--accent-ready)', remove_photo: 'var(--accent-caution)',
   login: 'var(--accent-info)', login_failed: 'var(--accent-caution)',
   data_export: 'var(--accent-info)', data_import: 'var(--accent-info)',

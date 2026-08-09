@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const logger = require('../utils/logger');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireManagement } = require('../middleware/auth');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -524,6 +524,39 @@ router.post('/:id/files/:category/:filename/assign', authenticate, validateCateg
   } catch (err) {
     logger.error({ err }, 'Assign-file error');
     res.status(500).json({ error: 'Failed to reassign file' });
+  }
+});
+
+// ─── Delete a stored file ───
+// Management-only: a file is a job's evidence (drawing, customer property,
+// returned quality form), and removing one can silently re-open a part's
+// missing-attachment warning, so it follows the same rule as deleting a note.
+router.delete('/:id/files/:category/:filename', authenticate, requireManagement, validateCategory, validateFilenameParam, (req, res) => {
+  try {
+    const { id, category, filename } = req.params;
+
+    const folderRes = resolveCategoryFolder(id, category);
+    if (folderRes.error) return res.status(folderRes.status).json({ error: folderRes.error });
+
+    const filePath = path.join(folderRes.folderPath, filename);
+    if (!isWithinBase(folderRes.folderPath, filePath)) {
+      return res.status(403).json({ error: 'Path traversal detected' });
+    }
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    fs.unlinkSync(filePath);
+
+    recordHistory('jobcard', id, 'delete_file', req.user.userId, req.user.name || req.user.username,
+      { file: { from: stripStorageTag(filename), to: null } },
+      { destination: CATEGORY_FOLDER[category], storedName: filename }
+    );
+
+    return res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, 'Delete jobcard file error');
+    res.status(500).json({ error: 'Failed to delete file' });
   }
 });
 

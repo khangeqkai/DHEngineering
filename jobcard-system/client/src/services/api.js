@@ -272,6 +272,10 @@ class ApiService {
     if (itemId != null) body.itemId = itemId;
     return this._post(`/jobcards/${jobcardId}/files/${category}/upload`, body);
   }
+  // Remove a stored file from the job's folder (management only).
+  deleteJobcardFile(jobcardId, category, filename) {
+    return this._del(`/jobcards/${jobcardId}/files/${category}/${encodeURIComponent(filename)}`);
+  }
   // Re-tag a stored file so it belongs to a part (itemId) or to the whole job (null).
   assignJobcardFile(jobcardId, category, filename, itemId) {
     return this._post(`/jobcards/${jobcardId}/files/${category}/${encodeURIComponent(filename)}/assign`, { itemId: itemId ?? null });

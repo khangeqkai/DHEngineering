@@ -12,6 +12,8 @@ import HubFileRow from './HubFileRow';
 import HubCameraView from './HubCameraView';
 import { ORDER, MAX_PACKET_FILES, keyOf, cleanQaName, fileKindLabel, PickCircle } from './paperworkHubHelpers';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { isManagement } from '../../utils/roles';
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import './JobPaperworkHub.css';
 
@@ -46,6 +48,11 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarni
     pushModal(modalId);
     return () => removeModal(modalId);
   }, [open, modalId]);
+
+  const { user } = useAuth();
+  // Anyone can add paperwork; only management can remove it (deleting a file can
+  // silently re-open a part's missing-attachment warning).
+  const canDelete = isManagement(user);
 
   const files = useJobFiles(jobcardId);
   const camera = useCamera();
@@ -282,6 +289,22 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarni
     onFilesChanged?.();
   };
 
+  // Delete a stored file, then forget its tick (and its "already seen" mark, so a
+  // later file of the same name is treated as brand-new and pre-ticked again).
+  const handleDelete = async (cat, name) => {
+    const ok = await files.deleteFile(cat, name);
+    if (!ok) return;
+    const k = keyOf(cat, name);
+    seenRef.current.delete(k);
+    setSelected(prev => {
+      if (!prev.has(k)) return prev;
+      const next = new Set(prev);
+      next.delete(k);
+      return next;
+    });
+    onFilesChanged?.();
+  };
+
   // --- Print / save ---
   const printPacket = () => packet.printPacket({ items: selectedItems(), includeJobCard: cardTicked });
   const savePacket = () => packet.savePacket({ items: selectedItems(), includeJobCard: cardTicked });
@@ -394,6 +417,9 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarni
                 currentItemId={f.itemId}
                 assigning={files.assigningKeys.has(`${cat}/${f.name}`)}
                 onAssign={(itemId) => handleAssign(cat, f.name, itemId)}
+                canDelete={canDelete}
+                deleting={files.deletingKeys.has(`${cat}/${f.name}`)}
+                onDelete={() => handleDelete(cat, f.name)}
               />
             ))}
           </ul>

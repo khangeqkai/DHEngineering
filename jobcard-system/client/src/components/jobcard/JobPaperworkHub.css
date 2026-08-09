@@ -421,6 +421,30 @@
 }
 .hub-icon-btn:hover:not(:disabled) { background: var(--border-color); color: var(--text-primary); }
 .hub-icon-btn:disabled { opacity: 0.5; cursor: default; }
+.hub-icon-btn--danger:hover:not(:disabled) {
+  background: rgba(var(--danger-rgb), 0.14);
+  color: var(--danger-color);
+}
+
+/* Inline "are you sure" that replaces the row tools while a delete is pending */
+.hub-del-confirm { display: inline-flex; align-items: center; gap: 0.4rem; }
+.hub-del-ask { font-size: var(--text-xs, 0.75rem); color: var(--text-secondary); white-space: nowrap; }
+.hub-del-yes,
+.hub-del-no {
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.3rem 0.55rem;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.hub-del-yes { background: var(--danger-color); color: #fff; }
+.hub-del-no { background: var(--surface-elevated); color: var(--text-secondary); }
+.hub-del-yes:hover:not(:disabled) { background: var(--danger-hover, var(--danger-color)); }
+.hub-del-no:hover:not(:disabled) { background: var(--border-color); color: var(--text-primary); }
+.hub-del-yes:disabled,
+.hub-del-no:disabled { opacity: 0.6; cursor: default; }
 
 .hub-empty { font-size: var(--text-sm); color: var(--text-tertiary, var(--text-secondary)); padding: 1.1rem; margin: 0; text-align: center; }
 

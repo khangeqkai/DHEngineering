@@ -57,6 +57,7 @@ export function useJobFiles(jobcardId) {
   const [savingPhotos, setSavingPhotos] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [assigningKeys, setAssigningKeys] = useState(new Set());
+  const [deletingKeys, setDeletingKeys] = useState(new Set());
 
   const [thumbnails, setThumbnails] = useState(new Map());
   const [viewerUrl, setViewerUrl] = useState(null);
@@ -215,6 +216,26 @@ export function useJobFiles(jobcardId) {
     }
   }, [jobcardId, loadFiles]);
 
+  // Remove a stored file from its folder, then reload that folder so the row
+  // disappears. Returns true on success so the caller can drop any per-file UI
+  // state (e.g. a packet tick) that was keyed on the now-gone name.
+  const deleteFile = useCallback(async (category, filename) => {
+    if (!jobcardId) return false;
+    const key = `${category}/${filename}`;
+    setDeletingKeys(prev => new Set(prev).add(key));
+    try {
+      await api.deleteJobcardFile(jobcardId, category, filename);
+      await loadFiles(category);
+      toast.success('File deleted');
+      return true;
+    } catch (err) {
+      toast.error(err.message || 'Could not delete the file');
+      return false;
+    } finally {
+      setDeletingKeys(prev => { const next = new Set(prev); next.delete(key); return next; });
+    }
+  }, [jobcardId, loadFiles]);
+
   const handleViewFile = useCallback(async (file, category) => {
     const cachedThumb = file.mimeType?.startsWith('image/') ? thumbnails.get(`${category}/${file.name}`) : null;
     if (cachedThumb) {
@@ -285,6 +306,7 @@ export function useJobFiles(jobcardId) {
     uploading, uploadPickedFiles,
     savingPhotos, savePhotos,
     assigningKeys, assignFile,
+    deletingKeys, deleteFile,
     thumbnails, loadingFiles, handleViewFile,
     viewerUrl, closeViewer,
     lightboxPhoto, closeLightbox,

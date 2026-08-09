@@ -15,7 +15,7 @@ import { actionColor } from '../utils/activityColors';
 
 const STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'DONE', 'INVOICED'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
-const ACTIONS = ['create', 'update', 'delete', 'archive', 'unarchive', 'start_timer', 'stop_timer', 'discard_timer', 'add_time_entry', 'update_time_entry', 'delete_time_entry', 'add_note', 'delete_note', 'update_costing', 'update_qa_form', 'add_template', 'remove_template', 'upload_file', 'add_document', 'login', 'login_failed', 'data_export', 'data_import'];
+const ACTIONS = ['create', 'update', 'delete', 'archive', 'unarchive', 'start_timer', 'stop_timer', 'discard_timer', 'add_time_entry', 'update_time_entry', 'delete_time_entry', 'add_note', 'delete_note', 'update_costing', 'update_qa_form', 'add_template', 'remove_template', 'upload_file', 'delete_file', 'add_document', 'login', 'login_failed', 'data_export', 'data_import'];
 const ENTITY_TYPES = ['jobcard', 'company', 'contact', 'supplier', 'user', 'machine', 'auth', 'tag', 'qa_level', 'system'];
 const SCOPES = [
   { key: 'all', label: 'All', icon: Search },
@@ -94,7 +94,7 @@ const ACTION_TO_TAB = {
   update_costing: 'costing',
   // Files now live in the header paperwork hub, not a tab — land on Details.
   update_qa_form: 'details',
-  upload_file: 'details', add_document: 'details',
+  upload_file: 'details', delete_file: 'details', add_document: 'details',
 };
 
 export default function SearchPage() {
