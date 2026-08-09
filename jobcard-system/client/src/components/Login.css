@@ -79,6 +79,17 @@
   border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
+/* Server still starting — a wait, not a mistake, so amber rather than red */
+.login-notice {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fcd34d;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1.25rem;
+  font-size: var(--text-sm);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
 /* Form styles — always dark (aurora background) */
 .login-card .form-group label {
   color: rgba(234, 236, 242, 0.85);

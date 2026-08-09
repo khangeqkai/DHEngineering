@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 import { User, Lock } from 'lucide-react';
 import dhLogo from '../assets/dh-logo.png';
 import Waves from './common/Waves';
@@ -13,6 +14,10 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  // null = not asked yet (offer the form as normal), false = the server isn't
+  // answering, true = it is. Only false holds the form back.
+  const [serverReady, setServerReady] = useState(null);
+  const [readyCheckKey, setReadyCheckKey] = useState(0);
   const intervalRef = useRef(null);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -22,6 +27,28 @@ export default function Login() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
+
+  // In development the window opens as soon as the page builder is ready, while
+  // the server is still starting (and it restarts on every saved file), so the
+  // sign-in form can be on screen with nothing behind it. Ask first, and keep
+  // asking until it answers, so a sign-in never fails for that reason alone.
+  useEffect(() => {
+    let cancelled = false;
+    let timer = null;
+
+    const check = async () => {
+      const ready = await api.isServerReady();
+      if (cancelled) return;
+      setServerReady(ready);
+      if (!ready) timer = setTimeout(check, 2000);
+    };
+    check();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [readyCheckKey]);
 
   const startCountdown = (seconds) => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -49,6 +76,13 @@ export default function Login() {
       navigate('/');
     } catch (err) {
       const message = err.message || 'Login failed';
+      if (err.code === 'SERVER_UNREACHABLE') {
+        // Say it in the waiting notice, not as a sign-in error — nothing the
+        // person typed was wrong. Start watching for the server again.
+        setServerReady(false);
+        setReadyCheckKey((k) => k + 1);
+        return;
+      }
       const match = message.match(/wait (\d+) seconds/);
       if (match) {
         const seconds = parseInt(match[1], 10);
@@ -92,6 +126,11 @@ export default function Login() {
               Job Card System
             </GradientText>
           </h1>
+          {serverReady === false && (
+            <div className="login-notice">
+              Starting up — the server isn't ready yet.
+            </div>
+          )}
           {error && (
             <div className="login-error">
               {countdown > 0
@@ -137,8 +176,18 @@ export default function Login() {
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary login-btn" disabled={loading || countdown > 0}>
-            {loading ? 'Signing in...' : countdown > 0 ? `Wait ${countdown}s` : 'Sign In'}
+          <button
+            type="submit"
+            className="btn btn-primary login-btn"
+            disabled={loading || countdown > 0 || serverReady === false}
+          >
+            {loading
+              ? 'Signing in...'
+              : serverReady === false
+                ? 'Waiting for the server...'
+                : countdown > 0
+                  ? `Wait ${countdown}s`
+                  : 'Sign In'}
           </button>
         </form>
 

@@ -1,5 +1,24 @@
 const API_URL = '/api';
 
+// One shared "the server isn't answering" error, so every caller shows the same
+// plain wording and can branch on the code instead of matching the text.
+function unreachableError() {
+  const err = new Error("The server isn't ready yet. Wait a moment and try again.");
+  err.code = 'SERVER_UNREACHABLE';
+  return err;
+}
+
+// The server can drop out for a second or two — it is still finishing its start-up,
+// or (in development) it restarted itself after a saved file. Everything the screen
+// asks for in that window is refused at once, which reads as the whole app breaking.
+// Reading is safe to ask again, so wait and re-ask instead of giving up. Saving is
+// never re-sent on its own: it may have arrived just before the server went away,
+// and sending it twice would make two of whatever was being saved.
+const UNREACHABLE_RETRIES = 3;
+const UNREACHABLE_RETRY_MS = 1500;
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 class ApiService {
   constructor() {
     this.token = null;
@@ -23,6 +42,20 @@ class ApiService {
   }
 
   async request(endpoint, options = {}) {
+    const isRead = !options.method || options.method.toUpperCase() === 'GET';
+    const attempts = isRead ? UNREACHABLE_RETRIES + 1 : 1;
+
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this._send(endpoint, options);
+      } catch (err) {
+        if (err.code !== 'SERVER_UNREACHABLE' || attempt >= attempts) throw err;
+        await wait(UNREACHABLE_RETRY_MS);
+      }
+    }
+  }
+
+  async _send(endpoint, options = {}) {
     const url = `${API_URL}${endpoint}`;
     const headers = {
       'Content-Type': 'application/json',
@@ -33,12 +66,25 @@ class ApiService {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    const response = await fetch(url, {
-      ...options,
-      headers
-    });
+    let response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers
+      });
+    } catch {
+      // The server isn't answering at all (still booting, restarted, or the
+      // machine is off the network). fetch rejects before any status exists.
+      throw unreachableError();
+    }
 
     if (!response.ok) {
+      // A dev proxy that can't reach the server answers 5xx in plain text, not
+      // JSON — same situation as the reject above, so report it the same way.
+      if (response.status >= 500 &&
+          !(response.headers.get('content-type') || '').includes('application/json')) {
+        throw unreachableError();
+      }
       const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
 
       // Handle a forced sign-out from the server: session replaced by a newer
@@ -95,6 +141,17 @@ class ApiService {
     const opts = { method: 'DELETE' };
     if (data !== undefined) opts.body = JSON.stringify(data);
     return this.request(endpoint, opts);
+  }
+
+  // Is the server answering yet? Sits outside /api and needs no sign-in, so the
+  // login screen can ask before offering the form. Never throws.
+  async isServerReady() {
+    try {
+      const response = await fetch('/health');
+      return response.ok;
+    } catch {
+      return false;
+    }
   }
 
   // Auth endpoints
