@@ -7,7 +7,7 @@ const { authenticate } = require('../middleware/auth');
 const {
   jobcardQueries,
   jobItemQueries,
-  contactQueries,
+  companyQueries,
   getSettings,
   recordHistory
 } = require('../db/database');
@@ -77,18 +77,20 @@ function resolveJobFolder(jobcardId) {
   }
 
   const base = basePath.trim();
-  const contactId = jobcard.contact_id || null;
+  // The customer's current name wins over the name frozen onto the job, so a job
+  // saved under the old name still resolves to the folder as it stands today.
+  const companyId = jobcard.company_id || null;
   let companyName = null;
-  if (contactId) {
-    const contact = contactQueries.getById.get(contactId);
-    if (contact) companyName = contact.company_name;
+  if (companyId) {
+    const company = companyQueries.getById.get(companyId);
+    if (company) companyName = company.name;
   }
   if (!companyName) companyName = jobcard.company_name;
   if (!companyName) {
     return { error: 'No company associated with this job card', status: 400 };
   }
 
-  const companyFolder = resolveCompanyFolder(base, contactId, companyName);
+  const companyFolder = resolveCompanyFolder(base, companyId, companyName);
   const sanitizedJob = sanitizeFolderName(jobcard.job_number);
   if (!companyFolder || !sanitizedJob) {
     return { error: 'Invalid path components', status: 400 };

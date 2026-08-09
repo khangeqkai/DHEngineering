@@ -97,14 +97,6 @@ function runMigrations() {
     logger.info({ updated: reset.changes }, 'Migration: Cleared stale labour-hours overrides for overtime split');
   }
 
-  // Customers are archived, never deleted (track-and-trace) — add the flag to
-  // databases created before this column existed.
-  const contactCols = db.prepare("PRAGMA table_info(contacts)").all();
-  if (!contactCols.some(c => c.name === 'archived')) {
-    db.prepare('ALTER TABLE contacts ADD COLUMN archived INTEGER DEFAULT 0').run();
-    logger.info('Migration: Added archived column to contacts');
-  }
-
   // The 'TREATMENT' and 'ON_HOLD' statuses were removed and folded into
   // 'AWAITING_MATERIAL' (relabelled "Material/Treatment"). Convert any job still
   // parked on the old values so they display, sort, and save normally — otherwise

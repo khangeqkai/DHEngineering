@@ -27,7 +27,11 @@ const SKIP_JOBS = process.argv.slice(2).some(a => ['--no-jobs', '--empty'].inclu
 // Give every reference record an id up front so the rest of the script can wire
 // relationships (assignees, supplier links, treatment→supplier defaults) by id.
 const users = refData.users.map(u => ({ ...u, id: uid('user') }));
-const contacts = refData.contacts.map(c => ({ ...c, id: uid('contact') }));
+// A company owns the folder on disk; its people are separate records under it.
+const companies = refData.companies.map(c => ({ ...c, id: uid('company') }));
+const contacts = companies.flatMap(co =>
+  co.people.map(p => ({ ...p, id: uid('contact'), companyId: co.id, companyName: co.name }))
+);
 const suppliers = refData.suppliers.map(s => ({ ...s, id: uid('supplier') }));
 const machines = refData.machines.map(m => ({ ...m, id: uid('machine') }));
 const qaLevels = refData.qaLevels.map(q => ({ ...q, id: uid('qalevel') }));
@@ -38,7 +42,7 @@ const tables = [
   'history', 'qa_level_templates', 'job_costings',
   'time_entries', 'job_notes', 'job_assignees', 'job_items',
   'jobcards', 'supplier_service_tags', 'tags', 'machines', 'suppliers',
-  'contacts', 'users', 'qa_levels'
+  'contacts', 'companies', 'users', 'qa_levels'
 ];
 
 db.pragma('foreign_keys = OFF');
@@ -74,12 +78,16 @@ const adminId = users[0].id;
 console.log(`Created ${users.length} users.`);
 
 // ─── CONTACTS ───
-console.log('Creating contacts...');
-const insertContact = db.prepare('INSERT INTO contacts (id, contact_name, company_name, phone, email, address) VALUES (?, ?, ?, ?, ?, ?)');
-for (const c of contacts) {
-  insertContact.run(c.id, c.contactName, c.companyName, c.phone, c.email, c.address);
+console.log('Creating companies and their contact people...');
+const insertCompany = db.prepare('INSERT INTO companies (id, name, address) VALUES (?, ?, ?)');
+for (const co of companies) {
+  insertCompany.run(co.id, co.name, co.address);
 }
-console.log(`Created ${contacts.length} contacts.`);
+const insertContact = db.prepare('INSERT INTO contacts (id, company_id, contact_name, phone, email) VALUES (?, ?, ?, ?, ?)');
+for (const c of contacts) {
+  insertContact.run(c.id, c.companyId, c.contactName, c.phone, c.email);
+}
+console.log(`Created ${companies.length} companies and ${contacts.length} contact people.`);
 
 // ─── SUPPLIERS ───
 console.log('Creating suppliers...');
@@ -156,13 +164,13 @@ const scenarioLevels = [{ id: null, name: 'Standard' }, ...qaLevels];
 console.log('Creating job cards...');
 
 const insertJobcard = db.prepare(`INSERT INTO jobcards (
-  id, job_number, card_type, status, contact_id, contact_name, company_name,
+  id, job_number, card_type, status, company_id, contact_id, contact_name, company_name,
   contact_phone, contact_email,
   quality_level, qa_level_id, priority,
   quote_reference, po_number,
   description, due_date, is_repeat_job, created_by, updated_by, created_at,
   archived, invoiced_date
-) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
 const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments, drawings_type, customer_property) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
@@ -244,7 +252,7 @@ const createJobs = db.transaction(() => {
       : null;
 
     insertJobcard.run(
-      jobId, jobNumber, s.status, s.contact.id, s.contact.contactName, s.contact.companyName,
+      jobId, jobNumber, s.status, s.contact.companyId, s.contact.id, s.contact.contactName, s.contact.companyName,
       s.contact.phone, s.contact.email,
       s.qaLevel.name.toUpperCase(), s.qaLevel.id, s.priority,
       s.quoteReference || null, s.poNumber || null,
@@ -348,7 +356,7 @@ console.log(SKIP_JOBS
 console.log('Generating activity history...');
 const historyRows = seedHistory({
   db, adminId, adminName: users[0].name,
-  users, contacts, suppliers, machines, qaLevels,
+  users, companies, contacts, suppliers, machines, qaLevels,
   jobs: jobsForHistory,
   setupAt: makeDate(40, 8, 0).toISOString(),
 });
@@ -375,7 +383,7 @@ normalizeStoredTimestamps();
 
 console.log('\n✓ Mock data seeded successfully!');
 console.log(`  - ${users.length} users (all PIN 1234): ${users.map(u => u.username).join(', ')}`);
-console.log(`  - ${contacts.length} contacts (Australian industrial companies across WA/NSW/VIC/QLD)`);
+console.log(`  - ${companies.length} companies with ${contacts.length} contact people (Australian industrial customers across WA/NSW/VIC/QLD)`);
 console.log(`  - ${suppliers.length} suppliers covering every treatment type`);
 console.log(`  - ${machines.length} machines`);
 console.log(`  - ${qaLevels.length} QA levels (${qaLevels.map(q => q.name).join(', ')})`);

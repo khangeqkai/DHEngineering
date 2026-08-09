@@ -53,36 +53,56 @@ const userQueries = {
   `)
 };
 
-// Contact queries (phone contacts style - each contact is standalone)
-const contactQueries = {
-  getById: db.prepare('SELECT * FROM contacts WHERE id = ?'),
-  // Pickers and autocomplete only see live customers; the admin list can opt in
-  // to archived ones for restoring.
-  getAll: db.prepare('SELECT * FROM contacts WHERE archived = 0 ORDER BY company_name ASC'),
-  getAllIncludeArchived: db.prepare('SELECT * FROM contacts ORDER BY archived ASC, company_name ASC'),
+// Company queries — the company IS the customer. Its id is the permanent code
+// stamped into its folder name on disk, so the name can change freely.
+const companyQueries = {
+  getById: db.prepare('SELECT * FROM companies WHERE id = ?'),
+  // Pickers only see live customers; the admin list can opt in to archived ones.
+  getAll: db.prepare('SELECT * FROM companies WHERE archived = 0 ORDER BY name ASC'),
+  getAllIncludeArchived: db.prepare('SELECT * FROM companies ORDER BY archived ASC, name ASC'),
 
-  // Company names are unique (case-insensitive). Used to reject duplicates so
-  // two customers can never share a company name — which would otherwise make
-  // their job folders ambiguous on disk. Matches archived customers too, since
-  // an archived customer still owns its name and folder.
-  getByCompanyName: db.prepare('SELECT * FROM contacts WHERE company_name = ? COLLATE NOCASE'),
-
-  // Search by company name OR contact name (live customers only)
-  search: db.prepare(`
-    SELECT * FROM contacts
-    WHERE (company_name LIKE ? OR contact_name LIKE ?) AND archived = 0
-    ORDER BY company_name ASC
-    LIMIT 20
-  `),
+  // Company names are unique (case-insensitive) so two customers can never share
+  // a name — which would make their job folders ambiguous on disk. Matches
+  // archived customers too, since an archived customer still owns its folder.
+  getByName: db.prepare('SELECT * FROM companies WHERE name = ? COLLATE NOCASE'),
 
   create: db.prepare(`
-    INSERT INTO contacts (id, contact_name, company_name, phone, email, address, notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    INSERT INTO companies (id, name, address, notes, created_at, updated_at)
+    VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  `),
+
+  update: db.prepare(`
+    UPDATE companies
+    SET name = ?, address = ?, notes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    WHERE id = ?
+  `),
+
+  archive: db.prepare("UPDATE companies SET archived = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?"),
+  unarchive: db.prepare("UPDATE companies SET archived = 0, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?")
+};
+
+// Contact queries — the people at a company. Every read carries the company's
+// name alongside, since a person is never shown without the company they're at.
+const CONTACT_SELECT = `
+  SELECT c.*, co.name AS company_name, co.archived AS company_archived
+  FROM contacts c JOIN companies co ON co.id = c.company_id
+`;
+
+const contactQueries = {
+  getById: db.prepare(`${CONTACT_SELECT} WHERE c.id = ?`),
+  // Everyone at one company. The archived people are kept out of pickers but the
+  // admin list needs them, hence the two forms.
+  getByCompany: db.prepare(`${CONTACT_SELECT} WHERE c.company_id = ? AND c.archived = 0 ORDER BY c.contact_name ASC`),
+  getByCompanyIncludeArchived: db.prepare(`${CONTACT_SELECT} WHERE c.company_id = ? ORDER BY c.archived ASC, c.contact_name ASC`),
+
+  create: db.prepare(`
+    INSERT INTO contacts (id, company_id, contact_name, phone, email, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare(`
     UPDATE contacts
-    SET contact_name = ?, company_name = ?, phone = ?, email = ?, address = ?, notes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    SET contact_name = ?, phone = ?, email = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
@@ -216,6 +236,7 @@ const machineQueries = {
 
 module.exports = {
   userQueries,
+  companyQueries,
   contactQueries,
   supplierQueries,
   machineQueries,

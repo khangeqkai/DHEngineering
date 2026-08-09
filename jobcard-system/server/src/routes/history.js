@@ -1,7 +1,7 @@
 const express = require('express');
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin, requireManagement } = require('../middleware/auth');
-const { historyQueries } = require('../db/database');
+const { historyQueries, db } = require('../db/database');
 
 const router = express.Router();
 
@@ -52,13 +52,16 @@ router.get('/user/:userId', authenticate, requireAdmin, (req, res) => {
   }
 });
 
-// Get activity by entity type (admin or manager — user/contact/supplier/machine
-// history carries no pricing; managers manage these entities and see their logs)
+// Get activity by entity type (admin or manager — user/company/contact/supplier/
+// machine history carries no pricing; managers manage these entities and see their logs)
 router.get('/entity/:entityType', authenticate, requireManagement, (req, res) => {
   try {
-    const allowedTypes = ['user', 'contact', 'supplier', 'machine'];
-    const { entityType } = req.params;
-    if (!allowedTypes.includes(entityType)) {
+    const allowedTypes = ['user', 'company', 'contact', 'supplier', 'machine'];
+    // Comma-separated so one screen can show a combined trail — the Customers page
+    // manages both the company and the people at it, and splitting their history
+    // across two logs would hide "Jane became Janey" from whoever went looking.
+    const types = String(req.params.entityType).split(',').map(t => t.trim()).filter(Boolean);
+    if (types.length === 0 || types.some(t => !allowedTypes.includes(t))) {
       return res.status(400).json({ error: 'Invalid entity type' });
     }
 
@@ -66,8 +69,13 @@ router.get('/entity/:entityType', authenticate, requireManagement, (req, res) =>
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const offset = (page - 1) * PAGE_SIZE;
 
-    const { count: total } = historyQueries.countByEntityType.get(entityType);
-    const history = historyQueries.getByEntityType.all(entityType, PAGE_SIZE, offset);
+    const placeholders = types.map(() => '?').join(', ');
+    const { count: total } = db
+      .prepare(`SELECT COUNT(*) as count FROM history WHERE entity_type IN (${placeholders})`)
+      .get(...types);
+    const history = db
+      .prepare(`SELECT * FROM history WHERE entity_type IN (${placeholders}) ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+      .all(...types, PAGE_SIZE, offset);
 
     res.json({
       data: history.map(h => ({

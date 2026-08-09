@@ -14,11 +14,13 @@ export default function DetailsTab({
   formData,
   setFormData,
   handleChange,
-  contact,
   contactFormData,
   handleContactFieldChange,
-  selectContact,
-  contacts,
+  selectCompany,
+  selectPerson,
+  selectedCompany,
+  people,
+  companyMatches,
   showContactDropdown,
   contactSearchRef,
   fieldFocused,
@@ -122,13 +124,10 @@ export default function DetailsTab({
 
   return (
     <div className="modal-form-grid">
-      {/* Contact Section — frozen after creation: pick on create, read-only on edit (management only) */}
+      {/* Customer — frozen after creation: picked on create, read-only on edit (management only) */}
       {canManage && isEdit && (
       <div className="form-section">
-        <h3 className="form-section-title">
-          Contact
-          {contact && <span className="contact-linked-badge">Linked</span>}
-        </h3>
+        <h3 className="form-section-title">Customer</h3>
         <div className="customer-input-strip">
           <div className="cis-item">
             <span className="cis-label">Company</span>
@@ -156,12 +155,13 @@ export default function DetailsTab({
       </div>
       )}
 
-      {/* Contact Section - Inline Autocomplete (management only, create mode) */}
+      {/* Customer picker (management only, create mode): pick the company, then
+          who there the job is for. Their details fill in and stay editable. */}
       {canManage && !isEdit && (
       <div className="form-section">
         <h3 className="form-section-title">
-          Contact <span className="required">*</span>
-          {contact && <span className="contact-linked-badge">Linked</span>}
+          Customer <span className="required">*</span>
+          {selectedCompany && <span className="contact-linked-badge">Linked</span>}
         </h3>
 
         <div className="contact-fields-inline" ref={contactSearchRef}>
@@ -183,29 +183,61 @@ export default function DetailsTab({
                   placeholder=""
                   className={!contactFormData.companyName.trim() ? 'field-required' : ''}
                 />
-                {showContactDropdown && fieldFocused && contacts.length > 0 && (
+                {showContactDropdown && fieldFocused && companyMatches.length > 0 && (
                   <div className="customer-dropdown">
-                    {contacts.map(c => (
-                      <div key={c.id} className="customer-option" onMouseDown={() => selectContact(c)}>
-                        <strong>{c.companyName || 'No company'}</strong>
-                        {c.contactName && <span className="contact-name"> ({c.contactName})</span>}
+                    {companyMatches.map(c => (
+                      <div key={c.id} className="customer-option" onMouseDown={() => selectCompany(c)}>
+                        <strong>{c.name}</strong>
+                        {(c.people || []).length > 0 && (
+                          <span className="contact-name"> ({(c.people || []).map(p => p.contactName).filter(Boolean).join(', ')})</span>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
+              {!selectedCompany && contactFormData.companyName.trim() && (
+                <span className="field-hint">Not on the list — it will be added as a new customer.</span>
+              )}
             </div>
             <div className="form-group">
-              <label>Contact Name</label>
-              <input
-                type="text"
-                value={contactFormData.contactName}
-                onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
-                onBlur={titleCaseBlur('contactName', handleContactFieldChange)}
-                placeholder=""
-              />
+              <label>Contact</label>
+              {selectedCompany && people.length > 0 ? (
+                <select
+                  value={contactFormData.contactId}
+                  onChange={(e) => selectPerson(e.target.value)}
+                >
+                  <option value="">Someone else...</option>
+                  {people.map(p => (
+                    <option key={p.id} value={p.id}>{p.contactName || 'Unnamed'}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={contactFormData.contactName}
+                  onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
+                  onBlur={titleCaseBlur('contactName', handleContactFieldChange)}
+                  placeholder=""
+                />
+              )}
             </div>
           </div>
+          {selectedCompany && people.length > 0 && !contactFormData.contactId && (
+            <div className="form-row">
+              <div className="form-group">
+                <label>New contact name</label>
+                <input
+                  type="text"
+                  value={contactFormData.contactName}
+                  onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
+                  onBlur={titleCaseBlur('contactName', handleContactFieldChange)}
+                  placeholder=""
+                />
+                <span className="field-hint">They'll be added under {selectedCompany.name}.</span>
+              </div>
+            </div>
+          )}
           <div className="form-row">
             <div className="form-group">
               <label>Phone</label>

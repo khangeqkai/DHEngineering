@@ -11,6 +11,8 @@ const {
   jobAssigneeQueries,
   qaLevelQueries,
   timeEntryQueries,
+  companyQueries,
+  contactQueries,
   getSettings,
   recordHistory
 } = require('../db/database');
@@ -69,6 +71,27 @@ router.post('/', authenticate, requireManagement, ...validateJobcardEnums, async
       return res.status(400).json({ error: quantityError });
     }
 
+    // The customer is the company; the contact is the person there the job was
+    // taken for. The company must be picked (it owns the folder the job's files go
+    // in) and its name is taken from the record, not from what was typed — the job
+    // then keeps that name for good. The person is optional, and if one is named
+    // they must actually work at that company.
+    const company = companyQueries.getById.get(data.companyId || '');
+    if (!company) {
+      return res.status(400).json({ error: 'Pick a customer for this job' });
+    }
+    if (company.archived) {
+      return res.status(400).json({ error: 'That customer is archived. Restore it before starting new work for them.' });
+    }
+
+    let contact = null;
+    if (data.contactId) {
+      contact = contactQueries.getById.get(data.contactId);
+      if (!contact || contact.company_id !== company.id) {
+        return res.status(400).json({ error: 'That contact person does not work at the chosen customer' });
+      }
+    }
+
     const id = `jobcard:${uuidv4()}`;
     const status = data.status || 'OPEN';
 
@@ -125,9 +148,10 @@ router.post('/', authenticate, requireManagement, ...validateJobcardEnums, async
         peek.jobNumber,
         'JOB_CARD',
         status,
-        data.contactId || null,
+        company.id,
+        contact ? contact.id : null,
         data.contactName || null,
-        data.companyName || null,
+        company.name,
         data.contactPhone || null,
         data.contactEmail || null,
         qualityLevelName,
@@ -199,8 +223,8 @@ router.post('/', authenticate, requireManagement, ...validateJobcardEnums, async
       qaResult = await copyQaTemplatesForJob(id, qaLevelId, buildQaFillData(id, {
         jobNumber: jobNumber,
         status: status,
-        contactId: data.contactId || null,
-        companyName: data.companyName || null,
+        companyId: company.id,
+        companyName: company.name,
         contactName: data.contactName || null,
         description: data.description || null,
         priority: data.priority || 'NONE',
@@ -217,10 +241,7 @@ router.post('/', authenticate, requireManagement, ...validateJobcardEnums, async
     const items = jobItemQueries.getByJobcard.all(id);
     const assignees = jobAssigneeQueries.getByJobcard.all(id);
 
-    const folderCompany = jobcard.company_name || data.companyName;
-    if (folderCompany) {
-      createJobCardFolders(jobcard.contact_id || null, folderCompany, jobNumber);
-    }
+    createJobCardFolders(jobcard.company_id, jobcard.company_name, jobNumber);
 
     const response = formatJobcard(jobcard, items, assignees, req.user.role);
     const warning = buildQaTemplateWarning(qaResult);
@@ -250,6 +271,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     // job (traceability: a job is a permanent record of who the work was for, as
     // it was at the time). Strip them on every update regardless of role; the
     // update query falls back to the existing stored values.
+    delete data.companyId;
     delete data.contactId;
     delete data.contactName;
     delete data.companyName;
@@ -391,11 +413,14 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       jobcardQueries.update.run(
         existing.card_type,
         data.status !== undefined ? data.status : existing.status,
-        data.contactId !== undefined ? data.contactId : existing.contact_id,
-        data.contactName !== undefined ? data.contactName : existing.contact_name,
-        data.companyName !== undefined ? data.companyName : existing.company_name,
-        data.contactPhone !== undefined ? data.contactPhone : existing.contact_phone,
-        data.contactEmail !== undefined ? data.contactEmail : existing.contact_email,
+        // Who the job is for is frozen at creation and was stripped from the
+        // request above, so these always carry the stored values straight through.
+        existing.company_id,
+        existing.contact_id,
+        existing.contact_name,
+        existing.company_name,
+        existing.contact_phone,
+        existing.contact_email,
         newQualityLevel,
         data.priority !== undefined ? data.priority : existing.priority,
         data.poNumber !== undefined ? data.poNumber : existing.po_number,
@@ -534,9 +559,9 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       qaResult = await copyQaTemplatesForJob(id, newQaLevelId, buildQaFillData(id, {
         jobNumber: current.job_number,
         status: current.status,
-        contactId: current.contact_id || null,
-        companyName: current.company_name || data.companyName || null,
-        contactName: current.contact_name || data.contactName || null,
+        companyId: current.company_id || null,
+        companyName: current.company_name || null,
+        contactName: current.contact_name || null,
         description: current.description || data.description || null,
         priority: current.priority || data.priority || 'NONE',
         dueDate: current.due_date || data.dueDate || null,
@@ -557,9 +582,8 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     const assignees = jobAssigneeQueries.getByJobcard.all(id);
 
     // Idempotent — covers jobs created before job_folders_base was configured
-    const folderCompany = updated.company_name || data.companyName;
-    if (folderCompany) {
-      createJobCardFolders(updated.contact_id || null, folderCompany, updated.job_number);
+    if (updated.company_name) {
+      createJobCardFolders(updated.company_id || null, updated.company_name, updated.job_number);
     }
 
     const response = formatJobcard(updated, items, assignees, req.user.role);

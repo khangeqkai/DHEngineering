@@ -50,9 +50,13 @@ function formatJob(row, assignees, canManage) {
   };
 }
 
+// A person always reads with the company they work at, and the address belongs
+// to the company, so both come from the join below. A customer with nobody
+// recorded there still comes back as a row, identified by the company itself.
 function formatContact(row) {
   return {
-    id: row.id,
+    id: row.id || row.company_id,
+    companyId: row.company_id,
     companyName: row.company_name,
     contactName: row.contact_name,
     phone: row.phone,
@@ -160,10 +164,14 @@ function searchAll(req, res, canManage) {
 
   if (canManage) {
     // Contacts (archived customers are hidden from search, like suppliers)
-    const cWhere = 'archived = 0 AND (company_name LIKE ? OR contact_name LIKE ? OR phone LIKE ? OR email LIKE ?)';
+    // LEFT JOIN from the company outwards, so a customer with nobody recorded
+    // there is still findable by name.
+    const cFrom = 'FROM companies co LEFT JOIN contacts c ON c.company_id = co.id AND c.archived = 0';
+    const cWhere = 'co.archived = 0 AND (co.name LIKE ? OR c.contact_name LIKE ? OR c.phone LIKE ? OR c.email LIKE ?)';
+    const cSelect = 'c.id AS id, c.contact_name, c.phone, c.email, co.id AS company_id, co.name AS company_name, co.address AS address';
     groups.contacts = {
-      count: db.prepare(`SELECT COUNT(*) as count FROM contacts WHERE ${cWhere}`).get(like, like, like, like).count,
-      results: db.prepare(`SELECT * FROM contacts WHERE ${cWhere} ORDER BY company_name ASC LIMIT ?`).all(like, like, like, like, PREVIEW_LIMIT).map(formatContact)
+      count: db.prepare(`SELECT COUNT(*) as count ${cFrom} WHERE ${cWhere}`).get(like, like, like, like).count,
+      results: db.prepare(`SELECT ${cSelect} ${cFrom} WHERE ${cWhere} ORDER BY co.name ASC LIMIT ?`).all(like, like, like, like, PREVIEW_LIMIT).map(formatContact)
     };
 
     // Suppliers
@@ -245,9 +253,14 @@ function searchPeople(req, res) {
   let all = [];
 
   if (peopleType !== 'suppliers') {
-    const cond = ['archived = 0']; const p = [];
-    if (like) { cond.push('(company_name LIKE ? OR contact_name LIKE ? OR phone LIKE ? OR email LIKE ?)'); p.push(like, like, like, like); }
-    all.push(...db.prepare(`SELECT * FROM contacts WHERE ${cond.join(' AND ')} ORDER BY company_name ASC`).all(...p).map(r => ({ ...formatContact(r), type: 'contact' })));
+    const cond = ['co.archived = 0']; const p = [];
+    if (like) { cond.push('(co.name LIKE ? OR c.contact_name LIKE ? OR c.phone LIKE ? OR c.email LIKE ?)'); p.push(like, like, like, like); }
+    all.push(...db.prepare(
+      `SELECT c.id AS id, c.contact_name, c.phone, c.email,
+              co.id AS company_id, co.name AS company_name, co.address AS address
+       FROM companies co LEFT JOIN contacts c ON c.company_id = co.id AND c.archived = 0
+       WHERE ${cond.join(' AND ')} ORDER BY co.name ASC, c.contact_name ASC`
+    ).all(...p).map(r => ({ ...formatContact(r), type: 'contact' })));
   }
   if (peopleType !== 'contacts') {
     const cond = ['active = 1']; const p = [];

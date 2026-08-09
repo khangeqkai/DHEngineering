@@ -76,6 +76,7 @@ export function useJobCardForm() {
     setFormData({
       jobNumber: loadedJobNumber,
       status: jobcardData.status || 'OPEN',
+      companyId: jobcardData.companyId || '',
       contactId: jobcardData.contactId || '',
       contactName: jobcardData.contactName || '',
       companyName: jobcardData.companyName || '',

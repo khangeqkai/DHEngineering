@@ -30,32 +30,58 @@ const users = [
   { username: 'dylan',   role: 'user',  name: 'Dylan Papadopoulos', email: null, employeeId: 'EMP012' },
 ];
 
-// ─── CONTACTS: 20 real Australian industrial customers across WA/NSW/VIC/QLD ───
-const contacts = [
+// ─── COMPANIES: 20 real Australian industrial customers across WA/NSW/VIC/QLD ───
+// The company is the customer and owns its folder on disk; `people` are the
+// contacts who work there. A few carry two people, which is the whole point of
+// the split — one leaves, the other stays, and the folder never moves.
+const companies = [
   // Western Australia (08)
-  { contactName: 'Daniel Foster',   companyName: 'Rio Tinto Iron Ore',     phone: '08 9327 2000', email: 'daniel.foster@riotinto.com',      address: 'Central Park, Perth WA' },
-  { contactName: 'Sarah Mitchell',  companyName: 'BHP',                    phone: '08 6321 4000', email: 'sarah.mitchell@bhp.com',          address: 'Brookfield Place, Perth WA' },
-  { contactName: 'James Carter',    companyName: 'Fortescue Metals Group', phone: '08 6218 8888', email: 'james.carter@fmgl.com.au',        address: 'East Perth WA' },
-  { contactName: 'Emma Robinson',   companyName: 'Roy Hill',               phone: '08 6242 0888', email: 'emma.robinson@royhill.com.au',    address: 'Perth WA' },
-  { contactName: 'Michael Nguyen',  companyName: 'Woodside Energy',        phone: '08 9348 4000', email: 'michael.nguyen@woodside.com',     address: 'Mia Yellagonga, Perth WA' },
-  { contactName: 'Olivia Turner',   companyName: 'Alcoa Australia',        phone: '08 9316 5111', email: 'olivia.turner@alcoa.com',         address: 'Kwinana WA' },
-  { contactName: 'Ryan Walsh',      companyName: 'Monadelphous',           phone: '08 9329 1888', email: 'ryan.walsh@monadelphous.com.au',  address: 'Victoria Park WA' },
-  { contactName: 'Chloe Adams',     companyName: 'Civmec',                 phone: '08 9437 6288', email: 'chloe.adams@civmec.com.au',       address: 'Henderson WA' },
+  { name: 'Rio Tinto Iron Ore',     address: 'Central Park, Perth WA', people: [
+    { contactName: 'Daniel Foster',   phone: '08 9327 2000', email: 'daniel.foster@riotinto.com' },
+    { contactName: 'Priya Sharma',    phone: '08 9327 2044', email: 'priya.sharma@riotinto.com' } ] },
+  { name: 'BHP',                    address: 'Brookfield Place, Perth WA', people: [
+    { contactName: 'Sarah Mitchell',  phone: '08 6321 4000', email: 'sarah.mitchell@bhp.com' } ] },
+  { name: 'Fortescue Metals Group', address: 'East Perth WA', people: [
+    { contactName: 'James Carter',    phone: '08 6218 8888', email: 'james.carter@fmgl.com.au' } ] },
+  { name: 'Roy Hill',               address: 'Perth WA', people: [
+    { contactName: 'Emma Robinson',   phone: '08 6242 0888', email: 'emma.robinson@royhill.com.au' } ] },
+  { name: 'Woodside Energy',        address: 'Mia Yellagonga, Perth WA', people: [
+    { contactName: 'Michael Nguyen',  phone: '08 9348 4000', email: 'michael.nguyen@woodside.com' },
+    { contactName: 'Alice Fenwick',   phone: '08 9348 4102', email: 'alice.fenwick@woodside.com' } ] },
+  { name: 'Alcoa Australia',        address: 'Kwinana WA', people: [
+    { contactName: 'Olivia Turner',   phone: '08 9316 5111', email: 'olivia.turner@alcoa.com' } ] },
+  { name: 'Monadelphous',           address: 'Victoria Park WA', people: [
+    { contactName: 'Ryan Walsh',      phone: '08 9329 1888', email: 'ryan.walsh@monadelphous.com.au' } ] },
+  { name: 'Civmec',                 address: 'Henderson WA', people: [
+    { contactName: 'Chloe Adams',     phone: '08 9437 6288', email: 'chloe.adams@civmec.com.au' } ] },
   // New South Wales (02)
-  { contactName: 'Matthew Cooper',  companyName: 'BlueScope Steel',        phone: '02 4275 7000', email: 'matthew.cooper@bluescope.com',    address: 'Port Kembla NSW' },
-  { contactName: 'Jessica Hall',    companyName: 'InfraBuild',             phone: '02 4033 0500', email: 'jessica.hall@infrabuild.com',     address: 'Newcastle NSW' },
-  { contactName: 'Andrew Scott',    companyName: 'Bradken',                phone: '02 4924 8200', email: 'andrew.scott@bradken.com',        address: 'Mayfield NSW' },
-  { contactName: 'Lauren Young',    companyName: 'Downer Group',           phone: '02 9468 9700', email: 'lauren.young@downergroup.com',    address: 'North Ryde NSW' },
-  { contactName: 'Nathan King',     companyName: 'Boral',                  phone: '02 9220 6300', email: 'nathan.king@boral.com.au',        address: 'North Sydney NSW' },
+  { name: 'BlueScope Steel',        address: 'Port Kembla NSW', people: [
+    { contactName: 'Matthew Cooper',  phone: '02 4275 7000', email: 'matthew.cooper@bluescope.com' },
+    { contactName: 'Tom Whitfield',   phone: '02 4275 7188', email: 'tom.whitfield@bluescope.com' } ] },
+  { name: 'InfraBuild',             address: 'Newcastle NSW', people: [
+    { contactName: 'Jessica Hall',    phone: '02 4033 0500', email: 'jessica.hall@infrabuild.com' } ] },
+  { name: 'Bradken',                address: 'Mayfield NSW', people: [
+    { contactName: 'Andrew Scott',    phone: '02 4924 8200', email: 'andrew.scott@bradken.com' } ] },
+  { name: 'Downer Group',           address: 'North Ryde NSW', people: [
+    { contactName: 'Lauren Young',    phone: '02 9468 9700', email: 'lauren.young@downergroup.com' } ] },
+  { name: 'Boral',                  address: 'North Sydney NSW', people: [
+    { contactName: 'Nathan King',     phone: '02 9220 6300', email: 'nathan.king@boral.com.au' } ] },
   // Victoria (03)
-  { contactName: 'Hannah Wright',   companyName: 'Orica',                  phone: '03 9665 7111', email: 'hannah.wright@orica.com',         address: 'East Melbourne VIC' },
-  { contactName: 'Joshua Green',    companyName: 'Incitec Pivot',          phone: '03 8695 4400', email: 'joshua.green@incitecpivot.com.au', address: 'Southbank VIC' },
-  { contactName: 'Grace Edwards',   companyName: 'Visy Industries',        phone: '03 9518 6111', email: 'grace.edwards@visy.com.au',       address: 'Springvale VIC' },
-  { contactName: 'Samuel Baker',    companyName: 'Alstom Transport',       phone: '03 9794 2222', email: 'samuel.baker@alstomgroup.com',    address: 'Dandenong VIC' },
+  { name: 'Orica',                  address: 'East Melbourne VIC', people: [
+    { contactName: 'Hannah Wright',   phone: '03 9665 7111', email: 'hannah.wright@orica.com' } ] },
+  { name: 'Incitec Pivot',          address: 'Southbank VIC', people: [
+    { contactName: 'Joshua Green',    phone: '03 8695 4400', email: 'joshua.green@incitecpivot.com.au' } ] },
+  { name: 'Visy Industries',        address: 'Springvale VIC', people: [
+    { contactName: 'Grace Edwards',   phone: '03 9518 6111', email: 'grace.edwards@visy.com.au' } ] },
+  { name: 'Alstom Transport',       address: 'Dandenong VIC', people: [
+    { contactName: 'Samuel Baker',    phone: '03 9794 2222', email: 'samuel.baker@alstomgroup.com' } ] },
   // Queensland (07)
-  { contactName: 'Zoe Campbell',    companyName: 'Aurizon',                phone: '07 3019 9000', email: 'zoe.campbell@aurizon.com.au',     address: 'Brisbane QLD' },
-  { contactName: 'Benjamin Ward',   companyName: 'Glencore Mount Isa',     phone: '07 4744 2011', email: 'benjamin.ward@glencore.com.au',   address: 'Mount Isa QLD' },
-  { contactName: 'Isabella Reed',   companyName: 'Sandvik Mining',         phone: '07 3308 1900', email: 'isabella.reed@sandvik.com',       address: 'Heatherbrae QLD' },
+  { name: 'Aurizon',                address: 'Brisbane QLD', people: [
+    { contactName: 'Zoe Campbell',    phone: '07 3019 9000', email: 'zoe.campbell@aurizon.com.au' } ] },
+  { name: 'Glencore Mount Isa',     address: 'Mount Isa QLD', people: [
+    { contactName: 'Benjamin Ward',   phone: '07 4744 2011', email: 'benjamin.ward@glencore.com.au' } ] },
+  { name: 'Sandvik Mining',         address: 'Heatherbrae QLD', people: [
+    { contactName: 'Isabella Reed',   phone: '07 3308 1900', email: 'isabella.reed@sandvik.com' } ] },
 ];
 
 // ─── SUPPLIERS: 10 Australian outside-service firms; `offers` = treatment values ───
@@ -135,4 +161,4 @@ const settings = {
   labour_public_holidays: JSON.stringify(DEFAULT_VIC_PUBLIC_HOLIDAYS_2026),
 };
 
-module.exports = { users, contacts, suppliers, machines, qaLevels, tagData, settings };
+module.exports = { users, companies, suppliers, machines, qaLevels, tagData, settings };

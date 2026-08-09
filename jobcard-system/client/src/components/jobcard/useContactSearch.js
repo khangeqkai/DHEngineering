@@ -3,72 +3,67 @@ import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 
 /**
- * Default contact form data for new contacts
+ * Blank customer details for a job with nothing picked yet.
  */
 function getDefaultContactFormData() {
   return {
-    contactName: '',
+    companyId: '',
     companyName: '',
+    contactId: '',
+    contactName: '',
     phone: '',
     email: ''
   };
 }
 
 /**
- * Custom hook for contact search and inline autocomplete functionality
- * Handles contact selection, search, and form data management
- * Uses phone contacts-style model where each contact is standalone
+ * Picking the customer for a new job: type the company, pick it, then pick which
+ * person there the job is for. The company is the customer (it owns the job's
+ * folder); the people under it come and go.
+ *
+ * The person's details stay editable on the job — a number changes more often
+ * than anyone updates the customer record — so this hook also reports what was
+ * changed (via detailChanges) so the save can offer to update the saved person.
  */
 export function useContactSearch() {
-  // Contact state
-  const [contact, setContact] = useState(null);
+  const [contactFormData, setContactFormData] = useState(getDefaultContactFormData());
   const [fieldFocused, setFieldFocused] = useState(false);
   const [showContactDropdown, setShowContactDropdown] = useState(false);
-  const [contactFormData, setContactFormData] = useState(getDefaultContactFormData());
-  const [contacts, setContacts] = useState([]);
-  const [originalCompanyName, setOriginalCompanyName] = useState(''); // For smart detection
+  const [companyMatches, setCompanyMatches] = useState([]);
   const contactSearchRef = useRef(null);
   const blurTimeoutRef = useRef(null);
 
-  // All contacts cache for showing on focus
-  const [allContacts, setAllContacts] = useState([]);
-  const allContactsLoaded = useRef(false);
+  // The whole customer list, loaded once on first focus and filtered in the
+  // browser — one call beats one per keystroke, and the list is small.
+  const [companies, setCompanies] = useState([]);
+  const companiesLoaded = useRef(false);
 
-  // Load all contacts once on first focus
-  const loadAllContacts = useCallback(async () => {
-    if (allContactsLoaded.current) return;
+  // The person's details as they are on the saved record, so the save can tell
+  // what was changed on this job. Null when nobody is picked.
+  const [pickedPerson, setPickedPerson] = useState(null);
+
+  const loadCompanies = useCallback(async () => {
+    if (companiesLoaded.current) return;
     try {
-      const results = await api.getContacts();
-      setAllContacts(results || []);
-      allContactsLoaded.current = true;
+      const results = await api.getCompanies({ withPeople: true });
+      setCompanies(results || []);
+      companiesLoaded.current = true;
     } catch (err) {
-      toast.error('Failed to load contacts');
+      toast.error('Could not load the customer list');
     }
   }, []);
 
-  // Contact search effect - watches companyName field for autocomplete
+  // Company autocomplete — filters the loaded list as the company field is typed.
   useEffect(() => {
     if (!fieldFocused) return;
+    const search = contactFormData.companyName.trim().toLowerCase();
+    const matches = search
+      ? companies.filter(c => (c.name || '').toLowerCase().includes(search)).slice(0, 10)
+      : companies.slice(0, 10);
+    setCompanyMatches(matches);
+    setShowContactDropdown(matches.length > 0);
+  }, [fieldFocused, contactFormData.companyName, companies]);
 
-    const searchValue = contactFormData.companyName.trim().toLowerCase();
-
-    if (!searchValue) {
-      // No text typed - show all contacts (top 10)
-      setContacts(allContacts.slice(0, 10));
-      setShowContactDropdown(allContacts.length > 0);
-      return;
-    }
-
-    // Filter from cached contacts for instant results
-    const filtered = allContacts.filter(c =>
-      (c.companyName || '').toLowerCase().includes(searchValue) ||
-      (c.contactName || '').toLowerCase().includes(searchValue)
-    ).slice(0, 10);
-    setContacts(filtered);
-    setShowContactDropdown(filtered.length > 0);
-  }, [fieldFocused, contactFormData.companyName, allContacts]);
-
-  // Click outside to close contact dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (contactSearchRef.current && !contactSearchRef.current.contains(event.target)) {
@@ -86,10 +81,10 @@ export function useContactSearch() {
       blurTimeoutRef.current = null;
     }
     setFieldFocused(true);
-    loadAllContacts();
-  }, [loadAllContacts]);
+    loadCompanies();
+  }, [loadCompanies]);
 
-  // Handle contactName blur - delayed to allow dropdown clicks and re-focus
+  // Delayed so a click on the dropdown still lands.
   const handleFieldBlur = useCallback(() => {
     blurTimeoutRef.current = setTimeout(() => {
       blurTimeoutRef.current = null;
@@ -98,117 +93,175 @@ export function useContactSearch() {
     }, 200);
   }, []);
 
-  // Select an existing contact from the dropdown
-  const selectContact = useCallback((selectedContact, setFormData) => {
-    setContact(selectedContact);
-    setOriginalCompanyName(selectedContact.companyName || '');
+  // The people at the picked company, for the person dropdown.
+  const selectedCompany = companies.find(c => c.id === contactFormData.companyId) || null;
+  const people = selectedCompany?.people || [];
 
-    // Update form data with contact info
+  // Fill the person's saved details in when they're picked, so the common case
+  // needs no typing at all.
+  const applyPerson = useCallback((person, setFormData) => {
+    setPickedPerson(person || null);
+    setContactFormData(prev => ({
+      ...prev,
+      contactId: person ? person.id : '',
+      contactName: person ? (person.contactName || '') : '',
+      phone: person ? (person.phone || '') : '',
+      email: person ? (person.email || '') : ''
+    }));
     setFormData(prev => ({
       ...prev,
-      contactId: selectedContact.id,
-      contactName: selectedContact.contactName || '',
-      companyName: selectedContact.companyName || '',
-      contactPhone: selectedContact.phone || '',
-      contactEmail: selectedContact.email || ''
+      contactId: person ? person.id : '',
+      contactName: person ? (person.contactName || '') : '',
+      contactPhone: person ? (person.phone || '') : '',
+      contactEmail: person ? (person.email || '') : ''
     }));
+  }, []);
 
-    // Update contact form data
+  // Pick a company from the dropdown. Its only person is picked automatically —
+  // with one person there is nothing to choose.
+  const selectCompany = useCallback((company, setFormData) => {
+    const only = (company.people || []).length === 1 ? company.people[0] : null;
+    setPickedPerson(only || null);
     setContactFormData({
-      contactName: selectedContact.contactName || '',
-      companyName: selectedContact.companyName || '',
-      phone: selectedContact.phone || '',
-      email: selectedContact.email || ''
+      companyId: company.id,
+      companyName: company.name || '',
+      contactId: only ? only.id : '',
+      contactName: only ? (only.contactName || '') : '',
+      phone: only ? (only.phone || '') : '',
+      email: only ? (only.email || '') : ''
     });
-
+    setFormData(prev => ({
+      ...prev,
+      companyId: company.id,
+      companyName: company.name || '',
+      contactId: only ? only.id : '',
+      contactName: only ? (only.contactName || '') : '',
+      contactPhone: only ? (only.phone || '') : '',
+      contactEmail: only ? (only.email || '') : ''
+    }));
     setFieldFocused(false);
     setShowContactDropdown(false);
   }, []);
 
-  // Handle changes to contact form fields
+  const selectPerson = useCallback((personId, setFormData) => {
+    applyPerson(people.find(p => p.id === personId) || null, setFormData);
+  }, [people, applyPerson]);
+
+  // Typing in the company field drops whichever customer was picked — the name no
+  // longer matches them. Details that were filled in FROM that customer go with
+  // them; details typed by hand are left alone, or fixing a typo in the company
+  // would blank the phone number someone just entered.
   const handleContactFieldChange = useCallback((field, value, setFormData) => {
+    if (field === 'companyName') {
+      const wasAutoFilled = !!pickedPerson;
+      setPickedPerson(null);
+      setContactFormData(prev => ({
+        ...prev,
+        companyId: '',
+        companyName: value,
+        contactId: '',
+        ...(wasAutoFilled ? { contactName: '', phone: '', email: '' } : {})
+      }));
+      setFormData(prev => ({
+        ...prev,
+        companyId: '',
+        companyName: value,
+        contactId: '',
+        ...(wasAutoFilled ? { contactName: '', contactPhone: '', contactEmail: '' } : {})
+      }));
+      return;
+    }
+
     setContactFormData(prev => ({ ...prev, [field]: value }));
+    const formField = { contactName: 'contactName', phone: 'contactPhone', email: 'contactEmail' }[field];
+    if (formField) setFormData(prev => ({ ...prev, [formField]: value }));
+  }, [pickedPerson]);
 
-    // Map field names from form to jobcard form data
-    const fieldMap = {
-      contactName: 'contactName',
-      companyName: 'companyName',
-      phone: 'contactPhone',
-      email: 'contactEmail'
-    };
+  // Fold a company that was just created from the job screen into the loaded
+  // list, so the next job can pick it without a reload. It deliberately doesn't
+  // touch what's on screen — the details typed for the job are still in play.
+  const registerCompany = useCallback((company) => {
+    setCompanies(prev => (
+      prev.some(c => c.id === company.id)
+        ? prev
+        : [...prev, { ...company, people: [] }].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    ));
+    setContactFormData(prev => ({ ...prev, companyId: company.id, companyName: company.name || prev.companyName }));
+  }, []);
 
-    // Clear contact selection if user edits name or company
-    if ((field === 'contactName' || field === 'companyName') && contact) {
-      setContact(null);
-      setFormData(prev => ({ ...prev, contactId: '' }));
-    }
+  // Adopt a person that was just created (or updated) on the saved record.
+  const adoptPerson = useCallback((person) => {
+    setCompanies(prev => prev.map(c => {
+      if (c.id !== person.companyId) return c;
+      const people = (c.people || []).filter(p => p.id !== person.id);
+      return { ...c, people: [...people, person].sort((a, b) => (a.contactName || '').localeCompare(b.contactName || '')) };
+    }));
+    setPickedPerson(person);
+    setContactFormData(prev => ({ ...prev, contactId: person.id }));
+  }, []);
 
-    // Update jobcard form data
-    if (fieldMap[field]) {
-      const formField = fieldMap[field];
-      if (formField === 'contactPhone' || formField === 'contactEmail' || formField === 'contactName' || formField === 'companyName') {
-        setFormData(prev => ({ ...prev, [formField]: value }));
-      }
-    }
-
-  }, [contact]);
-
-  // Set contact data from loaded job card
+  // What the customer details on a saved job were, for the read-only strip.
   const setContactFromJobCard = useCallback((jobcardData) => {
-    const contactId = jobcardData.contactId;
-    const contactName = jobcardData.contactName;
-    const companyName = jobcardData.companyName;
-
-    if (contactId || companyName) {
-      setContact({
-        id: contactId,
-        contactName: contactName,
-        companyName: companyName
-      });
-      setOriginalCompanyName(companyName || '');
-
-      setContactFormData({
-        contactName: contactName || '',
-        companyName: companyName || '',
-        phone: jobcardData.contactPhone || '',
-        email: jobcardData.contactEmail || ''
-      });
-    }
+    setContactFormData({
+      companyId: jobcardData.companyId || '',
+      companyName: jobcardData.companyName || '',
+      contactId: jobcardData.contactId || '',
+      contactName: jobcardData.contactName || '',
+      phone: jobcardData.contactPhone || '',
+      email: jobcardData.contactEmail || ''
+    });
+    setPickedPerson(null);
   }, []);
 
-  // Reset contact state
   const resetContact = useCallback(() => {
-    setContact(null);
-    setOriginalCompanyName('');
-    setFieldFocused(false);
     setContactFormData(getDefaultContactFormData());
+    setPickedPerson(null);
+    setFieldFocused(false);
     setShowContactDropdown(false);
-    setContacts([]);
+    setCompanyMatches([]);
   }, []);
 
-  // Check if company name changed (for smart detection)
-  const hasCompanyNameChanged = useCallback(() => {
-    if (!originalCompanyName) return false;
-    return contactFormData.companyName.trim() !== originalCompanyName.trim();
-  }, [originalCompanyName, contactFormData.companyName]);
+  // Which of the picked person's details were changed on this job, old → new.
+  // Empty when nobody is picked or nothing differs — which is the usual case, so
+  // the save stays silent.
+  const detailChanges = (() => {
+    if (!pickedPerson) return {};
+    const same = (a, b) => (a || '').trim() === (b || '').trim();
+    const out = {};
+    if (!same(pickedPerson.contactName, contactFormData.contactName)) {
+      out.contactName = { from: pickedPerson.contactName || '', to: contactFormData.contactName.trim() };
+    }
+    if (!same(pickedPerson.phone, contactFormData.phone)) {
+      out.phone = { from: pickedPerson.phone || '', to: contactFormData.phone.trim() };
+    }
+    if (!same(pickedPerson.email, contactFormData.email)) {
+      out.email = { from: pickedPerson.email || '', to: contactFormData.email.trim() };
+    }
+    return out;
+  })();
 
   return {
     // State
-    contact,
+    contactFormData,
     fieldFocused,
     showContactDropdown,
     setShowContactDropdown,
-    contactFormData,
-    contacts,
+    companyMatches,
+    selectedCompany,
+    people,
+    pickedPerson,
+    detailChanges,
     contactSearchRef,
     // Actions
-    selectContact,
+    selectCompany,
+    selectPerson,
     handleContactFieldChange,
     handleFieldFocus,
     handleFieldBlur,
     setContactFromJobCard,
     resetContact,
-    hasCompanyNameChanged
+    registerCompany,
+    adoptPerson
   };
 }
 

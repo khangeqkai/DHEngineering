@@ -25,18 +25,30 @@ db.exec(`
     updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   );
 
-  -- Contacts table (phone contacts style - each contact is standalone)
-  CREATE TABLE IF NOT EXISTS contacts (
+  -- Companies table (the customer). One row per customer; the name is unique
+  -- case-insensitively so each customer maps to exactly one folder on disk.
+  CREATE TABLE IF NOT EXISTS companies (
     id TEXT PRIMARY KEY,
-    contact_name TEXT,
-    company_name TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    phone TEXT,
-    email TEXT,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
     address TEXT,
     notes TEXT,
     archived INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  );
+
+  -- Contacts table (the people at a company). Several people can sit under the
+  -- same company, so nothing here is unique — staff change, the customer doesn't.
+  CREATE TABLE IF NOT EXISTS contacts (
+    id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL,
+    contact_name TEXT,
+    phone TEXT,
+    email TEXT,
+    archived INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    FOREIGN KEY (company_id) REFERENCES companies(id)
   );
 
   -- Suppliers table (linked to per-line-item treatments via treatments JSON)
@@ -84,7 +96,9 @@ db.exec(`
     card_type TEXT DEFAULT 'JOB_CARD',
     status TEXT DEFAULT 'OPEN',
 
-    -- Contact reference (phone contacts style)
+    -- Customer reference: the company owns the job's files on disk, the contact
+    -- is the person at that company the job was taken for.
+    company_id TEXT,
     contact_id TEXT,
 
     -- Contact override (per job - editable copy of contact info)
@@ -124,6 +138,7 @@ db.exec(`
     created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
 
+    FOREIGN KEY (company_id) REFERENCES companies(id),
     FOREIGN KEY (contact_id) REFERENCES contacts(id),
     FOREIGN KEY (created_by) REFERENCES users(id),
     FOREIGN KEY (updated_by) REFERENCES users(id)
@@ -320,8 +335,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id);
   CREATE INDEX IF NOT EXISTS idx_history_entity ON history(entity_type, entity_id);
   CREATE INDEX IF NOT EXISTS idx_history_user ON history(user_id);
-  CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(contact_name);
-  CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company_name);
+  -- The contacts indexes are created further down, after the companies/contacts
+  -- conversion — an existing database still has the old contacts table here.
   CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name);
   CREATE INDEX IF NOT EXISTS idx_supplier_service_tags_supplier ON supplier_service_tags(supplier_id);
   CREATE INDEX IF NOT EXISTS idx_supplier_service_tags_tag ON supplier_service_tags(service_tag_id);
@@ -390,72 +405,6 @@ try {
   logger.error({ err }, 'Migration: Failed to enforce one-active-timer-per-user');
 }
 
-// Migration: Add missing columns to existing tables
-// This handles the case where the database was created with an older schema
-const migrations = [
-  { table: 'jobcards', column: 'contact_name', type: 'TEXT' },
-  { table: 'jobcards', column: 'company_name', type: 'TEXT' },
-  { table: 'jobcards', column: 'contact_phone', type: 'TEXT' },
-  { table: 'jobcards', column: 'contact_email', type: 'TEXT' },
-  { table: 'jobcards', column: 'contact_id', type: 'TEXT' },
-  { table: 'machines', column: 'updated_at', type: 'TEXT' },
-  // Special labour (manually-entered costing line). Present in the CREATE TABLE, but
-  // databases created before these columns existed need them added, or the costing
-  // insert/update prepared statement fails to build at startup.
-  { table: 'job_costings', column: 'labour_hours_override', type: 'REAL' },
-  { table: 'job_costings', column: 'labour_special_hours', type: 'REAL DEFAULT 0' },
-  { table: 'job_costings', column: 'labour_special_rate', type: 'REAL DEFAULT 0' },
-  { table: 'job_costings', column: 'labour_special_total', type: 'REAL DEFAULT 0' },
-  // Overtime tiers (present in CREATE TABLE; added here for existing databases, or
-  // the costing insert/update prepared statement fails to build at startup).
-  { table: 'job_costings', column: 'labour_ot1_hours', type: 'REAL DEFAULT 0' },
-  { table: 'job_costings', column: 'labour_ot1_override', type: 'REAL' },
-  { table: 'job_costings', column: 'labour_ot1_total', type: 'REAL DEFAULT 0' },
-  { table: 'job_costings', column: 'labour_ot2_hours', type: 'REAL DEFAULT 0' },
-  { table: 'job_costings', column: 'labour_ot2_override', type: 'REAL' },
-  { table: 'job_costings', column: 'labour_ot2_total', type: 'REAL DEFAULT 0' },
-  { table: 'job_costings', column: 'labour_holiday_hours', type: 'REAL DEFAULT 0' },
-  { table: 'job_costings', column: 'labour_holiday_override', type: 'REAL' },
-  { table: 'job_costings', column: 'labour_holiday_total', type: 'REAL DEFAULT 0' },
-  { table: 'job_costings', column: 'labour_ot1_multiplier', type: 'REAL DEFAULT 1.5' },
-  { table: 'job_costings', column: 'labour_ot2_multiplier', type: 'REAL DEFAULT 2' },
-  { table: 'job_costings', column: 'labour_holiday_multiplier', type: 'REAL DEFAULT 2.5' },
-  { table: 'job_costings', column: 'labour_ot1_multiplier_override', type: 'REAL' },
-  { table: 'job_costings', column: 'labour_ot2_multiplier_override', type: 'REAL' },
-  // Per-job captured overtime rules (present in CREATE TABLE; added here for existing
-  // databases). A job computes its costing from these, not from live settings, so a
-  // later change to the company overtime rules never moves an already-created job.
-  { table: 'job_costings', column: 'labour_schedule', type: 'TEXT' },
-  { table: 'job_costings', column: 'labour_public_holidays', type: 'TEXT' },
-  { table: 'job_costings', column: 'labour_timezone', type: 'TEXT' },
-  { table: 'job_costings', column: 'labour_base_ot1_multiplier', type: 'REAL' },
-  { table: 'job_costings', column: 'labour_base_ot2_multiplier', type: 'REAL' },
-  { table: 'job_costings', column: 'labour_base_holiday_multiplier', type: 'REAL' },
-  // Free-text note on each manual cost line (what the cost covers).
-  { table: 'job_costings', column: 'labour_special_description', type: 'TEXT' },
-  { table: 'job_costings', column: 'materials_description', type: 'TEXT' },
-  { table: 'job_costings', column: 'subcontractor_description', type: 'TEXT' },
-  { table: 'users', column: 'session_token', type: 'TEXT' },
-  { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
-  { table: 'time_entries', column: 'scrap_bin_qty', type: 'INTEGER DEFAULT 0' },
-  { table: 'time_entries', column: 'scrap_recycle_qty', type: 'INTEGER DEFAULT 0' },
-  { table: 'time_entries', column: 'first_off_inspection', type: 'INTEGER' },
-  { table: 'time_entries', column: 'in_process_validation', type: 'INTEGER' },
-  { table: 'time_entries', column: 'measuring_equipment_verification', type: 'INTEGER' },
-  { table: 'time_entries', column: 'equipment_checks', type: 'INTEGER' },
-  { table: 'time_entries', column: 'equipment_checks_comments', type: 'TEXT' },
-  { table: 'time_entries', column: 'item_id', type: 'TEXT' },
-  { table: 'job_items', column: 'material', type: 'TEXT' },
-  { table: 'job_items', column: 'job_type', type: 'TEXT' },
-  { table: 'job_items', column: 'drawings_type', type: 'TEXT' },
-  { table: 'job_items', column: 'customer_property', type: 'TEXT' },
-  { table: 'tags', column: 'archived', type: 'INTEGER DEFAULT 0' },
-  { table: 'users', column: 'jobcard_column_order', type: 'TEXT' },
-  { table: 'users', column: 'jobcard_hidden_columns', type: 'TEXT' },
-  // Per-level switch: when on, a completed quality form must be scanned back before
-  // invoicing (drives the missing-quality-form warning). Off = print-only level.
-  { table: 'qa_levels', column: 'requires_returned_form', type: 'INTEGER DEFAULT 0' },
-];
 
 // Drop drawings_type / customer_property from jobcards (now live on job_items)
 try {
@@ -518,11 +467,14 @@ try {
   logger.error({ err }, 'Migration: Failed to drop is_special_labour from time_entries');
 }
 
-// Drop legacy qa_forms + documents tables (replaced by disk-first folders)
+// Drop legacy qa_forms + documents tables (replaced by disk-first folders), and
+// contact_people — an earlier shape for "several people at one company" that no
+// code reads; the people now live in the contacts table under a company.
 try {
   db.exec('DROP TABLE IF EXISTS qa_forms');
   db.exec('DROP TABLE IF EXISTS documents');
-  logger.info('Migration: Dropped legacy qa_forms and documents tables');
+  db.exec('DROP TABLE IF EXISTS contact_people');
+  logger.info('Migration: Dropped legacy qa_forms, documents and contact_people tables');
 } catch (err) {
   logger.error({ err }, 'Migration: Failed to drop qa_forms/documents tables');
 }
@@ -553,25 +505,24 @@ try {
   logger.error({ err }, 'Migration: Failed to drop legacy QA columns from time_entries');
 }
 
-for (const migration of migrations) {
-  try {
-    const columns = db.prepare(`PRAGMA table_info(${migration.table})`).all();
-    const columnExists = columns.some(col => col.name === migration.column);
-    if (!columnExists) {
-      db.exec(`ALTER TABLE ${migration.table} ADD COLUMN ${migration.column} ${migration.type}`);
-      logger.info({ table: migration.table, column: migration.column }, 'Migration: Added column');
-    }
-  } catch (err) {
-    // Column might already exist, ignore error
-  }
-}
+// Columns added to existing tables (the list lives in its own module).
+require('./columnMigrations').addMissingColumns();
+
+// Split each old single-row customer into a company plus the people at it.
+// Lives in its own module so this file stays about the schema itself.
+require('./splitCustomers').splitCustomersIntoCompanies();
 
 // Indexes on migration-added columns must come after the migrations above so the
 // column exists (on an existing DB the CREATE TABLE block is skipped).
 try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_tags_archived ON tags(category, archived)');
+  db.exec('DROP INDEX IF EXISTS idx_contacts_company');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(contact_name)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_contacts_company_id ON contacts(company_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_companies_name ON companies(name)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_jobcards_company ON jobcards(company_id)');
 } catch (err) {
-  logger.error({ err }, 'Migration: Failed to create idx_tags_archived');
+  logger.error({ err }, 'Migration: Failed to create indexes');
 }
 
 // Seed default tags

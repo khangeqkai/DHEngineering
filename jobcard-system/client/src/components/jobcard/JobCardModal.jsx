@@ -52,7 +52,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (reloadTimeEntriesRef.current) reloadTimeEntriesRef.current();
   }, []);
   const timer = useTimer(isEdit ? jobCardId : null, { onExternalStop });
-  const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
+  const { dialogState, showConfirm, handleCancel, handleConfirm, handleAlt } = useConfirmDialog();
   const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm, onNotesChange);
   // Pricing: the lazy load, the invoiced-job question, and the save-on-the-way-out
   // paths all live in this hook — see useJobCardCosting.js.
@@ -313,7 +313,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   }, [isOpen, isEdit, jobCardId]);
 
-  const selectContact = (cont) => contactHook.selectContact(cont, formHook.setFormData);
+  const selectCompany = (company) => contactHook.selectCompany(company, formHook.setFormData);
+  const selectPerson = (personId) => contactHook.selectPerson(personId, formHook.setFormData);
   const handleContactFieldChange = (field, value) => contactHook.handleContactFieldChange(field, value, formHook.setFormData);
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -337,10 +338,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     try {
       // Customer details are chosen once, at creation — resolve/create the contact
       // for a brand-new job. On an existing job they're frozen and read-only.
-      const contactId = await resolveJobContactId({
-        initialContactId: formHook.formData.contactId,
+      const customer = await resolveJobContactId({
         canManage, isEdit, contactHook, showConfirm
       });
+      // Backed out of adding a new customer — nothing has been saved yet.
+      if (!customer) { setSaving(false); return; }
 
       const jobcardData = buildJobcardPayload({
         formData: formHook.formData,
@@ -349,7 +351,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         validItems,
         canManage,
         isEdit,
-        contactId
+        companyId: customer.companyId,
+        contactId: customer.contactId
       });
       // Flush any unsaved pricing edits before invoicing so they aren't lost when the job
       // is filed away. This goes through the same path the pricing screen uses, so a job
@@ -481,11 +484,13 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   formData={formHook.formData}
                   setFormData={formHook.setFormData}
                   handleChange={formHook.handleChange}
-                  contact={contactHook.contact}
                   contactFormData={contactHook.contactFormData}
+                  selectedCompany={contactHook.selectedCompany}
+                  people={contactHook.people}
+                  companyMatches={contactHook.companyMatches}
+                  selectPerson={selectPerson}
                   handleContactFieldChange={handleContactFieldChange}
-                  selectContact={selectContact}
-                  contacts={contactHook.contacts}
+                  selectCompany={selectCompany}
                   showContactDropdown={contactHook.showContactDropdown}
                   contactSearchRef={contactHook.contactSearchRef}
                   fieldFocused={contactHook.fieldFocused}
@@ -585,8 +590,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         confirmLabel={dialogState.confirmLabel}
         cancelLabel={dialogState.cancelLabel}
         confirmVariant={dialogState.confirmVariant}
+        altLabel={dialogState.altLabel}
         onConfirm={handleConfirm}
         onCancel={handleCancel}
+        onAlt={handleAlt}
       />
     </>
   );

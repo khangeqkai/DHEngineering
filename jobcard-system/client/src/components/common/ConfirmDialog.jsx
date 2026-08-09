@@ -9,11 +9,14 @@ export default function ConfirmDialog({
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   confirmVariant = 'danger',
+  altLabel = null,
   onConfirm,
-  onCancel
+  onCancel,
+  onAlt
 }) {
   const confirmButtonRef = useRef(null);
   const cancelButtonRef = useRef(null);
+  const altButtonRef = useRef(null);
   const modalId = useId();
 
   useEffect(() => {
@@ -36,7 +39,7 @@ export default function ConfirmDialog({
 
       // Tab key - trap focus within modal
       if (e.key === 'Tab') {
-        const focusableElements = [cancelButtonRef.current, confirmButtonRef.current].filter(Boolean);
+        const focusableElements = [cancelButtonRef.current, altButtonRef.current, confirmButtonRef.current].filter(Boolean);
         const firstElement = focusableElements[0];
         const lastElement = focusableElements[focusableElements.length - 1];
 
@@ -83,6 +86,15 @@ export default function ConfirmDialog({
           >
             {cancelLabel}
           </button>
+          {altLabel && (
+            <button
+              ref={altButtonRef}
+              className="btn btn-secondary"
+              onClick={onAlt}
+            >
+              {altLabel}
+            </button>
+          )}
           <button
             ref={confirmButtonRef}
             className={confirmButtonClass}

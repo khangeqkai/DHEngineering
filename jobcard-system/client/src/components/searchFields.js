@@ -12,6 +12,7 @@ export const ACTIVITY_FIELDS = [
   { value: 'quoteReference', label: 'Quote Reference' },
   { value: 'isRepeatJob', label: 'Repeat Job' },
   { value: 'repeatJobReference', label: 'Repeat Job Reference' },
+  { value: 'companyId', label: 'Customer (ID)' },
   { value: 'contactId', label: 'Contact (ID)' },
   { value: 'contactName', label: 'Contact Name' },
   { value: 'companyName', label: 'Company Name' },

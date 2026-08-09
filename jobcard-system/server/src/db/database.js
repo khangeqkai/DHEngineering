@@ -16,6 +16,7 @@ const {
 // Import all queries
 const {
   userQueries,
+  companyQueries,
   contactQueries,
   supplierQueries,
   machineQueries,
@@ -44,6 +45,7 @@ module.exports = {
   getSettings,
   updateSettings,
   userQueries,
+  companyQueries,
   contactQueries,
   supplierQueries,
   machineQueries,

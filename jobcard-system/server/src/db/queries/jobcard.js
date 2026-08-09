@@ -68,19 +68,19 @@ const jobcardQueries = {
 
   create: db.prepare(`
     INSERT INTO jobcards (
-      id, job_number, card_type, status, contact_id,
+      id, job_number, card_type, status, company_id, contact_id,
       contact_name, company_name, contact_phone, contact_email,
       quality_level, priority, po_number, quote_reference,
       description, due_date,
       is_repeat_job, repeat_job_reference,
       photos, created_by, updated_by, qa_level_id, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare(`
     UPDATE jobcards SET
-      card_type = ?, status = ?, contact_id = ?,
+      card_type = ?, status = ?, company_id = ?, contact_id = ?,
       contact_name = ?, company_name = ?, contact_phone = ?, contact_email = ?,
       quality_level = ?, priority = ?, po_number = ?, quote_reference = ?,
       description = ?, due_date = ?,

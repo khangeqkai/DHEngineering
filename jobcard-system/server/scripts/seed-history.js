@@ -23,7 +23,7 @@ const PREVIOUS_STATUS = {
   INVOICED: 'DONE',
 };
 
-function seedHistory({ db, adminId, adminName, users, contacts, suppliers, machines, qaLevels, jobs, setupAt }) {
+function seedHistory({ db, adminId, adminName, users, companies, contacts, suppliers, machines, qaLevels, jobs, setupAt }) {
   const insert = db.prepare(`
     INSERT INTO history (entity_type, entity_id, action, user_id, user_name, changes, snapshot, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -38,8 +38,14 @@ function seedHistory({ db, adminId, adminName, users, contacts, suppliers, machi
     for (const u of users) {
       add('user', u.id, 'create', adminId, adminName, { name: { from: null, to: u.name } }, setupAt);
     }
+    for (const co of companies) {
+      add('company', co.id, 'create', adminId, adminName, { name: { from: null, to: co.name } }, setupAt);
+    }
     for (const c of contacts) {
-      add('contact', c.id, 'create', adminId, adminName, { company_name: { from: null, to: c.companyName } }, setupAt);
+      add('contact', c.id, 'create', adminId, adminName, {
+        contactName: { from: null, to: c.contactName },
+        companyName: { from: null, to: c.companyName }
+      }, setupAt);
     }
     for (const sup of suppliers) {
       add('supplier', sup.id, 'create', adminId, adminName, { name: { from: null, to: sup.name } }, setupAt);
@@ -85,7 +91,7 @@ function seedHistory({ db, adminId, adminName, users, contacts, suppliers, machi
   run();
 
   // Total rows added, for the seed summary.
-  return users.length + contacts.length + suppliers.length + machines.length + qaLevels.length
+  return users.length + companies.length + contacts.length + suppliers.length + machines.length + qaLevels.length
     + jobs.reduce((sum, j) => sum + 1 + (PREVIOUS_STATUS[j.status] ? 1 : 0) + j.notes.length + j.timers.length, 0);
 }
 

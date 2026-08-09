@@ -19,18 +19,6 @@ const historyQueries = {
     WHERE user_id = ?
     ORDER BY created_at DESC
     LIMIT ?
-  `),
-
-  getByEntityType: db.prepare(`
-    SELECT * FROM history
-    WHERE entity_type = ?
-    ORDER BY created_at DESC
-    LIMIT ? OFFSET ?
-  `),
-
-  countByEntityType: db.prepare(`
-    SELECT COUNT(*) as count FROM history
-    WHERE entity_type = ?
   `)
 };
 

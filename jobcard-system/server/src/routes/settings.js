@@ -11,6 +11,7 @@ const config = require('../config');
 const { lanIpv4s } = require('../utils/netHost');
 const { recordHistory } = require('../db/helpers');
 const { normalizeStoredTimestamps } = require('../db/normalizeTimestamps');
+const { splitCustomersInBackup } = require('../db/splitCustomers');
 const { setMaintenance } = require('../middleware/maintenance');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
 const { version: appVersion } = require('../../package.json');
@@ -187,7 +188,7 @@ router.get('/inactivity-timeout', (req, res) => {
 
 // Table order: parents first, children last (for insert)
 const TABLE_ORDER = [
-  'settings', 'users', 'contacts', 'suppliers', 'machines', 'tags',
+  'settings', 'users', 'companies', 'contacts', 'suppliers', 'machines', 'tags',
   'qa_levels', 'supplier_service_tags', 'jobcards', 'job_items', 'job_assignees',
   'job_notes', 'time_entries', 'job_costings',
   'qa_level_templates', 'history'
@@ -328,7 +329,7 @@ router.post('/import-backup', requireAdmin, [
       return res.status(400).json({ error: 'Invalid backup: missing database.json' });
     }
 
-    const data = JSON.parse(fs.readFileSync(dbJsonPath, 'utf-8'));
+    const data = splitCustomersInBackup(JSON.parse(fs.readFileSync(dbJsonPath, 'utf-8')));
 
     if (!data._metadata) {
       return res.status(400).json({ error: 'Invalid backup: missing _metadata' });

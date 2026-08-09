@@ -20,6 +20,7 @@ const {
 // job card and when sanitizing a job card's history so the two protections stay
 // in sync (see formatJobcard + sanitizeHistoryForRole).
 const CUSTOMER_HISTORY_FIELDS = [
+  'companyId',
   'contactId',
   'contactName',
   'companyName',
@@ -198,6 +199,7 @@ function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
   const canManage = isManagement(userRole);
   // Customer fields are hidden from non-admins — same set as CUSTOMER_HISTORY_FIELDS.
   const contactFields = canManage ? {
+    companyId: row.company_id,
     contactId: row.contact_id,
     contactName: row.contact_name,
     companyName: row.company_name,
@@ -254,6 +256,7 @@ function buildChanges(existing, data) {
     ['quality_level', 'qualityLevel'],
     ['priority', 'priority'],
     ['due_date', 'dueDate'],
+    ['company_id', 'companyId'],
     ['contact_id', 'contactId'],
     ['contact_name', 'contactName'],
     ['company_name', 'companyName'],
@@ -497,13 +500,13 @@ async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
     }
 
     const base = basePath.trim();
-    // Locate the customer's company folder by permanent contact id (created +
-    // marked if needed) so QA forms land in the same folder the job's files
-    // resolve to — even after a company-name change. Jobs with no contact fall
-    // back to the name-built folder.
-    const contactId = jobData.contactId || null;
-    const companyFolder = contactId
-      ? ensureCompanyFolder(contactId, jobData.companyName)
+    // Locate the customer's company folder by permanent company id (created if
+    // needed) so QA forms land in the same folder the job's files resolve to —
+    // even after a company-name change. Jobs with no company fall back to the
+    // name-built folder.
+    const companyId = jobData.companyId || null;
+    const companyFolder = companyId
+      ? ensureCompanyFolder(companyId, jobData.companyName)
       : resolveCompanyFolder(base, null, jobData.companyName);
     const sanitizedJob = sanitizeFolderName(jobData.jobNumber);
     if (!companyFolder || !sanitizedJob) {

@@ -5,8 +5,8 @@
 export function validateJobCardForm({ canManage, formData, contactFormData, lineItems }) {
   const errors = [];
 
-  if (canManage && !formData.contactId && !contactFormData.companyName.trim()) {
-    errors.push('Company name is required');
+  if (canManage && !contactFormData.companyName.trim()) {
+    errors.push('Pick a customer for this job');
   }
   if (!formData.description?.trim()) {
     errors.push('Job description is required');

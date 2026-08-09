@@ -277,10 +277,21 @@ class ApiService {
     return this._post(`/jobcards/${jobcardId}/files/${category}/${encodeURIComponent(filename)}/assign`, { itemId: itemId ?? null });
   }
 
-  // Contact endpoints (phone contacts style)
-  getContacts(includeArchived = false) { return this.request(`/contacts${includeArchived ? '?includeArchived=true' : ''}`); }
-  searchContacts(query) { return this.request(`/contacts/search?q=${encodeURIComponent(query)}`); }
-  getContact(id) { return this.request(`/contacts/${id}`); }
+  // Company endpoints (the customer). withPeople nests each company's contact
+  // people, so the job screen's picker can load everything in one call.
+  getCompanies({ includeArchived = false, withPeople = false } = {}) {
+    const q = [];
+    if (includeArchived) q.push('includeArchived=true');
+    if (withPeople) q.push('withPeople=true');
+    return this.request(`/companies${q.length ? `?${q.join('&')}` : ''}`);
+  }
+  createCompany(data) { return this._post('/companies', data); }
+  updateCompany(id, data) { return this._put(`/companies/${id}`, data); }
+  archiveCompany(id) { return this._post(`/companies/${id}/archive`); }
+  unarchiveCompany(id) { return this._post(`/companies/${id}/unarchive`); }
+
+  // Contact endpoints (the people at a company). They are always read as part of
+  // their company (getCompanies withPeople), so there is no list route here.
   createContact(data) { return this._post('/contacts', data); }
   updateContact(id, data) { return this._put(`/contacts/${id}`, data); }
   archiveContact(id) { return this._post(`/contacts/${id}/archive`); }

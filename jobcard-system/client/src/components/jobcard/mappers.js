@@ -58,6 +58,7 @@ export function getDefaultFormData() {
   return {
     jobNumber: '',
     status: 'OPEN',
+    companyId: '',
     contactId: '',
     contactName: '',
     companyName: '',
@@ -164,13 +165,16 @@ export function getDefaultCostingForm() {
 // Build the job-card save payload the server expects from the open form. Customer
 // details are only sent on a brand-new job (they're frozen and read-only once a job
 // exists, and the server ignores them on edit anyway).
-export function buildJobcardPayload({ formData, contactFormData, assignees, validItems, canManage, isEdit, contactId }) {
+export function buildJobcardPayload({ formData, contactFormData, assignees, validItems, canManage, isEdit, companyId, contactId }) {
   return {
     status: formData.status,
+    // The customer is settled once, when the job is created. The company name
+    // isn't sent — the server takes it from the customer record so the job can
+    // never be filed under a name that customer never had.
     ...(canManage && !isEdit && {
+      companyId,
       contactId,
       contactName: contactFormData.contactName,
-      companyName: contactFormData.companyName,
       contactPhone: contactFormData.phone,
       contactEmail: contactFormData.email,
     }),

@@ -385,7 +385,7 @@ router.delete('/:id', authenticate, requireAdmin, (req, res) => {
     jobcardQueries.delete.run(id);
 
     // Delete job card folder (Company/JobNumber/) but keep the company folder
-    deleteJobCardFolders(existing.contact_id || null, existing.company_name, existing.job_number);
+    deleteJobCardFolders(existing.company_id || null, existing.company_name, existing.job_number);
 
     res.json({ success: true });
   } catch (err) {

@@ -46,7 +46,7 @@ function getBasePath() {
   }
 }
 
-// A folder's owning record (a contact, or a QA level) is identified by a short
+// A folder's owning record (a company, or a QA level) is identified by a short
 // code embedded at the END of the folder name, in square brackets — e.g.
 // "Rio Tinto Iron Ore [550e8400]". Because the code is part of the name, a
 // folder can never exist "untagged": there is no separate marker file to forget
@@ -56,7 +56,7 @@ function getBasePath() {
 
 /**
  * Stable code derived from a permanent id, embedded in folder and file names.
- * Takes the part after the last ':' (so it works for bare contact uuids,
+ * Takes the part after the last ':' (so it works for bare company uuids,
  * "item:..." and "qa-level:..." alike), keeps alphanumerics, and lowercases.
  * The FULL id is used (not a truncation) so the code is as unique as the id
  * itself — two records can never collide on it. Returns null for a missing id.
@@ -82,20 +82,20 @@ function folderSlugOf(folderName) {
  * Build the on-disk folder name for a customer: "Company Name [code]".
  * Returns null if the name sanitizes to nothing or the id has no code.
  */
-function companyFolderName(companyName, contactId) {
+function companyFolderName(companyName, companyId) {
   const sanitized = sanitizeFolderName(companyName);
-  const slug = idSlug(contactId);
+  const slug = idSlug(companyId);
   return (sanitized && slug) ? `${sanitized} [${slug}]` : null;
 }
 
 /**
  * Find a customer's company folder under the base by matching the code in the
- * folder name to the contact's id — independent of the (mutable) company name,
+ * folder name to the company's id — independent of the (mutable) company name,
  * so a rename never strands files. Returns the absolute path, or null.
  */
-function findCompanyFolder(basePath, contactId) {
+function findCompanyFolder(basePath, companyId) {
   try {
-    const slug = idSlug(contactId);
+    const slug = idSlug(companyId);
     if (!basePath || !slug || !fs.existsSync(basePath)) return null;
 
     for (const entry of fs.readdirSync(basePath, { withFileTypes: true })) {
@@ -106,36 +106,36 @@ function findCompanyFolder(basePath, contactId) {
     }
     return null;
   } catch (err) {
-    logger.error({ err, contactId }, 'Failed to find company folder');
+    logger.error({ err, companyId }, 'Failed to find company folder');
     return null;
   }
 }
 
 /**
  * Resolve (read-only, never creates) where a customer's company folder lives.
- * With a contact id: take the computed "Name [code]" path when it already
+ * With a company id: take the computed "Name [code]" path when it already
  * exists, else match by code, else return that computed path (which may not
- * exist yet). With no contact id (a job whose contact was unlinked): fall back
+ * exist yet). With no company id (a job whose customer was unlinked): fall back
  * to the plain name-built path. Used by read/delete/QA-copy callers.
  */
-function resolveCompanyFolder(basePath, contactId, companyName) {
+function resolveCompanyFolder(basePath, companyId, companyName) {
   try {
     if (!basePath) return null;
 
-    if (contactId) {
+    if (companyId) {
       // Fast path: the folder is normally named exactly "Name [code]" (a rename
       // renames the folder), so try that path directly before listing the whole
       // base. Matters when a caller resolves many jobs in a row — a batch would
       // otherwise re-list every company folder once per job, which is the
       // expensive part on a network drive. The code is still what identifies the
       // folder; this only skips the search when the name also lines up.
-      const name = companyFolderName(companyName, contactId);
+      const name = companyFolderName(companyName, companyId);
       const target = name ? path.join(basePath, name) : null;
       if (target && isWithinBase(basePath, target) && fs.existsSync(target)) return target;
 
       // Otherwise fall back to matching by code, so a folder whose name drifted
       // from the customer's (a rename that didn't reach disk) is still found.
-      const bySlug = findCompanyFolder(basePath, contactId);
+      const bySlug = findCompanyFolder(basePath, companyId);
       if (bySlug) return bySlug;
 
       return target && isWithinBase(basePath, target) ? target : null;
@@ -143,7 +143,7 @@ function resolveCompanyFolder(basePath, contactId, companyName) {
 
     return companyPathByName(basePath, companyName);
   } catch (err) {
-    logger.error({ err, contactId }, 'Failed to resolve company folder');
+    logger.error({ err, companyId }, 'Failed to resolve company folder');
     return null;
   }
 }
@@ -155,20 +155,20 @@ function resolveCompanyFolder(basePath, contactId, companyName) {
  * to write and no same-name disambiguation to do. Fire-and-forget: logs errors
  * but never throws.
  */
-function ensureCompanyFolder(contactId, companyName) {
+function ensureCompanyFolder(companyId, companyName) {
   try {
     const basePath = getBasePath();
-    if (!basePath || !contactId) return null;
+    if (!basePath || !companyId) return null;
 
-    const existing = findCompanyFolder(basePath, contactId);
+    const existing = findCompanyFolder(basePath, companyId);
     if (existing) return existing;
 
-    const name = companyFolderName(companyName, contactId);
+    const name = companyFolderName(companyName, companyId);
     if (!name) return null;
 
     const target = path.join(basePath, name);
     if (!isWithinBase(basePath, target)) {
-      logger.error({ contactId, target }, 'Company folder path escapes base directory');
+      logger.error({ companyId, target }, 'Company folder path escapes base directory');
       return null;
     }
 
@@ -176,7 +176,7 @@ function ensureCompanyFolder(contactId, companyName) {
     logger.info({ folderPath: target }, 'Ensured company folder');
     return target;
   } catch (err) {
-    logger.error({ err, contactId }, 'Failed to ensure company folder');
+    logger.error({ err, companyId }, 'Failed to ensure company folder');
     return null;
   }
 }
@@ -187,18 +187,18 @@ function ensureCompanyFolder(contactId, companyName) {
  * rename can't happen (e.g. the folder is locked), lookups still succeed by code
  * regardless of the on-disk name. Fire-and-forget: never throws.
  */
-function renameCompanyFolder(contactId, oldName, newName) {
+function renameCompanyFolder(companyId, oldName, newName) {
   try {
     const basePath = getBasePath();
-    if (!basePath || !contactId) return;
+    if (!basePath || !companyId) return;
 
-    const desired = companyFolderName(newName, contactId);
+    const desired = companyFolderName(newName, companyId);
     if (!desired) return;
 
-    const current = findCompanyFolder(basePath, contactId);
+    const current = findCompanyFolder(basePath, companyId);
     if (!current) {
       // Nothing on disk yet → just make the new folder.
-      ensureCompanyFolder(contactId, newName);
+      ensureCompanyFolder(companyId, newName);
       return;
     }
 
@@ -208,14 +208,14 @@ function renameCompanyFolder(contactId, oldName, newName) {
 
     if (fs.existsSync(target)) {
       // Can't happen with a unique code, but never clobber another folder if it does.
-      logger.warn({ contactId, target }, 'Company rename target exists; keeping current folder');
+      logger.warn({ companyId, target }, 'Company rename target exists; keeping current folder');
       return;
     }
 
     fs.renameSync(current, target);
     logger.info({ from: current, to: target }, 'Renamed company folder');
   } catch (err) {
-    logger.error({ err, contactId }, 'Failed to rename company folder');
+    logger.error({ err, companyId }, 'Failed to rename company folder');
   }
 }
 
@@ -327,7 +327,7 @@ function renameQaLevelFolder(qaLevelsBase, levelId, newName) {
 
 /**
  * Resolve the name-built company path as a fallback for jobs with no linked
- * contact (e.g. the contact was deleted/unlinked) — there's no permanent id to
+ * company (e.g. the customer was unlinked) — there's no permanent id to
  * key on, so the company name is all we have.
  */
 function companyPathByName(basePath, companyName) {
@@ -339,18 +339,18 @@ function companyPathByName(basePath, companyName) {
 
 /**
  * Create job card subfolders (Job Files/, QA Forms/, Customer Property/) under
- * the customer's company folder, located by the permanent contact id (created
- * if needed) so it survives company-name changes. Jobs with no contact fall
+ * the customer's company folder, located by the permanent company id (created
+ * if needed) so it survives company-name changes. Jobs with no company fall
  * back to the name-built company folder.
  * Fire-and-forget: logs errors but never throws.
  */
-function createJobCardFolders(contactId, companyName, jobNumber) {
+function createJobCardFolders(companyId, companyName, jobNumber) {
   try {
     const basePath = getBasePath();
     if (!basePath) return;
 
-    const companyFolder = contactId
-      ? ensureCompanyFolder(contactId, companyName)
+    const companyFolder = companyId
+      ? ensureCompanyFolder(companyId, companyName)
       : companyPathByName(basePath, companyName);
     if (!companyFolder) return;
 
@@ -359,7 +359,7 @@ function createJobCardFolders(contactId, companyName, jobNumber) {
 
     const jobPath = path.join(companyFolder, sanitizedJob);
     if (!isWithinBase(basePath, jobPath)) {
-      logger.error({ contactId, jobNumber, jobPath }, 'Job card folder path escapes base directory');
+      logger.error({ companyId, jobNumber, jobPath }, 'Job card folder path escapes base directory');
       return;
     }
 
@@ -368,23 +368,23 @@ function createJobCardFolders(contactId, companyName, jobNumber) {
     }
     logger.info({ jobPath }, 'Created job card folders');
   } catch (err) {
-    logger.error({ err, contactId, jobNumber }, 'Failed to create job card folders');
+    logger.error({ err, companyId, jobNumber }, 'Failed to create job card folders');
   }
 }
 
 /**
  * Delete job card folder (Company/JobNumber/) when a job card is deleted.
- * The company folder is located by the permanent contact id (read-only, never
+ * The company folder is located by the permanent company id (read-only, never
  * created) so a renamed customer still has the right folder targeted; only the
  * job card subfolder is removed, not the parent company folder.
  * Fire-and-forget: logs errors but never throws.
  */
-function deleteJobCardFolders(contactId, companyName, jobNumber) {
+function deleteJobCardFolders(companyId, companyName, jobNumber) {
   try {
     const basePath = getBasePath();
     if (!basePath) return;
 
-    const companyFolder = (contactId && resolveCompanyFolder(basePath, contactId, companyName))
+    const companyFolder = (companyId && resolveCompanyFolder(basePath, companyId, companyName))
       || companyPathByName(basePath, companyName);
     if (!companyFolder) return;
 
@@ -393,7 +393,7 @@ function deleteJobCardFolders(contactId, companyName, jobNumber) {
 
     const jobPath = path.join(companyFolder, sanitizedJob);
     if (!isWithinBase(basePath, jobPath)) {
-      logger.error({ contactId, jobNumber, jobPath }, 'Job card folder path escapes base directory');
+      logger.error({ companyId, jobNumber, jobPath }, 'Job card folder path escapes base directory');
       return;
     }
 
@@ -402,7 +402,7 @@ function deleteJobCardFolders(contactId, companyName, jobNumber) {
       logger.info({ jobPath }, 'Deleted job card folder');
     }
   } catch (err) {
-    logger.error({ err, contactId, jobNumber }, 'Failed to delete job card folder');
+    logger.error({ err, companyId, jobNumber }, 'Failed to delete job card folder');
   }
 }
 

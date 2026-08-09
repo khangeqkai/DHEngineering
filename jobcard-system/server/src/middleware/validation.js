@@ -211,31 +211,36 @@ const validateCreateUser = [
   handleValidationErrors
 ];
 
-/**
- * Create contact validation
- * POST /contacts
- */
-const validateCreateContact = [
-  optionalString('contactName', 'Contact name', 200),
-  requiredString('companyName', 'Company name'),
-  optionalEmail('email'),
-  optionalPhone('phone'),
+// POST /companies — a customer is just its name (plus optional address/notes).
+const validateCreateCompany = [
+  requiredString('name', 'Company name'),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
   handleValidationErrors
 ];
 
-/**
- * Update contact validation
- * PUT /contacts/:id
- */
-const validateUpdateContact = [
-  optionalString('contactName', 'Contact name', 200),
-  requiredString('companyName', 'Company name'),
-  optionalEmail('email'),
-  optionalPhone('phone'),
+// PUT /companies/:id
+const validateUpdateCompany = [
+  requiredString('name', 'Company name'),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
+  handleValidationErrors
+];
+
+// POST /contacts — a person always belongs to a company.
+const validateCreateContact = [
+  requiredString('companyId', 'Company'),
+  optionalString('contactName', 'Contact name', 200),
+  optionalEmail('email'),
+  optionalPhone('phone'),
+  handleValidationErrors
+];
+
+// PUT /contacts/:id — which company a person belongs to never changes.
+const validateUpdateContact = [
+  optionalString('contactName', 'Contact name', 200),
+  optionalEmail('email'),
+  optionalPhone('phone'),
   handleValidationErrors
 ];
 
@@ -606,6 +611,8 @@ module.exports = {
   validateLogin,
   validateCreateUser,
   validateUpdatePreferences,
+  validateCreateCompany,
+  validateUpdateCompany,
   validateCreateContact,
   validateUpdateContact,
   validateJobcardListQuery,
