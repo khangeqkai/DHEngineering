@@ -74,6 +74,10 @@ router.delete('/:id/notes/:noteId', authenticate, requireManagement, (req, res) 
       return res.status(404).json({ error: 'Note not found' });
     }
 
+    if (existing.jobcard_id !== id) {
+      return res.status(403).json({ error: 'Note does not belong to this job card' });
+    }
+
     recordHistory('jobcard', id, 'delete_note', req.user.userId, req.user.name || req.user.username, {
       note: { from: existing.text, to: null },
       'note author': { from: existing.user_name, to: null }

@@ -569,6 +569,10 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
       return res.status(404).json({ error: 'Time entry not found' });
     }
 
+    if (existing.jobcard_id !== id) {
+      return res.status(403).json({ error: 'Time entry does not belong to this job card' });
+    }
+
     if (!existing.end_time) {
       return res.status(400).json({ error: 'Stop the timer before deleting this entry' });
     }

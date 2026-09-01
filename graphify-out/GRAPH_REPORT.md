@@ -1,7 +1,7 @@
 # Graph Report - DHEngineering  (2026-09-01)
 
 ## Corpus Check
-- 239 files · ~1,529,031 words
+- 239 files · ~1,529,068 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -109,12 +109,12 @@
 10. `pushModal()` - 14 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `JobCardList()` --calls--> `useAuth()`  [INFERRED]
+  /mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/JobCardList.jsx → client/src/context/AuthContext.jsx
 - `fmtDate()` --calls--> `formatDateTime()`  [INFERRED]
   client/src/components/SearchPage.jsx → /mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/utils/formatters.js
 - `fmtDateShort()` --calls--> `formatDate()`  [INFERRED]
   client/src/components/SearchPage.jsx → /mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/utils/formatters.js
-- `JobCardModal()` --calls--> `useAuth()`  [INFERRED]
-  /mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/JobCardModal.jsx → client/src/context/AuthContext.jsx
 - `JobPaperworkHub()` --calls--> `useAuth()`  [INFERRED]
   /mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/components/jobcard/JobPaperworkHub.jsx → client/src/context/AuthContext.jsx
 - `StatusBadge()` --calls--> `statusToken()`  [INFERRED]
@@ -128,23 +128,23 @@ Nodes (3): ApiService, unreachableError(), wait()
 
 ### Community 1 - "Community 1"
 Cohesion: 0.05
-Nodes (36): JobCardList(), penTabWithin(), getJobCardColumns(), JobCardListTable(), Layout(), Login(), SearchPage(), Settings() (+28 more)
+Nodes (41): Layout(), Login(), Settings(), UserManagement(), useAuth(), useJobCardColumnOrder(), useJobCardColumnVisibility(), useSettings() (+33 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.06
-Nodes (35): EntityActivityLog(), formatAction(), formatChanges(), formatTarget(), InlineSupplierForm(), getStatusBadgeClass(), mergeColumnOrder(), normalizeHiddenColumns() (+27 more)
+Nodes (37): EntityActivityLog(), formatAction(), formatChanges(), formatTarget(), getStatusBadgeClass(), mergeColumnOrder(), normalizeHiddenColumns(), statusToken() (+29 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.08
-Nodes (30): BottomSheet(), CalendarPicker(), toDateString(), ConfirmDialog(), InactivityWarningModal(), isTopModal(), pushModal(), removeModal() (+22 more)
+Cohesion: 0.06
+Nodes (32): CreatableTagSelect(), InlineSupplierForm(), blankCompany(), ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), blankPerson() (+24 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.08
-Nodes (26): describeChanges(), resolveJobContactId(), JobCardModal(), validateJobCardForm(), buildJobcardPayload(), getDefaultCostingForm(), getDefaultFormData(), getDefaultTimeEntryForm() (+18 more)
+Nodes (30): BottomSheet(), CalendarPicker(), toDateString(), ConfirmDialog(), InactivityWarningModal(), isTopModal(), pushModal(), removeModal() (+22 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.08
-Nodes (24): CreatableTagSelect(), blankCompany(), ContactManagement(), QALevelManagement(), SupplierManagement(), TagManagement(), blankPerson(), CompanyPeople() (+16 more)
+Cohesion: 0.14
+Nodes (28): JobCardList(), penTabWithin(), getJobCardColumns(), JobCardListTable(), formatElapsed(), useActiveTimerIndicator(), useJobCardSort(), useMissingFilesIndicator() (+20 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.17
@@ -167,84 +167,84 @@ Cohesion: 0.52
 Nodes (17): companyFolderName(), companyPathByName(), createJobCardFolders(), deleteJobCardFolders(), ensureCompanyFolder(), ensureQaLevelFolder(), findCompanyFolder(), findQaLevelFolder() (+9 more)
 
 ### Community 11 - "Community 11"
-Cohesion: 0.33
-Nodes (19): buildJobCardWorkbook(), buildSheet(), durationHrs(), exportActivityLog(), exportContacts(), exportEquipment(), exportJobCardList(), exportJobCardsFull() (+11 more)
+Cohesion: 0.42
+Nodes (12): autoAssignWorker(), checkCriticalInspection(), checkEntryDuration(), flagToBool(), isCriticalJob(), isOpenTimerConflict(), normalizeTime(), resolveItemId() (+4 more)
 
 ### Community 12 - "Community 12"
 Cohesion: 0.28
 Nodes (8): buildHelperScript(), buildSetupPage(), plainTrustFileUrl(), secureAddress(), hostWithoutPort(), isVirtualIface(), lanIpv4s(), safeHost()
 
 ### Community 13 - "Community 13"
-Cohesion: 0.42
-Nodes (12): autoAssignWorker(), checkCriticalInspection(), checkEntryDuration(), flagToBool(), isCriticalJob(), isOpenTimerConflict(), normalizeTime(), resolveItemId() (+4 more)
-
-### Community 14 - "Community 14"
 Cohesion: 0.49
 Nodes (11): buildStorageFilename(), listCategoryFileNames(), listFolderFiles(), nextQaFormNumber(), partFileCode(), partTagRegex(), resolveCategoryFolder(), resolveFileOwners() (+3 more)
 
-### Community 15 - "Community 15"
+### Community 14 - "Community 14"
 Cohesion: 0.56
 Nodes (10): buildAltNames(), collectSanHosts(), ensureCertificates(), generateCa(), generateLeaf(), leafSanCoversIps(), leafSanCoversNames(), makeSerial() (+2 more)
 
-### Community 16 - "Community 16"
+### Community 15 - "Community 15"
 Cohesion: 0.58
 Nodes (9): discardBrowser(), getBrowser(), inElectron(), launchBrowser(), probeBrowser(), renderHtmlToPdf(), renderWithElectron(), renderWithPuppeteer() (+1 more)
 
-### Community 17 - "Community 17"
+### Community 16 - "Community 16"
 Cohesion: 0.17
 Nodes (5): DataTable(), SkeletonRows(), useTableFilter(), useTableResize(), useTableSort()
 
-### Community 18 - "Community 18"
+### Community 17 - "Community 17"
 Cohesion: 0.61
 Nodes (8): buildCostingResponse(), computeLiveCosting(), num(), parseHolidays(), parseSchedule(), persistCosting(), readOtSettings(), round2()
 
-### Community 19 - "Community 19"
+### Community 18 - "Community 18"
 Cohesion: 0.26
 Nodes (3): Grad, Noise, Waves()
 
-### Community 20 - "Community 20"
+### Community 19 - "Community 19"
 Cohesion: 0.55
 Nodes (7): archiveBackup(), archiveBackupWithRetry(), bestEffortRemove(), copyDirRecursive(), listFilesRecursive(), partitionReadableFiles(), verifyStagedFiles()
 
-### Community 21 - "Community 21"
+### Community 20 - "Community 20"
 Cohesion: 0.44
 Nodes (9): checkCommand(), checkNativeModules(), checkPdfBrowser(), checkPlatformMatch(), ensureDataDir(), installDependencies(), log(), runChecks() (+1 more)
 
-### Community 22 - "Community 22"
+### Community 21 - "Community 21"
 Cohesion: 0.49
 Nodes (8): buildClientIfNeeded(), cmdLan(), cmdSeed(), confirm(), findLanIp(), newestMtime(), runSetup(), waitForHealth()
 
-### Community 23 - "Community 23"
+### Community 22 - "Community 22"
 Cohesion: 0.42
 Nodes (7): caCertPath(), createMenu(), createWindow(), dataDir(), installLocalCertTrust(), startServer(), sweepOldJobCardPrintouts()
 
-### Community 24 - "Community 24"
+### Community 23 - "Community 23"
 Cohesion: 0.58
 Nodes (5): bumpJobNumber(), getSettings(), peekNextJobNumber(), recordHistory(), updateSettings()
 
-### Community 25 - "Community 25"
+### Community 24 - "Community 24"
 Cohesion: 0.57
 Nodes (4): buildTreatments(), makeDate(), tagValue(), uid()
 
-### Community 26 - "Community 26"
+### Community 25 - "Community 25"
 Cohesion: 0.57
 Nodes (5): checkLoginRateLimit(), clearLoginFailures(), cooldownMsForCount(), normalizeEmpty(), recordLoginFailure()
 
-### Community 27 - "Community 27"
+### Community 26 - "Community 26"
 Cohesion: 0.61
 Nodes (4): assigneeNames(), buildQaTemplateWarning(), itemSummary(), treatmentsToText()
 
-### Community 28 - "Community 28"
+### Community 27 - "Community 27"
 Cohesion: 0.68
 Nodes (4): localParts(), makeFormatter(), splitHours(), tierForMoment()
 
-### Community 29 - "Community 29"
+### Community 28 - "Community 28"
 Cohesion: 0.61
 Nodes (4): camelToSnake(), convertKeysToCamel(), getTableColumns(), snakeToCamel()
 
-### Community 30 - "Community 30"
+### Community 29 - "Community 29"
 Cohesion: 0.57
 Nodes (3): authenticate(), isManagement(), requireRole()
+
+### Community 30 - "Community 30"
+Cohesion: 0.57
+Nodes (3): formatLevel(), formatTemplate(), getQaLevelsBasePath()
 
 ### Community 31 - "Community 31"
 Cohesion: 0.67
@@ -271,12 +271,12 @@ Cohesion: 0.57
 Nodes (5): computeProgress(), formatNum(), LineItemProgress(), parseQty(), StatusPill()
 
 ### Community 37 - "Community 37"
-Cohesion: 0.62
-Nodes (3): assertMatchesExtension(), decodeBase64Strict(), matchesSignature()
+Cohesion: 0.33
+Nodes (2): AuthProvider(), useInactivityTimer()
 
 ### Community 38 - "Community 38"
-Cohesion: 0.57
-Nodes (3): formatLevel(), formatTemplate(), getQaLevelsBasePath()
+Cohesion: 0.62
+Nodes (3): assertMatchesExtension(), decodeBase64Strict(), matchesSignature()
 
 ### Community 39 - "Community 39"
 Cohesion: 0.47
@@ -463,6 +463,8 @@ Cohesion: 0.67
 Nodes (1): normalizeEmpty()
 
 ## Knowledge Gaps
+- **Thin community `Community 37`** (7 nodes): `AuthContext.jsx`, `useInactivityTimer.js`, `main.jsx`, `AuthProvider()`, `useInactivityTimer()`, `useInactivityTimer.js`, `main.jsx`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 39`** (6 nodes): `contacts.js`, `contacts.js`, `contacts.js`, `normalizeEmpty()`, `toApiFormat()`, `contacts.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 40`** (6 nodes): `jobcard-time-entries.js`, `jobcard-time-entries.js`, `jobcard-time-entries.js`, `normalizeEmpty()`, `readFlag()`, `jobcard-time-entries.js`
@@ -559,7 +561,7 @@ Nodes (1): normalizeEmpty()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `useAuth()` connect `Community 1` to `Community 2`, `Community 3`, `Community 4`?**
+- **Why does `useAuth()` connect `Community 1` to `Community 2`, `Community 37`, `Community 4`, `Community 5`?**
   _High betweenness centrality (0.065) - this node is a cross-community bridge._
 - **Are the 14 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 14 INFERRED edges - model-reasoned connections that need verification._
