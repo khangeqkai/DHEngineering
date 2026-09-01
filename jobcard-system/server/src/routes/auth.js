@@ -156,6 +156,22 @@ router.post('/login', validateLogin, async (req, res) => {
   }
 });
 
+// Sign out: cancel this session on the server so the pass this person is
+// holding can never be used again. Without it the pass stayed good for days
+// after they left the machine.
+router.post('/logout', authenticate, (req, res) => {
+  try {
+    userQueries.updateSessionToken.run(null, req.user.userId);
+    recordHistory('user', req.user.userId, 'logout', req.user.userId, req.user.name || req.user.username, {
+      username: { from: req.user.username, to: null }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, 'Logout error');
+    res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
 // Get current user
 router.get('/me', authenticate, (req, res) => {
   try {

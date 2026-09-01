@@ -387,8 +387,10 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
     return registerBeforeLogout(() => {
       const entry = stoppedEntryRef.current;
       if (!entry) return;
-      // Use entry.jobcardId (not jobcardId) so cross-job stops resume on the correct job
-      api.updateTimeEntry(entry.jobcardId || jobcardId, entry.id, { ...entry, endTime: null }).catch(() => {});
+      // Use entry.jobcardId (not jobcardId) so cross-job stops resume on the correct job.
+      // Handed back so signing out waits for it: the session is cancelled server-side
+      // now, and a resume that arrives after that is refused and the run stays stopped.
+      return api.updateTimeEntry(entry.jobcardId || jobcardId, entry.id, { ...entry, endTime: null }).catch(() => {});
     });
   }, [showEntryForm, hasStoppedEntry, jobcardId, registerBeforeLogout]);
 

@@ -7,6 +7,10 @@ const AuthContext = createContext(null);
 
 const DEFAULT_TIMEOUT_MINUTES = 5;
 const SESSION_POLL_MS = 5000;
+// How long signing out waits for last-moment work to land before cancelling the
+// pass. Long enough for one save on a slow network, short enough to never feel
+// like the Sign Out button is stuck.
+const BEFORE_LOGOUT_GRACE_MS = 3000;
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -23,11 +27,37 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
-    beforeLogoutCallbacksRef.current.forEach(cb => cb());
+    // Work that has to land while the pass is still good — putting a half-stopped
+    // run back on the clock. The server tears the pass up the moment we sign out,
+    // so cancel the session only once this has finished, or the put-back is refused
+    // and the worker silently loses their run. Capped so a server that never
+    // answers can't hold the sign-out open.
+    const pending = beforeLogoutCallbacksRef.current.map(cb => cb());
     clearInterval(pollRef.current);
-    api.setToken(null);
+    // Forgets the pass here immediately; hands back the server-side cancel to
+    // run once that last-moment work has landed. It never rejects.
+    const cancelSession = api.beginLogout();
     setUser(null);
+    Promise.race([
+      Promise.allSettled(pending),
+      new Promise(resolve => setTimeout(resolve, BEFORE_LOGOUT_GRACE_MS))
+    ]).then(cancelSession);
   }, []);
+
+  // A browser can keep a whole page alive when you navigate away and hand it
+  // back on the Back button, memory and all — which on a shared machine put the
+  // previous person straight back in, still signed in. Treat a page that comes
+  // back that way as a fresh start and sign out.
+  useEffect(() => {
+    if (!user) return undefined;
+    const handleRestore = (event) => {
+      if (!event.persisted) return;
+      logout();
+      toast.error('You were signed out for safety. Please sign in again.');
+    };
+    window.addEventListener('pageshow', handleRestore);
+    return () => window.removeEventListener('pageshow', handleRestore);
+  }, [user, logout]);
 
   // Register session invalidation handler
   useEffect(() => {

@@ -23,7 +23,7 @@ function PrivateRoute({ children }) {
     return <div className="loading">Loading...</div>;
   }
 
-  return user ? children : <Navigate to="/login" />;
+  return user ? children : <Navigate to="/login" replace />;
 }
 
 function AdminRoute({ children }) {
@@ -34,11 +34,11 @@ function AdminRoute({ children }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
   if (user.role !== 'admin') {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -54,11 +54,11 @@ function ManagementRoute({ children }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
   if (!isManagement(user)) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   return children;

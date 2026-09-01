@@ -61,6 +61,14 @@ app.use(setupTrustRoutes);
 // Turn away mutating requests from other clients while a restore is in progress
 app.use(maintenanceGuard);
 
+// Everything behind a sign-in is private to the person who asked for it, so the
+// browser must never keep a copy. On a shared computer a stored answer can be
+// shown to whoever signs in next.
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/hardware', hardwareRoutes);

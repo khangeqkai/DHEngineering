@@ -1,36 +1,17 @@
 import { formatHistoryValue, formatDateTime } from '../../../utils/formatters';
+import { actionColor } from '../../../utils/activityColors';
 
 export default function ActivityLogTab({ history = [], loading, onRefresh }) {
-  const formatAction = (action) => {
-    const colors = {
-      create: 'var(--accent-ready)',
-      update: 'var(--primary-accent)',
-      delete: 'var(--accent-caution)',
-      login: 'var(--accent-info)',
-      archive: 'var(--accent-safety)',
-      unarchive: 'var(--accent-ready)',
-      'add_photo': 'var(--accent-ready)',
-      'remove_photo': 'var(--accent-caution)',
-      'add_note': 'var(--accent-ready)',
-      'delete_note': 'var(--accent-caution)',
-      'start_timer': 'var(--accent-ready)',
-      'stop_timer': 'var(--primary-accent)',
-      'discard_timer': 'var(--accent-caution)',
-      'add_time_entry': 'var(--accent-ready)',
-      'update_time_entry': 'var(--primary-accent)',
-      'delete_time_entry': 'var(--accent-caution)'
-    };
-    return (
-      <span style={{
-        color: colors[action] || 'var(--text-secondary)',
-        fontWeight: 600,
-        textTransform: 'capitalize',
-        fontSize: 'var(--text-xs)'
-      }}>
-        {action.replace(/_/g, ' ')}
-      </span>
-    );
-  };
+  const formatAction = (action) => (
+    <span style={{
+      color: actionColor(action),
+      fontWeight: 600,
+      textTransform: 'capitalize',
+      fontSize: 'var(--text-xs)'
+    }}>
+      {action.replace(/_/g, ' ')}
+    </span>
+  );
 
   const formatChanges = (changes) => {
     if (!changes) return null;

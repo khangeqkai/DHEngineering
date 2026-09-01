@@ -159,6 +159,40 @@ class ApiService {
     return this._post('/auth/login', { username, password });
   }
 
+  // Sign out, in two beats. This forgets the pass here straight away and hands
+  // back the one job left: telling the server to tear it up. They are split so
+  // the caller can let last-moment work land first — the moment the server
+  // cancels the pass, anything still on its way is refused — without leaving
+  // the pass readable on this machine while it waits.
+  beginLogout() {
+    const token = this.token;
+    this.setToken(null);
+    // We are the ones ending this session, so a request that was already on its
+    // way must not come back as "you were signed in somewhere else". Re-armed
+    // on the next sign-in by setToken.
+    this.sessionInvalidated = true;
+    return async () => {
+      if (!token) return;
+      try {
+        // Sent on its own, not through the shared sender: this carries the pass
+        // we just gave up, so its reply must never reach the forced-sign-out
+        // handler. If this person has signed back in meanwhile, that handler
+        // would sign the new person straight out again.
+        await fetch(`${API_URL}/auth/logout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+        });
+      } catch {
+        // Already signed out on this machine; nothing useful to say.
+      }
+    };
+  }
+
+  // Sign out now, with nothing to wait for.
+  logout() {
+    return this.beginLogout()();
+  }
+
   getMe() {
     return this.request('/auth/me');
   }
