@@ -28,6 +28,7 @@ const machinesRoutes = require('./src/routes/machines');
 const settingsRoutes = require('./src/routes/settings');
 const qaLevelsRoutes = require('./src/routes/qa-levels');
 const searchRoutes = require('./src/routes/search');
+const statisticsRoutes = require('./src/routes/statistics');
 const { initializeDatabase } = require('./src/db/init');
 const { maintenanceGuard } = require('./src/middleware/maintenance');
 const { verifyPdfEngine, getPdfEngineStatus } = require('./src/utils/pdfEngine');
@@ -87,6 +88,7 @@ app.use('/api/machines', machinesRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/qa-levels', qaLevelsRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/statistics', statisticsRoutes);
 
 // Serve React client in production (LAN browser access)
 const clientBuildPath = process.env.CLIENT_BUILD_PATH || path.join(__dirname, '..', 'client', 'dist');

@@ -407,6 +407,16 @@ class ApiService {
   deleteQaLevel(id) { return this._del(`/qa-levels/${id}`); }
   uploadQaTemplate(levelId, data) { return this._post(`/qa-levels/${levelId}/templates`, data); }
   deleteQaTemplate(levelId, templateId) { return this._del(`/qa-levels/${levelId}/templates/${templateId}`); }
+
+  // Statistics
+  getStatistics(params = {}) {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') query.set(k, String(v));
+    });
+    const qs = query.toString();
+    return this.request(`/statistics${qs ? `?${qs}` : ''}`);
+  }
 }
 
 export const api = new ApiService();

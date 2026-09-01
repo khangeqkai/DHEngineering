@@ -17,7 +17,8 @@ import {
   DollarSign,
   PanelLeftClose,
   PanelLeftOpen,
-  Search
+  Search,
+  BarChart3
 } from 'lucide-react';
 import ClickSpark from './common/ClickSpark';
 import Waves from './common/Waves';
@@ -156,6 +157,14 @@ export default function Layout() {
             </li>
             {isManagement(user) && (
               <>
+                <li>
+                  <NavLink to="/statistics" onClick={handleNavClick}>
+                    <span className="nav-icon">
+                      <BarChart3 size={18} />
+                    </span>
+                    <span className="nav-text">Statistics</span>
+                  </NavLink>
+                </li>
                 <li>
                   <NavLink to="/contacts" onClick={handleNavClick}>
                     <span className="nav-icon">

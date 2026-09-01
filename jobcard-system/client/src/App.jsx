@@ -13,6 +13,7 @@ import TagManagement from './components/TagManagement';
 import LabourRatesSettings from './components/LabourRatesSettings';
 import Settings from './components/Settings';
 import SearchPage from './components/SearchPage';
+import Statistics from './components/Statistics';
 import Layout from './components/Layout';
 import './App.css';
 
@@ -127,6 +128,14 @@ function App() {
         <Route index element={<Navigate to="/jobcards" replace />} />
         <Route path="search" element={<SearchPage />} />
         <Route path="jobcards" element={<JobCardList />} />
+        <Route
+          path="statistics"
+          element={
+            <ManagementRoute>
+              <Statistics />
+            </ManagementRoute>
+          }
+        />
         <Route
           path="contacts"
           element={

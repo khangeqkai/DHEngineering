@@ -218,7 +218,9 @@ jobcard-system/
 ### API Structure
 Base URL: `/api` (relative; Vite dev server proxies to `http://localhost:3000`, production serves client statically from Express)
 
-Main routes: `/auth`, `/jobcards`, `/companies`, `/contacts`, `/suppliers`, `/machines`, `/settings`, `/history`, `/qa-levels`, `/tags`, `/search`
+Main routes: `/auth`, `/jobcards`, `/companies`, `/contacts`, `/suppliers`, `/machines`, `/settings`, `/history`, `/qa-levels`, `/tags`, `/search`, `/statistics`
+
+Statistics endpoint: `GET /api/statistics` (management) — aggregates workshop throughput, on-time delivery rate, worker hours leaderboard (split by normal, OT1, OT2, and holiday tiers respecting each job's captured costing rules), equipment utilization (with multi-machine entry splitting), customer repeat work volume, delayed jobs bottleneck list, and QA level distribution. Accepts query params: `preset` (`this_month`|`last_month`|`last_3_months`|`last_6_months`|`this_year`|`last_year`|`all`|`custom`), `startDate`, `endDate`, `groupBy` (`month`|`year`). Hides invoiced financial totals for non-admin managers. Managed on the **Workshop Statistics** page (`/statistics`, `Statistics.jsx` + `components/statistics/` sub-views + `exportStatistics` in `excelExport.js`).
 
 Tag endpoints: `GET /tags` (authenticated, optional `?category=treatment`, optional `?includeArchived=true`), `GET /tags/categories` (authenticated), `GET /tags/:id` (admin), `POST /tags` (admin, `{ category, name }` — **idempotent create**: a name that maps to an existing option returns that option (200) instead of erroring, so "add on the spot" never makes a duplicate; a matching value that was archived is restored under the freshly typed name), `PUT /tags/:id` (admin, a value-changing rename is blocked for **any** category while job line items still use that value), `DELETE /tags/:id` (admin — **archives**, never hard-deletes; jobs reference options by value, so the row is kept and the `archived` flag is set), `POST /tags/:id/activate` (admin, restores an archived tag)
 

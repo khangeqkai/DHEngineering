@@ -4,6 +4,9 @@
 # Agent tool scratch state
 .codewhale/
 
+# Editor settings
+.vscode/
+
 # graphify - there is exactly one canonical graph, at the repo root. Keep its
 # two portable files; ignore everything else the tool writes (machine-local and
 # regenerable), including a duplicate graph left behind by running it from a
