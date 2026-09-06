@@ -125,8 +125,8 @@ export function AuthProvider({ children }) {
     timeoutMs: inactivityTimeoutMs
   });
 
-  const login = async (username, password) => {
-    const response = await api.login(username, password);
+  const login = async (username, password, homeAccessCode) => {
+    const response = await api.login(username, password, homeAccessCode);
     api.setToken(response.token);
     
     // Fetch full user profile to get preferences

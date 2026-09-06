@@ -3,6 +3,7 @@
 
 # Agent tool scratch state
 .codewhale/
+.qwen/
 
 # Editor settings
 .vscode/

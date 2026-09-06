@@ -32,6 +32,7 @@ const statisticsRoutes = require('./src/routes/statistics');
 const { initializeDatabase } = require('./src/db/init');
 const { maintenanceGuard } = require('./src/middleware/maintenance');
 const { verifyPdfEngine, getPdfEngineStatus } = require('./src/utils/pdfEngine');
+const { isViaTunnel } = require('./src/utils/homeAccess');
 
 const app = express();
 
@@ -54,7 +55,9 @@ app.get('/health', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     version: require('./package.json').version,
-    pdfEngine: getPdfEngineStatus()
+    pdfEngine: getPdfEngineStatus(),
+    // Lets the login screen ask a home user for the home access code.
+    viaTunnel: isViaTunnel(req)
   });
 });
 

@@ -28,6 +28,10 @@ export function useSettings() {
   const [savingJobFolders, setSavingJobFolders] = useState(false);
   const [savingTimeout, setSavingTimeout] = useState(false);
   const [savingJobNumber, setSavingJobNumber] = useState(false);
+  const [homeAccessCode, setHomeAccessCode] = useState('');
+  const [savingHomeAccess, setSavingHomeAccess] = useState(false);
+  const [homeAddress, setHomeAddress] = useState('');
+  const [savingHomeAddress, setSavingHomeAddress] = useState(false);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -53,6 +57,7 @@ export function useSettings() {
         setInactivityTimeout(parseInt(data.inactivityTimeoutMinutes, 10) || 5);
         setJobNumberPrefix(data.jobNumberPrefix || '');
         setJobNumberNext(data.jobNumberNext || '');
+        setHomeAddress(data.homeAddress || '');
       }
     } catch (err) {
       toast.error('Failed to load settings');
@@ -107,6 +112,34 @@ export function useSettings() {
       setSavingJobFolders(false);
     }
   }, [jobFoldersBase, loadSettings]);
+
+  // Blank = switch home access off (the server refuses tunnel sign-ins with no code).
+  const handleSaveHomeAccessCode = useCallback(async () => {
+    setSavingHomeAccess(true);
+    try {
+      await api.updateSettings({ homeAccessCode });
+      setHomeAccessCode('');
+      await loadSettings();
+      toast.success(homeAccessCode ? 'Home access code saved' : 'Home access switched off');
+    } catch (err) {
+      toast.error(err.message || 'Failed to save the home access code');
+    } finally {
+      setSavingHomeAccess(false);
+    }
+  }, [homeAccessCode, loadSettings]);
+
+  const handleSaveHomeAddress = useCallback(async () => {
+    setSavingHomeAddress(true);
+    try {
+      await api.updateSettings({ homeAddress });
+      await loadSettings();
+      toast.success('Home address saved');
+    } catch (err) {
+      toast.error(err.message || 'Failed to save the home address');
+    } finally {
+      setSavingHomeAddress(false);
+    }
+  }, [homeAddress, loadSettings]);
 
   const handleSaveInactivityTimeout = useCallback(async () => {
     setSavingTimeout(true);
@@ -247,6 +280,8 @@ export function useSettings() {
     jobFoldersBase, setJobFoldersBase, handleSelectJobFolders, handleSaveJobFolders, savingJobFolders,
     inactivityTimeout, setInactivityTimeout, handleSaveInactivityTimeout, savingTimeout,
     jobNumberPrefix, setJobNumberPrefix, jobNumberNext, setJobNumberNext, handleSaveJobNumber, savingJobNumber,
+    homeAccessCode, setHomeAccessCode, handleSaveHomeAccessCode, savingHomeAccess,
+    homeAddress, setHomeAddress, handleSaveHomeAddress, savingHomeAddress,
     showPasswordModal, setShowPasswordModal,
     currentPassword, setCurrentPassword,
     newPassword, setNewPassword,

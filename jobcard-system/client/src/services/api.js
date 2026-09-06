@@ -144,19 +144,26 @@ class ApiService {
   }
 
   // Is the server answering yet? Sits outside /api and needs no sign-in, so the
-  // login screen can ask before offering the form. Never throws.
+  // login screen can ask before offering the form. Never throws: false when it
+  // isn't answering, else its health reply (which says whether this visitor is
+  // coming in through the home-access tunnel).
   async isServerReady() {
     try {
       const response = await fetch('/health');
-      return response.ok;
+      if (!response.ok) return false;
+      // A 200 that isn't JSON (e.g. a sign-in page from a gate in front of the
+      // server) still means something is answering: offer the form rather
+      // than waiting forever.
+      return await response.json().catch(() => ({}));
     } catch {
       return false;
     }
   }
 
-  // Auth endpoints
-  login(username, password) {
-    return this._post('/auth/login', { username, password });
+  // Auth endpoints. homeAccessCode is only asked for (and only checked) when
+  // the visitor is coming in through the home-access tunnel.
+  login(username, password, homeAccessCode) {
+    return this._post('/auth/login', { username, password, homeAccessCode });
   }
 
   // Sign out, in two beats. This forgets the pass here straight away and hands
