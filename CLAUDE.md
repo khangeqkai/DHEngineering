@@ -453,7 +453,7 @@ CLIENT_BUILD_PATH=/path      # Path to built React client for static serving (se
 
 ## Security Features
 
-- **Rate limiting**: Login (first 5 **failed** attempts normal, then 30-second cooldown between attempts; successful login clears failure count; resets after 15 min inactivity) and user creation (10 attempts/15 min) per IP
+- **Rate limiting**: Login (first 5 **failed** attempts normal, then 30-second cooldown between attempts; successful login clears failure count; resets after 15 min inactivity) and user creation (10 attempts/15 min) per IP. The server sets `trust proxy` to `loopback` (`server/index.js`), so a request forwarded by a Cloudflare Tunnel (`cloudflared` runs on the host and hands visitors to `localhost`) is keyed on the real home user via `X-Forwarded-For` instead of every home user sharing the loopback address; the header is only honoured from this machine, so a LAN client can't fake it
 - **Password policy**: Exactly 4 numeric digits (PIN). Enforced on create user, update user password, and change own password. Not enforced on login.
 - **Input validation**: All API inputs validated with express-validator
 - **JWT authentication**: Memory-only token storage (no localStorage), role-based access control. The token carries **identity only** — the role is looked up from the database on every request, so changing someone's role takes effect immediately rather than at their next sign-in (see Authentication above). Session ends on app close/refresh.

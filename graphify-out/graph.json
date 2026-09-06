@@ -106,7 +106,7 @@
       "label": "startRedirectListener()",
       "file_type": "code",
       "source_file": "server/index.js",
-      "source_location": "L127",
+      "source_location": "L132",
       "id": "server_index_startredirectlistener",
       "community": 46,
       "norm_label": "startredirectlistener()"
@@ -115,7 +115,7 @@
       "label": "start()",
       "file_type": "code",
       "source_file": "server/index.js",
-      "source_location": "L143",
+      "source_location": "L148",
       "id": "server_index_start",
       "community": 46,
       "norm_label": "start()"

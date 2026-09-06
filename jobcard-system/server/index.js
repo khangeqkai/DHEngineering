@@ -35,6 +35,11 @@ const { verifyPdfEngine, getPdfEngineStatus } = require('./src/utils/pdfEngine')
 
 const app = express();
 
+// A Cloudflare Tunnel on this machine forwards home users via localhost, so
+// they'd all share one address and one person's wrong PINs would rate-limit
+// everyone (auth.js keys on req.ip). Trust X-Forwarded-For from loopback only.
+app.set('trust proxy', 'loopback');
+
 // Middleware
 app.use(cors({
   origin: true,
