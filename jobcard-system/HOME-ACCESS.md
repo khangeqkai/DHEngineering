@@ -20,9 +20,9 @@ Cost: the domain name only (a few dollars a year). Cloudflare's part is free.
 
 4. Open one.dash.cloudflare.com → **Networks → Tunnels → Create a tunnel**.
 5. Choose **Cloudflared**, name it `jobcards`, save.
-6. Copy the **Windows** install command it shows.
-7. On the workshop computer: search **PowerShell**, right-click → *Run as
-   administrator*, paste the command, press Enter. It installs as a Windows
+6. Copy the long key at the end of the **Windows** install command.
+7. On the workshop computer: double-click `setup-home-access.bat` (in the app
+   folder), approve the one prompt, paste the key. It installs as a Windows
    service that starts with Windows and stays up whether the app is open or not.
 8. Back in the browser the tunnel shows **Healthy**.
 
@@ -63,3 +63,16 @@ code and their PIN. Office computers never see that box.
   stays up but every home sign-in is refused.
 - Fully: in Cloudflare delete the tunnel, then on the workshop computer run
   `cloudflared service uninstall` in an administrator PowerShell.
+
+## Testing from a development PC
+
+The tunnel expects the secure (HTTPS, port 443) server that the packaged app
+runs. Plain `npm start` is dev-only (HTTP on 3000), so for a home test run:
+
+```
+npm run prod
+```
+
+It builds the client and starts the server the same way the installed app
+does. Sign in at `https://localhost`, set the Home Access address and code,
+then try the address from a phone on mobile data. Ctrl+C stops it.
