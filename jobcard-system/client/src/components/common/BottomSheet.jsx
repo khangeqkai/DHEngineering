@@ -63,7 +63,7 @@ export default function BottomSheet({
     }
   }, [onClose, modalId]);
 
-  // Focus management + scroll lock — keyed only on open/close so a changing
+  // Focus management — keyed only on open/close so a changing
   // onClose identity can't keep snapping focus back to the dialog mid-edit.
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -75,11 +75,9 @@ export default function BottomSheet({
     // Move focus into the dialog so the first Tab lands on a real field
     // rather than the close button (first in the DOM) or the page behind.
     dialogRef.current?.focus();
-    document.body.style.overflow = 'hidden';
 
     return () => {
       removeModal(modalId);
-      document.body.style.overflow = '';
       // Hand focus back to wherever it was before the dialog opened.
       previousFocusRef.current?.focus?.();
     };

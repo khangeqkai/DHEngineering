@@ -15,6 +15,8 @@ const {
   isOpenTimerConflict,
   sendOpenTimerConflict,
   toBoolFlag,
+  wholeQty,
+  findEntryForJob,
   checkCriticalInspection,
   toCamelCase
 } = require('../utils/timeEntryHelpers');
@@ -181,14 +183,8 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
   try {
     const { id, entryId } = req.params;
 
-    const existing = timeEntryQueries.getById.get(entryId);
-    if (!existing) {
-      return res.status(404).json({ error: 'Time entry not found' });
-    }
-
-    if (existing.jobcard_id !== id) {
-      return res.status(403).json({ error: 'Time entry does not belong to this job card' });
-    }
+    const existing = findEntryForJob(res, id, entryId);
+    if (!existing) return;
 
     // Only the owner or an admin/manager can stop
     if (existing.user_id !== req.user.userId && !isManagement(req.user.role)) {
@@ -303,7 +299,7 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
         workerId,
         itemId,
         data.machineNumber || null,
-        data.qty || null,
+        wholeQty(data.qty),
         data.description || null,
         startTime,
         endTime,
@@ -375,14 +371,8 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     const { id, entryId } = req.params;
     const data = req.body;
 
-    const existing = timeEntryQueries.getById.get(entryId);
-    if (!existing) {
-      return res.status(404).json({ error: 'Time entry not found' });
-    }
-
-    if (existing.jobcard_id !== id) {
-      return res.status(403).json({ error: 'Time entry does not belong to this job card' });
-    }
+    const existing = findEntryForJob(res, id, entryId);
+    if (!existing) return;
 
     // Only the owner or an admin/manager may edit a time entry
     if (existing.user_id !== req.user.userId && !isManagement(req.user.role)) {
@@ -474,7 +464,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
         workerId,
         itemId,
         data.machineNumber || null,
-        data.qty || null,
+        wholeQty(data.qty),
         data.description || null,
         scrapBinQty,
         scrapRecycleQty,
@@ -505,7 +495,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     const changes = {};
     const fieldsToTrack = [
       ['machine_number', 'machineNumber', data.machineNumber || null],
-      ['qty', 'qty', data.qty || null],
+      ['qty', 'qty', wholeQty(data.qty)],
       ['description', 'description', data.description || null],
       ['scrap_bin_qty', 'scrapBin', scrapBinQty],
       ['scrap_recycle_qty', 'scrapRecycle', scrapRecycleQty],
@@ -564,14 +554,8 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
   try {
     const { id, entryId } = req.params;
 
-    const existing = timeEntryQueries.getById.get(entryId);
-    if (!existing) {
-      return res.status(404).json({ error: 'Time entry not found' });
-    }
-
-    if (existing.jobcard_id !== id) {
-      return res.status(403).json({ error: 'Time entry does not belong to this job card' });
-    }
+    const existing = findEntryForJob(res, id, entryId);
+    if (!existing) return;
 
     if (!existing.end_time) {
       return res.status(400).json({ error: 'Stop the timer before deleting this entry' });

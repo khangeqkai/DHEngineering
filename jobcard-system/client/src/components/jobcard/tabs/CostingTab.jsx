@@ -125,6 +125,9 @@ export default function CostingTab({
 
   // The four labour tiers, split by WHEN the work happened. The base rate is set
   // once (above the table) and each tier's rate derives from it via its multiplier.
+  // A cleared multiplier box ('') means "follow the standard figure" — the same rule
+  // the totals use — so the chip and rate column never read ×0.00 while it sits blank.
+  const shownMult = (k) => costingForm[k] === '' ? costingForm[`${k}Calculated`] : costingForm[k];
   // The hours are editable on every tier; the two overtime rows also let the admin
   // type a job-specific multiplier over the company setting (multName set = editable).
   const tiers = [
@@ -135,7 +138,7 @@ export default function CostingTab({
       total: totals.labourTotal
     },
     {
-      label: 'Overtime', multiplier: costingForm.labourOt1Multiplier, tierKey: 'Ot1',
+      label: 'Overtime', multiplier: shownMult('labourOt1Multiplier'), tierKey: 'Ot1',
       multName: 'labourOt1Multiplier', multCalculated: costingForm.labourOt1MultiplierCalculated,
       multOverridden: costingForm.labourOt1MultiplierOverridden,
       hoursName: 'labourOt1Hours', hoursValue: costingForm.labourOt1Hours,
@@ -143,7 +146,7 @@ export default function CostingTab({
       total: totals.labourOt1Total
     },
     {
-      label: 'Overtime', multiplier: costingForm.labourOt2Multiplier, tierKey: 'Ot2',
+      label: 'Overtime', multiplier: shownMult('labourOt2Multiplier'), tierKey: 'Ot2',
       multName: 'labourOt2Multiplier', multCalculated: costingForm.labourOt2MultiplierCalculated,
       multOverridden: costingForm.labourOt2MultiplierOverridden,
       hoursName: 'labourOt2Hours', hoursValue: costingForm.labourOt2Hours,

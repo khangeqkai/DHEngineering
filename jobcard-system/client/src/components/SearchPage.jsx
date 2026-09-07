@@ -11,10 +11,12 @@ import { ACTIVITY_FIELDS } from './searchFields';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { formatHistoryValue } from '../utils/formatters';
 import { statusToken } from './JobCardList.constants';
+import { PRIORITY_OPTIONS } from './jobcard/constants';
 import { actionColor, ACTION_NAMES } from '../utils/activityColors';
 
 const STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'DONE', 'INVOICED'];
-const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+// Same list the job screen writes, so every chip can match and every stored value has a chip.
+const PRIORITIES = PRIORITY_OPTIONS.map(p => p.value);
 const ENTITY_TYPES = ['jobcard', 'company', 'contact', 'supplier', 'user', 'machine', 'auth', 'tag', 'qa_level', 'system'];
 const SCOPES = [
   { key: 'all', label: 'All', icon: Search },

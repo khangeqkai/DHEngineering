@@ -21,16 +21,29 @@ export function useJobCardCosting({
   // those zeros over the job's real figures.
   const [loadFailed, setLoadFailed] = useState(false);
 
+  // Bumped whenever the job screen closes or switches job. The fetch is slow — it walks
+  // every logged minute — so a reply can land after the job it was for has been closed
+  // and another opened. Without this check that reply painted the old job's figures
+  // onto the new one, and the next keystroke saved them there. Bumped in an effect
+  // CLEANUP, not in resetCosting: the load effect below runs before the modal's open
+  // effect calls resetCosting, so a bump there threw away the new job's own reply and
+  // left the tab on "Loading pricing…" for good. Cleanups run before any effect of the
+  // same commit, so the load effect always reads the fresh counter.
+  const loadSeq = useRef(0);
+  useEffect(() => () => { loadSeq.current += 1; }, [isOpen, jobCardId]);
+
   const loadCosting = useCallback(async () => {
     if (!isEdit || !jobCardId || !isAdmin) return;
+    const seq = loadSeq.current;
     try {
       const costingRes = await api.getCosting(jobCardId);
+      if (seq !== loadSeq.current) return; // a different opening now — not ours
       if (costingRes) {
         setCosting(mapCostingResponseToData(costingRes));
         setLoadFailed(false);
       }
     } catch {
-      setLoadFailed(true);
+      if (seq === loadSeq.current) setLoadFailed(true);
     }
   }, [isEdit, jobCardId, isAdmin]);
 

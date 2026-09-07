@@ -61,6 +61,9 @@ const migrations = [
   { table: 'time_entries', column: 'equipment_checks_comments', type: 'TEXT' },
   { table: 'time_entries', column: 'item_id', type: 'TEXT' },
   { table: 'job_items', column: 'material', type: 'TEXT' },
+  // Added 2026-04-29 (per-line treatments). Every database made since the
+  // June 2026 install already has it; this only guards a pre-April file.
+  { table: 'job_items', column: 'treatments', type: 'TEXT' },
   { table: 'job_items', column: 'job_type', type: 'TEXT' },
   { table: 'job_items', column: 'drawings_type', type: 'TEXT' },
   { table: 'job_items', column: 'customer_property', type: 'TEXT' },

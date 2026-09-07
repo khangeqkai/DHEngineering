@@ -77,7 +77,7 @@ export default function TimeEntryForm({
         </div>
         <div className="form-group">
           <label>Qty</label>
-          <input type="text" name="qty" value={timeEntryForm.qty} onChange={handleTimeEntryChange} />
+          <input type="text" inputMode="numeric" name="qty" value={timeEntryForm.qty} onChange={handleTimeEntryChange} />
         </div>
         <div className="form-group">
           <label>Scrap — Bin</label>

@@ -102,6 +102,30 @@ function sendOpenTimerConflict(res, userId, knownActive) {
   return true;
 }
 
+// Look up a work block that must belong to the given job. Answers the request itself
+// (404 / 403) and returns null when it doesn't, so a route can just `if (!row) return`.
+function findEntryForJob(res, jobcardId, entryId) {
+  const existing = timeEntryQueries.getById.get(entryId);
+  if (!existing) {
+    res.status(404).json({ error: 'Time entry not found' });
+    return null;
+  }
+  if (existing.jobcard_id !== jobcardId) {
+    res.status(403).json({ error: 'Time entry does not belong to this job card' });
+    return null;
+  }
+  return existing;
+}
+
+// Good pieces are counted, not measured: every reader (auto-status, statistics, the
+// part's progress bar) must agree, so the stored value is a whole number or NULL.
+// Blank/garbage → NULL (nothing recorded), "2.5" → 2, negatives → 0.
+function wholeQty(v) {
+  if (v == null || String(v).trim() === '') return null;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? Math.max(0, n) : null;
+}
+
 // Read a yes/no inspection answer from a request body into the stored form
 // (1 = yes, 0 = no, null = not answered). Accepts booleans, 0/1, or yes/no strings.
 function toBoolFlag(v) {
@@ -189,6 +213,8 @@ module.exports = {
   isOpenTimerConflict,
   sendOpenTimerConflict,
   toBoolFlag,
+  wholeQty,
+  findEntryForJob,
   flagToBool,
   isCriticalJob,
   checkCriticalInspection,

@@ -387,7 +387,10 @@ export async function exportJobCardList(cards, onProgress, includeCosting = true
 
 export async function exportJobCardsFull(onProgress, includeCosting = true) {
   onProgress?.('Fetching job cards...');
-  const cards = await api.getJobcards();
+  // "All" means open and filed (invoiced) jobs together; the list route only
+  // ever returns one or the other, so ask twice and join.
+  const [open, filed] = await Promise.all([api.getJobcards(), api.getJobcards({ archived: true })]);
+  const cards = [...open, ...filed];
   if (!cards.length) return false;
 
   const wb = await buildJobCardWorkbook(cards, onProgress, includeCosting);

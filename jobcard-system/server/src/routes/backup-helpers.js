@@ -154,6 +154,17 @@ function archiveBackup({ metadata, tables, collected, outputPath, walkSkipped, p
       reject(err);
     });
 
+    // The destination can fail on its own (folder gone, drive unplugged, full,
+    // read-only). pipe() re-emits that on `output`, and an 'error' with no listener
+    // throws out of the event loop and kills the whole server — not just this
+    // request. Route it into the same reject so the admin gets "backup failed".
+    output.on('error', (err) => {
+      if (settled) return;
+      settled = true;
+      archive.abort();
+      reject(err);
+    });
+
     archive.on('warning', (err) => {
       if (err.code === 'ENOENT') {
         // A collected file disappeared before its bytes could be appended.

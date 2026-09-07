@@ -63,7 +63,11 @@ function readOtSettings() {
 function computeLiveCosting(jobId, incoming) {
   const existing = jobCostingQueries.getByJobcard.get(jobId) || null;
   const src = incoming || {};
-  const hasIncoming = !!incoming;
+  // Decided per figure, not per request: a save that carries some boxes and not others
+  // keeps the stored value for the ones it left out. (Checking only "was anything
+  // sent?" made a partial body zero every figure it didn't mention.) The screen sends
+  // every box, so today this only guards a hand-made request or a future partial save.
+  const has = (key) => Object.prototype.hasOwnProperty.call(src, key);
 
   const ot = readOtSettings();
   // This job's own overtime rules: its captured copy when it has one, else live settings.
@@ -94,14 +98,14 @@ function computeLiveCosting(jobId, incoming) {
   // `min` (0 for hours; 1 for multipliers, since below 1 would undercharge OT).
   // Take it from the submitted form on a save, else keep whatever the row holds.
   const pickOverride = (incomingKey, existingCol, min = 0) => {
-    if (hasIncoming) {
+    if (has(incomingKey)) {
       const v = src[incomingKey];
       return (v == null || v === '') ? null : Math.max(min, Number(v) || 0);
     }
     return existing && existing[existingCol] != null ? existing[existingCol] : null;
   };
   const pickNum = (incomingKey, existingCol, dflt) => {
-    if (hasIncoming) return Math.max(0, Number(src[incomingKey]) || 0);
+    if (has(incomingKey)) return Math.max(0, Number(src[incomingKey]) || 0);
     return existing ? num(existing[existingCol], dflt) : dflt;
   };
   // Like pickNum but with a non-zero default for an omitted field. Submitted values
@@ -109,13 +113,13 @@ function computeLiveCosting(jobId, incoming) {
   // the client, which snaps a minus sign to 0); a stored value is used as-is, so an
   // old row that already holds a negative margin keeps it until someone edits it.
   const pickRaw = (incomingKey, existingCol, dflt) => {
-    if (hasIncoming) return Math.max(0, num(src[incomingKey], dflt));
+    if (has(incomingKey)) return Math.max(0, num(src[incomingKey], dflt));
     return existing ? num(existing[existingCol], dflt) : dflt;
   };
   // Free-text note on a manual cost line. Trimmed and length-capped; an empty note is
   // stored as NULL so "no note" is one value rather than a mix of null and ''.
   const pickText = (incomingKey, existingCol) => {
-    const raw = hasIncoming ? src[incomingKey] : (existing ? existing[existingCol] : null);
+    const raw = has(incomingKey) ? src[incomingKey] : (existing ? existing[existingCol] : null);
     const text = typeof raw === 'string' ? raw.trim().slice(0, 300) : '';
     return text || null;
   };

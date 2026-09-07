@@ -45,6 +45,24 @@ function scheduleDayToWholeHours(day) {
 }
 
 // Run database migrations for existing databases
+// Good pieces on a work block are stored as whole numbers (see wholeQty in
+// timeEntryHelpers). Fold anything saved before that rule into the same shape wholeQty
+// would store today: text with no leading number ("abc", "") → NULL (nothing recorded),
+// "2.5" → "2", "-2" → "0". Idempotent: a whole number already round-trips unchanged
+// and is skipped by the WHERE, and a NULL is never touched. Runs on every boot and
+// at the end of a backup restore, so a pre-rule backup can't bring half-pieces back.
+function foldGoodPiecesToWhole() {
+  const qtyBlank = db.prepare(`
+    UPDATE time_entries SET qty = NULL
+    WHERE qty IS NOT NULL AND TRIM(qty) NOT GLOB '[-+0-9]*'
+  `).run();
+  const qtyFix = db.prepare(`
+    UPDATE time_entries SET qty = CAST(MAX(0, CAST(qty AS INTEGER)) AS TEXT)
+    WHERE qty IS NOT NULL AND qty != CAST(MAX(0, CAST(qty AS INTEGER)) AS TEXT)
+  `).run();
+  if (qtyBlank.changes + qtyFix.changes > 0) logger.info({ blanked: qtyBlank.changes, rounded: qtyFix.changes }, 'Migration: Folded good-piece counts to whole numbers');
+}
+
 function runMigrations() {
   logger.info('Running migrations...');
 
@@ -59,6 +77,8 @@ function runMigrations() {
     settingsQueries.upsert.run(wipeFlagKey, new Date().toISOString());
     logger.info({ deleted: result.changes }, 'Migration: Wiped legacy time_entries for per-item timer');
   }
+
+  foldGoodPiecesToWhole();
 
   // Special labour changed from an auto-tally of "special"-marked time blocks into a
   // manually-entered costing line. Those blocks are being unmarked, so their hours now
@@ -342,4 +362,4 @@ async function initializeDatabase() {
   logger.info('Database initialization complete');
 }
 
-module.exports = { initializeDatabase };
+module.exports = { initializeDatabase, foldGoodPiecesToWhole };

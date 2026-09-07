@@ -54,12 +54,10 @@ export default function ConfirmDialog({
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    document.body.style.overflow = 'hidden';
 
     return () => {
       removeModal(modalId);
       document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
     };
   }, [isOpen, onCancel, modalId]);
 

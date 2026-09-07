@@ -14,20 +14,13 @@
   min-height: 38px;
 }
 
-/* Keep the Columns button + list/calendar switch pinned to the far right of the
+/* Keep the Columns button pinned to the far right of the
    filter row, even when the other controls wrap onto a second line. */
 .filters-right {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   margin-left: auto;
-  flex-shrink: 0;
-}
-
-.view-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
   flex-shrink: 0;
 }
 

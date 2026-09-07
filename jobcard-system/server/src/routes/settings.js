@@ -12,6 +12,7 @@ const { lanIpv4s } = require('../utils/netHost');
 const homeAccess = require('./settings-home-access');
 const { recordHistory } = require('../db/helpers');
 const { normalizeStoredTimestamps } = require('../db/normalizeTimestamps');
+const { foldGoodPiecesToWhole } = require('../db/init');
 const { splitCustomersInBackup } = require('../db/splitCustomers');
 const { setMaintenance } = require('../middleware/maintenance');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
@@ -464,6 +465,13 @@ router.post('/import-backup', requireAdmin, [
             normalizeStoredTimestamps();
           } catch (tsErr) {
             logger.error({ err: tsErr }, 'Backup restore: failed to convert stored timestamps to ISO-8601 UTC (records restored; next restart will retry)');
+          }
+          // Same for good-piece counts: a backup from before the whole-number rule can
+          // carry "2.5", which reads Done on the part but In Progress on the job.
+          try {
+            foldGoodPiecesToWhole();
+          } catch (qtyErr) {
+            logger.error({ err: qtyErr }, 'Backup restore: failed to fold good-piece counts to whole numbers (records restored; next restart will retry)');
           }
         });
 
