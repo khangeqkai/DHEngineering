@@ -1,6 +1,8 @@
 // Data mapping utilities for JobCardModal
 // Consolidates API response to form state conversions
 
+import { isSavedLineItem } from './jobCardValidation.mjs';
+
 export function mapTimeEntryFromApi(e) {
   return {
     id: e.id,
@@ -193,7 +195,7 @@ export function buildJobcardPayload({ formData, contactFormData, assignees, vali
       // so the server keeps each line's identity across the edit and a worker's
       // recorded time/scrap stays with the right line. New lines have a temporary
       // local id and are left without one so the server makes one.
-      ...(typeof item.id === 'string' && item.id.startsWith('item:') ? { id: item.id } : {}),
+      ...(isSavedLineItem(item) ? { id: item.id } : {}),
       itemNumber: item.itemNumber || idx + 1,
       qty: item.qty,
       description: item.description,
