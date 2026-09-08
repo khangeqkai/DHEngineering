@@ -37,7 +37,9 @@ export default function LineItemSupplierPicker({
 
   const selected = suppliers.find(s => s.id === supplierId) || null;
   const selectedRetired = !!supplierId && (!selected || !isActive(selected));
-  const selectedName = selected ? selected.name : (supplierName || 'Unknown');
+  // No supplier chosen → empty, so the box shows its "No supplier" hint rather than a
+  // word that reads like a supplier's name. A retired one keeps its saved name.
+  const selectedName = selected ? selected.name : (supplierName || '');
 
   const typed = query.trim();
   // Empty box shows the treatment's providers; typing searches all suppliers.

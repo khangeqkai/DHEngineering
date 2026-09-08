@@ -299,22 +299,28 @@ router.post('/:id/templates', authenticate, requireManagement, (req, res) => {
       return res.status(400).json({ error: decodeErr.message });
     }
 
-    // Save file to disk if folder is configured. The folder is located (or
-    // created) by the code in its name, so it works regardless of the level name.
+    // The file on disk IS the template: a record with no file behind it makes every
+    // later job on this level fail its pre-save check ("missing form file"). So the
+    // write must succeed before any record is added — no folder, no record. The folder
+    // is located (or created) by the code in its name, so the level name can change.
     const basePath = getQaLevelsBasePath();
-    if (basePath) {
-      const levelFolder = ensureQaLevelFolder(basePath, level.id, level.name);
-      if (levelFolder) {
-        try {
-          const filePath = path.join(levelFolder, sanitizedFileName);
-          if (isWithinBase(levelFolder, filePath)) {
-            fs.writeFileSync(filePath, buffer);
-            logger.info({ filePath }, 'Saved QA template file');
-          }
-        } catch (err) {
-          logger.error({ err }, 'Failed to save QA template file');
-        }
-      }
+    if (!basePath) {
+      return res.status(400).json({ error: 'Set the job folders location in Settings before uploading a form.' });
+    }
+    const levelFolder = ensureQaLevelFolder(basePath, level.id, level.name);
+    if (!levelFolder) {
+      return res.status(500).json({ error: "Couldn't create this level's folder under the job folders location. Check the drive is reachable and try again." });
+    }
+    const filePath = path.join(levelFolder, sanitizedFileName);
+    if (!isWithinBase(levelFolder, filePath)) {
+      return res.status(400).json({ error: 'Invalid file name' });
+    }
+    try {
+      fs.writeFileSync(filePath, buffer);
+      logger.info({ filePath }, 'Saved QA template file');
+    } catch (err) {
+      logger.error({ err, filePath }, 'Failed to save QA template file');
+      return res.status(500).json({ error: "Couldn't write the form file to the job folders location. Check the drive is reachable and try again." });
     }
 
     qaLevelTemplateQueries.create.run(templateId, id, sanitizedFileName, finalDisplayName);

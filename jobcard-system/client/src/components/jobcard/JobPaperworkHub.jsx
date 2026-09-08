@@ -257,7 +257,9 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarni
   };
 
   // --- Camera ---
-  const openCamera = (cat) => { setCameraCategory(cat); setView('camera'); camera.startCamera(); };
+  // Every Photo session starts empty: shots from a session left with Back/Escape were
+  // never saved, and must not ride along into the next folder's Save.
+  const openCamera = (cat) => { camera.setPhotos([]); setCameraCategory(cat); setView('camera'); camera.startCamera(); };
   const saveCameraPhotos = async () => {
     if (camera.photos.length === 0) return;
     await files.savePhotos(camera.photos, cameraCategory, () => camera.setPhotos([]), ownerForCategory(cameraCategory));

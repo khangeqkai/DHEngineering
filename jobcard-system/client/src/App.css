@@ -1015,8 +1015,8 @@ select.has-retired option.retired-option {
 /* ========================================
    JOB STATUS COLORS — single source of truth
    One class per status, fed by the --status-* palette in index.css.
-   Sets the --s-* custom props (consumed by the job-card pill and
-   calendar cards) and the direct paint props (consumed by .badge,
+   Sets the --s-* custom props (consumed by the job-card pill) and
+   the direct paint props (consumed by .badge,
    whose dot follows currentColor). Used everywhere a job status shows.
    ======================================== */
 .status-quote,

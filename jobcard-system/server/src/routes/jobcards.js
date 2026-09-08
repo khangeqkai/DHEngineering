@@ -15,6 +15,7 @@ const {
   historyQueries,
   recordHistory
 } = require('../db/database');
+const { db } = require('../db/connection');
 const { formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings } = require('./jobcard-helpers');
 const jobcardMutationsRoutes = require('./jobcard-mutations');
 const jobcardPrintoutRoutes = require('./jobcard-printout');
@@ -281,12 +282,16 @@ router.patch('/:id/status', authenticate, (req, res) => {
     }
 
     const changes = { status: { from: existing.status, to: status } };
+    const invoicedDate = isInvoicingTransition ? new Date().toISOString() : null;
 
-    jobcardQueries.updateStatus.run(status, req.user.userId, id);
+    // Status and the filing-away must land together (same as the PUT route): a failure
+    // between the two left a job reading INVOICED while still sitting in the open list.
+    db.transaction(() => {
+      jobcardQueries.updateStatus.run(status, req.user.userId, id);
+      if (isInvoicingTransition) jobcardQueries.archive.run(invoicedDate, req.user.userId, id);
+    })();
 
     if (isInvoicingTransition) {
-      const invoicedDate = new Date().toISOString();
-      jobcardQueries.archive.run(invoicedDate, req.user.userId, id);
       changes.archived = { from: false, to: true };
       changes.invoicedDate = { from: null, to: invoicedDate };
       // Invoicing just files the job away — no costing snapshot needed. The job owns its

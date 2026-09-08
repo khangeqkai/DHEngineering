@@ -144,19 +144,60 @@ class ApiService {
   }
 
   // Is the server answering yet? Sits outside /api and needs no sign-in, so the
-  // login screen can ask before offering the form. Never throws.
+  // login screen can ask before offering the form. Never throws: false when it
+  // isn't answering, else its health reply (which says whether this visitor is
+  // coming in through the home-access tunnel).
   async isServerReady() {
     try {
       const response = await fetch('/health');
-      return response.ok;
+      if (!response.ok) return false;
+      // A 200 that isn't JSON (e.g. a sign-in page from a gate in front of the
+      // server) still means something is answering: offer the form rather
+      // than waiting forever.
+      return await response.json().catch(() => ({}));
     } catch {
       return false;
     }
   }
 
-  // Auth endpoints
-  login(username, password) {
-    return this._post('/auth/login', { username, password });
+  // Auth endpoints. homeAccessCode is only asked for (and only checked) when
+  // the visitor is coming in through the home-access tunnel.
+  login(username, password, homeAccessCode) {
+    return this._post('/auth/login', { username, password, homeAccessCode });
+  }
+
+  // Sign out, in two beats. This forgets the pass here straight away and hands
+  // back the one job left: telling the server to tear it up. They are split so
+  // the caller can let last-moment work land first — the moment the server
+  // cancels the pass, anything still on its way is refused — without leaving
+  // the pass readable on this machine while it waits.
+  beginLogout() {
+    const token = this.token;
+    this.setToken(null);
+    // We are the ones ending this session, so a request that was already on its
+    // way must not come back as "you were signed in somewhere else". Re-armed
+    // on the next sign-in by setToken.
+    this.sessionInvalidated = true;
+    return async () => {
+      if (!token) return;
+      try {
+        // Sent on its own, not through the shared sender: this carries the pass
+        // we just gave up, so its reply must never reach the forced-sign-out
+        // handler. If this person has signed back in meanwhile, that handler
+        // would sign the new person straight out again.
+        await fetch(`${API_URL}/auth/logout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+        });
+      } catch {
+        // Already signed out on this machine; nothing useful to say.
+      }
+    };
+  }
+
+  // Sign out now, with nothing to wait for.
+  logout() {
+    return this.beginLogout()();
   }
 
   getMe() {
@@ -230,8 +271,6 @@ class ApiService {
   }
 
   // Job Assignees
-  addAssignee(jobcardId, userId) { return this._post(`/jobcards/${jobcardId}/assignees`, { userId }); }
-  removeAssignee(jobcardId, userId) { return this._del(`/jobcards/${jobcardId}/assignees/${userId}`); }
   selfAssign(jobcardId) { return this._post(`/jobcards/${jobcardId}/assignees/self`); }
   selfUnassign(jobcardId) { return this._del(`/jobcards/${jobcardId}/assignees/self`); }
 
@@ -373,6 +412,16 @@ class ApiService {
   deleteQaLevel(id) { return this._del(`/qa-levels/${id}`); }
   uploadQaTemplate(levelId, data) { return this._post(`/qa-levels/${levelId}/templates`, data); }
   deleteQaTemplate(levelId, templateId) { return this._del(`/qa-levels/${levelId}/templates/${templateId}`); }
+
+  // Statistics
+  getStatistics(params = {}) {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') query.set(k, String(v));
+    });
+    const qs = query.toString();
+    return this.request(`/statistics${qs ? `?${qs}` : ''}`);
+  }
 }
 
 export const api = new ApiService();

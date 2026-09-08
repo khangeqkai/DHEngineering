@@ -20,7 +20,8 @@ const OVERRIDE_FLAG = {
 // The lowest value each box accepts, matching the server's clamps exactly so the
 // on-screen totals always equal what a save will store. The two overtime multipliers
 // floor at ×1 (below 1 would undercharge overtime — the server refuses it), so
-// clearing a multiplier box snaps to ×1 instead of silently pricing that tier at ×0.
+// a typed 0.5 snaps to ×1 instead of silently pricing that tier at ×0. (A CLEARED box
+// is different: it drops the hand-edit and follows the logged / company figure.)
 // Everything else floors at 0.
 const FIELD_MIN = {
   labourOt1Multiplier: 1,
@@ -161,6 +162,14 @@ export function useCosting(jobCardId, {
     const flag = OVERRIDE_FLAG[name];
     const min = FIELD_MIN[name] ?? 0;
     const typed = parseFloat(value);
+    // A cleared override box means "go back to the logged / company figure", not "0 by
+    // hand". Leave it blank on screen and drop the hand-edit: the save then sends no
+    // override, and the reply fills the box with the logged figure. Typing 0 still means 0.
+    if (flag && !Number.isFinite(typed)) {
+      markEdited();
+      setCostingForm(prev => ({ ...prev, [name]: '', [flag]: false }));
+      return;
+    }
     // A value below the floor is snapped up, but never silently — say why the typed
     // figure vanished. A cleared box (NaN) isn't an attempt at a low value, so no nag;
     // the fixed toast id keeps repeated keystrokes updating one message, not stacking.
@@ -216,10 +225,13 @@ export function useCosting(jobCardId, {
   }, [markEdited]);
 
   const calculateCostingTotals = useCallback(() => {
-    const labourTotal = costingForm.labourHours * costingForm.labourRate;
-    const labourOt1Total = costingForm.labourOt1Hours * costingForm.labourRate * costingForm.labourOt1Multiplier;
-    const labourOt2Total = costingForm.labourOt2Hours * costingForm.labourRate * costingForm.labourOt2Multiplier;
-    const labourHolidayTotal = costingForm.labourHolidayHours * costingForm.labourRate * costingForm.labourHolidayMultiplier;
+    // A cleared override box ('') is "follow the logged / company figure", so the totals
+    // price it at that figure — not at 0 — while the box sits blank waiting for the reply.
+    const fig = (k) => costingForm[k] === '' ? (costingForm[`${k}Calculated`] || 0) : costingForm[k];
+    const labourTotal = fig('labourHours') * costingForm.labourRate;
+    const labourOt1Total = fig('labourOt1Hours') * costingForm.labourRate * fig('labourOt1Multiplier');
+    const labourOt2Total = fig('labourOt2Hours') * costingForm.labourRate * fig('labourOt2Multiplier');
+    const labourHolidayTotal = fig('labourHolidayHours') * costingForm.labourRate * costingForm.labourHolidayMultiplier;
     const labourSpecialTotal = costingForm.labourSpecialHours * costingForm.labourSpecialRate;
     const materialsTotal = costingForm.materialsCost * (1 + costingForm.materialsProfitPercent / 100);
     const subcontractorTotal = costingForm.subcontractorCost * (1 + costingForm.subcontractorProfitPercent / 100);
@@ -438,6 +450,10 @@ export function useCosting(jobCardId, {
     invoicedAck.current = false;
     declinedAtSeq.current = null;
     loadedRef.current = null;
+    // Count the reset as an edit, so a close-time save that resolves after the job is
+    // reopened fails runSave's "nothing typed since" check and is dropped rather than
+    // adopted onto the freshly blanked form (which would file blank notes as loaded).
+    editSeq.current += 1;
     setCostingForm(getDefaultCostingForm());
   }, []);
 

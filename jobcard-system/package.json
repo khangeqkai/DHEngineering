@@ -7,6 +7,7 @@
     "server": "cd server && npm run dev",
     "client": "cd client && npm start",
     "build": "cd client && npm run build",
+    "prod": "npm run build && node -e \"process.env.NODE_ENV='production';require('./server/index.js')\"",
     "setup": "node scripts/setup.js",
     "lan": "node scripts/launch.js lan",
     "seed": "node scripts/launch.js seed",

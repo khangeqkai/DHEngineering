@@ -13,6 +13,7 @@ import TagManagement from './components/TagManagement';
 import LabourRatesSettings from './components/LabourRatesSettings';
 import Settings from './components/Settings';
 import SearchPage from './components/SearchPage';
+import Statistics from './components/Statistics';
 import Layout from './components/Layout';
 import './App.css';
 
@@ -23,7 +24,7 @@ function PrivateRoute({ children }) {
     return <div className="loading">Loading...</div>;
   }
 
-  return user ? children : <Navigate to="/login" />;
+  return user ? children : <Navigate to="/login" replace />;
 }
 
 function AdminRoute({ children }) {
@@ -34,11 +35,11 @@ function AdminRoute({ children }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
   if (user.role !== 'admin') {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -54,11 +55,11 @@ function ManagementRoute({ children }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
   if (!isManagement(user)) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -127,6 +128,14 @@ function App() {
         <Route index element={<Navigate to="/jobcards" replace />} />
         <Route path="search" element={<SearchPage />} />
         <Route path="jobcards" element={<JobCardList />} />
+        <Route
+          path="statistics"
+          element={
+            <ManagementRoute>
+              <Statistics />
+            </ManagementRoute>
+          }
+        />
         <Route
           path="contacts"
           element={

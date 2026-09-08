@@ -8,7 +8,8 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateLogin, validateCreateUser, validateUpdatePreferences } = require('../middleware/validation');
-const { userQueries, recordHistory } = require('../db/database');
+const { userQueries, recordHistory, getSettings } = require('../db/database');
+const { isViaTunnel, clientIp } = require('../utils/homeAccess');
 
 const router = express.Router();
 
@@ -83,7 +84,7 @@ const userCreationLimiter = rateLimit({
 router.post('/login', validateLogin, async (req, res) => {
   try {
     const { username, password } = req.body;
-    const ip = req.ip;
+    const ip = clientIp(req);
 
     // Check rate limit before processing
     const waitSeconds = checkLoginRateLimit(ip);
@@ -92,6 +93,27 @@ router.post('/login', validateLogin, async (req, res) => {
       return res.status(429).json({
         error: `Too many attempts. Please wait ${waitSeconds} seconds before trying again.`
       });
+    }
+
+    // A visitor through the home-access tunnel must give the shared home access
+    // code before the PIN is even looked at: the tunnel address is public, and
+    // a 4-digit PIN alone is not enough of a lock out there. No code set = home
+    // access is off.
+    if (isViaTunnel(req)) {
+      const codeHash = getSettings().home_access_code;
+      if (!codeHash) {
+        return res.status(403).json({ error: 'Home access is not switched on. Ask an admin to set a home access code.' });
+      }
+      const { homeAccessCode } = req.body;
+      const codeOk = typeof homeAccessCode === 'string' && await bcrypt.compare(homeAccessCode, codeHash);
+      if (!codeOk) {
+        recordLoginFailure(ip);
+        logger.warn({ username, reason: 'invalid_home_access_code' }, 'Failed login attempt');
+        recordHistory('auth', 'login', 'login_failed', null, username, {
+          reason: { from: null, to: 'invalid_home_access_code' }
+        });
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
     }
 
     // Find user
@@ -153,6 +175,22 @@ router.post('/login', validateLogin, async (req, res) => {
   } catch (err) {
     logger.error({ err }, 'Login error');
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Sign out: cancel this session on the server so the pass this person is
+// holding can never be used again. Without it the pass stayed good for days
+// after they left the machine.
+router.post('/logout', authenticate, (req, res) => {
+  try {
+    userQueries.updateSessionToken.run(null, req.user.userId);
+    recordHistory('user', req.user.userId, 'logout', req.user.userId, req.user.name || req.user.username, {
+      username: { from: req.user.username, to: null }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, 'Logout error');
+    res.status(500).json({ error: 'Logout failed' });
   }
 });
 

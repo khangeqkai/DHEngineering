@@ -19,9 +19,11 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
 
   const handleTimeEntryChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
+    // Pieces are counted, so the qty box only takes digits (matches the stop-timer form).
+    const clean = name === 'qty' ? value.replace(/\D/g, '') : value;
     setTimeEntryForm(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : clean
     }));
   }, []);
 

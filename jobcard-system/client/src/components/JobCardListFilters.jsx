@@ -1,4 +1,4 @@
-import { Calendar, List, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import { STATUS_OPTIONS } from './JobCardList.constants';
 
 export default function JobCardListFilters({
@@ -13,8 +13,6 @@ export default function JobCardListFilters({
   onMyJobsOnlyChange,
   filter,
   onFilterChange,
-  viewMode,
-  onViewModeChange,
   columnsMenu
 }) {
   return (
@@ -63,23 +61,7 @@ export default function JobCardListFilters({
         </>
       )}
       <div className="filters-right">
-        {viewMode === 'list' && columnsMenu}
-        <div className="view-toggle">
-        <button
-          className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => onViewModeChange('list')}
-          title="List View"
-        >
-          <List size={16} />
-        </button>
-        <button
-          className={`btn btn-sm ${viewMode === 'calendar' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => onViewModeChange('calendar')}
-          title="Calendar View"
-        >
-          <Calendar size={16} />
-        </button>
-        </div>
+        {columnsMenu}
       </div>
     </div>
   );

@@ -387,10 +387,136 @@ export async function exportJobCardList(cards, onProgress, includeCosting = true
 
 export async function exportJobCardsFull(onProgress, includeCosting = true) {
   onProgress?.('Fetching job cards...');
-  const cards = await api.getJobcards();
+  // "All" means open and filed (invoiced) jobs together; the list route only
+  // ever returns one or the other, so ask twice and join.
+  const [open, filed] = await Promise.all([api.getJobcards(), api.getJobcards({ archived: true })]);
+  const cards = [...open, ...filed];
   if (!cards.length) return false;
 
   const wb = await buildJobCardWorkbook(cards, onProgress, includeCosting);
   if (!wb) return false;
   return saveWorkbook(wb, `Job_Cards_Full_${timestamp()}.xlsx`);
+}
+
+// ── Statistics Export ────────────────────────────────────────────────────────
+
+const STATS_WORKER_COLS = [
+  { label: 'Rank', value: r => r.rank || 1 },
+  { label: 'Worker Name', value: r => r.userName },
+  { label: 'Employee ID', value: r => r.employeeId },
+  { label: 'Role', value: r => r.role },
+  { label: 'Total Hours', value: r => r.totalHours },
+  { label: 'Normal Hours', value: r => r.normalHours },
+  { label: 'OT1 Hours', value: r => r.ot1Hours },
+  { label: 'OT2 Hours', value: r => r.ot2Hours },
+  { label: 'Holiday Hours', value: r => r.holidayHours },
+  { label: 'Total OT Hours', value: r => r.totalOtHours },
+  { label: 'Jobs Count', value: r => r.jobsCount },
+  { label: 'Sessions Count', value: r => r.sessionsCount },
+  { label: 'Parts Produced', value: r => r.partsProduced },
+  { label: 'Scrap (Bin)', value: r => r.scrapBinQty },
+  { label: 'Scrap (Recycle)', value: r => r.scrapRecycleQty },
+  { label: 'Total Scrap', value: r => r.totalScrapQty },
+  { label: 'Inspection Checks', value: r => r.qaChecks || 0 },
+  { label: 'Avg Session (hrs)', value: r => r.avgSessionHours },
+];
+
+const STATS_TREND_COLS = [
+  { label: 'Period', value: r => r.period },
+  { label: 'Jobs Created', value: r => r.jobsCreated },
+  { label: 'Jobs Completed', value: r => r.jobsCompleted },
+  { label: 'On-Time Completed', value: r => r.onTimeCompleted },
+  { label: 'Late Completed', value: r => r.lateCompleted },
+  { label: 'On-Time Rate %', value: r => r.onTimeRate !== null ? `${r.onTimeRate}%` : '—' },
+  { label: 'Total Hours', value: r => r.totalHours },
+  { label: 'Parts Produced', value: r => r.partsProduced },
+  { label: 'Scrap Recorded', value: r => r.scrapQty },
+];
+
+const STATS_MACHINE_COLS = [
+  { label: 'Machine #', value: r => r.machineNumber },
+  { label: 'Name', value: r => r.name },
+  { label: 'Description', value: r => r.description },
+  { label: 'Status', value: r => r.active ? 'Active' : 'Archived' },
+  { label: 'Operating Hours', value: r => r.totalHours },
+  { label: 'Time Sessions', value: r => r.sessionCount },
+  { label: 'Parts Produced', value: r => r.partsProduced },
+  { label: 'Scrap Qty', value: r => r.scrapQty },
+];
+
+const getStatsCustomerCols = (hasMoney) => [
+  { label: 'Customer Name', value: r => r.companyName },
+  { label: 'Total Jobs', value: r => r.jobsCount },
+  { label: 'Completed Jobs', value: r => r.completedCount },
+  { label: 'On-Time Rate %', value: r => r.onTimeRate !== null ? `${r.onTimeRate}%` : '—' },
+  { label: 'Repeat Jobs', value: r => r.repeatCount },
+  { label: 'Repeat %', value: r => `${r.repeatPercent}%` },
+  { label: 'Labour Hours in Period', value: r => r.totalHours },
+  ...(hasMoney ? [{ label: 'Invoiced Total ($)', value: r => r.invoicedTotal || 0 }] : []),
+];
+
+const STATS_DELAYED_COLS = [
+  { label: 'Job #', value: r => r.jobNumber },
+  { label: 'Customer', value: r => r.companyName },
+  { label: 'Due Date', value: r => r.dueDate },
+  { label: 'Finish Date', value: r => r.finishDate },
+  { label: 'Days Late', value: r => r.daysLate },
+  { label: 'Status', value: r => r.status },
+  { label: 'QA Level', value: r => r.qualityLevel },
+];
+
+export async function exportStatistics(data) {
+  if (!data) return false;
+  const XLSX = await loadXlsx();
+  const wb = XLSX.utils.book_new();
+
+  // Overview Summary Sheet
+  const summaryRows = [
+    ['Range', data.range?.label || 'All'],
+    ['On-Time Delivery Rate', data.summary?.onTimeRate !== null && data.summary?.onTimeRate !== undefined ? `${data.summary.onTimeRate}%` : '—'],
+    ['Completed Jobs in Period', data.summary?.completedJobsCount || 0],
+    ['On-Time Finished Jobs', data.summary?.onTimeJobsCount || 0],
+    ['Late Finished Jobs', data.summary?.lateJobsCount || 0],
+    ['Average Days Late (when overdue)', `${data.summary?.avgDaysLate || 0} days`],
+    ['Average Job Turnaround Time', `${data.summary?.avgTurnaroundDays || 0} days`],
+    ['Total Workshop Labour Hours', `${data.summary?.totalWorkshopHours || 0} hrs`],
+    ['Active Jobs (Live)', data.summary?.activeJobsCount || 0],
+    ['In Progress Jobs', data.summary?.inProgressJobsCount || 0],
+    ['Currently Overdue Active Jobs', data.summary?.overdueActiveJobsCount || 0],
+    ['Total Jobs Created in Period', data.summary?.totalJobsCreated || 0],
+    ['Total Good Parts Produced', data.summary?.totalPartsProduced || 0],
+    ['Scrap (Bin)', data.summary?.totalScrapBin || 0],
+    ['Scrap (Recycled)', data.summary?.totalScrapRecycle || 0],
+    ['Total Scrap Recorded', data.summary?.totalScrap || 0],
+    ['Scrap Rate', `${data.summary?.scrapRate || 0}%`],
+    ['Repeat Jobs Rate', `${data.summary?.repeatRate || 0}%`],
+    ['Inspection Checks Completed', data.summary?.totalInspectionChecks || 0],
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet([['Metric', 'Value'], ...summaryRows]);
+  wsSummary['!cols'] = [{ wch: 35 }, { wch: 25 }];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Overview');
+
+  if (data.workerLeaderboard?.length) {
+    XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, data.workerLeaderboard, STATS_WORKER_COLS), 'Workers');
+  }
+
+  if (data.periodTrends?.length) {
+    XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, data.periodTrends, STATS_TREND_COLS), 'Period Trends');
+  }
+
+  if (data.machineUtilization?.length) {
+    XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, data.machineUtilization, STATS_MACHINE_COLS), 'Machines');
+  }
+
+  if (data.customerRankings?.length) {
+    const hasMoney = data.customerRankings.some(c => c.invoicedTotal !== null && c.invoicedTotal !== undefined);
+    XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, data.customerRankings, getStatsCustomerCols(hasMoney)), 'Customers');
+  }
+
+  if (data.delayedJobsList?.length) {
+    XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, data.delayedJobsList, STATS_DELAYED_COLS), 'Late Jobs');
+  }
+
+  const rangeSlug = (data.range?.preset || 'report').replace(/_/g, '-');
+  return saveWorkbook(wb, `Workshop_Statistics_${rangeSlug}_${timestamp()}.xlsx`);
 }

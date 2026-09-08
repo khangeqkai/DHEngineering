@@ -20,7 +20,6 @@ import useJobCardSort from '../hooks/useJobCardSort';
 import useJobCardColumnOrder from '../hooks/useJobCardColumnOrder';
 import useJobCardColumnVisibility from '../hooks/useJobCardColumnVisibility';
 import EmptyState from './common/EmptyState';
-import JobCardCalendarView from './JobCardCalendarView';
 import JobCardListFilters from './JobCardListFilters';
 import JobCardColumnsMenu from './JobCardColumnsMenu';
 import JobCardListTable from './JobCardListTable';
@@ -30,7 +29,6 @@ import {
   STATUS_OPTIONS,
   STATUS_LABELS,
   PAGE_SIZE,
-  getStatusBadgeClass,
   isJobOverdue
 } from './JobCardList.constants';
 import './JobCardList.css';
@@ -87,7 +85,6 @@ export default function JobCardList() {
   const [hoverNames, setHoverNames] = useState(null);
   const [hoverDesc, setHoverDesc] = useState(null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
-  const [viewMode, setViewMode] = useState('list');
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
   const { warningsById: missingFilesIds, checkedIds: attachmentCheckedIds, ensure: ensureMissingFiles, refresh: refreshMissingFiles } = useMissingFilesIndicator();
 
@@ -460,8 +457,6 @@ export default function JobCardList() {
         onMyJobsOnlyChange={setMyJobsOnly}
         filter={filter}
         onFilterChange={setFilter}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
         columnsMenu={
           <JobCardColumnsMenu
             columns={toggleableColumns}
@@ -472,17 +467,7 @@ export default function JobCardList() {
         }
       />
 
-      {viewMode === 'calendar' ? (
-        <div className="calendar-container" style={{ flex: 1, minHeight: '600px', marginBottom: '1rem' }}>
-          <JobCardCalendarView
-            jobcards={filteredCards}
-            onCardClick={(card) => openEditModal(card.id)}
-            getStatusBadgeClass={getStatusBadgeClass}
-            STATUS_LABELS={STATUS_LABELS}
-          />
-        </div>
-      ) : (
-        <div className="card">
+      <div className="card">
           <div className="card-body" style={{ padding: 0 }}>
             {filteredCards.length === 0 ? (
               jobcards.length === 0 ? (
@@ -523,7 +508,6 @@ export default function JobCardList() {
             onPageChange={setCurrentPage}
           />
         </div>
-      )}
 
       {hoverNames && createPortal(
         <div

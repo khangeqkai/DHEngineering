@@ -9,8 +9,10 @@ const { authenticate, requireAdmin, requireManagement } = require('../middleware
 const db = require('../db/database');
 const config = require('../config');
 const { lanIpv4s } = require('../utils/netHost');
+const homeAccess = require('./settings-home-access');
 const { recordHistory } = require('../db/helpers');
 const { normalizeStoredTimestamps } = require('../db/normalizeTimestamps');
+const { foldGoodPiecesToWhole } = require('../db/init');
 const { splitCustomersInBackup } = require('../db/splitCustomers');
 const { setMaintenance } = require('../middleware/maintenance');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
@@ -51,6 +53,10 @@ function convertKeysToCamel(obj) {
 router.get('/', requireManagement, (req, res) => {
   try {
     const settings = db.getSettings();
+    // The home access code is a secret: say whether it is set (homeAccessView),
+    // never what it is.
+    const homeAccessFields = homeAccess.homeAccessView(settings);
+    for (const key of homeAccess.HOME_ACCESS_SECRET_KEYS) delete settings[key];
     // Labour rates & overtime are admin-only money settings: strip them for
     // managers so the pricing never reaches a session that can't open the
     // Labour Rates page. (getSettings builds a fresh object per call.)
@@ -65,6 +71,7 @@ router.get('/', requireManagement, (req, res) => {
     camelCaseSettings.serverAddresses = lanIpv4s();
     camelCaseSettings.secureServing = config.secure;
     camelCaseSettings.mdnsName = config.mdnsName;
+    Object.assign(camelCaseSettings, homeAccessFields);
     res.json(camelCaseSettings);
   } catch (err) {
     logger.error({ err }, 'Error getting settings');
@@ -73,7 +80,7 @@ router.get('/', requireManagement, (req, res) => {
 });
 
 // Update settings (admin or manager; labour rates & overtime stay admin-only)
-router.put('/', requireManagement, (req, res) => {
+router.put('/', requireManagement, async (req, res) => {
   try {
     // Reject a manager's attempt to save any overtime/labour-rate field outright
     // rather than silently dropping it, so a stale client fails loudly.
@@ -88,11 +95,22 @@ router.put('/', requireManagement, (req, res) => {
       if (req.body.jobFoldersBase !== undefined || req.body.job_folders_base !== undefined) {
         return res.status(403).json({ error: 'Only admins can change the job folders base path' });
       }
+      if (homeAccess.HOME_ACCESS_BODY_KEYS.some(k => req.body[k] !== undefined)) {
+        return res.status(403).json({ error: 'Only admins can change home access settings' });
+      }
     }
 
     const jobFoldersBase = req.body.jobFoldersBase ?? req.body.job_folders_base;
     const inactivityTimeoutMinutes = req.body.inactivityTimeoutMinutes ?? req.body.inactivity_timeout_minutes;
     const updates = {};
+
+    // Home access code + home address (settings-home-access.js).
+    const home = await homeAccess.collectHomeAccessUpdates(req.body);
+    if (home.error) return res.status(400).json({ error: home.error });
+    Object.assign(updates, home.updates);
+    // Switching home access on/off is a security change, so it leaves a trace
+    // (set/not set only — never the code).
+    const homeAccessChange = homeAccess.homeAccessChange(db.getSettings(), home.updates);
 
     // Validate job folders base path if provided
     if (jobFoldersBase !== undefined) {
@@ -166,6 +184,9 @@ router.put('/', requireManagement, (req, res) => {
 
     if (Object.keys(updates).length > 0) {
       db.updateSettings(updates);
+    }
+    if (homeAccessChange) {
+      recordHistory('settings', 'home_access', 'update', req.user.userId, req.user.name || req.user.username, homeAccessChange);
     }
     res.json({ success: true });
   } catch (err) {
@@ -444,6 +465,13 @@ router.post('/import-backup', requireAdmin, [
             normalizeStoredTimestamps();
           } catch (tsErr) {
             logger.error({ err: tsErr }, 'Backup restore: failed to convert stored timestamps to ISO-8601 UTC (records restored; next restart will retry)');
+          }
+          // Same for good-piece counts: a backup from before the whole-number rule can
+          // carry "2.5", which reads Done on the part but In Progress on the job.
+          try {
+            foldGoodPiecesToWhole();
+          } catch (qtyErr) {
+            logger.error({ err: qtyErr }, 'Backup restore: failed to fold good-piece counts to whole numbers (records restored; next restart will retry)');
           }
         });
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { User, Lock } from 'lucide-react';
+import { User, Lock, KeyRound } from 'lucide-react';
 import dhLogo from '../assets/dh-logo.png';
 import Waves from './common/Waves';
 import GradientText from './common/GradientText';
@@ -11,11 +11,17 @@ import './Login.css';
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  // Only asked for when the server says this visitor came in through the
+  // home-access tunnel (the public address needs more than a 4-digit PIN).
+  const [homeAccessCode, setHomeAccessCode] = useState('');
+  const [viaTunnel, setViaTunnel] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  // null = not asked yet (offer the form as normal), false = the server isn't
-  // answering, true = it is. Only false holds the form back.
+  // null = not asked yet, false = the server isn't answering, true = it is.
+  // The button is held until it answers: the reply also says whether this
+  // visitor needs the home access code box, and a sign-in sent before that is
+  // known would go without the code and count as a failed attempt.
   const [serverReady, setServerReady] = useState(null);
   const [readyCheckKey, setReadyCheckKey] = useState(0);
   const intervalRef = useRef(null);
@@ -37,10 +43,11 @@ export default function Login() {
     let timer = null;
 
     const check = async () => {
-      const ready = await api.isServerReady();
+      const health = await api.isServerReady();
       if (cancelled) return;
-      setServerReady(ready);
-      if (!ready) timer = setTimeout(check, 2000);
+      setServerReady(Boolean(health));
+      setViaTunnel(Boolean(health && health.viaTunnel));
+      if (!health) timer = setTimeout(check, 2000);
     };
     check();
 
@@ -72,7 +79,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(username, password);
+      await login(username, password, viaTunnel ? homeAccessCode : undefined);
       navigate('/');
     } catch (err) {
       const message = err.message || 'Login failed';
@@ -176,15 +183,36 @@ export default function Login() {
             </div>
           </div>
 
+          {viaTunnel && (
+            <div className="form-group">
+              <label htmlFor="homeAccessCode">Home access code</label>
+              <div className="login-input-wrapper">
+                <span className="login-input-icon">
+                  <KeyRound size={16} />
+                </span>
+                <input
+                  type="password"
+                  id="homeAccessCode"
+                  value={homeAccessCode}
+                  onChange={(e) => setHomeAccessCode(e.target.value)}
+                  placeholder="The code from the workshop"
+                  required
+                />
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
             className="btn btn-primary login-btn"
-            disabled={loading || countdown > 0 || serverReady === false}
+            disabled={loading || countdown > 0 || !serverReady}
           >
             {loading
               ? 'Signing in...'
               : serverReady === false
                 ? 'Waiting for the server...'
+                : serverReady === null
+                  ? 'Checking...'
                 : countdown > 0
                   ? `Wait ${countdown}s`
                   : 'Sign In'}

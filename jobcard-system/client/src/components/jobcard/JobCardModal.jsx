@@ -224,20 +224,20 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const handleStartItemTimer = useCallback(async (itemNumber, workerId, workerName) => {
     await timer.startTimerWithConflictCheck(itemNumber, showConfirm, workerId, workerName);
     await reloadTimeEntries();
-    // Server may have auto-assigned the user and nudged the status to In Progress
-    // when starting the timer — refresh both from one fetch.
+    // Server may have auto-assigned the timer's worker and nudged the status — refresh
+    // both from one fetch, but fold in ONLY that worker: replacing the whole list from
+    // the server would silently undo unsaved ticks/unticks made before pressing Start.
     try {
       const fresh = await api.getJobcard(jobCardId);
-      setAssignees((fresh.assignees || []).map(a => ({
-        userId: a.userId,
-        userName: a.userName || a.username
-      })));
+      const started = (fresh.assignees || []).find(a => a.userId === (workerId || user?.id));
+      if (started) setAssignees(prev => prev.some(a => a.userId === started.userId) ? prev
+        : [...prev, { userId: started.userId, userName: started.userName || started.username }]);
       if (fresh.status) setFormData(prev => ({ ...prev, status: fresh.status }));
     } catch {
       // Non-fatal — assignees/status will refresh next time the modal opens
     }
     if (onTimerChange) onTimerChange();
-  }, [timer, showConfirm, reloadTimeEntries, onTimerChange, jobCardId, setAssignees, setFormData]);
+  }, [timer, showConfirm, reloadTimeEntries, onTimerChange, jobCardId, setAssignees, setFormData, user?.id]);
 
   const handleStopItemTimer = useCallback(async () => {
     await timer.stopTimer();

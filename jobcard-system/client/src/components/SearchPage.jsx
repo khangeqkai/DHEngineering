@@ -11,11 +11,13 @@ import { ACTIVITY_FIELDS } from './searchFields';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { formatHistoryValue } from '../utils/formatters';
 import { statusToken } from './JobCardList.constants';
-import { actionColor } from '../utils/activityColors';
+import { STATUS_OPTIONS, PRIORITY_OPTIONS } from './jobcard/constants';
+import { actionColor, ACTION_NAMES } from '../utils/activityColors';
 
-const STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'PO_REQUESTED', 'IN_PROGRESS', 'DONE', 'CUST_NOTIFIED', 'INVOICED'];
-const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
-const ACTIONS = ['create', 'update', 'delete', 'archive', 'unarchive', 'start_timer', 'stop_timer', 'discard_timer', 'add_time_entry', 'update_time_entry', 'delete_time_entry', 'add_note', 'delete_note', 'update_costing', 'update_qa_form', 'add_template', 'remove_template', 'upload_file', 'delete_file', 'add_document', 'login', 'login_failed', 'data_export', 'data_import'];
+// Both lists come from the job screen, so every chip can match and every stored value
+// has a chip — adding a status or priority there gives it a search chip for free.
+const STATUSES = STATUS_OPTIONS.map(s => s.value);
+const PRIORITIES = PRIORITY_OPTIONS.map(p => p.value);
 const ENTITY_TYPES = ['jobcard', 'company', 'contact', 'supplier', 'user', 'machine', 'auth', 'tag', 'qa_level', 'system'];
 const SCOPES = [
   { key: 'all', label: 'All', icon: Search },
@@ -329,7 +331,7 @@ export default function SearchPage() {
                 </select>
               </FilterRow>
               <FilterRow label="Action">
-                <Chips options={ACTIONS} selected={filters.action} onToggle={(v) => toggleArrayFilter('action', v)} multi />
+                <Chips options={ACTION_NAMES} selected={filters.action} onToggle={(v) => toggleArrayFilter('action', v)} multi />
               </FilterRow>
               <FilterRow label="Entity Type">
                 <Chips options={ENTITY_TYPES} selected={filters.entityType}

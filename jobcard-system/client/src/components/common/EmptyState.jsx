@@ -54,6 +54,57 @@ const icons = {
       <circle cx="32" cy="32" r="2" fill="currentColor" />
     </svg>
   ),
+  'alert-triangle': (
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M32 10L6 54h52L32 10z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="32" y1="26" x2="32" y2="38" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="32" cy="46" r="1.5" fill="currentColor" />
+    </svg>
+  ),
+  'bar-chart': (
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="12" y1="52" x2="52" y2="52" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="16" y="32" width="6" height="20" rx="1" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="29" y="18" width="6" height="34" rx="1" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="42" y="26" width="6" height="26" rx="1" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  ),
+  'check-circle': (
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="22" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M22 32l7 7 14-14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  cpu: (
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="16" y="16" width="32" height="32" rx="4" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="24" y="24" width="16" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="24" y1="8" x2="24" y2="16" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="32" y1="8" x2="32" y2="16" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="40" y1="8" x2="40" y2="16" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="24" y1="48" x2="24" y2="56" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="32" y1="48" x2="32" y2="56" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="40" y1="48" x2="40" y2="56" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="8" y1="24" x2="16" y2="24" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="8" y1="32" x2="16" y2="32" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="8" y1="40" x2="16" y2="40" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="48" y1="24" x2="56" y2="24" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="48" y1="32" x2="56" y2="32" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="48" y1="40" x2="56" y2="40" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  ),
+  building: (
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="14" y="12" width="36" height="44" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="22" y1="20" x2="26" y2="20" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="38" y1="20" x2="42" y2="20" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="22" y1="28" x2="26" y2="28" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="38" y1="28" x2="42" y2="28" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="22" y1="36" x2="26" y2="36" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="38" y1="36" x2="42" y2="36" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="26" y="44" width="12" height="12" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  ),
 };
 
 export default function EmptyState({

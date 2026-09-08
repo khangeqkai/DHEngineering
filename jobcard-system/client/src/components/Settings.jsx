@@ -3,6 +3,7 @@ import BottomSheet from './common/BottomSheet';
 import { useSettings } from '../hooks/useSettings';
 import SecurityCard from './settings/SecurityCard';
 import FoldersCard from './settings/FoldersCard';
+import HomeAccessCard from './settings/HomeAccessCard';
 import DataBackupCard from './settings/DataBackupCard';
 
 export default function Settings() {
@@ -150,6 +151,10 @@ export default function Settings() {
         )}
 
         {s.canManage && <SecurityCard s={s} />}
+
+        {/* Home access: the tunnel's public address (any manager can read it out)
+            and the home access code (admin-only to set, like any security setting). */}
+        {s.canManage && <HomeAccessCard s={s} />}
 
         {/* The job-folders base path stays admin-only: it decides where every job's
             files (and backups) are written, so a manager can't repoint it to a

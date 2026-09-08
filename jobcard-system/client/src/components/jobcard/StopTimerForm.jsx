@@ -56,7 +56,7 @@ function Counter({ value, onChange, inputRef, hero, ariaLabel }) {
         placeholder="0"
         aria-label={ariaLabel}
         value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))}
         onFocus={(e) => e.target.select()}
       />
       <button
@@ -182,10 +182,13 @@ export default function StopTimerForm({
   const startClock = startIso ? clockTime(startIso) : null;
   const endClock = endIso ? clockTime(endIso) : null;
 
-  // Live scrap rate (scrap ÷ good), shown once any good pieces are entered.
+  // Live scrap rate: scrap ÷ every piece made (good + scrap) — the same formula the
+  // part's Progress card and the statistics page use, so the number the worker sees
+  // here is the number they see on the card a moment later. Shown once any piece exists.
   const goodCount = toInt(entryForm.qty);
   const scrapTotal = toInt(entryForm.scrapBinQty) + toInt(entryForm.scrapRecycleQty);
-  const scrapRate = goodCount > 0 ? Math.round((scrapTotal / goodCount) * 100) : null;
+  const totalMade = goodCount + scrapTotal;
+  const scrapRate = totalMade > 0 ? Math.round((scrapTotal / totalMade) * 100) : null;
 
   // With a big equipment list, a flat wall of tiles is unusable — once there are
   // many machines we add a filter box and a scrollable area. Picked machines are

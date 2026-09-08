@@ -28,11 +28,18 @@ const machinesRoutes = require('./src/routes/machines');
 const settingsRoutes = require('./src/routes/settings');
 const qaLevelsRoutes = require('./src/routes/qa-levels');
 const searchRoutes = require('./src/routes/search');
+const statisticsRoutes = require('./src/routes/statistics');
 const { initializeDatabase } = require('./src/db/init');
 const { maintenanceGuard } = require('./src/middleware/maintenance');
 const { verifyPdfEngine, getPdfEngineStatus } = require('./src/utils/pdfEngine');
+const { isViaTunnel } = require('./src/utils/homeAccess');
 
 const app = express();
+
+// A Cloudflare Tunnel on this machine forwards home users via localhost, so
+// they'd all share one address and one person's wrong PINs would rate-limit
+// everyone (auth.js keys on req.ip). Trust X-Forwarded-For from loopback only.
+app.set('trust proxy', 'loopback');
 
 // Middleware
 app.use(cors({
@@ -48,7 +55,9 @@ app.get('/health', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     version: require('./package.json').version,
-    pdfEngine: getPdfEngineStatus()
+    pdfEngine: getPdfEngineStatus(),
+    // Lets the login screen ask a home user for the home access code.
+    viaTunnel: isViaTunnel(req)
   });
 });
 
@@ -60,6 +69,14 @@ app.use(setupTrustRoutes);
 
 // Turn away mutating requests from other clients while a restore is in progress
 app.use(maintenanceGuard);
+
+// Everything behind a sign-in is private to the person who asked for it, so the
+// browser must never keep a copy. On a shared computer a stored answer can be
+// shown to whoever signs in next.
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -79,6 +96,7 @@ app.use('/api/machines', machinesRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/qa-levels', qaLevelsRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/statistics', statisticsRoutes);
 
 // Serve React client in production (LAN browser access)
 const clientBuildPath = process.env.CLIENT_BUILD_PATH || path.join(__dirname, '..', 'client', 'dist');
