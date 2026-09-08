@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useId } from 'react';
 import toast from 'react-hot-toast';
 import { Calendar, ChevronDown } from 'lucide-react';
 import CalendarPicker from '../common/CalendarPicker';
+import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import { capitalizeFirst, formatDate } from '../../utils/formatters';
 import { api } from '../../services/api';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from './constants';
@@ -26,24 +27,35 @@ export default function JobIdentityStrip({
   const [showCalendar, setShowCalendar] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
   const priorityRef = useRef(null);
+  const priorityMenuId = useId();
 
   useEffect(() => {
     if (!showPriorityMenu) return;
+    // Join the shared modal stack while open: this menu sits on top of the job
+    // card dialog, and registering as the top layer keeps that dialog's
+    // Escape-to-close (and Tab trap) from firing while the menu is open.
+    pushModal(priorityMenuId);
     const onMouse = (e) => {
       if (priorityRef.current && !priorityRef.current.contains(e.target)) {
         setShowPriorityMenu(false);
       }
     };
     const onKey = (e) => {
-      if (e.key === 'Escape') setShowPriorityMenu(false);
+      if (!isTopModal(priorityMenuId)) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowPriorityMenu(false);
+      }
     };
     document.addEventListener('mousedown', onMouse);
     document.addEventListener('keydown', onKey);
     return () => {
+      removeModal(priorityMenuId);
       document.removeEventListener('mousedown', onMouse);
       document.removeEventListener('keydown', onKey);
     };
-  }, [showPriorityMenu]);
+  }, [showPriorityMenu, priorityMenuId]);
 
   const editable = canManage;
   const priority = formData.priority || 'NONE';
