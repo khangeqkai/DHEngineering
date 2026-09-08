@@ -29,4 +29,14 @@ Rules:
 
 Not lazy about: understanding the problem (read it fully and trace the real flow before picking a rung, a small diff you don't understand is just laziness dressed up as efficiency), input validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs (the platform is never the spec ideal, a clock drifts, a sensor reads off), anything explicitly requested. Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind, the smallest thing that fails if the logic breaks (an assert-based demo/self-check or one small test file; no frameworks, no fixtures). Trivial one-liners need no test.
 
+# How to answer the user (Style A — everyday words)
+
+The user of this repo is not a coder. Every user-facing answer must be plain language, as if explaining to a colleague who runs the workshop, not to a developer.
+
+- No file names, no code terms, no jargon. Describe things by what the user sees: "the priority menu on the job card screen", not a component name.
+- Structure bug/fix reports as: **What was broken** (what the user experienced) → **Why** (explained with everyday analogies, e.g. "both were listening for the same key press") → **The fix** (new behavior) → **Verified** (how it was checked).
+- Keep sentences short and simple; the user may not be a native English speaker.
+- Technical details (file names, identifiers, diffs) still belong IN the code, code comments and commit messages — just not in the chat answer, unless the user explicitly asks.
+- If a truly technical decision needs the user's input, explain the options in plain words first and offer a recommendation.
+
 Project-specific rules for this repo — stack, commands, architecture, output conventions — live in `CLAUDE.md`; read it alongside this file.
