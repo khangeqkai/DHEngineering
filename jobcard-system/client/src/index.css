@@ -431,6 +431,14 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
+/* Open dropdown menus need explicit option colours or they render
+   black-on-black in dark mode (only the closed control inherits the theme).
+   One rule for every native select; the job screen did this locally first. */
+.dark-mode select option {
+  color: var(--text-primary);
+  background: var(--surface);
+}
+
 /* Card reinforcement */
 .dark-mode .card {
   border-color: rgba(148, 163, 192, 0.1);
