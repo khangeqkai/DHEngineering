@@ -93,6 +93,12 @@
   --warning-color: #f59e0b;
   --danger-color: #ef4444;
 
+  /* Same-day priority — a highlighter green carrying near-black text, so the one
+     filled pill in the set stays legible without flipping its ink between themes. */
+  --same-day-bg: #a3e635;
+  --same-day-text: #1a2e05;
+  --same-day-border: #65a30d;
+
   /* ── Sidebar — Deep Navy ── */
   --sidebar-bg: #0b1e36;
   --sidebar-bg-elevated: #112a4a;
@@ -252,6 +258,12 @@
   --success-color: #4ade80;
   --warning-color: #fbbf24;
   --danger-color: #f87171;
+
+  /* Lifted a step so the pill still reads as fluorescent against the dark surface;
+     the ink stays near-black, which is what keeps it readable in both themes. */
+  --same-day-bg: #bef264;
+  --same-day-text: #1a2e05;
+  --same-day-border: #a3e635;
 
   /* Saturated variants for button backgrounds */
   --success-bg: #16a34a;

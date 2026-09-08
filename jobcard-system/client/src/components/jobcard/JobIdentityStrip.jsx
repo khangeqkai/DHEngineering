@@ -5,10 +5,10 @@ import CalendarPicker from '../common/CalendarPicker';
 import { capitalizeFirst, formatDate } from '../../utils/formatters';
 import { api } from '../../services/api';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from './constants';
-import { statusToken } from '../JobCardList.constants';
+import { statusToken, priorityToken } from '../JobCardList.constants';
 import { confirmInvoiceAnyway } from './jobCardPrompts';
 
-const PRIORITY_VALUES = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
+const PRIORITY_VALUES = PRIORITY_OPTIONS.map(p => p.value);
 
 export default function JobIdentityStrip({
   isEdit,
@@ -53,7 +53,7 @@ export default function JobIdentityStrip({
 
   const priorityLabel =
     PRIORITY_OPTIONS.find(p => p.value === priority)?.label || 'Priority';
-  const priorityClass = `jc-strip-priority jc-strip-priority-${priority.toLowerCase()}`;
+  const priorityClass = `jc-strip-priority jc-strip-priority-${priorityToken(priority)}`;
   const formattedDate = formatDate(dueDate, { weekday: 'short', day: 'numeric', month: 'short' });
   const titleText = isEdit ? jobNumber : 'New Job Card';
 
@@ -164,7 +164,7 @@ export default function JobIdentityStrip({
                       key={val}
                       role="option"
                       aria-selected={priority === val}
-                      className={`jc-strip-priority-menu-item jc-strip-priority-menu-item-${val.toLowerCase()}${priority === val ? ' is-active' : ''}`}
+                      className={`jc-strip-priority-menu-item jc-strip-priority-menu-item-${priorityToken(val)}${priority === val ? ' is-active' : ''}`}
                       onMouseDown={(e) => {
                         e.preventDefault();
                         setField('priority', val);

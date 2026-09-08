@@ -1088,6 +1088,15 @@ select.has-retired option.retired-option {
   color: var(--badge-cancelled-text);
   border-color: rgba(var(--danger-rgb), 0.2);
 }
+/* Same-day sits above High, so it is the one filled pill in the set — it has to be
+   spottable in a scanned list rather than blend into the other soft tints. Its colours
+   are tokens, so light and dark each get the shade that stays legible. */
+.priority-same-day {
+  background: var(--same-day-bg);
+  color: var(--same-day-text);
+  border-color: var(--same-day-border);
+  font-weight: 700;
+}
 
 @keyframes pulse-glow {
   0%, 100% { opacity: 1; }

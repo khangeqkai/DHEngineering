@@ -1,5 +1,6 @@
 import { api } from '../services/api';
 import { formatDate as fmtDate, formatDateTime as fmtDateTime, todayIsoDate } from './formatters';
+import { STATUS_LABELS, PRIORITY_LABELS } from '../components/JobCardList.constants';
 // Tag labels are now dynamic (DB-driven). For exports, convert values to readable labels.
 
 // xlsx is a heavy library (~430 kB) but is only ever needed when the user
@@ -155,8 +156,9 @@ const JOBCARD_SUMMARY_COLS = [
   { label: 'Contact Phone', value: r => r.contactPhone },
   { label: 'Contact Email', value: r => r.contactEmail },
   { label: 'Type', value: r => r.cardType },
-  { label: 'Status', value: r => r.status },
-  { label: 'Priority', value: r => r.priority },
+  // Export the words people read on screen, not the stored codes.
+  { label: 'Status', value: r => STATUS_LABELS[r.status] || r.status },
+  { label: 'Priority', value: r => PRIORITY_LABELS[r.priority] || r.priority },
   { label: 'QA Level', value: r => r.qualityLevel },
   { label: 'Due Date', value: r => fmtDate(r.dueDate) },
   { label: 'Description', value: r => r.description },

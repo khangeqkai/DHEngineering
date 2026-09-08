@@ -10,7 +10,7 @@ import JobCardModal from './jobcard/JobCardModal';
 import { ACTIVITY_FIELDS } from './searchFields';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { formatHistoryValue } from '../utils/formatters';
-import { statusToken } from './JobCardList.constants';
+import { statusToken, priorityToken, PRIORITY_LABELS } from './JobCardList.constants';
 import { STATUS_OPTIONS, PRIORITY_OPTIONS } from './jobcard/constants';
 import { actionColor, ACTION_NAMES } from '../utils/activityColors';
 
@@ -65,7 +65,7 @@ function StatusBadge({ status }) {
 // Same soft-tinted pill as the job list, so status and priority read as one set here too.
 function PriorityBadge({ priority }) {
   const p = priority || 'NONE';
-  return <span className={`badge priority-${p.toLowerCase()}`}>{fmt(p)}</span>;
+  return <span className={`badge priority-${priorityToken(p)}`}>{PRIORITY_LABELS[p] || fmt(p)}</span>;
 }
 
 function ActionBadge({ action }) {
@@ -283,7 +283,7 @@ export default function SearchPage() {
                 </select>
               </FilterRow>}
               <FilterRow label="Priority">
-                <Chips options={PRIORITIES} selected={filters.priority} onToggle={(v) => updateFilter('priority', filters.priority === v ? '' : v)} />
+                <Chips options={PRIORITIES} selected={filters.priority} onToggle={(v) => updateFilter('priority', filters.priority === v ? '' : v)} formatLabel={(v) => PRIORITY_LABELS[v] || fmt(v)} />
               </FilterRow>
               <FilterRow label="Job Type">
                 <select className="search-select" value={filters.jobType} onChange={e => updateFilter('jobType', e.target.value)}>

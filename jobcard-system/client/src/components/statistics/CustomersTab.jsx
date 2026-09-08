@@ -3,6 +3,13 @@ import DataTable from '../common/DataTable';
 import { useAuth } from '../../context/AuthContext';
 import { PRIORITY_LABELS } from '../JobCardList.constants';
 
+// Bar colour per priority — anything not listed reads as the muted default.
+const PRIORITY_BAR_COLORS = {
+  SAME_DAY: 'var(--same-day-bg)',
+  HIGH: 'var(--warning-color)',
+  MEDIUM: 'var(--primary-accent)'
+};
+
 export default function CustomersTab({
   customerRankings = [],
   qaLevelDistribution = {},
@@ -86,7 +93,7 @@ export default function CustomersTab({
                           className="distribution-bar-fill"
                           style={{
                             width: `${pct}%`,
-                            background: prio === 'HIGH' ? 'var(--warning-color)' : prio === 'MEDIUM' ? 'var(--primary-accent)' : 'var(--text-tertiary)'
+                            background: PRIORITY_BAR_COLORS[prio] || 'var(--text-tertiary)'
                           }}
                         />
                       </div>

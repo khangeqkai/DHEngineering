@@ -161,7 +161,7 @@ function optionalEnum(field, label, allowed) {
 
 const JOBCARD_STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'PO_REQUESTED', 'IN_PROGRESS', 'DONE', 'CUST_NOTIFIED', 'INVOICED'];
 
-const PRIORITY_OPTIONS = ['NONE', 'LOW', 'MEDIUM', 'HIGH'];
+const PRIORITY_OPTIONS = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'SAME_DAY'];
 
 
 // Mirrors DEFAULT_COLUMN_ORDER in client/src/components/JobCardList.constants.js —

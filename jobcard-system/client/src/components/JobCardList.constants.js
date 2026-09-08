@@ -1,3 +1,5 @@
+import { PRIORITY_OPTIONS } from './jobcard/constants';
+
 export const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
   { value: 'QUOTE', label: 'Quote' },
@@ -22,7 +24,9 @@ export const STATUS_LABELS = {
   INVOICED: 'Invoiced'
 };
 
-export const PRIORITY_LABELS = { NONE: 'None', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' };
+// Derived from the one list of priorities the job screen offers, so adding a priority
+// in that list alone names it everywhere the app shows a priority.
+export const PRIORITY_LABELS = Object.fromEntries(PRIORITY_OPTIONS.map(p => [p.value, p.label]));
 
 export const PAGE_SIZE = 50;
 
@@ -98,6 +102,10 @@ export const mergeColumnOrder = (saved) => {
 // Normalize a status value (e.g. 'AWAITING_MATERIAL') into its color-class token
 // (e.g. 'awaiting-material'). Shared by every screen that colors a job status.
 export const statusToken = (status) => (status || '').toLowerCase().replace(/_/g, '-');
+
+// Same treatment for priority, so a multi-word value like SAME_DAY yields the class
+// suffix `same-day` instead of an underscored one.
+export const priorityToken = (priority) => (priority || '').toLowerCase().replace(/_/g, '-');
 
 export const getStatusBadgeClass = (status) => (status ? `status-${statusToken(status)}` : '');
 

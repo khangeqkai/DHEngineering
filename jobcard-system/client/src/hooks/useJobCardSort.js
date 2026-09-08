@@ -11,7 +11,7 @@ const STATUS_SORT_ORDER = {
   INVOICED: 7
 };
 
-const PRIORITY_SORT_ORDER = { NONE: 0, LOW: 1, MEDIUM: 2, HIGH: 3 };
+const PRIORITY_SORT_ORDER = { NONE: 0, LOW: 1, MEDIUM: 2, HIGH: 3, SAME_DAY: 4 };
 
 export const SORT_VALUE_GETTERS = {
   jobNumber: (c) => c.jobNumber || '',

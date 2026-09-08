@@ -341,7 +341,16 @@ function buildQaFillData(jobcardId, fields) {
 // ─── Job card printout (generated HTML) ───
 // Resolve a stored tag value to its friendly name; fall back to the raw value
 // (covers values whose option was archived/renamed away).
-const PRIORITY_LABELS = { NONE: 'None', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' };
+// Which pill the printed card wears. Anything not listed prints as the calm pill.
+const PRIORITY_PILL_CLASSES = { HIGH: 'high', SAME_DAY: 'same-day' };
+
+const PRIORITY_LABELS = {
+  NONE: 'None',
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  SAME_DAY: 'Same Day Service'
+};
 
 function tagName(category, value) {
   if (value == null || value === '') return '';
@@ -424,7 +433,7 @@ function buildJobCardView(jobcardId, jc) {
     jobNumber: jc.job_number,
     description: jc.description || '',
     priorityLabel,
-    priorityClass: priorityKey === 'HIGH' ? 'high' : 'normal',
+    priorityClass: PRIORITY_PILL_CLASSES[priorityKey] || 'normal',
     dateCreated: formatAuDate(jc.created_at),
     dueDate: formatAuDate(jc.due_date),
     // The shop-floor printout shows the company so workers know whose job it is.

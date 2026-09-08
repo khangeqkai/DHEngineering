@@ -5,7 +5,8 @@ export const PRIORITY_OPTIONS = [
   { value: 'NONE', label: 'None' },
   { value: 'LOW', label: 'Low' },
   { value: 'MEDIUM', label: 'Medium' },
-  { value: 'HIGH', label: 'High' }
+  { value: 'HIGH', label: 'High' },
+  { value: 'SAME_DAY', label: 'Same Day Service' }
 ];
 
 export const STATUS_OPTIONS = [
