@@ -1,6 +1,7 @@
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { SORT_VALUE_GETTERS } from '../hooks/useJobCardSort';
 import { todayIsoDate } from '../utils/formatters';
+import { isJobOverdue } from './JobCardList.constants';
 
 export default function JobCardListTable({
   visibleColumns,
@@ -53,9 +54,7 @@ export default function JobCardListTable({
       </thead>
       <tbody>
         {paginatedCards.map((card) => {
-          const isOverdue = card.dueDate &&
-            card.dueDate < today &&
-            !['DONE', 'INVOICED'].includes(card.status);
+          const isOverdue = isJobOverdue(card.dueDate, card.status, today);
           const isPinnedTimer = card.id === activeTimerJobcardId;
           const rowClasses = [
             isOverdue ? 'overdue-row' : '',

@@ -5,6 +5,7 @@ const { authenticate, requireManagement } = require('../middleware/auth');
 const { db, getSettings } = require('../db/database');
 const { officeTimeZone } = require('../utils/officeTime');
 const {
+  FINISHED_STATUSES,
   makeDateFormatter,
   getLocalDateString,
   calculateDateRange,
@@ -156,7 +157,7 @@ router.get('/', (req, res) => {
     for (const job of allJobs) {
       const createdLocalDate = job.created_at ? getLocalDateString(fmt, new Date(job.created_at)) : null;
       const finishDate = getJobFinishDate(job, job.max_entry_end, fmt);
-      const isFinished = job.status === 'INVOICED' || job.status === 'DONE';
+      const isFinished = FINISHED_STATUSES.includes(job.status);
 
       const isCreatedInRange = (!startDate || (createdLocalDate && createdLocalDate >= startDate)) &&
                                (!endDate || (createdLocalDate && createdLocalDate <= endDate));
@@ -178,7 +179,7 @@ router.get('/', (req, res) => {
         if (job.is_repeat_job) repeatJobsCount++;
       }
 
-      if (job.archived === 0 && !['DONE', 'INVOICED'].includes(job.status)) {
+      if (job.archived === 0 && !FINISHED_STATUSES.includes(job.status)) {
         activeJobsCount++;
         if (job.status === 'IN_PROGRESS') inProgressJobsCount++;
         if (job.due_date && job.due_date < todayStr) overdueActiveJobsCount++;

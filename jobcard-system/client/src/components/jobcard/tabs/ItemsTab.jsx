@@ -200,7 +200,7 @@ export default function ItemsTab({
                   </div>
                   {fieldsLocked ? (
                     <div className="line-item-treatment">
-                      <label>Treatment &amp; Supplier</label>
+                      <label>Service &amp; Supplier</label>
                       <div className="readonly-value">
                         {(Array.isArray(item.treatments) && item.treatments.length > 0)
                           ? item.treatments.map((t, i) => {

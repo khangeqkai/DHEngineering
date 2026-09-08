@@ -4,12 +4,14 @@ const STATUS_SORT_ORDER = {
   QUOTE: 0,
   OPEN: 1,
   AWAITING_MATERIAL: 2,
-  IN_PROGRESS: 3,
-  DONE: 4,
-  INVOICED: 5
+  PO_REQUESTED: 3,
+  IN_PROGRESS: 4,
+  DONE: 5,
+  CUST_NOTIFIED: 6,
+  INVOICED: 7
 };
 
-const PRIORITY_SORT_ORDER = { NONE: 0, LOW: 1, MEDIUM: 2, HIGH: 3 };
+const PRIORITY_SORT_ORDER = { NONE: 0, LOW: 1, MEDIUM: 2, HIGH: 3, SAME_DAY: 4 };
 
 export const SORT_VALUE_GETTERS = {
   jobNumber: (c) => c.jobNumber || '',

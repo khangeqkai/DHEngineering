@@ -34,7 +34,8 @@ export default function CostingTab({
   loadFailed = false,
   onRetryLoad,
   lineItems,
-  timeEntries
+  timeEntries,
+  machines = []
 }) {
   // The info panel under the header: what the job has actually used, part by part.
   // Read-only, closed by default, and folded away again by the same button.
@@ -293,7 +294,7 @@ export default function CostingTab({
         </div>
 
         {showBreakdown && (
-          <CostingBreakdown lineItems={lineItems} timeEntries={timeEntries} />
+          <CostingBreakdown lineItems={lineItems} timeEntries={timeEntries} machines={machines} />
         )}
 
         {/* Labour — one panel: base rate up top, tiers as a rate ladder, subtotal in the header */}

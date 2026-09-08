@@ -4,6 +4,7 @@ import { describeAttachmentGaps, attachmentSeverity } from '../utils/attachmentW
 import {
   STATUS_LABELS,
   PRIORITY_LABELS,
+  priorityToken,
   getStatusBadgeClass
 } from './JobCardList.constants';
 import { formatDate, formatDateTime } from '../utils/formatters';
@@ -251,7 +252,7 @@ export function getJobCardColumns({
         const priority = card.priority || 'NONE';
         return (
           <td key="priority">
-            <span className={`badge priority-${priority.toLowerCase()}`}>
+            <span className={`badge priority-${priorityToken(priority)}`}>
               {PRIORITY_LABELS[card.priority] || 'None'}
             </span>
           </td>

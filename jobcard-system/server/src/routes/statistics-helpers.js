@@ -154,10 +154,16 @@ function daysDiff(d1Str, d2Str) {
   return Math.round((t1 - t2) / (1000 * 60 * 60 * 24));
 }
 
+// The statuses that mean the shop has nothing left to do on a job: the work is done,
+// the customer has been told to collect, or it is invoiced. Anything else is still
+// live work. Used for the active/overdue counts and for deciding a job has a finish
+// date at all, so the two can never disagree about which jobs are still running.
+const FINISHED_STATUSES = ['DONE', 'CUST_NOTIFIED', 'INVOICED'];
+
 function getJobFinishDate(job, maxTimeEntryEnd, fmt) {
   let raw = null;
   if (job.invoiced_date) raw = job.invoiced_date;
-  else if (job.status === 'DONE') {
+  else if (job.status === 'DONE' || job.status === 'CUST_NOTIFIED') {
     raw = maxTimeEntryEnd || job.done_history_at || job.updated_at;
   }
   if (!raw) return null;
@@ -209,6 +215,7 @@ function splitWorkerHoursByJobRules(entriesByJob, defaultRules) {
 }
 
 module.exports = {
+  FINISHED_STATUSES,
   makeDateFormatter,
   getLocalDateString,
   calculateDateRange,

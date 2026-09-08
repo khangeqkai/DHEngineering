@@ -10,12 +10,13 @@ import JobCardModal from './jobcard/JobCardModal';
 import { ACTIVITY_FIELDS } from './searchFields';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { formatHistoryValue } from '../utils/formatters';
-import { statusToken } from './JobCardList.constants';
-import { PRIORITY_OPTIONS } from './jobcard/constants';
+import { statusToken, priorityToken, PRIORITY_LABELS } from './JobCardList.constants';
+import { STATUS_OPTIONS, PRIORITY_OPTIONS } from './jobcard/constants';
 import { actionColor, ACTION_NAMES } from '../utils/activityColors';
 
-const STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'DONE', 'INVOICED'];
-// Same list the job screen writes, so every chip can match and every stored value has a chip.
+// Both lists come from the job screen, so every chip can match and every stored value
+// has a chip — adding a status or priority there gives it a search chip for free.
+const STATUSES = STATUS_OPTIONS.map(s => s.value);
 const PRIORITIES = PRIORITY_OPTIONS.map(p => p.value);
 const ENTITY_TYPES = ['jobcard', 'company', 'contact', 'supplier', 'user', 'machine', 'auth', 'tag', 'qa_level', 'system'];
 const SCOPES = [
@@ -64,7 +65,7 @@ function StatusBadge({ status }) {
 // Same soft-tinted pill as the job list, so status and priority read as one set here too.
 function PriorityBadge({ priority }) {
   const p = priority || 'NONE';
-  return <span className={`badge priority-${p.toLowerCase()}`}>{fmt(p)}</span>;
+  return <span className={`badge priority-${priorityToken(p)}`}>{PRIORITY_LABELS[p] || fmt(p)}</span>;
 }
 
 function ActionBadge({ action }) {
@@ -282,7 +283,7 @@ export default function SearchPage() {
                 </select>
               </FilterRow>}
               <FilterRow label="Priority">
-                <Chips options={PRIORITIES} selected={filters.priority} onToggle={(v) => updateFilter('priority', filters.priority === v ? '' : v)} />
+                <Chips options={PRIORITIES} selected={filters.priority} onToggle={(v) => updateFilter('priority', filters.priority === v ? '' : v)} formatLabel={(v) => PRIORITY_LABELS[v] || fmt(v)} />
               </FilterRow>
               <FilterRow label="Job Type">
                 <select className="search-select" value={filters.jobType} onChange={e => updateFilter('jobType', e.target.value)}>

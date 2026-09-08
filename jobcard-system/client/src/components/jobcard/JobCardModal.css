@@ -72,6 +72,12 @@
   --p-border: #fca5a5;
   --p-dot: var(--danger-color);
 }
+.jc-strip-priority-same-day {
+  --p-bg: var(--same-day-bg);
+  --p-color: var(--same-day-text);
+  --p-border: var(--same-day-border);
+  --p-dot: var(--same-day-text);
+}
 .dark-mode .jc-strip-priority-low {
   --p-bg: rgba(59, 130, 246, 0.18);
   --p-border: rgba(96, 165, 250, 0.34);
@@ -170,6 +176,7 @@
 .jc-strip-priority-menu-item-low .jc-strip-priority-dot { background: var(--status-open-dot); }
 .jc-strip-priority-menu-item-medium .jc-strip-priority-dot { background: var(--warning-hover); }
 .jc-strip-priority-menu-item-high .jc-strip-priority-dot { background: var(--danger-color); }
+.jc-strip-priority-menu-item-same-day .jc-strip-priority-dot { background: var(--same-day-bg); box-shadow: 0 0 0 2px var(--same-day-border); }
 
 /* Description — borderless inline input that flexes */
 .jc-strip-description {
@@ -2679,6 +2686,30 @@
 /* The supplier sits under its treatment: the two are one fact — who is doing what to
    this part — and stacking them costs no width. */
 .cb-supp {
+  display: block;
+  font-size: var(--text-2xs);
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Each machine shows its code with its friendly name stacked underneath — the same
+   two-are-one-fact stacking the treatment/supplier cell uses, so it costs no width.
+   Several machines on one block each get their own stacked pair. */
+.cb-mach-line {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cb-mach-line + .cb-mach-line {
+  margin-top: 4px;
+}
+.cb-mach-code {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cb-mach-name {
   display: block;
   font-size: var(--text-2xs);
   color: var(--text-tertiary);

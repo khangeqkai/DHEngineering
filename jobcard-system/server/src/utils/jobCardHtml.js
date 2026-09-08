@@ -36,6 +36,7 @@ const CSS = `
   .pill { font-size:8pt; font-weight:800; letter-spacing:1px; text-transform:uppercase;
     padding:3px 10px; border-radius:999px; border:1.5px solid currentColor; }
   .pill.high { color:#dc2626; background:#fef2f2; border-color:#fecaca; }
+  .pill.same-day { color:#1a2e05; background:#a3e635; border-color:#65a30d; }
   .pill.normal { color:#15803d; background:#f0fdf4; border-color:#bbf7d0; }
   .meta { margin-top:16px; display:grid; grid-template-columns:repeat(2,1fr);
     gap:1px; background:var(--line); border:1px solid var(--line); }
@@ -118,7 +119,7 @@ function renderItem(it) {
       </div>
       <div class="frow">
         <div class="f material"><div class="lbl">Material</div><div class="val">${esc(it.material)}</div></div>
-        <div class="f treatment"><div class="lbl">Treatment</div><div class="val">${esc(it.treatment)}</div></div>
+        <div class="f treatment"><div class="lbl">Service</div><div class="val">${esc(it.treatment)}</div></div>
         <div class="f drawings"><div class="lbl">Drawings</div>${drawings}</div>
         <div class="f property"><div class="lbl">Customer property</div>${property}</div>
       </div>
@@ -131,8 +132,11 @@ function renderItem(it) {
 function renderJobCardHtml(view) {
   const v = view || {};
   const items = Array.isArray(v.items) ? v.items : [];
+  // The same-day label already says what it is, so it doesn't take the word "priority".
+  const pillClass = v.priorityClass === 'high' || v.priorityClass === 'same-day' ? v.priorityClass : 'normal';
+  const pillText = pillClass === 'same-day' ? v.priorityLabel : `${v.priorityLabel} priority`;
   const pill = v.priorityLabel
-    ? `<span class="pill ${v.priorityClass === 'high' ? 'high' : 'normal'}">${esc(v.priorityLabel)} priority</span>`
+    ? `<span class="pill ${pillClass}">${esc(pillText)}</span>`
     : '';
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">

@@ -83,13 +83,13 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
   return (
     <>
       <div className="line-item-treatment-field">
-        <label>Treatment</label>
+        <label>Service</label>
         <CreatableTagSelect
           category="treatment"
           value={value}
           onChange={handleTreatmentChange}
           onCreate={(tag) => setCreatedTag(tag)}
-          placeholder="Type or add a treatment…"
+          placeholder="Type or add a service…"
         />
       </div>
 

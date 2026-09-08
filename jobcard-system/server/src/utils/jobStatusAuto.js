@@ -7,8 +7,10 @@
 //
 // This re-asserts on every work event, so it overrides a manual status change: if a
 // manager moves a job elsewhere and a worker then logs work, it snaps straight back
-// to DONE or IN_PROGRESS to match reality. The only status it never touches is
-// INVOICED (terminal — the job is filed away). It no-ops when the status already
+// to DONE or IN_PROGRESS to match reality. Two statuses are past that point and are
+// left alone: INVOICED (terminal — the job is filed away) and CUST_NOTIFIED while the
+// job is still complete (it means "done AND the customer has been told", so demoting
+// it to DONE would lose a step). It no-ops when the status already
 // matches. To deliberately hold a finished job in another state, the work itself must
 // change (raise a quantity, add a part, or remove the logged pieces that met a
 // target) — a bare status flip won't stick.
@@ -61,6 +63,15 @@ function syncStatusToWork(jobcardId, actor) {
 
     const target = isJobComplete(jobcardId) ? 'DONE' : 'IN_PROGRESS';
     if (job.status === target) return null; // already correct — don't re-write
+
+    // CUST_NOTIFIED sits AFTER done: the work is finished and the customer has been
+    // told to collect. While the job is still complete that is the truer picture, so
+    // pulling it back to DONE would silently undo a step someone deliberately took —
+    // an admin correcting an old time block would wipe "customer notified". Only leave
+    // it alone while the work still adds up: if the job stops being complete (a part
+    // added, a target raised, logged pieces removed) it is genuinely back in progress
+    // and the normal rule takes over.
+    if (job.status === 'CUST_NOTIFIED' && target === 'DONE') return null;
 
     jobcardQueries.updateStatus.run(target, actor.userId, jobcardId);
     return { from: job.status, to: target };
