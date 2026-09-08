@@ -2,9 +2,11 @@ export const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
   { value: 'QUOTE', label: 'Quote' },
   { value: 'OPEN', label: 'Open' },
-  { value: 'AWAITING_MATERIAL', label: 'Material/Treatment' },
+  { value: 'AWAITING_MATERIAL', label: 'Material/Service' },
+  { value: 'PO_REQUESTED', label: 'PO Requested' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
   { value: 'DONE', label: 'Done' },
+  { value: 'CUST_NOTIFIED', label: 'Cust. Notified' },
   { value: 'INVOICED', label: 'Invoiced' },
   { value: 'OVERDUE', label: 'Overdue' }
 ];
@@ -12,9 +14,11 @@ export const STATUS_OPTIONS = [
 export const STATUS_LABELS = {
   QUOTE: 'Quote',
   OPEN: 'Open',
-  AWAITING_MATERIAL: 'Material/Treatment',
+  AWAITING_MATERIAL: 'Material/Service',
+  PO_REQUESTED: 'PO Requested',
   IN_PROGRESS: 'In Progress',
   DONE: 'Done',
+  CUST_NOTIFIED: 'Cust. Notified',
   INVOICED: 'Invoiced'
 };
 
@@ -96,3 +100,14 @@ export const mergeColumnOrder = (saved) => {
 export const statusToken = (status) => (status || '').toLowerCase().replace(/_/g, '-');
 
 export const getStatusBadgeClass = (status) => (status ? `status-${statusToken(status)}` : '');
+
+// A job past its due date is only late while there is still something to do. Once the
+// work is finished — done, the customer has been told to collect, or it is invoiced —
+// the date has been met as far as the shop is concerned and the row stops going red.
+// One rule, shared by the list, the table and the job screen, so the three can never
+// disagree about which jobs are late. Dates are plain YYYY-MM-DD, so a string compare
+// is the whole comparison.
+const SETTLED_STATUSES = ['DONE', 'CUST_NOTIFIED', 'INVOICED'];
+
+export const isJobOverdue = (dueDate, status, today) =>
+  Boolean(dueDate && String(dueDate).trim() && dueDate < today && !SETTLED_STATUSES.includes(status));

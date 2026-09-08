@@ -38,22 +38,25 @@ function formatDecimalHours(ms) {
 // between them without inventing figures, so the machines are kept together as one
 // row — "CNC-01 + MILL-01" — which is what actually happened.
 //
-// Only the machine's own code (CNC-01, LATHE-02) — that is how the shop refers to it,
-// and it is what the worker picked. Carrying the make and model as well ("CNC-01 ·
-// Haas VF-2SS") took so much of the row that the material and the worker's name were
-// both cut off to pay for it, which is a bad trade for information nobody needs here.
-function machineLabel(raw) {
-  const list = String(raw || '')
+// The stored value is the machine's own code (CNC-01, LATHE-02) — that is what the
+// worker picked. Split it into the individual codes so each can be shown with its
+// friendly name underneath.
+function machineCodes(raw) {
+  return String(raw || '')
     .split(',')
     .map(s => s.trim())
     .filter(Boolean);
-  if (list.length === 0) return 'No machine';
-  return list.join(' + ');
+}
+
+// The codes joined, for grouping rows that share the same machines + worker.
+function machineKey(raw) {
+  const list = machineCodes(raw);
+  return list.length === 0 ? 'No machine' : list.join(' + ');
 }
 
 const DASH = <span className="cb-nil">—</span>;
 
-export default function CostingBreakdown({ lineItems = [], timeEntries = [] }) {
+export default function CostingBreakdown({ lineItems = [], timeEntries = [], machines = [] }) {
   // The raw option lists (rather than the ready-made lookup) so the tables below can
   // be worked out once and reused: the ready-made lookup is a fresh function on every
   // render, which would rebuild them each time the screen redraws — and this screen
@@ -65,6 +68,16 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [] }) {
   // Retired options are included, so a value saved before an option was retired still
   // shows its real name instead of the stored code.
   const nameOf = (tags, value) => tags.find(t => t.value === value)?.name || value;
+
+  // Code → friendly machine name, so the machine cell can show both. A machine that
+  // isn't in the current list (removed since) just shows its code with no name.
+  const machineNames = useMemo(() => {
+    const map = new Map();
+    machines.forEach(m => {
+      if (m.machineNumber != null) map.set(String(m.machineNumber), m.name || '');
+    });
+    return map;
+  }, [machines]);
 
   // Gather every finished block under the part it was worked on, then under the
   // machine-and-worker pairing inside that part. Blocks are matched to a part by the
@@ -86,7 +99,8 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [] }) {
       if (!Number.isFinite(span) || span <= 0) return;
 
       const key = entry.itemId != null ? String(entry.itemId) : '';
-      const rowLabel = machineLabel(entry.machineNumber);
+      const codes = machineCodes(entry.machineNumber);
+      const rowLabel = machineKey(entry.machineNumber);
       const worker = entry.userName || 'Unknown';
       const rowKey = `${rowLabel}||${worker}`;
 
@@ -95,7 +109,7 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [] }) {
       bucket.totalMs += span;
       total += span;
 
-      if (!bucket.rows.has(rowKey)) bucket.rows.set(rowKey, { rowLabel, worker, ms: 0 });
+      if (!bucket.rows.has(rowKey)) bucket.rows.set(rowKey, { rowLabel, codes, worker, ms: 0 });
       bucket.rows.get(rowKey).ms += span;
     });
 
@@ -179,7 +193,21 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [] }) {
           </>
         )}
         <td className="cb-c-mach">
-          {run ? run.rowLabel : <span className="cb-nil">Nothing logged</span>}
+          {!run ? (
+            <span className="cb-nil">Nothing logged</span>
+          ) : run.codes.length === 0 ? (
+            <span className="cb-nil">No machine</span>
+          ) : (
+            run.codes.map((code, ci) => {
+              const name = machineNames.get(code);
+              return (
+                <span className="cb-mach-line" key={ci}>
+                  <span className="cb-mach-code">{code}</span>
+                  {name && <span className="cb-mach-name">{name}</span>}
+                </span>
+              );
+            })
+          )}
         </td>
         <td className="cb-c-who">{run ? run.worker : ''}</td>
         <td className="cb-c-hours">
@@ -215,7 +243,7 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [] }) {
             <tr>
               <th scope="col" className="cb-c-item">Part</th>
               <th scope="col" className="cb-c-mat">Material</th>
-              <th scope="col" className="cb-c-treat">Treatment &amp; supplier</th>
+              <th scope="col" className="cb-c-treat">Service &amp; supplier</th>
               <th scope="col" className="cb-c-mach">Machine</th>
               <th scope="col" className="cb-c-who">Who</th>
               <th scope="col" className="cb-c-hours">Hours</th>

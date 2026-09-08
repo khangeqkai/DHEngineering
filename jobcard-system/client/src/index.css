@@ -201,6 +201,12 @@
   --status-awaiting-material-border: rgba(139, 92, 246, 0.32);
   --status-awaiting-material-dot: #8b5cf6;
 
+  /* Parked — purchase order requested (lime, far from every other hue) */
+  --status-po-requested-bg: rgba(132, 204, 22, 0.13);
+  --status-po-requested-text: #4d7c0f;
+  --status-po-requested-border: rgba(132, 204, 22, 0.32);
+  --status-po-requested-dot: #84cc16;
+
   /* Active — being worked right now (amber, the one "live" colour) */
   --status-in-progress-bg: rgba(245, 158, 11, 0.14);
   --status-in-progress-text: #b45309;
@@ -212,6 +218,12 @@
   --status-done-text: #15803d;
   --status-done-border: rgba(34, 197, 94, 0.30);
   --status-done-dot: #22c55e;
+
+  /* Finished — customer notified for collection (cyan) */
+  --status-cust-notified-bg: rgba(6, 182, 212, 0.12);
+  --status-cust-notified-text: #0e7490;
+  --status-cust-notified-border: rgba(6, 182, 212, 0.30);
+  --status-cust-notified-dot: #06b6d4;
 
   /* Closed / invoiced (muted grey) */
   --status-invoiced-bg: rgba(100, 116, 139, 0.06);
@@ -337,6 +349,12 @@
   --status-awaiting-material-border: rgba(139, 92, 246, 0.36);
   --status-awaiting-material-dot: #a78bfa;
 
+  /* Parked — purchase order requested (lime) */
+  --status-po-requested-bg: rgba(132, 204, 22, 0.20);
+  --status-po-requested-text: #bef264;
+  --status-po-requested-border: rgba(132, 204, 22, 0.34);
+  --status-po-requested-dot: #a3e635;
+
   /* Active — being worked right now (amber, the one "live" colour) */
   --status-in-progress-bg: rgba(245, 158, 11, 0.22);
   --status-in-progress-text: #fcd34d;
@@ -348,6 +366,12 @@
   --status-done-text: #86efac;
   --status-done-border: rgba(34, 197, 94, 0.35);
   --status-done-dot: #4ade80;
+
+  /* Finished — customer notified for collection (cyan) */
+  --status-cust-notified-bg: rgba(6, 182, 212, 0.20);
+  --status-cust-notified-text: #67e8f9;
+  --status-cust-notified-border: rgba(6, 182, 212, 0.34);
+  --status-cust-notified-dot: #22d3ee;
 
   /* Closed / invoiced (muted grey) */
   --status-invoiced-bg: rgba(100, 116, 139, 0.14);

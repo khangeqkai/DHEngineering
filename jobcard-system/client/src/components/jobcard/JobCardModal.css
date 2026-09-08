@@ -2686,6 +2686,30 @@
   text-overflow: ellipsis;
 }
 
+/* Each machine shows its code with its friendly name stacked underneath — the same
+   two-are-one-fact stacking the treatment/supplier cell uses, so it costs no width.
+   Several machines on one block each get their own stacked pair. */
+.cb-mach-line {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cb-mach-line + .cb-mach-line {
+  margin-top: 4px;
+}
+.cb-mach-code {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cb-mach-name {
+  display: block;
+  font-size: var(--text-2xs);
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .cb-c-who {
   width: 14%;
   max-width: 0;

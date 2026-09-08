@@ -13,7 +13,7 @@ import { formatHistoryValue } from '../utils/formatters';
 import { statusToken } from './JobCardList.constants';
 import { actionColor } from '../utils/activityColors';
 
-const STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'IN_PROGRESS', 'DONE', 'INVOICED'];
+const STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'PO_REQUESTED', 'IN_PROGRESS', 'DONE', 'CUST_NOTIFIED', 'INVOICED'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 const ACTIONS = ['create', 'update', 'delete', 'archive', 'unarchive', 'start_timer', 'stop_timer', 'discard_timer', 'add_time_entry', 'update_time_entry', 'delete_time_entry', 'add_note', 'delete_note', 'update_costing', 'update_qa_form', 'add_template', 'remove_template', 'upload_file', 'delete_file', 'add_document', 'login', 'login_failed', 'data_export', 'data_import'];
 const ENTITY_TYPES = ['jobcard', 'company', 'contact', 'supplier', 'user', 'machine', 'auth', 'tag', 'qa_level', 'system'];

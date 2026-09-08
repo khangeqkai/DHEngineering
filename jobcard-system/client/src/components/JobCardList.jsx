@@ -30,7 +30,8 @@ import {
   STATUS_OPTIONS,
   STATUS_LABELS,
   PAGE_SIZE,
-  getStatusBadgeClass
+  getStatusBadgeClass,
+  isJobOverdue
 } from './JobCardList.constants';
 import './JobCardList.css';
 
@@ -297,8 +298,7 @@ export default function JobCardList() {
       if (filter === 'all') {
         matchesFilter = true;
       } else if (filter === 'OVERDUE') {
-        matchesFilter = card.dueDate && card.dueDate < today &&
-          !['DONE', 'INVOICED'].includes(card.status);
+        matchesFilter = isJobOverdue(card.dueDate, card.status, today);
       } else {
         matchesFilter = card.status === filter;
       }

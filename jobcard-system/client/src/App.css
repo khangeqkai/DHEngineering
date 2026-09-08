@@ -1022,8 +1022,10 @@ select.has-retired option.retired-option {
 .status-quote,
 .status-open,
 .status-awaiting-material,
+.status-po-requested,
 .status-in-progress,
 .status-done,
+.status-cust-notified,
 .status-invoiced {
   background: var(--s-bg);
   color: var(--s-color);
@@ -1042,6 +1044,10 @@ select.has-retired option.retired-option {
   --s-bg: var(--status-awaiting-material-bg); --s-color: var(--status-awaiting-material-text);
   --s-border: var(--status-awaiting-material-border); --s-dot: var(--status-awaiting-material-dot);
 }
+.status-po-requested {
+  --s-bg: var(--status-po-requested-bg); --s-color: var(--status-po-requested-text);
+  --s-border: var(--status-po-requested-border); --s-dot: var(--status-po-requested-dot);
+}
 .status-in-progress {
   --s-bg: var(--status-in-progress-bg); --s-color: var(--status-in-progress-text);
   --s-border: var(--status-in-progress-border); --s-dot: var(--status-in-progress-dot);
@@ -1049,6 +1055,10 @@ select.has-retired option.retired-option {
 .status-done {
   --s-bg: var(--status-done-bg); --s-color: var(--status-done-text);
   --s-border: var(--status-done-border); --s-dot: var(--status-done-dot);
+}
+.status-cust-notified {
+  --s-bg: var(--status-cust-notified-bg); --s-color: var(--status-cust-notified-text);
+  --s-border: var(--status-cust-notified-border); --s-dot: var(--status-cust-notified-dot);
 }
 .status-invoiced {
   --s-bg: var(--status-invoiced-bg); --s-color: var(--status-invoiced-text);

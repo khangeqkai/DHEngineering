@@ -118,7 +118,7 @@ function renderItem(it) {
       </div>
       <div class="frow">
         <div class="f material"><div class="lbl">Material</div><div class="val">${esc(it.material)}</div></div>
-        <div class="f treatment"><div class="lbl">Treatment</div><div class="val">${esc(it.treatment)}</div></div>
+        <div class="f treatment"><div class="lbl">Service</div><div class="val">${esc(it.treatment)}</div></div>
         <div class="f drawings"><div class="lbl">Drawings</div>${drawings}</div>
         <div class="f property"><div class="lbl">Customer property</div>${property}</div>
       </div>

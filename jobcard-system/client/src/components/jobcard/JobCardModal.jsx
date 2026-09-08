@@ -6,6 +6,7 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { isManagement } from '../../utils/roles';
 import { todayIsoDate } from '../../utils/formatters';
+import { isJobOverdue } from '../JobCardList.constants';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import './JobCardModal.css';
 import { useJobCardCosting } from './useJobCardCosting';
@@ -408,9 +409,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   if (!isOpen) return null;
   // Same plain calendar-date comparison the job list uses, so the two never disagree.
   const today = todayIsoDate();
-  const isOverdue = formHook.formData.dueDate?.trim() &&
-    formHook.formData.dueDate < today &&
-    !['DONE', 'INVOICED'].includes(formHook.formData.status);
+  const isOverdue = isJobOverdue(formHook.formData.dueDate, formHook.formData.status, today);
 
   const headerStrip = (
     <JobIdentityStrip
@@ -546,6 +545,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   onRetryLoad={costingHook.retryLoadCosting}
                   lineItems={formHook.lineItems}
                   timeEntries={timeEntries}
+                  machines={machines || []}
                 />
               )}
 
