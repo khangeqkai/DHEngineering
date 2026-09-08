@@ -128,6 +128,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
         setActiveTimer({
           id: result.id,
           jobcardId: result.jobcardId,
+          itemId: result.itemId,
           itemNumber: result.itemNumber,
           startTime: result.startTime
         });
@@ -175,6 +176,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
                 setActiveTimer({
                   id: result.id,
                   jobcardId: result.jobcardId,
+                  itemId: result.itemId,
                   itemNumber: result.itemNumber,
                   startTime: result.startTime
                 });
@@ -321,6 +323,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
           setActiveTimer({
             id: result.id,
             jobcardId: result.jobcardId,
+            itemId: result.itemId,
             itemNumber: result.itemNumber,
             startTime: result.startTime
           });
@@ -359,6 +362,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
         setActiveTimer({
           id: stoppedEntry.id,
           jobcardId,
+          itemId: stoppedEntry.itemId,
           itemNumber: stoppedEntry.itemNumber,
           startTime: stoppedEntry.startTime
         });

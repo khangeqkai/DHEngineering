@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Play, Square, ChevronDown } from 'lucide-react';
+import { workBelongsToItem } from './workMatch.mjs';
 
 function formatElapsed(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -9,6 +10,7 @@ function formatElapsed(seconds) {
 }
 
 export default function LineItemTimerButton({
+  itemId,
   itemNumber,
   activeTimer,
   elapsed,
@@ -36,7 +38,10 @@ export default function LineItemTimerButton({
     };
   }, [open]);
 
-  const activeOnThisItem = activeTimer && activeTimer.itemNumber === itemNumber;
+  // The Stop button sticks to the part the timer was actually started on, even
+  // after a save renumbers the parts (the timer's remembered number goes stale
+  // but its part identity doesn't — see workMatch.mjs).
+  const activeOnThisItem = activeTimer && workBelongsToItem(activeTimer, { id: itemId, itemNumber });
 
   if (activeOnThisItem) {
     return (

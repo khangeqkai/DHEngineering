@@ -38,6 +38,9 @@ router.get('/active-timer', authenticate, (req, res) => {
       id: active.id,
       jobcardId: active.jobcard_id,
       jobNumber: active.job_number,
+      // The part's permanent id — the job screen pairs the running timer to its
+      // part by this, never by itemNumber (which shifts when a save renumbers).
+      itemId: active.item_id,
       itemNumber: active.item_number,
       userId: active.user_id,
       userName: active.user_name,
@@ -169,6 +172,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
       id: entryId,
       jobcardId: id,
       userId: targetWorkerId,
+      itemId: targetItem.id,
       itemNumber,
       startTime
     });

@@ -9,13 +9,13 @@ import LineItemTagSelect from './LineItemTagSelect';
 import CreatableTagSelect from '../../common/CreatableTagSelect';
 import TimeEntryForm from './TimeEntryForm';
 import { itemWarningMap } from '../../../utils/attachmentWarnings';
+import { workBelongsToItem } from '../workMatch.mjs';
 
-function entriesForItem(entries, itemNumber) {
-  const target = String(itemNumber);
-  return entries.filter(e => {
-    if (e.itemNumber === undefined || e.itemNumber === null) return false;
-    return String(e.itemNumber) === target;
-  });
+// Work pairs with a part by the part's permanent id (see workMatch.mjs) — a save
+// can renumber every part, and work keyed to the old numbers would otherwise
+// vanish from view until the job is reopened.
+function entriesForItem(entries, item) {
+  return entries.filter(e => workBelongsToItem(e, item));
 }
 
 export default function ItemsTab({
@@ -121,7 +121,7 @@ export default function ItemsTab({
 
         <div className="line-items-list" ref={listRef}>
           {lineItems.map(item => {
-            const itemEntries = entriesForItem(timeEntries, item.itemNumber);
+            const itemEntries = entriesForItem(timeEntries, item);
             // A saved value whose option was archived isn't in the active list — flag it
             // (only once the list has loaded, so it doesn't flash on every value at startup).
             const jobTypeRetired = item.jobType && !jobTypesLoading && !jobTypeTags.some(o => o.value === item.jobType);
@@ -263,6 +263,7 @@ export default function ItemsTab({
                   {jobCardId && (onStartTimer || onStopTimer) && (
                     <div className="line-item-actions">
                       <LineItemTimerButton
+                        itemId={item.id}
                         itemNumber={item.itemNumber}
                         activeTimer={activeTimer}
                         elapsed={timerElapsed}

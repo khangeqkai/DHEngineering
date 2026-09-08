@@ -95,6 +95,7 @@ function sendOpenTimerConflict(res, userId, knownActive) {
       id: active.id,
       jobcardId: active.jobcard_id,
       jobNumber: active.job_number,
+      itemId: active.item_id,
       itemNumber: active.item_number,
       startTime: active.start_time
     }
