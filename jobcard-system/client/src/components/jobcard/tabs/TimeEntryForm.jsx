@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { capitalizeFirst } from '../../../utils/formatters';
 import CheckboxDropdown from '../../common/CheckboxDropdown';
 
@@ -22,13 +23,26 @@ export default function TimeEntryForm({
   handleSaveTimeEntry,
   resetTimeEntryForm
 }) {
+  // A double-click here records the block twice, doubling the job's hours.
+  // One save at a time: the button greys out until the save finishes.
+  const [saving, setSaving] = useState(false);
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await handleSaveTimeEntry();
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="time-entry-form costing-entry-form">
       <div className="form-section-header">
         <h3 className="form-section-title">
           {editingTimeEntryId ? 'Edit Time Entry' : 'New Time Entry'}
         </h3>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={resetTimeEntryForm}>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={resetTimeEntryForm} disabled={saving}>
           Cancel
         </button>
       </div>
@@ -159,8 +173,8 @@ export default function TimeEntryForm({
         </div>
       </div>
 
-      <button type="button" className="btn btn-primary" onClick={handleSaveTimeEntry}>
-        {editingTimeEntryId ? 'Update Entry' : 'Save Entry'}
+      <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
+        {saving ? 'Saving…' : editingTimeEntryId ? 'Update Entry' : 'Save Entry'}
       </button>
     </div>
   );
