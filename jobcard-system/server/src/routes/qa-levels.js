@@ -290,6 +290,15 @@ router.post('/:id/templates', authenticate, requireManagement, (req, res) => {
     const sanitizedFileName = sanitizeFolderName(path.parse(fileName).name) + path.extname(fileName);
     const finalDisplayName = displayName || sanitizedFileName;
 
+    // One name, one form. The file on disk IS the form, so a second form under the same
+    // name would overwrite it and leave two records sharing one file — removing either one
+    // then takes the file away and breaks every job on this level. Checked before the write.
+    if (qaLevelTemplateQueries.getByLevel.all(id).some(t => t.file_name === sanitizedFileName)) {
+      return res.status(409).json({
+        error: `This level already has a form called "${sanitizedFileName}". Remove that one first if you're replacing it, or rename the file.`
+      });
+    }
+
     // Reject a corrupt/cut-off upload before creating any record. Templates are PDFs.
     let buffer;
     try {

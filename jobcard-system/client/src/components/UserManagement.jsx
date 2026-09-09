@@ -37,6 +37,7 @@ export default function UserManagement() {
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [showActivityLog, setShowActivityLog] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
+  const editingSelf = Boolean(editingUser && editingUser.id === currentUser?.id);
 
   useEffect(() => {
     loadUsers();
@@ -222,20 +223,26 @@ export default function UserManagement() {
                 />
               </div>
 
+              {/* Your own PIN is changed in Settings, where the current one is
+                  asked for first — the server refuses it here. */}
               <div className="form-group">
                 <label htmlFor="password">
                   PIN {editingUser ? '(leave blank to keep current)' : '*'}
                 </label>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={4}
-                  id="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-                  placeholder="4-digit PIN"
-                  required={!editingUser}
-                />
+                {editingSelf ? (
+                  <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Change your own PIN in Settings &gt; Change PIN.</p>
+                ) : (
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    id="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                    placeholder="4-digit PIN"
+                    required={!editingUser}
+                  />
+                )}
               </div>
             </div>
 

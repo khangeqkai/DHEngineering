@@ -127,8 +127,10 @@ export function getJobCardColumns({
         return (
           <td key="assignedTo" className="assignee-cell">
             <div className="status-popover-wrapper" ref={assignPopoverId === card.id ? assignPopoverRef : null}>
-              <span
+              <button
+                type="button"
                 className="assignee-trigger"
+                aria-label={isAssigned ? 'Unassign me from this job' : 'Assign me to this job'}
                 onClick={(e) => {
                   e.stopPropagation();
                   setAssignPopoverId(assignPopoverId === card.id ? null : card.id);
@@ -148,7 +150,7 @@ export function getJobCardColumns({
                 onMouseLeave={() => setHoverNames(null)}
               >
                 {renderAvatars()}
-              </span>
+              </button>
               {assignPopoverId === card.id && (
                 <div className="status-popover">
                   <button
@@ -174,15 +176,17 @@ export function getJobCardColumns({
         <td key="status">
           {!showArchived ? (
             <div className="status-popover-wrapper" ref={statusPopoverId === card.id ? popoverRef : null}>
-              <span
+              <button
+                type="button"
                 className={`badge ${getStatusBadgeClass(card.status)} badge-clickable`}
+                aria-label={`Status: ${STATUS_LABELS[card.status] || card.status}. Change status`}
                 onClick={(e) => {
                   e.stopPropagation();
                   setStatusPopoverId(statusPopoverId === card.id ? null : card.id);
                 }}
               >
                 {STATUS_LABELS[card.status] || card.status}
-              </span>
+              </button>
               {statusPopoverId === card.id && (
                 <div className="status-popover">
                   {Object.entries(STATUS_LABELS)

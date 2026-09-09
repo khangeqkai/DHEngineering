@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { api } from '../services/api';
+import { api, SIGNED_OUT_MESSAGES } from '../services/api';
 import { useInactivityTimer } from '../hooks/useInactivityTimer';
 
 const AuthContext = createContext(null);
@@ -65,10 +65,7 @@ export function AuthProvider({ children }) {
       clearInterval(pollRef.current);
       api.setToken(null);
       setUser(null);
-      const message = code === 'ACCOUNT_DEACTIVATED'
-        ? 'You have been signed out because your account was turned off.'
-        : 'You have been signed out because your account was logged in from another device.';
-      toast.error(message);
+      toast.error(SIGNED_OUT_MESSAGES[code] || 'You have been signed out. Please sign in again.');
     });
     return () => api.setOnSessionInvalidated(null);
   }, []);

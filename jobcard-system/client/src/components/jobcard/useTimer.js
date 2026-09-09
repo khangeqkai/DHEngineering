@@ -216,12 +216,13 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
       // A run under 15s is discarded server-side — no block, no form, just a heads-up.
       if (entry?.discarded) {
         toast('Timer discarded — under 15 seconds', { icon: '🗑️' });
-        return;
+        return entry;
       }
       setStoppedEntry(entry);
       setEntryForm(emptyEntryForm());
       setShowEntryForm(true);
       toast.success('Timer stopped');
+      return entry;
     } catch (err) {
       toast.error(err.message || 'Failed to stop timer');
     } finally {
@@ -248,7 +249,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
       // A run under 15s is discarded server-side — no block, no form, just a heads-up.
       if (result?.discarded) {
         toast('Timer discarded — under 15 seconds', { icon: '🗑️' });
-        return;
+        return result;
       }
       setStoppedEntry(result);
       setStoppedEntryJobCard(entryJobcardId !== jobcardId
@@ -257,6 +258,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
       setEntryForm(emptyEntryForm());
       setShowEntryForm(true);
       toast.success('Timer stopped');
+      return result;
     } catch (err) {
       toast.error(err.message || 'Failed to stop timer');
     } finally {

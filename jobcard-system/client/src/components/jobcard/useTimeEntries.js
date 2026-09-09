@@ -43,7 +43,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       workerId: entry.userId || '',
       itemNumber: entry.itemNumber || '',
       machineNumber: entry.machineNumber || '',
-      qty: entry.qty || '',
+      qty: entry.qty ?? '',
       scrapBinQty: entry.scrapBinQty ?? '',
       scrapRecycleQty: entry.scrapRecycleQty ?? '',
       firstOffInspection: entry.firstOffInspection ?? null,

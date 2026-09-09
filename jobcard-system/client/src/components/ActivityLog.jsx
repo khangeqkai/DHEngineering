@@ -74,7 +74,13 @@ export default function ActivityLog() {
         <ExportButton
           onExportView={() => activities.length ? exportActivityLog(activities) : false}
           onExportAll={async () => {
-            const all = await api.getActivityHistory(999999);
+            // The server caps a page at 500, so walk pages until one comes back short.
+            const all = [];
+            for (let offset = 0; ; offset += 500) {
+              const page = await api.getActivityHistory(500, offset);
+              all.push(...page);
+              if (page.length < 500) break;
+            }
             return all.length ? exportActivityLog(all) : false;
           }}
         />

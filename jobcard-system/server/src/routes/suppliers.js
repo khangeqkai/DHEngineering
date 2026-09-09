@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
-const { supplierQueries, tagQueries, recordHistory } = require('../db/database');
+const { db, supplierQueries, tagQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
 
@@ -83,23 +83,28 @@ router.post('/', requireManagement, (req, res) => {
 
     const id = uuidv4();
 
-    supplierQueries.create.run(
-      id,
-      name,
-      contactName || null,
-      contactPhone || null,
-      contactEmail || null,
-      address || null,
-      null, // services field deprecated
-      notes || null
-    );
+    // The supplier row and its service tags are ONE all-or-nothing step: a tag id
+    // that no longer exists trips a foreign-key error, and without the transaction
+    // the supplier row was already committed, leaving a half-saved supplier behind
+    // an error message.
+    db.transaction(() => {
+      supplierQueries.create.run(
+        id,
+        name,
+        contactName || null,
+        contactPhone || null,
+        contactEmail || null,
+        address || null,
+        null, // services field deprecated
+        notes || null
+      );
 
-    // Add service tags
-    if (Array.isArray(serviceTagIds)) {
-      for (const tagId of serviceTagIds) {
-        tagQueries.addToSupplier.run(id, tagId);
+      if (Array.isArray(serviceTagIds)) {
+        for (const tagId of serviceTagIds) {
+          tagQueries.addToSupplier.run(id, tagId);
+        }
       }
-    }
+    })();
 
     const supplier = getSupplierWithTags(id);
 
@@ -151,24 +156,29 @@ router.put('/:id', requireManagement, (req, res) => {
       changes.serviceTags = { from: oldTagNames, to: newTagNames };
     }
 
-    supplierQueries.update.run(
-      name,
-      contactName || null,
-      contactPhone || null,
-      contactEmail || null,
-      address || null,
-      null, // services field deprecated
-      notes || null,
-      id
-    );
+    // Same all-or-nothing rule as create. The tags are cleared before being
+    // re-added, so a bad tag id part-way through would otherwise leave the
+    // supplier with NO service tags at all.
+    db.transaction(() => {
+      supplierQueries.update.run(
+        name,
+        contactName || null,
+        contactPhone || null,
+        contactEmail || null,
+        address || null,
+        null, // services field deprecated
+        notes || null,
+        id
+      );
 
-    // Update service tags (clear and re-add)
-    if (Array.isArray(serviceTagIds)) {
-      tagQueries.clearSupplierTags.run(id);
-      for (const tagId of serviceTagIds) {
-        tagQueries.addToSupplier.run(id, tagId);
+      // Update service tags (clear and re-add)
+      if (Array.isArray(serviceTagIds)) {
+        tagQueries.clearSupplierTags.run(id);
+        for (const tagId of serviceTagIds) {
+          tagQueries.addToSupplier.run(id, tagId);
+        }
       }
-    }
+    })();
 
     const supplier = getSupplierWithTags(id);
 

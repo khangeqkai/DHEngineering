@@ -205,13 +205,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (onTimerChange) onTimerChange();
   }, [timer, reloadTimeEntriesAndCosting, onTimerChange]);
 
+  const { creditAssignee, setAssignees } = formHook;
   const apiTimeEntryOperations = {
     addTimeEntry: async (data) => {
       await api.addTimeEntry(jobCardId, data);
+      creditAssignee(data.workerId, employees);
       await reloadTimeEntriesAndCosting();
     },
     updateTimeEntry: async (id, data) => {
       await api.updateTimeEntry(jobCardId, id, data);
+      creditAssignee(data.workerId, employees);
       await reloadTimeEntriesAndCosting();
     },
     deleteTimeEntry: async (id) => {
@@ -220,41 +223,39 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   };
 
-  const { setAssignees } = formHook;
   const handleStartItemTimer = useCallback(async (itemNumber, workerId, workerName) => {
     await timer.startTimerWithConflictCheck(itemNumber, showConfirm, workerId, workerName);
     await reloadTimeEntries();
-    // Server may have auto-assigned the timer's worker and nudged the status — refresh
-    // both from one fetch, but fold in ONLY that worker: replacing the whole list from
-    // the server would silently undo unsaved ticks/unticks made before pressing Start.
+    // Server may have auto-assigned the timer's worker and nudged the status.
+    creditAssignee(workerId || user?.id, employees);
     try {
       const fresh = await api.getJobcard(jobCardId);
-      const started = (fresh.assignees || []).find(a => a.userId === (workerId || user?.id));
-      if (started) setAssignees(prev => prev.some(a => a.userId === started.userId) ? prev
-        : [...prev, { userId: started.userId, userName: started.userName || started.username }]);
       if (fresh.status) setFormData(prev => ({ ...prev, status: fresh.status }));
     } catch {
-      // Non-fatal — assignees/status will refresh next time the modal opens
+      // Non-fatal — status will refresh next time the modal opens
     }
     if (onTimerChange) onTimerChange();
-  }, [timer, showConfirm, reloadTimeEntries, onTimerChange, jobCardId, setAssignees, setFormData, user?.id]);
+  }, [timer, showConfirm, reloadTimeEntries, onTimerChange, jobCardId, creditAssignee, employees, setFormData, user?.id]);
 
-  const handleStopItemTimer = useCallback(async () => {
-    await timer.stopTimer();
+  // Both stop paths land here. A tap discarded as an accident is undone server-side,
+  // so untick the worker it put on — a Save would otherwise put them straight back.
+  const afterStop = useCallback(async (result) => {
+    if (result?.unassignedUserId) {
+      setAssignees(prev => prev.filter(a => a.userId !== result.unassignedUserId));
+    }
     await reloadTimeEntries();
     await refreshJobStatus();
     if (onTimerChange) onTimerChange();
-  }, [timer, reloadTimeEntries, refreshJobStatus, onTimerChange]);
+  }, [reloadTimeEntries, refreshJobStatus, onTimerChange, setAssignees]);
+
+  const handleStopItemTimer = useCallback(
+    () => timer.stopTimer().then(afterStop), [timer, afterStop]);
 
   // Admin stops a running timer from a line's Progress list (their own or one they
   // set up for a worker). Opens the same fill-in form so the pieces/scrap/description
   // for that run get recorded, instead of silently dropping a blank block.
-  const handleStopEntryWithForm = useCallback(async (entry) => {
-    await timer.stopEntryWithForm(entry);
-    await reloadTimeEntries();
-    await refreshJobStatus();
-    if (onTimerChange) onTimerChange();
-  }, [timer, reloadTimeEntries, refreshJobStatus, onTimerChange]);
+  const handleStopEntryWithForm = useCallback(
+    (entry) => timer.stopEntryWithForm(entry).then(afterStop), [timer, afterStop]);
 
   const timeEntry = useTimeEntries(jobCardId, {
     ...apiTimeEntryOperations,

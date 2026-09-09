@@ -69,6 +69,15 @@ export function useJobCardForm() {
     });
   }, []);
 
+  // Crediting work to someone puts them on the job server-side. Fold that one worker
+  // into the on-screen list so a later Save doesn't send a list without them and undo
+  // it — only them, since replacing the whole list would drop unsaved ticks/unticks.
+  const creditAssignee = useCallback((workerId, employees = []) => {
+    if (!workerId) return;
+    setAssignees(prev => prev.some(a => a.userId === workerId) ? prev
+      : [...prev, { userId: workerId, userName: employees.find(e => e.id === workerId)?.name || '' }]);
+  }, []);
+
   // Set form data from loaded job card
   const setFormDataFromJobCard = useCallback((jobcardData) => {
     const loadedJobNumber = jobcardData.jobNumber || '';
@@ -139,6 +148,7 @@ export function useJobCardForm() {
     updateLineItem,
     removeLineItem,
     toggleAssignee,
+    creditAssignee,
     setFormDataFromJobCard,
     setLineItemsFromApi,
     resetForm

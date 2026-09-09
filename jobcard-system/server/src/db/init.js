@@ -80,6 +80,20 @@ function runMigrations() {
 
   foldGoodPiecesToWhole();
 
+  // A quality level's form file on disk IS the record, so two records naming the same file
+  // share one file: removing either takes the file away and every job on that level then
+  // refuses to save. Uploading a duplicate name is now refused, but existing databases may
+  // already hold such pairs — keep the newest of each and drop the rest. Naturally
+  // idempotent (a second run finds no duplicates).
+  const dedupedTemplates = db.prepare(`
+    DELETE FROM qa_level_templates WHERE rowid NOT IN (
+      SELECT MAX(rowid) FROM qa_level_templates GROUP BY qa_level_id, file_name
+    )
+  `).run();
+  if (dedupedTemplates.changes > 0) {
+    logger.info({ removed: dedupedTemplates.changes }, 'Migration: Removed duplicate QA form records sharing one file');
+  }
+
   // Special labour changed from an auto-tally of "special"-marked time blocks into a
   // manually-entered costing line. Those blocks are being unmarked, so their hours now
   // sit in the normal labour total. Any special hours stored on existing costings were

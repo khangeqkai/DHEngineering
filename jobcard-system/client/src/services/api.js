@@ -19,6 +19,15 @@ const UNREACHABLE_RETRY_MS = 1500;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Every reason the server can tell us this person's sign-in is finished, with
+// the wording they see. Shared with AuthContext so both say the same thing.
+export const SIGNED_OUT_MESSAGES = {
+  SESSION_REPLACED: 'You have been signed out because your account was logged in from another device.',
+  ACCOUNT_DEACTIVATED: 'You have been signed out because your account was turned off.',
+  TOKEN_EXPIRED: 'Your sign-in has expired. Please sign in again.',
+  TOKEN_INVALID: 'Your sign-in is no longer valid. Please sign in again.'
+};
+
 class ApiService {
   constructor() {
     this.token = null;
@@ -88,9 +97,9 @@ class ApiService {
       const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
 
       // Handle a forced sign-out from the server: session replaced by a newer
-      // login, or the account was turned off / its PIN reset.
-      if (response.status === 401 &&
-          (errorData.code === 'SESSION_REPLACED' || errorData.code === 'ACCOUNT_DEACTIVATED')) {
+      // login, the account was turned off / its PIN reset, or the pass itself
+      // is no longer good (expired or unreadable).
+      if (response.status === 401 && SIGNED_OUT_MESSAGES[errorData.code]) {
         if (this.onSessionInvalidated && !this.sessionInvalidated) {
           this.sessionInvalidated = true;
           this.onSessionInvalidated(errorData.code);
@@ -98,9 +107,7 @@ class ApiService {
         // The forced-sign-out handler above shows the real, friendly message. Give
         // this thrown error a human message too (not the raw code) so any caller
         // that falls back to showing err.message never flashes "SESSION_REPLACED".
-        const signedOut = new Error(errorData.code === 'ACCOUNT_DEACTIVATED'
-          ? 'You have been signed out because your account was turned off.'
-          : 'You have been signed out because your account was logged in from another device.');
+        const signedOut = new Error(SIGNED_OUT_MESSAGES[errorData.code]);
         signedOut.code = errorData.code;
         throw signedOut;
       }
@@ -363,7 +370,7 @@ class ApiService {
   activateTag(id) { return this._post(`/tags/${id}/activate`); }
 
   // Activity history (management only)
-  getActivityHistory(limit = 50) { return this.request(`/history?limit=${limit}`); }
+  getActivityHistory(limit = 50, offset = 0) { return this.request(`/history?limit=${limit}&offset=${offset}`); }
   getUserActivity(userId, limit = 50) { return this.request(`/history/user/${userId}?limit=${limit}`); }
   getEntityHistory(entityType, page = 1) { return this.request(`/history/entity/${entityType}?page=${page}`); }
 

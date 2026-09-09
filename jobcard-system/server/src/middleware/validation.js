@@ -81,7 +81,10 @@ function optionalEmail(field = 'email') {
     .optional({ checkFalsy: true })
     .isEmail()
     .withMessage('Email must be a valid email address')
-    .normalizeEmail();
+    // Lowercase only. normalizeEmail() rewrites the address itself (it strips
+    // dots and +tags from gmail.com), so jane.doe+dh@gmail.com was saved as
+    // janedoe@gmail.com while the job card kept what was actually typed.
+    .toLowerCase();
 }
 
 /**

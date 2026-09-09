@@ -4,8 +4,9 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
 const { validateStartTimer, validateManualTimeEntry } = require('../middleware/validation');
-const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, recordHistory } = require('../db/database');
+const { db, timeEntryQueries, jobItemQueries, userQueries, recordHistory } = require('../db/database');
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
+const { discardIfAccidentalTap } = require('../utils/startTimerUndo');
 const {
   normalizeTime,
   checkEntryDuration,
@@ -22,10 +23,6 @@ const {
 } = require('../utils/timeEntryHelpers');
 
 const router = express.Router();
-
-// A timer that ran for less than this is treated as an accidental start/stop tap:
-// the block is discarded rather than logged, and the client skips the stop form.
-const MIN_LOGGED_MS = 15 * 1000;
 
 // Get user's active timer across all jobs
 router.get('/active-timer', authenticate, (req, res) => {
@@ -143,30 +140,9 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
       ...(statusChange ? { status: statusChange } : {})
     }, null);
 
-    // Auto-assign the worker to this job if they aren't already an assignee. For a
-    // self-start we record it as a self_assign; for an on-behalf start the shared
-    // helper records it as an admin assign.
-    if (isSelf) {
-      const beforeAssignees = jobAssigneeQueries.getByJobcard.all(id);
-      const alreadyAssigned = beforeAssignees.some(a => a.user_id === targetWorkerId);
-      if (!alreadyAssigned) {
-        try {
-          jobAssigneeQueries.create.run(`assignee:${uuidv4()}`, id, targetWorkerId);
-          const afterAssignees = jobAssigneeQueries.getByJobcard.all(id);
-          const fromNames = beforeAssignees.map(a => a.user_name).join(', ') || 'none';
-          const toNames = afterAssignees.map(a => a.user_name).join(', ') || 'none';
-          recordHistory('jobcard', id, 'self_assign', req.user.userId, req.user.name || req.user.username, {
-            assignees: { from: fromNames, to: toNames }
-          });
-        } catch (e) {
-          if (!e || e.code !== 'SQLITE_CONSTRAINT_UNIQUE') {
-            logger.error({ err: e }, 'Auto-assign on start timer failed');
-          }
-        }
-      }
-    } else {
-      autoAssignWorker(id, targetWorkerId, req.user);
-    }
+    // Auto-assign the worker to this job if they aren't already an assignee — recorded
+    // as a self_assign when they started their own timer, otherwise as a management assign.
+    autoAssignWorker(id, targetWorkerId, req.user, isSelf ? 'self_assign' : 'assign');
 
     res.status(201).json({
       id: entryId,
@@ -199,18 +175,10 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
       return res.status(400).json({ error: 'Timer already stopped' });
     }
 
-    // Accidental tap guard: a run shorter than the minimum is discarded instead of
-    // logged. The block is removed and the client is told to skip the stop form.
-    const ranMs = Date.now() - new Date(existing.start_time).getTime();
-    if (Number.isFinite(ranMs) && ranMs < MIN_LOGGED_MS) {
-      timeEntryQueries.delete.run(entryId);
-      const statusChange = syncStatusToWork(id, req.user);
-      recordHistory('jobcard', id, 'discard_timer', req.user.userId, req.user.name || req.user.username, {
-        timer: { from: 'running', to: 'discarded (under 15s)' },
-        ...(statusChange ? { status: statusChange } : {})
-      }, { timeEntryId: entryId, startTime: existing.start_time });
-      return res.json({ discarded: true });
-    }
+    // A start/stop tap inside seconds is an accident: discard the block and put back
+    // what the Start changed, rather than logging it. See startTimerUndo.js.
+    const discarded = discardIfAccidentalTap(id, existing, req.user);
+    if (discarded) return res.json(discarded);
 
     const endTime = new Date().toISOString();
     timeEntryQueries.stop.run(endTime, entryId);

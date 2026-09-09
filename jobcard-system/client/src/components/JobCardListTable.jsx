@@ -35,6 +35,13 @@ export default function JobCardListTable({
                 onDragOver={(e) => handleDragOver(e, col.id)}
                 onDrop={(e) => handleDrop(e, col.id)}
                 onClick={sortable ? () => onSort(col.id) : undefined}
+                onKeyDown={sortable ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSort(col.id);
+                  }
+                } : undefined}
+                tabIndex={sortable ? 0 : undefined}
                 className={`jc-th${sortable ? ' jc-th-sortable' : ''}${active ? ' jc-th-sorted' : ''}${col.align ? ` jc-align-${col.align}` : ''}`}
                 title={sortable ? 'Click to sort, drag to reorder' : 'Drag to reorder columns'}
                 aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}

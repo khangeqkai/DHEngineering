@@ -10,7 +10,8 @@ const router = express.Router();
 router.get('/', authenticate, requireAdmin, (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
-    const history = historyQueries.getRecent.all(limit);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    const history = historyQueries.getRecent.all(limit, offset);
 
     res.json(history.map(h => ({
       id: h.id,

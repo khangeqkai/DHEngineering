@@ -44,10 +44,14 @@ function authenticate(req, res, next) {
     };
     next();
   } catch (err) {
+    // Both of these mean the pass this person is holding can never work again,
+    // so they carry a code: the client signs them out instead of leaving every
+    // action failing silently (an admin is exempt from the inactivity timeout,
+    // so a session left open past its expiry hit exactly that).
     if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired' });
+      return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
     }
-    return res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({ error: 'Invalid token', code: 'TOKEN_INVALID' });
   }
 }
 

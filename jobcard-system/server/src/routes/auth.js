@@ -95,6 +95,12 @@ router.post('/login', validateLogin, async (req, res) => {
       });
     }
 
+    // Count the attempt NOW, before any awaiting work. bcrypt.compare yields, so
+    // checking the limit and recording the failure afterwards left a gap wide
+    // enough for a whole burst of guesses to pass the check together — one
+    // cooldown wait bought unlimited tries. A successful login clears it below.
+    recordLoginFailure(ip);
+
     // A visitor through the home-access tunnel must give the shared home access
     // code before the PIN is even looked at: the tunnel address is public, and
     // a 4-digit PIN alone is not enough of a lock out there. No code set = home
@@ -107,7 +113,6 @@ router.post('/login', validateLogin, async (req, res) => {
       const { homeAccessCode } = req.body;
       const codeOk = typeof homeAccessCode === 'string' && await bcrypt.compare(homeAccessCode, codeHash);
       if (!codeOk) {
-        recordLoginFailure(ip);
         logger.warn({ username, reason: 'invalid_home_access_code' }, 'Failed login attempt');
         recordHistory('auth', 'login', 'login_failed', null, username, {
           reason: { from: null, to: 'invalid_home_access_code' }
@@ -119,7 +124,6 @@ router.post('/login', validateLogin, async (req, res) => {
     // Find user
     const user = userQueries.getByUsername.get(username);
     if (!user || !user.active) {
-      recordLoginFailure(ip);
       logger.warn({ username, reason: 'user_not_found_or_archived' }, 'Failed login attempt');
       recordHistory('auth', 'login', 'login_failed', null, username, {
         reason: { from: null, to: 'user_not_found_or_archived' }
@@ -130,7 +134,6 @@ router.post('/login', validateLogin, async (req, res) => {
     // Verify password
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
-      recordLoginFailure(ip);
       logger.warn({ username, userId: user.id, reason: 'invalid_password' }, 'Failed login attempt');
       recordHistory('auth', 'login', 'login_failed', user.id, username, {
         reason: { from: null, to: 'invalid_password' }
@@ -367,6 +370,15 @@ router.put('/users/:id', authenticate, async (req, res) => {
 
     if (!isAdmin && !isManager && !isSelf) {
       return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    // Changing your OWN PIN always goes through PUT /auth/change-password, which
+    // asks for the current one first. Allowing it here would let anyone who walks
+    // up to a signed-in session set a PIN of their own without ever proving they
+    // knew the old one — and lock the real owner out. Resetting SOMEONE ELSE'S PIN
+    // (the management reset below) is deliberately different: that's the point of a reset.
+    if (password && isSelf) {
+      return res.status(403).json({ error: 'To change your own PIN, use Change PIN in Settings — it asks for your current PIN first.' });
     }
 
     // Only admins and managers can change roles, and a role must be a real one.

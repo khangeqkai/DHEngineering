@@ -56,10 +56,10 @@ function resolveWorkerId(workerId) {
   return { userId: user.id };
 }
 
-// Add the credited worker to this job's assigned list if they aren't already on
-// it, mirroring what happens when a worker starts their own timer. Fire-and-forget
-// (logged, never blocks the time entry). Logs the assignment to history.
-function autoAssignWorker(jobcardId, workerId, actor) {
+// Add the credited worker to this job's assigned list if they aren't already on it.
+// Fire-and-forget (logged, never blocks the work being recorded). The action names who
+// did it: someone starting their own timer is a self_assign, anyone else an assign.
+function autoAssignWorker(jobcardId, workerId, actor, action = 'assign') {
   const before = jobAssigneeQueries.getByJobcard.all(jobcardId);
   if (before.some(a => a.user_id === workerId)) return;
   try {
@@ -67,12 +67,12 @@ function autoAssignWorker(jobcardId, workerId, actor) {
     const after = jobAssigneeQueries.getByJobcard.all(jobcardId);
     const fromNames = before.map(a => a.user_name).join(', ') || 'none';
     const toNames = after.map(a => a.user_name).join(', ') || 'none';
-    recordHistory('jobcard', jobcardId, 'assign', actor.userId, actor.name || actor.username, {
+    recordHistory('jobcard', jobcardId, action, actor.userId, actor.name || actor.username, {
       assignees: { from: fromNames, to: toNames }
     });
   } catch (e) {
     if (!e || e.code !== 'SQLITE_CONSTRAINT_UNIQUE') {
-      logger.error({ err: e }, 'Auto-assign on manual time entry failed');
+      logger.error({ err: e }, 'Auto-assign of the credited worker failed');
     }
   }
 }
