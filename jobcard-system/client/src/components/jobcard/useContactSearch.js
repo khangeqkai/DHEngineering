@@ -49,7 +49,7 @@ export function useContactSearch() {
       setCompanies(results || []);
       companiesLoaded.current = true;
     } catch (err) {
-      toast.error('Could not load the customer list');
+      toast.error('Could not load the customer list', { id: 'customer-list-load-failed' });
     }
   }, []);
 

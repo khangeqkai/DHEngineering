@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { discardToastIcon } from '../common/toastIcons';
 
 const emptyEntryForm = () => ({
   qty: '',
@@ -145,7 +146,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
             ? `That worker already has a timer running on ${t.jobNumber || 'another job'}, item #${t.itemNumber}`
             : 'That worker already has a timer running');
         } else {
-          toast.error(err.message || 'Failed to start timer');
+          toast.error(err.message || 'Failed to start timer', { id: 'start-timer-failed' });
         }
         return;
       }
@@ -199,7 +200,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
           toast.error(innerErr.message || 'Failed to switch timer');
         }
       } else {
-        toast.error(err.message || 'Failed to start timer');
+        toast.error(err.message || 'Failed to start timer', { id: 'start-timer-failed' });
       }
     } finally {
       setLoading(false);
@@ -215,16 +216,16 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
       setActiveTimer(null);
       // A run under 15s is discarded server-side — no block, no form, just a heads-up.
       if (entry?.discarded) {
-        toast('Timer discarded — under 15 seconds', { icon: '🗑️' });
+        toast('Timer discarded — under 15 seconds', { icon: discardToastIcon });
         return entry;
       }
       setStoppedEntry(entry);
       setEntryForm(emptyEntryForm());
       setShowEntryForm(true);
-      toast.success('Timer stopped');
+      toast.success('Timer stopped', { id: 'timer-stopped' });
       return entry;
     } catch (err) {
-      toast.error(err.message || 'Failed to stop timer');
+      toast.error(err.message || 'Failed to stop timer', { id: 'stop-timer-failed' });
     } finally {
       setLoading(false);
     }
@@ -248,7 +249,7 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
       if (isOwnActive) setActiveTimer(null);
       // A run under 15s is discarded server-side — no block, no form, just a heads-up.
       if (result?.discarded) {
-        toast('Timer discarded — under 15 seconds', { icon: '🗑️' });
+        toast('Timer discarded — under 15 seconds', { icon: discardToastIcon });
         return result;
       }
       setStoppedEntry(result);
@@ -257,10 +258,10 @@ export function useTimer(jobcardId, { onExternalStop } = {}) {
         : null);
       setEntryForm(emptyEntryForm());
       setShowEntryForm(true);
-      toast.success('Timer stopped');
+      toast.success('Timer stopped', { id: 'timer-stopped' });
       return result;
     } catch (err) {
-      toast.error(err.message || 'Failed to stop timer');
+      toast.error(err.message || 'Failed to stop timer', { id: 'stop-timer-failed' });
     } finally {
       setLoading(false);
     }

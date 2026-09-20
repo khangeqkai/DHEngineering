@@ -5,7 +5,7 @@ export default function ActivityLogTab({ history = [], loading, onRefresh }) {
   const formatAction = (action) => (
     <span style={{
       color: actionColor(action),
-      fontWeight: 600,
+      fontWeight: 700,
       textTransform: 'capitalize',
       fontSize: 'var(--text-xs)'
     }}>

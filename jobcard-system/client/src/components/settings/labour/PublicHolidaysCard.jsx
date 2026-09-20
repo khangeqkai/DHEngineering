@@ -39,7 +39,7 @@ export default function PublicHolidaysCard({ holidays, addHoliday, removeHoliday
               <span className="holiday-chip" key={date}>
                 {pretty(date)}
                 <button type="button" className="holiday-chip-x" aria-label={`Remove ${date}`} onClick={() => removeHoliday(date)}>
-                  <X size={13} />
+                  <X size={14} />
                 </button>
               </span>
             ))}

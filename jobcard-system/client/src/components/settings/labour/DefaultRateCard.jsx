@@ -1,7 +1,9 @@
+import FieldError from '../../common/FieldError';
+
 // The company-wide default hourly rate. It seeds each NEW job's base rate at creation;
 // from then on the job owns its rate, so changing this never moves an existing job
 // (the costing screen offers a one-tap "use company default" link to re-apply it).
-export default function DefaultRateCard({ defaultRate, setDefaultRate, onSave, saving }) {
+export default function DefaultRateCard({ defaultRate, setDefaultRate, onSave, saving, error }) {
   return (
     <div className="card full-width">
       <div className="card-header">
@@ -14,19 +16,21 @@ export default function DefaultRateCard({ defaultRate, setDefaultRate, onSave, s
           afterwards. A job's own rate can always be edited on its costing screen,
           which also offers a one-tap link back to this default.
         </p>
-        <div className="mult-field">
+        <div className={`mult-field${error ? ' field-error' : ''}`}>
           <label className="setting-label">Rate per hour</label>
           <div className="mult-input-wrap">
             <span className="mult-mark">$</span>
             <input
               type="number"
               className="form-control"
+              id="defaultRate"
               value={defaultRate}
               onChange={(e) => setDefaultRate(e.target.value)}
               min="0"
               step="0.01"
             />
           </div>
+          <FieldError message={error} />
           <span className="setting-description">Overtime tiers charge this rate times their multiplier.</span>
         </div>
         <div className="sched-save">

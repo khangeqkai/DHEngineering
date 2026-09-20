@@ -7,6 +7,8 @@ import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
+import FieldError from './common/FieldError';
 
 export default function QALevelManagement() {
   const [levels, setLevels] = useState([]);
@@ -22,6 +24,7 @@ export default function QALevelManagement() {
   const cancelRenameRef = useRef(false);
   const [uploadingTemplate, setUploadingTemplate] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
+  const { setFieldErrors, clearFieldError, clearAll: clearFieldErrors, groupClass, errorFor } = useFieldErrors();
 
   const loadData = useCallback(async () => {
     try {
@@ -42,13 +45,15 @@ export default function QALevelManagement() {
   const resetForm = () => {
     setFormData({ name: '' });
     setShowForm(false);
+    clearFieldErrors();
   };
 
   // The pop-up is now create-only — renaming happens inline on each row's title.
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      toast.error('Name is required');
+      setFieldErrors({ name: 'Name is required' });
+      scrollFieldIntoView('name');
       return;
     }
 
@@ -66,6 +71,7 @@ export default function QALevelManagement() {
   };
 
   const startRename = (level) => {
+    clearFieldError('renameName');
     setEditingNameId(level.id);
     setEditingNameValue(level.name);
   };
@@ -79,11 +85,16 @@ export default function QALevelManagement() {
       return;
     }
     const name = toTitleCase(editingNameValue.trim());
-    setEditingNameId(null);
     if (!name) {
-      toast.error('Name is required');
+      // Keep the row in edit mode so the mark has somewhere to show, rather than
+      // collapsing back to the (now invalid) title. Deliberately no
+      // scrollFieldIntoView here: this runs from the field's own blur, and that
+      // helper focuses the field, which would bounce the caret straight back in
+      // and trap it. The row is already on screen, so the mark is enough.
+      setFieldErrors({ renameName: 'Name is required' });
       return;
     }
+    setEditingNameId(null);
     if (name === level.name) return;
 
     setLevels(prev => prev.map(l => l.id === level.id ? { ...l, name } : l));
@@ -211,18 +222,22 @@ export default function QALevelManagement() {
               <div className="qa-level-header">
                 <div className="qa-level-info">
                   {editingNameId === level.id ? (
-                    <input
-                      className="qa-level-name-input"
-                      type="text"
-                      value={editingNameValue}
-                      autoFocus
-                      onChange={(e) => setEditingNameValue(e.target.value)}
-                      onBlur={() => commitRename(level)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
-                        else if (e.key === 'Escape') { e.preventDefault(); cancelRenameRef.current = true; setEditingNameId(null); }
-                      }}
-                    />
+                    <div className={groupClass('renameName')}>
+                      <input
+                        className="qa-level-name-input"
+                        type="text"
+                        id="renameName"
+                        value={editingNameValue}
+                        autoFocus
+                        onChange={(e) => { clearFieldError('renameName'); setEditingNameValue(e.target.value); }}
+                        onBlur={() => commitRename(level)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
+                          else if (e.key === 'Escape') { e.preventDefault(); cancelRenameRef.current = true; clearFieldError('renameName'); setEditingNameId(null); }
+                        }}
+                      />
+                      <FieldError message={errorFor('renameName')} />
+                    </div>
                   ) : (
                     <h3
                       className="qa-level-name qa-level-name--editable"
@@ -230,7 +245,7 @@ export default function QALevelManagement() {
                       onClick={() => startRename(level)}
                     >
                       {level.name}
-                      <Pencil size={13} className="qa-level-name-pencil" />
+                      <Pencil size={14} className="qa-level-name-pencil" />
                     </h3>
                   )}
                   <span className="qa-level-meta">
@@ -272,7 +287,7 @@ export default function QALevelManagement() {
                           onClick={() => handleDeleteTemplate(level.id, tmpl)}
                           title="Delete template"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     ))}
@@ -308,12 +323,13 @@ export default function QALevelManagement() {
       >
         <form onSubmit={handleSubmit}>
           <BottomSheet.Body>
-            <div className="form-group">
+            <div className={groupClass('name')}>
               <label>Name <span className="required">*</span></label>
               <input
                 type="text"
+                id="name"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => { clearFieldError('name'); setFormData(prev => ({ ...prev, name: e.target.value })); }}
                 onBlur={(e) => {
                   const f = toTitleCase(e.target.value);
                   if (f !== e.target.value) setFormData(prev => ({ ...prev, name: f }));
@@ -321,6 +337,7 @@ export default function QALevelManagement() {
                 placeholder="e.g. High Risk"
                 className={!formData.name.trim() ? 'field-required' : ''}
               />
+              <FieldError message={errorFor('name')} />
             </div>
           </BottomSheet.Body>
 

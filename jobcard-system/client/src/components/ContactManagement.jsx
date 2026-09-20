@@ -44,7 +44,7 @@ export default function ContactManagement() {
       setCompanies(visible);
       return visible;
     } catch (err) {
-      toast.error('Could not load the customer list');
+      toast.error('Could not load the customer list', { id: 'customer-list-load-failed' });
       return null;
     } finally {
       setLoading(false);
@@ -71,7 +71,7 @@ export default function ContactManagement() {
         toast.success('Customer saved');
       } else {
         const created = await api.createCompany(formData);
-        toast.success('Customer added');
+        toast.success('Customer added', { id: 'customer-added' });
         setEditingCompany({ ...created, people: [] });
       }
       await refresh();

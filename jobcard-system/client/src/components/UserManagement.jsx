@@ -12,7 +12,9 @@ import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import EntityActivityLog from './common/EntityActivityLog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
 import { isManagement } from '../utils/roles';
+import FieldError from './common/FieldError';
 
 export default function UserManagement() {
   const { user: currentUser, applyRole } = useAuth();
@@ -37,6 +39,7 @@ export default function UserManagement() {
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [showActivityLog, setShowActivityLog] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
+  const { setFieldErrors, clearFieldError, clearAll: clearFieldErrors, groupClass, errorFor } = useFieldErrors();
   const editingSelf = Boolean(editingUser && editingUser.id === currentUser?.id);
 
   useEffect(() => {
@@ -60,7 +63,8 @@ export default function UserManagement() {
     // Every account must carry a real display name so time entries, the activity
     // log, and pickers always show who someone is — never a blank.
     if (!formData.name.trim()) {
-      toast.error('Please enter a display name');
+      setFieldErrors({ name: 'Please enter a display name' });
+      scrollFieldIntoView('name');
       return;
     }
 
@@ -68,11 +72,13 @@ export default function UserManagement() {
     if (formData.password) {
       const passwordError = validatePassword(formData.password);
       if (passwordError) {
-        toast.error(passwordError);
+        setFieldErrors({ password: passwordError });
+        scrollFieldIntoView('password');
         return;
       }
     } else if (!editingUser) {
-      toast.error('Password is required');
+      setFieldErrors({ password: 'Password is required' });
+      scrollFieldIntoView('password');
       return;
     }
 
@@ -114,6 +120,7 @@ export default function UserManagement() {
   };
 
   const handleEdit = (user) => {
+    clearFieldErrors();
     setEditingUser(user);
     setFormData({
       username: user.username,
@@ -173,6 +180,7 @@ export default function UserManagement() {
       email: '',
       role: 'user'
     });
+    clearFieldErrors();
   };
 
 
@@ -225,35 +233,44 @@ export default function UserManagement() {
 
               {/* Your own PIN is changed in Settings, where the current one is
                   asked for first — the server refuses it here. */}
-              <div className="form-group">
+              <div className={groupClass('password')}>
                 <label htmlFor="password">
                   PIN {editingUser ? '(leave blank to keep current)' : '*'}
                 </label>
                 {editingSelf ? (
                   <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Change your own PIN in Settings &gt; Change PIN.</p>
                 ) : (
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    maxLength={4}
-                    id="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-                    placeholder="4-digit PIN"
-                    required={!editingUser}
-                  />
+                  <>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={4}
+                      id="password"
+                      value={formData.password}
+                      onChange={(e) => {
+                        clearFieldError('password');
+                        setFormData({ ...formData, password: e.target.value.replace(/\D/g, '').slice(0, 4) });
+                      }}
+                      placeholder="4-digit PIN"
+                      required={!editingUser}
+                    />
+                    <FieldError message={errorFor('password')} />
+                  </>
                 )}
               </div>
             </div>
 
             <div className="form-row">
-              <div className="form-group">
+              <div className={groupClass('name')}>
                 <label htmlFor="name">Display Name *</label>
                 <input
                   type="text"
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => {
+                    clearFieldError('name');
+                    setFormData({ ...formData, name: e.target.value });
+                  }}
                   onBlur={(e) => {
                     const formatted = toTitleCase(e.target.value);
                     if (formatted !== e.target.value) {
@@ -262,6 +279,7 @@ export default function UserManagement() {
                   }}
                   required
                 />
+                <FieldError message={errorFor('name')} />
               </div>
 
               <div className="form-group">

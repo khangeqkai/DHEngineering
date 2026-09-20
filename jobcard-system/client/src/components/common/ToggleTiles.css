@@ -56,7 +56,7 @@
 
 .toggle-tile-label {
   font-size: var(--text-base);
-  font-weight: 600;
+  font-weight: var(--font-bold);
   line-height: 1.2;
   color: var(--text-primary);
 }

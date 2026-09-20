@@ -57,7 +57,7 @@
 
 .login-form-title {
   font-size: var(--text-3xl);
-  font-weight: 700;
+  font-weight: var(--font-bold);
   color: #eaecf2;
   margin-top: 0;
   margin-bottom: 0.25rem;
@@ -102,7 +102,7 @@
 }
 
 .login-card .form-group input::placeholder {
-  color: rgba(148, 163, 192, 0.5);
+  color: rgba(148, 163, 192, 0.75);
 }
 
 .login-card .form-group input:focus {
@@ -119,7 +119,7 @@
   left: 0.75rem;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(148, 163, 192, 0.5);
+  color: rgba(148, 163, 192, 0.75);
   pointer-events: none;
 }
 
@@ -135,7 +135,7 @@
   width: 100%;
   padding: 0.75rem;
   font-size: var(--text-base);
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-bold);
   background: #2563eb !important;
   border: none;
   color: #ffffff !important;

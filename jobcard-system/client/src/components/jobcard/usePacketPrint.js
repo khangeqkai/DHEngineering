@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api, base64ToBytes } from '../../services/api';
+import { warningToastIcon } from '../common/toastIcons';
 
 // Builds and prints/saves the combined "packet" PDF (job card + chosen files).
 // The server builds the whole packet — including rendering the job card to a PDF —
@@ -14,12 +15,12 @@ function reportSkipped(skipped) {
   // that simply couldn't be read.
   if (skipped.some(s => s.reason === 'engine')) {
     toast('Couldn’t start the PDF engine — the job card was left out of the packet. Ask an admin to set it up.',
-      { icon: '⚠️', duration: 8000 });
+      { icon: warningToastIcon, duration: 8000 });
   }
   const others = skipped.filter(s => s.reason !== 'engine');
   if (others.length) {
     const names = others.map(s => s.name).join(', ');
-    toast(`Left out of the packet (couldn't be added): ${names}`, { icon: '⚠️', duration: 6000 });
+    toast(`Left out of the packet (couldn't be added): ${names}`, { icon: warningToastIcon, duration: 6000 });
   }
 }
 
@@ -125,7 +126,7 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
           toast(cardIncluded
             ? 'Printed, but it couldn’t be recorded — this job won’t show a print tick'
             : 'Printed, but it couldn’t be recorded in this job’s activity',
-            { icon: '⚠️', duration: 7000 });
+            { icon: warningToastIcon, duration: 7000 });
         }
       }
     } catch (err) {
@@ -167,7 +168,7 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
           // save didn't fail, but it left no record — and this write is never
           // re-sent, or the save would be logged twice.
           toast('Saved, but it couldn’t be recorded in the job’s activity',
-            { icon: '⚠️', duration: 7000 });
+            { icon: warningToastIcon, duration: 7000 });
         }
       }
     } catch (err) {

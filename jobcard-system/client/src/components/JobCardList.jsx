@@ -148,11 +148,11 @@ export default function JobCardList() {
           await api.deleteJobcard(id, true);
           await loadJobcards();
         } catch (e2) {
-          toast.error(e2.message || 'Failed to delete job card');
+          toast.error(e2.message || 'Failed to delete job card', { id: 'delete-jobcard-failed' });
         }
         return;
       }
-      toast.error(err.message || 'Failed to delete job card');
+      toast.error(err.message || 'Failed to delete job card', { id: 'delete-jobcard-failed' });
     }
   };
 
@@ -219,11 +219,11 @@ export default function JobCardList() {
           await api.updateJobcardStatus(cardId, newStatus, true);
           await applyLocally();
         } catch (e2) {
-          toast.error(e2.message || 'Failed to update status');
+          toast.error(e2.message || 'Failed to update status', { id: 'status-update-failed' });
         }
         return;
       }
-      toast.error(err.message || 'Failed to update status');
+      toast.error(err.message || 'Failed to update status', { id: 'status-update-failed' });
     }
   }, [showConfirm, refreshMissingFiles, loadJobcards]);
 

@@ -71,7 +71,7 @@ export default function CheckboxDropdown({
                 disabled={opt.disabled}
               >
                 <span className={`checkbox-dropdown-box${checked ? ' is-checked' : ''}`}>
-                  {checked && <Check size={12} strokeWidth={3} />}
+                  {checked && <Check size={14} strokeWidth={3} />}
                 </span>
                 <span className="checkbox-dropdown-text">
                   <span className="checkbox-dropdown-label">{opt.label}</span>

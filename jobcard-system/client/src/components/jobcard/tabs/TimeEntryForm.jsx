@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { capitalizeFirst } from '../../../utils/formatters';
 import CheckboxDropdown from '../../common/CheckboxDropdown';
+import FieldError from '../../common/FieldError';
 
 // Machines on a time entry are kept as one comma-joined string (e.g. "5, 9") to
 // match how the worker's stop-timer form stores them. Split it back into a list
@@ -21,7 +22,9 @@ export default function TimeEntryForm({
   machines = [],
   isCritical = false,
   handleSaveTimeEntry,
-  resetTimeEntryForm
+  resetTimeEntryForm,
+  groupClass = () => 'form-group',
+  errorFor = () => null
 }) {
   // A double-click here records the block twice, doubling the job's hours.
   // One save at a time: the button greys out until the save finishes.
@@ -47,7 +50,7 @@ export default function TimeEntryForm({
         </button>
       </div>
 
-      <div className="form-group">
+      <div className={groupClass('workerId')}>
         <label>Worker <span className="required">*</span></label>
         <select name="workerId" value={timeEntryForm.workerId} onChange={handleTimeEntryChange}>
           <option value="">Select worker...</option>
@@ -55,6 +58,7 @@ export default function TimeEntryForm({
             <option key={u.id} value={u.id}>{u.name || u.username}</option>
           ))}
         </select>
+        <FieldError message={errorFor('workerId')} />
       </div>
 
       <div className="form-row">
@@ -163,13 +167,15 @@ export default function TimeEntryForm({
       </div>
 
       <div className="form-row">
-        <div className="form-group">
+        <div className={groupClass('startTime')}>
           <label>Start Time</label>
           <input type="datetime-local" name="startTime" value={timeEntryForm.startTime} onChange={handleTimeEntryChange} />
+          <FieldError message={errorFor('startTime')} />
         </div>
-        <div className="form-group">
+        <div className={groupClass('endTime')}>
           <label>End Time</label>
           <input type="datetime-local" name="endTime" value={timeEntryForm.endTime} onChange={handleTimeEntryChange} />
+          <FieldError message={errorFor('endTime')} />
         </div>
       </div>
 

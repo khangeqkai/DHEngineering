@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import toast, { Toaster, ToastBar } from 'react-hot-toast';
+import { X } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { isManagement } from './utils/roles';
 import Login from './components/Login';
@@ -65,9 +66,6 @@ function ManagementRoute({ children }) {
   return children;
 }
 
-const getCssVar = (name) =>
-  getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-
 function App() {
   return (
     <>
@@ -79,18 +77,10 @@ function App() {
           success: {
             duration: 3000,
             className: 'custom-toast custom-toast-success',
-            iconTheme: {
-              primary: getCssVar('--success-color') || '#22c55e',
-              secondary: getCssVar('--text-inverse') || '#fff',
-            },
           },
           error: {
             duration: 5000,
             className: 'custom-toast custom-toast-error',
-            iconTheme: {
-              primary: getCssVar('--danger-color') || '#ef4444',
-              secondary: getCssVar('--text-inverse') || '#fff',
-            },
           },
         }}
       >
@@ -108,7 +98,7 @@ function App() {
                   className="toast-dismiss"
                   aria-label="Dismiss"
                 >
-                  ✕
+                  <X size={14} />
                 </button>
               </div>
             )}

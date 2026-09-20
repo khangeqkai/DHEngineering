@@ -1,7 +1,9 @@
+import FieldError from '../../common/FieldError';
+
 // The time zone the weekly schedule and public holidays are measured against. Set
 // automatically on first install from the server's own clock; this lets an admin see
 // and correct it, since getting it wrong shifts every overtime window.
-export default function TimezoneCard({ timezone, setTimezone, onSave, saving }) {
+export default function TimezoneCard({ timezone, setTimezone, onSave, saving, error }) {
   // Offer the system's known zones when the browser/runtime supports it, otherwise
   // fall back to a free-text box. Always include the current value so it's shown.
   let zones = [];
@@ -23,23 +25,28 @@ export default function TimezoneCard({ timezone, setTimezone, onSave, saving }) 
           workshop's local time. Changing it re-sorts which hours count as overtime.
         </p>
 
-        {zones.length > 0 ? (
-          <select
-            className="form-control"
-            value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-          >
-            {zones.map(z => <option key={z} value={z}>{z}</option>)}
-          </select>
-        ) : (
-          <input
-            type="text"
-            className="form-control"
-            value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-            placeholder="e.g. Australia/Sydney"
-          />
-        )}
+        <div className={error ? 'field-error' : undefined}>
+          {zones.length > 0 ? (
+            <select
+              className="form-control"
+              id="timezone"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+            >
+              {zones.map(z => <option key={z} value={z}>{z}</option>)}
+            </select>
+          ) : (
+            <input
+              type="text"
+              className="form-control"
+              id="timezone"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              placeholder="e.g. Australia/Sydney"
+            />
+          )}
+          <FieldError message={error} />
+        </div>
 
         <div className="sched-save">
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>

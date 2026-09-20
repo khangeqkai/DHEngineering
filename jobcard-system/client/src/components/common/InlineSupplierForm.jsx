@@ -2,6 +2,8 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { toTitleCase, capitalizeFirst } from '../../utils/formatters';
+import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
+import FieldError from './FieldError';
 
 // The full add-supplier form, shown inline inside a line item so a supplier can be
 // created on the spot while picking a treatment. Collects the same fields as the
@@ -19,6 +21,7 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
     notes: ''
   });
   const [saving, setSaving] = useState(false);
+  const { setFieldErrors, clearFieldError, groupClass, errorFor } = useFieldErrors();
 
   const set = (field, val) => setForm(prev => ({ ...prev, [field]: val }));
 
@@ -31,7 +34,8 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      toast.error('Company name is required');
+      setFieldErrors({ supplierName: 'Company name is required' });
+      scrollFieldIntoView('supplierName');
       return;
     }
     if (saving) return;
@@ -65,15 +69,17 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
       </div>
 
       <div className="inline-supplier-form-body">
-        <div className="form-group">
+        <div className={groupClass('supplierName')}>
           <label>Company Name <span className="required">*</span></label>
           <input
             type="text"
+            id="supplierName"
             value={form.name}
             autoFocus
-            onChange={(e) => set('name', e.target.value)}
+            onChange={(e) => { clearFieldError('supplierName'); set('name', e.target.value); }}
             onBlur={formatOnBlur('name', toTitleCase)}
           />
+          <FieldError message={errorFor('supplierName')} />
         </div>
 
         <div className="form-group">

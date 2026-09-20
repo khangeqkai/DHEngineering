@@ -52,7 +52,7 @@ export default function JobCardColumnsMenu({ columns, hiddenColumns, onToggle, o
                 onClick={() => onToggle(col.id)}
               >
                 <span className={`columns-menu-check${visible ? ' is-on' : ''}`}>
-                  {visible && <Check size={12} />}
+                  {visible && <Check size={14} />}
                 </span>
                 {col.label}
               </button>

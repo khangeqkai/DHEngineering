@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Download, ChevronDown, Loader2 } from 'lucide-react';
+import { Download, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Spinner from './Spinner';
 import './ExportButton.css';
 
 export default function ExportButton({ onExportView, onExportAll, viewLabel = 'Export Current View', allLabel = 'Export All' }) {
@@ -27,15 +28,20 @@ export default function ExportButton({ onExportView, onExportAll, viewLabel = 'E
   const handleExport = useCallback(async (exportFn) => {
     setOpen(false);
     setLoading(true);
+    // A loading toast shows for the length of the export, not just after it finishes,
+    // and is then resolved into whichever outcome actually happened.
+    const toastId = toast.loading('Exporting…');
     try {
       const result = await exportFn();
       if (result === false) {
-        toast.error('No data to export');
-      } else if (result !== 'canceled') {
-        toast.success('Export complete');
+        toast.error('No data to export', { id: toastId });
+      } else if (result === 'canceled') {
+        toast.dismiss(toastId);
+      } else {
+        toast.success('Export complete', { id: toastId });
       }
     } catch (err) {
-      toast.error(`Export failed: ${err?.message || String(err)}`);
+      toast.error(err?.message || 'Something went wrong exporting this file', { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -50,7 +56,7 @@ export default function ExportButton({ onExportView, onExportAll, viewLabel = 'E
         aria-haspopup="true"
         aria-expanded={open}
       >
-        {loading ? <Loader2 size={16} className="spin" /> : <Download size={16} />}
+        {loading ? <Spinner size={16} /> : <Download size={16} />}
         {loading ? 'Exporting...' : 'Export'}
         <ChevronDown size={14} />
       </button>

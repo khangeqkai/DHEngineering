@@ -348,10 +348,10 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
       </button>
       <div className="hub-row-tools">
         <button type="button" className="hub-icon-btn" onClick={previewCard} disabled={cardPreviewLoading} title="Preview the job card">
-          <Eye size={15} />
+          <Eye size={16} />
         </button>
         <button type="button" className="hub-icon-btn" onClick={printCardOnly} disabled={packet.building} title="Print just the job card">
-          <Printer size={15} />
+          <Printer size={16} />
         </button>
       </div>
     </li>
@@ -477,7 +477,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
                         aria-haspopup="true"
                         aria-expanded={pickMenuOpen}
                       >
-                        <Check size={15} /> Select
+                        <Check size={16} /> Select
                         <ChevronDown size={14} />
                       </button>
                       {pickMenuOpen && (
@@ -522,8 +522,8 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
                   ) : (
                     <button type="button" className="hub-selectall" onClick={toggleMaster}>
                       {masterState === 'all'
-                        ? <><X size={15} /> Clear all</>
-                        : <><Check size={15} /> Select all</>}
+                        ? <><X size={16} /> Clear all</>
+                        : <><Check size={16} /> Select all</>}
                     </button>
                   )}
                 </div>
@@ -542,10 +542,10 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
                   )}
                   <div className="hub-footer-actions">
                     <button type="button" className="btn btn-secondary" onClick={savePacket} disabled={packet.building || tickedCount === 0 || overFileLimit}>
-                      <Save size={15} /> Save PDF{tickedCount > 0 ? ` (${tickedCount})` : ''}
+                      <Save size={16} /> Save PDF{tickedCount > 0 ? ` (${tickedCount})` : ''}
                     </button>
                     <button type="button" className="btn btn-primary" onClick={printPacket} disabled={packet.building || tickedCount === 0 || overFileLimit}>
-                      <Printer size={15} /> {packet.building ? 'Preparing…' : `Print${tickedCount > 0 ? ` (${tickedCount})` : ''}`}
+                      <Printer size={16} /> {packet.building ? 'Preparing…' : `Print${tickedCount > 0 ? ` (${tickedCount})` : ''}`}
                     </button>
                   </div>
                 </div>

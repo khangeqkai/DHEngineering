@@ -69,7 +69,7 @@ function PriorityBadge({ priority }) {
 }
 
 function ActionBadge({ action }) {
-  return <span className="search-badge" style={{ color: actionColor(action), fontWeight: 600 }}>{fmt(action)}</span>;
+  return <span className="search-badge" style={{ color: actionColor(action), fontWeight: 700 }}>{fmt(action)}</span>;
 }
 
 function Pagination({ page, totalPages, total, onPageChange }) {
@@ -240,7 +240,7 @@ export default function SearchPage() {
         {SCOPES.filter(s => (!s.managementOnly || canManage) && (!s.adminOnly || isAdmin)).map(s => (
           <button key={s.key} type="button" className={`search-scope-tab ${scope === s.key ? 'active' : ''}`}
             onClick={() => changeScope(s.key)}>
-            <s.icon size={15} /> {s.label}
+            <s.icon size={16} /> {s.label}
           </button>
         ))}
       </div>

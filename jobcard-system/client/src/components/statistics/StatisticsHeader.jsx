@@ -1,5 +1,7 @@
 import { RotateCw, Printer, Download } from 'lucide-react';
 import PageHeader from '../common/PageHeader';
+import Spinner from '../common/Spinner';
+import FieldError from '../common/FieldError';
 
 export default function StatisticsHeader({
   preset,
@@ -8,6 +10,7 @@ export default function StatisticsHeader({
   setCustomStartDate,
   customEndDate,
   setCustomEndDate,
+  customRangeError,
   groupBy,
   setGroupBy,
   rangeLabel,
@@ -29,7 +32,7 @@ export default function StatisticsHeader({
             disabled={loading}
             title="Refresh data"
           >
-            <RotateCw size={15} className={loading ? 'spinning' : ''} />
+            {loading ? <Spinner size={16} /> : <RotateCw size={16} />}
             <span>Refresh</span>
           </button>
           <button
@@ -37,7 +40,7 @@ export default function StatisticsHeader({
             onClick={onPrint}
             title="Print report"
           >
-            <Printer size={15} />
+            <Printer size={16} />
             <span>Print Report</span>
           </button>
           <button
@@ -46,7 +49,7 @@ export default function StatisticsHeader({
             disabled={exporting || !hasData}
             title="Export full statistics to Excel"
           >
-            <Download size={15} />
+            <Download size={16} />
             <span>{exporting ? 'Exporting...' : 'Export Excel'}</span>
           </button>
         </div>
@@ -109,24 +112,30 @@ export default function StatisticsHeader({
         </div>
 
         {preset === 'custom' && (
-          <form onSubmit={onApplyCustomRange} className="custom-range-inputs">
-            <input
-              type="date"
-              value={customStartDate}
-              onChange={(e) => setCustomStartDate(e.target.value)}
-              required
-            />
-            <span className="custom-range-separator">to</span>
-            <input
-              type="date"
-              value={customEndDate}
-              onChange={(e) => setCustomEndDate(e.target.value)}
-              required
-            />
-            <button type="submit" className="btn btn-sm btn-primary">
-              Apply
-            </button>
-          </form>
+          <div className={customRangeError ? 'field-error' : ''}>
+            {/* noValidate: the browser's own "please fill out this field" bubble is
+                a pop-up, and it also swallows the submit before our own check can
+                mark the box. The check below the form does both jobs. */}
+            <form onSubmit={onApplyCustomRange} className="custom-range-inputs" noValidate>
+              <input
+                type="date"
+                id="customRange"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+              />
+              <span className="custom-range-separator">to</span>
+              <input
+                type="date"
+                id="customRangeEnd"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+              />
+              <button type="submit" className="btn btn-sm btn-primary">
+                Apply
+              </button>
+            </form>
+            <FieldError message={customRangeError} />
+          </div>
         )}
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -10,6 +10,7 @@ import OnTimeTab from './statistics/OnTimeTab';
 import MachinesTab from './statistics/MachinesTab';
 import CustomersTab from './statistics/CustomersTab';
 import EmptyState from './common/EmptyState';
+import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
 import { BarChart3, Users, CheckCircle2, Cpu, Building2 } from 'lucide-react';
 import './Statistics.css';
 
@@ -33,6 +34,7 @@ export default function Statistics() {
   const [activeTab, setActiveTab] = useState('overview');
   const [exporting, setExporting] = useState(false);
   const reqIdRef = useRef(0);
+  const { setFieldErrors, clearFieldError, errorFor } = useFieldErrors();
 
   useEffect(() => {
     fetchStatistics();
@@ -70,16 +72,20 @@ export default function Statistics() {
   const handleApplyCustomRange = (e) => {
     e.preventDefault();
     if (!customStartDate || !customEndDate) {
-      toast.error('Please select both start and end dates');
+      setFieldErrors({ customRange: 'Please select both start and end dates' });
+      // Land on whichever of the two is actually empty, not always the first.
+      scrollFieldIntoView(customStartDate ? 'customRangeEnd' : 'customRange');
       return;
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(customStartDate) || !/^\d{4}-\d{2}-\d{2}$/.test(customEndDate) ||
         isNaN(Date.parse(customStartDate)) || isNaN(Date.parse(customEndDate))) {
-      toast.error('Please enter valid dates (YYYY-MM-DD)');
+      setFieldErrors({ customRange: 'Please enter valid dates (YYYY-MM-DD)' });
+      scrollFieldIntoView('customRange');
       return;
     }
     if (customStartDate > customEndDate) {
-      toast.error('Start date cannot be after end date');
+      setFieldErrors({ customRange: 'Start date cannot be after end date' });
+      scrollFieldIntoView('customRange');
       return;
     }
     fetchStatistics();
@@ -88,12 +94,21 @@ export default function Statistics() {
   const handleExportExcel = async () => {
     if (!data) return;
     setExporting(true);
+    // A loading toast shows for the length of the export, not just after it finishes.
+    const toastId = toast.loading('Exporting…');
     try {
       const ok = await exportStatistics(data);
-      if (ok === 'canceled') return;
-      if (ok) toast.success('Workshop statistics exported to Excel');
+      if (ok === 'canceled') {
+        toast.dismiss(toastId);
+        return;
+      }
+      if (ok) {
+        toast.success('Workshop statistics exported to Excel', { id: toastId });
+      } else {
+        toast.dismiss(toastId);
+      }
     } catch (err) {
-      toast.error(err.message || 'Export failed');
+      toast.error(err.message || 'Export failed', { id: toastId });
     } finally {
       setExporting(false);
     }
@@ -108,9 +123,10 @@ export default function Statistics() {
         preset={preset}
         setPreset={setPreset}
         customStartDate={customStartDate}
-        setCustomStartDate={setCustomStartDate}
+        setCustomStartDate={(v) => { clearFieldError('customRange'); setCustomStartDate(v); }}
         customEndDate={customEndDate}
-        setCustomEndDate={setCustomEndDate}
+        setCustomEndDate={(v) => { clearFieldError('customRange'); setCustomEndDate(v); }}
+        customRangeError={errorFor('customRange')}
         groupBy={groupBy}
         setGroupBy={setGroupBy}
         rangeLabel={range.label}

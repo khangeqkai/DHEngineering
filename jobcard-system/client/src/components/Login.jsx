@@ -5,7 +5,6 @@ import { api } from '../services/api';
 import { User, Lock, KeyRound } from 'lucide-react';
 import dhLogo from '../assets/dh-logo.png';
 import Waves from './common/Waves';
-import GradientText from './common/GradientText';
 import './Login.css';
 
 export default function Login() {
@@ -129,9 +128,7 @@ export default function Login() {
 
         <form onSubmit={handleSubmit}>
           <h1 className="login-form-title">
-            <GradientText colors={['#0b2d52', '#2563eb', '#60a5fa', '#2563eb', '#0b2d52']} animationSpeed={8}>
-              Job Card System
-            </GradientText>
+            Job Card System
           </h1>
           {serverReady === false && (
             <div className="login-notice">

@@ -1,3 +1,12 @@
+// Load local secrets (API keys) from server/.env before anything else reads
+// process.env. Node's own loader — no dependency. The file is git-ignored and
+// optional: absent in the packaged app, where these features simply stay off.
+try {
+  process.loadEnvFile(require('path').join(__dirname, '.env'));
+} catch {
+  // No .env on this machine — every key below stays undefined.
+}
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');

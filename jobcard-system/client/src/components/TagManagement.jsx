@@ -299,11 +299,11 @@ export default function TagManagement() {
                     <div className="tag-chip-actions">
                       {m.active ? (
                         <>
-                          <button className="tag-action-btn" onClick={() => handleEditMachine(m)} title="Edit"><Edit2 size={13} /></button>
-                          <button className="tag-action-btn danger" disabled={pendingMachineId === m.id} onClick={() => handleArchiveMachine(m)} title="Archive"><Archive size={13} /></button>
+                          <button className="tag-action-btn" onClick={() => handleEditMachine(m)} title="Edit"><Edit2 size={14} /></button>
+                          <button className="tag-action-btn danger" disabled={pendingMachineId === m.id} onClick={() => handleArchiveMachine(m)} title="Archive"><Archive size={14} /></button>
                         </>
                       ) : (
-                        <button className="tag-action-btn restore" disabled={pendingMachineId === m.id} onClick={() => handleRestoreMachine(m)} title="Restore"><ArchiveRestore size={13} /></button>
+                        <button className="tag-action-btn restore" disabled={pendingMachineId === m.id} onClick={() => handleRestoreMachine(m)} title="Restore"><ArchiveRestore size={14} /></button>
                       )}
                     </div>
                   </div>
@@ -325,11 +325,11 @@ export default function TagManagement() {
                     </span>
                     <div className="tag-chip-actions">
                       {tag.archived ? (
-                        <button className="tag-action-btn restore" disabled={pendingTagId === tag.id} onClick={() => handleRestoreTag(tag)} title="Restore"><ArchiveRestore size={13} /></button>
+                        <button className="tag-action-btn restore" disabled={pendingTagId === tag.id} onClick={() => handleRestoreTag(tag)} title="Restore"><ArchiveRestore size={14} /></button>
                       ) : (
                         <>
-                          <button className="tag-action-btn" onClick={() => handleEditTag(tag)} title="Edit"><Edit2 size={13} /></button>
-                          <button className="tag-action-btn danger" disabled={pendingTagId === tag.id} onClick={() => handleArchiveTag(tag)} title="Archive"><Archive size={13} /></button>
+                          <button className="tag-action-btn" onClick={() => handleEditTag(tag)} title="Edit"><Edit2 size={14} /></button>
+                          <button className="tag-action-btn danger" disabled={pendingTagId === tag.id} onClick={() => handleArchiveTag(tag)} title="Archive"><Archive size={14} /></button>
                         </>
                       )}
                     </div>
@@ -345,7 +345,7 @@ export default function TagManagement() {
 
       <style>{`
         .tag-category-tabs {
-          display: flex; gap: 0.25rem; margin-bottom: var(--spacing-md);
+          display: flex; gap: 0.25rem; margin-bottom: var(--space-4);
           border-bottom: 2px solid var(--border-color); padding-bottom: 0; overflow-x: auto;
         }
         .tag-category-tab {

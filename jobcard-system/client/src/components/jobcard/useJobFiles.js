@@ -148,6 +148,8 @@ export function useJobFiles(jobcardId) {
     if (valid.length === 0) { if (onDone) onDone(); return; }
 
     setUploading(true);
+    // A loading toast shows for the length of the upload, not just after it finishes.
+    const toastId = toast.loading(valid.length > 1 ? `Uploading ${valid.length} files…` : 'Uploading…');
     try {
       let saved = 0;
       const failed = [];
@@ -162,8 +164,10 @@ export function useJobFiles(jobcardId) {
         }
       }
       if (saved > 0) {
-        toast.success(`${saved} file(s) saved to ${CATEGORY_LABELS[category]}`);
+        toast.success(`${saved} file(s) saved to ${CATEGORY_LABELS[category]}`, { id: toastId });
         refreshCount(category);
+      } else {
+        toast.dismiss(toastId);
       }
       if (failed.length) toast.error(`Failed to upload: ${failed.join(', ')}`);
     } finally {

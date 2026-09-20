@@ -283,7 +283,7 @@ export function getJobCardColumns({
           return (
             <td key="attachments" className="attachment-cell">
               <span className="attachment-ok" aria-label="All files attached">
-                <Check size={13} />
+                <Check size={14} />
               </span>
             </td>
           );
@@ -301,7 +301,7 @@ export function getJobCardColumns({
               {/* Shape carries the meaning, not just colour: an angular warning
                  triangle for a blocking gap vs a paperclip for a not-yet-attached
                  reminder, so the two read apart for colour-blind users too. */}
-              {blocking ? <AlertTriangle size={12} /> : <Paperclip size={12} />}
+              {blocking ? <AlertTriangle size={14} /> : <Paperclip size={14} />}
               <span className="mf-tooltip" role="tooltip">
                 <span className="mf-tooltip-title">{title}</span>
                 {gaps.map((g, i) => (
@@ -325,7 +325,7 @@ export function getJobCardColumns({
           return (
             <td key="print" className="print-cell">
               <span className="attachment-ok" title={`Printed ${formatDateTime(card.printedAt)}`} aria-label={`Printed ${formatDateTime(card.printedAt)}`}>
-                <Check size={13} />
+                <Check size={14} />
               </span>
             </td>
           );
@@ -335,7 +335,7 @@ export function getJobCardColumns({
             {/* Shape carries the meaning, not just colour: a tick vs a cross, so
                the two read apart for colour-blind users too. */}
             <span className="print-missing" title="Not printed yet" aria-label="Not printed yet">
-              <X size={13} />
+              <X size={14} />
             </span>
           </td>
         );

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Eye, Printer, Loader2, FileText, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { Eye, Printer, FileText, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { PickCircle } from './paperworkHubHelpers';
+import Spinner from '../common/Spinner';
 
 // One file line in the paperwork hub: tick to include in the packet, thumbnail,
 // name + kind, an optional "For:" picker (drawings / customer property only) that
@@ -50,7 +51,7 @@ export default function HubFileRow({
               </option>
             ))}
           </select>
-          {assigning && <Loader2 size={13} className="hub-spin" />}
+          {assigning && <Spinner size={14} />}
         </label>
       )}
 
@@ -59,7 +60,7 @@ export default function HubFileRow({
           <span className="hub-del-confirm">
             <span className="hub-del-ask">Delete for good?</span>
             <button type="button" className="hub-del-yes" onClick={() => { setConfirming(false); onDelete(); }} disabled={deleting}>
-              {deleting ? <Loader2 size={13} className="hub-spin" /> : 'Delete'}
+              {deleting ? <Spinner size={14} /> : 'Delete'}
             </button>
             <button type="button" className="hub-del-no" onClick={() => setConfirming(false)} disabled={deleting}>
               Keep
@@ -68,10 +69,10 @@ export default function HubFileRow({
         ) : (
           <>
             <button type="button" className="hub-icon-btn" onClick={onView} disabled={viewing} title="Preview">
-              {viewing ? <Loader2 size={15} className="hub-spin" /> : <Eye size={15} />}
+              {viewing ? <Spinner size={16} /> : <Eye size={16} />}
             </button>
             <button type="button" className="hub-icon-btn" onClick={onPrint} disabled={printDisabled} title="Print just this one">
-              <Printer size={15} />
+              <Printer size={16} />
             </button>
             {canDelete && (
               <button
@@ -81,7 +82,7 @@ export default function HubFileRow({
                 disabled={deleting}
                 title="Delete this file"
               >
-                {deleting ? <Loader2 size={15} className="hub-spin" /> : <Trash2 size={15} />}
+                {deleting ? <Spinner size={16} /> : <Trash2 size={16} />}
               </button>
             )}
           </>

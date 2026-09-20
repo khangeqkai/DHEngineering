@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
+import { useFieldErrors, scrollFieldIntoView } from './useFieldErrors';
 
 export const DAYS = [
   { key: 'mon', label: 'Monday' },
@@ -85,13 +86,23 @@ function normalize(raw) {
 export function useLabourRates() {
   const [loading, setLoading] = useState(true);
   const [schedule, setSchedule] = useState(emptySchedule());
-  const [defaultRate, setDefaultRate] = useState('0');
-  const [ot1Mult, setOt1Mult] = useState('1.5');
-  const [ot2Mult, setOt2Mult] = useState('2');
-  const [holidayMult, setHolidayMult] = useState('2.5');
+  const [defaultRate, setDefaultRateState] = useState('0');
+  const [ot1Mult, setOt1MultState] = useState('1.5');
+  const [ot2Mult, setOt2MultState] = useState('2');
+  const [holidayMult, setHolidayMultState] = useState('2.5');
   const [holidays, setHolidays] = useState([]);
 
-  const [timezone, setTimezone] = useState('');
+  const [timezone, setTimezoneState] = useState('');
+
+  const { setFieldErrors, clearFieldError, errorFor } = useFieldErrors();
+
+  // Each setter clears that field's submit-time error mark the moment the user
+  // changes the value again — same shape as useTimeEntries' handleTimeEntryChange.
+  const setDefaultRate = useCallback((v) => { clearFieldError('defaultRate'); setDefaultRateState(v); }, [clearFieldError]);
+  const setOt1Mult = useCallback((v) => { clearFieldError('ot1Mult'); setOt1MultState(v); }, [clearFieldError]);
+  const setOt2Mult = useCallback((v) => { clearFieldError('ot2Mult'); setOt2MultState(v); }, [clearFieldError]);
+  const setHolidayMult = useCallback((v) => { clearFieldError('holidayMult'); setHolidayMultState(v); }, [clearFieldError]);
+  const setTimezone = useCallback((v) => { clearFieldError('timezone'); setTimezoneState(v); }, [clearFieldError]);
 
   const [savingDefaultRate, setSavingDefaultRate] = useState(false);
   const [savingSchedule, setSavingSchedule] = useState(false);
@@ -176,12 +187,14 @@ export function useLabourRates() {
     // company-wide default seeding every new job's rate should never be zeroed by
     // accident. A deliberately typed 0 still saves.
     if (String(defaultRate).trim() === '') {
-      toast.error('Enter a default hourly rate (type 0 if labour should default to free)');
+      setFieldErrors({ defaultRate: 'Enter a default hourly rate (type 0 if labour should default to free)' });
+      scrollFieldIntoView('defaultRate');
       return;
     }
     const n = Number(defaultRate);
     if (!Number.isFinite(n) || n < 0) {
-      toast.error('Default hourly rate must be a number of 0 or more');
+      setFieldErrors({ defaultRate: 'Default hourly rate must be a number of 0 or more' });
+      scrollFieldIntoView('defaultRate');
       return;
     }
     setSavingDefaultRate(true);
@@ -194,13 +207,18 @@ export function useLabourRates() {
     } finally {
       setSavingDefaultRate(false);
     }
-  }, [defaultRate, load]);
+  }, [defaultRate, load, setFieldErrors]);
 
   const handleSaveMultipliers = useCallback(async () => {
-    for (const [v, label] of [[ot1Mult, 'Overtime 1'], [ot2Mult, 'Overtime 2'], [holidayMult, 'Public holiday']]) {
+    for (const [v, label, field] of [
+      [ot1Mult, 'Overtime 1', 'ot1Mult'],
+      [ot2Mult, 'Overtime 2', 'ot2Mult'],
+      [holidayMult, 'Public holiday', 'holidayMult']
+    ]) {
       const n = Number(v);
       if (!Number.isFinite(n) || n < 1) {
-        toast.error(`${label} multiplier must be a number of 1 or more`);
+        setFieldErrors({ [field]: `${label} multiplier must be a number of 1 or more` });
+        scrollFieldIntoView(field);
         return;
       }
     }
@@ -218,7 +236,7 @@ export function useLabourRates() {
     } finally {
       setSavingMultipliers(false);
     }
-  }, [ot1Mult, ot2Mult, holidayMult, load]);
+  }, [ot1Mult, ot2Mult, holidayMult, load, setFieldErrors]);
 
   const addHoliday = useCallback((date) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
@@ -244,7 +262,8 @@ export function useLabourRates() {
 
   const handleSaveTimezone = useCallback(async () => {
     if (!timezone) {
-      toast.error('Pick a time zone');
+      setFieldErrors({ timezone: 'Pick a time zone' });
+      scrollFieldIntoView('timezone');
       return;
     }
     setSavingTimezone(true);
@@ -257,7 +276,7 @@ export function useLabourRates() {
     } finally {
       setSavingTimezone(false);
     }
-  }, [timezone, load]);
+  }, [timezone, load, setFieldErrors]);
 
   return {
     loading,
@@ -267,6 +286,7 @@ export function useLabourRates() {
     ot1Mult, setOt1Mult, ot2Mult, setOt2Mult, holidayMult, setHolidayMult,
     handleSaveMultipliers, savingMultipliers,
     holidays, addHoliday, removeHoliday, handleSaveHolidays, savingHolidays,
-    timezone, setTimezone, handleSaveTimezone, savingTimezone
+    timezone, setTimezone, handleSaveTimezone, savingTimezone,
+    errorFor
   };
 }

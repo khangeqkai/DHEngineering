@@ -49,7 +49,7 @@ export default function JobCardListTable({
                 <span className="jc-th-label">{col.label}</span>
                 {sortable && (
                   <span className="jc-sort-icon" aria-hidden="true">
-                    {!active && <ChevronsUpDown size={12} />}
+                    {!active && <ChevronsUpDown size={14} />}
                     {active && sortDir === 'asc' && <ChevronUp size={14} />}
                     {active && sortDir === 'desc' && <ChevronDown size={14} />}
                   </span>

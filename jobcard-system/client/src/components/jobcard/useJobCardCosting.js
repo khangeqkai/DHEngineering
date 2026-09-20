@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { mapCostingResponseToData } from './mappers';
 import { useCosting } from './useCosting';
+import { warningToastIcon } from '../common/toastIcons';
 
 // Everything the job screen needs to run its pricing tab, in one place: fetching the
 // job's stored pricing (lazily, and only for an admin), the "change an invoiced job?"
@@ -101,7 +102,7 @@ export function useJobCardCosting({
     // it wasn't kept rather than filing the change away behind their back.
     flushRef.current?.({ withoutPrompt: true }).then(outcome => {
       if (outcome === 'needs-confirm') {
-        toast('Pricing changes were not saved — this job has been invoiced.', { icon: '⚠️' });
+        toast('Pricing changes were not saved — this job has been invoiced.', { icon: warningToastIcon });
       }
     });
   }, [isOpen]);

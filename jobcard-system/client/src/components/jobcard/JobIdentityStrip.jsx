@@ -134,11 +134,11 @@ export default function JobIdentityStrip({
           await api.updateJobcardStatus(jobCardId, newStatus, true);
           applyLocally();
         } catch (e2) {
-          toast.error(e2.message || 'Failed to update status');
+          toast.error(e2.message || 'Failed to update status', { id: 'status-update-failed' });
         }
         return;
       }
-      toast.error(err.message || 'Failed to update status');
+      toast.error(err.message || 'Failed to update status', { id: 'status-update-failed' });
     }
   };
 
@@ -159,7 +159,7 @@ export default function JobIdentityStrip({
               >
                 <span className="jc-strip-priority-dot" aria-hidden="true" />
                 <span className="jc-strip-priority-label">{priorityLabel}</span>
-                <ChevronDown size={12} className="jc-strip-priority-caret" />
+                <ChevronDown size={14} className="jc-strip-priority-caret" />
               </button>
             ) : (
               <span className="jc-strip-priority-static">
@@ -229,7 +229,7 @@ export default function JobIdentityStrip({
                 <option key={opt.value} value={opt.value} disabled={opt.disabled}>{opt.label}</option>
               ))}
             </select>
-            <ChevronDown size={12} className="jc-strip-status-caret" aria-hidden="true" />
+            <ChevronDown size={14} className="jc-strip-status-caret" aria-hidden="true" />
           </div>
 
           <div className={`jc-strip-duedate${isOverdue ? ' is-overdue' : ''}`}>

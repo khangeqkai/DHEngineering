@@ -46,7 +46,7 @@ export async function resolveJobContactId({ canManage, isEdit, contactHook, show
     const company = await api.createCompany({ name: typed });
     companyId = company.id;
     contactHook.registerCompany(company);
-    toast.success('Customer added');
+    toast.success('Customer added', { id: 'customer-added' });
   }
 
   // Nobody picked, but a person's name was typed — add them at this company.

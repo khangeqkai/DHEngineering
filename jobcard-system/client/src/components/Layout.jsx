@@ -20,7 +20,6 @@ import {
   Search,
   BarChart3
 } from 'lucide-react';
-import ClickSpark from './common/ClickSpark';
 import Waves from './common/Waves';
 
 export default function Layout() {
@@ -86,7 +85,6 @@ export default function Layout() {
   };
 
   return (
-    <ClickSpark sparkColor="#2563eb" sparkSize={8} sparkRadius={12} sparkCount={6} duration={350}>
     <div className="app-layout">
       {/* Inactivity Warning Modal */}
       <InactivityWarningModal
@@ -270,6 +268,5 @@ export default function Layout() {
         <Outlet />
       </main>
     </div>
-    </ClickSpark>
   );
 }

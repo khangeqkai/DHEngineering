@@ -42,8 +42,8 @@ export function PickCircle({ state }) {
   const s = state === true ? 'all' : state === false ? 'none' : state;
   return (
     <span className={`hub-check hub-check--${s}`} aria-hidden="true">
-      {s === 'all' && <Check size={13} strokeWidth={3} />}
-      {s === 'some' && <Minus size={13} strokeWidth={3} />}
+      {s === 'all' && <Check size={14} strokeWidth={3} />}
+      {s === 'some' && <Minus size={14} strokeWidth={3} />}
     </span>
   );
 }

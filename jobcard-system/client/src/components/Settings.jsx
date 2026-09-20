@@ -1,5 +1,6 @@
 import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
+import Spinner from './common/Spinner';
 import { useSettings } from '../hooks/useSettings';
 import SecurityCard from './settings/SecurityCard';
 import FoldersCard from './settings/FoldersCard';
@@ -313,7 +314,7 @@ export default function Settings() {
         size="small"
       >
         <BottomSheet.Body>
-          <p style={{ marginBottom: '0.75rem', fontWeight: 500 }}>
+          <p style={{ marginBottom: '0.75rem', fontWeight: 400 }}>
             This will REPLACE all current data with the backup contents:
           </p>
           <ul style={{ margin: '0 0 1rem 1.25rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
@@ -323,7 +324,7 @@ export default function Settings() {
           <p style={{ marginBottom: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
             Everyone will be signed out and the app will reload when it finishes.
           </p>
-          <p style={{ color: 'var(--danger)', fontWeight: 500 }}>
+          <p style={{ color: 'var(--danger-ink)', fontWeight: 400 }}>
             This cannot be undone.
           </p>
         </BottomSheet.Body>
@@ -365,7 +366,7 @@ export default function Settings() {
             padding: '2rem'
           }}
         >
-          <div className="restore-spinner" aria-hidden="true" />
+          <Spinner size={40} />
           <h2 style={{ margin: 0, color: '#fff' }}>Restoring…</h2>
           <p style={{ margin: 0, maxWidth: '24rem', opacity: 0.85 }}>
             Please wait and don't close the app. The screen will return to the login page when it's done.
@@ -374,17 +375,6 @@ export default function Settings() {
       )}
 
       <style>{`
-        .restore-spinner {
-          width: 48px;
-          height: 48px;
-          border: 4px solid rgba(255, 255, 255, 0.25);
-          border-top-color: #fff;
-          border-radius: 50%;
-          animation: restore-spin 0.9s linear infinite;
-        }
-        @keyframes restore-spin {
-          to { transform: rotate(360deg); }
-        }
         .settings-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);

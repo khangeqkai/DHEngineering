@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Check, ChevronDown } from 'lucide-react';
 import TimeEntryCard from './TimeEntryCard';
 
 function parseQty(v) {
@@ -61,7 +61,7 @@ function formatNum(n) {
 function StatusPill({ state }) {
   switch (state) {
     case 'done':
-      return <span className="lip-pill lip-pill--done"><span className="lip-pill-glyph">✓</span>Done</span>;
+      return <span className="lip-pill lip-pill--done"><span className="lip-pill-glyph"><Check size={14} aria-hidden="true" /></span>Done</span>;
     case 'active':
       return <span className="lip-pill lip-pill--active"><span className="lip-pill-dot" />Active</span>;
     case 'started':
@@ -181,7 +181,7 @@ export default function LineItemProgress({
           </button>
         )}
 
-        <span className="lip-chevron" aria-hidden="true">▾</span>
+        <span className="lip-chevron" aria-hidden="true"><ChevronDown size={14} /></span>
       </summary>
 
       {entries.length === 0 ? (

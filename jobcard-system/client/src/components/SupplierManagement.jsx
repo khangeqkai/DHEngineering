@@ -334,7 +334,7 @@ export default function SupplierManagement() {
                       onClick={() => handleTagToggle(tag.id)}
                     >
                       {tag.name}
-                      {formData.serviceTagIds.includes(tag.id) && <span className="check-mark"><Check size={12} /></span>}
+                      {formData.serviceTagIds.includes(tag.id) && <span className="check-mark"><Check size={14} /></span>}
                     </button>
                     <button
                       type="button"
@@ -345,7 +345,7 @@ export default function SupplierManagement() {
                       }}
                       title={`Archive "${tag.name}"`}
                     >
-                      <X size={12} />
+                      <X size={14} />
                     </button>
                   </span>
                 ))}
@@ -360,7 +360,7 @@ export default function SupplierManagement() {
                     onClick={() => handleTagToggle(tag.id)}
                   >
                     {tag.name} (retired)
-                    <span className="check-mark"><Check size={12} /></span>
+                    <span className="check-mark"><Check size={14} /></span>
                   </button>
                 ))}
                 {!showCustomTagInput ? (

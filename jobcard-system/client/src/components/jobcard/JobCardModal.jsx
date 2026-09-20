@@ -26,6 +26,7 @@ import { validateJobCardForm } from './jobCardValidation';
 import { mapTimeEntryFromApi, buildJobcardPayload } from './mappers';
 import { confirmInvoiceAnyway, showFormErrors } from './jobCardPrompts';
 import { resolveJobContactId } from './jobCardContact';
+import { warningToastIcon } from '../common/toastIcons';
 
 // Read a picked file into the base64 string the upload route expects.
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onPrinted, initialTab = null }) {
@@ -389,7 +390,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
       onSuccess?.();
       if (result?.qaTemplateWarning) {
-        toast(result.qaTemplateWarning, { icon: '⚠️', duration: 8000 });
+        toast(result.qaTemplateWarning, { icon: warningToastIcon, duration: 8000 });
       }
       setAttachmentWarnings(result?.attachmentWarnings || null);
       if (isEdit) {
@@ -529,6 +530,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   handleDeleteTimeEntry={timeEntry.handleDeleteTimeEntry}
                   handleStopEntryWithForm={handleStopEntryWithForm}
                   resetTimeEntryForm={timeEntry.resetTimeEntryForm}
+                  timeEntryGroupClass={timeEntry.groupClass}
+                  timeEntryErrorFor={timeEntry.errorFor}
                 />
               )}
 

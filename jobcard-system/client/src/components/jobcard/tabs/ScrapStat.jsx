@@ -1,3 +1,5 @@
+import { AlertTriangle } from 'lucide-react';
+
 function formatNum(n) {
   if (!Number.isFinite(n)) return '0';
   return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
@@ -20,7 +22,7 @@ export default function ScrapStat({ bin, recycle, good }) {
         ? 'No pieces scrapped'
         : `${formatNum(s)} scrapped of ${formatNum(run)} run — ${formatNum(b)} binned, ${formatNum(r)} recycled (${formatNum(g)} good)`}
     >
-      <span className="scrap-stat-glyph" aria-hidden="true">⚠</span>
+      <span className="scrap-stat-glyph" aria-hidden="true"><AlertTriangle size={14} /></span>
       <span className="scrap-stat-num">{formatNum(s)}</span>
       <span className="scrap-stat-unit">scrap</span>
       {s > 0 && (

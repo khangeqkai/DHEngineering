@@ -44,6 +44,8 @@ export default function ItemsTab({
   handleStopEntryWithForm,
   handleDeleteTimeEntry,
   resetTimeEntryForm,
+  timeEntryGroupClass,
+  timeEntryErrorFor,
   // Timer (per-item)
   activeTimer,
   timerElapsed,
@@ -115,6 +117,8 @@ export default function ItemsTab({
               isCritical={isCritical}
               handleSaveTimeEntry={handleSaveTimeEntry}
               resetTimeEntryForm={resetTimeEntryForm}
+              groupClass={timeEntryGroupClass}
+              errorFor={timeEntryErrorFor}
             />
           </div>
         )}

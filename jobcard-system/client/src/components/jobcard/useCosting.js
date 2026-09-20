@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { getDefaultCostingForm } from './mappers';
+import { warningToastIcon } from '../common/toastIcons';
 
 // Which override flag each hand-editable box drives. Note the normal tier's hours flag
 // is `labourHoursOverridden` (with "Hours"), while the OT/holiday tiers drop it — so this
@@ -178,7 +179,7 @@ export function useCosting(jobCardId, {
         min >= 1
           ? `Overtime multipliers can't go below ×1 — snapped to ×1`
           : `Costing figures can't be negative — snapped to 0`,
-        { id: 'costing-min-clamp', icon: '⚠️' }
+        { id: 'costing-min-clamp', icon: warningToastIcon }
       );
     }
     markEdited();
@@ -278,7 +279,7 @@ export function useCosting(jobCardId, {
         declinedAtSeq.current = editSeq.current;
         setCostingDirty(false);
         setSaveState('idle');
-        toast('Pricing left as invoiced — your changes were not kept.', { id: 'costing-declined', icon: '⚠️' });
+        toast('Pricing left as invoiced — your changes were not kept.', { id: 'costing-declined', icon: warningToastIcon });
         // Not 'false': nothing failed and nothing is left pending, so a caller that was
         // waiting on this save (the job form's Update) can carry on with the rest of
         // its save instead of silently doing nothing.

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, AlertTriangle, Check } from 'lucide-react';
 
 // A per-line-item multi-select stored as a comma-separated string of tag values.
 // Rendered as a compact dropdown (closed state matches the Job Type / Material
@@ -33,22 +33,22 @@ export default function LineItemTagSelect({
   if (onAttach && isDeclared) {
     warningPill = warning ? (
       <button type="button" className="lit-attach lit-attach--missing" onClick={onAttach} title="Attach a file for this part">
-        ⚠ Attach file
+        <AlertTriangle size={14} aria-hidden="true" /> Attach file
       </button>
     ) : (
       <div className="lit-attach-done">
         {attachedFiles.length > 0
           ? attachedFiles.map((name, i) => (
-              <span key={i} className="lit-attach-file" title={name}>✓ {name}</span>
+              <span key={i} className="lit-attach-file" title={name}><Check size={14} aria-hidden="true" /> {name}</span>
             ))
-          : <span className="lit-attach-file">✓ Attached</span>}
+          : <span className="lit-attach-file"><Check size={14} aria-hidden="true" /> Attached</span>}
         <button type="button" className="lit-attach lit-attach--add" onClick={onAttach} title="Attach another file">
           + Add
         </button>
       </div>
     );
   } else if (warning) {
-    warningPill = <span className="lit-missing-file" title="No file attached yet">⚠ No file yet</span>;
+    warningPill = <span className="lit-missing-file" title="No file attached yet"><AlertTriangle size={14} aria-hidden="true" /> No file yet</span>;
   }
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -136,7 +136,7 @@ export default function LineItemTagSelect({
                   className={`lit-select-option${isSelected ? ' selected' : ''}${opt.retired ? ' retired-option' : ''}`}
                   onClick={() => toggle(opt.value)}
                 >
-                  <span className="lit-select-check">{isSelected ? '✓' : ''}</span>
+                  <span className="lit-select-check">{isSelected && <Check size={14} aria-hidden="true" />}</span>
                   <span className="lit-select-option-label">{opt.label}</span>
                 </button>
               );

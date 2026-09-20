@@ -105,7 +105,7 @@ export function useSettings() {
     try {
       await api.updateSettings({ jobFoldersBase });
       await loadSettings();
-      toast.success('Job folders base path saved successfully');
+      toast.success('Job folders base path saved');
     } catch (err) {
       toast.error(err.message || 'Failed to save job folders base path');
     } finally {
@@ -147,7 +147,7 @@ export function useSettings() {
       await api.updateSettings({ inactivityTimeoutMinutes: inactivityTimeout });
       await loadSettings();
       if (refreshInactivityTimeout) await refreshInactivityTimeout();
-      toast.success('Inactivity timeout saved successfully');
+      toast.success('Inactivity timeout saved');
     } catch (err) {
       toast.error(err.message || 'Failed to save inactivity timeout');
     } finally {
@@ -164,7 +164,7 @@ export function useSettings() {
     try {
       await api.updateSettings({ jobNumberPrefix, jobNumberNext });
       await loadSettings();
-      toast.success('Job number settings saved successfully');
+      toast.success('Job number settings saved');
     } catch (err) {
       toast.error(err.message || 'Failed to save job number settings');
     } finally {
@@ -195,7 +195,7 @@ export function useSettings() {
     setSavingPassword(true);
     try {
       await api.changePassword(currentPassword, newPassword);
-      toast.success('Password changed successfully');
+      toast.success('Password changed');
       resetPasswordForm();
     } catch (err) {
       toast.error(err.message || 'Failed to change password');
@@ -218,16 +218,18 @@ export function useSettings() {
     if (!outputPath) return;
 
     setExporting(true);
+    // A loading toast shows for the length of the export, not just after it finishes.
+    const toastId = toast.loading('Exporting backup…');
     try {
       const result = await api.exportBackup(outputPath);
       const sizeMB = result?.size ? (result.size / 1024 / 1024).toFixed(1) : null;
       if (result?.filesSkipped > 0) {
-        toast.error(`Backup saved, but ${result.filesSkipped} file(s) couldn't be read and were left out. Check those files and back up again.`);
+        toast.error(`Backup saved, but ${result.filesSkipped} file(s) couldn't be read and were left out. Check those files and back up again.`, { id: toastId });
       } else {
-        toast.success(sizeMB ? `Backup exported successfully (${sizeMB} MB)` : 'Backup exported successfully');
+        toast.success(sizeMB ? `Backup exported (${sizeMB} MB)` : 'Backup exported', { id: toastId });
       }
     } catch (err) {
-      toast.error(err.message || 'Failed to export backup');
+      toast.error(err.message || 'Failed to export backup', { id: toastId });
     } finally {
       setExporting(false);
     }
@@ -254,15 +256,17 @@ export function useSettings() {
 
     setShowImportConfirm(false);
     setImporting(true);
+    // A loading toast shows for the length of the restore, not just after it finishes.
+    const toastId = toast.loading('Restoring backup…');
     try {
       await api.importBackup(pendingImportPath);
-      toast.success('Restore complete. Returning to the login screen...');
+      toast.success('Restore complete. Returning to the login screen...', { id: toastId });
       // No saved login survives a reload, so this lands on the login screen —
       // exactly the intended end state after a full rewind.
       setTimeout(() => window.location.reload(), 1500);
       // Leave the "Restoring..." overlay up until the reload happens.
     } catch (err) {
-      toast.error(err.message || 'Failed to import backup');
+      toast.error(err.message || 'Failed to import backup', { id: toastId });
       setImporting(false);
       setPendingImportPath(null);
     }

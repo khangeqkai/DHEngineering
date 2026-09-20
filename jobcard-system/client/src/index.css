@@ -29,6 +29,14 @@
 }
 
 :root {
+  /* Tells the browser which palette its own chrome should use — native
+     scrollbars, the dropdown arrow, date/time pickers — so they stop
+     rendering as light-mode controls inside a dark page. */
+  color-scheme: light;
+  /* Every checkbox and radio picks up the app blue instead of the
+     browser's default. */
+  accent-color: var(--primary-accent);
+
   /* Typography */
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;
   --font-sans: 'Pragmatica', 'Google Sans', 'Google Sans Text', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -44,10 +52,11 @@
   --text-3xl: 1.75rem;
   --text-4xl: 3rem;
 
-  /* Font Weights */
+  /* Font Weights — only Light 300, Book 400 and Bold 700 are bundled;
+     the browser already renders 500 as 400 and 600 as 700, so those
+     names never pointed at a real face. */
+  --font-light: 300;
   --font-regular: 400;
-  --font-medium: 500;
-  --font-semibold: 600;
   --font-bold: 700;
 
   /* Letter Spacing — tighter for modern feel */
@@ -71,13 +80,14 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  /* Fully round — pills, dots, icon-button hit areas */
+  --radius-full: 999px;
 
   /* ── Navy-Blue Palette ── */
   /* Navy is the hero. Bright blue is the accent. */
   --primary-color: #0f2645;
   --primary-hover: #0a1e38;
   --primary-accent: #2563eb;
-  --primary-accent-hover: #1d4ed8;
   --accent-text: #1d4ed8;
   --accent-text-hover: #1e40af;
 
@@ -93,6 +103,38 @@
   --warning-color: #f59e0b;
   --danger-color: #ef4444;
 
+  /* Ink vs. fill: fills (below) are for shapes — buttons, filled pills —
+     and stay dark enough to carry white text. Ink is for words — status
+     text, warning copy — and is tuned to clear 4.5:1 on the app's own
+     surfaces and tint chips. Same three hues, already proven in the
+     status/badge palettes above; this just gives the rest of the app
+     access to the same pairing. */
+  --success-ink: #166534;
+  --warning-ink: #92400e;
+  --danger-ink: #b91c1c;
+
+  /* Fill tokens — solid backgrounds that carry white (or near-black, for
+     warning) text. Identical in both themes: a fill dark enough for white
+     text in light mode is dark enough in dark mode too, so these do not
+     get a .dark-mode override. */
+  --fill-accent: #2563eb;
+  --fill-danger: #dc2626;
+  --fill-success: #15803d;
+  /* Warning keeps the amber fill — amber is the caution signal, and
+     darkening it to carry white text would lose that. It takes near-black
+     ink instead, the same move the same-day pill already makes. */
+  --fill-warning: #f59e0b;
+  --fill-warning-ink: #451a03;
+
+  /* Hover partners for the fills above — one step darker, and likewise the same
+     in both themes. A fill's hover has to stay dark enough to carry the same ink;
+     taking it from a per-theme token is what left these buttons with no visible
+     hover in light mode and white text on a pastel in dark mode. */
+  --fill-accent-hover: #1d4ed8;
+  --fill-danger-hover: #b91c1c;
+  --fill-success-hover: #166534;
+  --fill-warning-hover: #d97706;
+
   /* Same-day priority — a highlighter green carrying near-black text, so the one
      filled pill in the set stays legible without flipping its ink between themes. */
   --same-day-bg: #a3e635;
@@ -103,7 +145,8 @@
   --sidebar-bg: #0b1e36;
   --sidebar-bg-elevated: #112a4a;
   --sidebar-text: #94a3c0;
-  --sidebar-text-muted: #5a6d8a;
+  /* Lightened from #5a6d8a — was 3.18:1 on the sidebar. */
+  --sidebar-text-muted: #748aa8;
   --sidebar-border: rgba(148, 163, 192, 0.1);
   --sidebar-active-bg: #2563eb;
   --sidebar-active-text: #ffffff;
@@ -153,8 +196,6 @@
   --primary-light: #94a3c0;
   --danger-hover: #dc2626;
   --warning-hover: #d97706;
-  --success-hover: #16a34a;
-  --action-hover: #1d4ed8;
 
   /* RGB variants (for rgba() usage) */
   --danger-rgb: 239, 68, 68;
@@ -233,17 +274,25 @@
 
   /* Closed / invoiced (muted grey) */
   --status-invoiced-bg: rgba(100, 116, 139, 0.06);
-  --status-invoiced-text: #64748b;
+  /* Darkened from #64748b — was 4.42:1 on its own tint. */
+  --status-invoiced-text: #5b6878;
   --status-invoiced-border: rgba(100, 116, 139, 0.20);
   --status-invoiced-dot: #94a3b8;
 }
 
+:root.dark-mode {
+  color-scheme: dark;
+}
+
 .dark-mode {
+  /* See :root — same reasoning, dark palette. The class lands on the html
+     element, which is also :root, so the rule just above is written as
+     :root.dark-mode to outrank it on specificity, not on source order. */
+
   /* Primary */
   --primary-color: #94a3c0;
   --primary-hover: #c7cdd9;
   --primary-accent: #3b82f6;
-  --primary-accent-hover: #2563eb;
   --accent-text: #60a5fa;
   --accent-text-hover: #93bbfd;
 
@@ -258,6 +307,12 @@
   --success-color: #4ade80;
   --warning-color: #fbbf24;
   --danger-color: #f87171;
+
+  /* Ink vs. fill: fills are for shapes, ink is for words. See the :root
+     block for the full explanation — same three hues, dark-mode values. */
+  --success-ink: #86efac;
+  --warning-ink: #fcd34d;
+  --danger-ink: #fca5a5;
 
   /* Lifted a step so the pill still reads as fluorescent against the dark surface;
      the ink stays near-black, which is what keeps it readable in both themes. */
@@ -293,9 +348,9 @@
   /* Text */
   --text-primary: #eaecf2;
   --text-secondary: #94a3c0;
-  /* Tertiary/meta text — lightened for readable contrast on the dark navy
-     surfaces (was too dim against the background). */
-  --text-tertiary: #7688a3;
+  /* Tertiary/meta text — lightened again from #7688a3, which was still
+     only 4.00:1 on raised surfaces. */
+  --text-tertiary: #8296b0;
   --text-inverse: #0b1e36;
 
   /* Borders */
@@ -313,8 +368,6 @@
   --primary-light: #c7cdd9;
   --danger-hover: #fca5a5;
   --warning-hover: #fcd34d;
-  --success-hover: #86efac;
-  --action-hover: #60a5fa;
 
   /* RGB variants */
   --danger-rgb: 248, 113, 113;
@@ -508,6 +561,45 @@ input, textarea, select {
   font-size: var(--text-sm);
 }
 
+input, textarea {
+  caret-color: var(--primary-accent);
+}
+
+/* Selected text — accent tint at low alpha, so highlighted text keeps
+   reading with the page's own ink instead of the browser default. */
+::selection {
+  background: rgba(var(--accent-rgb), 0.25);
+  color: var(--text-primary);
+}
+
+/* Scrollbars — subtle, theme-aware, kept out of the way of the content
+   they scroll. Firefox via scrollbar-color, WebKit via the pseudo-elements. */
+:root {
+  scrollbar-color: var(--border-strong) var(--surface-inset);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-inset);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--surface-inset);
+}
+
 a {
   color: var(--accent-text);
   text-decoration: none;
@@ -540,7 +632,7 @@ a:hover {
 
 .field-error-message {
   font-size: var(--text-xs);
-  color: var(--danger-color);
+  color: var(--danger-ink);
   margin-top: 0.25rem;
   display: flex;
   align-items: center;

@@ -2,11 +2,13 @@ import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { getDefaultTimeEntryForm, isoToLocalInput, localInputToIso } from './mappers';
 import { formatDate } from '../../utils/formatters';
+import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
 
 export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, showConfirm, isInvoiced = false }) {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
   const [editingTimeEntryId, setEditingTimeEntryId] = useState(null);
   const [timeEntryForm, setTimeEntryForm] = useState(getDefaultTimeEntryForm());
+  const { setFieldErrors, clearFieldError, clearAll: clearFieldErrors, groupClass, errorFor } = useFieldErrors();
 
   const resetTimeEntryForm = useCallback(() => {
     setTimeEntryForm({
@@ -15,17 +17,19 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     });
     setEditingTimeEntryId(null);
     setShowTimeEntryForm(false);
-  }, []);
+    clearFieldErrors();
+  }, [clearFieldErrors]);
 
   const handleTimeEntryChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
     // Pieces are counted, so the qty box only takes digits (matches the stop-timer form).
     const clean = name === 'qty' ? value.replace(/\D/g, '') : value;
+    clearFieldError(name);
     setTimeEntryForm(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : clean
     }));
-  }, []);
+  }, [clearFieldError]);
 
   const handleAddTimeEntry = useCallback((itemNumber = '') => {
     resetTimeEntryForm();
@@ -38,6 +42,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   }, [resetTimeEntryForm]);
 
   const handleEditTimeEntry = useCallback((entry) => {
+    clearFieldErrors();
     setEditingTimeEntryId(entry.id);
     setTimeEntryForm({
       workerId: entry.userId || '',
@@ -56,7 +61,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       endTime: isoToLocalInput(entry.endTime)
     });
     setShowTimeEntryForm(true);
-  }, []);
+  }, [clearFieldErrors]);
 
   const handleSaveTimeEntry = useCallback(async () => {
     if (!jobCardId) return;
@@ -67,28 +72,33 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     // A hand-entered block must be credited to the worker who actually did the
     // work, so per-worker hours stay accurate — not to the admin filling the form.
     if (!timeEntryForm.workerId) {
-      toast.error('Please choose the worker who did this work');
+      setFieldErrors({ workerId: 'Please choose the worker who did this work' });
+      scrollFieldIntoView('workerId');
       return;
     }
 
     const { startTime, endTime } = timeEntryForm;
     if (!startTime) {
-      toast.error('Please enter a start time');
+      setFieldErrors({ startTime: 'Please enter a start time' });
+      scrollFieldIntoView('startTime');
       return;
     }
     const start = new Date(startTime).getTime();
     if (isNaN(start)) {
-      toast.error('Start time is not a valid date');
+      setFieldErrors({ startTime: 'Start time is not a valid date' });
+      scrollFieldIntoView('startTime');
       return;
     }
     if (endTime) {
       const end = new Date(endTime).getTime();
       if (isNaN(end)) {
-        toast.error('Finish time is not a valid date');
+        setFieldErrors({ endTime: 'Finish time is not a valid date' });
+        scrollFieldIntoView('endTime');
         return;
       }
       if (end <= start) {
-        toast.error('Finish time must be after the start time');
+        setFieldErrors({ endTime: 'Finish time must be after the start time' });
+        scrollFieldIntoView('endTime');
         return;
       }
     }
@@ -126,7 +136,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     } catch (err) {
       toast.error(err.message || 'Failed to save time entry');
     }
-  }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry, isInvoiced, showConfirm]);
+  }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry, isInvoiced, showConfirm, setFieldErrors]);
 
   const handleDeleteTimeEntry = useCallback(async (entry) => {
     if (!jobCardId) return;
@@ -173,6 +183,8 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     handleEditTimeEntry,
     handleSaveTimeEntry,
     handleDeleteTimeEntry,
-    resetTimeEntries
+    resetTimeEntries,
+    groupClass,
+    errorFor
   };
 }

@@ -35,7 +35,7 @@ export default function HubCameraView({ camera, cameraCategory, savingPhotos, on
               {camera.photos.map(p => (
                 <div key={p.id} className="hub-photo-thumb">
                   <img src={p.data} alt="Captured" />
-                  <button className="hub-photo-remove" onClick={() => camera.removePhoto(p.id)}><X size={12} /></button>
+                  <button className="hub-photo-remove" onClick={() => camera.removePhoto(p.id)}><X size={14} /></button>
                 </div>
               ))}
             </div>

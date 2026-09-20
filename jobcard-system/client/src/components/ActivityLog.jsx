@@ -31,7 +31,7 @@ export default function ActivityLog() {
   const formatAction = (action) => (
     <span style={{
       color: actionColor(action),
-      fontWeight: 500,
+      fontWeight: 400,
       textTransform: 'capitalize'
     }}>
       {action.replace(/_/g, ' ')}
