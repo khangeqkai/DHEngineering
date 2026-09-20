@@ -1,12 +1,12 @@
 # Graph Report - DHEngineering  (2026-09-20)
 
 ## Corpus Check
-- 259 files · ~1,552,978 words
+- 264 files · ~1,556,605 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1263 nodes · 2748 edges · 100 communities detected
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 91 edges (avg confidence: 0.8)
+- 1291 nodes · 2788 edges · 100 communities detected
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 96 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -126,268 +126,268 @@
 ## Surprising Connections (you probably didn't know these)
 - `JobCardList()` --calls--> `useConfirmDialog()`  [INFERRED]
   jobcard-system/client/src/components/JobCardList.jsx → /mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/hooks/useConfirmDialog.js
-- `fmtDateShort()` --calls--> `formatDate()`  [INFERRED]
-  jobcard-system/client/src/components/SearchPage.jsx → /mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/utils/formatters.js
+- `Layout()` --calls--> `getInitials()`  [INFERRED]
+  jobcard-system/client/src/components/Layout.jsx → /mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/utils/initials.js
 - `JobCardModal()` --calls--> `useConfirmDialog()`  [INFERRED]
   jobcard-system/client/src/components/jobcard/JobCardModal.jsx → /mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/hooks/useConfirmDialog.js
 - `JobCardModal()` --calls--> `todayIsoDate()`  [INFERRED]
   jobcard-system/client/src/components/jobcard/JobCardModal.jsx → /mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/utils/formatters.js
-- `JobIdentityStrip()` --calls--> `formatDate()`  [INFERRED]
-  jobcard-system/client/src/components/jobcard/JobIdentityStrip.jsx → /mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/utils/formatters.js
+- `timestamp()` --calls--> `todayIsoDate()`  [INFERRED]
+  jobcard-system/client/src/utils/excelExport.js → /mnt/c/Users/khang/Code/Software/DHEngineering/jobcard-system/client/src/utils/formatters.js
 
 ## Communities
 
 ### Community 0 - "Community 0"
-Cohesion: 0.04
-Nodes (4): ApiService, base64ToBytes(), unreachableError(), wait()
+Cohesion: 0.03
+Nodes (7): downloadBytes(), reportSkipped(), showPdfInBrowser(), ApiService, base64ToBytes(), unreachableError(), wait()
 
 ### Community 1 - "Community 1"
-Cohesion: 0.06
-Nodes (38): CreatableTagSelect(), InlineSupplierForm(), blankCompany(), ContactManagement(), QALevelManagement(), monthStartYmd(), Statistics(), todayYmd() (+30 more)
+Cohesion: 0.07
+Nodes (29): CreatableTagSelect(), InlineSupplierForm(), blankCompany(), ContactManagement(), QALevelManagement(), monthStartYmd(), Statistics(), todayYmd() (+21 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.05
-Nodes (33): JobCardList(), penTabWithin(), getJobCardColumns(), JobCardListTable(), Layout(), Login(), Settings(), AuthProvider() (+25 more)
+Cohesion: 0.06
+Nodes (41): EntityActivityLog(), formatAction(), formatChanges(), formatTarget(), ActivityLog(), getStatusBadgeClass(), isJobOverdue(), mergeColumnOrder() (+33 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.08
-Nodes (30): describeChanges(), resolveJobContactId(), JobCardModal(), showFormErrors(), isSavedLineItem(), validateJobCardForm(), buildJobcardPayload(), getDefaultCostingForm() (+22 more)
+Cohesion: 0.06
+Nodes (26): JobCardList(), penTabWithin(), getJobCardColumns(), JobCardListTable(), Layout(), Login(), Settings(), AuthProvider() (+18 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.08
-Nodes (29): BottomSheet(), CalendarPicker(), toDateString(), ConfirmDialog(), InactivityWarningModal(), isTopModal(), pushModal(), removeModal() (+21 more)
+Nodes (30): describeChanges(), resolveJobContactId(), JobCardModal(), showFormErrors(), isSavedLineItem(), validateJobCardForm(), buildJobcardPayload(), getDefaultCostingForm() (+22 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.11
-Nodes (41): EntityActivityLog(), formatAction(), formatChanges(), formatTarget(), ActivityLog(), ActionBadge(), Chips(), FilterRow() (+33 more)
+Cohesion: 0.09
+Nodes (28): BottomSheet(), CalendarPicker(), toDateString(), ConfirmDialog(), InactivityWarningModal(), isTopModal(), pushModal(), removeModal() (+20 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.13
-Nodes (15): useTags(), formatElapsed(), LineItemTimerButton(), workBelongsToItem(), CostingBreakdown(), formatDecimalHours(), formatSpan(), machineCodes() (+7 more)
+Cohesion: 0.09
+Nodes (19): changedFiles(), collect(), git(), parseDiff(), trim(), untrackedHunks(), argValue(), hasFlag() (+11 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.17
-Nodes (23): columnsOf(), normalizeStoredTimestamps(), officeTimeZone(), wallClockToIso(), zoneOffsetMs(), endOfDay(), formatActivity(), formatContact() (+15 more)
+Cohesion: 0.15
+Nodes (15): useTags(), formatElapsed(), LineItemTimerButton(), workBelongsToItem(), CostingBreakdown(), formatDecimalHours(), formatSpan(), machineCodes() (+7 more)
 
 ### Community 8 - "Community 8"
 Cohesion: 0.17
-Nodes (16): LabourRatesSettings(), checkInterruptedRestore(), foldGoodPiecesToWhole(), initializeDatabase(), printNamingCutover(), renameLegacyPrintTrail(), runMigrations(), scheduleDayToWholeHours() (+8 more)
+Nodes (23): columnsOf(), normalizeStoredTimestamps(), officeTimeZone(), wallClockToIso(), zoneOffsetMs(), endOfDay(), formatActivity(), formatContact() (+15 more)
 
 ### Community 9 - "Community 9"
+Cohesion: 0.17
+Nodes (16): LabourRatesSettings(), checkInterruptedRestore(), foldGoodPiecesToWhole(), initializeDatabase(), printNamingCutover(), renameLegacyPrintTrail(), runMigrations(), scheduleDayToWholeHours() (+8 more)
+
+### Community 10 - "Community 10"
 Cohesion: 0.36
 Nodes (21): buildGrandfatheredPairs(), buildGrandfatheredValues(), getSupplierQueries(), getTagQueries(), getTagValues(), handleValidationErrors(), optionalBoolean(), optionalEmail() (+13 more)
 
-### Community 10 - "Community 10"
+### Community 11 - "Community 11"
+Cohesion: 0.36
+Nodes (21): buildJobCardWorkbook(), buildSheet(), durationHrs(), exportActivityLog(), exportContacts(), exportEquipment(), exportJobCardList(), exportJobCardsFull() (+13 more)
+
+### Community 12 - "Community 12"
 Cohesion: 0.37
 Nodes (18): buildChanges(), buildJobCardView(), buildQaFillData(), computeAttachmentWarnings(), copyQaTemplatesForJob(), copyTemplatesToJobFolder(), createRelatedRecords(), declaresValue() (+10 more)
 
-### Community 11 - "Community 11"
+### Community 13 - "Community 13"
 Cohesion: 0.52
 Nodes (17): companyFolderName(), companyPathByName(), createJobCardFolders(), deleteJobCardFolders(), ensureCompanyFolder(), ensureQaLevelFolder(), findCompanyFolder(), findQaLevelFolder() (+9 more)
 
-### Community 12 - "Community 12"
+### Community 14 - "Community 14"
 Cohesion: 0.39
 Nodes (14): autoAssignWorker(), checkCriticalInspection(), checkEntryDuration(), findEntryForJob(), flagToBool(), isCriticalJob(), isOpenTimerConflict(), normalizeTime() (+6 more)
 
-### Community 13 - "Community 13"
+### Community 15 - "Community 15"
 Cohesion: 0.28
 Nodes (8): buildHelperScript(), buildSetupPage(), plainTrustFileUrl(), secureAddress(), hostWithoutPort(), isVirtualIface(), lanIpv4s(), safeHost()
 
-### Community 14 - "Community 14"
+### Community 16 - "Community 16"
 Cohesion: 0.49
 Nodes (11): buildStorageFilename(), listCategoryFileNames(), listFolderFiles(), nextQaFormNumber(), partFileCode(), partTagRegex(), resolveCategoryFolder(), resolveFileOwners() (+3 more)
 
-### Community 15 - "Community 15"
+### Community 17 - "Community 17"
 Cohesion: 0.56
 Nodes (10): buildAltNames(), collectSanHosts(), ensureCertificates(), generateCa(), generateLeaf(), leafSanCoversIps(), leafSanCoversNames(), makeSerial() (+2 more)
 
-### Community 16 - "Community 16"
-Cohesion: 0.62
-Nodes (8): buildCostingResponse(), computeLiveCosting(), num(), parseHolidays(), parseSchedule(), persistCosting(), readOtSettings(), round2()
-
-### Community 17 - "Community 17"
+### Community 18 - "Community 18"
 Cohesion: 0.58
 Nodes (9): discardBrowser(), getBrowser(), inElectron(), launchBrowser(), probeBrowser(), renderHtmlToPdf(), renderWithElectron(), renderWithPuppeteer() (+1 more)
 
-### Community 18 - "Community 18"
+### Community 19 - "Community 19"
 Cohesion: 0.17
 Nodes (5): DataTable(), SkeletonRows(), useTableFilter(), useTableResize(), useTableSort()
 
-### Community 19 - "Community 19"
+### Community 20 - "Community 20"
+Cohesion: 0.62
+Nodes (8): buildCostingResponse(), computeLiveCosting(), num(), parseHolidays(), parseSchedule(), persistCosting(), readOtSettings(), round2()
+
+### Community 21 - "Community 21"
 Cohesion: 0.56
 Nodes (7): archiveBackup(), archiveBackupWithRetry(), bestEffortRemove(), copyDirRecursive(), listFilesRecursive(), partitionReadableFiles(), verifyStagedFiles()
 
-### Community 20 - "Community 20"
-Cohesion: 0.26
-Nodes (3): Grad, Noise, Waves()
-
-### Community 21 - "Community 21"
+### Community 22 - "Community 22"
 Cohesion: 0.44
 Nodes (7): dayTierTable(), localParts(), makeFormatter(), offsetSegments(), splitHours(), tierForMoment(), zoneOffsetAt()
 
-### Community 22 - "Community 22"
+### Community 23 - "Community 23"
+Cohesion: 0.26
+Nodes (3): Grad, Noise, Waves()
+
+### Community 24 - "Community 24"
 Cohesion: 0.44
 Nodes (9): checkCommand(), checkNativeModules(), checkPdfBrowser(), checkPlatformMatch(), ensureDataDir(), installDependencies(), log(), runChecks() (+1 more)
 
-### Community 23 - "Community 23"
+### Community 25 - "Community 25"
 Cohesion: 0.38
 Nodes (9): calculateDateRange(), daysDiff(), getJobFinishDate(), getLocalDateString(), makeDateFormatter(), pad2(), parseMachineTokens(), splitIntegerAcrossTokens() (+1 more)
 
-### Community 24 - "Community 24"
+### Community 26 - "Community 26"
 Cohesion: 0.49
 Nodes (8): buildClientIfNeeded(), cmdLan(), cmdSeed(), confirm(), findLanIp(), newestMtime(), runSetup(), waitForHealth()
 
-### Community 25 - "Community 25"
-Cohesion: 0.42
-Nodes (7): getStatusBadgeClass(), isJobOverdue(), mergeColumnOrder(), normalizeHiddenColumns(), priorityToken(), statusToken(), JobIdentityStrip()
-
-### Community 26 - "Community 26"
+### Community 27 - "Community 27"
 Cohesion: 0.42
 Nodes (7): caCertPath(), createMenu(), createWindow(), dataDir(), installLocalCertTrust(), startServer(), sweepOldJobCardPrintouts()
 
-### Community 27 - "Community 27"
+### Community 28 - "Community 28"
 Cohesion: 0.58
 Nodes (5): bumpJobNumber(), getSettings(), peekNextJobNumber(), recordHistory(), updateSettings()
 
-### Community 28 - "Community 28"
+### Community 29 - "Community 29"
 Cohesion: 0.58
 Nodes (5): checkLoginRateLimit(), clearLoginFailures(), cooldownMsForCount(), normalizeEmpty(), recordLoginFailure()
 
-### Community 29 - "Community 29"
+### Community 30 - "Community 30"
 Cohesion: 0.58
 Nodes (4): camelToSnake(), convertKeysToCamel(), getTableColumns(), snakeToCamel()
 
-### Community 30 - "Community 30"
+### Community 31 - "Community 31"
 Cohesion: 0.57
 Nodes (4): buildTreatments(), makeDate(), tagValue(), uid()
 
-### Community 31 - "Community 31"
+### Community 32 - "Community 32"
 Cohesion: 0.54
 Nodes (3): authenticate(), isManagement(), requireRole()
 
-### Community 32 - "Community 32"
+### Community 33 - "Community 33"
 Cohesion: 0.54
 Nodes (3): formatLevel(), formatTemplate(), getQaLevelsBasePath()
 
-### Community 33 - "Community 33"
+### Community 34 - "Community 34"
 Cohesion: 0.57
 Nodes (3): getSupplierWithTags(), normalizeEmpty(), toApiFormat()
 
-### Community 34 - "Community 34"
+### Community 35 - "Community 35"
 Cohesion: 0.61
 Nodes (3): esc(), renderItem(), renderJobCardHtml()
 
-### Community 35 - "Community 35"
+### Community 36 - "Community 36"
 Cohesion: 0.61
 Nodes (3): appendImage(), appendPdf(), buildPacketPdf()
 
-### Community 36 - "Community 36"
+### Community 37 - "Community 37"
 Cohesion: 0.61
 Nodes (5): computeProgress(), formatNum(), LineItemProgress(), parseQty(), StatusPill()
 
-### Community 37 - "Community 37"
+### Community 38 - "Community 38"
 Cohesion: 0.61
 Nodes (4): assigneeNames(), buildQaTemplateWarning(), itemSummary(), treatmentsToText()
 
-### Community 38 - "Community 38"
+### Community 39 - "Community 39"
 Cohesion: 0.48
 Nodes (2): normalizeEmpty(), readFlag()
 
-### Community 39 - "Community 39"
+### Community 40 - "Community 40"
 Cohesion: 0.67
 Nodes (3): collectOvertimeUpdates(), normalizeSchedule(), validateSchedule()
 
-### Community 40 - "Community 40"
+### Community 41 - "Community 41"
 Cohesion: 0.52
 Nodes (2): isJobComplete(), syncStatusToWork()
 
-### Community 41 - "Community 41"
+### Community 42 - "Community 42"
 Cohesion: 0.67
 Nodes (3): fillPdfTemplate(), formatTreatments(), toPdfSafe()
 
-### Community 42 - "Community 42"
+### Community 43 - "Community 43"
 Cohesion: 0.48
 Nodes (5): actions(), assignees(), blocks(), seed(), status()
 
-### Community 43 - "Community 43"
+### Community 44 - "Community 44"
 Cohesion: 0.62
 Nodes (3): assertMatchesExtension(), decodeBase64Strict(), matchesSignature()
 
-### Community 44 - "Community 44"
+### Community 45 - "Community 45"
 Cohesion: 0.53
 Nodes (2): start(), startRedirectListener()
 
-### Community 45 - "Community 45"
+### Community 46 - "Community 46"
 Cohesion: 0.33
 Nodes (1): buildScenarios()
 
-### Community 46 - "Community 46"
+### Community 47 - "Community 47"
 Cohesion: 0.33
 Nodes (1): getAssigneesForJobcards()
 
-### Community 47 - "Community 47"
+### Community 48 - "Community 48"
 Cohesion: 0.53
 Nodes (2): maintenanceGuard(), setMaintenance()
 
-### Community 48 - "Community 48"
+### Community 49 - "Community 49"
 Cohesion: 0.47
 Nodes (2): normalizeEmpty(), toApiFormat()
 
-### Community 49 - "Community 49"
+### Community 50 - "Community 50"
 Cohesion: 0.53
 Nodes (2): normalizeEmpty(), toResponseFormat()
 
-### Community 50 - "Community 50"
+### Community 51 - "Community 51"
 Cohesion: 0.53
 Nodes (2): formatTag(), nameToValue()
 
-### Community 51 - "Community 51"
+### Community 52 - "Community 52"
 Cohesion: 0.53
 Nodes (2): getPdfEngineStatus(), verifyPdfEngine()
 
-### Community 52 - "Community 52"
+### Community 53 - "Community 53"
 Cohesion: 0.4
 Nodes (1): seedHistory()
 
-### Community 53 - "Community 53"
+### Community 54 - "Community 54"
 Cohesion: 0.4
 Nodes (1): getOrCreateJwtSecret()
 
-### Community 54 - "Community 54"
+### Community 55 - "Community 55"
 Cohesion: 0.4
 Nodes (1): nameToValue()
 
-### Community 55 - "Community 55"
+### Community 56 - "Community 56"
 Cohesion: 0.4
 Nodes (1): auditValue()
 
-### Community 56 - "Community 56"
+### Community 57 - "Community 57"
 Cohesion: 0.4
 Nodes (1): requestLogger()
 
-### Community 57 - "Community 57"
+### Community 58 - "Community 58"
 Cohesion: 0.4
 Nodes (1): startMdnsResponder()
 
-### Community 58 - "Community 58"
+### Community 59 - "Community 59"
 Cohesion: 0.7
 Nodes (2): isActive(), LineItemSupplierPicker()
 
-### Community 59 - "Community 59"
+### Community 60 - "Community 60"
 Cohesion: 0.7
 Nodes (2): formatNum(), ScrapStat()
 
-### Community 60 - "Community 60"
+### Community 61 - "Community 61"
 Cohesion: 0.6
 Nodes (3): collectHomeAccessUpdates(), homeAccessChange(), homeAccessView()
 
-### Community 61 - "Community 61"
+### Community 62 - "Community 62"
 Cohesion: 0.5
 Nodes (2): discardIfAccidentalTap(), undoStartEffects()
-
-### Community 62 - "Community 62"
-Cohesion: 0.6
-Nodes (3): apiKey(), ask(), sleep()
 
 ### Community 63 - "Community 63"
 Cohesion: 0.5
@@ -538,43 +538,43 @@ Cohesion: 0.67
 Nodes (1): ShinyText()
 
 ## Knowledge Gaps
-- **Thin community `Community 38`** (7 nodes): `jobcard-time-entries.js`, `jobcard-time-entries.js`, `jobcard-time-entries.js`, `jobcard-time-entries.js`, `normalizeEmpty()`, `readFlag()`, `jobcard-time-entries.js`
+- **Thin community `Community 39`** (7 nodes): `jobcard-time-entries.js`, `jobcard-time-entries.js`, `jobcard-time-entries.js`, `jobcard-time-entries.js`, `normalizeEmpty()`, `readFlag()`, `jobcard-time-entries.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 40`** (7 nodes): `jobStatusAuto.js`, `jobStatusAuto.js`, `jobStatusAuto.js`, `jobStatusAuto.js`, `jobStatusAuto.js`, `isJobComplete()`, `syncStatusToWork()`
+- **Thin community `Community 41`** (7 nodes): `jobStatusAuto.js`, `jobStatusAuto.js`, `jobStatusAuto.js`, `jobStatusAuto.js`, `jobStatusAuto.js`, `isJobComplete()`, `syncStatusToWork()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 44`** (6 nodes): `index.js`, `index.js`, `index.js`, `index.js`, `start()`, `startRedirectListener()`
+- **Thin community `Community 45`** (6 nodes): `index.js`, `index.js`, `index.js`, `index.js`, `start()`, `startRedirectListener()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 45`** (6 nodes): `seed-scenarios.js`, `seed-scenarios.js`, `seed-scenarios.js`, `seed-scenarios.js`, `buildScenarios()`, `seed-scenarios.js`
+- **Thin community `Community 46`** (6 nodes): `seed-scenarios.js`, `seed-scenarios.js`, `seed-scenarios.js`, `seed-scenarios.js`, `buildScenarios()`, `seed-scenarios.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 46`** (6 nodes): `jobcard.js`, `jobcard.js`, `jobcard.js`, `jobcard.js`, `getAssigneesForJobcards()`, `jobcard.js`
+- **Thin community `Community 47`** (6 nodes): `jobcard.js`, `jobcard.js`, `jobcard.js`, `jobcard.js`, `getAssigneesForJobcards()`, `jobcard.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 47`** (6 nodes): `maintenance.js`, `maintenance.js`, `maintenanceGuard()`, `setMaintenance()`, `maintenance.js`, `maintenance.js`
+- **Thin community `Community 48`** (6 nodes): `maintenance.js`, `maintenance.js`, `maintenanceGuard()`, `setMaintenance()`, `maintenance.js`, `maintenance.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 48`** (6 nodes): `contacts.js`, `contacts.js`, `contacts.js`, `normalizeEmpty()`, `toApiFormat()`, `contacts.js`
+- **Thin community `Community 49`** (6 nodes): `contacts.js`, `contacts.js`, `contacts.js`, `normalizeEmpty()`, `toApiFormat()`, `contacts.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 49`** (6 nodes): `machines.js`, `machines.js`, `machines.js`, `normalizeEmpty()`, `toResponseFormat()`, `machines.js`
+- **Thin community `Community 50`** (6 nodes): `machines.js`, `machines.js`, `machines.js`, `normalizeEmpty()`, `toResponseFormat()`, `machines.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 50`** (6 nodes): `tags.js`, `tags.js`, `tags.js`, `formatTag()`, `nameToValue()`, `tags.js`
+- **Thin community `Community 51`** (6 nodes): `tags.js`, `tags.js`, `tags.js`, `formatTag()`, `nameToValue()`, `tags.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 51`** (6 nodes): `pdfEngine.js`, `pdfEngine.js`, `pdfEngine.js`, `pdfEngine.js`, `getPdfEngineStatus()`, `verifyPdfEngine()`
+- **Thin community `Community 52`** (6 nodes): `pdfEngine.js`, `pdfEngine.js`, `pdfEngine.js`, `pdfEngine.js`, `getPdfEngineStatus()`, `verifyPdfEngine()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 52`** (5 nodes): `seed-history.js`, `seed-history.js`, `seed-history.js`, `seedHistory()`, `seed-history.js`
+- **Thin community `Community 53`** (5 nodes): `seed-history.js`, `seed-history.js`, `seed-history.js`, `seedHistory()`, `seed-history.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 53`** (5 nodes): `config.js`, `config.js`, `config.js`, `config.js`, `getOrCreateJwtSecret()`
+- **Thin community `Community 54`** (5 nodes): `config.js`, `config.js`, `config.js`, `config.js`, `getOrCreateJwtSecret()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 54`** (5 nodes): `seed-tags.js`, `nameToValue()`, `seed-tags.js`, `seed-tags.js`, `seed-tags.js`
+- **Thin community `Community 55`** (5 nodes): `seed-tags.js`, `nameToValue()`, `seed-tags.js`, `seed-tags.js`, `seed-tags.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 55`** (5 nodes): `jobcard-costing.js`, `jobcard-costing.js`, `jobcard-costing.js`, `auditValue()`, `jobcard-costing.js`
+- **Thin community `Community 56`** (5 nodes): `jobcard-costing.js`, `jobcard-costing.js`, `jobcard-costing.js`, `auditValue()`, `jobcard-costing.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 56`** (5 nodes): `logger.js`, `logger.js`, `logger.js`, `logger.js`, `requestLogger()`
+- **Thin community `Community 57`** (5 nodes): `logger.js`, `logger.js`, `logger.js`, `logger.js`, `requestLogger()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 57`** (5 nodes): `mdnsResponder.js`, `mdnsResponder.js`, `mdnsResponder.js`, `mdnsResponder.js`, `startMdnsResponder()`
+- **Thin community `Community 58`** (5 nodes): `mdnsResponder.js`, `mdnsResponder.js`, `mdnsResponder.js`, `mdnsResponder.js`, `startMdnsResponder()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 58`** (5 nodes): `LineItemSupplierPicker.jsx`, `LineItemSupplierPicker.jsx`, `LineItemSupplierPicker.jsx`, `isActive()`, `LineItemSupplierPicker()`
+- **Thin community `Community 59`** (5 nodes): `LineItemSupplierPicker.jsx`, `LineItemSupplierPicker.jsx`, `LineItemSupplierPicker.jsx`, `isActive()`, `LineItemSupplierPicker()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 59`** (5 nodes): `ScrapStat.jsx`, `ScrapStat.jsx`, `ScrapStat.jsx`, `formatNum()`, `ScrapStat()`
+- **Thin community `Community 60`** (5 nodes): `ScrapStat.jsx`, `ScrapStat.jsx`, `ScrapStat.jsx`, `formatNum()`, `ScrapStat()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 61`** (5 nodes): `startTimerUndo.js`, `startTimerUndo.js`, `discardIfAccidentalTap()`, `rememberStartEffects()`, `undoStartEffects()`
+- **Thin community `Community 62`** (5 nodes): `startTimerUndo.js`, `startTimerUndo.js`, `discardIfAccidentalTap()`, `rememberStartEffects()`, `undoStartEffects()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 63`** (4 nodes): `JobCardColumnsMenu.jsx`, `JobCardColumnsMenu()`, `JobCardColumnsMenu.jsx`, `JobCardColumnsMenu.jsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -654,8 +654,10 @@ Nodes (1): ShinyText()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `useAuth()` connect `Community 2` to `Community 1`, `Community 3`, `Community 4`, `Community 5`?**
-  _High betweenness centrality (0.074) - this node is a cross-community bridge._
+- **Why does `useAuth()` connect `Community 3` to `Community 1`, `Community 2`, `Community 4`, `Community 5`?**
+  _High betweenness centrality (0.079) - this node is a cross-community bridge._
+- **Why does `usePacketPrint()` connect `Community 5` to `Community 0`?**
+  _High betweenness centrality (0.057) - this node is a cross-community bridge._
 - **Are the 15 inferred relationships involving `useAuth()` (e.g. with `PrivateRoute()` and `AdminRoute()`) actually correct?**
   _`useAuth()` has 15 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 4 inferred relationships involving `formatDate()` (e.g. with `fmtDateShort()` and `JobIdentityStrip()`) actually correct?**
@@ -663,8 +665,6 @@ _Questions this graph is uniquely positioned to answer:_
 - **Are the 7 inferred relationships involving `useConfirmDialog()` (e.g. with `ContactManagement()` and `JobCardList()`) actually correct?**
   _`useConfirmDialog()` has 7 INFERRED edges - model-reasoned connections that need verification._
 - **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.04 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.03 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.06 - nodes in this community are weakly interconnected._
-- **Should `Community 2` be split into smaller, more focused modules?**
-  _Cohesion score 0.05 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07 - nodes in this community are weakly interconnected._

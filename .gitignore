@@ -24,3 +24,6 @@
 .env
 .env.local
 .env.*.local
+
+# jev-gate scratch: the current work order, per-machine
+.jev/

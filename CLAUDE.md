@@ -85,6 +85,19 @@ cd server && npm run dev
 seed.bat
 ```
 
+Run from the repository root:
+
+```bash
+# Screen the current changes before a human reads them — scope, house rules,
+# what to read first. Needs an OpenRouter key in a git-ignored server/.env;
+# without one it says so and exits without blocking. See tools/jev-gate/README.md
+node tools/jev-gate/gate.js intent "what this task was asked to do"
+node tools/jev-gate/gate.js
+
+# Run it automatically before every commit (--no-verify still bypasses)
+./tools/jev-gate/install-hook.sh
+```
+
 ## Architecture
 
 ### Stack

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# jev-gate — screens staged changes before a commit is written.
+# Blocks only on hard findings. Bypass any time with: git commit --no-verify
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+node "$ROOT/tools/jev-gate/gate.js" --staged --strict
+STATUS=$?
+
+if [ $STATUS -ne 0 ]; then
+  echo "Commit stopped by jev-gate. Fix the above, or commit with --no-verify to override."
+fi
+exit $STATUS
