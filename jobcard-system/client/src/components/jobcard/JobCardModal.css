@@ -416,11 +416,21 @@
 }
 
 /* Tab Navigation */
+/* The tab strip is the only block of grey at the top of the job window, and it was
+   sitting inside the body's padding — a floating grey band with a gap above it and a gap
+   down each side, reading as something dropped onto the window rather than part of the
+   title bar. It now runs flush: up against the header's bottom edge and out to both side
+   walls, with the first tab's own label landing on the same left edge as the job number
+   above it.
+
+   The margins are divided by the zoom because the padding they cancel is applied outside
+   this strip's zoomed layer — a plain -1.25rem would come up short by a tenth and leave
+   a hairline of white at each edge, which is the whole fault over again in miniature. */
 .modal-tabs {
   display: flex;
   gap: 0;
   padding: 0;
-  margin-bottom: 1rem;
+  margin: calc(-1.25rem / var(--jc-zoom)) calc(-1.25rem / var(--jc-zoom)) 1rem;
   background: var(--surface-inset);
   border-bottom: 1px solid var(--border-color);
   overflow-x: auto;
@@ -2432,12 +2442,11 @@
   box-shadow: var(--shadow-sm);
 }
 
-/* Stays put at the top of the panel while the sheet scrolls, so the grand total is
-   readable at all times. */
+/* Scrolls away with the sheet like any other row. It used to stay pinned to the top so
+   the grand total was readable at all times, but a dark filled pill hovering over the
+   figures it is the sum of read as a thing stuck to the glass rather than part of the
+   sheet — and the total is only a scroll away at the top where it belongs. */
 .costing-sheet-header {
-  position: sticky;
-  top: 0;
-  z-index: 4;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -3934,6 +3943,9 @@
    the scale named weights the bundled font does not have. With an honest
    scale there is nothing left to step down to, so the job screen now reads at
    the same weights as every other screen. */
+/* Named so anything inside can undo the surrounding page's unzoomed spacing exactly —
+   see .modal-tabs, which has to reach edges measured outside this layer. */
 .jc-zoom-root {
-  zoom: 0.9;
+  --jc-zoom: 0.9;
+  zoom: var(--jc-zoom);
 }
