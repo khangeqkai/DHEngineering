@@ -122,7 +122,10 @@ export function useJobCardCosting({
     // it wasn't kept rather than filing the change away behind their back.
     flushRef.current?.({ withoutPrompt: true }).then(outcome => {
       if (outcome === 'needs-confirm') {
-        toast('Pricing changes were not saved — this job has been invoiced.', { icon: warningToastIcon });
+        // Same slot as the decline message in useCosting.js: a close can now produce both
+        // (the question queued behind the close question is answered "no" as the card goes),
+        // and they say the same thing, so the second replaces the first rather than stacking.
+        toast('Pricing changes were not saved — this job has been invoiced.', { id: 'costing-declined', icon: warningToastIcon });
       }
     });
   }, [isOpen]);

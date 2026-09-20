@@ -51,7 +51,15 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (reloadTimeEntriesRef.current) reloadTimeEntriesRef.current();
   }, []);
   const timer = useTimer(isEdit ? jobCardId : null, { onExternalStop });
-  const { dialogState, showConfirm, handleCancel, handleConfirm, handleAlt } = useConfirmDialog();
+  const { dialogState, showConfirm, handleCancel, handleConfirm, handleAlt, cancelConfirms } = useConfirmDialog();
+
+  // Questions belong to the open card. Once it closes nothing renders the box any more,
+  // so anything still waiting for an answer is answered "no" here — left outstanding it
+  // would never settle, and the next question asked would queue behind a box that can
+  // no longer be seen.
+  useEffect(() => {
+    if (!isOpen) cancelConfirms();
+  }, [isOpen, cancelConfirms]);
 
   const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm, onNotesChange);
   // Pricing: the on-open load, the invoiced-job question, and the save-on-the-way-out

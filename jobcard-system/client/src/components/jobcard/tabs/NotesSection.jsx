@@ -12,7 +12,7 @@ export default function NotesSection({
   canManage
 }) {
   return (
-    <div className="form-section notes-section">
+    <div className="form-section">
       <h3 className="form-section-title">Job Comments</h3>
 
       {/* Add note form */}

@@ -70,12 +70,6 @@ export function useJobCardForm() {
   const savedRef = useRef(saved);
   savedRef.current = saved;
 
-  // Workers the server put on (or took off) the job by itself — crediting logged work,
-  // or taking back a discarded run. captureSent starts a fresh tally; markSaved folds it
-  // into the new baseline, so a timer started while a save was travelling doesn't leave
-  // the header stuck on "unsaved edits" over a change the server already made.
-  const serverAssigneeOpsRef = useRef(new Map());
-
   const isDirty = useMemo(() => {
     return snapshotForm(formData) !== saved.form
       || snapshotAssignees(assignees) !== saved.assignees
@@ -148,8 +142,10 @@ export function useJobCardForm() {
     if (!workerId || hasPendingChangeFor(workerId)) return;
     setAssignees(prev => prev.some(a => a.userId === workerId) ? prev
       : [...prev, { userId: workerId, userName: employees.find(e => e.id === workerId)?.name || '' }]);
-    serverAssigneeOpsRef.current.set(workerId, 'add');
     // The server put them on the job already, so this is not an edit awaiting a Save.
+    // Unless a Save is in flight, which carries a people list built before this and will
+    // take them straight back off — markSaved measures against that list and hands the
+    // worker back as an unsaved edit when the reply lands.
     setSaved(prev => prev
       ? { ...prev, assignees: snapshotAssignees([...JSON.parse(prev.assignees), workerId].map(id => ({ userId: id }))) }
       : prev);
@@ -161,7 +157,6 @@ export function useJobCardForm() {
   const dropAssignee = useCallback((workerId) => {
     if (!workerId || hasPendingChangeFor(workerId)) return;
     setAssignees(prev => prev.filter(a => a.userId !== workerId));
-    serverAssigneeOpsRef.current.set(workerId, 'remove');
     setSaved(prev => prev
       ? { ...prev, assignees: snapshotAssignees(JSON.parse(prev.assignees).filter(id => id !== workerId).map(id => ({ userId: id }))) }
       : prev);
@@ -223,9 +218,6 @@ export function useJobCardForm() {
   // (see markSaved) because merging in the reply's ids and numbers means matching
   // rows first, which needs the raw, un-stringified rows as they stood at send time.
   const captureSent = useCallback(() => {
-    // A fresh tally starts here: only ops the server makes on its own while THIS
-    // request is in flight belong in the next baseline (see markSaved).
-    serverAssigneeOpsRef.current = new Map();
     return {
       form: snapshotForm(liveRef.current.formData),
       assignees: snapshotAssignees(liveRef.current.assignees),
@@ -310,14 +302,15 @@ export function useJobCardForm() {
       }
     }
 
-    // Anything the server did to the people on this job while the request was travelling
-    // is already stored, so it belongs in the new baseline even though it isn't in `sent`.
-    const assigneeIds = new Set(JSON.parse(sent.assignees));
-    for (const [workerId, op] of serverAssigneeOpsRef.current) {
-      if (op === 'add') assigneeIds.add(workerId); else assigneeIds.delete(workerId);
-    }
-    serverAssigneeOpsRef.current = new Map();
-    const assigneesSnapshot = snapshotAssignees([...assigneeIds].map(userId => ({ userId })));
+    // The people baseline is exactly what was sent, because a save hands over a whole
+    // list and the server throws its own away and stores that list verbatim. So anything
+    // the server had done to the list while the request was travelling — crediting the
+    // worker on a timer started mid-save, taking back a discarded run — is undone the
+    // moment this save lands. Those workers are still on screen, and measuring against
+    // what was sent is what leaves them marked unsaved, so the next Save puts them back.
+    // Folding them into the baseline instead showed them assigned while calling the card
+    // saved, and the server no longer had them on the job at all.
+    const assigneesSnapshot = sent.assignees;
 
     if (conflict) {
       // Only the parts are in doubt, so only the parts are replaced. The reply's rows go
@@ -364,7 +357,6 @@ export function useJobCardForm() {
     // Back to the pristine baseline, same as the hook's own initial state, so a
     // second new card starts clean exactly like the first one did.
     setSaved(pristineSaved());
-    serverAssigneeOpsRef.current = new Map();
   }, []);
 
   return {
