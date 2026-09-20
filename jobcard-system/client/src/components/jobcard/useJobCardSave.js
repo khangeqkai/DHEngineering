@@ -67,11 +67,8 @@ export function useJobCardSave({
         contactId: customer.contactId
       });
       // Flush any unsaved pricing edits before invoicing so they aren't lost when the job
-      // is filed away. This goes through the same path the pricing screen uses, so a job
-      // that has already been billed still asks "change an invoiced job?" first rather
-      // than quietly restating the final total. Only a failed save aborts here — turning
-      // the pricing change down puts the billed figures back and says so, and the rest of
-      // this save (dates, notes, parts) has nothing to do with pricing, so it carries on.
+      // is filed away. This goes through the same path the pricing screen uses. Only a
+      // failed save aborts here — it has already said why.
       if (isEdit && formHook.formData.status === 'INVOICED' && costingHook.costingDirty) {
         const saved = await costingHook.flushCosting();
         if (saved === false) return; // the save already reported why it failed

@@ -43,8 +43,8 @@ const TEXT_FIELDS = new Set([
 // one per box), short enough that a figure typed and walked away from is never lost.
 const AUTOSAVE_DELAY = 1000;
 
-// The on-screen form built from a loaded costing row. Used both when the pricing first
-// loads and when an edit to an invoiced job is declined (snap back to what was billed).
+// The on-screen form built from a loaded costing row — used when the pricing first loads,
+// and again when a save's reply carries the stored figures back.
 function formFromCosting(c) {
   return {
     labourHours: c.labourHours || 0,
@@ -80,14 +80,11 @@ function formFromCosting(c) {
   };
 }
 
-// `isInvoiced` + `confirmInvoicedEdit` drive the one-per-opening "change an invoiced
-// job?" question: with no Save button to hang it on, the question is asked the first
-// time an auto-save would change a job that's already been billed.
+// An invoiced job's pricing saves itself exactly like any other job's — see the note on
+// runSave below for why there is no question in front of it any more.
 export function useCosting(jobCardId, {
   costing: loadedCosting,
-  updateCosting,
-  isInvoiced = false,
-  confirmInvoicedEdit
+  updateCosting
 } = {}) {
   const [costingForm, setCostingForm] = useState(getDefaultCostingForm());
   const [savingCosting, setSavingCosting] = useState(false);
@@ -106,17 +103,10 @@ export function useCosting(jobCardId, {
   // was typed while the request was in flight — otherwise those keystrokes would be
   // marked saved without ever having been sent.
   const editSeq = useRef(0);
-  // The "change an invoiced job?" question is answered once per opening, then remembered.
-  const invoicedAck = useRef(false);
-  // The edit count as at the moment that question was last answered "no". While nothing
-  // further has been typed, another save attempt is simply dropped instead of asking the
-  // same question again (two saves can land together — a keypress and the countdown).
-  const declinedAtSeq = useRef(null);
-  // The last figures loaded from (or stored by) the server. Two jobs: it's what a declined
-  // edit on an invoiced job snaps back to, and — while it's still null — it marks the
-  // pricing as never having arrived, which blocks saving. Without that block, a failed
-  // load leaves an all-zero screen that the first keystroke would write over the real
-  // figures.
+  // The last figures loaded from (or stored by) the server. While it's still null it
+  // marks the pricing as never having arrived, which blocks saving. Without that block, a
+  // failed load leaves an all-zero screen that the first keystroke would write over the
+  // real figures.
   const loadedRef = useRef(null);
   // The figures as they were when THIS job's pricing was first opened. Unlike loadedRef,
   // a successful autosave never touches this — it is set once per opening and left alone,
@@ -124,26 +114,19 @@ export function useCosting(jobCardId, {
   // manual money boxes. (loadedRef chases every save, which used to make that hint compare
   // a just-typed figure against itself and disappear about a second after it appeared.)
   const openingRef = useRef(null);
-  // Read inside the save, which must see the current values without being rebuilt (and
-  // restarting the save timer) on every render of the job screen.
-  const isInvoicedRef = useRef(isInvoiced);
-  const confirmRef = useRef(confirmInvoicedEdit);
-  isInvoicedRef.current = isInvoiced;
-  confirmRef.current = confirmInvoicedEdit;
-  // Which job is on screen right now, so a reply to a save started for a job that has
-  // since been closed can be recognised as stale rather than applied to the next one.
+  // Which job is on screen right now, read inside the save so it sees the current value
+  // without being rebuilt (and restarting the save timer) on every render of the job
+  // screen — so a reply to a save started for a job that has since been closed can be
+  // recognised as stale rather than applied to the next one.
   const jobCardIdRef = useRef(jobCardId);
   jobCardIdRef.current = jobCardId;
 
   // Fill the form from the costing loaded for this job. That load happens once per
-  // opening (the save no longer re-reads), so this is also where the invoiced-job
-  // question resets to being asked again.
+  // opening — the save no longer re-reads.
   useEffect(() => {
     if (loadedCosting) {
       loadedRef.current = loadedCosting;
       openingRef.current = loadedCosting;
-      invoicedAck.current = false;
-      declinedAtSeq.current = null;
       setCostingDirty(false);
       setSaveState('idle');
       setCostingForm(formFromCosting(loadedCosting));
@@ -249,16 +232,18 @@ export function useCosting(jobCardId, {
     return { labourTotal, labourOt1Total, labourOt2Total, labourHolidayTotal, labourSpecialTotal, materialsTotal, subcontractorTotal, grandTotal };
   }, [costingForm]);
 
-  // Send the current figures. Returns true when they're safely stored, false when the
-  // save failed, and 'declined' when the user turned down changing an invoiced job (the
-  // figures snap back to what was billed, so nothing is left pending). Callers that gate
-  // an irreversible step on the save (invoicing files the job away) rely on the false
-  // case to abort instead of proceeding with unsaved numbers.
+  // Send the current figures. Returns true when they're safely stored and false when the
+  // save failed. Callers that gate an irreversible step on the save (invoicing files the
+  // job away) rely on the false case to abort instead of proceeding with unsaved numbers.
   //
-  // `skipConfirm` is for the invoicing paths: they run their own "this will archive the
-  // job / your unsaved pricing will be billed" prompt, so asking again here would be a
-  // second dialog for the same decision.
-  const runSave = useCallback(async ({ skipConfirm = false } = {}) => {
+  // An invoiced job is saved the same as any other. It used to ask "change an invoiced
+  // job?" first, once per opening — but with no Save button that question had to come off
+  // the one-second countdown, so it spoke a beat after the typing stopped and with nobody
+  // having clicked anything. The sheet is admin-only, the server accepts the change either
+  // way, and every figure is recorded in the activity trail with its old and new value, so
+  // the question was a speed bump rather than a gate. Saving straight through is the
+  // behaviour the rest of the sheet already has.
+  const runSave = useCallback(async () => {
     if (!jobCardId) return true; // nothing to save (new card) — not a failure
 
     // The job's stored pricing never arrived (the load failed, or hasn't finished). The
@@ -269,30 +254,6 @@ export function useCosting(jobCardId, {
       setAutoSavePaused(true);
       toast.error("This job's pricing hasn't loaded — reopen the pricing screen before making changes.", { id: 'costing-not-loaded' });
       return false;
-    }
-
-    // Changing a job that's already been billed is asked once per opening, then
-    // remembered — with no Save button, there's nothing else to hang the question on.
-    if (isInvoicedRef.current && !invoicedAck.current && !skipConfirm) {
-      // Already said no, and nothing typed since — don't ask the same question twice
-      // when a keypress and the countdown both call for a save. Same outcome as the
-      // decline itself, so it reports the same way.
-      if (declinedAtSeq.current === editSeq.current) return 'declined';
-      const ok = confirmRef.current ? await confirmRef.current() : true;
-      if (!ok) {
-        // "No" means leave the billed figures alone — put back what was loaded, and say
-        // so, since the pricing visibly snaps back to what it was.
-        setCostingForm(formFromCosting(loadedRef.current));
-        declinedAtSeq.current = editSeq.current;
-        setCostingDirty(false);
-        setSaveState('idle');
-        toast('Pricing left as invoiced — your changes were not kept.', { id: 'costing-declined', icon: warningToastIcon });
-        // Not 'false': nothing failed and nothing is left pending, so a caller that was
-        // waiting on this save (the job form's Update) can carry on with the rest of
-        // its save instead of silently doing nothing.
-        return 'declined';
-      }
-      invoicedAck.current = true;
     }
 
     const seq = editSeq.current;
@@ -400,19 +361,16 @@ export function useCosting(jobCardId, {
   }, [costingForm, costingDirty, savingCosting, autoSavePaused]);
 
   // Save right now instead of waiting out the countdown — used by Enter, by leaving the
-  // pricing screen, and by closing the job. `withoutPrompt` is for the close path: the
-  // job screen is gone by then, so a dialog can't be shown. That case returns
-  // 'needs-confirm' (rather than a plain false, which means the save itself failed) so
-  // the caller can say why the change wasn't kept.
-  const flushCosting = useCallback(async ({ withoutPrompt = false } = {}) => {
+  // pricing screen, and by closing the job.
+  const flushCosting = useCallback(async () => {
     if (!costingDirty) return true;
-    if (withoutPrompt && isInvoicedRef.current && !invoicedAck.current) return 'needs-confirm';
     setAutoSavePaused(false);
     return saveNowRef.current();
   }, [costingDirty]);
 
-  // The invoicing paths ask their own question before saving, so they skip this one.
-  const handleSaveCosting = useCallback(() => saveNowRef.current({ skipConfirm: true }), []);
+  // Used by the invoicing paths, which run their own "this will archive the job / your
+  // unsaved pricing will be billed" prompt before calling it.
+  const handleSaveCosting = useCallback(() => saveNowRef.current(), []);
 
   const refreshCosting = useCallback(async () => {
     if (!jobCardId) return;
@@ -455,8 +413,6 @@ export function useCosting(jobCardId, {
   const resetCosting = useCallback(() => {
     setCostingDirty(false);
     setSaveState('idle');
-    invoicedAck.current = false;
-    declinedAtSeq.current = null;
     loadedRef.current = null;
     openingRef.current = null;
     // Count the reset as an edit, so a close-time save that resolves after the job is

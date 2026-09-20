@@ -62,12 +62,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   }, [isOpen, cancelConfirms]);
 
   const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm, onNotesChange);
-  // Pricing: the on-open load, the invoiced-job question, and the save-on-the-way-out
-  // paths all live in this hook — see useJobCardCosting.js.
-  const costingHook = useJobCardCosting({
-    isOpen, isEdit, isAdmin, jobCardId, activeTab, showConfirm,
-    isInvoiced: formHook.formData.status === 'INVOICED'
-  });
+  // Pricing: the on-open load and the save-on-the-way-out paths all live in this hook —
+  // see useJobCardCosting.js.
+  const costingHook = useJobCardCosting({ isOpen, isEdit, isAdmin, jobCardId, activeTab });
 
   // Re-fetch suppliers after one is created or linked to a treatment on a line item,
   // so the new name and its updated services show up in the pickers right away.

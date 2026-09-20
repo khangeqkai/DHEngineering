@@ -1,20 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { mapCostingResponseToData } from './mappers';
 import { useCosting } from './useCosting';
-import { warningToastIcon } from '../common/toastIcons';
 
 // Everything the job screen needs to run its pricing tab, in one place: fetching the
 // job's stored pricing once the Costing tab is actually opened (see the load effect
-// below), the "change an invoiced job?" question, and the two moments that save straight
-// away rather than waiting out the pricing screen's own countdown — leaving the tab, and
-// closing the job.
+// below), and the two moments that save straight away rather than waiting out the pricing
+// screen's own countdown — leaving the tab, and closing the job.
 //
 // Wraps useCosting, which owns the figures themselves, and hands back its whole API
 // plus the load state the pricing tab needs.
 export function useJobCardCosting({
-  isOpen, isEdit, isAdmin, jobCardId, activeTab, isInvoiced, showConfirm
+  isOpen, isEdit, isAdmin, jobCardId, activeTab
 }) {
   const [costing, setCosting] = useState(null);
   // Set when the pricing couldn't be fetched. The screen shows a plain message and a
@@ -78,21 +75,8 @@ export function useJobCardCosting({
     }
   }, [isOpen, isEdit, isAdmin, costingOpened, costing, loadCosting]);
 
-  // Editing an invoiced job's pricing isn't blocked — it just asks first, then saves and
-  // recalculates from the job's own captured rules. Asked once per opening (the pricing
-  // screen saves itself, so there's no Save button to hang the question on).
-  const confirmInvoicedEdit = useCallback(() => showConfirm({
-    title: 'Change an invoiced job?',
-    message: 'This job has been invoiced. Changing its pricing will update the final total. Are you sure you want to continue?',
-    confirmLabel: 'Yes, change it',
-    cancelLabel: 'Cancel',
-    confirmVariant: 'danger'
-  }), [showConfirm]);
-
   const costingHook = useCosting(jobCardId, {
     costing,
-    isInvoiced,
-    confirmInvoicedEdit,
     // No re-fetch after the save: the reply carries the stored figures, and re-reading
     // would spend a whole recompute — a walk over every logged minute — per save.
     updateCosting: async (data) => {
@@ -117,17 +101,7 @@ export function useJobCardCosting({
 
   useEffect(() => {
     if (isOpen) return;
-    // The job screen is gone by now, so no dialog can be shown. If the pricing belongs
-    // to an invoiced job and the user hasn't yet agreed to change it, say plainly that
-    // it wasn't kept rather than filing the change away behind their back.
-    flushRef.current?.({ withoutPrompt: true }).then(outcome => {
-      if (outcome === 'needs-confirm') {
-        // Same slot as the decline message in useCosting.js: a close can now produce both
-        // (the question queued behind the close question is answered "no" as the card goes),
-        // and they say the same thing, so the second replaces the first rather than stacking.
-        toast('Pricing changes were not saved — this job has been invoiced.', { id: 'costing-declined', icon: warningToastIcon });
-      }
-    });
+    flushRef.current?.();
   }, [isOpen]);
 
   const { resetCosting: resetFigures } = costingHook;
