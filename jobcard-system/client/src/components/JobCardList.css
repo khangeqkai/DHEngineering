@@ -207,6 +207,27 @@
   vertical-align: middle;
 }
 
+/* "Not printed yet" mark in the Print column — the red sibling of .attachment-ok. */
+.print-missing {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(var(--danger-rgb), 0.16);
+  color: var(--danger-color);
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* Print column: center the status mark and keep the column tight. */
+.print-cell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+}
+
 /* Themed hover card replacing the plain browser tooltip. Appears below the
    badge and names each declared-but-missing file. Uses theme variables so it
    follows dark/light mode. */

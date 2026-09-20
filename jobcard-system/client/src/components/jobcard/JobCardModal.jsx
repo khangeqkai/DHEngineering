@@ -28,7 +28,7 @@ import { confirmInvoiceAnyway, showFormErrors } from './jobCardPrompts';
 import { resolveJobContactId } from './jobCardContact';
 
 // Read a picked file into the base64 string the upload route expects.
-export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, initialTab = null }) {
+export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onPrinted, initialTab = null }) {
   const { user } = useAuth();
   const isEdit = Boolean(jobCardId);
   // Two tiers: costing is admin-only money; everything else managerial on this
@@ -442,6 +442,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               jobcardId={jobCardId}
               jobNumber={formHook.jobNumber}
               onFilesChanged={refreshAttachmentWarnings}
+              onPrinted={onPrinted}
               attachmentWarnings={attachmentWarnings}
               parts={formHook.lineItems}
             />

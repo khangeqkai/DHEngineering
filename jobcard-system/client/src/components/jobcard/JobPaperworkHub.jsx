@@ -22,7 +22,7 @@ import './JobPaperworkHub.css';
 // a ticked selection into one combined packet to print or save. Available to every
 // user (workers included), so it lives on a header button, not an admin-only tab.
 
-function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarnings = null, parts = [] }, ref) {
+function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, attachmentWarnings = null, parts = [] }, ref) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState('hub'); // 'hub' | 'camera'
   const [cameraCategory, setCameraCategory] = useState(null);
@@ -56,7 +56,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, attachmentWarni
 
   const files = useJobFiles(jobcardId);
   const camera = useCamera();
-  const packet = usePacketPrint(jobcardId, jobNumber);
+  const packet = usePacketPrint(jobcardId, jobNumber, onPrinted);
 
   // Only saved parts (with a permanent "item:" id) can own a file.
   const assignableParts = parts.filter(p => typeof p.id === 'string' && p.id.startsWith('item:'));

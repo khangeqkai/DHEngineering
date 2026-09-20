@@ -397,9 +397,28 @@ class ApiService {
 
   // Weld the chosen job documents into one combined PDF. The file bytes stay on
   // the server (only the {category, filename} list travels up); the server renders
-  // the job card itself when includeJobCard is set. Returns { pdf: base64, skipped }.
+  // the job card itself when includeJobCard is set. Building records nothing —
+  // it is neither a print nor a save until the packet reaches a viewer or a file
+  // lands on disk, which the two confirmations below report.
+  // Returns { pdf: base64, skipped, cardIncluded } — cardIncluded says whether the
+  // job card is actually in the finished packet.
   buildPacket(jobcardId, { items, includeJobCard }) {
     return this._post(`/jobcards/${jobcardId}/packet`, { items, includeJobCard: includeJobCard !== false });
+  }
+
+  // Confirm that a packet just built actually reached a viewer, so the print can be
+  // recorded. Pass the `cardIncluded` flag the build handed back: true stamps the
+  // job as printed, false records an attachments-only print. Returns { printedAt }
+  // (null when the job card wasn't in the packet).
+  markPacketPrinted(jobcardId, { cardIncluded }) {
+    return this._post(`/jobcards/${jobcardId}/printed`, { cardIncluded: !!cardIncluded });
+  }
+
+  // Confirm that a packet just built was actually written to a file, so the save can
+  // be recorded. Called only once the file really landed — a cancelled save dialog
+  // never gets here.
+  markPacketSaved(jobcardId) {
+    return this._post(`/jobcards/${jobcardId}/saved`, {});
   }
 
   // Search

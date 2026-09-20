@@ -46,7 +46,7 @@ printRouter.post('/:id/print', authenticate, (req, res) => {
     const html = renderJobCardHtml(view);
 
     recordHistory('jobcard', req.params.id, 'update', req.user.userId, req.user.name || req.user.username, {
-      jobCardPrinted: { from: null, to: new Date().toISOString() }
+      jobCardPreviewed: { from: null, to: new Date().toISOString() }
     });
 
     res.json({ html });
@@ -63,6 +63,13 @@ printRouter.post('/:id/print', authenticate, (req, res) => {
 // card to PDF itself, so the desktop app and the browser build get the identical
 // card-first packet. A file (or the card) that can't be read/rendered is skipped
 // and reported, never failing the whole packet.
+//
+// Building a packet is neither printing nor saving it — the bundle still has to
+// reach a viewer, or a file still has to land on disk, and on the desktop the user
+// can cancel either. So this route records NOTHING and never stamps
+// `jobcards.printed_at`. It reports whether the job card is actually in the
+// finished packet (`cardIncluded`), and the client confirms what really happened
+// afterwards via POST /:id/printed or POST /:id/saved.
 const validatePacket = [
   param('id').isString().trim().notEmpty(),
   body('items').isArray({ max: MAX_PACKET_ITEMS }).withMessage('Too many items'),
@@ -73,7 +80,7 @@ const validatePacket = [
     }
     return true;
   }),
-  body('includeJobCard').optional().isBoolean(),
+  body('includeJobCard').optional().isBoolean({ strict: true }),
   handleValidationErrors
 ];
 
@@ -154,9 +161,9 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
       files.push({ name: filename, ext, bytes: fs.readFileSync(filePath) });
     }
 
-    let pdf, buildSkipped;
+    let pdf, buildSkipped, cardIncluded;
     try {
-      ({ pdf, skipped: buildSkipped } = await buildPacketPdf({ jobCardPdf: cardBuf, files }));
+      ({ pdf, skipped: buildSkipped, cardIncluded } = await buildPacketPdf({ jobCardPdf: cardBuf, files }));
     } catch (buildErr) {
       // Nothing ended up combinable (every chosen document was unreadable/deleted,
       // and the card couldn't be made). Say so plainly and list what was left out,
@@ -174,14 +181,83 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
       return res.status(413).json({ error: 'Combined packet too large; print in smaller batches' });
     }
 
-    recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, {
-      jobCardPacketPrinted: { from: null, to: new Date().toISOString() }
-    });
-
-    res.json({ pdf: pdf.toString('base64'), skipped: [...skipped, ...buildSkipped] });
+    res.json({ pdf: pdf.toString('base64'), skipped: [...skipped, ...buildSkipped], cardIncluded });
   } catch (err) {
     logger.error({ err }, 'Build packet error');
     res.status(500).json({ error: 'Failed to build combined packet' });
+  }
+});
+
+// POST /api/jobcards/:id/printed — the client confirms that a packet it just
+// built actually reached a viewer, and this records it. Split from the build on
+// purpose: the build can succeed while the print doesn't happen (the desktop
+// viewer fails to open, or the browser blocks the pop-up and the packet is
+// downloaded instead — that's a save, not a print), so only the client knows
+// whether paper was ever on the cards. `cardIncluded` is the flag the build
+// handed back: true stamps `jobcards.printed_at` and logs `jobCardPrinted`,
+// false logs an attachments-only print and stamps nothing.
+const validatePrinted = [
+  param('id').isString().trim().notEmpty(),
+  body('cardIncluded').optional().isBoolean({ strict: true }),
+  handleValidationErrors
+];
+
+printRouter.post('/:id/printed', authenticate, validatePrinted, (req, res) => {
+  try {
+    const { id } = req.params;
+    const jobcard = jobcardQueries.getById.get(id);
+    if (!jobcard) {
+      return res.status(404).json({ error: 'Job card not found' });
+    }
+
+    const userName = req.user.name || req.user.username;
+    const now = new Date().toISOString();
+
+    if (req.body.cardIncluded === true) {
+      const prev = jobcard.printed_at || null;
+      jobcardQueries.markPrinted.run(now, id);
+      recordHistory('jobcard', id, 'update', req.user.userId, userName, {
+        jobCardPrinted: { from: prev, to: now }
+      });
+      return res.json({ printedAt: now });
+    }
+
+    recordHistory('jobcard', id, 'update', req.user.userId, userName, {
+      attachmentsPrinted: { from: null, to: now }
+    });
+    res.json({ printedAt: null });
+  } catch (err) {
+    logger.error({ err }, 'Record packet print error');
+    res.status(500).json({ error: 'Failed to record the print' });
+  }
+});
+
+// POST /api/jobcards/:id/saved — the twin of /:id/printed for a save. Split from
+// the build for exactly the same reason: on the desktop the user still gets a
+// "where do you want to save it?" window after the bundle is built and can cancel
+// it, so building is not saving and only the client knows whether a file ever
+// landed on disk. Records `packetSaved` and stamps nothing — a save is not a
+// print and must never tick the job list's Print column.
+const validateSaved = [
+  param('id').isString().trim().notEmpty(),
+  handleValidationErrors
+];
+
+printRouter.post('/:id/saved', authenticate, validateSaved, (req, res) => {
+  try {
+    const { id } = req.params;
+    const jobcard = jobcardQueries.getById.get(id);
+    if (!jobcard) {
+      return res.status(404).json({ error: 'Job card not found' });
+    }
+
+    recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, {
+      packetSaved: { from: null, to: new Date().toISOString() }
+    });
+    res.json({ recorded: true });
+  } catch (err) {
+    logger.error({ err }, 'Record packet save error');
+    res.status(500).json({ error: 'Failed to record the save' });
   }
 });
 

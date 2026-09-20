@@ -63,6 +63,83 @@ function foldGoodPiecesToWhole() {
   if (qtyBlank.changes + qtyFix.changes > 0) logger.info({ blanked: qtyBlank.changes, rounded: qtyFix.changes }, 'Migration: Folded good-piece counts to whole numbers');
 }
 
+// The print-flavoured trail entries were renamed when building a packet stopped counting
+// as printing it. Before that, `jobCardPrinted` was written by the on-screen *preview* and
+// `jobCardPacketPrinted` by merely *building* a bundle — neither meant paper. Those names
+// now mean a real print, so entries recorded under the old meaning have to be renamed for
+// what they actually were, or the trail shows old previews and builds as genuine prints
+// with no way to tell them apart.
+//
+// Bounded by a cutover moment, NOT guarded by a done-once flag. A flag can go missing — a
+// pass that failed, or a restore that wipes settings — and an unbounded second pass then
+// relabels genuine prints as previews: the audit record is destroyed while the job keeps
+// its print tick, so the tick and the trail disagree. Bounded, the pass is idempotent by
+// construction and safe to run on every boot and at the end of a restore.
+const PRINT_NAMING_CUTOVER_KEY = 'print_naming_cutover_at';
+
+// The moment this install first ran the code that writes the new names — the boundary
+// between "old name, wrong meaning" and "new name, real print". Stored on first use,
+// never recomputed, and a restore keeps the earlier of ours and the backup's, so the
+// marker travels with the data instead of belonging to the machine.
+//
+// A missing marker cannot be reconstructed from the trail: the rename stamps new names
+// onto old rows while keeping their original dates, so the earliest new-name entry is
+// the oldest legacy preview, not the cutover. Dating the cutover from that would push it
+// back far enough to rename nothing — or, guessed the other way, rename genuine prints.
+// So a trail that already carries a live-written new name is left alone (null = rename
+// nothing) and the gap is logged. With no such entry there is nothing to lose: this is a
+// first run here, or a restored pre-change backup, and now is the true boundary.
+function printNamingCutover() {
+  const stored = settingsQueries.getByKey.get(PRINT_NAMING_CUTOVER_KEY);
+  if (stored && stored.value) return stored.value;
+  // `jobCardPreviewed` only: `packetBuilt` is written by the rename alone, so its
+  // presence proves nothing about whether the new code ever ran here.
+  const newNameWritten = db.prepare(`
+    SELECT 1 FROM history
+     WHERE entity_type = 'jobcard' AND changes LIKE '%"jobCardPreviewed":%'
+     LIMIT 1
+  `).get();
+  if (newNameWritten) {
+    logger.warn('Print-naming cutover marker is missing but the trail already carries new names — leaving the print trail untouched rather than renaming genuine prints');
+    return null;
+  }
+  const cutover = new Date().toISOString();
+  settingsQueries.upsert.run(PRINT_NAMING_CUTOVER_KEY, cutover);
+  return cutover;
+}
+
+// Rename only the print-flavoured trail entries recorded before the cutover. Runs on every
+// boot and at the end of a backup restore, so a pre-change backup can't bring the old
+// meaning back and sit there until someone restarts.
+function renameLegacyPrintTrail() {
+  // One transaction so the two renames land together (nested harmlessly under the
+  // restore's own transaction, which better-sqlite3 runs as a savepoint).
+  const rename = db.transaction(() => {
+    const cutover = printNamingCutover();
+    // No cutover means we can't tell old entries from new ones; renaming blind would
+    // cost the audit record, so nothing is touched.
+    if (!cutover) return { cutover: null, previews: 0, builds: 0 };
+    // Keys are matched with their leading quote, so "jobCardPacketPrinted" can never be hit
+    // by the "jobCardPrinted" pass. An undated row is left alone: mislabelling one costs a
+    // word, renaming a genuine print costs the audit record.
+    const previews = db.prepare(`
+      UPDATE history
+         SET changes = REPLACE(changes, '"jobCardPrinted":', '"jobCardPreviewed":')
+       WHERE entity_type = 'jobcard' AND created_at < ? AND changes LIKE '%"jobCardPrinted":%'
+    `).run(cutover);
+    const builds = db.prepare(`
+      UPDATE history
+         SET changes = REPLACE(changes, '"jobCardPacketPrinted":', '"packetBuilt":')
+       WHERE entity_type = 'jobcard' AND created_at < ? AND changes LIKE '%"jobCardPacketPrinted":%'
+    `).run(cutover);
+    return { cutover, previews: previews.changes, builds: builds.changes };
+  });
+  const renamed = rename();
+  if (renamed.previews + renamed.builds > 0) {
+    logger.info(renamed, 'Migration: Renamed pre-cutover print trail entries to preview/build');
+  }
+}
+
 function runMigrations() {
   logger.info('Running migrations...');
 
@@ -274,6 +351,18 @@ function runMigrations() {
     }
   }
 
+  // A trail label isn't worth refusing to boot over, so a failure here is logged and the
+  // app carries on — safe now that the pass is bounded: the retry next boot renames the
+  // same pre-cutover rows and nothing else.
+  try {
+    renameLegacyPrintTrail();
+    // The done-once flag that used to guard that rename is dead — the cutover marker
+    // replaced it. Drop it so the settings table doesn't carry two markers for one job.
+    db.prepare("DELETE FROM settings WHERE key = 'history_print_names_converted_at'").run();
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to rename pre-cutover print trail entries');
+  }
+
   logger.info('Migrations complete');
 }
 
@@ -376,4 +465,4 @@ async function initializeDatabase() {
   logger.info('Database initialization complete');
 }
 
-module.exports = { initializeDatabase, foldGoodPiecesToWhole };
+module.exports = { initializeDatabase, foldGoodPiecesToWhole, renameLegacyPrintTrail, PRINT_NAMING_CUTOVER_KEY };

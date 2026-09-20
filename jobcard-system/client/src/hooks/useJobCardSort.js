@@ -20,6 +20,7 @@ export const SORT_VALUE_GETTERS = {
   assignedTo: (c) => (c.assignees?.[0]?.userName || '').toLowerCase(),
   status: (c) => STATUS_SORT_ORDER[c.status] ?? 999,
   priority: (c) => PRIORITY_SORT_ORDER[c.priority] ?? 0,
+  print: (c) => (c.printedAt ? 1 : 0),
   dueDate: (c) => (c.dueDate ? new Date(c.dueDate).getTime() : null),
   createdAt: (c) => (c.createdAt ? new Date(c.createdAt).getTime() : null),
   updatedAt: (c) => (c.updatedAt ? new Date(c.updatedAt).getTime() : null)

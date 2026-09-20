@@ -288,6 +288,12 @@ export default function JobCardList() {
     setJobcards(prev => prev.map(c => c.id === editingCardId ? { ...c, latestNote } : c));
   }, [editingCardId]);
 
+  // A real print of the job card only changes that job's Print mark, so patch the
+  // one row rather than re-fetching the whole list.
+  const handlePrinted = useCallback((printedAt) => {
+    setJobcards(prev => prev.map(c => c.id === editingCardId ? { ...c, printedAt } : c));
+  }, [editingCardId]);
+
   const filteredCards = useMemo(() => {
     const today = todayIsoDate();
     return jobcards.filter((card) => {
@@ -549,6 +555,7 @@ export default function JobCardList() {
         onSuccess={handleModalSuccess}
         onTimerChange={() => { refreshTimer(); loadJobcards(); }}
         onNotesChange={handleNotesChange}
+        onPrinted={handlePrinted}
       />
 
       <ConfirmDialog

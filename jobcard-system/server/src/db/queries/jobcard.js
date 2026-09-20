@@ -104,6 +104,10 @@ const jobcardQueries = {
     WHERE id = ?
   `),
 
+  // Printing is not an edit — deliberately does not touch updated_at, or a real
+  // print would move the job in the Last Edited column and re-sort the list.
+  markPrinted: db.prepare('UPDATE jobcards SET printed_at = ? WHERE id = ?'),
+
   delete: db.prepare('DELETE FROM jobcards WHERE id = ?')
 };
 

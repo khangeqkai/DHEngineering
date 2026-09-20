@@ -12,7 +12,7 @@ const { lanIpv4s } = require('../utils/netHost');
 const homeAccess = require('./settings-home-access');
 const { recordHistory } = require('../db/helpers');
 const { normalizeStoredTimestamps } = require('../db/normalizeTimestamps');
-const { foldGoodPiecesToWhole } = require('../db/init');
+const { foldGoodPiecesToWhole, renameLegacyPrintTrail, PRINT_NAMING_CUTOVER_KEY } = require('../db/init');
 const { splitCustomersInBackup } = require('../db/splitCustomers');
 const { setMaintenance } = require('../middleware/maintenance');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
@@ -321,6 +321,10 @@ router.post('/import-backup', requireAdmin, [
 
   const currentSettings = db.getSettings();
   const currentJobBase = currentSettings.job_folders_base;
+  // The print-naming cutover belongs to THIS install, not to the backup — it is the
+  // boundary that stops the rename below demoting genuine prints to previews. Read it
+  // before the settings are wiped so it can be put back.
+  const currentPrintCutover = currentSettings[PRINT_NAMING_CUTOVER_KEY];
 
   if (!currentJobBase) {
     return res.status(400).json({
@@ -455,6 +459,20 @@ router.post('/import-backup', requireAdmin, [
           // briefly point at the backup machine's folders.
           db.settingsQueries.upsert.run('job_folders_base', currentJobBase || '');
 
+          // The print-naming cutover is the one marker that belongs to the *data* rather
+          // than to this machine, so the earlier of the two dates wins: ours, and the
+          // backup's own marker, which has just landed with the rest of the settings.
+          // Keeping ours unconditionally would let a machine rebuilt today rename every
+          // genuine print carried by an older install's backup into a preview — the audit
+          // record destroyed while the job keeps its print tick, which is the exact
+          // disagreement the cutover exists to prevent. Earlier only ever renames fewer
+          // rows, which is the safe direction. Both are ISO-8601, so they sort by date.
+          const restoredPrintCutover = db.settingsQueries.getByKey.get(PRINT_NAMING_CUTOVER_KEY)?.value;
+          const keptPrintCutover = [currentPrintCutover, restoredPrintCutover].filter(Boolean).sort()[0];
+          if (keptPrintCutover) {
+            db.settingsQueries.upsert.run(PRINT_NAMING_CUTOVER_KEY, keptPrintCutover);
+          }
+
           // A backup taken before timestamps moved to ISO-8601 UTC carries the old
           // time-zone-less shape, which would display shifted by the UTC offset. Fold
           // the restored rows into the current shape here rather than waiting for the
@@ -472,6 +490,16 @@ router.post('/import-backup', requireAdmin, [
             foldGoodPiecesToWhole();
           } catch (qtyErr) {
             logger.error({ err: qtyErr }, 'Backup restore: failed to fold good-piece counts to whole numbers (records restored; next restart will retry)');
+          }
+          // And for the print trail: a backup from before the confirmation step calls a
+          // preview, and a mere bundle build, a print. Rename the restored entries now
+          // rather than leaving the trail wrong until someone restarts — on an always-on
+          // machine that can be days. Bounded by the cutover kept above, so entries
+          // recorded as real prints on this install are never touched.
+          try {
+            renameLegacyPrintTrail();
+          } catch (printErr) {
+            logger.error({ err: printErr }, 'Backup restore: failed to rename pre-cutover print trail entries (records restored; next restart will retry)');
           }
         });
 

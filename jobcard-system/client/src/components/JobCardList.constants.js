@@ -40,6 +40,7 @@ export const DEFAULT_COLUMN_ORDER = [
   'latestNote',
   'priority',
   'attachments',
+  'print',
   'dueDate',
   'createdAt',
   'updatedAt',

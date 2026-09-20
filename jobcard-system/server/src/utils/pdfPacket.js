@@ -44,15 +44,20 @@ async function appendImage(out, bytes) {
  * @param {Object} opts
  * @param {Buffer|null} opts.jobCardPdf  rendered job-card PDF (placed first)
  * @param {Array<{name: string, ext: string, bytes: Buffer}>} opts.files
- * @returns {Promise<{ pdf: Buffer, skipped: Array<{name: string, reason: string}> }>}
+ * @returns {Promise<{ pdf: Buffer, skipped: Array<{name: string, reason: string}>, cardIncluded: boolean }>}
+ *          `cardIncluded` is true only when the job card is actually in the
+ *          finished document — a card that was handed in but failed to merge
+ *          comes back false (and reported in `skipped`).
  */
 async function buildPacketPdf({ jobCardPdf, files }) {
   const out = await PDFDocument.create();
   const skipped = [];
+  let cardIncluded = false;
 
   if (jobCardPdf) {
     try {
       await appendPdf(out, jobCardPdf);
+      cardIncluded = true;
     } catch (err) {
       logger.error({ err }, 'Packet: job card PDF failed to merge');
       skipped.push({ name: 'Job Card', reason: 'render' });
@@ -83,7 +88,7 @@ async function buildPacketPdf({ jobCardPdf, files }) {
   }
 
   const bytes = await out.save();
-  return { pdf: Buffer.from(bytes), skipped };
+  return { pdf: Buffer.from(bytes), skipped, cardIncluded };
 }
 
 module.exports = { buildPacketPdf };

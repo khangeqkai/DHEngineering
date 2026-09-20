@@ -132,6 +132,10 @@ db.exec(`
     invoiced_date TEXT,
     archived INTEGER DEFAULT 0,
 
+    -- Moment the job card was last actually printed (not saved, not previewed,
+    -- not an attachments-only print). Null if never.
+    printed_at TEXT,
+
     -- Audit fields
     created_by TEXT,
     updated_by TEXT,

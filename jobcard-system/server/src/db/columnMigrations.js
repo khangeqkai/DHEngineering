@@ -52,6 +52,7 @@ const migrations = [
   { table: 'job_costings', column: 'subcontractor_description', type: 'TEXT' },
   { table: 'users', column: 'session_token', type: 'TEXT' },
   { table: 'jobcards', column: 'qa_level_id', type: 'TEXT' },
+  { table: 'jobcards', column: 'printed_at', type: 'TEXT' },
   { table: 'time_entries', column: 'scrap_bin_qty', type: 'INTEGER DEFAULT 0' },
   { table: 'time_entries', column: 'scrap_recycle_qty', type: 'INTEGER DEFAULT 0' },
   { table: 'time_entries', column: 'first_off_inspection', type: 'INTEGER' },

@@ -172,7 +172,7 @@ const PRIORITY_OPTIONS = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'SAME_DAY'];
 // column list fails validation for every user.
 const JOBCARD_COLUMN_IDS = [
   'jobNumber', 'description', 'company', 'customer', 'assignedTo',
-  'status', 'latestNote', 'priority', 'attachments', 'dueDate', 'createdAt', 'updatedAt', 'actions'
+  'status', 'latestNote', 'priority', 'attachments', 'print', 'dueDate', 'createdAt', 'updatedAt', 'actions'
 ];
 
 // The job number column is the click-through to open a job, so it can never be

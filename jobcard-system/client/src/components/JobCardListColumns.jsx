@@ -1,4 +1,4 @@
-import { Trash2, ArchiveRestore, Check, AlertTriangle, Paperclip } from 'lucide-react';
+import { Trash2, ArchiveRestore, Check, X, AlertTriangle, Paperclip } from 'lucide-react';
 import { getInitials, getAvatarColor } from '../utils/initials';
 import { describeAttachmentGaps, attachmentSeverity } from '../utils/attachmentWarnings';
 import {
@@ -311,6 +311,31 @@ export function getJobCardColumns({
                   </span>
                 ))}
               </span>
+            </span>
+          </td>
+        );
+      }
+    },
+    {
+      id: 'print',
+      label: 'Print',
+      align: 'center',
+      renderCell: (card) => {
+        if (card.printedAt) {
+          return (
+            <td key="print" className="print-cell">
+              <span className="attachment-ok" title={`Printed ${formatDateTime(card.printedAt)}`} aria-label={`Printed ${formatDateTime(card.printedAt)}`}>
+                <Check size={13} />
+              </span>
+            </td>
+          );
+        }
+        return (
+          <td key="print" className="print-cell">
+            {/* Shape carries the meaning, not just colour: a tick vs a cross, so
+               the two read apart for colour-blind users too. */}
+            <span className="print-missing" title="Not printed yet" aria-label="Not printed yet">
+              <X size={13} />
             </span>
           </td>
         );

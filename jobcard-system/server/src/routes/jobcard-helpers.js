@@ -224,6 +224,7 @@ function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
     repeatJobReference: row.repeat_job_reference,
     photos: row.photos ? JSON.parse(row.photos) : [],
     invoicedDate: row.invoiced_date,
+    printedAt: row.printed_at || null,
     archived: row.archived === 1,
     createdBy: row.created_by,
     updatedBy: row.updated_by,
