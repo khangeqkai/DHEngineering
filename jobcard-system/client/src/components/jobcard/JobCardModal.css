@@ -525,6 +525,21 @@
   color: var(--text-primary);
 }
 
+/* The section box is rounded, this bar is square, and the box has to stay
+   overflow: visible so the pickers inside it can open past its edge — so nothing was
+   ever clipping the bar, and its grey corners sat outside the curve at the top of every
+   section. The bar takes the curve itself instead, a pixel tighter than the box's own so
+   it seats inside the border rather than riding over it. */
+.form-section > .form-section-title:first-child {
+  border-radius: calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0 0;
+}
+
+/* Split bar — heading on the left, a control on the right. Only the left corner is the
+   box's corner; the right of the row is the section's own background, already curved. */
+.form-section > .form-section-header:first-child > .form-section-title:first-child {
+  border-radius: calc(var(--radius-md) - 1px) 0 0 0;
+}
+
 /* Section Number Badge - Hidden */
 .form-section-title::before {
   display: none;
