@@ -1,5 +1,6 @@
 import { useEffect, useRef, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { TriangleAlert } from 'lucide-react';
 import { pushModal, removeModal, isTopModal } from './modalStack';
 import { useAuth } from '../../context/AuthContext';
 
@@ -83,21 +84,23 @@ export default function InactivityWarningModal({
     >
       <div className="inactivity-modal">
         <div className="inactivity-modal-icon" aria-hidden="true">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
+          <TriangleAlert size={48} />
         </div>
         <h2 id="inactivity-title">Session Timeout Warning</h2>
         <p id="inactivity-description">You will be logged out due to inactivity in:</p>
+        <div className="inactivity-countdown" aria-live="polite">{secondsRemaining}</div>
+        <p className="inactivity-subtext">seconds</p>
+        {/* Sits after the count, not inside it: between the sentence and the number it
+            split "logged out in: … seconds" into three pieces that no longer read as one
+            phrase. Here it lands against the button that prevents the loss it describes.
+            Reading order for a screen reader is unaffected — aria-describedby on the
+            dialog lists these two ids in the order they should be spoken, which is not
+            the order they appear on screen. */}
         {unsavedWorkLabel && (
-          <p id="inactivity-unsaved-warning" className="inactivity-subtext">
+          <p id="inactivity-unsaved-warning" className="inactivity-unsaved">
             You have an unsaved {unsavedWorkLabel}. It will be lost unless you continue.
           </p>
         )}
-        <div className="inactivity-countdown" aria-live="polite">{secondsRemaining}</div>
-        <p className="inactivity-subtext">seconds</p>
         <button
           ref={buttonRef}
           className="btn btn-primary btn-lg"

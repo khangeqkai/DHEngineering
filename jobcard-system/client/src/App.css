@@ -1187,12 +1187,19 @@ select.has-retired option.retired-option {
 }
 
 /* A job card with edits that no Save has sent yet. The frame carries the signal so
-   the title bar stays clear; the ring is drawn outside the border so nothing shifts. */
+   the title bar stays clear; the ring is drawn outside the border so nothing shifts.
+   Three layers rather than one slab of amber: a 2px hard ring that reads instantly at
+   any distance, a thin tinted step that softens its outer edge, and a wide blurred
+   glow that makes the window look lit rather than stickered. Nine pixels of solid
+   colour around a window this size shouted loudly enough that people stopped seeing
+   it; the same signal at a third of the hard width still cannot be missed, and the
+   depth shadow underneath keeps the window sitting where it did. */
 .modal-popup.modal-unsaved {
   border-color: var(--warning-color);
   box-shadow:
-    0 0 0 4px var(--warning-color),
-    0 0 0 9px rgba(var(--warning-rgb), 0.16),
+    0 0 0 2px var(--warning-color),
+    0 0 0 6px rgba(var(--warning-rgb), 0.15),
+    0 0 24px rgba(var(--warning-rgb), 0.25),
     var(--shadow-lg);
 }
 
@@ -1702,13 +1709,22 @@ select.has-retired option.retired-option {
   padding: 2rem 3rem;
   text-align: center;
   max-width: 400px;
-  box-shadow: 0 0 40px rgba(239, 68, 68, 0.2);
+  /* The red glow was a literal light-theme red, so in dark mode it kept glowing the
+     light theme's colour under a lighter border. Taken from the token, it follows. */
+  box-shadow:
+    0 0 40px rgba(var(--danger-rgb), 0.2),
+    var(--shadow-lg);
   animation: modalSlide var(--duration-slow) var(--ease-mechanical);
 }
 
+/* Flex, not a line of text: an inline icon sits on a text baseline and leaves a
+   descender's worth of empty space beneath it, which made the gap down to the heading
+   read bigger than the value set here. The old font-size did nothing — the icon is a
+   drawn SVG, sized by its own attributes, not a glyph. */
 .inactivity-modal-icon {
-  font-size: var(--text-4xl);
-  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.75rem;
   color: var(--danger-ink);
 }
 
@@ -1738,6 +1754,23 @@ select.has-retired option.retired-option {
   color: var(--text-tertiary);
   font-size: var(--text-sm);
   margin-bottom: 1.5rem !important;
+}
+
+/* The one line in this dialog with a cost attached. It used to borrow the style above —
+   the faintest text on screen, the same one the word "seconds" wears — and it sat
+   between "logged out in:" and the number, cutting that sentence in half. It now closes
+   the dialog, directly above the button that prevents what it warns about, in warning
+   ink on its own tint so it reads as a consequence and not as a caption. Selector
+   carries the parent so it outranks the plain paragraph colour without !important. */
+.inactivity-modal .inactivity-unsaved {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: rgba(var(--warning-rgb), 0.12);
+  color: var(--warning-ink);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  text-wrap: balance;
 }
 
 /* ========================================
@@ -2110,6 +2143,7 @@ div[data-hot-toast] > div {
   margin: -1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
 }

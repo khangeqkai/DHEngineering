@@ -280,6 +280,24 @@
   background-image: none;
 }
 .jc-strip-status-select::-ms-expand { display: none; }
+/* Held for the moment the billed total is being read back. Without this the pill looks
+   and behaves exactly as it does when it is ready — same colour, same lifting hover,
+   same pointer — so the one click that does nothing is the one that gives no sign why.
+   The colour is kept (the status still reads at a glance) and the pill simply settles:
+   it stops lifting, and the cursor says wait rather than click. */
+.jc-strip-status:has(.jc-strip-status-select:disabled) {
+  cursor: progress;
+  opacity: 0.65;
+}
+.jc-strip-status:has(.jc-strip-status-select:disabled):hover {
+  transform: none;
+  box-shadow: none;
+}
+.jc-strip-status-select:disabled {
+  cursor: progress;
+  color: inherit;
+  opacity: 1;
+}
 .jc-strip-status-select:focus,
 .jc-strip-status-select:focus-visible {
   outline: none;
@@ -3252,18 +3270,12 @@
   color: var(--text-tertiary);
 }
 
-.tier-foot-edited {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--warning-ink);
-  font-weight: var(--font-regular);
-}
-
-/* Same size/colour/weight as .tier-foot-edited, minus its dot: this hint sits under a
-   manual money field to offer the figure the job was opened with, and that figure is
-   stored, not hand-typed — the dot elsewhere on this screen means "hand-typed, not
-   stored", so it doesn't belong here. */
+/* Both hints say the same thing in the same voice — a figure on this screen is not the
+   one that was stored — so they share one rule rather than two copies of it. The only
+   difference is the dot: .tier-foot-edited carries it because a tier figure that differs
+   was hand-typed, while .ledger-field-opening offers a stored figure back, which the dot
+   would misdescribe. */
+.tier-foot-edited,
 .ledger-field-opening {
   display: inline-flex;
   align-items: center;
@@ -3272,12 +3284,17 @@
   font-weight: var(--font-regular);
 }
 
-/* Positioning only, for the same control reused under a ledger field: the column is
-   narrow, so the hint sits close under the input and wraps instead of overflowing it. */
+/* The same control reused under a ledger field. The column is only as wide as a money
+   box, so the figure and the link together overrun it at almost any amount — left to
+   wrap they broke at whatever point the number's length happened to fall, and the dot
+   that joined them could end up alone at the head of the second line. They now sit on
+   their own lines by design, and the dot is gone with the wrap it existed to survive. */
 .ledger-field-revert {
-  margin-top: 0.125rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
   font-size: var(--text-2xs);
-  flex-wrap: wrap;
+  line-height: 1.45;
 }
 
 .ledger-op,

@@ -143,7 +143,6 @@ export default function CostingTab({
     return (
       <span className="ledger-field-opening ledger-field-revert">
         opened at {REVERT_FORMAT[name](opened)}
-        {' · '}
         <button
           type="button"
           className="btn-link"
