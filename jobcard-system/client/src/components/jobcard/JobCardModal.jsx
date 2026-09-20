@@ -14,6 +14,7 @@ import { useTimeEntries } from './useTimeEntries';
 import { useContactSearch } from './useContactSearch';
 import { useJobCardForm } from './useJobCardForm';
 import { useJobCardSave } from './useJobCardSave';
+import { useUnsavedGuard } from './useUnsavedGuard';
 import DetailsTab from './tabs/DetailsTab';
 import CostingTab from './tabs/CostingTab';
 import ActivityLogTab from './tabs/ActivityLogTab';
@@ -125,9 +126,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
       loadNotes();
 
-      // Costing loads separately, in useJobCardCosting — as soon as an admin opens the
-      // job rather than waiting for the Costing tab, because the invoice confirm on the
-      // status control needs the grand total on a path where that tab is never opened.
+      // Costing loads separately, in useJobCardCosting, and only once the pricing screen
+      // has actually been opened — the fetch walks every logged minute, and most job
+      // opens never touch pricing at all.
     } catch (err) {
       if (currentLoadRef.current !== jobCardId) return;  // stale failure for a closed job — don't disturb the current one
       toast.error('Failed to load job card. Please try again.');
@@ -187,8 +188,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const reloadTimeEntriesAndCosting = useCallback(async () => {
     await reloadTimeEntries();
     // Costing endpoint is admin-only; skip for non-admin to avoid 403 toast. Also skip
-    // unless the Costing tab has been opened — refreshing it walks all logged time, and
-    // there's nothing on screen to update until someone views costing.
+    // unless this job's stored pricing has actually arrived on screen — before that
+    // there's nothing to update, and the first load is already on its way with the
+    // latest hours anyway. Tests costingLoaded rather than costingOpened so a load that
+    // failed isn't retried on every timer tick, and so this never writes hours onto a
+    // still-default sheet ahead of the real figures landing.
     if (isAdmin && costingLoaded) await refreshCosting();
     await refreshJobStatus();
   }, [reloadTimeEntries, isAdmin, costingLoaded, refreshCosting, refreshJobStatus]);
@@ -341,31 +345,19 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   );
   const isDirty = formHook.isDirty || isContactDirty;
 
-  // The amber frame is only for a job that already exists, where edits waiting on a
-  // Save are a surprise worth flagging. A brand-new card is a draft from its first
-  // keystroke and its button says Create, so framing it amber for the whole of a normal
-  // task would just train people to ignore the colour. The close question below still
-  // covers a new card — losing a half-filled one is exactly what it is there to stop.
-  // Escape and the header X both close through this (wired as BottomSheet's onClose),
-  // so the "are you sure" question lives in one place rather than at each dismissal
-  // path. A save already in flight is not raced by a close — it isn't cancelled, it
-  // just keeps running and its own toast/onSuccess still land once it resolves, same
-  // as if the modal had stayed open.
-  const handleRequestClose = useCallback(async () => {
-    if (!isDirty) {
-      onClose();
-      return;
-    }
-    const ok = await showConfirm({
-      title: 'Unsaved changes',
-      message: "This job card has changes that haven't been saved yet. Close it and lose them?",
-      confirmLabel: 'Discard changes',
-      cancelLabel: 'Keep editing',
-      confirmVariant: 'danger'
-    });
-    if (!ok) return;
-    onClose();
-  }, [isDirty, showConfirm, onClose]);
+  // Everything about work that would be lost if this screen went away — the close
+  // question, the refresh guard, the inactivity countdown and the spoken status — lives
+  // in useUnsavedGuard.js. It answers a wider question than isDirty: see its header.
+  const { hasEditedSinceOpen, handleRequestClose } = useUnsavedGuard({
+    isOpen,
+    isDirty,
+    saving,
+    hasUnpostedNote: jobNotes.newNote.trim() !== '',
+    stopFormOpen: timer.showEntryForm,
+    costingDirty: isAdmin ? costingHook.costingDirty : false,
+    showConfirm,
+    onClose
+  });
 
   if (!isOpen) return null;
   // Same plain calendar-date comparison the job list uses, so the two never disagree.
@@ -384,7 +376,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       showConfirm={showConfirm}
       onSuccess={onSuccess}
       costingDirty={isAdmin ? costingHook.costingDirty : false}
-      grandTotal={isAdmin && costingHook.costingLoaded ? costingHook.calculateCostingTotals().grandTotal : null}
+      canSeeTotal={isAdmin && isEdit}
+      fetchCurrentTotal={costingHook.fetchCurrentTotal}
       saveCosting={costingHook.handleSaveCosting}
     />
   );
@@ -499,7 +492,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               {activeTab === 'costing' && isEdit && isAdmin && (
                 <CostingTab
                   costingForm={costingHook.costingForm}
-                  lastSaved={costingHook.lastSaved}
+                  openedAt={costingHook.openedAt}
                   handleCostingChange={costingHook.handleCostingChange}
                   resetTierHours={costingHook.resetTierHours}
                   resetTierMultiplier={costingHook.resetTierMultiplier}
@@ -531,6 +524,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   {saving ? 'Saving...' : !isEdit ? 'Create' : isDirty ? 'Save changes' : 'Update'}
                 </button>
+                {/* The amber ring and the button's change of wording both say "not saved
+                    yet" silently. This is the same thing in words, for a screen reader —
+                    the same approach the pricing sheet's status line already takes. It
+                    holds one message at a time, so the reader is told once when edits
+                    appear and once when they are gone, not on every keystroke. */}
+                <span className="sr-only" role="status" aria-live="polite">
+                  {isEdit && hasEditedSinceOpen
+                    ? (isDirty ? 'This job card has unsaved changes.' : 'All changes saved.')
+                    : ''}
+                </span>
               </BottomSheet.Footer>
             )}
           </form>

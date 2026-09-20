@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
-import { validateJobCardForm } from './jobCardValidation';
+import { validateJobCardForm } from './jobCardValidation.mjs';
 import { buildJobcardPayload } from './mappers';
 import { confirmInvoiceAnyway, showFormErrors } from './jobCardPrompts';
 import { resolveJobContactId } from './jobCardContact';
@@ -107,8 +107,25 @@ export function useJobCardSave({
         // temporary ids they were added with. Take the stored ids back, or work
         // logged from here on won't line up with the part it was logged against.
         // This also clears the header's unsaved-edits mark.
-        formHook.markSaved(result?.items, sent);
-        toast.success('Job card updated');
+        const { conflict } = formHook.markSaved(result?.items, sent);
+        if (conflict) {
+          // A sent part's stored id didn't come back at all, even though the reply
+          // carried rows — someone else deleted that part while this job was open,
+          // and the server recreated it under a fresh id. Guessing which row is
+          // "really" which risks logging later work against the wrong part, so the
+          // part list has been taken from the reply wholesale (markSaved does it).
+          // Nothing else on screen is touched. Taking the parts wholesale does throw
+          // away anything typed into a part while the request was travelling, and the
+          // card reads as saved straight afterwards, so the message has to say so —
+          // otherwise the only sign of the loss is the words changing back on their own.
+          toast('Someone else changed this job\u2019s parts, so the list now shows theirs. Anything you typed into a part in the last moment was replaced — check it before saving again.', {
+            id: 'jobcard-conflict',
+            icon: warningToastIcon,
+            duration: 10000
+          });
+        } else {
+          toast.success('Job card updated');
+        }
       } else {
         onClose();
       }

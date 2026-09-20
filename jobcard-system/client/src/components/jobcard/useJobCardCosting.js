@@ -6,10 +6,10 @@ import { useCosting } from './useCosting';
 import { warningToastIcon } from '../common/toastIcons';
 
 // Everything the job screen needs to run its pricing tab, in one place: fetching the
-// job's stored pricing (as soon as an admin opens an existing job, not just when the
-// Costing tab is clicked — see the load effect below), the "change an invoiced job?"
-// question, and the two moments that save straight away rather than waiting out the
-// pricing screen's own countdown — leaving the tab, and closing the job.
+// job's stored pricing once the Costing tab is actually opened (see the load effect
+// below), the "change an invoiced job?" question, and the two moments that save straight
+// away rather than waiting out the pricing screen's own countdown — leaving the tab, and
+// closing the job.
 //
 // Wraps useCosting, which owns the figures themselves, and hands back its whole API
 // plus the load state the pricing tab needs.
@@ -22,6 +22,21 @@ export function useJobCardCosting({
   // costs nothing", and the screen saves itself, so one keystroke on it would write
   // those zeros over the job's real figures.
   const [loadFailed, setLoadFailed] = useState(false);
+  // Whether the Costing tab has been opened this opening — gates both the pricing fetch
+  // below and the refresh after every timer/time-entry change, so neither one walks every
+  // logged minute unless there's an actual price sheet on screen (or there was, earlier
+  // this opening) for it to update. Derived, not just stored: true outright whenever the
+  // tab IS currently showing (checked straight off activeTab, not the stored flag), OR the
+  // stored flag says it was shown earlier. That "currently showing" half matters because
+  // the stored flag is cleared by resetCosting() on every open (see below) and only set
+  // again by the effect underneath — an admin who opens straight onto Costing from the
+  // activity list (activeTab arrives already 'costing') would otherwise see React skip
+  // that effect, since activeTab didn't change value from the previous, now-reset opening.
+  const [costingOpenedThisOpening, setCostingOpenedThisOpening] = useState(false);
+  useEffect(() => {
+    if (activeTab === 'costing') setCostingOpenedThisOpening(true);
+  }, [activeTab]);
+  const costingOpened = activeTab === 'costing' || costingOpenedThisOpening;
 
   // Bumped whenever the job screen closes or switches job. The fetch is slow — it walks
   // every logged minute — so a reply can land after the job it was for has been closed
@@ -49,16 +64,19 @@ export function useJobCardCosting({
     }
   }, [isEdit, jobCardId, isAdmin]);
 
-  // Load as soon as an admin opens an existing job, not just when the Costing tab is
-  // clicked — the invoice confirm on the status control needs the grand total on the
-  // common path, where the tab is never opened at all. Still only once per opening
-  // (costing stays non-null until the job is closed), still admin-only, and still off
-  // a brand-new card (isEdit false) and off every timer/status re-render in between.
+  // Load only once the Costing tab has actually been opened this opening, not the instant
+  // an admin opens any job — the fetch walks every logged minute, and most job opens never
+  // touch pricing at all. The invoice confirm on the status control does not depend on this:
+  // it shows costingDirty's own on-screen figure when there are unsaved edits (the sheet is
+  // loaded by definition then) and otherwise fetches the stored total straight from the
+  // server for whoever is allowed to see one — see JobIdentityStrip.jsx. Still only once per
+  // opening (costing stays non-null until the job is closed), still admin-only, and still
+  // off a brand-new card (isEdit false).
   useEffect(() => {
-    if (isOpen && isEdit && isAdmin && costing === null) {
+    if (isOpen && isEdit && isAdmin && costingOpened && costing === null) {
       loadCosting();
     }
-  }, [isOpen, isEdit, isAdmin, costing, loadCosting]);
+  }, [isOpen, isEdit, isAdmin, costingOpened, costing, loadCosting]);
 
   // Editing an invoiced job's pricing isn't blocked — it just asks first, then saves and
   // recalculates from the job's own captured rules. Asked once per opening (the pricing
@@ -113,8 +131,21 @@ export function useJobCardCosting({
   const resetCosting = useCallback(() => {
     setCosting(null);
     setLoadFailed(false);
+    setCostingOpenedThisOpening(false);
     resetFigures();
   }, [resetFigures]);
+
+  // Asks the server for the job's grand total as it stands right now, without touching
+  // anything on screen (costingForm, loadedRef, etc. are all left alone). The figure is
+  // worked out afresh on every read — it is not whatever was last written down — so it
+  // already carries any time logged since this screen loaded. Used by the "Mark as
+  // Invoiced" confirm, which must show the figure that will actually be billed; the one
+  // on screen can be behind, and only catches up when the sheet next saves itself.
+  const fetchCurrentTotal = useCallback(async () => {
+    if (!jobCardId) return null;
+    const costingRes = await api.getCosting(jobCardId);
+    return typeof costingRes?.grandTotal === 'number' ? costingRes.grandTotal : null;
+  }, [jobCardId]);
 
   return {
     ...costingHook,
@@ -123,6 +154,10 @@ export function useJobCardCosting({
     // message rather than a sheet of zeros that a keystroke would make real.
     costingLoaded: costing !== null,
     costingLoadFailed: loadFailed,
-    retryLoadCosting: loadCosting
+    retryLoadCosting: loadCosting,
+    // True whenever the Costing tab is showing right now, or was shown earlier this
+    // opening — see the derivation above.
+    costingOpened,
+    fetchCurrentTotal
   };
 }

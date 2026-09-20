@@ -18,12 +18,33 @@ export function AuthProvider({ children }) {
   const [inactivityTimeoutMs, setInactivityTimeoutMs] = useState(DEFAULT_TIMEOUT_MINUTES * 60 * 1000);
   const pollRef = useRef(null);
   const beforeLogoutCallbacksRef = useRef([]);
+  const unsavedWorkRef = useRef([]);
 
   const registerBeforeLogout = useCallback((callback) => {
     beforeLogoutCallbacksRef.current.push(callback);
     return () => {
       beforeLogoutCallbacksRef.current = beforeLogoutCallbacksRef.current.filter(cb => cb !== callback);
     };
+  }, []);
+
+  // Lets a screen declare it currently has work that isn't saved yet, so the
+  // inactivity countdown can say so instead of counting down in silence. label
+  // is a short, plain word for what's at stake ("job card"). Multiple screens
+  // can register at once; each gets its own entry back so unregistering one
+  // never disturbs another.
+  const registerUnsavedWork = useCallback((label) => {
+    const entry = { label };
+    unsavedWorkRef.current.push(entry);
+    return () => {
+      unsavedWorkRef.current = unsavedWorkRef.current.filter(e => e !== entry);
+    };
+  }, []);
+
+  // What to tell the person is at risk right now, if anything. The most
+  // recently registered screen wins if more than one is somehow open at once.
+  const getUnsavedWorkLabel = useCallback(() => {
+    const entry = unsavedWorkRef.current[unsavedWorkRef.current.length - 1];
+    return entry ? entry.label : null;
   }, []);
 
   const logout = useCallback(() => {
@@ -152,6 +173,8 @@ export function AuthProvider({ children }) {
       refreshInactivityTimeout: loadInactivityTimeout,
       applyRole,
       registerBeforeLogout,
+      registerUnsavedWork,
+      getUnsavedWorkLabel,
       updatePreferences
     }}>
       {children}

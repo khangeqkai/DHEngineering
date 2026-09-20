@@ -3260,6 +3260,18 @@
   font-weight: var(--font-regular);
 }
 
+/* Same size/colour/weight as .tier-foot-edited, minus its dot: this hint sits under a
+   manual money field to offer the figure the job was opened with, and that figure is
+   stored, not hand-typed — the dot elsewhere on this screen means "hand-typed, not
+   stored", so it doesn't belong here. */
+.ledger-field-opening {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--warning-ink);
+  font-weight: var(--font-regular);
+}
+
 /* Positioning only, for the same control reused under a ledger field: the column is
    narrow, so the hint sits close under the input and wraps instead of overflowing it. */
 .ledger-field-revert {

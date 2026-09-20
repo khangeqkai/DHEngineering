@@ -18,20 +18,23 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
     errors.push('Job description is required');
   }
 
-  // Blanking the description on an already-saved line (stable "item:" id) used to
-  // silently drop the line from the save payload — the server then deleted the part
-  // and its files fell back to whole-job. Block the save instead. A blank description
-  // on a fresh, unsaved row still just drops the row (the filter below).
-  const blankSavedIdx = lineItems.findIndex(
-    item => isSavedLineItem(item) && !item.description.trim()
-  );
-  if (blankSavedIdx !== -1) {
-    const blank = lineItems[blankSavedIdx];
-    errors.push(`Description is required on item #${blank.itemNumber || blankSavedIdx + 1}`);
-  }
-
+  // A blank line can't be saved, so it is marked rather than quietly discarded — on an
+  // already-saved line the old silent drop made the server delete the part and its files
+  // fell back to whole-job; on a fresh line it threw away a row the user had started.
+  //
+  // The one case that names nothing is a card that has never had a part saved on it and
+  // still has none typed in: there is no particular row at fault, so it gets the single
+  // "add at least one line item" message rather than that plus a blank-row complaint
+  // about the same empty card. A job that DOES have a saved part is different — blanking
+  // its only part is a mistake about that part, so the message names it. The two are
+  // mutually exclusive, so only ever one message comes out of this block.
   const validItems = lineItems.filter(item => item.description.trim());
-  if (validItems.length === 0) {
+  const blankIdx = lineItems.findIndex(item => !item.description.trim());
+  const hasSavedPart = lineItems.some(isSavedLineItem);
+  if (blankIdx !== -1 && (validItems.length > 0 || hasSavedPart)) {
+    const blank = lineItems[blankIdx];
+    errors.push(`Description is required on item #${blank.itemNumber || blankIdx + 1}`);
+  } else if (validItems.length === 0) {
     errors.push('Add at least one line item');
   }
 

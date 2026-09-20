@@ -34,7 +34,7 @@ const SAVE_STATUS = {
 
 export default function CostingTab({
   costingForm,
-  lastSaved = null,
+  openedAt = null,
   handleCostingChange,
   resetTierHours,
   resetTierMultiplier,
@@ -130,22 +130,24 @@ export default function CostingTab({
 
   // The manual money lines (materials, subcontractor, special labour) have no
   // "reset to auto" link the way the tier hours and multipliers do — this is their only
-  // way back once a figure has been typed over. Shows nothing once the field matches
-  // what the server last stored, same as the tier reset links above.
+  // way back once a figure has been typed over. `openedAt` is captured once, when the
+  // job's pricing is opened, and never moves again as the screen saves itself: comparing
+  // against the last save instead would make this vanish about a second after it
+  // appeared, since the sheet saves on every edit. So it keeps offering the figure the
+  // job was opened with for as long as the job stays open, even past later autosaves.
   const revertControl = (name) => {
-    if (!lastSaved) return null;
+    if (!openedAt) return null;
     const current = costingForm[name];
-    const saved = lastSaved[name];
-    if (Number(current) === Number(saved)) return null;
+    const opened = openedAt[name];
+    if (Number(current) === Number(opened)) return null;
     return (
-      <span className="tier-foot-edited ledger-field-revert">
-        <span className="tier-dot" aria-hidden="true" />
-        was {REVERT_FORMAT[name](saved)}
+      <span className="ledger-field-opening ledger-field-revert">
+        opened at {REVERT_FORMAT[name](opened)}
         {' · '}
         <button
           type="button"
           className="btn-link"
-          onClick={() => handleCostingChange({ target: { name, value: String(saved) } })}
+          onClick={() => handleCostingChange({ target: { name, value: String(opened) } })}
         >
           put it back
         </button>

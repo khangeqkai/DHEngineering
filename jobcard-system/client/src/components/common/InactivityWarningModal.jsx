@@ -1,6 +1,7 @@
-import { useEffect, useRef, useId } from 'react';
+import { useEffect, useRef, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { pushModal, removeModal, isTopModal } from './modalStack';
+import { useAuth } from '../../context/AuthContext';
 
 export default function InactivityWarningModal({
   isOpen,
@@ -10,6 +11,23 @@ export default function InactivityWarningModal({
   const modalRef = useRef(null);
   const buttonRef = useRef(null);
   const modalId = useId();
+  const { getUnsavedWorkLabel } = useAuth();
+  // Captured once, the moment the countdown appears, and held for as long as it's up —
+  // not read on every render. The component re-renders every second as secondsRemaining
+  // ticks down, and getUnsavedWorkLabel reads a live registry that screens add to and
+  // remove from as their unsaved work appears and disappears, so reading it on every
+  // tick would let this sentence appear or vanish mid-countdown. aria-describedby points
+  // at it, so a screen reader's description must not change underneath it.
+  //
+  // Captured during the opening render rather than in an effect: an effect runs after
+  // the dialog has already been painted and announced, so the sentence would pop in a
+  // frame late and change the description right after the announcement — the same fault
+  // at the other end of the countdown. React re-runs this render before committing.
+  const [captured, setCaptured] = useState({ open: false, label: null });
+  if (isOpen !== captured.open) {
+    setCaptured({ open: isOpen, label: isOpen ? getUnsavedWorkLabel() : null });
+  }
+  const unsavedWorkLabel = captured.label;
 
   // Join the shared modal stack while open. This warning can appear on top of an
   // open job card or edit form (each a dialog that traps Tab/Escape); registering
@@ -60,7 +78,7 @@ export default function InactivityWarningModal({
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="inactivity-title"
-      aria-describedby="inactivity-description"
+      aria-describedby={unsavedWorkLabel ? 'inactivity-description inactivity-unsaved-warning' : 'inactivity-description'}
       ref={modalRef}
     >
       <div className="inactivity-modal">
@@ -73,6 +91,11 @@ export default function InactivityWarningModal({
         </div>
         <h2 id="inactivity-title">Session Timeout Warning</h2>
         <p id="inactivity-description">You will be logged out due to inactivity in:</p>
+        {unsavedWorkLabel && (
+          <p id="inactivity-unsaved-warning" className="inactivity-subtext">
+            You have an unsaved {unsavedWorkLabel}. It will be lost unless you continue.
+          </p>
+        )}
         <div className="inactivity-countdown" aria-live="polite">{secondsRemaining}</div>
         <p className="inactivity-subtext">seconds</p>
         <button

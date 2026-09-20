@@ -201,6 +201,32 @@ function createWindow() {
     });
   }
 
+  // The web app registers a `beforeunload` handler that objects when a job
+  // card has unsaved edits. In a browser that produces the "Leave site?"
+  // dialog, but Electron has no such dialog — it fires `will-prevent-unload`
+  // instead, and if nothing handles it Electron's default is to silently
+  // cancel the close/reload. With no handler here, closing the window or
+  // pressing Ctrl+R while a job card has unsaved edits did nothing at all —
+  // no dialog, no message — and the app looked frozen. Show a real dialog and
+  // decide from the user's answer. Calling preventDefault() here means "ignore
+  // the page's objection and go ahead with the close/reload"; doing nothing
+  // leaves the close cancelled, which is why the safe choice is wired to that.
+  mainWindow.webContents.on('will-prevent-unload', (event) => {
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: 'warning',
+      title: 'Unsaved Changes',
+      message: 'This job card has changes that have not been saved yet.',
+      detail: 'If you leave now, those changes will be lost. Do you want to leave anyway?',
+      buttons: ['Leave Without Saving', 'Keep Editing'],
+      defaultId: 1,
+      cancelId: 1
+    });
+    if (choice === 0) {
+      event.preventDefault(); // user chose to leave — let the close/reload proceed
+    }
+    // else: user chose to stay, or dismissed with Escape — leave the close cancelled
+  });
+
   return mainWindow;
 }
 

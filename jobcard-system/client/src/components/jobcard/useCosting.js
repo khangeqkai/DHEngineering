@@ -118,6 +118,12 @@ export function useCosting(jobCardId, {
   // load leaves an all-zero screen that the first keystroke would write over the real
   // figures.
   const loadedRef = useRef(null);
+  // The figures as they were when THIS job's pricing was first opened. Unlike loadedRef,
+  // a successful autosave never touches this — it is set once per opening and left alone,
+  // so it stays the right comparison point for the "opened at $X · put it back" hint below the
+  // manual money boxes. (loadedRef chases every save, which used to make that hint compare
+  // a just-typed figure against itself and disappear about a second after it appeared.)
+  const openingRef = useRef(null);
   // Read inside the save, which must see the current values without being rebuilt (and
   // restarting the save timer) on every render of the job screen.
   const isInvoicedRef = useRef(isInvoiced);
@@ -135,6 +141,7 @@ export function useCosting(jobCardId, {
   useEffect(() => {
     if (loadedCosting) {
       loadedRef.current = loadedCosting;
+      openingRef.current = loadedCosting;
       invoicedAck.current = false;
       declinedAtSeq.current = null;
       setCostingDirty(false);
@@ -451,6 +458,7 @@ export function useCosting(jobCardId, {
     invoicedAck.current = false;
     declinedAtSeq.current = null;
     loadedRef.current = null;
+    openingRef.current = null;
     // Count the reset as an edit, so a close-time save that resolves after the job is
     // reopened fails runSave's "nothing typed since" check and is dropped rather than
     // adopted onto the freshly blanked form (which would file blank notes as loaded).
@@ -460,17 +468,19 @@ export function useCosting(jobCardId, {
 
   // The manual money lines (materials, subcontractor, special labour) have no
   // "reset to auto" link the way the tier hours/multipliers do — this is what the
-  // pricing screen's per-field "put it back" control compares against. Read from the
-  // ref at render time rather than kept in state: loadedRef is written synchronously,
-  // both by the load effect above and by a successful save, so it's always current by
-  // the time this render sees it.
-  const lastSaved = loadedRef.current ? formFromCosting(loadedRef.current) : null;
+  // pricing screen's per-field "put it back" control compares against. It is captured
+  // ONCE, from openingRef, when the job's pricing is first opened, and never moves again
+  // as the screen saves itself: comparing against the last save instead would make the
+  // control vanish about a second after it appeared, since this sheet saves on every
+  // edit. So for as long as the job stays open it keeps offering the figure the job was
+  // opened with, even once later autosaves have moved the actually-stored value past it.
+  const openedAt = openingRef.current ? formFromCosting(openingRef.current) : null;
 
   return {
     costingForm,
     costingSaveState: saveState,
     costingDirty,
-    lastSaved,
+    openedAt,
     flushCosting,
     handleCostingChange,
     resetTierHours,

@@ -22,11 +22,17 @@ export default function JobIdentityStrip({
   showConfirm,
   onSuccess,
   costingDirty = false,
-  grandTotal = null,
-  saveCosting
+  canSeeTotal = false,
+  saveCosting,
+  fetchCurrentTotal
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
+  // True for the whole of a status change, not just the total fetch in the middle of one.
+  // Invoicing sends any unsaved pricing FIRST, and that send is slow enough that a second
+  // pick could land during it and start a second invoicing, with two questions stacked on
+  // top of each other. The status control is disabled while this is true.
+  const [statusBusy, setStatusBusy] = useState(false);
   const priorityRef = useRef(null);
   const priorityMenuId = useId();
 
@@ -90,25 +96,57 @@ export default function JobIdentityStrip({
 
   const setField = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
 
-  const handleStatusChange = async (newStatus) => {
+  const runStatusChange = async (newStatus) => {
     if (!isEdit || !jobCardId) {
       setField('status', newStatus);
       return;
     }
     if (newStatus === 'INVOICED') {
-      // Invoicing files the job away. If the pricing screen has unsaved edits, warn —
-      // and if they go ahead, save those edits first so they aren't silently dropped.
+      // Invoicing files the job away, so the figure in this question has to be the figure
+      // that actually gets billed. Unsaved pricing edits are therefore sent FIRST, before
+      // the question is asked, rather than after it is answered. The on-screen total can't
+      // stand in for them: the server recalculates from the job's own rules and folds in
+      // every minute logged since the pricing screen loaded, so what it stores is often a
+      // different number from what the boxes add up to. Saving first means the total below
+      // is read back from the server after the recalculation — the real one. Nothing is
+      // given away by saving first: this sheet has no Save button and files itself a second
+      // after the last keystroke anyway, so these edits were already on their way. Backing
+      // out of the question still leaves the job un-invoiced.
+      if (costingDirty && saveCosting) {
+        const saved = await saveCosting();
+        if (!saved) {
+          // The save already said why it failed. Don't go on to ask about invoicing: the
+          // total would be wrong and the job would be filed away without these edits.
+          toast.error('Could not save the costing — invoicing cancelled.');
+          return;
+        }
+      }
       const baseMessage = costingDirty
-        ? 'This will archive the job card. You have unsaved costing changes — they will be saved and billed. Continue?'
+        ? 'This will archive the job card. Your costing changes have been saved and will be billed. Continue?'
         : 'This will archive the job card. Continue?';
-      // grandTotal is only ever a number for an admin whose pricing has actually loaded
-      // (see JobCardModal.jsx) — a manager, or an admin who hasn't opened Costing, gets
-      // the plain message above with no total line. No shared money formatter exists in
-      // utils/formatters.js, and that file is out of scope for this change, so this
-      // mirrors CostingTab.jsx's `money()` (en-AU, two decimals) inline rather than
-      // adding a second maintained copy of it.
-      const message = typeof grandTotal === 'number'
-        ? <>{baseMessage}<br />Total: ${grandTotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+      // The total is always asked of the server, never taken from the boxes on screen: the
+      // server works it out afresh from the job's own rules every time it is asked, so it
+      // carries every minute logged since this screen loaded, which the boxes do not.
+      // A manager, or an admin who can't see a total, gets the plain message with no total
+      // line and no fetch. A failed fetch falls back to the plain message too: never show
+      // a total that might be wrong.
+      let freshTotal = null;
+      if (canSeeTotal && fetchCurrentTotal) {
+        const toastId = toast.loading('Getting the current total…');
+        try {
+          const fetched = await fetchCurrentTotal();
+          if (typeof fetched === 'number') freshTotal = fetched;
+        } catch {
+          freshTotal = null;
+        } finally {
+          toast.dismiss(toastId);
+        }
+      }
+      // No shared money formatter exists in utils/formatters.js, and that file is out of
+      // scope for this change, so this mirrors CostingTab.jsx's `money()` (en-AU, two
+      // decimals) inline rather than adding a second maintained copy of it.
+      const message = typeof freshTotal === 'number'
+        ? <>{baseMessage}<br />Total: ${freshTotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
         : baseMessage;
       const ok = await showConfirm?.({
         title: 'Mark as Invoiced',
@@ -118,15 +156,6 @@ export default function JobIdentityStrip({
         confirmVariant: 'danger'
       });
       if (!ok) return;
-      if (costingDirty && saveCosting) {
-        const saved = await saveCosting();
-        if (!saved) {
-          // Save already showed why it failed. Don't invoice: doing so would file the
-          // job away without the edits the user just made.
-          toast.error('Could not save the costing — invoicing cancelled.');
-          return;
-        }
-      }
     }
     const applyLocally = () => {
       setField('status', newStatus);
@@ -150,6 +179,18 @@ export default function JobIdentityStrip({
         return;
       }
       toast.error(err.message || 'Failed to update status', { id: 'status-update-failed' });
+    }
+  };
+
+  // Everything above runs behind one lock, held from the first moment of the change to
+  // the last, so a second pick made while the first is still working is simply ignored.
+  const handleStatusChange = async (newStatus) => {
+    if (statusBusy) return;
+    setStatusBusy(true);
+    try {
+      await runStatusChange(newStatus);
+    } finally {
+      setStatusBusy(false);
     }
   };
 
@@ -234,6 +275,7 @@ export default function JobIdentityStrip({
               className="jc-strip-status-select"
               value={status}
               onChange={(e) => handleStatusChange(e.target.value)}
+              disabled={statusBusy}
               aria-label="Status"
             >
               {statusOptions.map(opt => (

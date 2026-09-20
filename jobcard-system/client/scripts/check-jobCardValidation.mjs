@@ -1,5 +1,6 @@
-// Self-check for jobCardValidation: blanking a SAVED line's description must block
-// the save (it used to silently drop the line -> server deleted the part).
+// Self-check for jobCardValidation: a blank description on ANY line (saved or fresh)
+// must block the save, rather than being silently dropped — a saved line used to have
+// the server delete the part, and a fresh line just threw away the row the user started.
 // Run: node scripts/check-jobCardValidation.mjs
 import assert from 'node:assert';
 import { validateJobCardForm } from '../src/components/jobcard/jobCardValidation.mjs';
@@ -46,15 +47,16 @@ const freshRow = () => ({
     'blanked saved line must error: ' + JSON.stringify(errors));
 }
 
-// 2. Fresh unsaved blank row + valid saved line -> no description error, row dropped.
+// 2. Fresh unsaved blank row + valid saved line -> error naming its own itemNumber (1),
+// and the payload still excludes it.
 {
   const { errors, validItems } = validateJobCardForm({
     ...base,
     lineItems: [freshRow(), savedLine({ itemNumber: 2 })],
   });
-  assert(!errors.some(e => e.startsWith('Description is required')),
-    'fresh blank row must not error: ' + JSON.stringify(errors));
-  assert.strictEqual(validItems.length, 1, 'fresh blank row must be dropped from payload');
+  assert(errors.includes('Description is required on item #1'),
+    'fresh blank row must error: ' + JSON.stringify(errors));
+  assert.strictEqual(validItems.length, 1, 'fresh blank row must be excluded from payload');
 }
 
 // 3. Normal save with all descriptions filled -> no errors.
@@ -66,14 +68,31 @@ const freshRow = () => ({
   assert.strictEqual(errors.length, 0, 'valid line must pass: ' + JSON.stringify(errors));
 }
 
-// 4. Everything blank -> still the "add at least one line item" error.
+// 4. A brand-new card with nothing typed in -> the "add at least one line item" error,
+// and ONLY that: there is no particular row at fault, so it must not also get
+// "Description is required on item #1" for the same empty row.
 {
   const { errors } = validateJobCardForm({
     ...base,
     lineItems: [freshRow()],
   });
   assert(errors.some(e => e === 'Add at least one line item'),
-    'all-blank must keep the existing error: ' + JSON.stringify(errors));
+    'all-blank new card must keep the existing error: ' + JSON.stringify(errors));
+  assert(!errors.some(e => e.startsWith('Description is required')),
+    'all-blank new card must not also raise a per-row description error: ' + JSON.stringify(errors));
+}
+
+// 4b. A SAVED job whose only part has been blanked is a different mistake: there IS a
+// row at fault, so it must be named rather than told to add a line it already has.
+{
+  const { errors } = validateJobCardForm({
+    ...base,
+    lineItems: [savedLine({ itemNumber: 1, description: '' })],
+  });
+  assert(errors.includes('Description is required on item #1'),
+    'blanked sole saved part must be named: ' + JSON.stringify(errors));
+  assert(!errors.some(e => e === 'Add at least one line item'),
+    'blanked sole saved part must not be told to add a line: ' + JSON.stringify(errors));
 }
 
 // 5. Per-item errors name the row's real itemNumber: the blanked line drops out
@@ -87,4 +106,4 @@ const freshRow = () => ({
     'job-type error must name item #2, not the filtered position: ' + JSON.stringify(errors));
 }
 
-console.log('jobCardValidation check: all 5 cases pass');
+console.log('jobCardValidation check: all 6 cases pass');
