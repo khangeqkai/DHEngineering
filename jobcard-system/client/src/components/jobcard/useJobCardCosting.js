@@ -6,7 +6,8 @@ import { useCosting } from './useCosting';
 import { warningToastIcon } from '../common/toastIcons';
 
 // Everything the job screen needs to run its pricing tab, in one place: fetching the
-// job's stored pricing (lazily, and only for an admin), the "change an invoiced job?"
+// job's stored pricing (as soon as an admin opens an existing job, not just when the
+// Costing tab is clicked — see the load effect below), the "change an invoiced job?"
 // question, and the two moments that save straight away rather than waiting out the
 // pricing screen's own countdown — leaving the tab, and closing the job.
 //
@@ -48,15 +49,16 @@ export function useJobCardCosting({
     }
   }, [isEdit, jobCardId, isAdmin]);
 
-  // Load only when the Costing tab is actually opened, and only once per opening
-  // (costing stays non-null until the job is closed). Computing it walks every logged
-  // minute to split the time into rate tiers, so it's kept off the common open-a-job
-  // path and off timer events unless someone has looked at the pricing.
+  // Load as soon as an admin opens an existing job, not just when the Costing tab is
+  // clicked — the invoice confirm on the status control needs the grand total on the
+  // common path, where the tab is never opened at all. Still only once per opening
+  // (costing stays non-null until the job is closed), still admin-only, and still off
+  // a brand-new card (isEdit false) and off every timer/status re-render in between.
   useEffect(() => {
-    if (isOpen && isEdit && isAdmin && activeTab === 'costing' && costing === null) {
+    if (isOpen && isEdit && isAdmin && costing === null) {
       loadCosting();
     }
-  }, [isOpen, isEdit, isAdmin, activeTab, costing, loadCosting]);
+  }, [isOpen, isEdit, isAdmin, costing, loadCosting]);
 
   // Editing an invoiced job's pricing isn't blocked — it just asks first, then saves and
   // recalculates from the job's own captured rules. Asked once per opening (the pricing

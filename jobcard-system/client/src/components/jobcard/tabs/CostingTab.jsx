@@ -11,6 +11,17 @@ const money = (n) =>
 // multiplier column lines up spreadsheet-style: 1 → "1.00", 2.5 → "2.50", 1.75 → "1.75".
 const mult = (n) => (Number(n) || 0).toFixed(2);
 
+// How each manual money field's "was X" hint reads — money fields in dollars, the
+// margins as a percentage, the special-labour hours as a plain figure.
+const REVERT_FORMAT = {
+  labourSpecialHours: (n) => `${Number(n) || 0} hrs`,
+  labourSpecialRate: money,
+  materialsCost: money,
+  materialsProfitPercent: (n) => `${Number(n) || 0}%`,
+  subcontractorCost: money,
+  subcontractorProfitPercent: (n) => `${Number(n) || 0}%`
+};
+
 // What the line beside the grand total says while the screen saves itself. There is no
 // Save button: an edit saves about a second after the last keystroke, or straight away
 // on Enter / leaving the screen.
@@ -23,6 +34,7 @@ const SAVE_STATUS = {
 
 export default function CostingTab({
   costingForm,
+  lastSaved = null,
   handleCostingChange,
   resetTierHours,
   resetTierMultiplier,
@@ -49,6 +61,10 @@ export default function CostingTab({
   // Declared up here, ahead of the not-yet-loaded return below, so the same hooks run
   // on every render of this screen.
   const [multEditing, setMultEditing] = useState(null); // { name, value } | null
+
+  // A wheel over a focused number box changes its value in Chrome, and this sheet saves
+  // itself a second later. Drop focus instead so scrolling the page stays scrolling.
+  const blurOnWheel = (e) => e.currentTarget.blur();
 
   // Until the job's stored pricing arrives, show a plain message rather than a sheet of
   // zeros. A zero sheet reads as real figures, and this screen saves itself — one
@@ -111,6 +127,31 @@ export default function CostingTab({
       />
     </div>
   );
+
+  // The manual money lines (materials, subcontractor, special labour) have no
+  // "reset to auto" link the way the tier hours and multipliers do — this is their only
+  // way back once a figure has been typed over. Shows nothing once the field matches
+  // what the server last stored, same as the tier reset links above.
+  const revertControl = (name) => {
+    if (!lastSaved) return null;
+    const current = costingForm[name];
+    const saved = lastSaved[name];
+    if (Number(current) === Number(saved)) return null;
+    return (
+      <span className="tier-foot-edited ledger-field-revert">
+        <span className="tier-dot" aria-hidden="true" />
+        was {REVERT_FORMAT[name](saved)}
+        {' · '}
+        <button
+          type="button"
+          className="btn-link"
+          onClick={() => handleCostingChange({ target: { name, value: String(saved) } })}
+        >
+          put it back
+        </button>
+      </span>
+    );
+  };
 
   const multDisplay = (t) =>
     multEditing && multEditing.name === t.multName ? multEditing.value : mult(t.multiplier);
@@ -230,6 +271,7 @@ export default function CostingTab({
             value={t.hoursValue}
             onChange={handleCostingChange}
             onFocus={selectOnFocus}
+            onWheel={blurOnWheel}
             min="0"
             step="0.01"
             aria-label={`${t.label} hours`}
@@ -321,6 +363,7 @@ export default function CostingTab({
                 value={costingForm.labourRate}
                 onChange={handleCostingChange}
                 onFocus={selectOnFocus}
+                onWheel={blurOnWheel}
                 min="0"
                 step="0.01"
               />
@@ -370,15 +413,17 @@ export default function CostingTab({
             <span className="ledger-cat">Special labour</span>
             <div className="ledger-field">
               <label>Hours</label>
-              <input type="number" name="labourSpecialHours" value={costingForm.labourSpecialHours} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
+              <input type="number" name="labourSpecialHours" value={costingForm.labourSpecialHours} onChange={handleCostingChange} onFocus={selectOnFocus} onWheel={blurOnWheel} min="0" step="0.01" />
+              {revertControl('labourSpecialHours')}
             </div>
             <span className="ledger-op">×</span>
             <div className="ledger-field">
               <label>Rate / hr</label>
               <div className="ledger-affix ledger-affix--prefix">
                 <span className="ledger-affix-mark">$</span>
-                <input type="number" name="labourSpecialRate" value={costingForm.labourSpecialRate} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
+                <input type="number" name="labourSpecialRate" value={costingForm.labourSpecialRate} onChange={handleCostingChange} onFocus={selectOnFocus} onWheel={blurOnWheel} min="0" step="0.01" />
               </div>
+              {revertControl('labourSpecialRate')}
             </div>
             <span className="ledger-eq">=</span>
             <span className="ledger-total">{money(totals.labourSpecialTotal)}</span>
@@ -392,16 +437,18 @@ export default function CostingTab({
               <label>Cost</label>
               <div className="ledger-affix ledger-affix--prefix">
                 <span className="ledger-affix-mark">$</span>
-                <input type="number" name="materialsCost" value={costingForm.materialsCost} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
+                <input type="number" name="materialsCost" value={costingForm.materialsCost} onChange={handleCostingChange} onFocus={selectOnFocus} onWheel={blurOnWheel} min="0" step="0.01" />
               </div>
+              {revertControl('materialsCost')}
             </div>
             <span className="ledger-op">+</span>
             <div className="ledger-field">
               <label>Margin</label>
               <div className="ledger-affix ledger-affix--suffix">
-                <input type="number" name="materialsProfitPercent" value={costingForm.materialsProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" />
+                <input type="number" name="materialsProfitPercent" value={costingForm.materialsProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} onWheel={blurOnWheel} min="0" />
                 <span className="ledger-affix-mark">%</span>
               </div>
+              {revertControl('materialsProfitPercent')}
             </div>
             <span className="ledger-eq">=</span>
             <span className="ledger-total">{money(totals.materialsTotal)}</span>
@@ -415,16 +462,18 @@ export default function CostingTab({
               <label>Cost</label>
               <div className="ledger-affix ledger-affix--prefix">
                 <span className="ledger-affix-mark">$</span>
-                <input type="number" name="subcontractorCost" value={costingForm.subcontractorCost} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
+                <input type="number" name="subcontractorCost" value={costingForm.subcontractorCost} onChange={handleCostingChange} onFocus={selectOnFocus} onWheel={blurOnWheel} min="0" step="0.01" />
               </div>
+              {revertControl('subcontractorCost')}
             </div>
             <span className="ledger-op">+</span>
             <div className="ledger-field">
               <label>Margin</label>
               <div className="ledger-affix ledger-affix--suffix">
-                <input type="number" name="subcontractorProfitPercent" value={costingForm.subcontractorProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" />
+                <input type="number" name="subcontractorProfitPercent" value={costingForm.subcontractorProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} onWheel={blurOnWheel} min="0" />
                 <span className="ledger-affix-mark">%</span>
               </div>
+              {revertControl('subcontractorProfitPercent')}
             </div>
             <span className="ledger-eq">=</span>
             <span className="ledger-total">{money(totals.subcontractorTotal)}</span>

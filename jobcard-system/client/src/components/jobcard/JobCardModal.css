@@ -3260,6 +3260,14 @@
   font-weight: var(--font-regular);
 }
 
+/* Positioning only, for the same control reused under a ledger field: the column is
+   narrow, so the hint sits close under the input and wraps instead of overflowing it. */
+.ledger-field-revert {
+  margin-top: 0.125rem;
+  font-size: var(--text-2xs);
+  flex-wrap: wrap;
+}
+
 .ledger-op,
 .ledger-eq {
   font-family: var(--font-mono);

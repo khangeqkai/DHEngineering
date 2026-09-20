@@ -22,6 +22,7 @@ export default function JobIdentityStrip({
   showConfirm,
   onSuccess,
   costingDirty = false,
+  grandTotal = null,
   saveCosting
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
@@ -97,11 +98,21 @@ export default function JobIdentityStrip({
     if (newStatus === 'INVOICED') {
       // Invoicing files the job away. If the pricing screen has unsaved edits, warn —
       // and if they go ahead, save those edits first so they aren't silently dropped.
+      const baseMessage = costingDirty
+        ? 'This will archive the job card. You have unsaved costing changes — they will be saved and billed. Continue?'
+        : 'This will archive the job card. Continue?';
+      // grandTotal is only ever a number for an admin whose pricing has actually loaded
+      // (see JobCardModal.jsx) — a manager, or an admin who hasn't opened Costing, gets
+      // the plain message above with no total line. No shared money formatter exists in
+      // utils/formatters.js, and that file is out of scope for this change, so this
+      // mirrors CostingTab.jsx's `money()` (en-AU, two decimals) inline rather than
+      // adding a second maintained copy of it.
+      const message = typeof grandTotal === 'number'
+        ? <>{baseMessage}<br />Total: ${grandTotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+        : baseMessage;
       const ok = await showConfirm?.({
         title: 'Mark as Invoiced',
-        message: costingDirty
-          ? 'This will archive the job card. You have unsaved costing changes — they will be saved and billed. Continue?'
-          : 'This will archive the job card. Continue?',
+        message,
         confirmLabel: 'Archive',
         cancelLabel: 'Cancel',
         confirmVariant: 'danger'

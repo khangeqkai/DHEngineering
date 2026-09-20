@@ -1161,6 +1161,8 @@ select.has-retired option.retired-option {
   height: 80vh;
   max-width: 1200px;
   max-height: 900px;
+  transition: border-color var(--duration-normal) var(--ease-smooth),
+              box-shadow var(--duration-normal) var(--ease-smooth);
 }
 
 .modal-compact {
@@ -1182,6 +1184,16 @@ select.has-retired option.retired-option {
   height: 85vh;
   max-width: 1300px;
   max-height: 950px;
+}
+
+/* A job card with edits that no Save has sent yet. The frame carries the signal so
+   the title bar stays clear; the ring is drawn outside the border so nothing shifts. */
+.modal-popup.modal-unsaved {
+  border-color: var(--warning-color);
+  box-shadow:
+    0 0 0 4px var(--warning-color),
+    0 0 0 9px rgba(var(--warning-rgb), 0.16),
+    var(--shadow-lg);
 }
 
 @keyframes modalSlide {

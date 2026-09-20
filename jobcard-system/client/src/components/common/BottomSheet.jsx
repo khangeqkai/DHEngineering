@@ -14,6 +14,7 @@ export default function BottomSheet({
   headerSlot,
   size = 'compact',
   headerActions,
+  unsaved = false,
   children
 }) {
   const dialogRef = useRef(null);
@@ -99,7 +100,7 @@ export default function BottomSheet({
     <div className="modal-overlay">
       <div
         ref={dialogRef}
-        className={`modal-popup modal-${size}`}
+        className={`modal-popup modal-${size}${unsaved ? ' modal-unsaved' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"

@@ -4,6 +4,7 @@
 # Agent tool scratch state
 .codewhale/
 .qwen/
+.impeccable/
 
 # Editor settings
 .vscode/

@@ -13,6 +13,7 @@ import { useJobCardCosting } from './useJobCardCosting';
 import { useTimeEntries } from './useTimeEntries';
 import { useContactSearch } from './useContactSearch';
 import { useJobCardForm } from './useJobCardForm';
+import { useJobCardSave } from './useJobCardSave';
 import DetailsTab from './tabs/DetailsTab';
 import CostingTab from './tabs/CostingTab';
 import ActivityLogTab from './tabs/ActivityLogTab';
@@ -22,11 +23,7 @@ import { useJobNotes } from './useJobNotes';
 import StopTimerForm from './StopTimerForm';
 import JobPaperworkHub from './JobPaperworkHub';
 import JobIdentityStrip from './JobIdentityStrip';
-import { validateJobCardForm } from './jobCardValidation';
-import { mapTimeEntryFromApi, buildJobcardPayload } from './mappers';
-import { confirmInvoiceAnyway, showFormErrors } from './jobCardPrompts';
-import { resolveJobContactId } from './jobCardContact';
-import { warningToastIcon } from '../common/toastIcons';
+import { mapTimeEntryFromApi } from './mappers';
 
 // Read a picked file into the base64 string the upload route expects.
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onPrinted, initialTab = null }) {
@@ -37,7 +34,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const isAdmin = user?.role === 'admin';
   const canManage = isManagement(user);
   const [activeTab, setActiveTab] = useState('details');
-  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -55,8 +51,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   }, []);
   const timer = useTimer(isEdit ? jobCardId : null, { onExternalStop });
   const { dialogState, showConfirm, handleCancel, handleConfirm, handleAlt } = useConfirmDialog();
+
   const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm, onNotesChange);
-  // Pricing: the lazy load, the invoiced-job question, and the save-on-the-way-out
+  // Pricing: the on-open load, the invoiced-job question, and the save-on-the-way-out
   // paths all live in this hook — see useJobCardCosting.js.
   const costingHook = useJobCardCosting({
     isOpen, isEdit, isAdmin, jobCardId, activeTab, showConfirm,
@@ -128,9 +125,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
       loadNotes();
 
-      // Costing is loaded lazily when the Costing tab is opened (see effect below),
-      // not on every job-card open — the per-tier hours calc walks all logged time,
-      // so it only runs when someone is actually looking at the costing.
+      // Costing loads separately, in useJobCardCosting — as soon as an admin opens the
+      // job rather than waiting for the Costing tab, because the invoice confirm on the
+      // status control needs the grand total on a path where that tab is never opened.
     } catch (err) {
       if (currentLoadRef.current !== jobCardId) return;  // stale failure for a closed job — don't disturb the current one
       toast.error('Failed to load job card. Please try again.');
@@ -206,7 +203,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (onTimerChange) onTimerChange();
   }, [timer, reloadTimeEntriesAndCosting, onTimerChange]);
 
-  const { creditAssignee, setAssignees } = formHook;
+  const { creditAssignee, dropAssignee } = formHook;
   const apiTimeEntryOperations = {
     addTimeEntry: async (data) => {
       await api.addTimeEntry(jobCardId, data);
@@ -242,12 +239,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // so untick the worker it put on — a Save would otherwise put them straight back.
   const afterStop = useCallback(async (result) => {
     if (result?.unassignedUserId) {
-      setAssignees(prev => prev.filter(a => a.userId !== result.unassignedUserId));
+      dropAssignee(result.unassignedUserId);
     }
     await reloadTimeEntries();
     await refreshJobStatus();
     if (onTimerChange) onTimerChange();
-  }, [reloadTimeEntries, refreshJobStatus, onTimerChange, setAssignees]);
+  }, [reloadTimeEntries, refreshJobStatus, onTimerChange, dropAssignee]);
 
   const handleStopItemTimer = useCallback(
     () => timer.stopTimer().then(afterStop), [timer, afterStop]);
@@ -319,95 +316,57 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const selectCompany = (company) => contactHook.selectCompany(company, formHook.setFormData);
   const selectPerson = (personId) => contactHook.selectPerson(personId, formHook.setFormData);
   const handleContactFieldChange = (field, value) => contactHook.handleContactFieldChange(field, value, formHook.setFormData);
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!canManage && isEdit) return;
 
-    // Validation
-    const { errors, validItems } = validateJobCardForm({
-      canManage,
-      formData: formHook.formData,
-      contactFormData: contactHook.contactFormData,
-      lineItems: formHook.lineItems
-    });
+  // The Save itself — validation, the customer on a new job, the pricing flush before
+  // invoicing, and the "files still missing" reply — lives in useJobCardSave.js.
+  const { saving, handleSubmit } = useJobCardSave({
+    canManage, isEdit, jobCardId, formHook, contactHook, costingHook,
+    showConfirm, onSuccess, onClose, setAttachmentWarnings
+  });
 
-    if (errors.length > 0) {
-      showFormErrors(errors);
+  // On a brand-new job the customer is picked through useContactSearch, a hook whose
+  // state useJobCardForm never sees, so its own isDirty can't cover it. Folded in here
+  // instead, where both hooks are already in scope, rather than reaching into
+  // useJobCardForm to pass that state (and a second baseline) across. Existing jobs
+  // don't need this: the customer is chosen once at creation and the fields are frozen
+  // and read-only after that (see useJobCardSave.js), so contactFormData can't change
+  // under an edit.
+  const isContactDirty = !isEdit && (
+    contactHook.contactFormData.companyName !== '' ||
+    contactHook.contactFormData.companyId !== '' ||
+    contactHook.contactFormData.contactName !== '' ||
+    contactHook.contactFormData.contactId !== '' ||
+    contactHook.contactFormData.phone !== '' ||
+    contactHook.contactFormData.email !== ''
+  );
+  const isDirty = formHook.isDirty || isContactDirty;
+
+  // The amber frame is only for a job that already exists, where edits waiting on a
+  // Save are a surprise worth flagging. A brand-new card is a draft from its first
+  // keystroke and its button says Create, so framing it amber for the whole of a normal
+  // task would just train people to ignore the colour. The close question below still
+  // covers a new card — losing a half-filled one is exactly what it is there to stop.
+  // Escape and the header X both close through this (wired as BottomSheet's onClose),
+  // so the "are you sure" question lives in one place rather than at each dismissal
+  // path. A save already in flight is not raced by a close — it isn't cancelled, it
+  // just keeps running and its own toast/onSuccess still land once it resolves, same
+  // as if the modal had stayed open.
+  const handleRequestClose = useCallback(async () => {
+    if (!isDirty) {
+      onClose();
       return;
     }
+    const ok = await showConfirm({
+      title: 'Unsaved changes',
+      message: "This job card has changes that haven't been saved yet. Close it and lose them?",
+      confirmLabel: 'Discard changes',
+      cancelLabel: 'Keep editing',
+      confirmVariant: 'danger'
+    });
+    if (!ok) return;
+    onClose();
+  }, [isDirty, showConfirm, onClose]);
 
-    setSaving(true);
-
-    try {
-      // Customer details are chosen once, at creation — resolve/create the contact
-      // for a brand-new job. On an existing job they're frozen and read-only.
-      const customer = await resolveJobContactId({
-        canManage, isEdit, contactHook, showConfirm
-      });
-      // Backed out of adding a new customer — nothing has been saved yet.
-      if (!customer) { setSaving(false); return; }
-
-      const jobcardData = buildJobcardPayload({
-        formData: formHook.formData,
-        contactFormData: contactHook.contactFormData,
-        assignees: formHook.assignees,
-        validItems,
-        canManage,
-        isEdit,
-        companyId: customer.companyId,
-        contactId: customer.contactId
-      });
-      // Flush any unsaved pricing edits before invoicing so they aren't lost when the job
-      // is filed away. This goes through the same path the pricing screen uses, so a job
-      // that has already been billed still asks "change an invoiced job?" first rather
-      // than quietly restating the final total. Only a failed save aborts here — turning
-      // the pricing change down puts the billed figures back and says so, and the rest of
-      // this save (dates, notes, parts) has nothing to do with pricing, so it carries on.
-      if (isEdit && formHook.formData.status === 'INVOICED' && costingHook.costingDirty) {
-        const saved = await costingHook.flushCosting();
-        if (saved === false) return; // the save already reported why it failed
-      }
-
-      // Send the save; on an edit that would invoice with files still missing,
-      // the server replies 409 with the gaps instead of saving. We then ask the
-      // user to confirm and resend with an explicit "invoice anyway" flag.
-      const submit = (confirmMissing) => isEdit
-        ? api.updateJobcard(jobCardId, confirmMissing ? { ...jobcardData, confirmMissingAttachments: true } : jobcardData)
-        : api.createJobcard(jobcardData);
-
-      let result;
-      try {
-        result = await submit(false);
-      } catch (err) {
-        if (isEdit && err.status === 409 && err.data?.attachmentWarnings) {
-          const proceed = await confirmInvoiceAnyway(err.data.attachmentWarnings, showConfirm);
-          if (!proceed) { setSaving(false); return; }
-          result = await submit(true);
-        } else {
-          throw err;
-        }
-      }
-
-      onSuccess?.();
-      if (result?.qaTemplateWarning) {
-        toast(result.qaTemplateWarning, { icon: warningToastIcon, duration: 8000 });
-      }
-      setAttachmentWarnings(result?.attachmentWarnings || null);
-      if (isEdit) {
-        // The job stays open after a save, so the parts on screen still carry the
-        // temporary ids they were added with. Take the stored ids back, or work
-        // logged from here on won't line up with the part it was logged against.
-        formHook.setLineItemsFromApi(result?.items);
-        toast.success('Job card updated');
-      } else {
-        onClose();
-      }
-    } catch (err) {
-      toast.error(err.message || 'Failed to save job card');
-    } finally {
-      setSaving(false);
-    }
-  };
   if (!isOpen) return null;
   // Same plain calendar-date comparison the job list uses, so the two never disagree.
   const today = todayIsoDate();
@@ -425,6 +384,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       showConfirm={showConfirm}
       onSuccess={onSuccess}
       costingDirty={isAdmin ? costingHook.costingDirty : false}
+      grandTotal={isAdmin && costingHook.costingLoaded ? costingHook.calculateCostingTotals().grandTotal : null}
       saveCosting={costingHook.handleSaveCosting}
     />
   );
@@ -433,7 +393,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     <>
       <BottomSheet
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={handleRequestClose}
+        unsaved={isEdit && isDirty}
         headerSlot={headerStrip}
         size="large"
         headerActions={
@@ -538,6 +499,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               {activeTab === 'costing' && isEdit && isAdmin && (
                 <CostingTab
                   costingForm={costingHook.costingForm}
+                  lastSaved={costingHook.lastSaved}
                   handleCostingChange={costingHook.handleCostingChange}
                   resetTierHours={costingHook.resetTierHours}
                   resetTierMultiplier={costingHook.resetTierMultiplier}
@@ -567,7 +529,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
             {(canManage || !isEdit) && (
               <BottomSheet.Footer>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+                  {saving ? 'Saving...' : !isEdit ? 'Create' : isDirty ? 'Save changes' : 'Update'}
                 </button>
               </BottomSheet.Footer>
             )}

@@ -458,10 +458,19 @@ export function useCosting(jobCardId, {
     setCostingForm(getDefaultCostingForm());
   }, []);
 
+  // The manual money lines (materials, subcontractor, special labour) have no
+  // "reset to auto" link the way the tier hours/multipliers do — this is what the
+  // pricing screen's per-field "put it back" control compares against. Read from the
+  // ref at render time rather than kept in state: loadedRef is written synchronously,
+  // both by the load effect above and by a successful save, so it's always current by
+  // the time this render sees it.
+  const lastSaved = loadedRef.current ? formFromCosting(loadedRef.current) : null;
+
   return {
     costingForm,
     costingSaveState: saveState,
     costingDirty,
+    lastSaved,
     flushCosting,
     handleCostingChange,
     resetTierHours,
