@@ -17,6 +17,7 @@ import { useJobCardInstantSaves } from './useJobCardInstantSaves';
 import { useJobCardSave } from './useJobCardSave';
 import { useJobCardCloseGuard, useJobCardListRefresh } from './useJobCardCloseGuard';
 import { useJobCardTimerActions } from './useJobCardTimerActions';
+import { useSavedFlash } from './useSavedFlash';
 import DetailsTab from './tabs/DetailsTab';
 import CostingTab from './tabs/CostingTab';
 import ActivityLogTab from './tabs/ActivityLogTab';
@@ -322,6 +323,13 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     saving, showConfirm, onClose: closeAndRefresh, revealDetails: showDetailsTab
   });
 
+  // The window frame is the whole answer to "did that save?" on an existing job —
+  // amber while something on screen hasn't reached the job, green for a moment once
+  // it has. It replaces the small "Saving… / Saved" the header used to carry, which
+  // there is no longer room for beside the job number, priority, description, status
+  // and due date. Must sit above the early return below — it is a hook.
+  const savedFlash = useSavedFlash(isEdit && hasEditedSinceOpen && !isDirty);
+
   if (!isOpen) return null;
   // Same plain calendar-date comparison the job list uses, so the two never disagree.
   const today = todayIsoDate();
@@ -359,6 +367,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         // job" — a failed write, an empty required box, or a row mid-create/delete.
         // See useJobCardForm.js's isDirty comment and closeReasons.js.
         unsaved={isEdit && isDirty}
+        // ...and green for a moment once the last of it has landed. Only after the
+        // card has actually been edited: a window nobody has touched has nothing to
+        // report, and a green frame on arrival would be reporting someone else's save.
+        saved={savedFlash}
         headerSlot={headerStrip}
         size="large"
         headerActions={

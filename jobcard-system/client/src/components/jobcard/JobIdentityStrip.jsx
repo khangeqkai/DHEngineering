@@ -381,15 +381,22 @@ export default function JobIdentityStrip({
             />
       </div>
 
-      {identityStatus !== 'idle' && (
-        <span
-          className={`instant-save-status instant-save-status--${identityStatus}`}
-          role="status"
-          aria-live="polite"
-        >
-          {INSTANT_SAVE_STATUS_TEXT[identityStatus]}
+      {/* Only a failure gets words here. "Saving…" and "Saved" are now the window
+          frame's job (amber, then green — see .modal-unsaved / .modal-saved in
+          App.css), because this bar already carries the job number, priority,
+          description, status and due date and a sixth thing in it stopped being
+          read. A failure is the one state that has to name itself: the frame
+          simply stays amber, which on its own doesn't say anything is wrong. */}
+      {identityStatus === 'failed' && (
+        <span className="instant-save-status instant-save-status--failed">
+          {INSTANT_SAVE_STATUS_TEXT.failed}
         </span>
       )}
+      {/* A colour says nothing to a screen reader, so the words the strip no longer
+          shows are still announced here, unseen — same shape as before. */}
+      <span className="sr-only" role="status" aria-live="polite">
+        {identityStatus === 'idle' ? '' : INSTANT_SAVE_STATUS_TEXT[identityStatus]}
+      </span>
     </div>
   );
 }

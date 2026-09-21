@@ -1203,6 +1203,22 @@ select.has-retired option.retired-option {
     var(--shadow-lg);
 }
 
+/* ...and the same frame in green the moment the last of those edits reaches the job.
+   The amber says "not there yet"; without a green answer the only way the frame can
+   say "it landed" is by going out, which reads as nothing happening. Identical three
+   layers so the two are plainly the same signal in two states, and it fades back to
+   the resting frame on the window's own border/shadow transition after the flash
+   clears (useSavedFlash.js holds it for 1.8s) rather than through a keyframe, which
+   would replay the window's opening slide each time it cleared. */
+.modal-popup.modal-saved {
+  border-color: var(--success-color);
+  box-shadow:
+    0 0 0 2px var(--success-color),
+    0 0 0 6px rgba(var(--success-rgb), 0.15),
+    0 0 24px rgba(var(--success-rgb), 0.25),
+    var(--shadow-lg);
+}
+
 @keyframes modalSlide {
   from {
     opacity: 0;

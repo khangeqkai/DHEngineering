@@ -32,9 +32,10 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
   const hasUnsavedWork = isDirty || hasUnpostedNote || stopFormOpen;
   const hasWorkToLose = hasUnsavedWork || costingDirty;
 
-  // Whether anything has been edited at all since the card opened. Only used to keep the
-  // spoken status quiet on arrival: "All changes saved" is worth hearing after a save,
-  // and worth nothing at all on a card nobody has touched yet.
+  // Whether anything has been edited at all since the card opened. It keeps the two
+  // "everything landed" signals quiet on arrival — the spoken status and the window
+  // frame's green flash (useSavedFlash.js): both are worth having after a save, and
+  // worth nothing at all on a card nobody has touched yet.
   const [hasEditedSinceOpen, setHasEditedSinceOpen] = useState(false);
   useEffect(() => {
     if (isDirty) setHasEditedSinceOpen(true);
