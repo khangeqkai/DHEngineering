@@ -2,7 +2,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  height: 100vh; /* fallback for browsers without dvh support */
+  /* On a phone browser 100vh includes the space the address bar occupies,
+     so a fixed-height shell sits partly under the browser chrome. 100dvh
+     tracks the actually-visible viewport; the 100vh line above stays as a
+     fallback for browsers that don't understand dvh. */
+  height: 100dvh;
   font-size: var(--text-lg);
   color: var(--text-secondary);
 }
@@ -42,6 +47,7 @@
 .app-layout {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   flex-direction: column;
   overflow: hidden;
 }
@@ -110,6 +116,15 @@
   background: rgba(0, 0, 0, 0.5);
   z-index: 90;
   animation: fadeIn 0.2s ease-out;
+  /* It is a real <button> so the sidebar can be dismissed from the keyboard,
+     not just by pointing at it. The chrome a button brings by default has no
+     place on a full-screen scrim, so it is stripped here rather than inline. */
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
 }
 
 .sidebar {
@@ -118,6 +133,7 @@
   left: 0;
   width: 280px;
   height: 100vh;
+  height: 100dvh;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--sidebar-border);
   padding: 1.5rem;
@@ -138,6 +154,7 @@
   left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   z-index: 0;
   pointer-events: none;
 }
@@ -459,14 +476,14 @@
    Amber + bold, not red — it's old, not wrong. Covers native dropdowns and
    the custom tag picker. */
 .retired-option {
-  color: var(--warning-color, #f59e0b);
+  color: var(--warning-ink);
   font-weight: var(--font-bold);
 }
 
 /* Closed field reads amber only when the currently-picked value is the retired one. */
 select.has-retired,
 .lit-select-btn--retired .lit-select-text {
-  color: var(--warning-color, #f59e0b);
+  color: var(--warning-ink);
   font-weight: var(--font-bold);
 }
 
@@ -478,7 +495,7 @@ select.has-retired option {
   font-weight: var(--font-regular);
 }
 select.has-retired option.retired-option {
-  color: var(--warning-color, #f59e0b);
+  color: var(--warning-ink);
   font-weight: var(--font-bold);
 }
 
@@ -579,7 +596,10 @@ select.has-retired option.retired-option {
   font-size: var(--text-sm);
   color: var(--text-primary);
   background: var(--surface);
-  border: 1.5px solid var(--border-color);
+  /* Dedicated, higher-contrast border — the border is the only thing
+     marking a field's edge, so it needs to clear the 3:1 WCAG boundary
+     minimum that --border-color (a subtle divider colour) doesn't meet. */
+  border: 1.5px solid var(--border-input);
   border-radius: var(--radius-md);
   transition: border-color var(--duration-fast) ease,
               box-shadow var(--duration-fast) ease;
@@ -615,7 +635,10 @@ select.has-retired option.retired-option {
   position: relative;
   cursor: pointer;
   padding: 0.75rem 1rem;
-  border: 1.5px solid var(--border-color);
+  /* Same reasoning as .form-control: this row sits on --surface inside a
+     card that is also --surface, so its border is the only thing marking
+     where the control is and has to clear the 3:1 boundary minimum. */
+  border: 1.5px solid var(--border-input);
   border-radius: var(--radius-md);
   background: var(--surface);
   transition: border-color 0.15s ease, background 0.15s ease;
@@ -747,6 +770,43 @@ select.has-retired option.retired-option {
   .form-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* The "show archived/inactive" checkbox that sits above the customers, suppliers,
+   users and tags lists. It is one control on four screens, so it is defined once
+   here rather than four times — it used to be spelled out separately inside each
+   of those components, at two different sizes, which only stayed invisible because
+   each copy existed solely while its own screen was on show. Now that those styles
+   are real stylesheets they all load at once, so the duplicates had to become one.
+   The size is the shared small-text token; two of the four were previously a
+   hair larger, off the type scale. */
+.show-inactive-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+/* An action inside a table row that reads as a link but is a real button, because
+   it performs an action rather than going anywhere. Matches `.table td a` exactly.
+   Shared by the customers, suppliers and users lists — defined once, same reason
+   as the rule above. */
+.row-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: var(--font-bold);
+  color: var(--accent-text);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.row-link-btn:hover {
+  color: var(--accent-text-hover);
+  text-decoration: underline;
 }
 
 /* Action Buttons */
@@ -1324,6 +1384,24 @@ select.has-retired option.retired-option {
     max-width: none;
     max-height: none;
   }
+
+  /* A finger is a lot blunter than a cursor. These stay their compact drawn
+     size on desktop (the tables are laid out tight around it), but on a
+     touch screen the hit area needs to reach 44px even though the icon
+     inside keeps drawing at its normal size. */
+  .btn-icon,
+  .modal-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Same treatment for the toast's dismiss control — 24px on desktop, where a
+     cursor can land on it precisely; the drawn icon keeps its size, only the
+     tappable area around it grows. */
+  .toast-dismiss {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 /* ========================================
@@ -1693,8 +1771,12 @@ select.has-retired option.retired-option {
   }
 }
 
-/* Hide toggle on mobile/tablet — only visible on desktop */
-@media (max-width: 1023px) {
+/* Hide toggle on mobile/tablet — only visible on desktop. Written as 1023.98px
+   rather than the desktop breakpoint's own 1024px: this is the same canonical
+   boundary, just expressed as its own complement so the two queries can never
+   both match the same viewport (a plain 1023px left a fractional gap open on
+   a browser reporting a non-integer width, e.g. at some zoom levels). */
+@media (max-width: 1023.98px) {
   .sidebar-toggle {
     display: none;
   }
@@ -2051,7 +2133,7 @@ div[data-hot-toast] > div {
   margin-bottom: 0.75rem;
 }
 
-.company-people-head h4 {
+.company-people-head h2 {
   margin: 0;
   font-size: var(--text-sm);
   font-weight: var(--font-bold);
@@ -2117,7 +2199,7 @@ div[data-hot-toast] > div {
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--warning-color, #b45309);
+  color: var(--warning-ink);
 }
 
 .cp-detail {

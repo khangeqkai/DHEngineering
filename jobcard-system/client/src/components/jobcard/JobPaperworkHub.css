@@ -523,3 +523,24 @@
   z-index: 1;
 }
 .hub-lightbox-close:hover { background: rgba(255, 255, 255, 0.3); }
+
+/* Touch-only enlargement. These stay their compact drawn size on desktop, but a
+   finger is a lot blunter than a cursor: below this width, the hit area behind
+   each control grows to the 44px minimum while whatever icon or mark is drawn
+   inside keeps its own current size (it's a fixed-size child, not the box that's
+   growing). Desktop is untouched. */
+@media (max-width: 768px) {
+  .hub-check,
+  .hub-icon-btn,
+  .hub-close,
+  .hub-photo-remove {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Neighbouring per-row tools now cover a 44px square each; without more
+     breathing room between them they'd still be touching. */
+  .hub-row-tools {
+    gap: 0.75rem;
+  }
+}

@@ -136,3 +136,13 @@
   font-size: var(--text-sm);
   text-align: center;
 }
+
+/* Touch-only: each option row is ~35px tall at its desktop padding — under the
+   44px minimum a finger needs to hit one row of a multi-select list without
+   catching its neighbour. Desktop keeps the tighter row so a long list of
+   tags/services doesn't need to scroll as much; only the touch case grows it. */
+@media (max-width: 768px) {
+  .checkbox-dropdown-option {
+    min-height: 44px;
+  }
+}

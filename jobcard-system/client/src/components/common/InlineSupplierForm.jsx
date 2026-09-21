@@ -21,7 +21,7 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
     notes: ''
   });
   const [saving, setSaving] = useState(false);
-  const { setFieldErrors, clearFieldError, groupClass, errorFor } = useFieldErrors();
+  const { setFieldErrors, clearFieldError, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors();
 
   const set = (field, val) => setForm(prev => ({ ...prev, [field]: val }));
 
@@ -70,22 +70,24 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
 
       <div className="inline-supplier-form-body">
         <div className={groupClass('supplierName')}>
-          <label>Company Name <span className="required">*</span></label>
+          <label htmlFor="supplierName">Company Name <span className="required">*</span></label>
           <input
             type="text"
-            id="supplierName"
+            {...fieldProps('supplierName')}
             value={form.name}
             autoFocus
+            required
             onChange={(e) => { clearFieldError('supplierName'); set('name', e.target.value); }}
             onBlur={formatOnBlur('name', toTitleCase)}
           />
-          <FieldError message={errorFor('supplierName')} />
+          <FieldError {...errorProps('supplierName')} message={errorFor('supplierName')} />
         </div>
 
         <div className="form-group">
-          <label>Contact Name</label>
+          <label htmlFor="supplierContactName">Contact Name</label>
           <input
             type="text"
+            id="supplierContactName"
             value={form.contactName}
             onChange={(e) => set('contactName', e.target.value)}
             onBlur={formatOnBlur('contactName', toTitleCase)}
@@ -93,19 +95,20 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
         </div>
 
         <div className="form-group">
-          <label>Phone</label>
-          <input type="tel" value={form.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} />
+          <label htmlFor="supplierContactPhone">Phone</label>
+          <input type="tel" id="supplierContactPhone" value={form.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} />
         </div>
 
         <div className="form-group">
-          <label>Email</label>
-          <input type="email" value={form.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} />
+          <label htmlFor="supplierContactEmail">Email</label>
+          <input type="email" id="supplierContactEmail" value={form.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} />
         </div>
 
         <div className="form-group">
-          <label>Address</label>
+          <label htmlFor="supplierAddress">Address</label>
           <textarea
             rows={2}
+            id="supplierAddress"
             value={form.address}
             onChange={(e) => set('address', e.target.value)}
             onBlur={formatOnBlur('address', capitalizeFirst)}
@@ -113,9 +116,10 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
         </div>
 
         <div className="form-group">
-          <label>Notes</label>
+          <label htmlFor="supplierNotes">Notes</label>
           <textarea
             rows={2}
+            id="supplierNotes"
             value={form.notes}
             onChange={(e) => set('notes', e.target.value)}
             onBlur={formatOnBlur('notes', capitalizeFirst)}

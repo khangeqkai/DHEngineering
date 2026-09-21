@@ -1,9 +1,18 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api, SIGNED_OUT_MESSAGES } from '../services/api';
 import { useInactivityTimer } from '../hooks/useInactivityTimer';
 
 const AuthContext = createContext(null);
+
+// The inactivity countdown lives in its own context, separate from the main
+// auth value. It ticks every second for the full 30-second warning, and
+// secondsRemaining has exactly one reader (the warning box, via Layout) — if
+// it sat on the main context, every one of the ~16 places that read that
+// context (the job list, an open job card, ...) would re-render once a
+// second along with it. Splitting it out means only a component that asks
+// for the countdown pays for the tick.
+const InactivityCountdownContext = createContext(0);
 
 const DEFAULT_TIMEOUT_MINUTES = 5;
 const SESSION_POLL_MS = 5000;
@@ -143,41 +152,66 @@ export function AuthProvider({ children }) {
     timeoutMs: inactivityTimeoutMs
   });
 
-  const login = async (username, password, homeAccessCode) => {
+  const login = useCallback(async (username, password, homeAccessCode) => {
     const response = await api.login(username, password, homeAccessCode);
     api.setToken(response.token);
-    
+
     // Fetch full user profile to get preferences
     const fullUser = await api.getMe();
     setUser(fullUser);
-    
+
     await loadInactivityTimeout();
     return fullUser;
-  };
+  }, [loadInactivityTimeout]);
 
-  const updatePreferences = async (preferences) => {
+  const updatePreferences = useCallback(async (preferences) => {
     await api.updatePreferences(preferences);
     setUser(prev => ({ ...prev, ...preferences }));
-  };
+  }, []);
+
+  // Rebuilt only when one of the values it carries actually changes, instead
+  // of on every render — otherwise every consumer of this context (there are
+  // ~16) re-renders whenever anything in the app touches state, including the
+  // once-a-second countdown tick that now lives on its own context instead.
+  // Every function below is stable (useCallback with the right deps) or, for
+  // the two straight from useInactivityTimer, stable for the same reason, so
+  // this list only changes when something a consumer should actually see
+  // fresh changes.
+  const value = useMemo(() => ({
+    user,
+    loading,
+    login,
+    logout,
+    isWarningActive,
+    resetInactivityTimer: resetTimer,
+    handleActivity,
+    refreshInactivityTimeout: loadInactivityTimeout,
+    applyRole,
+    registerBeforeLogout,
+    registerUnsavedWork,
+    getUnsavedWorkLabel,
+    updatePreferences
+  }), [
+    user,
+    loading,
+    login,
+    logout,
+    isWarningActive,
+    resetTimer,
+    handleActivity,
+    loadInactivityTimeout,
+    applyRole,
+    registerBeforeLogout,
+    registerUnsavedWork,
+    getUnsavedWorkLabel,
+    updatePreferences
+  ]);
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      login,
-      logout,
-      isWarningActive,
-      secondsRemaining,
-      resetInactivityTimer: resetTimer,
-      handleActivity,
-      refreshInactivityTimeout: loadInactivityTimeout,
-      applyRole,
-      registerBeforeLogout,
-      registerUnsavedWork,
-      getUnsavedWorkLabel,
-      updatePreferences
-    }}>
-      {children}
+    <AuthContext.Provider value={value}>
+      <InactivityCountdownContext.Provider value={secondsRemaining}>
+        {children}
+      </InactivityCountdownContext.Provider>
     </AuthContext.Provider>
   );
 }
@@ -188,4 +222,11 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+}
+
+// The once-a-second countdown, read only by the inactivity warning box (via
+// Layout). Kept off the main auth value on purpose — see the comment on
+// InactivityCountdownContext above.
+export function useInactivityCountdown() {
+  return useContext(InactivityCountdownContext);
 }

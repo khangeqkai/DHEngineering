@@ -34,6 +34,10 @@ export default function TimeEntryForm({
   // and a screen reader reads the two together.
   const formId = useId();
   const idFor = (name) => `${formId}-${name}`;
+  // Same `${id}-error` shape as useFieldErrors' fieldProps/errorProps, applied here
+  // by hand: groupClass/errorFor arrive as plain functions from the caller's own
+  // hook instance, not the hook object itself, so there's no fieldProps to spread.
+  const errorIdFor = (name) => `${idFor(name)}-error`;
   const handleSave = async () => {
     if (saving) return;
     setSaving(true);
@@ -57,13 +61,20 @@ export default function TimeEntryForm({
 
       <div className={groupClass('workerId')}>
         <label htmlFor={idFor('workerId')}>Worker <span className="required">*</span></label>
-        <select id={idFor('workerId')} name="workerId" value={timeEntryForm.workerId} onChange={handleTimeEntryChange}>
+        <select
+          id={idFor('workerId')}
+          name="workerId"
+          value={timeEntryForm.workerId}
+          onChange={handleTimeEntryChange}
+          aria-invalid={errorFor('workerId') ? true : undefined}
+          aria-describedby={errorFor('workerId') ? errorIdFor('workerId') : undefined}
+        >
           <option value="">Select worker...</option>
           {employees.map(u => (
             <option key={u.id} value={u.id}>{u.name || u.username}</option>
           ))}
         </select>
-        <FieldError message={errorFor('workerId')} />
+        <FieldError id={errorIdFor('workerId')} message={errorFor('workerId')} />
       </div>
 
       <div className="form-row">
@@ -179,13 +190,29 @@ export default function TimeEntryForm({
       <div className="form-row">
         <div className={groupClass('startTime')}>
           <label htmlFor={idFor('startTime')}>Start Time</label>
-          <input id={idFor('startTime')} type="datetime-local" name="startTime" value={timeEntryForm.startTime} onChange={handleTimeEntryChange} />
-          <FieldError message={errorFor('startTime')} />
+          <input
+            id={idFor('startTime')}
+            type="datetime-local"
+            name="startTime"
+            value={timeEntryForm.startTime}
+            onChange={handleTimeEntryChange}
+            aria-invalid={errorFor('startTime') ? true : undefined}
+            aria-describedby={errorFor('startTime') ? errorIdFor('startTime') : undefined}
+          />
+          <FieldError id={errorIdFor('startTime')} message={errorFor('startTime')} />
         </div>
         <div className={groupClass('endTime')}>
           <label htmlFor={idFor('endTime')}>End Time</label>
-          <input id={idFor('endTime')} type="datetime-local" name="endTime" value={timeEntryForm.endTime} onChange={handleTimeEntryChange} />
-          <FieldError message={errorFor('endTime')} />
+          <input
+            id={idFor('endTime')}
+            type="datetime-local"
+            name="endTime"
+            value={timeEntryForm.endTime}
+            onChange={handleTimeEntryChange}
+            aria-invalid={errorFor('endTime') ? true : undefined}
+            aria-describedby={errorFor('endTime') ? errorIdFor('endTime') : undefined}
+          />
+          <FieldError id={errorIdFor('endTime')} message={errorFor('endTime')} />
         </div>
       </div>
 

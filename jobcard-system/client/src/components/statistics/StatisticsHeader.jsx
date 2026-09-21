@@ -122,6 +122,12 @@ export default function StatisticsHeader({
                 id="customRange"
                 value={customStartDate}
                 onChange={(e) => setCustomStartDate(e.target.value)}
+                // One message covers the pair (a bad range, not one bad date), so
+                // both ends point at it — hand-wired, not useFieldErrors'
+                // fieldProps/errorProps, since this error is a single computed prop
+                // from the page above, not a named field in a hook instance here.
+                aria-invalid={customRangeError ? true : undefined}
+                aria-describedby={customRangeError ? 'customRange-error' : undefined}
               />
               <span className="custom-range-separator">to</span>
               <input
@@ -129,12 +135,14 @@ export default function StatisticsHeader({
                 id="customRangeEnd"
                 value={customEndDate}
                 onChange={(e) => setCustomEndDate(e.target.value)}
+                aria-invalid={customRangeError ? true : undefined}
+                aria-describedby={customRangeError ? 'customRange-error' : undefined}
               />
               <button type="submit" className="btn btn-sm btn-primary">
                 Apply
               </button>
             </form>
-            <FieldError message={customRangeError} />
+            <FieldError id="customRange-error" message={customRangeError} />
           </div>
         )}
 

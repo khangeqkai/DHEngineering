@@ -13,6 +13,7 @@ import { formatHistoryValue } from '../utils/formatters';
 import { statusToken, priorityToken, PRIORITY_LABELS } from './JobCardList.constants';
 import { STATUS_OPTIONS, PRIORITY_OPTIONS } from './jobcard/constants';
 import { actionColor, ACTION_NAMES } from '../utils/activityColors';
+import './SearchPage.css';
 
 // Both lists come from the job screen, so every chip can match and every stored value
 // has a chip — adding a status or priority there gives it a search chip for free.
@@ -401,35 +402,35 @@ export default function SearchPage() {
                 </div>
                 <div className="search-group-items">
                   {key === 'jobs' && group.results.map(j => (
-                    <div key={j.id} className="search-preview-item clickable" onClick={() => openJobModal(j.id)}>
+                    <button key={j.id} type="button" className="search-preview-item clickable" onClick={() => openJobModal(j.id)} aria-label={`Open job ${j.jobNumber}`}>
                       <strong>{j.jobNumber}</strong>
                       {canManage && j.companyName && <span className="search-preview-detail"> &middot; {j.companyName}</span>}
                       <StatusBadge status={j.status} />
                       {j.dueDate && <span className="search-preview-meta">Due {fmtDateShort(j.dueDate)}</span>}
-                    </div>
+                    </button>
                   ))}
                   {key === 'contacts' && group.results.map(c => (
-                    <div key={c.id} className="search-preview-item clickable" onClick={() => navigate('/contacts')}>
+                    <button key={c.id} type="button" className="search-preview-item clickable" onClick={() => navigate('/contacts')} aria-label={`Open contact ${c.companyName}`}>
                       <strong>{c.companyName}</strong>
                       {c.contactName && <span className="search-preview-detail"> ({c.contactName})</span>}
                       {c.phone && <span className="search-preview-meta">{c.phone}</span>}
-                    </div>
+                    </button>
                   ))}
                   {key === 'suppliers' && group.results.map(s => (
-                    <div key={s.id} className="search-preview-item clickable" onClick={() => navigate('/suppliers')}>
+                    <button key={s.id} type="button" className="search-preview-item clickable" onClick={() => navigate('/suppliers')} aria-label={`Open supplier ${s.name}`}>
                       <strong>{s.name}</strong>
                       {s.contactName && <span className="search-preview-detail"> ({s.contactName})</span>}
                       {s.contactPhone && <span className="search-preview-meta">{s.contactPhone}</span>}
-                    </div>
+                    </button>
                   ))}
                   {key === 'activity' && group.results.map(a => (
-                    <div key={a.id} className="search-preview-item clickable" onClick={() => navigateActivity(a)}>
+                    <button key={a.id} type="button" className="search-preview-item clickable" onClick={() => navigateActivity(a)} aria-label={`Open activity: ${fmt(a.action)} on ${fmt(a.entityType)}`}>
                       <span className="search-preview-meta">{fmtDate(a.createdAt)}</span>
                       <strong>{a.userName || 'System'}</strong>
                       <ActionBadge action={a.action} />
                       <span>{fmt(a.entityType)}</span>
                       <code className="search-entity-id">{a.entityId}</code>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -466,69 +467,6 @@ export default function SearchPage() {
         initialTab={modalTab}
         onSuccess={refresh}
       />
-
-      <style>{`
-        .search-page { max-width: 1200px; }
-        .search-input-wrapper { position: relative; margin-bottom: 1rem; }
-        .search-input-icon { position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; }
-        .search-input { width: 100%; padding: 0.75rem 2.5rem 0.75rem 2.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--surface); color: var(--text-primary); font-size: 1rem; }
-        .search-input:focus { outline: none; border-color: var(--primary-accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-        .search-input-clear { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.25rem; border-radius: 0.25rem; }
-        .search-input-clear:hover { color: var(--text-primary); background: var(--background); }
-        .search-scope-tabs { display: flex; gap: 0.375rem; margin-bottom: 1rem; flex-wrap: wrap; }
-        .search-scope-tab { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 0.875rem; border: 1px solid var(--border-color); border-radius: 0.375rem; background: var(--surface); color: var(--text-secondary); font-size: 0.8125rem; font-weight: 500; cursor: pointer; transition: all 0.15s; }
-        .search-scope-tab:hover { border-color: var(--primary-accent); color: var(--text-primary); }
-        .search-scope-tab.active { background: var(--primary-accent); color: white; border-color: var(--primary-accent); }
-        .search-all-options { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; padding: 0 0.25rem; }
-        .search-filters { margin-bottom: 1rem; }
-        .search-filters .card-body { padding: 0.75rem 1rem; }
-        .search-filters-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
-        .search-filters-error { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 6px; background: var(--accent-caution-bg, rgba(220, 80, 80, 0.1)); color: var(--accent-caution); font-size: 0.8125rem; }
-        .search-filters-title { display: flex; align-items: center; gap: 0.375rem; font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
-        .search-filter-row { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.5rem; }
-        .search-filter-label { min-width: 5.5rem; padding-top: 0.375rem; font-size: 0.8125rem; font-weight: 500; color: var(--text-secondary); text-align: right; flex-shrink: 0; }
-        .search-filter-control { flex: 1; }
-        .search-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; }
-        .search-chip { padding: 0.25rem 0.625rem; border: 1px solid var(--border-color); border-radius: 1rem; background: var(--surface); color: var(--text-secondary); font-size: 0.75rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-        .search-chip:hover { border-color: var(--primary-accent); color: var(--text-primary); }
-        .search-chip.active { background: var(--primary-accent); color: white; border-color: var(--primary-accent); }
-        .search-select { padding: 0.375rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.375rem; background: var(--surface); color: var(--text-primary); font-size: 0.8125rem; min-width: 10rem; }
-        .search-select-sm { min-width: 6rem; }
-        .search-date-range { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-        .search-date { padding: 0.375rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.375rem; background: var(--surface); color: var(--text-primary); font-size: 0.8125rem; }
-        .search-date-sep { color: var(--text-secondary); font-size: 0.8125rem; }
-        .search-checkbox { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--text-secondary); cursor: pointer; }
-        .search-field-input { padding: 0.375rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.375rem; background: var(--surface); color: var(--text-primary); font-size: 0.8125rem; width: 100%; max-width: 20rem; }
-        .search-loading { text-align: center; padding: 2rem; color: var(--text-secondary); }
-        .search-empty { text-align: center; padding: 3rem 1rem; color: var(--text-secondary); font-size: 0.9375rem; }
-        .search-groups { display: flex; flex-direction: column; gap: 0.75rem; }
-        .search-group-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
-        .search-group-title { font-size: 0.9375rem; font-weight: 600; margin: 0; }
-        .search-group-count { color: var(--text-secondary); font-weight: 400; }
-        .search-group-items { display: flex; flex-direction: column; gap: 0.25rem; }
-        .search-preview-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0; font-size: 0.8125rem; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); }
-        .search-preview-item:last-child { border-bottom: none; }
-        .search-preview-item.clickable { cursor: pointer; }
-        .search-preview-item.clickable:hover { background: var(--background); }
-        .search-preview-detail { color: var(--text-secondary); }
-        .search-preview-meta { color: var(--text-secondary); font-size: 0.75rem; margin-left: auto; }
-        /* Status color comes from the shared .status-* class (text only here) */
-        .search-badge { font-size: 0.75rem; font-weight: 500; background: none; border: none; padding: 0; }
-        .search-entity-id { font-size: 0.6875rem; background: var(--background); padding: 0.0625rem 0.375rem; border-radius: 0.25rem; }
-        .search-changes { margin-top: 0.25rem; }
-        .search-change-line { font-size: 0.6875rem; color: var(--text-secondary); }
-        .search-from { text-decoration: line-through; color: var(--accent-caution); }
-        .search-to { color: var(--accent-ready); }
-        .search-truncate { max-width: 20rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
-        .search-type-badge { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; padding: 0.125rem 0.5rem; border-radius: 1rem; }
-        .search-type-badge.contact { background: rgba(37,99,235,0.1); color: var(--primary-accent); }
-        .search-type-badge.supplier { background: rgba(139,92,246,0.1); color: #8b5cf6; }
-        .search-totals { padding: 0.75rem 1rem; font-size: 0.875rem; color: var(--text-secondary); text-align: right; }
-        .search-pagination { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; }
-        .search-pagination-info { font-size: 0.8125rem; color: var(--text-secondary); }
-        .search-pagination-buttons { display: flex; align-items: center; gap: 0.5rem; }
-        .search-pagination-current { font-size: 0.8125rem; color: var(--text-secondary); }
-      `}</style>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { pushModal, removeModal, isTopModal } from './modalStack';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -99,6 +100,11 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose }) {
     onClose();
   };
 
+  // Target months for the nav buttons' accessible names, so the label says which
+  // month pressing the button moves to rather than just "previous"/"next".
+  const prevTargetMonth = viewMonth === 0 ? 11 : viewMonth - 1;
+  const nextTargetMonth = viewMonth === 11 ? 0 : viewMonth + 1;
+
   const cells = [];
   for (let i = 0; i < firstDay; i++) {
     cells.push(<div key={`empty-${i}`} className="calendar-cell empty" />);
@@ -113,6 +119,9 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose }) {
         type="button"
         className={`calendar-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}`}
         onClick={() => handleSelect(day)}
+        aria-label={`${day} ${MONTHS[viewMonth]} ${viewYear}`}
+        aria-current={isToday ? 'date' : undefined}
+        aria-pressed={isSelected}
       >
         {day}
       </button>
@@ -130,9 +139,23 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose }) {
         aria-label="Date picker"
       >
         <div className="calendar-header">
-          <button type="button" className="calendar-nav" onClick={prevMonth}>&lsaquo;</button>
+          <button
+            type="button"
+            className="calendar-nav"
+            onClick={prevMonth}
+            aria-label={`Previous month, ${MONTHS[prevTargetMonth]}`}
+          >
+            <ChevronLeft size={16} />
+          </button>
           <span className="calendar-title">{MONTHS[viewMonth]} {viewYear}</span>
-          <button type="button" className="calendar-nav" onClick={nextMonth}>&rsaquo;</button>
+          <button
+            type="button"
+            className="calendar-nav"
+            onClick={nextMonth}
+            aria-label={`Next month, ${MONTHS[nextTargetMonth]}`}
+          >
+            <ChevronRight size={16} />
+          </button>
         </div>
         <div className="calendar-grid">
           {DAYS.map(d => (

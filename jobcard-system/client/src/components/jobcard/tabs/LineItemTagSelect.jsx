@@ -60,6 +60,12 @@ export default function LineItemTagSelect({
   }
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  // Same `${id}-error` shape as useFieldErrors' fieldProps/errorProps, wired by hand:
+  // this component owns exactly one field per instance (its `id` prop, already the
+  // part-and-field key from useInstantItems.js's fieldErrorKey), but it only ever
+  // receives the already-computed error string, not a hook instance to draw the
+  // pairing from.
+  const errorId = `${id}-error`;
 
   useEffect(() => {
     if (!open) return;
@@ -127,6 +133,8 @@ export default function LineItemTagSelect({
           onClick={() => setOpen(o => !o)}
           aria-haspopup="listbox"
           aria-expanded={open}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
           title={summary || undefined}
         >
           <span className="lit-select-text">{summary || 'Select…'}</span>
@@ -154,7 +162,7 @@ export default function LineItemTagSelect({
         )}
       </div>
       {warningPill}
-      <FieldError message={error} />
+      <FieldError id={errorId} message={error} />
     </div>
   );
 }

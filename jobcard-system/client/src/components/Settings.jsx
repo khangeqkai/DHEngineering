@@ -6,6 +6,7 @@ import SecurityCard from './settings/SecurityCard';
 import FoldersCard from './settings/FoldersCard';
 import HomeAccessCard from './settings/HomeAccessCard';
 import DataBackupCard from './settings/DataBackupCard';
+import './Settings.css';
 
 export default function Settings() {
   const s = useSettings();
@@ -255,8 +256,9 @@ export default function Settings() {
         <BottomSheet.Body>
           <form id="change-password-form" onSubmit={s.handleChangePassword}>
             <div className="form-group">
-              <label className="form-label">Current PIN</label>
+              <label className="form-label" htmlFor="currentPin">Current PIN</label>
               <input
+                id="currentPin"
                 type="password"
                 inputMode="numeric"
                 maxLength={4}
@@ -268,8 +270,9 @@ export default function Settings() {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">New PIN</label>
+              <label className="form-label" htmlFor="newPin">New PIN</label>
               <input
+                id="newPin"
                 type="password"
                 inputMode="numeric"
                 maxLength={4}
@@ -281,8 +284,9 @@ export default function Settings() {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Confirm New PIN</label>
+              <label className="form-label" htmlFor="confirmPin">Confirm New PIN</label>
               <input
+                id="confirmPin"
                 type="password"
                 inputMode="numeric"
                 maxLength={4}
@@ -373,124 +377,6 @@ export default function Settings() {
           </p>
         </div>
       )}
-
-      <style>{`
-        .settings-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 1.5rem;
-        }
-
-        .full-width {
-          grid-column: 1 / -1;
-        }
-
-        .info-list {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .info-item {
-          display: flex;
-          justify-content: space-between;
-          padding-bottom: 0.75rem;
-          border-bottom: 1px solid var(--border-color);
-        }
-
-        .info-item:last-child {
-          border-bottom: none;
-          padding-bottom: 0;
-        }
-
-        .info-item dt {
-          font-weight: 500;
-          color: var(--text-secondary);
-        }
-
-        .info-item dd {
-          font-weight: 500;
-        }
-
-        .setting-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .backup-export-row {
-          margin-bottom: 1rem;
-        }
-
-        .setting-info {
-          flex: 1;
-        }
-
-        .setting-label {
-          font-weight: 500;
-          margin-bottom: 0.25rem;
-        }
-
-        .setting-description {
-          font-size: 0.875rem;
-          color: var(--text-secondary);
-        }
-
-        .folder-input-group {
-          display: flex;
-          gap: 0.5rem;
-          margin-top: 1rem;
-        }
-
-        .folder-input-group .form-control {
-          flex: 1;
-        }
-
-        .job-number-input-group {
-          display: flex;
-          align-items: flex-end;
-          gap: 0.75rem;
-          margin-top: 1rem;
-        }
-
-        .job-number-input-group .form-label {
-          font-size: 0.8rem;
-          color: var(--text-secondary);
-          margin-bottom: 0.25rem;
-        }
-
-        .timeout-input-group {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          margin-top: 1rem;
-        }
-
-        .timeout-input {
-          width: 80px;
-          text-align: center;
-        }
-
-        .timeout-label {
-          color: var(--text-secondary);
-          font-size: 0.875rem;
-        }
-
-        @media (max-width: 768px) {
-          .settings-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .folder-input-group {
-            flex-direction: column;
-          }
-
-          .job-number-input-group {
-            flex-wrap: wrap;
-          }
-        }
-      `}</style>
     </div>
   );
 }

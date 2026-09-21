@@ -341,6 +341,14 @@ export default function JobIdentityStrip({
                 id="jc-description"
                 type="text"
                 className="jc-strip-description-input"
+                // Hand-wired rather than useFieldErrors' fieldProps/errorProps: this
+                // field's error lives in useJobCardForm.js (outside this component),
+                // which only ever hands the strip the bare message, not a hook
+                // instance to draw the wiring from. Same id-naming shape as the hook
+                // (`${id}-error`) so a field that tabs away and back still gets told
+                // why it failed.
+                aria-invalid={descriptionError ? true : undefined}
+                aria-describedby={descriptionError ? 'jc-description-error' : undefined}
                 value={description}
                 onChange={(e) => {
                   setField('description', e.target.value);
@@ -384,7 +392,7 @@ export default function JobIdentityStrip({
                 {description || '—'}
               </span>
             )}
-            <FieldError message={descriptionError} />
+            <FieldError id="jc-description-error" message={descriptionError} />
           </div>
 
           <div className={statusClass}>

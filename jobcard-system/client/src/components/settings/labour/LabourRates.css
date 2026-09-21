@@ -227,7 +227,9 @@
 }
 
 .holiday-chip-x:hover {
-  color: var(--danger-color, #dc2626);
+  /* Ink, not the saturated fill token — the fill is for shapes, and at this
+     size it doesn't clear contrast as words. */
+  color: var(--danger-ink);
   background: var(--surface);
 }
 
@@ -244,5 +246,17 @@
 }
 
 .icon-btn:hover {
-  color: var(--danger-color, #dc2626);
+  /* Ink, not the saturated fill token — see .holiday-chip-x:hover above. */
+  color: var(--danger-ink);
+}
+
+/* Touch-only: a finger is blunter than a cursor, so the remove-holiday chip
+   and the small icon buttons grow their tappable area to 44px while the drawn
+   artwork keeps its size. Desktop keeps the compact target. */
+@media (max-width: 768px) {
+  .holiday-chip-x,
+  .icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }

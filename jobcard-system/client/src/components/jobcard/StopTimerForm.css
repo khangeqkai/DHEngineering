@@ -471,6 +471,11 @@
   color: var(--text-secondary);
 }
 
+/* Off the canonical 768/1024 grid on purpose: the two scrap cells stay side by
+   side well below the app shell's own 768px phone boundary, and only give up
+   and stack once the row itself is too narrow to hold them — folding this into
+   768px would stack them across the whole tablet width for no reason, and
+   folding it away entirely would cramp both cells on the narrowest phones. */
 @media (max-width: 520px) {
   .stf-scrap-row {
     flex-direction: column;

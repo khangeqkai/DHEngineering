@@ -380,7 +380,9 @@ export function useCosting(jobCardId, {
     } catch (err) {
       setSaveState('error');
       setAutoSavePaused(true);
-      toast.error(err.message || 'Failed to save costing');
+      // Stable id: an unreachable server keeps retrying the auto-save and would
+      // otherwise stack one identical toast per failed attempt.
+      toast.error(err.message || 'Failed to save costing', { id: 'save-costing-failed' });
       return false;
     } finally {
       inFlightSeq.current = null;

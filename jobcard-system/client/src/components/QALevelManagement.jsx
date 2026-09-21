@@ -24,7 +24,7 @@ export default function QALevelManagement() {
   const cancelRenameRef = useRef(false);
   const [uploadingTemplate, setUploadingTemplate] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
-  const { setFieldErrors, clearFieldError, clearAll: clearFieldErrors, groupClass, errorFor } = useFieldErrors();
+  const { setFieldErrors, clearFieldError, clearAll: clearFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors();
 
   const loadData = useCallback(async () => {
     try {
@@ -226,7 +226,7 @@ export default function QALevelManagement() {
                       <input
                         className="qa-level-name-input"
                         type="text"
-                        id="renameName"
+                        {...fieldProps('renameName')}
                         value={editingNameValue}
                         autoFocus
                         onChange={(e) => { clearFieldError('renameName'); setEditingNameValue(e.target.value); }}
@@ -236,17 +236,17 @@ export default function QALevelManagement() {
                           else if (e.key === 'Escape') { e.preventDefault(); cancelRenameRef.current = true; clearFieldError('renameName'); setEditingNameId(null); }
                         }}
                       />
-                      <FieldError message={errorFor('renameName')} />
+                      <FieldError {...errorProps('renameName')} message={errorFor('renameName')} />
                     </div>
                   ) : (
-                    <h3
+                    <h2
                       className="qa-level-name qa-level-name--editable"
                       title="Click to rename"
                       onClick={() => startRename(level)}
                     >
                       {level.name}
                       <Pencil size={14} className="qa-level-name-pencil" />
-                    </h3>
+                    </h2>
                   )}
                   <span className="qa-level-meta">
                     {level.templateCount || 0} template{(level.templateCount || 0) !== 1 ? 's' : ''}
@@ -324,11 +324,15 @@ export default function QALevelManagement() {
         <form onSubmit={handleSubmit}>
           <BottomSheet.Body>
             <div className={groupClass('name')}>
-              <label>Name <span className="required">*</span></label>
+              <label htmlFor="name">Name <span className="required">*</span></label>
               <input
                 type="text"
-                id="name"
+                {...fieldProps('name')}
                 value={formData.name}
+                // A real `required` here would trigger the browser's own validation
+                // bubble on submit, on top of the custom FieldError message below —
+                // aria-required gives the same assistive-tech signal without that.
+                aria-required="true"
                 onChange={(e) => { clearFieldError('name'); setFormData(prev => ({ ...prev, name: e.target.value })); }}
                 onBlur={(e) => {
                   const f = toTitleCase(e.target.value);
@@ -337,7 +341,7 @@ export default function QALevelManagement() {
                 placeholder="e.g. High Risk"
                 className={!formData.name.trim() ? 'field-required' : ''}
               />
-              <FieldError message={errorFor('name')} />
+              <FieldError {...errorProps('name')} message={errorFor('name')} />
             </div>
           </BottomSheet.Body>
 

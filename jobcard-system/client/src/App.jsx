@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import toast, { Toaster, ToastBar } from 'react-hot-toast';
 import { X } from 'lucide-react';
@@ -5,18 +6,24 @@ import { useAuth } from './context/AuthContext';
 import { isManagement } from './utils/roles';
 import Login from './components/Login';
 import JobCardList from './components/JobCardList';
-import UserManagement from './components/UserManagement';
-import ContactManagement from './components/ContactManagement';
-import SupplierManagement from './components/SupplierManagement';
-import ActivityLog from './components/ActivityLog';
-import QALevelManagement from './components/QALevelManagement';
-import TagManagement from './components/TagManagement';
-import LabourRatesSettings from './components/LabourRatesSettings';
-import Settings from './components/Settings';
-import SearchPage from './components/SearchPage';
-import Statistics from './components/Statistics';
 import Layout from './components/Layout';
+import Spinner from './components/common/Spinner';
 import './App.css';
+
+// Everything below is a screen a worker doesn't need before they see their jobs —
+// splitting these out means the sign-in screen and job list download and paint
+// without waiting on statistics, settings, user management, etc. Login and
+// JobCardList stay eager above because they're the common path.
+const UserManagement = lazy(() => import('./components/UserManagement'));
+const ContactManagement = lazy(() => import('./components/ContactManagement'));
+const SupplierManagement = lazy(() => import('./components/SupplierManagement'));
+const ActivityLog = lazy(() => import('./components/ActivityLog'));
+const QALevelManagement = lazy(() => import('./components/QALevelManagement'));
+const TagManagement = lazy(() => import('./components/TagManagement'));
+const LabourRatesSettings = lazy(() => import('./components/LabourRatesSettings'));
+const Settings = lazy(() => import('./components/Settings'));
+const SearchPage = lazy(() => import('./components/SearchPage'));
+const Statistics = lazy(() => import('./components/Statistics'));
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -105,87 +112,89 @@ function App() {
           </ToastBar>
         )}
       </Toaster>
-      <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route
-        path="/"
-        element={
-          <PrivateRoute>
-            <Layout />
-          </PrivateRoute>
-        }
-      >
-        <Route index element={<Navigate to="/jobcards" replace />} />
-        <Route path="search" element={<SearchPage />} />
-        <Route path="jobcards" element={<JobCardList />} />
+      <Suspense fallback={<div className="loading"><Spinner size={24} /></div>}>
+        <Routes>
+        <Route path="/login" element={<Login />} />
         <Route
-          path="statistics"
+          path="/"
           element={
-            <ManagementRoute>
-              <Statistics />
-            </ManagementRoute>
+            <PrivateRoute>
+              <Layout />
+            </PrivateRoute>
           }
-        />
-        <Route
-          path="contacts"
-          element={
-            <ManagementRoute>
-              <ContactManagement />
-            </ManagementRoute>
-          }
-        />
-        <Route
-          path="suppliers"
-          element={
-            <ManagementRoute>
-              <SupplierManagement />
-            </ManagementRoute>
-          }
-        />
-        <Route
-          path="users"
-          element={
-            <ManagementRoute>
-              <UserManagement />
-            </ManagementRoute>
-          }
-        />
-        <Route path="equipment" element={<Navigate to="/tags" replace />} />
-        <Route
-          path="tags"
-          element={
-            <ManagementRoute>
-              <TagManagement />
-            </ManagementRoute>
-          }
-        />
-        <Route
-          path="qa-levels"
-          element={
-            <ManagementRoute>
-              <QALevelManagement />
-            </ManagementRoute>
-          }
-        />
-        <Route
-          path="labour-rates"
-          element={
-            <AdminRoute>
-              <LabourRatesSettings />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="activity"
-          element={
-            <AdminRoute>
-              <ActivityLog />
-            </AdminRoute>
-          }
-        />
-        <Route path="settings" element={<Settings />} />
-      </Route>
-    </Routes>
+        >
+          <Route index element={<Navigate to="/jobcards" replace />} />
+          <Route path="search" element={<SearchPage />} />
+          <Route path="jobcards" element={<JobCardList />} />
+          <Route
+            path="statistics"
+            element={
+              <ManagementRoute>
+                <Statistics />
+              </ManagementRoute>
+            }
+          />
+          <Route
+            path="contacts"
+            element={
+              <ManagementRoute>
+                <ContactManagement />
+              </ManagementRoute>
+            }
+          />
+          <Route
+            path="suppliers"
+            element={
+              <ManagementRoute>
+                <SupplierManagement />
+              </ManagementRoute>
+            }
+          />
+          <Route
+            path="users"
+            element={
+              <ManagementRoute>
+                <UserManagement />
+              </ManagementRoute>
+            }
+          />
+          <Route path="equipment" element={<Navigate to="/tags" replace />} />
+          <Route
+            path="tags"
+            element={
+              <ManagementRoute>
+                <TagManagement />
+              </ManagementRoute>
+            }
+          />
+          <Route
+            path="qa-levels"
+            element={
+              <ManagementRoute>
+                <QALevelManagement />
+              </ManagementRoute>
+            }
+          />
+          <Route
+            path="labour-rates"
+            element={
+              <AdminRoute>
+                <LabourRatesSettings />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="activity"
+            element={
+              <AdminRoute>
+                <ActivityLog />
+              </AdminRoute>
+            }
+          />
+          <Route path="settings" element={<Settings />} />
+        </Route>
+        </Routes>
+      </Suspense>
     </>
   );
 }

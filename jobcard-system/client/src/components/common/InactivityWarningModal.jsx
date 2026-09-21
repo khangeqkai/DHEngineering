@@ -30,6 +30,27 @@ export default function InactivityWarningModal({
   }
   const unsavedWorkLabel = captured.label;
 
+  // The visible number (below) updates every second so a sighted person can
+  // watch it tick down. A screen reader announcing that same change every
+  // second would just be noise for the whole 30-second warning, so the polite
+  // region instead holds this much-less-frequent sentence: once when the
+  // warning first appears, then only at coarse checkpoints (every 10 seconds,
+  // plus a last one at 5) on the way down.
+  const [announcement, setAnnouncement] = useState('');
+  const lastAnnouncedRef = useRef(null);
+  useEffect(() => {
+    if (!isOpen) {
+      lastAnnouncedRef.current = null;
+      return;
+    }
+    const isFirstAppearance = lastAnnouncedRef.current === null;
+    const isCheckpoint = secondsRemaining % 10 === 0 || secondsRemaining === 5;
+    if (isFirstAppearance || (isCheckpoint && lastAnnouncedRef.current !== secondsRemaining)) {
+      lastAnnouncedRef.current = secondsRemaining;
+      setAnnouncement(`You will be logged out due to inactivity in ${secondsRemaining} seconds.`);
+    }
+  }, [isOpen, secondsRemaining]);
+
   // Join the shared modal stack while open. This warning can appear on top of an
   // open job card or edit form (each a dialog that traps Tab/Escape); registering
   // makes it the top-most layer, so the form behind stops grabbing the keyboard —
@@ -88,8 +109,12 @@ export default function InactivityWarningModal({
         </div>
         <h2 id="inactivity-title">Session Timeout Warning</h2>
         <p id="inactivity-description">You will be logged out due to inactivity in:</p>
-        <div className="inactivity-countdown" aria-live="polite">{secondsRemaining}</div>
+        <div className="inactivity-countdown">{secondsRemaining}</div>
         <p className="inactivity-subtext">seconds</p>
+        {/* Announced far less often than the number changes — see the effect
+            above that fills this in. Not in the reading order otherwise, since
+            the visible sentence and number already say the same thing. */}
+        <p className="sr-only" aria-live="polite">{announcement}</p>
         {/* Sits after the count, not inside it: between the sentence and the number it
             split "logged out in: … seconds" into three pieces that no longer read as one
             phrase. Here it lands against the button that prevents the loss it describes.

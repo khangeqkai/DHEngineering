@@ -95,9 +95,18 @@ export default function DataTable({
                 {columns.map((col) => (
                   <th
                     key={col.key}
+                    scope="col"
                     className={`${col.sortable ? 'sortable' : ''} ${getSortClass(col.key)}`}
                     style={columnWidths[col.key] ? { width: columnWidths[col.key] } : undefined}
                     onClick={col.sortable ? () => handleSort(col.key) : undefined}
+                    onKeyDown={col.sortable ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleSort(col.key);
+                      }
+                    } : undefined}
+                    tabIndex={col.sortable ? 0 : undefined}
+                    aria-sort={sortKey === col.key ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined}
                   >
                     <span className="data-table-header-content">
                       {col.label}
@@ -129,6 +138,14 @@ export default function DataTable({
                     key={row.id || rowIndex}
                     className={`${onRowClick ? 'clickable' : ''} ${typeof rowClassName === 'function' ? rowClassName(row) : ''}`}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    onKeyDown={onRowClick ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onRowClick(row);
+                      }
+                    } : undefined}
+                    tabIndex={onRowClick ? 0 : undefined}
+                    role={onRowClick ? 'button' : undefined}
                   >
                     {columns.map((col) => (
                       <td key={col.key}>

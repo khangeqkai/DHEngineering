@@ -413,7 +413,12 @@
   background: rgba(var(--danger-rgb), 0.18);
 }
 
-/* Narrow viewports — keep strip on one row but tighten gaps */
+/* Narrow viewports — keep strip on one row but tighten gaps. Off the canonical
+   768/1024 grid on purpose: the header's job-number/priority/due-date strip
+   runs out of room on its own schedule, well above the 768px app-shell
+   breakpoint, because it's fighting the Files/close buttons for the same
+   row — this is where THAT specific row starts fighting, not where the app
+   shell reflows. */
 @media (max-width: 880px) {
   .jc-identity-strip {
     gap: 0.5rem;
@@ -454,7 +459,9 @@
 
 .tab {
   position: relative;
-  padding: 0.75rem 1.25rem;
+  /* Trimmed from 0.75rem 1.25rem — still comfortably above a 36px tap target once
+     the label's own line-height is added in. */
+  padding: 0.65rem 1.1rem;
   border: none;
   background: transparent;
   color: var(--text-secondary);
@@ -518,7 +525,10 @@
 .modal-form-grid {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  /* Tightened from 1.5rem now that the surrounding zoom no longer buys this back —
+     the gap between sections is the single biggest lever on how much of the job
+     card fits without scrolling. */
+  gap: 1.25rem;
 }
 
 /* Form Section */
@@ -531,13 +541,15 @@
   overflow: visible;
 }
 
+/* Section content gutter, tightened from 1rem — spacing's job now that the zoom
+   that used to buy this back is gone. */
 .form-section > *:not(.form-section-title):not(.form-section-header):not(.line-items-list) {
-  padding-left: 1rem;
-  padding-right: 1rem;
+  padding-left: 0.85rem;
+  padding-right: 0.85rem;
 }
 
 .form-section > *:last-child {
-  padding-bottom: 1rem;
+  padding-bottom: 0.85rem;
 }
 
 /* Section Title */
@@ -545,8 +557,8 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.625rem 1rem;
-  margin: 0 0 0.75rem 0;
+  padding: 0.5rem 1rem;
+  margin: 0 0 0.6rem 0;
   background: var(--surface-inset);
   border-bottom: 1px solid var(--border-color);
   font-size: var(--text-lg);
@@ -579,7 +591,7 @@
   display: flex;
   justify-content: space-between;
   align-items: stretch;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.6rem;
   padding: 0 !important;
 }
 
@@ -749,7 +761,11 @@
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   box-shadow: var(--shadow-lg, 0 8px 32px rgba(0, 0, 0, 0.2));
-  min-width: 360px;
+  /* A fixed min-width overflowed a 320px-wide phone before its own padding was even
+     counted. `.calendar-overlay` centers this with no side gutter, so 100% of it is
+     the full viewport width — the picker keeps its usual 360px on every viewport that
+     has room for it, and only yields below that, instead of forcing a scrollbar. */
+  width: min(360px, 100%);
   outline: none;
 }
 
@@ -850,15 +866,15 @@
 .line-items-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0 1rem 1rem 1rem;
+  gap: 0.4rem;
+  padding: 0 0.85rem 0.85rem 0.85rem;
 }
 
 .line-item-card {
   display: flex;
   align-items: flex-end;
-  gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
+  gap: 0.65rem;
+  padding: 0.5rem 0.65rem;
   background: var(--surface-inset);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -888,7 +904,7 @@
 .line-item-fields {
   display: flex;
   align-items: flex-end;
-  gap: 0.75rem;
+  gap: 0.65rem;
   flex: 1;
   min-width: 0;
   flex-wrap: wrap;
@@ -914,7 +930,7 @@
      attached file name(s) beneath their dropdown, making them taller; bottom-
      aligning would push their dropdowns up out of line with the others. */
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: 0.65rem;
   flex: 1 1 100%;
   min-width: 0;
 }
@@ -1271,8 +1287,10 @@
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 0.75rem;
-  width: 362px;
-  flex-shrink: 0;
+  /* Capped at 100% so this group can't push past the visible edge on a narrow
+     phone screen, where 95vw minus padding leaves less than 362px to work with. */
+  width: min(362px, 100%);
+  flex-shrink: 1;
 }
 
 /* Top-align the attribute row so the per-field "Attach file" pills can hang
@@ -1286,8 +1304,10 @@
 .line-item-treatment {
   display: flex;
   flex-direction: column;
-  width: 362px;
-  flex-shrink: 0;
+  /* Capped at 100% so this column can't push past the visible edge on a narrow
+     phone screen, where 95vw minus padding leaves less than 362px to work with. */
+  width: min(362px, 100%);
+  flex-shrink: 1;
   max-width: 100%;
 }
 
@@ -1497,8 +1517,8 @@
 .lip-summary {
   display: flex;
   align-items: baseline;
-  gap: 0.65rem;
-  padding: 0.5rem 0.7rem 0.5rem 0.85rem;
+  gap: 0.55rem;
+  padding: 0.4rem 0.6rem 0.4rem 0.75rem;
   background: var(--surface-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -1960,15 +1980,15 @@
 .te-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0 1rem 0.75rem 1rem;
+  gap: 0.4rem;
+  padding: 0 0.85rem 0.6rem 0.85rem;
 }
 
 /* Group labels (Active / Completed) */
 .te-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .te-group-label {
@@ -2020,8 +2040,8 @@
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.4rem 0.75rem;
-  padding: 0.4rem 0.75rem;
+  gap: 0.35rem 0.65rem;
+  padding: 0.35rem 0.65rem;
   background: var(--surface-elevated);
   border-bottom: 1px solid var(--border-color);
   border-radius: var(--radius-md) var(--radius-md) 0 0;
@@ -2403,8 +2423,8 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-3) var(--space-4);
-  padding: var(--space-3) var(--space-5);
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
   background: var(--surface-elevated);
   border-bottom: 1px solid var(--border-color);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
@@ -2489,7 +2509,7 @@
 }
 
 .costing-ledger {
-  padding: var(--space-2) var(--space-5);
+  padding: var(--space-1) var(--space-4);
 }
 
 /* ── "What this job used" — the table that folds out under the costing header ──
@@ -2521,8 +2541,12 @@
   border-color: var(--border-color);
 }
 
+/* --primary-color is a fill here, not the text/border accent it is everywhere else in the
+   app — the dark theme redefines it as a PALE grey-blue, so text on top of it must use
+   --text-inverse (which flips to dark navy in the dark theme) rather than a fixed white,
+   or it stays unreadably light-on-light. */
 .costing-info-btn--on {
-  color: var(--text-on-saturated);
+  color: var(--text-inverse);
   background: var(--primary-color);
   border-color: var(--primary-color);
 }
@@ -2533,7 +2557,7 @@
 }
 
 .cost-brief {
-  margin: var(--space-4) var(--space-5) 0;
+  margin: var(--space-3) var(--space-4) 0;
   animation: cost-brief-open var(--duration-normal) var(--ease-mechanical);
 }
 
@@ -2594,7 +2618,7 @@
 }
 
 .cb-table thead th {
-  padding: var(--space-2) var(--space-3);
+  padding: 0.4rem var(--space-3);
   background: var(--surface-elevated);
   border-bottom: 1px solid var(--border-strong);
   font-size: var(--text-2xs);
@@ -2609,7 +2633,7 @@
 .cb-table tbody td,
 .cb-table tfoot th,
 .cb-table tfoot td {
-  padding: 0.35rem var(--space-3);
+  padding: 0.3rem var(--space-3);
   text-align: left;
   vertical-align: top;
 }
@@ -2790,6 +2814,9 @@
   color: var(--badge-pending-text);
 }
 
+/* Off the canonical 768/1024 grid on purpose: this is where the cost ledger's own
+   columns stop fitting, well before the app shell reflows at 768px — the ledger
+   earns its own number because it's reacting to its own table width, not the page. */
 @media (max-width: 700px) {
   /* A part's progress summary wraps here too. It used to have its own breakpoint
      20px above this one, which meant the screen rearranged itself twice within a
@@ -3352,7 +3379,8 @@
   font-weight: var(--font-bold);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wider);
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--text-inverse);
+  opacity: 0.85;
   white-space: nowrap;
 }
 
@@ -3362,11 +3390,14 @@
   font-size: var(--text-xl);
   font-weight: var(--font-bold);
   letter-spacing: var(--tracking-tight);
-  color: var(--text-on-saturated);
+  color: var(--text-inverse);
   white-space: nowrap;
 }
 
-/* Narrow widths: stack each line into two columns, drop the operators */
+/* Narrow widths: stack each line into two columns, drop the operators. Off the
+   canonical 768/1024 grid on purpose, and narrower than the ledger's own 700px
+   above: the tier ladder's rate column is the last thing this sheet can spare,
+   and it can't spare it until the row is already this tight. */
 @media (max-width: 600px) {
   .ledger-line {
     grid-template-columns: 1fr 1fr;
@@ -3426,11 +3457,11 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 0 1rem 1rem 1rem;
+  padding: 0 0.85rem 0.85rem 0.85rem;
 }
 
 .activity-log-entry {
-  padding: 0.75rem 0;
+  padding: 0.6rem 0;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -3474,15 +3505,15 @@
    ============================================= */
 
 .readonly-view .form-section {
-  padding-bottom: 1rem;
+  padding-bottom: 0.85rem;
 }
 
 /* Customer Input — stacked label/value cells laid out in a row */
 .customer-input-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem 2.25rem;
-  padding: 0.85rem 1rem;
+  gap: 0.65rem 2rem;
+  padding: 0.7rem 0.85rem;
   background: var(--surface-elevated, var(--surface));
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -3564,11 +3595,11 @@
 .notes-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .note-card {
-  padding: 0.75rem;
+  padding: 0.65rem;
   background: var(--surface-inset);
   border-radius: var(--radius-sm);
 }
@@ -3611,14 +3642,13 @@
    (the only level used in practice; the picker was removed).
    ============================================= */
 
-/* The job screen renders a shade smaller than the rest of the app. It used to
-   also step the whole weight scale down a notch, but that only worked because
-   the scale named weights the bundled font does not have. With an honest
-   scale there is nothing left to step down to, so the job screen now reads at
-   the same weights as every other screen. */
-/* Named so anything inside can undo the surrounding page's unzoomed spacing exactly —
-   see .modal-tabs, which has to reach edges measured outside this layer. */
+/* The job screen used to render at 90% (`zoom: 0.9`) to buy density, which took the
+   smallest label tokens used inside this layer (11px) down to roughly 10px — this is
+   the screen people look at all day, and text is the one thing that should not shrink
+   to buy space back. The zoom is gone; density is now bought from spacing instead (see
+   the tightened paddings/gaps throughout this file). --jc-zoom stays defined as 1, not
+   removed, because .modal-tabs still divides by it to reach edges measured outside this
+   layer — dividing by 1 is a no-op, so that calc() stays correct with nothing left to undo. */
 .jc-zoom-root {
-  --jc-zoom: 0.9;
-  zoom: var(--jc-zoom);
+  --jc-zoom: 1;
 }

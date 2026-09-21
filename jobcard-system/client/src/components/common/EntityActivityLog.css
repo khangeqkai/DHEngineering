@@ -1,0 +1,148 @@
+/* Styles for the shared per-entity Activity Log bottom sheet — entry list,
+   meta row, field diffs and pagination footer. */
+.eal-modal {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.eal-status {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.eal-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.eal-entry {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.1s ease;
+}
+
+.eal-entry:last-child {
+  border-bottom: none;
+}
+
+.eal-entry:hover {
+  background: var(--surface-inset);
+}
+
+.eal-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.eal-user {
+  font-weight: var(--font-bold);
+  font-size: var(--text-sm);
+}
+
+.eal-action {
+  font-weight: var(--font-bold);
+  text-transform: capitalize;
+  font-size: var(--text-xs);
+}
+
+.eal-target {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: var(--font-regular);
+}
+
+.eal-time {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  margin-left: auto;
+}
+
+.eal-changes {
+  margin-top: 0.375rem;
+  padding-left: 0.75rem;
+  font-size: var(--text-sm);
+}
+
+.eal-change {
+  line-height: 1.6;
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+
+.eal-field {
+  font-weight: var(--font-bold);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  min-width: fit-content;
+}
+
+.eal-field::after {
+  content: ':';
+}
+
+.eal-modified {
+  color: var(--primary-accent);
+  font-style: italic;
+}
+
+.eal-diff {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.eal-from {
+  text-decoration: line-through;
+  color: var(--accent-caution);
+  word-break: break-word;
+}
+
+.eal-arrow {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.eal-to {
+  color: var(--accent-ready);
+  word-break: break-word;
+}
+
+.eal-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 1.25rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--surface-inset);
+  position: sticky;
+  bottom: 0;
+}
+
+.eal-pagination-info {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.eal-pagination-buttons {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.eal-ellipsis {
+  padding: 0 0.25rem;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  user-select: none;
+}

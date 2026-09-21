@@ -28,6 +28,31 @@
   padding: 0;
 }
 
+/* =============================================
+   Responsive breakpoints — the canonical set
+   =============================================
+   This app runs on workshop desktops, tablets and phones on the same LAN, so
+   every stylesheet needs the same two numbers rather than each one guessing
+   its own. There is no build step that turns a custom property into a real
+   `@media` value (no PostCSS, plain CSS only), so these can't live as
+   variables — they're written out at every call site — but every one of
+   them means one of exactly these two widths, and nothing else:
+
+     768px  — phone ↔ small tablet / narrow window. Below it: a phone-width
+              layout (stacked nav, full-width modals, touch-sized hit areas).
+              At and above it: room for a tablet-width layout — the sidebar
+              switches from an overlay to a permanent icon-only rail.
+     1024px — small tablet / narrow window ↔ desktop. At and above it: the
+              sidebar has room to show its full labels, and multi-column
+              layouts get their most spacious arrangement.
+
+   A component that reflows at some other width because ITS content — not
+   the app shell — runs out of room first (a dense table, a ledger, a card
+   that wraps its own fields) is allowed its own breakpoint, but the rule it
+   sits in must say in a comment why that width and not one of the two
+   above. Don't add a third canonical width without updating this comment.
+   ============================================= */
+
 :root {
   /* Tells the browser which palette its own chrome should use — native
      scrollbars, the dropdown arrow, date/time pickers — so they stop
@@ -37,9 +62,13 @@
      browser's default. */
   accent-color: var(--primary-accent);
 
-  /* Typography */
-  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
-  --font-sans: 'Pragmatica', 'Google Sans', 'Google Sans Text', -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Typography — only fonts the machine already has, or the bundled
+     Pragmatica. Nothing here is fetched from a CDN (see index.html), so a
+     webfont name in these stacks would only ever render on a developer's
+     machine that happened to have it installed locally — and look different
+     to every workshop PC. */
+  --font-mono: 'Consolas', 'Menlo', monospace;
+  --font-sans: 'Pragmatica', -apple-system, BlinkMacSystemFont, sans-serif;
 
   /* Font Sizes — slightly refined scale */
   --text-2xs: 0.6875rem;
@@ -169,6 +198,11 @@
   /* Borders — subtle */
   --border-color: #e3e6ee;
   --border-strong: #c7cdd9;
+  /* A dedicated, darker border for data-entry controls — --border-color is
+     only 1.25:1 against the white field/card and is the ONLY thing marking
+     a field's edge, so it fails the 3:1 WCAG 1.4.11 boundary minimum.
+     Verified 3.09:1 against #ffffff. */
+  --border-input: #8b93a3;
   --border-focus: #2563eb;
 
   /* Text on saturated accent backgrounds */
@@ -356,6 +390,9 @@
   /* Borders */
   --border-color: rgba(148, 163, 192, 0.12);
   --border-strong: #2a3f5e;
+  /* Dedicated data-entry border, dark-mode side — verified 3.60:1 against
+     the dark field background --input-bg (#081530). */
+  --border-input: #54709c;
   --border-focus: #3b82f6;
 
   /* Shadows */
@@ -640,6 +677,10 @@ a:hover {
 }
 
 /* Reduced motion */
+/* This is a floor, not the last word: it's a reasonable app-wide default
+   for decorative motion, but anything that's a status signal rather than
+   decoration (the loading spinner) deliberately overrides it with its own
+   !important rule, because that motion is the information, not flourish. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

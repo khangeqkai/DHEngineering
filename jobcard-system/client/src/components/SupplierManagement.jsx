@@ -11,6 +11,7 @@ import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import EntityActivityLog from './common/EntityActivityLog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import './SupplierManagement.css';
 
 export default function SupplierManagement() {
   const [suppliers, setSuppliers] = useState([]);
@@ -453,9 +454,9 @@ export default function SupplierManagement() {
                 label: 'Company Name',
                 sortable: true,
                 render: (val, row) => (
-                  <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(row); }}>
+                  <button type="button" className="row-link-btn" onClick={(e) => { e.stopPropagation(); handleEdit(row); }} aria-label={`Edit supplier ${val}`}>
                     <strong>{val}</strong>
-                  </a>
+                  </button>
                 )
               },
               { key: 'contactName', label: 'Contact', sortable: true },
@@ -525,144 +526,6 @@ export default function SupplierManagement() {
         onClose={() => setShowActivityLog(false)}
         refreshKey={activityRefreshKey}
       />
-
-      <style>{`
-        .show-inactive-label {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.875rem;
-          cursor: pointer;
-        }
-
-        .services-cell {
-          max-width: 300px;
-        }
-
-        .service-tags-selector {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-          padding: 0.5rem;
-          border: 1px solid var(--border-color);
-          border-radius: 4px;
-          background: var(--surface-inset);
-        }
-
-        .tag-chip {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.25rem;
-          padding: 0.375rem 0.75rem;
-          border: 1px solid var(--border-color);
-          border-radius: 16px;
-          background: var(--surface);
-          color: var(--text-primary);
-          font-size: var(--text-sm);
-          cursor: pointer;
-          transition: all 0.15s ease;
-        }
-
-        .tag-chip:hover {
-          border-color: var(--primary-color);
-        }
-
-        .tag-chip.selected {
-          background: var(--primary-color);
-          border-color: var(--primary-color);
-          color: var(--text-inverse);
-        }
-
-        .tag-chip .check-mark {
-          font-size: 0.75rem;
-          margin-left: 0.25rem;
-        }
-
-        .tag-chip-wrapper {
-          position: relative;
-          display: inline-flex;
-        }
-
-        .tag-chip-wrapper .tag-chip {
-          border-radius: 16px;
-        }
-
-        .tag-chip-wrapper.deletable .tag-chip {
-          padding-right: 0.75rem;
-        }
-
-        .tag-delete-btn {
-          display: none;
-          position: absolute;
-          top: -6px;
-          right: -6px;
-          width: 18px;
-          height: 18px;
-          padding: 0;
-          border: 1px solid var(--border-color);
-          border-radius: 50%;
-          background: var(--surface);
-          color: var(--text-secondary);
-          font-size: 14px;
-          line-height: 1;
-          cursor: pointer;
-          align-items: center;
-          justify-content: center;
-          z-index: 1;
-        }
-
-        .tag-delete-btn:hover {
-          background: var(--danger-color);
-          border-color: var(--danger-color);
-          color: var(--text-inverse);
-        }
-
-        .tag-chip-wrapper.deletable:hover .tag-delete-btn {
-          display: inline-flex;
-        }
-
-        .tag-chip.add-custom {
-          border-style: dashed;
-          color: var(--text-secondary);
-        }
-
-        .tag-chip.add-custom:hover {
-          color: var(--primary-color);
-        }
-
-        .custom-tag-input {
-          display: flex;
-          gap: 0.5rem;
-          align-items: center;
-          width: 100%;
-        }
-
-        .custom-tag-input input {
-          flex: 1;
-          min-width: 150px;
-          padding: 0.375rem 0.5rem;
-          border: 1px solid var(--border-color);
-          border-radius: 4px;
-          font-size: var(--text-sm);
-        }
-
-        .service-tags-display {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.25rem;
-        }
-
-        .service-tag-badge {
-          display: inline-block;
-          padding: 0.15rem 0.5rem;
-          background: var(--surface-inset);
-          color: var(--text-secondary);
-          border-radius: 12px;
-          font-size: var(--text-sm);
-          font-weight: 500;
-        }
-
-      `}</style>
 
       <ConfirmDialog
         isOpen={dialogState.isOpen}

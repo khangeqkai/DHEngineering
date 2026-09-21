@@ -48,9 +48,28 @@ export default function useJobCardColumnOrder() {
 
     setColumnOrder(newOrder);
     updatePreferences({ jobcardColumnOrder: newOrder }).catch(() => {
-      toast.error('Failed to save column order preference');
+      toast.error('Failed to save column order preference', { id: 'column-order-failed' });
     });
   };
 
-  return { columnOrder, handleDragStart, handleDragEnd, handleDragOver, handleDrop };
+  // Keyboard/touch equivalent of the drag handlers above: swap a column with
+  // its immediate neighbour in the given direction. Drag-and-drop never fires
+  // on a touch screen and isn't reachable from the keyboard at all, so this
+  // is the only way those users can reorder columns — same persistence call
+  // and the same failure handling as handleDrop.
+  const moveColumn = (colId, direction) => {
+    const idx = columnOrder.indexOf(colId);
+    const targetIdx = idx + (direction === 'earlier' ? -1 : 1);
+    if (idx === -1 || targetIdx < 0 || targetIdx >= columnOrder.length) return;
+
+    const newOrder = [...columnOrder];
+    [newOrder[idx], newOrder[targetIdx]] = [newOrder[targetIdx], newOrder[idx]];
+
+    setColumnOrder(newOrder);
+    updatePreferences({ jobcardColumnOrder: newOrder }).catch(() => {
+      toast.error('Failed to save column order preference', { id: 'column-order-failed' });
+    });
+  };
+
+  return { columnOrder, handleDragStart, handleDragEnd, handleDragOver, handleDrop, moveColumn };
 }

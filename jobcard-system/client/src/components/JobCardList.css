@@ -55,6 +55,22 @@
   color: var(--text-tertiary);
 }
 
+/* One row in the checklist: the show/hide toggle plus the earlier/later
+   reorder buttons beside it — the keyboard/touch way to reorder columns,
+   since dragging a header never fires on a touch screen and isn't reachable
+   from the keyboard at all. */
+.columns-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.columns-menu-row .columns-menu-item {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
 .columns-menu-item {
   display: flex;
   align-items: center;
@@ -73,6 +89,37 @@
 
 .columns-menu-item:hover {
   background: var(--surface-inset);
+}
+
+.columns-menu-move {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 1px;
+}
+
+.columns-menu-move-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.columns-menu-move-btn:hover:not(:disabled) {
+  background: var(--surface-inset);
+  color: var(--text-primary);
+}
+
+.columns-menu-move-btn:disabled {
+  color: var(--text-tertiary);
+  opacity: 0.35;
+  cursor: default;
 }
 
 .columns-menu-check {
@@ -303,6 +350,29 @@
   height: 6px;
   border-radius: 50%;
   background: var(--warning-color);
+}
+
+/* The shared .card-body rule (App.css) already owns this page's vertical
+   scrolling, but it has no horizontal scroll of its own, and the shared
+   .card rule clips anything that spills past its edge — so on a narrow
+   screen every column past the card's border was simply invisible, with no
+   way to reach it. Turn .card-body into a plain flex host and let
+   .jc-table-scroll below do the real scrolling in both directions, the same
+   single-container pattern as .data-table-container in common/DataTable.css.
+   (A second independent vertical scroller nested inside .card-body would
+   otherwise become the sticky header's scrolling ancestor instead of the
+   real one, and the header would stop sticking.) */
+.jobcard-list .card-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.jc-table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Job card list table sizing */
@@ -624,7 +694,9 @@ th.jc-align-center { text-align: center; }
   align-items: center;
   gap: 0.25rem;
   background: transparent;
-  color: var(--success-color, #16a34a);
+  /* Text takes the ink token, not the saturated fill token — the fill is for
+     shapes, not words (it doesn't clear contrast at this size). */
+  color: var(--success-ink);
   border: 1px solid var(--success-color, #16a34a);
   border-radius: var(--radius-md);
   padding: 0.25rem 0.625rem;
@@ -659,7 +731,9 @@ th.jc-align-center { text-align: center; }
 
 .btn-outline-danger:hover {
   background: rgba(239, 68, 68, 0.08);
-  color: var(--danger-color, #ef4444);
+  /* Text takes the ink token, not the saturated fill token — the fill is for
+     shapes, not words (it doesn't clear contrast at this size). */
+  color: var(--danger-ink);
   border-color: var(--danger-color, #ef4444);
   box-shadow: 0 1px 4px rgba(239, 68, 68, 0.2);
 }
@@ -712,5 +786,31 @@ th.jc-align-center { text-align: center; }
   .pagination-buttons {
     flex-wrap: wrap;
     justify-content: center;
+  }
+
+  /* Touch-only: raise the status pill and the worker-avatar button to a 44px
+     minimum hit area. Desktop keeps the tighter 24px target the compact
+     table depends on to stay compact — this only fires under this
+     breakpoint. The drawn artwork (badge text, avatar chip) keeps its own
+     size; only the tappable area around it grows, centered by the flex
+     rules already on these elements. Selectors are qualified with
+     .table-compact so this still wins over that rule's own avatar-shrinking
+     (see `.table.table-compact .avatar-circle` above). */
+  .table-compact .badge-clickable {
+    min-height: 44px;
+  }
+
+  .table-compact .assignee-trigger {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* The reorder buttons exist so a touch user can do what dragging a header
+     never lets them do — so they of all controls have to be reachable by a
+     finger. Same treatment: the chevron keeps its drawn size, the tappable
+     area around it grows. */
+  .columns-menu-move-btn {
+    min-width: 44px;
+    min-height: 44px;
   }
 }

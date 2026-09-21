@@ -12,6 +12,7 @@ import ConfirmDialog from './common/ConfirmDialog';
 import EntityActivityLog from './common/EntityActivityLog';
 import CompanyPeople from './contacts/CompanyPeople';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import './ContactManagement.css';
 
 const blankCompany = () => ({ name: '', address: '', notes: '' });
 
@@ -321,9 +322,9 @@ export default function ContactManagement() {
                 label: 'Company',
                 sortable: true,
                 render: (val, row) => (
-                  <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(row); }}>
+                  <button type="button" className="row-link-btn" onClick={(e) => { e.stopPropagation(); handleEdit(row); }} aria-label={`Edit customer ${val}`}>
                     <strong>{val}</strong>
-                  </a>
+                  </button>
                 )
               },
               {
@@ -378,16 +379,6 @@ export default function ContactManagement() {
         onClose={() => setShowActivityLog(false)}
         refreshKey={activityRefreshKey}
       />
-
-      <style>{`
-        .show-inactive-label {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.875rem;
-          cursor: pointer;
-        }
-      `}</style>
 
       <ConfirmDialog
         isOpen={dialogState.isOpen}

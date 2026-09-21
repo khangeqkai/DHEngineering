@@ -21,9 +21,14 @@ export default function MultiplierInputs({
           onChange={(e) => onChange(e.target.value)}
           min="1"
           step="0.05"
+          // Hand-wired, same `${id}-error` shape as useFieldErrors' fieldProps: this
+          // card gets its error as a bare string prop from Settings.jsx, not a hook
+          // instance, so there's no fieldProps to spread here.
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${key}-error` : undefined}
         />
       </div>
-      <FieldError message={error} />
+      <FieldError id={`${key}-error`} message={error} />
       <span className="setting-description">{hint}</span>
     </div>
   );

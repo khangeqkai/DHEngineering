@@ -1,0 +1,6 @@
+/* Styles for the Contacts/Companies management screen — the archived
+   toggle and the row-opens-modal link button. */
+
+/* Looks exactly like the plain-text table link it replaces (see .table td a
+   in App.css) — it just announces as a button instead of a link that goes nowhere. */
+

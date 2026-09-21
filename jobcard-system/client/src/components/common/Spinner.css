@@ -3,8 +3,15 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* The spinner is a status signal, not decoration — it's the app's only
+     sign that an export or upload is actually running. Reduced motion
+     should slow that signal down, not remove it, so it keeps rotating at
+     a slow, calm pace instead of freezing on a lopsided icon. The
+     app-wide reduced-motion rule (index.css) forces every animation's
+     duration to 0.01ms with !important, so this has to fight it with
+     !important of its own to actually spin. */
   .spinner-icon {
-    animation: none;
+    animation-duration: 2.5s !important;
   }
 }
 

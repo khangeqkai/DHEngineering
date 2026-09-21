@@ -26,12 +26,17 @@ export default function TimezoneCard({ timezone, setTimezone, onSave, saving, er
         </p>
 
         <div className={error ? 'field-error' : undefined}>
+          {/* Hand-wired, same `${id}-error` shape as useFieldErrors' fieldProps: this
+              card gets its error as a bare string prop from Settings.jsx, not a hook
+              instance, so there's no fieldProps to spread onto either box below. */}
           {zones.length > 0 ? (
             <select
               className="form-control"
               id="timezone"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'timezone-error' : undefined}
             >
               {zones.map(z => <option key={z} value={z}>{z}</option>)}
             </select>
@@ -43,9 +48,11 @@ export default function TimezoneCard({ timezone, setTimezone, onSave, saving, er
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
               placeholder="e.g. Australia/Sydney"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'timezone-error' : undefined}
             />
           )}
-          <FieldError message={error} />
+          <FieldError id="timezone-error" message={error} />
         </div>
 
         <div className="sched-save">

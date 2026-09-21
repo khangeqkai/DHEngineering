@@ -1,5 +1,11 @@
 import { useState, useCallback } from 'react';
 
+// The one naming rule an input's aria-describedby and its message's id both have to
+// agree on. Kept as a single module-level function (not duplicated inline in
+// fieldProps/errorProps below) so the two can never drift apart and spell a field's
+// message id two different ways.
+const errorIdFor = (name) => `${name}-error`;
+
 // Shared field-level validation-error state for a form. A submit-time check marks the
 // offending field instead of firing a pop-up (see index.css .field-error /
 // .field-error-message for the styling), and the mark clears the moment the field
@@ -29,7 +35,28 @@ export function useFieldErrors() {
 
   const errorFor = useCallback((name) => fieldErrors[name] || null, [fieldErrors]);
 
-  return { fieldErrors, setFieldErrors, clearFieldError, clearAll, groupClass, errorFor };
+  // The accessibility wiring a field's input needs, built from its name alone. This
+  // exists so a call site can never forget it or spell it differently from its
+  // FieldError's id — that was the actual defect: three forms wired aria-invalid /
+  // aria-describedby by hand and fourteen didn't, and hand-wiring drifts again the
+  // moment the next form is added. id matches what scrollFieldIntoView already
+  // looks up by id (see below); aria-describedby is only ever set while the field
+  // has an error, so it never points at a message element that isn't rendered.
+  const fieldProps = useCallback((name) => {
+    const hasError = Boolean(fieldErrors[name]);
+    return {
+      id: name,
+      'aria-invalid': hasError || undefined,
+      'aria-describedby': hasError ? errorIdFor(name) : undefined,
+    };
+  }, [fieldErrors]);
+
+  // The matching half for the <FieldError> itself — same name in, same errorIdFor
+  // rule, so it can never disagree with what fieldProps just pointed aria-describedby
+  // at. Depends on nothing but the shared naming rule, so it never needs to change.
+  const errorProps = useCallback((name) => ({ id: errorIdFor(name) }), []);
+
+  return { fieldErrors, setFieldErrors, clearFieldError, clearAll, groupClass, errorFor, fieldProps, errorProps };
 }
 
 // Scrolls a field's input into view when a submit-time error has just marked it

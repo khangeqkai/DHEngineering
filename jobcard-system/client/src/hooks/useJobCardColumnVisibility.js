@@ -21,7 +21,7 @@ export default function useJobCardColumnVisibility() {
   const persist = useCallback((next, previous) => {
     setHiddenColumns(next);
     updatePreferences({ jobcardHiddenColumns: next }).catch(() => {
-      toast.error('Failed to save column preference');
+      toast.error('Failed to save column preference', { id: 'column-visibility-failed' });
       setHiddenColumns(previous);
     });
   }, [updatePreferences]);

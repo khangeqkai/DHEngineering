@@ -1,8 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { Suspense, useEffect, useState } from 'react';
+import { useAuth, useInactivityCountdown } from '../context/AuthContext';
 import { isManagement } from '../utils/roles';
 import InactivityWarningModal from './common/InactivityWarningModal';
+import Spinner from './common/Spinner';
 import dhLogo from '../assets/dh-logo.png';
 import {
   ClipboardList,
@@ -27,10 +28,12 @@ export default function Layout() {
     user,
     logout,
     isWarningActive,
-    secondsRemaining,
     resetInactivityTimer,
     handleActivity
   } = useAuth();
+  // On its own context so only this component re-renders on the once-a-second
+  // tick — see the comment on InactivityCountdownContext in AuthContext.jsx.
+  const secondsRemaining = useInactivityCountdown();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('sidebarCollapsed') === 'true';
@@ -105,15 +108,24 @@ export default function Layout() {
           <span className="hamburger-line"></span>
         </button>
         <img src={dhLogo} alt="DH Engineering" className="mobile-logo" />
-        <h1 className="mobile-title">Job Card System</h1>
+        {/* Branding label, not a document heading — each page supplies its own
+            single level-1 heading ("Job Cards", "Customers", ...), and this
+            sits alongside it below the breakpoint where both are visible. */}
+        <p className="mobile-title">Job Card System</p>
       </header>
 
-      {/* Overlay for mobile */}
+      {/* Overlay for mobile. A real button for keyboard parity with the
+          hamburger control that already closes the sidebar — this is an
+          additional way in, not the only one. The button chrome is
+          stripped in App.css beside the scrim's own rules, so it still covers
+          the screen edge-to-edge and looks identical to the old div. */}
       {sidebarOpen && (
-        <div
+        <button
+          type="button"
           className="sidebar-overlay"
           onClick={() => setSidebarOpen(false)}
-        ></div>
+          aria-label="Close menu"
+        ></button>
       )}
 
       <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
@@ -265,7 +277,12 @@ export default function Layout() {
       </aside>
 
       <main className="main-content">
-        <Outlet />
+        {/* The screens under this shell are loaded on demand, so the wait belongs
+            here rather than above the whole app — the sidebar and header stay put
+            while the next screen arrives, instead of the window blanking out. */}
+        <Suspense fallback={<div className="loading"><Spinner size={24} /></div>}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );

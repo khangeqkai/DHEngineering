@@ -65,6 +65,10 @@ export function getJobCardColumns({
         <td
           key="description"
           className="description-cell"
+          // Also carries the full text as a native title, so a keyboard or touch
+          // user (who never fires the hover below) can still get at it — via
+          // assistive tech or a long-press — not just a mouse hover.
+          title={card.description || undefined}
           onMouseEnter={(e) => {
             const el = e.currentTarget;
             // Only float the full text when it's actually cut off by the ellipsis.
@@ -131,6 +135,12 @@ export function getJobCardColumns({
                 type="button"
                 className="assignee-trigger"
                 aria-label={isAssigned ? 'Unassign me from this job' : 'Assign me to this job'}
+                // Full names as a native title too, so a keyboard or touch user
+                // (who never fires the hover names card below) can still see
+                // who's assigned — via a long-press or assistive tech.
+                title={card.assignees?.length
+                  ? card.assignees.map(a => a.userName).filter(Boolean).join(', ')
+                  : undefined}
                 onClick={(e) => {
                   e.stopPropagation();
                   setAssignPopoverId(assignPopoverId === card.id ? null : card.id);

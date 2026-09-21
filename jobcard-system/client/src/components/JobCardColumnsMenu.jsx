@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { Columns3, Check } from 'lucide-react';
+import { Columns3, Check, ChevronUp, ChevronDown } from 'lucide-react';
 
 // "Columns" button + drop-down checklist for choosing which job-list columns show.
 // `columns` is the toggleable set the user is allowed to see (job number excluded);
 // `hiddenColumns` is the ids currently hidden. Toggling and resetting bubble up.
-export default function JobCardColumnsMenu({ columns, hiddenColumns, onToggle, onReset }) {
+// `onMove` reorders a column — the keyboard/touch equivalent of dragging a header,
+// since HTML5 drag-and-drop never fires on a touch screen and isn't reachable
+// from the keyboard at all.
+export default function JobCardColumnsMenu({ columns, hiddenColumns, onToggle, onReset, onMove }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -40,25 +43,48 @@ export default function JobCardColumnsMenu({ columns, hiddenColumns, onToggle, o
       {open && (
         <div className="columns-menu-dropdown" role="menu">
           <div className="columns-menu-title">Show columns</div>
-          {columns.map(col => {
+          {columns.map((col, index) => {
             const visible = !hiddenColumns.includes(col.id);
             return (
-              <button
-                key={col.id}
-                type="button"
-                role="menuitemcheckbox"
-                aria-checked={visible}
-                className="columns-menu-item"
-                onClick={() => onToggle(col.id)}
-              >
-                <span className={`columns-menu-check${visible ? ' is-on' : ''}`}>
-                  {visible && <Check size={14} />}
+              <div key={col.id} className="columns-menu-row" role="none">
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={visible}
+                  className="columns-menu-item"
+                  onClick={() => onToggle(col.id)}
+                >
+                  <span className={`columns-menu-check${visible ? ' is-on' : ''}`}>
+                    {visible && <Check size={14} />}
+                  </span>
+                  {col.label}
+                </button>
+                <span className="columns-menu-move" role="none">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="columns-menu-move-btn"
+                    aria-label={`Move ${col.label} earlier`}
+                    disabled={index === 0}
+                    onClick={() => onMove(col.id, 'earlier')}
+                  >
+                    <ChevronUp size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="columns-menu-move-btn"
+                    aria-label={`Move ${col.label} later`}
+                    disabled={index === columns.length - 1}
+                    onClick={() => onMove(col.id, 'later')}
+                  >
+                    <ChevronDown size={14} />
+                  </button>
                 </span>
-                {col.label}
-              </button>
+              </div>
             );
           })}
-          <button type="button" className="columns-menu-reset" onClick={onReset}>
+          <button type="button" role="menuitem" className="columns-menu-reset" onClick={onReset}>
             Reset to default
           </button>
         </div>

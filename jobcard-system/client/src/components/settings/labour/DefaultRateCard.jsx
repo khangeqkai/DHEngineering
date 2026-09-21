@@ -28,9 +28,14 @@ export default function DefaultRateCard({ defaultRate, setDefaultRate, onSave, s
               onChange={(e) => setDefaultRate(e.target.value)}
               min="0"
               step="0.01"
+              // Hand-wired, same `${id}-error` shape as useFieldErrors' fieldProps:
+              // this card gets its error as a bare string prop from Settings.jsx,
+              // not a hook instance, so there's no fieldProps to spread here.
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'defaultRate-error' : undefined}
             />
           </div>
-          <FieldError message={error} />
+          <FieldError id="defaultRate-error" message={error} />
           <span className="setting-description">Overtime tiers charge this rate times their multiplier.</span>
         </div>
         <div className="sched-save">

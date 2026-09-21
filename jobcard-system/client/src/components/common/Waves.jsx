@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import './Waves.css';
 
 class Grad {
@@ -67,6 +67,39 @@ const Waves = ({
   const mouseRef = useRef({ x: -10, y: 0, lx: 0, ly: 0, sx: 0, sy: 0, v: 0, vs: 0, a: 0, set: false });
   const configRef = useRef({ lineColor, waveSpeedX, waveSpeedY, waveAmpX, waveAmpY, friction, tension, maxCursorMove, xGap, yGap });
   const frameIdRef = useRef(null);
+
+  // This canvas drives its own motion in a requestAnimationFrame loop, so the
+  // app-wide reduced-motion CSS rule can never reach it — it's the one piece
+  // of decorative motion a reduced-motion user has no way to turn off unless
+  // we check the preference ourselves. `staticRender` already exists for
+  // callers that want a single still frame with no animation loop or mouse
+  // listeners, so reduced motion just asks for that same behaviour.
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => {
+    try {
+      return typeof window !== 'undefined' && !!window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    let mql;
+    try {
+      mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    } catch {
+      return undefined;
+    }
+    if (!mql) return undefined;
+    const handleChange = (e) => setPrefersReducedMotion(e.matches);
+    // Older browsers only have the deprecated addListener/removeListener pair.
+    if (mql.addEventListener) mql.addEventListener('change', handleChange);
+    else if (mql.addListener) mql.addListener(handleChange);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', handleChange);
+      else if (mql.removeListener) mql.removeListener(handleChange);
+    };
+  }, []);
 
   useEffect(() => {
     configRef.current = { lineColor, waveSpeedX, waveSpeedY, waveAmpX, waveAmpY, friction, tension, maxCursorMove, xGap, yGap };
@@ -184,7 +217,10 @@ const Waves = ({
     setSize();
     setLines();
 
-    if (staticRender) {
+    // A user who has asked for reduced motion gets the same still-frame
+    // treatment as an explicit staticRender caller — no animation loop, no
+    // mouse listeners.
+    if (staticRender || prefersReducedMotion) {
       const staticTime = Math.random() * 1e6;
       const renderStatic = () => { setSize(); setLines(); movePoints(staticTime); drawLines(); };
       renderStatic();
@@ -197,7 +233,12 @@ const Waves = ({
     const ro = new ResizeObserver(() => { setSize(); setLines(); });
     ro.observe(container);
     window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    // Passive: the handler only reads the touch position to steer the waves, it
+    // never calls preventDefault(), so there's nothing here that needs to block
+    // the browser's scroll. A non-passive listener forces the browser to wait
+    // for this handler to finish before it can scroll — passive lets it scroll
+    // immediately.
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
 
     return () => {
       ro.disconnect();
@@ -205,7 +246,7 @@ const Waves = ({
       window.removeEventListener('touchmove', onTouchMove);
       cancelAnimationFrame(frameIdRef.current);
     };
-  }, [staticRender]);
+  }, [staticRender, prefersReducedMotion]);
 
   return (
     <div

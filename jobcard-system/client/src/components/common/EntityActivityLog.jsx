@@ -5,6 +5,7 @@ import { History } from 'lucide-react';
 import BottomSheet from './BottomSheet';
 import { formatHistoryValue, formatDateTime } from '../../utils/formatters';
 import { actionColor } from '../../utils/activityColors';
+import './EntityActivityLog.css';
 
 const PAGE_SIZE = 50;
 
@@ -107,238 +108,87 @@ export default function EntityActivityLog({ entityType, isOpen, onClose, refresh
   const rangeEnd = Math.min(page * PAGE_SIZE, total);
 
   return (
-    <>
-      <BottomSheet
-        isOpen={isOpen}
-        onClose={onClose}
-        title="Activity Log"
-        size="compact"
-      >
-        <div className="eal-modal">
-          {loading ? (
-            <div className="eal-status">Loading...</div>
-          ) : history.length === 0 ? (
-            <div className="eal-status">No activity recorded.</div>
-          ) : (
-            <>
-              <div className="eal-list">
-                {history.map((entry) => {
-                  const target = formatTarget(entry.snapshot);
-                  return (
-                  <div key={entry.id} className="eal-entry">
-                    <div className="eal-meta">
-                      <span className="eal-user">{entry.userName || 'System'}</span>
-                      {formatAction(entry.action)}
-                      {target && <span className="eal-target">{target}</span>}
-                      <span className="eal-time">{formatDateTime(entry.createdAt)}</span>
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Activity Log"
+      size="compact"
+    >
+      <div className="eal-modal">
+        {loading ? (
+          <div className="eal-status">Loading...</div>
+        ) : history.length === 0 ? (
+          <div className="eal-status">No activity recorded.</div>
+        ) : (
+          <>
+            <div className="eal-list">
+              {history.map((entry) => {
+                const target = formatTarget(entry.snapshot);
+                return (
+                <div key={entry.id} className="eal-entry">
+                  <div className="eal-meta">
+                    <span className="eal-user">{entry.userName || 'System'}</span>
+                    {formatAction(entry.action)}
+                    {target && <span className="eal-target">{target}</span>}
+                    <span className="eal-time">{formatDateTime(entry.createdAt)}</span>
+                  </div>
+                  {entry.changes && (
+                    <div className="eal-changes">
+                      {formatChanges(entry.changes)}
                     </div>
-                    {entry.changes && (
-                      <div className="eal-changes">
-                        {formatChanges(entry.changes)}
-                      </div>
-                    )}
-                  </div>
-                  );
-                })}
-              </div>
-
-              {totalPages > 1 && (
-                <div className="eal-pagination">
-                  <span className="eal-pagination-info">
-                    {rangeStart}&ndash;{rangeEnd} of {total}
-                  </span>
-                  <div className="eal-pagination-buttons">
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      disabled={page <= 1}
-                      onClick={() => handlePageChange(page - 1)}
-                    >
-                      Prev
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((p) => {
-                        if (totalPages <= 7) return true;
-                        if (p === 1 || p === totalPages) return true;
-                        if (Math.abs(p - page) <= 1) return true;
-                        return false;
-                      })
-                      .map((p, idx, arr) => {
-                        const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
-                        return (
-                          <span key={p} style={{ display: 'contents' }}>
-                            {showEllipsis && <span className="eal-ellipsis">&hellip;</span>}
-                            <button
-                              className={`btn btn-sm ${p === page ? 'btn-primary' : 'btn-secondary'}`}
-                              onClick={() => handlePageChange(p)}
-                            >
-                              {p}
-                            </button>
-                          </span>
-                        );
-                      })}
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      disabled={page >= totalPages}
-                      onClick={() => handlePageChange(page + 1)}
-                    >
-                      Next
-                    </button>
-                  </div>
+                  )}
                 </div>
-              )}
-            </>
-          )}
-        </div>
-      </BottomSheet>
+                );
+              })}
+            </div>
 
-      <style>{`
-        .eal-modal {
-          flex: 1;
-          overflow-y: auto;
-          min-height: 0;
-        }
-
-        .eal-status {
-          padding: 3rem 1.5rem;
-          text-align: center;
-          color: var(--text-secondary);
-          font-size: var(--text-sm);
-        }
-
-        .eal-list {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .eal-entry {
-          padding: 0.75rem 1.25rem;
-          border-bottom: 1px solid var(--border-color);
-          transition: background 0.1s ease;
-        }
-
-        .eal-entry:last-child {
-          border-bottom: none;
-        }
-
-        .eal-entry:hover {
-          background: var(--surface-inset);
-        }
-
-        .eal-meta {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-        }
-
-        .eal-user {
-          font-weight: 600;
-          font-size: var(--text-sm);
-        }
-
-        .eal-action {
-          font-weight: 600;
-          text-transform: capitalize;
-          font-size: var(--text-xs);
-        }
-
-        .eal-target {
-          font-size: var(--text-sm);
-          color: var(--text-primary);
-          font-weight: 500;
-        }
-
-        .eal-time {
-          color: var(--text-secondary);
-          font-size: var(--text-xs);
-          margin-left: auto;
-        }
-
-        .eal-changes {
-          margin-top: 0.375rem;
-          padding-left: 0.75rem;
-          font-size: var(--text-sm);
-        }
-
-        .eal-change {
-          line-height: 1.6;
-          display: flex;
-          align-items: baseline;
-          gap: 0.375rem;
-          flex-wrap: wrap;
-        }
-
-        .eal-field {
-          font-weight: 600;
-          color: var(--text-secondary);
-          font-size: var(--text-xs);
-          text-transform: uppercase;
-          letter-spacing: 0.025em;
-          min-width: fit-content;
-        }
-
-        .eal-field::after {
-          content: ':';
-        }
-
-        .eal-modified {
-          color: var(--primary-accent);
-          font-style: italic;
-        }
-
-        .eal-diff {
-          display: inline-flex;
-          align-items: baseline;
-          gap: 0.375rem;
-          flex-wrap: wrap;
-          min-width: 0;
-        }
-
-        .eal-from {
-          text-decoration: line-through;
-          color: var(--accent-caution);
-          word-break: break-word;
-        }
-
-        .eal-arrow {
-          color: var(--text-tertiary);
-          flex-shrink: 0;
-        }
-
-        .eal-to {
-          color: var(--accent-ready);
-          word-break: break-word;
-        }
-
-        .eal-pagination {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0.625rem 1.25rem;
-          border-top: 1px solid var(--border-color);
-          background: var(--surface-inset);
-          position: sticky;
-          bottom: 0;
-        }
-
-        .eal-pagination-info {
-          font-size: var(--text-xs);
-          color: var(--text-secondary);
-        }
-
-        .eal-pagination-buttons {
-          display: flex;
-          gap: 0.25rem;
-          align-items: center;
-        }
-
-        .eal-ellipsis {
-          padding: 0 0.25rem;
-          color: var(--text-tertiary);
-          font-size: var(--text-sm);
-          user-select: none;
-        }
-      `}</style>
-    </>
+            {totalPages > 1 && (
+              <div className="eal-pagination">
+                <span className="eal-pagination-info">
+                  {rangeStart}&ndash;{rangeEnd} of {total}
+                </span>
+                <div className="eal-pagination-buttons">
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    disabled={page <= 1}
+                    onClick={() => handlePageChange(page - 1)}
+                  >
+                    Prev
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => {
+                      if (totalPages <= 7) return true;
+                      if (p === 1 || p === totalPages) return true;
+                      if (Math.abs(p - page) <= 1) return true;
+                      return false;
+                    })
+                    .map((p, idx, arr) => {
+                      const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
+                      return (
+                        <span key={p} style={{ display: 'contents' }}>
+                          {showEllipsis && <span className="eal-ellipsis">&hellip;</span>}
+                          <button
+                            className={`btn btn-sm ${p === page ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => handlePageChange(p)}
+                          >
+                            {p}
+                          </button>
+                        </span>
+                      );
+                    })}
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    disabled={page >= totalPages}
+                    onClick={() => handlePageChange(page + 1)}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </BottomSheet>
   );
 }

@@ -8,6 +8,7 @@ import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { invalidateTagCache } from '../hooks/useTags';
+import './TagManagement.css';
 
 const CATEGORY_INFO = {
   treatment: { label: 'Service', description: 'Service options for parts. Used on job card parts and supplier services.' },
@@ -218,11 +219,11 @@ export default function TagManagement() {
         <BottomSheet.Body>
           <form id="tag-form" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>Category</label>
+              <label htmlFor="tagCategory">Category</label>
               {editingItem ? (
-                <input type="text" value={CATEGORY_INFO[formCategory]?.label} readOnly className="input-disabled" />
+                <input type="text" id="tagCategory" value={CATEGORY_INFO[formCategory]?.label} readOnly className="input-disabled" />
               ) : (
-                <select value={formCategory} onChange={(e) => setFormCategory(e.target.value)}>
+                <select id="tagCategory" value={formCategory} onChange={(e) => setFormCategory(e.target.value)}>
                   {CATEGORIES.map(cat => (
                     <option key={cat} value={cat}>{CATEGORY_INFO[cat].label}</option>
                   ))}
@@ -342,46 +343,6 @@ export default function TagManagement() {
       </div>
 
       <ConfirmDialog isOpen={dialogState.isOpen} title={dialogState.title} message={dialogState.message} confirmLabel={dialogState.confirmLabel} cancelLabel={dialogState.cancelLabel} confirmVariant={dialogState.confirmVariant} onConfirm={handleConfirm} onCancel={handleCancel} />
-
-      <style>{`
-        .tag-category-tabs {
-          display: flex; gap: 0.25rem; margin-bottom: var(--space-4);
-          border-bottom: 2px solid var(--border-color); padding-bottom: 0; overflow-x: auto;
-        }
-        .tag-category-tab {
-          padding: 0.5rem 1rem; border: none; background: transparent; color: var(--text-secondary);
-          font-size: var(--text-sm); font-weight: 500; cursor: pointer;
-          border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; white-space: nowrap;
-        }
-        .tag-category-tab:hover { color: var(--text-primary); }
-        .tag-category-tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
-        .tag-section-desc { margin: 0.25rem 0 0; font-size: var(--text-sm); color: var(--text-secondary); font-weight: 400; }
-        .tag-empty-text { color: var(--text-secondary); font-size: var(--text-sm); margin: 0; }
-        .tag-chips-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-        .tag-chip-card {
-          display: inline-flex; align-items: center; gap: 0.5rem;
-          padding: 0.375rem 0.5rem 0.375rem 0.75rem;
-          border: 1px solid var(--border-color); border-radius: 20px; background: var(--surface); transition: all 0.15s;
-        }
-        .tag-chip-card:hover { border-color: var(--primary-color); box-shadow: 0 0 0 1px var(--primary-color); }
-        .tag-chip-name { font-size: var(--text-sm); font-weight: 500; color: var(--text-primary); white-space: nowrap; }
-        .tag-chip-actions { display: flex; align-items: center; gap: 2px; }
-        .tag-action-btn {
-          display: inline-flex; align-items: center; justify-content: center;
-          width: 22px; height: 22px; border: none; border-radius: 50%;
-          background: transparent; color: var(--text-tertiary); cursor: pointer; transition: all 0.15s; padding: 0;
-        }
-        .tag-action-btn:hover { background: var(--surface-inset); color: var(--text-primary); }
-        .tag-action-btn.danger:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger-color); }
-        .tag-action-btn.restore:hover { background: rgba(34, 197, 94, 0.12); color: var(--success-color); }
-        .show-inactive-label { display: flex; align-items: center; gap: 0.5rem; font-size: var(--text-sm); cursor: pointer; }
-        .tag-chip-card.archived { opacity: 0.65; border-style: dashed; }
-        .tag-archived-badge {
-          margin-left: 0.5rem; padding: 0.05rem 0.4rem; border-radius: 10px;
-          font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.02em;
-          background: var(--surface-inset); color: var(--text-tertiary);
-        }
-      `}</style>
     </div>
   );
 }

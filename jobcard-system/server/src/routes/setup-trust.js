@@ -230,7 +230,7 @@ function buildSetupPage(secureUrl, macFirst = false) {
   * { box-sizing: border-box; }
   body {
     margin: 0; padding: 2rem 1rem;
-    font-family: "Google Sans", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     line-height: 1.55; color: #1c1c1e; background: #f4f5f7;
   }
   @media (prefers-color-scheme: dark) {

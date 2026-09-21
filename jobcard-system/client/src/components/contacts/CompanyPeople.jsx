@@ -37,9 +37,10 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
     <form className="company-person-form" onSubmit={submit}>
       <div className="form-row">
         <div className="form-group">
-          <label>Name</label>
+          <label htmlFor="companyPersonName">Name</label>
           <input
             type="text"
+            id="companyPersonName"
             value={form.contactName}
             onChange={(e) => setForm({ ...form, contactName: e.target.value })}
             onBlur={titleCaseBlur}
@@ -47,12 +48,12 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
           />
         </div>
         <div className="form-group">
-          <label>Phone</label>
-          <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <label htmlFor="companyPersonPhone">Phone</label>
+          <input type="tel" id="companyPersonPhone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
         </div>
         <div className="form-group">
-          <label>Email</label>
-          <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <label htmlFor="companyPersonEmail">Email</label>
+          <input type="email" id="companyPersonEmail" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         </div>
       </div>
       <div className="company-person-actions">
@@ -69,7 +70,10 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
   return (
     <div className="company-people">
       <div className="company-people-head">
-        <h4>Contacts</h4>
+        {/* Was an <h4>, which dropped two levels below the page's own <h1> and
+            lost the section structure for anyone moving by heading. The styling
+            rule in App.css follows it to h2, so the look is unchanged. */}
+        <h2>Contacts</h2>
         {!adding && (
           <button type="button" className="btn btn-secondary btn-sm" onClick={startAdd}>
             <Plus size={14} /> Add person

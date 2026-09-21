@@ -20,61 +20,67 @@ export default function JobCardListTable({
   const today = todayIsoDate();
 
   return (
-    <table className="table table-compact">
-      <thead>
-        <tr>
-          {visibleColumns.map(col => {
-            const sortable = !!SORT_VALUE_GETTERS[col.id];
-            const active = sortable && sortBy === col.id;
+    // The shared `.card` rule clips overflow (for its rounded corners), so the
+    // table needs its own scroll region rather than relying on the card to
+    // grow — see `.jc-table-scroll` in JobCardList.css for the full story.
+    <div className="jc-table-scroll">
+      <table className="table table-compact">
+        <thead>
+          <tr>
+            {visibleColumns.map(col => {
+              const sortable = !!SORT_VALUE_GETTERS[col.id];
+              const active = sortable && sortBy === col.id;
+              return (
+                <th
+                  key={col.id}
+                  scope="col"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, col.id)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, col.id)}
+                  onDrop={(e) => handleDrop(e, col.id)}
+                  onClick={sortable ? () => onSort(col.id) : undefined}
+                  onKeyDown={sortable ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSort(col.id);
+                    }
+                  } : undefined}
+                  tabIndex={sortable ? 0 : undefined}
+                  className={`jc-th${sortable ? ' jc-th-sortable' : ''}${active ? ' jc-th-sorted' : ''}${col.align ? ` jc-align-${col.align}` : ''}`}
+                  title={sortable ? 'Click to sort, drag to reorder' : 'Drag to reorder columns'}
+                  aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
+                >
+                  <span className="jc-th-label">{col.label}</span>
+                  {sortable && (
+                    <span className="jc-sort-icon" aria-hidden="true">
+                      {!active && <ChevronsUpDown size={14} />}
+                      {active && sortDir === 'asc' && <ChevronUp size={14} />}
+                      {active && sortDir === 'desc' && <ChevronDown size={14} />}
+                    </span>
+                  )}
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {paginatedCards.map((card) => {
+            const isOverdue = isJobOverdue(card.dueDate, card.status, today);
+            const isPinnedTimer = card.id === activeTimerJobcardId;
+            const rowClasses = [
+              isOverdue ? 'overdue-row' : '',
+              isPinnedTimer ? 'pinned-timer-row' : ''
+            ].filter(Boolean).join(' ');
+
             return (
-              <th
-                key={col.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, col.id)}
-                onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleDragOver(e, col.id)}
-                onDrop={(e) => handleDrop(e, col.id)}
-                onClick={sortable ? () => onSort(col.id) : undefined}
-                onKeyDown={sortable ? (e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onSort(col.id);
-                  }
-                } : undefined}
-                tabIndex={sortable ? 0 : undefined}
-                className={`jc-th${sortable ? ' jc-th-sortable' : ''}${active ? ' jc-th-sorted' : ''}${col.align ? ` jc-align-${col.align}` : ''}`}
-                title={sortable ? 'Click to sort, drag to reorder' : 'Drag to reorder columns'}
-                aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
-              >
-                <span className="jc-th-label">{col.label}</span>
-                {sortable && (
-                  <span className="jc-sort-icon" aria-hidden="true">
-                    {!active && <ChevronsUpDown size={14} />}
-                    {active && sortDir === 'asc' && <ChevronUp size={14} />}
-                    {active && sortDir === 'desc' && <ChevronDown size={14} />}
-                  </span>
-                )}
-              </th>
+              <tr key={card.id} className={rowClasses}>
+                {visibleColumns.map(col => col.renderCell(card, isOverdue))}
+              </tr>
             );
           })}
-        </tr>
-      </thead>
-      <tbody>
-        {paginatedCards.map((card) => {
-          const isOverdue = isJobOverdue(card.dueDate, card.status, today);
-          const isPinnedTimer = card.id === activeTimerJobcardId;
-          const rowClasses = [
-            isOverdue ? 'overdue-row' : '',
-            isPinnedTimer ? 'pinned-timer-row' : ''
-          ].filter(Boolean).join(' ');
-
-          return (
-            <tr key={card.id} className={rowClasses}>
-              {visibleColumns.map(col => col.renderCell(card, isOverdue))}
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </div>
   );
 }

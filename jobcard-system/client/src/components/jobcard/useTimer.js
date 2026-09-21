@@ -217,7 +217,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
             }
           }
         } catch (innerErr) {
-          toast.error(innerErr.message || 'Failed to switch timer');
+          toast.error(innerErr.message || 'Failed to switch timer', { id: 'switch-timer-failed' });
         }
       } else {
         toast.error(err.message || 'Failed to start timer', { id: 'start-timer-failed' });
@@ -352,7 +352,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
           });
           toast.success(`Timer started on part ${nextDisplayNumber}`);
         } catch (startErr) {
-          toast.error(startErr.message || 'Failed to start new timer');
+          toast.error(startErr.message || 'Failed to start new timer', { id: 'start-new-timer-failed' });
         }
       } else {
         toast.success('Time entry updated');
@@ -360,7 +360,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
 
       if (reloadEntries) await reloadEntries();
     } catch (err) {
-      toast.error(err.message || 'Failed to update time entry');
+      toast.error(err.message || 'Failed to update time entry', { id: 'update-time-entry-failed' });
     } finally {
       setLoading(false);
     }
@@ -398,7 +398,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
       if (reloadEntries) await reloadEntries();
       toast.success('Timer resumed');
     } catch (err) {
-      toast.error(err.message || 'Failed to resume timer');
+      toast.error(err.message || 'Failed to resume timer', { id: 'resume-timer-failed' });
     } finally {
       setLoading(false);
     }

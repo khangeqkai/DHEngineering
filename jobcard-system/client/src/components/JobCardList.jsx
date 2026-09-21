@@ -88,7 +88,7 @@ export default function JobCardList() {
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
   const { warningsById: missingFilesIds, checkedIds: attachmentCheckedIds, ensure: ensureMissingFiles, refresh: refreshMissingFiles } = useMissingFilesIndicator();
 
-  const { columnOrder, handleDragStart, handleDragEnd, handleDragOver, handleDrop } = useJobCardColumnOrder();
+  const { columnOrder, handleDragStart, handleDragEnd, handleDragOver, handleDrop, moveColumn } = useJobCardColumnOrder();
   const { hiddenColumns, toggleColumn, resetColumns } = useJobCardColumnVisibility();
 
   const hasLoadedOnceRef = useRef(false);
@@ -278,7 +278,9 @@ export default function JobCardList() {
         : c
       ));
     } catch (err) {
-      toast.error(err.message || 'Failed to update assignment');
+      // Stable id so a double-tap on the self-assign control replaces the
+      // first failure toast instead of stacking a second one on top of it.
+      toast.error(err.message || 'Failed to update assignment', { id: 'assignment-update-failed' });
     }
   }, [user]);
 
@@ -469,6 +471,7 @@ export default function JobCardList() {
             hiddenColumns={hiddenColumns}
             onToggle={toggleColumn}
             onReset={resetColumns}
+            onMove={moveColumn}
           />
         }
       />

@@ -110,7 +110,7 @@ const icons = {
 export default function EmptyState({
   icon = 'jobcards',
   title = 'No data yet',
-  description = 'Get started by adding your first item.',
+  description = 'Get started by adding your first one.',
   actionLabel,
   onAction,
 }) {

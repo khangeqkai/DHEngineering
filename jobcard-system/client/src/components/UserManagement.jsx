@@ -39,7 +39,7 @@ export default function UserManagement() {
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [showActivityLog, setShowActivityLog] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
-  const { setFieldErrors, clearFieldError, clearAll: clearFieldErrors, groupClass, errorFor } = useFieldErrors();
+  const { setFieldErrors, clearFieldError, clearAll: clearFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors();
   const editingSelf = Boolean(editingUser && editingUser.id === currentUser?.id);
 
   useEffect(() => {
@@ -245,7 +245,7 @@ export default function UserManagement() {
                       type="password"
                       inputMode="numeric"
                       maxLength={4}
-                      id="password"
+                      {...fieldProps('password')}
                       value={formData.password}
                       onChange={(e) => {
                         clearFieldError('password');
@@ -254,7 +254,7 @@ export default function UserManagement() {
                       placeholder="4-digit PIN"
                       required={!editingUser}
                     />
-                    <FieldError message={errorFor('password')} />
+                    <FieldError {...errorProps('password')} message={errorFor('password')} />
                   </>
                 )}
               </div>
@@ -265,7 +265,7 @@ export default function UserManagement() {
                 <label htmlFor="name">Display Name *</label>
                 <input
                   type="text"
-                  id="name"
+                  {...fieldProps('name')}
                   value={formData.name}
                   onChange={(e) => {
                     clearFieldError('name');
@@ -279,7 +279,7 @@ export default function UserManagement() {
                   }}
                   required
                 />
-                <FieldError message={errorFor('name')} />
+                <FieldError {...errorProps('name')} message={errorFor('name')} />
               </div>
 
               <div className="form-group">
@@ -332,9 +332,9 @@ export default function UserManagement() {
                   (row.role === 'admin' && !isAdmin) ? (
                     <strong>{val}</strong>
                   ) : (
-                    <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(row); }}>
+                    <button type="button" className="row-link-btn" onClick={(e) => { e.stopPropagation(); handleEdit(row); }} aria-label={`Edit user ${val}`}>
                       <strong>{val}</strong>
-                    </a>
+                    </button>
                   )
                 )
               },
@@ -412,28 +412,6 @@ export default function UserManagement() {
         onClose={() => setShowActivityLog(false)}
         refreshKey={activityRefreshKey}
       />
-
-      <style>{`
-        .show-inactive-label {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.875rem;
-          cursor: pointer;
-        }
-
-        .form-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1rem;
-        }
-
-        @media (max-width: 768px) {
-          .form-row {
-            grid-template-columns: 1fr;
-          }
-        }
-      `}</style>
 
       <ConfirmDialog
         isOpen={dialogState.isOpen}
