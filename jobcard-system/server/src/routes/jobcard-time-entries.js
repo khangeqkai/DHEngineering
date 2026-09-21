@@ -493,7 +493,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     // log a line change when it actually points at a different line. Named by
     // description, not number — item_number is a sort order the server owns and
     // isn't stable enough to identify a part in the trail (nothing renumbers on
-    // delete, so two jobs' history could both say "item #2" about different parts).
+    // delete, so two jobs' history could both say "part 2" about different parts).
     if (normalizeEmpty(itemId) !== normalizeEmpty(existing.item_id)) {
       const jobItems = jobItemQueries.getByJobcard.all(id);
       const oldItem = jobItems.find(it => it.id === existing.item_id);

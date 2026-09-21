@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Minus, Plus } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { capitalizeFirst, formatTime } from '../../utils/formatters';
 import ToggleTiles from '../common/ToggleTiles';
@@ -128,6 +129,10 @@ export default function StopTimerForm({
       setDisplayNumber(null);
       setIsCritical(false);
       setMachines([]);
+      // Silence here meant a worker got a form with an empty machine list and no
+      // inspection checks on a Critical job, with nothing saying why. The run itself
+      // is already recorded, so this is about the details going on it.
+      toast.error('Could not load this job’s machines and checks. You can still record the time, or close this and stop the timer again.', { id: 'stop-timer-load-failed' });
     }).finally(() => {
       setDataLoading(false);
     });
@@ -144,6 +149,11 @@ export default function StopTimerForm({
     // this form should win), matching how the other dialogs behave.
     if (!isTopModal(modalId)) return;
     if (e.key === 'Escape') {
+      // Deliberately swallowed, not forwarded: the run has already stopped and this
+      // form holds the machine, quantities and checks about to be recorded against
+      // it. Escape here would either close the job card behind (losing all of it) or
+      // put the timer back on the clock without the person meaning to, so the way
+      // out is the form's own buttons.
       e.preventDefault();
       e.stopPropagation();
       return;
@@ -216,7 +226,7 @@ export default function StopTimerForm({
 
   const targetQty = item && parseFloat(item.qty) > 0 ? item.qty : null;
   const partTitle = [
-    displayNumber != null ? `Part #${displayNumber}` : null,
+    displayNumber != null ? `Part ${displayNumber}` : null,
     item?.description
   ].filter(Boolean).join(' — ');
 

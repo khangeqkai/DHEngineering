@@ -13,19 +13,19 @@ export default function HubCameraView({ camera, cameraCategory, savingPhotos, on
           <Camera size={32} />
           <p>{camera.cameraError}</p>
           <div className="hub-camera-error-actions">
-            <button className="btn btn-secondary" onClick={onBack}><ArrowLeft size={16} /> Go back</button>
-            <button className="btn btn-primary" onClick={() => camera.startCamera()}>Try again</button>
+            <button type="button" className="btn btn-secondary" onClick={onBack}><ArrowLeft size={16} /> Go back</button>
+            <button type="button" className="btn btn-primary" onClick={() => camera.startCamera()}>Try again</button>
           </div>
         </div>
       ) : (
         <div className="hub-camera">
           <div className="hub-video-wrap"><video ref={camera.videoRef} autoPlay playsInline className="hub-video" /></div>
           <div className="hub-camera-actions">
-            <button className="btn btn-primary" onClick={camera.capturePhoto} disabled={!camera.cameraReady}>
+            <button type="button" className="btn btn-primary" onClick={camera.capturePhoto} disabled={!camera.cameraReady}>
               <Camera size={16} /> Capture
             </button>
             {camera.photos.length > 0 && (
-              <button className="btn btn-success" onClick={onSave} disabled={savingPhotos}>
+              <button type="button" className="btn btn-success" onClick={onSave} disabled={savingPhotos}>
                 <Check size={16} /> Save {camera.photos.length} to {CATEGORY_LABELS[cameraCategory]}
               </button>
             )}
@@ -35,7 +35,14 @@ export default function HubCameraView({ camera, cameraCategory, savingPhotos, on
               {camera.photos.map(p => (
                 <div key={p.id} className="hub-photo-thumb">
                   <img src={p.data} alt="Captured" />
-                  <button className="hub-photo-remove" onClick={() => camera.removePhoto(p.id)}><X size={14} /></button>
+                  <button
+                    type="button"
+                    className="hub-photo-remove"
+                    onClick={() => camera.removePhoto(p.id)}
+                    aria-label="Discard this photo"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               ))}
             </div>

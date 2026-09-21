@@ -37,6 +37,14 @@ export function useSaveQueue(jobCardId) {
   const jobCardIdRef = useRef(jobCardId);
   jobCardIdRef.current = jobCardId;
 
+  // Which opening of the job window this record belongs to. Bumped by reset, captured by
+  // every write, and checked alongside the job id when the reply comes back — the id on
+  // its own cannot tell a reply meant for the previous opening from one meant for this
+  // one when the SAME job is closed and immediately reopened. That reply used to be
+  // counted as a landing against the fresh opening, which answered an untouched job with
+  // the green frame and "all changes saved".
+  const openingRef = useRef(0);
+
   // key -> { label, state }. A settled-successful key is deleted outright — only
   // something still queued, in flight, or failed has anything to show.
   const [entries, setEntries] = useState({});
@@ -71,6 +79,7 @@ export function useSaveQueue(jobCardId) {
   const enqueue = useCallback((key, run, options = {}) => {
     const label = options.label || key;
     const forJobCardId = jobCardIdRef.current;
+    const forOpening = openingRef.current;
     const prior = chains.current[key];
 
     // Recorded the instant it's asked for, even if it turns out to run right
@@ -86,16 +95,17 @@ export function useSaveQueue(jobCardId) {
       setEntry(key, { label, state: 'inFlight' });
       return run().then(
         (result) => {
-          // A reply for a job the user has since left must not touch this job's
-          // record — every hand-rolled version of this guard is now just this one.
-          if (jobCardIdRef.current === forJobCardId) {
+          // A reply for a job the user has since left — or for an earlier opening of
+          // this same job — must not touch what is on screen now. Every hand-rolled
+          // version of this guard is now just this one.
+          if (jobCardIdRef.current === forJobCardId && openingRef.current === forOpening) {
             setEntry(key, null);
             setLandedCount(n => n + 1);
           }
           return result;
         },
         (err) => {
-          if (jobCardIdRef.current === forJobCardId) {
+          if (jobCardIdRef.current === forJobCardId && openingRef.current === forOpening) {
             setEntry(key, { label, state: 'failed' });
             // Never re-sent automatically — house rule. This only flags the key
             // and waits on the caller to enqueue it again (typically the user
@@ -162,6 +172,9 @@ export function useSaveQueue(jobCardId) {
     setEntries({});
     setLandedCount(0);
     chains.current = {};
+    // Anything already in the air belonged to the opening that just ended — see
+    // openingRef's declaration above.
+    openingRef.current += 1;
   }, []);
 
   return { enqueue, stateOf, isPending, pending, reset, clearFailure, landedCount };

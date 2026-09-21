@@ -18,6 +18,7 @@ export default function NotesSection({
       {/* Add note form */}
       <div className="notes-add">
         <textarea
+          aria-label="Add a comment"
           value={newNote}
           onChange={(e) => setNewNote(e.target.value)}
           onBlur={(e) => {

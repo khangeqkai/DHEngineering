@@ -191,7 +191,7 @@ router.put('/:id', requireManagement, (req, res) => {
       const usage = usageQuery ? usageQuery.get(existing.value) : { count: 0 };
       if (usage.count > 0) {
         return res.status(400).json({
-          error: `Cannot rename: ${usage.count} job line item(s) still use the "${existing.name}" option`
+          error: `Cannot rename: ${usage.count} job part(s) still use the "${existing.name}" option`
         });
       }
     }

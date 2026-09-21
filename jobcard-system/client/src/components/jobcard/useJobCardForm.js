@@ -130,7 +130,7 @@ export function useJobCardForm(jobCardId, { onInstantSave } = {}) {
     if (!loaded) return false;
     return lineItems.some(item => {
       // A still-local row only counts once something has actually been typed
-      // into it — the normal starting state for a fresh "Add Item" row is a
+      // into it — the normal starting state for a fresh "Add Part" row is a
       // blank row, not an edit waiting to be lost. closeReasons.js's own dirty
       // narration uses this exact same check (lineItemHasContent), so the two
       // can never disagree about whether there's really anything here (defect 5

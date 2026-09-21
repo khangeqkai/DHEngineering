@@ -1,8 +1,8 @@
 /**
  * Static reference data for the seed script (Australian DH Engineering).
  *
- * Kept separate from the orchestrator so the main seed file stays under the
- * 600-line limit while the demo data set grows. Ids are assigned by the caller
+ * Kept separate from the orchestrator so the main seed file stays readable as
+ * the demo data set grows. Ids are assigned by the caller
  * (it owns the uid() helper), so each record here is plain data only.
  *
  * Suppliers carry an `offers` list of treatment tag VALUES they provide. The

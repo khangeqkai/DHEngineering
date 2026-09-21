@@ -7,7 +7,7 @@ import { itemFieldMessage, REQUIRED_ITEM_FIELDS, isItemRowComplete } from './fie
 import { useFieldErrors } from '../../hooks/useFieldErrors';
 
 // Noun used in the save queue's label for a field write on a real row — e.g.
-// "line 2's description" — so a queued/failed entry reads the same way the close
+// "part 2's description" — so a queued/failed entry reads the same way the close
 // question already names a required-box mark (closeReasons.js's ITEM_FIELD_NAME).
 const ITEM_FIELD_NOUN = {
   description: 'description',
@@ -21,7 +21,7 @@ const ITEM_FIELD_NOUN = {
 
 // '|' rather than ':' — a persisted row's own id is already "item:<uuid>", so a
 // ':' join would make the two halves ambiguous to split back apart. Exported so
-// closeReasons.js (the close question's "which line, which box" builder) and the
+// closeReasons.js (the close question's "which part, which box" builder) and the
 // field elements' own `id` attributes (for scrollFieldIntoView's "Fix it") can
 // both agree on the same key without a second copy of this format.
 export const fieldErrorKey = (itemId, field) => `${itemId}|${field}`;
@@ -29,7 +29,7 @@ export const fieldErrorKey = (itemId, field) => `${itemId}|${field}`;
 /**
  * Instant save for the parts list on an existing job — the stage-4a companion to
  * useInstantSave.js (details fields) and toggleAssignee (people). A row added by
- * clicking "Add Item" (makeEmptyLineItem, useJobCardForm.js) stays purely local —
+ * clicking "Add Part" (makeEmptyLineItem, useJobCardForm.js) stays purely local —
  * its fields just edit on-screen state, nothing is sent — until every field the
  * server requires (REQUIRED_ITEM_FIELDS / isItemRowComplete, from fieldRules.mjs)
  * is filled in, whichever one that turns out to be. That is the one moment it
@@ -182,7 +182,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     const lineItem = lineIdx !== -1 ? lineItemsRef.current[lineIdx] : null;
     const lineNo = lineItem ? (lineItem.position != null ? lineItem.position : lineIdx + 1) : null;
     const noun = ITEM_FIELD_NOUN[field] || field;
-    const label = lineNo != null ? `line ${lineNo}'s ${noun}` : `that part's ${noun}`;
+    const label = lineNo != null ? `part ${lineNo}'s ${noun}` : `that part's ${noun}`;
     saveQueue.enqueue(`item:${itemId}`, () => api.updateJobItem(forJobCardId, itemId, { [field]: value })
       .then((reply) => {
         if (jobCardIdRef.current !== forJobCardId) return;
@@ -197,7 +197,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
         // never re-sent automatically) — just said plainly, and resolved so
         // the queue doesn't hold this key open as a permanently "failed" write
         // for a row that no longer exists.
-        if (err?.status === 404 && err?.data?.error === 'Item not found') {
+        if (err?.status === 404 && err?.data?.error === 'Part not found') {
           if (jobCardIdRef.current === forJobCardId) {
             toast.error("That part was removed, so the change wasn't saved.", { id: `item-gone-${itemId}` });
           }
@@ -262,10 +262,10 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
           if (jobCardIdRef.current !== forJobCardId) return;
           // Never re-sent automatically — the row stays local, exactly as typed.
           // Completing it again (any required box) is what retries.
-          toast.error(err.message || "Couldn't add that line item", { id: `item-create-${localId}` });
+          toast.error(err.message || "Couldn't add that part", { id: `item-create-${localId}` });
         })
         .finally(() => creatingRef.current.delete(localId));
-    }, { label: 'a new line' });
+    }, { label: 'a new part' });
   }, [saveQueue, applyItemReply, writeItemField]);
 
   // Dropdowns, tags and toggles: called straight from onChange (see ItemsTab.jsx).
@@ -357,7 +357,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     const lineIdx = lineItemsRef.current.findIndex(it => it.id === item.id);
     const lineItem = lineIdx !== -1 ? lineItemsRef.current[lineIdx] : null;
     const lineNo = lineItem ? (lineItem.position != null ? lineItem.position : lineIdx + 1) : null;
-    const label = lineNo != null ? `removing line ${lineNo}` : 'removing that part';
+    const label = lineNo != null ? `removing part ${lineNo}` : 'removing that part';
     saveQueue.enqueue(`item:${item.id}`, () => api.deleteJobItem(forJobCardId, item.id)
       .then((reply) => {
         removingRef.current.delete(item.id);
@@ -381,7 +381,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
         // in the queue (same reasoning as a failed create above). The server's
         // own wording — time logged against it, or the job's last line — is
         // what the user needs to hear, not a paraphrase.
-        toast.error(err.message || "Couldn't remove that line item", { id: `item-remove-${item.id}` });
+        toast.error(err.message || "Couldn't remove that part", { id: `item-remove-${item.id}` });
       }), { label });
   }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, clearFieldError, saveQueue]);
 

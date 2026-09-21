@@ -14,7 +14,7 @@ const {
 } = require('../middleware/validation');
 const { jobcardQueries, jobItemQueries, timeEntryQueries, recordHistory } = require('../db/database');
 const { serializeTreatments, parseTreatments, computeAttachmentWarnings } = require('./jobcard-helpers');
-const { itemSummary } = require('./jobcard-audit-text');
+const { itemSummary, describePart } = require('./jobcard-audit-text');
 const { db } = require('../db/connection');
 
 const router = express.Router();
@@ -31,23 +31,18 @@ const router = express.Router();
 // renumbers the survivors. The position shown on screen is worked out by the
 // client from where a part sits in the ordered list it's given.
 
-// Names a part in a trail entry or a rejection message. A part's number is not
-// stable enough to identify it by (nothing renumbers on delete any more, so two
-// jobs' history could both say "item #2" about entirely different parts) — its
-// description is. `fallback` covers the one case a part has no description yet:
-// it's the very part being added, and the description itself is what's invalid.
-function describePart(description, fallback) {
-  const trimmed = description ? String(description).trim() : '';
-  return trimmed ? `"${trimmed}"` : fallback;
-}
-
 // Run the same seven item validators the bulk save uses, on a one-element array,
 // naming the part in every message by `label` instead of the array's (always-0)
 // position — see the `getItemLabel` param the validators take. existingItems
 // (raw DB rows) grandfathers values already saved elsewhere on the job past a
 // since-archived tag option.
 function validateOneItem(item, existingItems, label) {
-  const getItemLabel = () => label;
+  // Every validator message below OPENS with this name ("... is missing a quantity"),
+  // while the callers also use the same `label` mid-sentence ("Cannot remove ..."), so
+  // the capital belongs here rather than in the label itself. A quoted description
+  // starts with the quote mark and is left exactly as the user typed it.
+  const sentenceLabel = label.charAt(0).toUpperCase() + label.slice(1);
+  const getItemLabel = () => sentenceLabel;
   return (
     validateItemDescriptions([item], getItemLabel) ||
     validateItemQuantities([item], getItemLabel) ||
@@ -98,7 +93,7 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
 
     const existingItems = jobItemQueries.getByJobcard.all(id);
     const item = req.body || {};
-    const label = describePart(item.description, 'The new item');
+    const label = describePart(item.description, 'The new part');
 
     const validationError = validateOneItem(item, existingItems, label);
     if (validationError) {
@@ -126,7 +121,7 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
 
     const summary = itemSummary(item.qty, item.description, item.jobType, item.material, item.treatments, item.drawingsType, item.customerProperty);
     recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, {
-      [`item ${label} added`]: { from: null, to: summary }
+      [`part ${label} added`]: { from: null, to: summary }
     });
 
     const allItems = jobItemQueries.getByJobcard.all(id);
@@ -140,7 +135,7 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
     res.status(201).json({ ...created, item: created, items, attachmentWarnings });
   } catch (err) {
     logger.error({ err }, 'Add job item error');
-    res.status(500).json({ error: 'Failed to add item' });
+    res.status(500).json({ error: 'Could not add the part' });
   }
 });
 
@@ -158,12 +153,12 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
     const existingItems = jobItemQueries.getByJobcard.all(id);
     const stored = existingItems.find(i => i.id === itemId);
     if (!stored) {
-      return res.status(404).json({ error: 'Item not found' });
+      return res.status(404).json({ error: 'Part not found' });
     }
 
     // Names this part by what it was called before this edit — stable even if
     // the edit itself is what's changing (or emptying) the description.
-    const label = describePart(stored.description, `Line item ${stored.id}`);
+    const label = describePart(stored.description, 'that part');
 
     const data = req.body || {};
     const merged = {
@@ -196,7 +191,7 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
 
     if (beforeSummary !== afterSummary) {
       recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, {
-        [`item ${label}`]: { from: beforeSummary, to: afterSummary }
+        [`part ${label}`]: { from: beforeSummary, to: afterSummary }
       });
     }
 
@@ -208,7 +203,7 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
     res.json({ ...updated, item: updated, items, attachmentWarnings });
   } catch (err) {
     logger.error({ err }, 'Update job item error');
-    res.status(500).json({ error: 'Failed to update item' });
+    res.status(500).json({ error: 'Could not update the part' });
   }
 });
 
@@ -225,10 +220,10 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
     const existingItems = jobItemQueries.getByJobcard.all(id);
     const stored = existingItems.find(i => i.id === itemId);
     if (!stored) {
-      return res.status(404).json({ error: 'Item not found' });
+      return res.status(404).json({ error: 'Part not found' });
     }
 
-    const label = describePart(stored.description, `Line item ${stored.id}`);
+    const label = describePart(stored.description, 'that part');
 
     // Block removing a line that already has recorded work. `PUT /jobcards/:id`
     // used to carry the same guard for its own bulk item-delete path; that path
@@ -241,7 +236,7 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
     }
 
     if (existingItems.length <= 1) {
-      return res.status(400).json({ error: 'A job must have at least one line.' });
+      return res.status(400).json({ error: 'A job must have at least one part.' });
     }
 
     const summary = itemSummary(stored.qty, stored.description, stored.job_type, stored.material, stored.treatments, stored.drawings_type, stored.customer_property);
@@ -253,7 +248,7 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
     jobItemQueries.deleteById.run(itemId);
 
     recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, {
-      [`item ${label} removed`]: { from: summary, to: null }
+      [`part ${label} removed`]: { from: summary, to: null }
     });
 
     const items = formatItems(jobItemQueries.getByJobcard.all(id));
@@ -262,7 +257,7 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
     res.json({ success: true, items, attachmentWarnings });
   } catch (err) {
     logger.error({ err }, 'Delete job item error');
-    res.status(500).json({ error: 'Failed to delete item' });
+    res.status(500).json({ error: 'Could not remove the part' });
   }
 });
 

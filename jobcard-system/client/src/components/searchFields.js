@@ -38,7 +38,7 @@ export const ACTIVITY_FIELDS = [
   { value: 'grandTotal', label: 'Grand Total' },
   { value: 'timer', label: 'Timer' },
   { value: 'timeEntryId', label: 'Time Entry ID' },
-  { value: 'itemNumber', label: 'Item Number' },
+  { value: 'itemNumber', label: 'Part Number' },
   { value: 'machineNumber', label: 'Machine Number' },
   { value: 'qty', label: 'Quantity' },
   { value: 'startTime', label: 'Start Time' },

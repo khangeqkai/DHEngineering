@@ -17,7 +17,7 @@ const {
 } = require('../db/database');
 const { formatJobcard, buildChanges, createRelatedRecords, buildQaFillData, computeAttachmentWarnings } = require('./jobcard-helpers');
 const { copyQaTemplatesForJob, verifyQaTemplatesAvailable } = require('../utils/qaTemplateProvisioning');
-const { itemSummary, assigneeNames, buildQaTemplateWarning } = require('./jobcard-audit-text');
+const { itemSummary, describePart, assigneeNames, buildQaTemplateWarning } = require('./jobcard-audit-text');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
 const { db } = require('../db/connection');
@@ -188,12 +188,19 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
         priority: { from: null, to: data.priority || 'NONE' },
         qualityLevel: { from: null, to: qualityLevelName || null }
       };
-      // Record the line items the job started with, matching the per-item
-      // detail kept for later edits, so the original contents are recoverable.
+      // Record the parts the job started with, matching the per-part detail kept
+      // for later edits, so the original contents are recoverable. Named by
+      // description, exactly the way every later edit names a part (describePart) —
+      // otherwise one job's trail opens with numbered parts and then switches to
+      // named ones for the rest of its life.
       if (Array.isArray(data.items)) {
         data.items.forEach((i, idx) => {
-          const num = i.itemNumber || idx + 1;
-          createChanges[`item #${num} added`] = {
+          // Two parts on one job can carry the same description, and every part the
+          // job started with shares this ONE trail entry, so a repeat would overwrite
+          // the first. A repeat takes its position as well, which is unique here.
+          const label = describePart(i.description, String(i.itemNumber || idx + 1));
+          const base = `part ${label} added`;
+          createChanges[base in createChanges ? `part ${idx + 1} ${label} added` : base] = {
             from: null,
             to: itemSummary(i.qty, i.description, i.jobType, i.material, i.treatments, i.drawingsType, i.customerProperty)
           };

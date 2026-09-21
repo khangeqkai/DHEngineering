@@ -1,9 +1,5 @@
 import { AlertTriangle } from 'lucide-react';
-
-function formatNum(n) {
-  if (!Number.isFinite(n)) return '0';
-  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
-}
+import { formatCount } from '../../../utils/formatters';
 
 // Scrap count for a log entry — always shown (including "0 scrap"). Scrap is split
 // into binned and recycled pieces; the inline number is the combined total, with the
@@ -20,13 +16,13 @@ export default function ScrapStat({ bin, recycle, good }) {
       className="scrap-stat"
       title={s <= 0
         ? 'No pieces scrapped'
-        : `${formatNum(s)} scrapped of ${formatNum(run)} run — ${formatNum(b)} binned, ${formatNum(r)} recycled (${formatNum(g)} good)`}
+        : `${formatCount(s)} scrapped of ${formatCount(run)} run — ${formatCount(b)} binned, ${formatCount(r)} recycled (${formatCount(g)} good)`}
     >
       <span className="scrap-stat-glyph" aria-hidden="true"><AlertTriangle size={14} /></span>
-      <span className="scrap-stat-num">{formatNum(s)}</span>
+      <span className="scrap-stat-num">{formatCount(s)}</span>
       <span className="scrap-stat-unit">scrap</span>
       {s > 0 && (
-        <span className="scrap-stat-split">({formatNum(b)} bin · {formatNum(r)} recycle)</span>
+        <span className="scrap-stat-split">({formatCount(b)} bin · {formatCount(r)} recycle)</span>
       )}
     </span>
   );

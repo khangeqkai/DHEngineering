@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import BottomSheet from '../common/BottomSheet';
+import Spinner from '../common/Spinner';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -93,31 +94,51 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     }
   }, []);
 
-  // Load reference data on mount
-  useEffect(() => {
-    const loadReferenceData = async () => {
-      try {
-        const [suppliersRes, usersRes, machinesRes, qaLevelsRes] = await Promise.all([
-          // Include archived suppliers: the pickers filter to active themselves, but a job
-          // that already chose a since-archived supplier needs it here to show it "(retired)".
-          api.getSuppliers(true),
-          api.getEmployees(),
-          api.getMachines(),
-          api.getQaLevels()
-        ]);
-        setSuppliers(suppliersRes || []);
-        setQaLevels(qaLevelsRes || []);
-        const activeEmployees = (usersRes || [])
-          .filter(u => u.active === 1 || u.active === true)
-          .sort((a, b) => (a.name || a.username || '').localeCompare(b.name || b.username || ''));
-        setEmployees(activeEmployees);
-        setMachines(machinesRes || []);
-      } catch (err) {
-        toast.error('Failed to load reference data');
-      }
-    };
-    loadReferenceData();
+  // The lists every picker on this screen draws from. Loaded once, because this
+  // component stays mounted behind the list rather than unmounting on close.
+  const [referenceLoadFailed, setReferenceLoadFailed] = useState(false);
+  const loadReferenceData = useCallback(async () => {
+    try {
+      const [suppliersRes, usersRes, machinesRes, qaLevelsRes] = await Promise.all([
+        // Include archived suppliers: the pickers filter to active themselves, but a job
+        // that already chose a since-archived supplier needs it here to show it "(retired)".
+        api.getSuppliers(true),
+        api.getEmployees(),
+        api.getMachines(),
+        api.getQaLevels()
+      ]);
+      setSuppliers(suppliersRes || []);
+      setQaLevels(qaLevelsRes || []);
+      const activeEmployees = (usersRes || [])
+        .filter(u => u.active === 1 || u.active === true)
+        .sort((a, b) => (a.name || a.username || '').localeCompare(b.name || b.username || ''));
+      setEmployees(activeEmployees);
+      setMachines(machinesRes || []);
+      setReferenceLoadFailed(false);
+    } catch (err) {
+      // Every picker on this screen — suppliers, workers, machines, quality levels —
+      // is empty until this lands, which on its own just looks like an app with
+      // nothing in it. Say what is missing, and say what gets it back.
+      setReferenceLoadFailed(true);
+      toast.error('Could not load the suppliers, workers, machines and quality levels. Close this job card and open it again to retry.', { id: 'jobcard-reference-load-failed' });
+    }
   }, []);
+
+  useEffect(() => {
+    loadReferenceData();
+  }, [loadReferenceData]);
+
+  // ...and that reopen really does retry: this component stays mounted while the job
+  // list is up, so without this the first failure left every picker empty for the rest
+  // of the session with no way back. Only the moment of opening retries — a failure
+  // while the window is already up must not re-fire on its own state change.
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    const justOpened = isOpen && !wasOpenRef.current;
+    wasOpenRef.current = isOpen;
+    if (justOpened && referenceLoadFailed) loadReferenceData();
+  }, [isOpen, referenceLoadFailed, loadReferenceData]);
+
   const { setFormDataFromJobCard, setFormData, resetForm: resetFormHook } = formHook;
   const { setContactFromJobCard, resetContact } = contactHook;
   const { loadHistory, resetHistory } = activityLog;
@@ -209,7 +230,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const { creditAssignee, dropAssignee } = formHook;
   // Starting/stopping a timer, the stop-timer form and the manual add/edit form —
   // pulled into its own hook (useJobCardTimerActions.js) purely to keep this file
-  // under the 600-line limit; every dependency here is something this component
+  // from growing further; every dependency here is something this component
   // already holds.
   const {
     apiTimeEntryOperations,
@@ -427,7 +448,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         }
       >
         {loading ? (
-          <div className="loading" style={{ padding: '2rem' }}>Loading...</div>
+          /* The shared .loading class is a full-page one (it reserves a whole
+             viewport), so inside the window it opened a screen-tall empty gap with
+             a word adrift in it. This fills the window's own body instead, with the
+             one spinner the rest of the app uses. */
+          <div className="jc-modal-loading" role="status">
+            <Spinner size={28} />
+            <span>Opening this job card…</span>
+          </div>
         ) : (
           <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT' && e.target.type !== 'submit') e.preventDefault(); }} style={{ display: 'contents' }}>
             <BottomSheet.Body>
@@ -438,12 +466,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                     Details
                     {jobNotes.notes.length > 0 && <span className="tab-badge">{jobNotes.notes.length}</span>}
                   </button>
-                  {isAdmin && (
-                    <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>
-                  )}
-                  {isAdmin && (
-                    <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>
-                  )}
+                  {/* The bar itself is already admin-only (money and the trail both
+                      are), so these two don't re-ask the same question. */}
+                  <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>
+                  <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>
                 </div>
               )}
 
@@ -544,6 +570,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 <ActivityLogTab
                   history={activityLog.history}
                   loading={activityLog.loadingHistory}
+                  failed={activityLog.historyFailed}
                   onRefresh={loadHistory}
                 />
               )}

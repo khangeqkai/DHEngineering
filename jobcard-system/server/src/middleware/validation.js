@@ -432,13 +432,13 @@ function buildGrandfatheredPairs(existingItems) {
 
 // Every list-item validator names the item it's complaining about with this
 // helper. The default (used by the bulk create/update routes, which validate a
-// real array in on-screen order) is positional — "Item #3" genuinely is the
+// real array in on-screen order) is positional — "Part 3" genuinely is the
 // third row. A caller validating a single part against a one-element array
 // (jobcard-items.js) passes its own `getItemLabel` that ignores the index and
 // names the part by its description instead, since position 0 in a one-element
 // array tells the user nothing about which of their parts failed.
 function defaultItemLabel(item, i) {
-  return `Item #${i + 1}`;
+  return `Part ${i + 1}`;
 }
 
 function validateItemTreatments(items, existingItems, getItemLabel = defaultItemLabel) {

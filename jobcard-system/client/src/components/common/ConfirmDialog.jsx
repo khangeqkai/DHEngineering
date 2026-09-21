@@ -78,6 +78,7 @@ export default function ConfirmDialog({
         <p id="confirm-dialog-message">{message}</p>
         <div className="confirm-dialog-buttons">
           <button
+            type="button"
             ref={cancelButtonRef}
             className="btn btn-secondary"
             onClick={onCancel}
@@ -86,6 +87,7 @@ export default function ConfirmDialog({
           </button>
           {altLabel && (
             <button
+              type="button"
               ref={altButtonRef}
               className="btn btn-secondary"
               onClick={onAlt}
@@ -94,6 +96,7 @@ export default function ConfirmDialog({
             </button>
           )}
           <button
+            type="button"
             ref={confirmButtonRef}
             className={confirmButtonClass}
             onClick={onConfirm}

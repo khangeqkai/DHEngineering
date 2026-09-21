@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Play, Square, ChevronDown } from 'lucide-react';
+import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import { workBelongsToItem } from './workMatch.mjs';
 
 function formatElapsed(seconds) {
@@ -24,20 +25,34 @@ export default function LineItemTimerButton({
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const pickerId = useId();
 
   useEffect(() => {
     if (!open) return;
+    // Join the shared modal stack while this picker is open, the same way the
+    // priority menu does. Without it, Escape reached the job card underneath and
+    // closed the whole window when all the user meant to dismiss was this small
+    // list of workers.
+    pushModal(pickerId);
     const onDocClick = (e) => {
       if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
     };
-    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    const onKey = (e) => {
+      if (!isTopModal(pickerId)) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
     document.addEventListener('mousedown', onDocClick);
     document.addEventListener('keydown', onKey);
     return () => {
+      removeModal(pickerId);
       document.removeEventListener('mousedown', onDocClick);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, pickerId]);
 
   // The Stop button sticks to the part the timer was actually started on, even
   // after a save renumbers the parts (the timer's remembered number goes stale
@@ -51,7 +66,7 @@ export default function LineItemTimerButton({
         className="lit-btn lit-btn-stop"
         onClick={onStop}
         disabled={loading}
-        title="Stop timer for this item"
+        title="Stop timer for this part"
       >
         <Square size={14} /> Stop ({formatElapsed(elapsed)})
       </button>
@@ -68,7 +83,7 @@ export default function LineItemTimerButton({
         className="lit-btn lit-btn-start"
         onClick={() => onStart(itemId, displayNumber)}
         disabled={loading}
-        title="Start timer for this item"
+        title="Start timer for this part"
       >
         <Play size={14} /> Start Timer
       </button>
@@ -94,7 +109,7 @@ export default function LineItemTimerButton({
         disabled={loading}
         aria-haspopup="listbox"
         aria-expanded={open}
-        title="Start timer for this item"
+        title="Start timer for this part"
       >
         <Play size={14} /> Start Timer <ChevronDown size={14} />
       </button>

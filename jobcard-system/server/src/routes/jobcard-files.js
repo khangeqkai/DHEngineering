@@ -337,7 +337,7 @@ const validateUploadBody = [
   body('itemId')
     .optional({ nullable: true })
     .isString().bail()
-    .matches(/^item:[A-Za-z0-9:-]+$/).withMessage('itemId must be a valid item reference'),
+    .matches(/^item:[A-Za-z0-9:-]+$/).withMessage('itemId must be a valid part reference'),
   handleValidationErrors
 ];
 
@@ -464,7 +464,7 @@ const validateAssignBody = [
   body('itemId')
     .optional({ nullable: true })
     .isString().bail()
-    .matches(/^item:[A-Za-z0-9:-]+$/).withMessage('itemId must be a valid item reference'),
+    .matches(/^item:[A-Za-z0-9:-]+$/).withMessage('itemId must be a valid part reference'),
   handleValidationErrors
 ];
 

@@ -43,8 +43,8 @@ export const JOB_FIELD_LABEL = {
 const JOB_INSTANT_FIELDS = Object.keys(JOB_FIELD_LABEL);
 
 // title/phrase pairs for a part's own required box: title is the exact wording
-// the spec's examples use ("Line 2 needs a description"), phrase is the lower-case
-// noun used when folding this into a longer sentence ("line 2's description").
+// the spec's examples use ("Part 2 needs a description"), phrase is the lower-case
+// noun used when folding this into a longer sentence ("part 2's description").
 const ITEM_FIELD_NAME = {
   description: { article: 'a description', noun: 'description' },
   qty: { article: 'a quantity', noun: 'quantity' },
@@ -54,7 +54,7 @@ const ITEM_FIELD_NAME = {
 };
 
 // A row nobody has typed anything into yet — the normal starting state for a
-// fresh "Add Item" row, not work that would be lost by closing. Exported so
+// fresh "Add Part" row, not work that would be lost by closing. Exported so
 // useJobCardForm.js's own dirty check agrees with this one exactly (defect 5 —
 // see the comment on itemsDirty there for why the two must never disagree).
 export function lineItemHasContent(item) {
@@ -123,8 +123,8 @@ export function buildCloseReasons({
     const names = ITEM_FIELD_NAME[field];
     safe.push({
       key,
-      title: names ? `Line ${lineNo} needs ${names.article}` : message,
-      phrase: names ? `line ${lineNo}'s ${names.noun}` : `line ${lineNo}`
+      title: names ? `Part ${lineNo} needs ${names.article}` : message,
+      phrase: names ? `part ${lineNo}'s ${names.noun}` : `part ${lineNo}`
     });
   }
 
@@ -152,7 +152,7 @@ export function buildCloseReasons({
       // A/B) and named below with the rest of the queue — naming it again here
       // would just repeat the same row twice.
       if (lineItemHasContent(item) && !pendingKeys.has(`item:${item.id}`)) {
-        atRisk.push({ text: `line ${lineNo}`, verb: "hasn't been saved" });
+        atRisk.push({ text: `part ${lineNo}`, verb: "hasn't been saved" });
       }
       return;
     }
@@ -163,7 +163,7 @@ export function buildCloseReasons({
     // entry can't cover, since the write hasn't been asked for yet).
     const rowHasActiveWrite = pendingKeys.has(`item:${item.id}`);
     if (!rowHasActiveWrite && itemHasUnexplainedMismatch(item, savedItemFields, itemFieldErrors || {})) {
-      atRisk.push({ text: `line ${lineNo}`, verb: "hasn't been saved" });
+      atRisk.push({ text: `part ${lineNo}`, verb: "hasn't been saved" });
     }
   });
 

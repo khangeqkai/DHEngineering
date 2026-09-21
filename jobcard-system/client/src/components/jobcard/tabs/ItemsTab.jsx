@@ -86,7 +86,7 @@ export default function ItemsTab({
   // read-only employee view never edits a field, so it never has one to check).
   const fieldError = (item, field) => itemErrorFor?.(item.id, field) || null;
 
-  // The add/edit time-entry form renders at the top of the Line Items section, but its
+  // The add/edit time-entry form renders at the top of the Parts section, but its
   // Edit buttons live down inside each line item's expanded list — so opening it can drop
   // the form above the current scroll position, out of sight. Bring it into view when it opens.
   const timeEntryFormRef = useRef(null);
@@ -116,10 +116,10 @@ export default function ItemsTab({
     <div className="modal-form-grid">
       <div className="form-section">
         <div className="form-section-header">
-          <h3 className="form-section-title">Line Items <span className="required">*</span></h3>
+          <h3 className="form-section-title">Parts <span className="required">*</span></h3>
           {!fieldsLocked && (
             <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddLineItem}>
-              <Plus size={14} /> Add Item
+              <Plus size={14} /> Add Part
             </button>
           )}
         </div>
@@ -163,7 +163,7 @@ export default function ItemsTab({
                 <div className="line-item-fields">
                   <div className="line-item-row line-item-row-primary">
                   <div className={fieldError(item, 'jobType') ? 'line-item-job-type field-error' : 'line-item-job-type'}>
-                    <label>Job Type {!fieldsLocked && <span className="required">*</span>}</label>
+                    <label htmlFor={fieldsLocked ? undefined : fieldErrorKey(item.id, 'jobType')}>Job Type {!fieldsLocked && <span className="required">*</span>}</label>
                     {fieldsLocked ? (
                       <div className="readonly-value">
                         {item.jobType ? jobTypeLabelOf(item.jobType) : '-'}
@@ -187,7 +187,7 @@ export default function ItemsTab({
                     <FieldError message={fieldError(item, 'jobType')} />
                   </div>
                   <div className={fieldError(item, 'qty') ? 'line-item-qty field-error' : 'line-item-qty'}>
-                    <label>Qty</label>
+                    <label htmlFor={fieldsLocked ? undefined : fieldErrorKey(item.id, 'qty')}>Qty</label>
                     {fieldsLocked ? (
                       <div className="readonly-value">{item.qty || '-'}</div>
                     ) : (
@@ -209,7 +209,7 @@ export default function ItemsTab({
                     <FieldError message={fieldError(item, 'qty')} />
                   </div>
                   <div className={fieldError(item, 'description') ? 'line-item-desc field-error' : 'line-item-desc'}>
-                    <label>Description</label>
+                    <label htmlFor={fieldsLocked ? undefined : fieldErrorKey(item.id, 'description')}>Description</label>
                     {fieldsLocked ? (
                       <div className="readonly-value">{item.description || '-'}</div>
                     ) : (
@@ -236,8 +236,9 @@ export default function ItemsTab({
                   </div>
                   <div className="line-item-row line-item-row-secondary">
                   <div className="line-item-material">
-                    <label>Material</label>
+                    <label htmlFor={fieldsLocked ? undefined : fieldErrorKey(item.id, 'material')}>Material</label>
                     <CreatableTagSelect
+                      id={fieldsLocked ? undefined : fieldErrorKey(item.id, 'material')}
                       category="material"
                       value={item.material || ''}
                       onChange={(v) => handleFieldChange(item, 'material', v)}
@@ -343,7 +344,13 @@ export default function ItemsTab({
                   )}
                 </div>
                 {!fieldsLocked && lineItems.length > 1 && (
-                  <button type="button" className="line-item-remove" onClick={() => removeLineItem(item)} title="Remove item">
+                  <button
+                    type="button"
+                    className="line-item-remove"
+                    onClick={() => removeLineItem(item)}
+                    title="Remove part"
+                    aria-label={`Remove part ${displayNumber}`}
+                  >
                     <X size={14} />
                   </button>
                 )}

@@ -413,12 +413,12 @@
 
 .stf-yesno-btn.is-yes {
   background: var(--fill-success);
-  color: #fff;
+  color: var(--text-on-saturated);
 }
 
 .stf-yesno-btn.is-no {
   background: var(--fill-danger);
-  color: #fff;
+  color: var(--text-on-saturated);
 }
 
 /* The Yes/No pair sits in a clipped (rounded, overflow-hidden) group, so a normal

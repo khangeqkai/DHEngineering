@@ -130,7 +130,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
   // toasts and prompts below; it is never sent anywhere.
   const startTimerWithConflictCheck = useCallback(async (itemId, displayNumber, showConfirm, workerId, workerName) => {
     if (!itemId) {
-      toast.error('Pick an item to start the timer');
+      toast.error('Pick a part to start the timer');
       return;
     }
     // An admin can start a timer FOR another worker. When they do, the running
@@ -142,7 +142,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
     try {
       const result = await api.startTimer(jobcardId, itemId, workerId);
       if (isOnBehalf) {
-        toast.success(`Timer started for ${workerName || 'that worker'} on item #${displayNumber}`);
+        toast.success(`Timer started for ${workerName || 'that worker'} on part ${displayNumber}`);
       } else {
         setActiveTimer({
           id: result.id,
@@ -151,7 +151,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
           itemNumber: result.itemNumber,
           startTime: result.startTime
         });
-        toast.success(`Timer started on item #${displayNumber}`);
+        toast.success(`Timer started on part ${displayNumber}`);
       }
     } catch (err) {
       // On-behalf: the chosen worker already has a timer running elsewhere. This
@@ -163,7 +163,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
         if (err.status === 409 || err.message.includes('Timer running on another job')) {
           const t = err.data?.activeTimer;
           toast.error(t
-            ? `That worker already has a timer running on ${t.jobNumber || 'another job'}, item #${labelForRunningItem(t.jobcardId, t.itemId, t.itemNumber)}`
+            ? `That worker already has a timer running on ${t.jobNumber || 'another job'}, part ${labelForRunningItem(t.jobcardId, t.itemId, t.itemNumber)}`
             : 'That worker already has a timer running');
         } else {
           toast.error(err.message || 'Failed to start timer', { id: 'start-timer-failed' });
@@ -177,7 +177,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
           if (currentTimer && showConfirm) {
             const onSameJob = currentTimer.jobcardId === jobcardId;
             const message = onSameJob
-              ? `Stop timer on item #${labelForRunningItem(currentTimer.jobcardId, currentTimer.itemId, currentTimer.itemNumber)} and start on item #${displayNumber}?`
+              ? `Stop timer on part ${labelForRunningItem(currentTimer.jobcardId, currentTimer.itemId, currentTimer.itemNumber)} and start on part ${displayNumber}?`
               : `Stop timer on ${currentTimer.jobNumber || 'another job'} and start here?`;
             const shouldSwitch = await showConfirm({
               title: 'Timer Running',
@@ -201,7 +201,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
                   itemNumber: result.itemNumber,
                   startTime: result.startTime
                 });
-                toast.success(`Timer started on item #${displayNumber}`);
+                toast.success(`Timer started on part ${displayNumber}`);
                 return;
               }
               setStoppedEntry(entry);
@@ -350,7 +350,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
             itemNumber: result.itemNumber,
             startTime: result.startTime
           });
-          toast.success(`Timer started on item #${nextDisplayNumber}`);
+          toast.success(`Timer started on part ${nextDisplayNumber}`);
         } catch (startErr) {
           toast.error(startErr.message || 'Failed to start new timer');
         }

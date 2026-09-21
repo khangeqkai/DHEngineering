@@ -13,6 +13,16 @@ function treatmentsToText(treatments) {
   }).join(', ');
 }
 
+// Names a part in a trail entry or a rejection message. A part's number is not
+// stable enough to identify it by (nothing renumbers on delete, so two jobs'
+// history could both say "part 2" about entirely different parts) — its
+// description is. `fallback` covers the one case a part has no description yet:
+// it's the very part being added, and the description itself is what's invalid.
+function describePart(description, fallback) {
+  const trimmed = description ? String(description).trim() : '';
+  return trimmed ? `"${trimmed}"` : fallback;
+}
+
 function itemSummary(qty, description, jobType, material, treatments, drawingsType, customerProperty) {
   const tStr = treatmentsToText(treatments);
   const draw = drawingsType ? ` {draw: ${drawingsType}}` : '';
@@ -38,4 +48,4 @@ function buildQaTemplateWarning(result) {
   return `${result.failed.length} QA template${result.failed.length > 1 ? 's' : ''} failed to copy: ${parts.join('; ')}`;
 }
 
-module.exports = { itemSummary, assigneeNames, buildQaTemplateWarning };
+module.exports = { itemSummary, describePart, assigneeNames, buildQaTemplateWarning };

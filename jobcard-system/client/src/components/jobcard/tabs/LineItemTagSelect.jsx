@@ -118,7 +118,7 @@ export default function LineItemTagSelect({
 
   return (
     <div className={`line-item-tagselect${error ? ' field-error' : ''}`} ref={ref}>
-      <label>{label} {required && <span className="required">*</span>}</label>
+      <label htmlFor={id}>{label} {required && <span className="required">*</span>}</label>
       <div className="lit-select">
         <button
           id={id}

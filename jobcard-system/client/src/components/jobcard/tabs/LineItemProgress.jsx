@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Check, ChevronDown } from 'lucide-react';
 import TimeEntryCard from './TimeEntryCard';
+import { formatCount } from '../../../utils/formatters';
 
 function parseQty(v) {
   if (v == null || v === '') return 0;
@@ -51,11 +52,6 @@ function computeProgress(entries, targetQty) {
     hasActive,
     cumulativeMap
   };
-}
-
-function formatNum(n) {
-  if (!Number.isFinite(n)) return '0';
-  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
 }
 
 function StatusPill({ state }) {
@@ -137,7 +133,7 @@ export default function LineItemProgress({
           <>
             <div
               className="lip-bar"
-              title={`${formatNum(progress.completed)} good of ${formatNum(progress.target)} required`}
+              title={`${formatCount(progress.completed)} good of ${formatCount(progress.target)} required`}
             >
               <div className="lip-bar-track">
                 <div className="lip-bar-fill" style={{ width: `${Math.min(100, progress.percent)}%` }} />
@@ -150,19 +146,19 @@ export default function LineItemProgress({
         <span className="lip-stats">
           <span className="lip-stat">
             <span className="lip-stat-label">Required</span>
-            <span className="lip-stat-value">{progress.hasTarget ? formatNum(progress.target) : '—'}</span>
+            <span className="lip-stat-value">{progress.hasTarget ? formatCount(progress.target) : '—'}</span>
           </span>
           <span className="lip-stat">
             <span className="lip-stat-label">Total made</span>
-            <span className="lip-stat-value">{formatNum(totalMade)}</span>
+            <span className="lip-stat-value">{formatCount(totalMade)}</span>
           </span>
           <span className="lip-stat lip-stat--scrap">
             <span className="lip-stat-label">Scrap</span>
-            <span className="lip-stat-value">{formatNum(progress.scrapTotal)}</span>
+            <span className="lip-stat-value">{formatCount(progress.scrapTotal)}</span>
           </span>
           <span
             className="lip-stat lip-stat--scrap"
-            title={totalMade > 0 ? `${formatNum(progress.scrapTotal)} scrap out of ${formatNum(totalMade)} made` : 'Nothing made yet'}
+            title={totalMade > 0 ? `${formatCount(progress.scrapTotal)} scrap out of ${formatCount(totalMade)} made` : 'Nothing made yet'}
           >
             <span className="lip-stat-label">Scrap rate</span>
             <span className="lip-stat-value">{totalMade > 0 ? `${scrapRate}%` : '—'}</span>
@@ -185,7 +181,7 @@ export default function LineItemProgress({
       </summary>
 
       {entries.length === 0 ? (
-        <p className="empty-message">No time entries for this item</p>
+        <p className="empty-message">No time entries for this part</p>
       ) : (
         <div className="te-list">
           {activeEntries.length > 0 && (

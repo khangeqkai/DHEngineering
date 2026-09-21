@@ -4,9 +4,9 @@ import { api } from '../../services/api';
 /**
  * Orchestrates the timer and time-entry actions JobCardModal wires into the
  * screen — starting/stopping a timer, the stop-timer fill-in form, and the
- * admin's manual add/edit form. Split out of JobCardModal.jsx (which was at the
- * 600-line limit) purely to keep that file under it; every dependency below is
- * something JobCardModal already holds, just handed in instead of closed over.
+ * admin's manual add/edit form. Split out of JobCardModal.jsx purely to stop that
+ * file growing any longer; every dependency below is something JobCardModal
+ * already holds, just handed in instead of closed over.
  *
  * A part is identified to the server by its permanent id (itemId) throughout —
  * displayNumber only ever reaches the user, in a toast or a confirm prompt.

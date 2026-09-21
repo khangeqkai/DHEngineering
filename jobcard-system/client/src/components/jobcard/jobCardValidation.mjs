@@ -30,7 +30,7 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
   //
   // The one case that names nothing is a card that has never had a part saved on it and
   // still has none typed in: there is no particular row at fault, so it gets the single
-  // "add at least one line item" message rather than that plus a blank-row complaint
+  // "add at least one part" message rather than that plus a blank-row complaint
   // about the same empty card. A job that DOES have a saved part is different — blanking
   // its only part is a mistake about that part, so the message names it. The two are
   // mutually exclusive, so only ever one message comes out of this block.
@@ -39,29 +39,29 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
   const hasSavedPart = lineItems.some(isSavedLineItem);
   if (blankIdx !== -1 && (validItems.length > 0 || hasSavedPart)) {
     const blank = lineItems[blankIdx];
-    errors.push(`Description is required on item #${blank.itemNumber || blankIdx + 1}`);
+    errors.push(`Description is required on part ${blank.itemNumber || blankIdx + 1}`);
   } else if (validItems.length === 0) {
-    errors.push('Add at least one line item');
+    errors.push('Add at least one part');
   }
 
-  // Per-item errors name the row's real itemNumber (the badge ItemsTab shows);
+  // Per-part errors name the row's real itemNumber (the badge ItemsTab shows);
   // positions in the filtered list shift when a blanked line is dropped, so
   // index-based numbering can point at the wrong row.
   const itemNo = (i) => validItems[i].itemNumber || i + 1;
 
   const itemMissingJobType = validItems.findIndex(item => itemFieldMessage('jobType', item.jobType));
   if (itemMissingJobType !== -1) {
-    errors.push(`Job type is required on item #${itemNo(itemMissingJobType)}`);
+    errors.push(`Job type is required on part ${itemNo(itemMissingJobType)}`);
   }
 
   const itemMissingDrawings = validItems.findIndex(item => itemFieldMessage('drawingsType', item.drawingsType));
   if (itemMissingDrawings !== -1) {
-    errors.push(`Drawings is required on item #${itemNo(itemMissingDrawings)}`);
+    errors.push(`Drawings is required on part ${itemNo(itemMissingDrawings)}`);
   }
 
   const itemMissingProperty = validItems.findIndex(item => itemFieldMessage('customerProperty', item.customerProperty));
   if (itemMissingProperty !== -1) {
-    errors.push(`Customer property is required on item #${itemNo(itemMissingProperty)}`);
+    errors.push(`Customer property is required on part ${itemNo(itemMissingProperty)}`);
   }
 
   // "N/A" is the standalone "no drawing / nothing supplied" answer, so it can't
@@ -73,10 +73,10 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
   };
   for (let i = 0; i < validItems.length; i++) {
     if (naCombined(validItems[i].drawingsType)) {
-      errors.push(`Item #${itemNo(i)} cannot combine "N/A" with other drawings values`);
+      errors.push(`Part ${itemNo(i)} cannot combine "N/A" with other drawings values`);
     }
     if (naCombined(validItems[i].customerProperty)) {
-      errors.push(`Item #${itemNo(i)} cannot combine "N/A" with other customer property values`);
+      errors.push(`Part ${itemNo(i)} cannot combine "N/A" with other customer property values`);
     }
   }
 
@@ -89,9 +89,9 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
   for (let i = 0; i < validItems.length; i++) {
     const qtyMessage = itemFieldMessage('qty', validItems[i].qty);
     if (qtyMessage === ITEM_QTY_REQUIRED) {
-      errors.push(`Quantity is required on item #${itemNo(i)}`);
+      errors.push(`Quantity is required on part ${itemNo(i)}`);
     } else if (qtyMessage) {
-      errors.push(`Quantity on item #${itemNo(i)} must be a whole number of 1 or more`);
+      errors.push(`Quantity on part ${itemNo(i)} must be a whole number of 1 or more`);
     }
   }
 
@@ -104,7 +104,7 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
     for (const tr of treatments) {
       if (!tr.value && !tr.supplierId) continue; // nothing on this part — fine
       if (!tr.value) {
-        errors.push(`Item #${itemNo(i)}: pick a treatment for the chosen supplier`);
+        errors.push(`Part ${itemNo(i)}: pick a treatment for the chosen supplier`);
       }
     }
   }

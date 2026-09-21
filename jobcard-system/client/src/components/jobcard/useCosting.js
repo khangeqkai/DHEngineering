@@ -38,9 +38,10 @@ const TEXT_FIELDS = new Set([
   'subcontractorDescription'
 ]);
 
-// How long the screen waits after the last edit before saving itself. Long enough that
-// tabbing through several boxes lands as ONE save (and so one audit entry rather than
-// one per box), short enough that a figure typed and walked away from is never lost.
+// How long the screen waits after the last edit before saving itself. This is the
+// backstop, not the usual path — leaving a box sends it straight away — so the countdown
+// only runs out for a figure typed and then left alone with the cursor still in the box:
+// long enough not to fire mid-figure, short enough that such a figure is never lost.
 const AUTOSAVE_DELAY = 1000;
 
 // The on-screen form built from a loaded costing row — used when the pricing first loads,
@@ -111,6 +112,10 @@ export function useCosting(jobCardId, {
   // was typed while the request was in flight — otherwise those keystrokes would be
   // marked saved without ever having been sent.
   const editSeq = useRef(0);
+  // The edit count the save currently in flight snapshotted, or null when nothing is in
+  // flight. It lets a flush tell "a save carrying exactly these figures is already on its
+  // way" apart from "something has been typed since that save started".
+  const inFlightSeq = useRef(null);
   // The last figures loaded from (or stored by) the server. While it's still null it
   // marks the pricing as never having arrived, which blocks saving. Without that block, a
   // failed load leaves an all-zero screen that the first keystroke would write over the
@@ -188,19 +193,42 @@ export function useCosting(jobCardId, {
     }));
   }, [markEdited]);
 
-  // A figure changed by PRESSING A LINK rather than by typing — a tier's "reset to
-  // logged", an overtime multiplier's "standard ×N", "use company default", "put it
-  // back", "Reset all to auto" — has no box for the user to leave, so the blur path
-  // never fires for it and it used to sit out the full countdown before saving.
+  // Save now rather than on the countdown — carried out ONE RENDER from now. Asked for
+  // by every figure changed by PRESSING A LINK rather than by typing (a tier's "reset to
+  // logged", an overtime multiplier's "standard ×N", "use company default", "put it back",
+  // "Reset all to auto"), which has no box for the user to leave, and by the blur path
+  // below.
   //
   // It is a request rather than a call because the save has to read the figures as they
-  // are AFTER the change it belongs to, and a link's click handler cannot: the new value
-  // is still a queued state update at that point, so saving there would send the old one.
-  // Bumping this counter lets the effect further down carry it out one render later, when
-  // the new figures are really on screen. Several bumps in one click (Reset all to auto
-  // resets six things) batch into a single render, and so into a single save.
-  const [linkSaveSeq, setLinkSaveSeq] = useState(0);
-  const requestImmediateSave = useCallback(() => setLinkSaveSeq(n => n + 1), []);
+  // are AFTER the change it belongs to, and the handler asking for it cannot: the new
+  // value is still a queued state update at that point, so saving there would send the
+  // one it replaced. Bumping this counter lets the effect further down carry it out when
+  // the new figures are really on screen. Several bumps in one render (Reset all to auto
+  // resets six things) batch into a single save.
+  const [immediateSaveSeq, setImmediateSaveSeq] = useState(0);
+  // The save that has been asked for but not yet carried out, held as a promise anyone
+  // can wait on. Without it, leaving the pricing screen in the same breath as a box was
+  // left saw no save in flight yet, started one of its own carrying the figures from
+  // BEFORE that box tidied itself, and then ran the requested one behind it for nothing.
+  const pendingImmediate = useRef(null);
+  const requestImmediateSave = useCallback(() => {
+    if (!pendingImmediate.current) {
+      let settle;
+      const promise = new Promise((resolve) => { settle = resolve; });
+      pendingImmediate.current = { promise, settle };
+    }
+    setImmediateSaveSeq(n => n + 1);
+    return pendingImmediate.current.promise;
+  }, []);
+
+  // Nothing is going to carry out a requested save once this screen is gone, so anything
+  // waiting on one is told so rather than left hanging on a promise that never settles.
+  useEffect(() => () => {
+    if (pendingImmediate.current) {
+      pendingImmediate.current.settle(false);
+      pendingImmediate.current = null;
+    }
+  }, []);
 
   // Drop a tier's manual override and snap its hours back to the auto-tallied figure.
   // tier is '' (normal), 'Ot1', 'Ot2', or 'Holiday'.
@@ -290,6 +318,8 @@ export function useCosting(jobCardId, {
     }
 
     const seq = editSeq.current;
+    // What this save covers, for flushCosting to compare against — see there.
+    inFlightSeq.current = seq;
     setSavingCosting(true);
     setSaveState('saving');
     try {
@@ -353,6 +383,7 @@ export function useCosting(jobCardId, {
       toast.error(err.message || 'Failed to save costing');
       return false;
     } finally {
+      inFlightSeq.current = null;
       setSavingCosting(false);
     }
   }, [jobCardId, costingForm, calculateCostingTotals, updateCosting]);
@@ -394,18 +425,36 @@ export function useCosting(jobCardId, {
     return () => clearTimeout(timerId);
   }, [costingForm, costingDirty, savingCosting, autoSavePaused]);
 
-  // Carries out a link press's save, one render after the press, so it sends the figures
-  // the press produced rather than the ones it replaced. See requestImmediateSave above.
+  // Carries out a requested save one render after it was asked for, so it sends the
+  // figures that change produced rather than the ones it replaced. See
+  // requestImmediateSave above.
   useEffect(() => {
-    if (linkSaveSeq === 0) return;
-    saveNowRef.current();
-  }, [linkSaveSeq]);
+    if (immediateSaveSeq === 0) return;
+    const waiting = pendingImmediate.current;
+    pendingImmediate.current = null;
+    const saved = saveNowRef.current();
+    if (waiting) saved.then(waiting.settle, () => waiting.settle(false));
+  }, [immediateSaveSeq]);
 
   // Save right now instead of waiting out the countdown — used by Enter, by leaving the
   // pricing screen, and by closing the job.
+  //
+  // A save already carrying every edit made so far counts as done for this purpose:
+  // leaving the pricing screen with the cursor still in a box fires the blur save a
+  // moment before this runs, and the sheet goes on reading as dirty until that reply
+  // lands. Waiting on it beats sending the same figures again — the second trip stores
+  // nothing new, but it is a wasted round trip on every tab-away and it counts as another
+  // confirmed save for the job window's green frame. Anything typed since that save
+  // started is a real difference, so that case still queues a fresh save behind it.
   const flushCosting = useCallback(async () => {
     if (!costingDirty) return true;
+    if (inFlight.current && inFlightSeq.current === editSeq.current) return inFlight.current;
     setAutoSavePaused(false);
+    // A save already ASKED FOR counts the same way: it is deliberately waiting a render
+    // so it can read the figures the box that was just left produced on its way out,
+    // which is exactly what this needs stored. Starting a second one here would send the
+    // untidied figures and queue the requested save behind it for nothing.
+    if (pendingImmediate.current) return pendingImmediate.current.promise;
     return saveNowRef.current();
   }, [costingDirty]);
 
@@ -419,10 +468,16 @@ export function useCosting(jobCardId, {
   // server is refusing, and tabbing across the sheet's boxes would otherwise fire one
   // doomed retry per box. The pause lifts on the next real edit (markEdited) or on the
   // "try again" link, which is what it has always done.
+  //
+  // It goes through requestImmediateSave rather than saving on the spot because a box can
+  // change its own value on the way out — the cost notes capitalise themselves as they
+  // are left — and that tidied wording is still a queued state update while this runs.
+  // Saving here sent the untidied one and then marked the sheet clean, so what the person
+  // was looking at was never stored and came back untidied on the next opening.
   const saveOnBoxBlur = useCallback(() => {
     if (!costingDirty || autoSavePaused) return;
-    saveNowRef.current();
-  }, [costingDirty, autoSavePaused]);
+    requestImmediateSave();
+  }, [costingDirty, autoSavePaused, requestImmediateSave]);
 
   // Used by the invoicing paths, which run their own "this will archive the job / your
   // unsaved pricing will be billed" prompt before calling it.

@@ -8,8 +8,8 @@ const { qaLevelQueries, qaLevelTemplateQueries, getSettings } = require('../db/d
 
 // Copying a QA level's templates onto a job's disk folder, and the pre-save check
 // that confirms those templates are actually there before the job is written.
-// Extracted out of jobcard-helpers.js (a straight lift, no behaviour change) to
-// keep that file under the 600-line house limit — this module only owns the
+// Extracted out of jobcard-helpers.js (a straight lift, no behaviour change)
+// because that file was getting long — this module only owns the
 // disk/PDF side of QA provisioning; jobcard-helpers.js still owns everything
 // about shaping a job card's own data.
 

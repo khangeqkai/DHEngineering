@@ -166,7 +166,7 @@ const JOBCARD_SUMMARY_COLS = [
   // #N here is the part's position, stated by the server on each item — matches
   // the screen, never its stored sort-order number, which can have gaps once a
   // part is deleted.
-  { label: 'Items', value: r => (r.items || []).map((it, idx) => `#${it.position != null ? it.position : idx + 1}: ${it.description || ''}`).join(', ') },
+  { label: 'Parts', value: r => (r.items || []).map((it, idx) => `#${it.position != null ? it.position : idx + 1}: ${it.description || ''}`).join(', ') },
   { label: 'PO Number', value: r => r.poNumber },
   { label: 'Job Type', value: r => {
     const items = r.items || [];
@@ -207,7 +207,7 @@ const TIME_ENTRY_COLS = [
   // The part's position in the job's ordered list, not its stored item_number —
   // resolved in buildJobCardWorkbook from the part's permanent id, since a
   // deleted part's own stored number no longer means anything.
-  { label: 'Item #', value: r => r._displayItemNumber ?? '' },
+  { label: 'Part', value: r => r._displayItemNumber ?? '' },
   { label: 'Machine #', value: r => r.machineNumber },
   { label: 'Qty', value: r => r.qty },
   { label: 'Description', value: r => r.description },
@@ -220,7 +220,7 @@ const ITEM_COLS = [
   { label: 'Job #', value: r => r._jobNumber },
   // Position in the job's ordered list, not the stored item_number — see
   // buildJobCardWorkbook, which numbers each job's items as it flattens them.
-  { label: 'Item #', value: r => r._displayNumber },
+  { label: 'Part', value: r => r._displayNumber },
   { label: 'Qty', value: r => r.qty },
   { label: 'Description', value: r => r.description },
   { label: 'Treatments', value: r => (r.treatments || []).map(t => {
@@ -391,7 +391,7 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
   const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, enrichedCards, JOBCARD_SUMMARY_COLS), 'Summary');
-  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allItems, ITEM_COLS), 'Items');
+  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allItems, ITEM_COLS), 'Parts');
   XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allTimeEntries, TIME_ENTRY_COLS), 'Time Entries');
   if (includeCosting) {
     XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allCosting, COSTING_COLS), 'Costing');

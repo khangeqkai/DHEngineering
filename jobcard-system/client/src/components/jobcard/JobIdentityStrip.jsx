@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useId } from 'react';
+import { useState, useRef, useEffect, useCallback, useId } from 'react';
 import toast from 'react-hot-toast';
 import { Calendar, ChevronDown } from 'lucide-react';
 import CalendarPicker from '../common/CalendarPicker';
@@ -42,7 +42,17 @@ export default function JobIdentityStrip({
   // top of each other. The status control is disabled while this is true.
   const [statusBusy, setStatusBusy] = useState(false);
   const priorityRef = useRef(null);
+  const priorityTriggerRef = useRef(null);
+  const priorityMenuRef = useRef(null);
   const priorityMenuId = useId();
+
+  // Closing the menu always hands the keyboard back to the button that opened it —
+  // otherwise Escape (or a pick) drops focus onto the document body and the next Tab
+  // restarts from the top of the dialog.
+  const closePriorityMenu = useCallback(({ refocus = true } = {}) => {
+    setShowPriorityMenu(false);
+    if (refocus) priorityTriggerRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (!showPriorityMenu) return;
@@ -52,7 +62,9 @@ export default function JobIdentityStrip({
     pushModal(priorityMenuId);
     const onMouse = (e) => {
       if (priorityRef.current && !priorityRef.current.contains(e.target)) {
-        setShowPriorityMenu(false);
+        // A click elsewhere has already chosen where focus goes; taking it back to
+        // the trigger would yank it out of whatever was just clicked.
+        closePriorityMenu({ refocus: false });
       }
     };
     const onKey = (e) => {
@@ -60,7 +72,7 @@ export default function JobIdentityStrip({
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        setShowPriorityMenu(false);
+        closePriorityMenu();
       }
     };
     document.addEventListener('mousedown', onMouse);
@@ -70,7 +82,35 @@ export default function JobIdentityStrip({
       document.removeEventListener('mousedown', onMouse);
       document.removeEventListener('keydown', onKey);
     };
-  }, [showPriorityMenu, priorityMenuId]);
+  }, [showPriorityMenu, priorityMenuId, closePriorityMenu]);
+
+  // Opening the menu puts the keyboard on the priority the job already has, so the
+  // arrow keys start from where the job actually is rather than from the top of the list.
+  useEffect(() => {
+    if (!showPriorityMenu) return;
+    const menu = priorityMenuRef.current;
+    if (!menu) return;
+    const items = Array.from(menu.querySelectorAll('[role="menuitemradio"]'));
+    (items.find(el => el.getAttribute('aria-checked') === 'true') || items[0])?.focus();
+  }, [showPriorityMenu]);
+
+  // Up/Down walk the list, Home/End jump to its ends — the behaviour every other
+  // menu in the app gets from the browser and this one has to state for itself.
+  const handlePriorityMenuKeyDown = (e) => {
+    const menu = priorityMenuRef.current;
+    if (!menu) return;
+    const items = Array.from(menu.querySelectorAll('[role="menuitemradio"]'));
+    if (items.length === 0) return;
+    const current = items.indexOf(document.activeElement);
+    let next = null;
+    if (e.key === 'ArrowDown') next = current < items.length - 1 ? current + 1 : 0;
+    else if (e.key === 'ArrowUp') next = current > 0 ? current - 1 : items.length - 1;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = items.length - 1;
+    if (next === null) return;
+    e.preventDefault();
+    items[next].focus();
+  };
 
   const editable = canManage;
   const priority = formData.priority || 'NONE';
@@ -243,10 +283,12 @@ export default function JobIdentityStrip({
             {editable ? (
               <button
                 type="button"
+                ref={priorityTriggerRef}
                 className="jc-strip-priority-trigger"
-                onClick={() => setShowPriorityMenu(v => !v)}
-                aria-haspopup="listbox"
+                onClick={() => (showPriorityMenu ? closePriorityMenu() : setShowPriorityMenu(true))}
+                aria-haspopup="menu"
                 aria-expanded={showPriorityMenu}
+                aria-label={`Priority: ${priorityLabel}`}
               >
                 <span className="jc-strip-priority-dot" aria-hidden="true" />
                 <span className="jc-strip-priority-label">{priorityLabel}</span>
@@ -259,23 +301,33 @@ export default function JobIdentityStrip({
               </span>
             )}
             {editable && showPriorityMenu && (
-              <ul className="jc-strip-priority-menu" role="listbox">
+              <ul
+                className="jc-strip-priority-menu"
+                role="menu"
+                ref={priorityMenuRef}
+                aria-label="Priority"
+                onKeyDown={handlePriorityMenuKeyDown}
+              >
                 {PRIORITY_VALUES.map(val => {
                   const opt = PRIORITY_OPTIONS.find(p => p.value === val);
                   return (
-                    <li
-                      key={val}
-                      role="option"
-                      aria-selected={priority === val}
-                      className={`jc-strip-priority-menu-item jc-strip-priority-menu-item-${priorityToken(val)}${priority === val ? ' is-active' : ''}`}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setFieldInstant('priority', val, savedForm.priority ?? 'NONE');
-                        setShowPriorityMenu(false);
-                      }}
-                    >
-                      <span className="jc-strip-priority-dot" aria-hidden="true" />
-                      {opt?.label || val}
+                    <li key={val} role="none">
+                      {/* A real button, not a clickable row: this menu is reached and
+                          worked entirely from the keyboard, and only a button answers
+                          Enter and Space on its own. */}
+                      <button
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={priority === val}
+                        className={`jc-strip-priority-menu-item jc-strip-priority-menu-item-${priorityToken(val)}${priority === val ? ' is-active' : ''}`}
+                        onClick={() => {
+                          setFieldInstant('priority', val, savedForm.priority ?? 'NONE');
+                          closePriorityMenu();
+                        }}
+                      >
+                        <span className="jc-strip-priority-dot" aria-hidden="true" />
+                        {opt?.label || val}
+                      </button>
                     </li>
                   );
                 })}

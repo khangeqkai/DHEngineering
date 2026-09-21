@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useId, forwardRef, useImperat
 import { createPortal } from 'react-dom';
 import {
   FolderOpen, Upload, Camera, X, ArrowLeft, Check, Printer, Save,
-  FileStack, Eye, ChevronDown
+  FileStack, Eye, ChevronDown, AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCamera } from './useCamera';
@@ -224,9 +224,9 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
     try {
       const { html } = await api.printJobCard(jobcardId);
       if (html) setCardPreview(html);
-      else toast.error('Could not build the job card preview');
+      else toast.error('Could not build the job card preview', { id: 'jobcard-preview-failed' });
     } catch (err) {
-      toast.error(err.message || 'Could not build the job card preview');
+      toast.error(err.message || 'Could not build the job card preview', { id: 'jobcard-preview-failed' });
     } finally {
       setCardPreviewLoading(false);
     }
@@ -252,10 +252,10 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
         </span>
       </button>
       <div className="hub-row-tools">
-        <button type="button" className="hub-icon-btn" onClick={previewCard} disabled={cardPreviewLoading} title="Preview the job card">
+        <button type="button" className="hub-icon-btn" onClick={previewCard} disabled={cardPreviewLoading} title="Preview the job card" aria-label="Preview the job card">
           <Eye size={16} />
         </button>
-        <button type="button" className="hub-icon-btn" onClick={printCardOnly} disabled={packet.building} title="Print just the job card">
+        <button type="button" className="hub-icon-btn" onClick={printCardOnly} disabled={packet.building} title="Print just the job card" aria-label="Print just the job card">
           <Printer size={16} />
         </button>
       </div>
@@ -293,7 +293,9 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
             {canToggleGroup && <span className="hub-group-meta">{pickedHere}/{list.length}</span>}
           </button>
           {showQaWarning && (
-            <span className="hub-group-warn" title="A completed quality form hasn't been brought back yet">· form missing</span>
+            <span className="hub-group-warn" title="A completed quality form hasn't been brought back yet">
+              <AlertTriangle size={14} aria-hidden="true" /> form missing
+            </span>
           )}
           <span className="hub-group-spacer" />
           <button type="button" className="hub-pillbtn" onClick={() => pickFiles(cat)} disabled={files.uploading} title="Add a file">
@@ -351,7 +353,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
           <div className="hub-panel" role="dialog" aria-modal="true" aria-label="Job paperwork">
             <div className="hub-head">
               {view === 'camera' ? (
-                <button className="hub-back" onClick={leaveCamera}><ArrowLeft size={16} /> Back</button>
+                <button type="button" className="hub-back" onClick={leaveCamera}><ArrowLeft size={16} /> Back</button>
               ) : (
                 <div className="hub-title">
                   <span className="hub-title-badge"><FolderOpen size={20} /></span>
@@ -361,7 +363,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
                   </span>
                 </div>
               )}
-              <button className="hub-close" onClick={closeAll}><X size={18} /></button>
+              <button type="button" className="hub-close" onClick={closeAll} aria-label="Close paperwork"><X size={18} /></button>
             </div>
 
             {view === 'hub' && (
@@ -447,7 +449,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
                   )}
                   <div className="hub-footer-actions">
                     <button type="button" className="btn btn-secondary" onClick={savePacket} disabled={packet.building || tickedCount === 0 || overFileLimit}>
-                      <Save size={16} /> Save PDF{tickedCount > 0 ? ` (${tickedCount})` : ''}
+                      <Save size={16} /> {packet.building ? 'Preparing…' : `Save PDF${tickedCount > 0 ? ` (${tickedCount})` : ''}`}
                     </button>
                     <button type="button" className="btn btn-primary" onClick={printPacket} disabled={packet.building || tickedCount === 0 || overFileLimit}>
                       <Printer size={16} /> {packet.building ? 'Preparing…' : `Print${tickedCount > 0 ? ` (${tickedCount})` : ''}`}
@@ -470,19 +472,19 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
 
           {files.lightboxPhoto && (
             <div className="hub-lightbox">
-              <button className="hub-lightbox-close" onClick={files.closeLightbox}><X size={24} /></button>
+              <button type="button" className="hub-lightbox-close" onClick={files.closeLightbox} aria-label="Close photo"><X size={24} /></button>
               <img src={files.lightboxPhoto} alt="Full size" />
             </div>
           )}
           {files.viewerUrl && (
             <div className="hub-doc-viewer">
-              <button className="hub-lightbox-close" onClick={files.closeViewer}><X size={24} /></button>
+              <button type="button" className="hub-lightbox-close" onClick={files.closeViewer} aria-label="Close document"><X size={24} /></button>
               <iframe src={files.viewerUrl} className="hub-doc-frame" title="Document viewer" />
             </div>
           )}
           {cardPreview && (
             <div className="hub-doc-viewer">
-              <button className="hub-lightbox-close" onClick={() => setCardPreview(null)}><X size={24} /></button>
+              <button type="button" className="hub-lightbox-close" onClick={() => setCardPreview(null)} aria-label="Close preview"><X size={24} /></button>
               <iframe srcDoc={cardPreview} className="hub-doc-frame" title="Job card preview" />
             </div>
           )}

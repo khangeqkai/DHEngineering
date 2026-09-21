@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { MoreVertical, Pencil, Trash2, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useId, useRef } from 'react';
+import { MoreVertical, Pencil, Trash2, ChevronDown, ArrowRight } from 'lucide-react';
 import ScrapStat from './ScrapStat';
-import { formatDate, formatTime } from '../../../utils/formatters';
+import { pushModal, removeModal, isTopModal } from '../../common/modalStack';
+import { formatDate, formatTime, formatCount } from '../../../utils/formatters';
 
 function formatElapsed(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -26,11 +27,6 @@ function LiveElapsed({ startTime }) {
       {formatElapsed(elapsed)}
     </span>
   );
-}
-
-function formatNum(n) {
-  if (!Number.isFinite(n)) return '0';
-  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
 }
 
 export default function TimeEntryCard({
@@ -81,14 +77,34 @@ export default function TimeEntryCard({
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const menuBtnRef = useRef(null);
+  const menuId = useId();
   useEffect(() => {
     if (!menuOpen) return;
+    // This little menu sits on top of the job window, which closes on Escape.
+    // Registering as the top layer means Escape dismisses the menu and stops
+    // there, instead of taking the whole job window with it.
+    pushModal(menuId);
     const handler = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
     };
+    const onKey = (e) => {
+      if (!isTopModal(menuId)) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setMenuOpen(false);
+        menuBtnRef.current?.focus();
+      }
+    };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [menuOpen]);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      removeModal(menuId);
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen, menuId]);
 
   return (
     <div className={`te-card${isActive ? ' te-card--active' : ''}`}>
@@ -126,14 +142,14 @@ export default function TimeEntryCard({
                 >
                   {qtyNum > 0 ? (
                     <>
-                      <span className="te-qty-delta">+{formatNum(qtyNum)}</span>
+                      <span className="te-qty-delta">+{formatCount(qtyNum)}</span>
                       {showCumulative && (
                         <>
-                          <span className="te-qty-arrow" aria-hidden="true">→</span>
+                          <ArrowRight size={14} className="te-qty-arrow" aria-hidden="true" />
                           <span className="te-qty-cumul">
-                            <span className="te-qty-cumul-num">{formatNum(cumulativeAfter)}</span>
+                            <span className="te-qty-cumul-num">{formatCount(cumulativeAfter)}</span>
                             <span className="te-qty-cumul-divider">/</span>
-                            <span className="te-qty-cumul-target">{formatNum(target)}</span>
+                            <span className="te-qty-cumul-target">{formatCount(target)}</span>
                           </span>
                         </>
                       )}
@@ -157,6 +173,7 @@ export default function TimeEntryCard({
               <div className="te-menu" ref={menuRef}>
                 <button
                   type="button"
+                  ref={menuBtnRef}
                   className="te-menu-btn"
                   onClick={() => setMenuOpen((o) => !o)}
                   aria-haspopup="true"

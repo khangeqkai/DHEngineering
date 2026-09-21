@@ -85,6 +85,9 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
     const onWeb = !window.electronAPI?.openPdf;
     const win = onWeb ? window.open('', '_blank') : null;
     setBuilding(true);
+    // Welding the documents together takes long enough to look like nothing
+    // happened. Say so while it runs; the outcome below replaces it.
+    const buildingToastId = toast.loading('Putting the printout together…');
     try {
       const { pdf, skipped, cardIncluded } = await build({ items, includeJobCard });
       let opened = false;
@@ -133,6 +136,7 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
       if (win && !win.closed) win.close();
       toast.error(err.message || 'Failed to print the packet');
     } finally {
+      toast.dismiss(buildingToastId);
       setBuilding(false);
     }
   }, [build, jobcardId, jobNumber, onPrinted]);
@@ -140,6 +144,7 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
   const savePacket = useCallback(async ({ items, includeJobCard }) => {
     if (items.length === 0 && includeJobCard === false) { toast.error('Nothing to save'); return; }
     setBuilding(true);
+    const buildingToastId = toast.loading('Putting the PDF together…');
     try {
       const { pdf, skipped } = await build({ items, includeJobCard });
       const bytes = base64ToBytes(pdf);
@@ -174,6 +179,7 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
     } catch (err) {
       toast.error(err.message || 'Failed to save the packet');
     } finally {
+      toast.dismiss(buildingToastId);
       setBuilding(false);
     }
   }, [build, jobcardId, jobNumber]);

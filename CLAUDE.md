@@ -171,12 +171,6 @@ This is policy, not implementation — getting it wrong is a security bug, so it
 - **Update the seed scripts to the new shape too**, so fresh installs and re-seeds produce new-shape data directly (only existing databases need the conversion).
 - Example: removing the `TREATMENT`/`ON_HOLD` job statuses folded them into `AWAITING_MATERIAL` via a startup conversion in `init.js`, while every status list, picker, sort map, and validator was updated to the new set and the old statuses were deleted from the code.
 
-### File Size Limits
-- **Maximum 600 lines per file** - Refactor when approaching this limit
-- Extract custom hooks when domain logic exceeds ~150 lines
-- Split into tab/section components when UI grows complex
-- CSS files are exempt (styling can be large)
-
 ### Separation of Concerns
 - **Custom hooks** (`use*.js`): Encapsulate domain logic (state, handlers, API calls)
 - **Constants** (`constants.js`): Enum-like values, dropdown options, form templates
@@ -205,6 +199,8 @@ return { jobNumber: row.job_number, dueDate: row.due_date, contactId: row.contac
 <input name="dueDate" value={formData.dueDate} />
 ```
 
+**On screen a job's lines are called *parts*; in code they stay `item`.** Every word a person reads says "part" — the section heading, the Add button, the required-box marks, the validation messages, the toasts, the trail entries, the printout and the Excel sheet. The database column, the table, the route, the variable and the prop keep `item`/`lineItem`/`itemNumber`, so nothing renames under the code. Do not "fix" one side to match the other.
+
 ### Required Patterns
 - **Direct API calls**: Use `api.js` methods for all server communication
 - **Audit trail**: Call `recordHistory(entityType, entityId, action, userId, userName, changes, snapshot)` for all server-side data mutations. **Action names use present tense**: `'create'`, `'update'`, `'delete'` (not past tense). **IMPORTANT: `changes` must always use `{ field: { from: oldVal, to: newVal } }` format** — this applies to ALL actions including creates, notes, timers, etc. The activity log UI (`formatChanges`) iterates `Object.entries(changes)` and renders `from → to` for each field. If you pass flat data or `null` for changes, nothing will display in the activity log. Only use `snapshot` (7th param) for supplementary context that doesn't need from/to display. Use `req.user.userId` (not `req.user.id`) for the userId parameter.
@@ -219,6 +215,7 @@ return { jobNumber: row.job_number, dueDate: row.due_date, contactId: row.contac
 ## UI conventions
 
 - **Anything clickable is a real button.** A clickable `<span>` is invisible to Tab and to a screen reader; the job list's status badge and assignee avatars are `<button type="button">` with an `aria-label` saying what pressing them does (their CSS strips the browser's button chrome), and a sortable column heading is reachable by Tab and sorts on Enter or Space.
+- **A suggestion list is worked from the keyboard, and focus never leaves the box.** The customer, previous-job, service/material and supplier boxes are `role="combobox"` with `aria-autocomplete="list"`, `aria-expanded`, `aria-controls` and `aria-activedescendant`; the list is `role="listbox"` and every row `role="option"`, the *whole* list — including its "Clear"/"No supplier" and "Create …" rows, which are options too. Up/Down move a highlight, Enter takes the highlighted row, and nothing is highlighted until the user moves: a fresh set of suggestions resets to nothing highlighted, so Enter can never take a row that was never seen. **Moving real focus into the list would fire the blur that closes it**, which is why the highlight is an index and not a `.focus()`. A guard that stands the blur down after a pick must be disarmed on the next keystroke — Enter commits without blurring, so an armed guard would otherwise outlive its blur and swallow the user's next edit.
 - **Modal accessibility**: Use `role="alertdialog"`, `aria-modal="true"`, `aria-labelledby`/`aria-describedby`, focus trap (prevent Tab from leaving), and Escape key handler. **The page-scroll lock is owned by the shared modal stack** (`common/modalStack.js`): `pushModal` freezes the page behind and `removeModal` releases it only when the *last* modal closes — a modal must never set `document.body.style.overflow` itself, or cancelling a confirm layered over the job screen unfreezes the page while the job screen is still up
 - **Fill colours and ink colours are different tokens.** A saturated colour (`--success-color`, `--warning-color`, `--danger-color`) fills a shape. It is never used for words — at 13px on a white surface the green and amber read at about 2:1. Words in a signal colour take the matching ink token (`--success-ink`, `--warning-ink`, `--danger-ink`), which is tuned to clear 4.5:1 on every app surface and on the tinted chips, in both themes. A solid button or filled pill takes a `--fill-*` token, which is deliberately the same value in both themes because a fill carrying white text has to be dark enough in both; `--fill-warning` keeps the amber and takes `--fill-warning-ink` instead of white, because amber *is* the caution signal. The job-status pills have always worked this way — everything else now matches them.
 - **Only three text weights exist.** Pragmatica ships Light 300, Book 400 and Bold 700. There is no 500 or 600 file, so asking for them silently renders 400 and 700. The scale is `--font-light` / `--font-regular` / `--font-bold` and nothing else; do not reintroduce a medium or semibold name. If a middle step is needed, reach for size, colour or letter-spacing, not weight.

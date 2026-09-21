@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import CreatableTagSelect from '../../common/CreatableTagSelect';
 import LineItemSupplierPicker from './LineItemSupplierPicker';
 import InlineSupplierForm from '../../common/InlineSupplierForm';
@@ -17,6 +17,11 @@ function isActive(s) {
 // so the rest of the system (costing, PDF fill, history) is unchanged.
 export default function LineItemTreatment({ treatments = [], suppliers = [], onChange, onSuppliersChanged }) {
   const { rawTags } = useTags('treatment');
+  // Ties each label to its own box, the way the rest of the part's fields are tied.
+  // Generated rather than built from the part's id because this pair renders once per
+  // part and both boxes must stay distinct across every part on the job.
+  const treatmentFieldId = useId();
+  const supplierFieldId = useId();
   const current = (Array.isArray(treatments) && treatments[0]) || null;
   const value = current?.value || '';
   const supplierId = current?.supplierId || '';
@@ -83,8 +88,9 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
   return (
     <>
       <div className="line-item-treatment-field">
-        <label>Service</label>
+        <label htmlFor={treatmentFieldId}>Service</label>
         <CreatableTagSelect
+          id={treatmentFieldId}
           category="treatment"
           value={value}
           onChange={handleTreatmentChange}
@@ -105,8 +111,9 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
           </div>
         ) : (
           <div className="line-item-treatment-field">
-            <label>Supplier{supplierRequired ? <span className="required"> *</span> : ''}</label>
+            <label htmlFor={supplierFieldId}>Supplier{supplierRequired ? <span className="required"> *</span> : ''}</label>
             <LineItemSupplierPicker
+              id={supplierFieldId}
               treatmentValue={value}
               treatmentTagId={treatmentTagId}
               suppliers={suppliers}

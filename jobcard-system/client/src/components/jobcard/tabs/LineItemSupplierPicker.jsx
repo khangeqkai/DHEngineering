@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { useState, useMemo, useRef, useEffect, useId } from 'react';
+import { ChevronDown, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../../../services/api';
 
@@ -15,6 +15,7 @@ function isActive(s) {
 // provide this treatment records the treatment onto that supplier so the filter
 // learns it. `required` (a brand-new treatment) drops the "No supplier" choice.
 export default function LineItemSupplierPicker({
+  id,
   treatmentValue,
   treatmentTagId,
   suppliers = [],
@@ -70,7 +71,8 @@ export default function LineItemSupplierPicker({
       });
       if (onSuppliersChanged) onSuppliersChanged();
     } catch (err) {
-      toast.error(err.message || 'Could not link the treatment to that supplier');
+      // A repeat of the same failure replaces the first rather than stacking under it.
+      toast.error(err.message || 'Could not link the treatment to that supplier', { id: 'supplier-link-failed' });
     }
   };
 
@@ -104,38 +106,89 @@ export default function LineItemSupplierPicker({
   };
 
   const inputValue = focused ? query : (selectedRetired ? `${selectedName} (retired)` : selectedName);
-  const showDropdown = focused && (matches.length > 0 || canCreate || (!required && !!supplierId));
+
+  // One list for every row the dropdown can show — the suppliers, the "No supplier"
+  // choice and the "create this one" row — so the arrow keys walk all of them in the
+  // order they are read, rather than only the part that happens to be suppliers.
+  const options = useMemo(() => {
+    const rows = matches.map(s => ({ key: `supplier-${s.id}`, kind: 'supplier', supplier: s }));
+    if (!required && supplierId) rows.push({ key: 'none', kind: 'none' });
+    if (canCreate) rows.push({ key: 'create', kind: 'create' });
+    return rows;
+  }, [matches, required, supplierId, canCreate]);
+
+  const listId = useId();
+  const [activeIndex, setActiveIndex] = useState(-1);
+  // A changed list starts with nothing highlighted — keeping the old position would
+  // point the keyboard at a different supplier than the one that was under it.
+  useEffect(() => { setActiveIndex(-1); }, [options]);
+
+  const showDropdown = focused && options.length > 0;
+
+  const choose = (opt) => {
+    if (opt.kind === 'supplier') commit(opt.supplier.id);
+    else if (opt.kind === 'none') commit('');
+    else requestCreate();
+  };
+
+  // Worked from the keyboard without focus leaving the box: moving focus into the
+  // list would fire the blur that closes it.
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') { e.stopPropagation(); e.target.blur(); return; }
+    if (!showDropdown) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex(i => (i < options.length - 1 ? i + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex(i => (i > 0 ? i - 1 : options.length - 1));
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault();
+      choose(options[activeIndex]);
+    }
+  };
 
   return (
     <div className="autocomplete-container">
       <input
+        id={id}
         type="text"
         value={inputValue}
         onChange={(e) => { setQuery(e.target.value); setFocused(true); }}
         onFocus={() => { setFocused(true); setQuery(''); }}
         onBlur={handleBlur}
-        onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); e.target.blur(); } }}
+        onKeyDown={handleKeyDown}
+        role="combobox"
+        aria-expanded={showDropdown}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
+        autoComplete="off"
         placeholder={required ? 'Choose or add a supplier…' : 'No supplier'}
         className={selectedRetired ? 'has-retired' : ''}
       />
       <ChevronDown size={14} className={`autocomplete-caret${focused ? ' is-open' : ''}`} />
       {showDropdown && (
-        <div className="customer-dropdown">
-          {matches.map(s => (
-            <div key={s.id} className="customer-option" onMouseDown={() => commit(s.id)}>
-              <strong>{s.name}</strong>
+        <div className="customer-dropdown" id={listId} role="listbox" aria-label="Matching suppliers">
+          {options.map((opt, i) => (
+            <div
+              key={opt.key}
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={i === activeIndex}
+              className={`customer-option${i === activeIndex ? ' is-active' : ''}`}
+              onMouseEnter={() => setActiveIndex(i)}
+              onMouseDown={() => choose(opt)}
+            >
+              {opt.kind === 'supplier' && <strong>{opt.supplier.name}</strong>}
+              {opt.kind === 'none' && <em>No supplier</em>}
+              {opt.kind === 'create' && (
+                <span className="customer-option-create">
+                  <Plus size={14} /> Create &ldquo;{typed}&rdquo; as a new supplier
+                </span>
+              )}
             </div>
           ))}
-          {!required && supplierId && (
-            <div className="customer-option" onMouseDown={() => commit('')}>
-              <em>No supplier</em>
-            </div>
-          )}
-          {canCreate && (
-            <div className="customer-option" onMouseDown={requestCreate}>
-              ＋ Create &ldquo;{typed}&rdquo; as a new supplier
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -491,6 +491,6 @@ function createRelatedRecords(jobcardId, data) {
 // Copying a QA level's templates onto disk (copyQaTemplatesForJob) and the
 // pre-save availability check (verifyQaTemplatesAvailable) now live in
 // utils/qaTemplateProvisioning.js — extracted out of this file (a straight
-// lift, no behaviour change) to keep it under the 600-line house limit.
+// lift, no behaviour change) because it was getting long.
 
 module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, buildJobCardView, computeAttachmentWarnings };

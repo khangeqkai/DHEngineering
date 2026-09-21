@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { capitalizeFirst } from '../../../utils/formatters';
 import CheckboxDropdown from '../../common/CheckboxDropdown';
 import FieldError from '../../common/FieldError';
@@ -29,6 +29,11 @@ export default function TimeEntryForm({
   // A double-click here records the block twice, doubling the job's hours.
   // One save at a time: the button greys out until the save finishes.
   const [saving, setSaving] = useState(false);
+  // Every box here already carries the name the form state uses; this turns that
+  // same name into the id its label points at, so clicking a label lands in its box
+  // and a screen reader reads the two together.
+  const formId = useId();
+  const idFor = (name) => `${formId}-${name}`;
   const handleSave = async () => {
     if (saving) return;
     setSaving(true);
@@ -51,8 +56,8 @@ export default function TimeEntryForm({
       </div>
 
       <div className={groupClass('workerId')}>
-        <label>Worker <span className="required">*</span></label>
-        <select name="workerId" value={timeEntryForm.workerId} onChange={handleTimeEntryChange}>
+        <label htmlFor={idFor('workerId')}>Worker <span className="required">*</span></label>
+        <select id={idFor('workerId')} name="workerId" value={timeEntryForm.workerId} onChange={handleTimeEntryChange}>
           <option value="">Select worker...</option>
           {employees.map(u => (
             <option key={u.id} value={u.id}>{u.name || u.username}</option>
@@ -63,13 +68,13 @@ export default function TimeEntryForm({
 
       <div className="form-row">
         <div className="form-group">
-          <label>Item #</label>
+          <label htmlFor={idFor('itemId')}>Part</label>
           {/* Identifies the part to the server by its permanent id — never its
               item_number, which is only a sort order and may have gaps. The
               number shown here is the row's position in this same list, so it
               always matches the badge on the part's own card. */}
-          <select name="itemId" value={timeEntryForm.itemId} onChange={handleTimeEntryChange}>
-            <option value="">Select item...</option>
+          <select id={idFor('itemId')} name="itemId" value={timeEntryForm.itemId} onChange={handleTimeEntryChange}>
+            <option value="">Select part…</option>
             {lineItems.map((item, idx) => (
               <option key={item.id} value={item.id}>
                 #{item.position != null ? item.position : idx + 1} - {item.description?.substring(0, 30)}
@@ -98,16 +103,16 @@ export default function TimeEntryForm({
           />
         </div>
         <div className="form-group">
-          <label>Qty</label>
-          <input type="text" inputMode="numeric" name="qty" value={timeEntryForm.qty} onChange={handleTimeEntryChange} />
+          <label htmlFor={idFor('qty')}>Qty</label>
+          <input id={idFor('qty')} type="text" inputMode="numeric" name="qty" value={timeEntryForm.qty} onChange={handleTimeEntryChange} />
         </div>
         <div className="form-group">
-          <label>Scrap — Bin</label>
-          <input type="text" inputMode="numeric" name="scrapBinQty" value={timeEntryForm.scrapBinQty} onChange={handleTimeEntryChange} />
+          <label htmlFor={idFor('scrapBinQty')}>Scrap — Bin</label>
+          <input id={idFor('scrapBinQty')} type="text" inputMode="numeric" name="scrapBinQty" value={timeEntryForm.scrapBinQty} onChange={handleTimeEntryChange} />
         </div>
         <div className="form-group">
-          <label>Scrap — Recycle</label>
-          <input type="text" inputMode="numeric" name="scrapRecycleQty" value={timeEntryForm.scrapRecycleQty} onChange={handleTimeEntryChange} />
+          <label htmlFor={idFor('scrapRecycleQty')}>Scrap — Recycle</label>
+          <input id={idFor('scrapRecycleQty')} type="text" inputMode="numeric" name="scrapRecycleQty" value={timeEntryForm.scrapRecycleQty} onChange={handleTimeEntryChange} />
         </div>
       </div>
 
@@ -155,8 +160,9 @@ export default function TimeEntryForm({
       )}
 
       <div className="form-group">
-        <label>Description</label>
+        <label htmlFor={idFor('description')}>Description</label>
         <input
+          id={idFor('description')}
           type="text"
           name="description"
           value={timeEntryForm.description}
@@ -172,13 +178,13 @@ export default function TimeEntryForm({
 
       <div className="form-row">
         <div className={groupClass('startTime')}>
-          <label>Start Time</label>
-          <input type="datetime-local" name="startTime" value={timeEntryForm.startTime} onChange={handleTimeEntryChange} />
+          <label htmlFor={idFor('startTime')}>Start Time</label>
+          <input id={idFor('startTime')} type="datetime-local" name="startTime" value={timeEntryForm.startTime} onChange={handleTimeEntryChange} />
           <FieldError message={errorFor('startTime')} />
         </div>
         <div className={groupClass('endTime')}>
-          <label>End Time</label>
-          <input type="datetime-local" name="endTime" value={timeEntryForm.endTime} onChange={handleTimeEntryChange} />
+          <label htmlFor={idFor('endTime')}>End Time</label>
+          <input id={idFor('endTime')} type="datetime-local" name="endTime" value={timeEntryForm.endTime} onChange={handleTimeEntryChange} />
           <FieldError message={errorFor('endTime')} />
         </div>
       </div>

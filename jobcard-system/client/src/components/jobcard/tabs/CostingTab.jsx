@@ -422,16 +422,16 @@ export default function CostingTab({
           <div className="ledger-line">
             <span className="ledger-cat">Special labour</span>
             <div className="ledger-field">
-              <label>Hours</label>
-              <input type="number" name="labourSpecialHours" value={costingForm.labourSpecialHours} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
+              <label htmlFor="labourSpecialHours">Hours</label>
+              <input id="labourSpecialHours" type="number" name="labourSpecialHours" value={costingForm.labourSpecialHours} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
               {revertControl('labourSpecialHours')}
             </div>
             <span className="ledger-op">×</span>
             <div className="ledger-field">
-              <label>Rate / hr</label>
+              <label htmlFor="labourSpecialRate">Rate / hr</label>
               <div className="ledger-affix ledger-affix--prefix">
                 <span className="ledger-affix-mark">$</span>
-                <input type="number" name="labourSpecialRate" value={costingForm.labourSpecialRate} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
+                <input id="labourSpecialRate" type="number" name="labourSpecialRate" value={costingForm.labourSpecialRate} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
               </div>
               {revertControl('labourSpecialRate')}
             </div>
@@ -444,18 +444,18 @@ export default function CostingTab({
           <div className="ledger-line">
             <span className="ledger-cat">Materials</span>
             <div className="ledger-field">
-              <label>Cost</label>
+              <label htmlFor="materialsCost">Cost</label>
               <div className="ledger-affix ledger-affix--prefix">
                 <span className="ledger-affix-mark">$</span>
-                <input type="number" name="materialsCost" value={costingForm.materialsCost} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
+                <input id="materialsCost" type="number" name="materialsCost" value={costingForm.materialsCost} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
               </div>
               {revertControl('materialsCost')}
             </div>
             <span className="ledger-op">+</span>
             <div className="ledger-field">
-              <label>Margin</label>
+              <label htmlFor="materialsProfitPercent">Margin</label>
               <div className="ledger-affix ledger-affix--suffix">
-                <input type="number" name="materialsProfitPercent" value={costingForm.materialsProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" />
+                <input id="materialsProfitPercent" type="number" name="materialsProfitPercent" value={costingForm.materialsProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" />
                 <span className="ledger-affix-mark">%</span>
               </div>
               {revertControl('materialsProfitPercent')}
@@ -469,18 +469,18 @@ export default function CostingTab({
           <div className="ledger-line">
             <span className="ledger-cat">Subcontractor</span>
             <div className="ledger-field">
-              <label>Cost</label>
+              <label htmlFor="subcontractorCost">Cost</label>
               <div className="ledger-affix ledger-affix--prefix">
                 <span className="ledger-affix-mark">$</span>
-                <input type="number" name="subcontractorCost" value={costingForm.subcontractorCost} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
+                <input id="subcontractorCost" type="number" name="subcontractorCost" value={costingForm.subcontractorCost} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
               </div>
               {revertControl('subcontractorCost')}
             </div>
             <span className="ledger-op">+</span>
             <div className="ledger-field">
-              <label>Margin</label>
+              <label htmlFor="subcontractorProfitPercent">Margin</label>
               <div className="ledger-affix ledger-affix--suffix">
-                <input type="number" name="subcontractorProfitPercent" value={costingForm.subcontractorProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" />
+                <input id="subcontractorProfitPercent" type="number" name="subcontractorProfitPercent" value={costingForm.subcontractorProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" />
                 <span className="ledger-affix-mark">%</span>
               </div>
               {revertControl('subcontractorProfitPercent')}

@@ -1,7 +1,7 @@
 import { formatHistoryValue, formatDateTime } from '../../../utils/formatters';
 import { actionColor } from '../../../utils/activityColors';
 
-export default function ActivityLogTab({ history = [], loading, onRefresh }) {
+export default function ActivityLogTab({ history = [], loading, failed = false, onRefresh }) {
   const formatAction = (action) => (
     <span style={{
       color: actionColor(action),
@@ -46,7 +46,14 @@ export default function ActivityLogTab({ history = [], loading, onRefresh }) {
       </div>
 
       {history.length === 0 ? (
-        <div className="empty-state">No activity recorded for this job card.</div>
+        /* An empty list and a list that never arrived look the same, so say which.
+           Claiming the job has no history when the fetch simply failed is the more
+           expensive of the two to get wrong. */
+        <div className="empty-state">
+          {failed
+            ? 'The activity for this job card could not be loaded. Press Refresh to try again.'
+            : 'No activity recorded for this job card.'}
+        </div>
       ) : (
         <div className="activity-log-list">
           {history.map((entry, idx) => (

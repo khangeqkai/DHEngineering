@@ -179,6 +179,9 @@ export function useJobFiles(jobcardId) {
   const savePhotos = useCallback(async (photos, category, clearPhotos, itemId = null) => {
     if (!jobcardId || !photos || photos.length === 0) return;
     setSavingPhotos(true);
+    // Photos go up one at a time and can take a while on a phone. Say so while it
+    // runs, the same as picking files from disk already does.
+    const toastId = toast.loading(photos.length > 1 ? `Saving ${photos.length} photos…` : 'Saving the photo…');
     try {
       const now = new Date();
       const timestamp = now.toISOString().replace(/[-:T]/g, '').slice(0, 14);
@@ -189,11 +192,11 @@ export function useJobFiles(jobcardId) {
         const raw = photo.data.replace(/^data:image\/\w+;base64,/, '');
         await api.uploadToJobcardFiles(jobcardId, category, filename, raw, itemId);
       }
-      toast.success(`${photos.length} photo(s) saved to ${CATEGORY_LABELS[category]}`);
+      toast.success(`${photos.length} photo(s) saved to ${CATEGORY_LABELS[category]}`, { id: toastId });
       if (clearPhotos) clearPhotos();
       refreshCount(category);
     } catch (err) {
-      toast.error(err.message || 'Failed to save photos');
+      toast.error(err.message || 'Could not save the photos — try again in a moment.', { id: toastId });
     } finally {
       setSavingPhotos(false);
     }

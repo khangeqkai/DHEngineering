@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../services/api';
 
 // Simple in-memory cache shared across hook instances
@@ -46,9 +46,14 @@ export function useTags(category) {
 
   // Pickers offer active options only. (rawTags may include archived ones, which
   // we keep around purely so labelOf can name a retired value on an existing job.)
-  const tags = rawTags
-    .filter(t => !t.archived)
-    .map(t => ({ value: t.value, label: t.name }));
+  // Memoised on purpose: callers key work off this array's identity. A fresh array
+  // every render made CreatableTagSelect's "a changed list starts with nothing
+  // highlighted" effect fire on every render, so the arrow-key highlight was wiped
+  // the moment it was set and the dropdown could only be worked with the mouse.
+  const tags = useMemo(
+    () => rawTags.filter(t => !t.archived).map(t => ({ value: t.value, label: t.name })),
+    [rawTags]
+  );
 
   // Resolve a stored value to its friendly name, archived included; falls back to
   // the raw value if the option was renamed away entirely.

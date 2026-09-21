@@ -79,3 +79,11 @@ export function formatHistoryValue(field, value) {
   }
   return String(value);
 }
+
+// A piece count for display: whole numbers stay whole, part counts keep at most two
+// decimals and drop trailing zeros ("4", "4.5", not "4.00"). Lived in three copies
+// across the job screen's part/progress/scrap cards before this.
+export function formatCount(n) {
+  if (!Number.isFinite(n)) return '0';
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
+}

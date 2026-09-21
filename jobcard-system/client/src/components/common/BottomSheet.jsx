@@ -117,6 +117,7 @@ export default function BottomSheet({
             <div className="modal-header-actions">{headerActions}</div>
           )}
           <button
+            type="button"
             className="modal-close"
             onClick={onClose}
             aria-label="Close"

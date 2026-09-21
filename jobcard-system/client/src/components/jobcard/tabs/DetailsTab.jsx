@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useId } from 'react';
 import { toTitleCase } from '../../../utils/formatters';
 import { useJobSearch } from '../useJobSearch';
 import { summarizeFieldStates, INSTANT_SAVE_STATUS_TEXT } from '../useInstantSave';
@@ -105,10 +105,34 @@ export default function DetailsTab({
   ]);
 
   const jobSearch = useJobSearch({ excludeJobNumber: jobNumber });
+
+  // Both suggestion lists are worked from the keyboard without focus ever leaving
+  // the box: the arrow keys move a highlight, Enter takes the highlighted one.
+  // Moving focus into the list instead would collide with the blur that closes it.
+  // -1 means "nothing highlighted", so Enter falls through to the form as before.
+  const companyListId = useId();
+  const jobRefListId = useId();
+  const [companyActive, setCompanyActive] = useState(-1);
+  const [jobRefActive, setJobRefActive] = useState(-1);
+  const companyListOpen = showContactDropdown && fieldFocused && companyMatches.length > 0;
+  const jobRefListOpen = jobSearch.showDropdown && jobSearch.focused && jobSearch.matches.length > 0;
+
+  // A new set of suggestions starts with nothing highlighted — carrying the old
+  // position over would point at a different customer than the one under it.
+  useEffect(() => { setCompanyActive(-1); }, [companyMatches]);
+  useEffect(() => { setJobRefActive(-1); }, [jobSearch.matches]);
+
+  const moveWithin = (count, current, key) => {
+    if (key === 'ArrowDown') return current < count - 1 ? current + 1 : 0;
+    if (key === 'ArrowUp') return current > 0 ? current - 1 : count - 1;
+    return null;
+  };
   // Picking a suggestion fires mousedown, which sets the field, BEFORE the input
   // blurs — and that blur still reads the DOM's old text, so letting it write
   // would put the half-typed reference back over the job number just chosen. The
   // pick does its own write and flips this, and the blur behind it stands aside.
+  // Typing again disarms it: an Enter pick leaves focus in the box, so without that
+  // the flag would outlive the blur it was meant for and eat a real edit.
   const justPickedRef = useRef(false);
   const { setQuery: setJobSearchQuery } = jobSearch;
 
@@ -117,6 +141,16 @@ export default function DetailsTab({
       setJobSearchQuery(formData.repeatJobReference || '');
     }
   }, [formData.repeatJobReference, jobSearch.query, setJobSearchQuery]);
+
+  // One pick, whether it came from the mouse or from Enter on the highlighted row.
+  // It writes the job number itself and flags the blur behind it to stand aside —
+  // that blur still reads the half-typed text and would put it back over this.
+  const pickJobReference = (job) => {
+    setFormData(prev => ({ ...prev, repeatJobReference: job.jobNumber }));
+    jobSearch.selectMatch(job.jobNumber);
+    justPickedRef.current = true;
+    commitFieldBlur('repeatJobReference', job.jobNumber);
+  };
 
   // Employee read-only view
   if (readOnly) {
@@ -205,9 +239,10 @@ export default function DetailsTab({
         <div className="contact-fields-inline" ref={contactSearchRef}>
           <div className="form-row">
             <div className="form-group">
-              <label>Company <span className="required">*</span></label>
+              <label htmlFor="jc-company-name">Company <span className="required">*</span></label>
               <div className="autocomplete-container">
                 <input
+                  id="jc-company-name"
                   type="text"
                   value={contactFormData.companyName}
                   onChange={(e) => handleContactFieldChange('companyName', e.target.value)}
@@ -217,14 +252,36 @@ export default function DetailsTab({
                     const formatted = toTitleCase(e.target.value);
                     if (formatted !== e.target.value) handleContactFieldChange('companyName', formatted);
                   }}
-                  onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); e.target.blur(); } }}
-                  placeholder=""
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') { e.stopPropagation(); e.target.blur(); return; }
+                    if (!companyListOpen) return;
+                    const next = moveWithin(companyMatches.length, companyActive, e.key);
+                    if (next !== null) { e.preventDefault(); setCompanyActive(next); return; }
+                    if (e.key === 'Enter' && companyActive >= 0) {
+                      e.preventDefault();
+                      selectCompany(companyMatches[companyActive]);
+                    }
+                  }}
+                  role="combobox"
+                  aria-expanded={companyListOpen}
+                  aria-controls={companyListId}
+                  aria-autocomplete="list"
+                  aria-activedescendant={companyActive >= 0 ? `${companyListId}-${companyActive}` : undefined}
+                  autoComplete="off"
                   className={!contactFormData.companyName.trim() ? 'field-required' : ''}
                 />
-                {showContactDropdown && fieldFocused && companyMatches.length > 0 && (
-                  <div className="customer-dropdown">
-                    {companyMatches.map(c => (
-                      <div key={c.id} className="customer-option" onMouseDown={() => selectCompany(c)}>
+                {companyListOpen && (
+                  <div className="customer-dropdown" id={companyListId} role="listbox" aria-label="Matching customers">
+                    {companyMatches.map((c, i) => (
+                      <div
+                        key={c.id}
+                        id={`${companyListId}-${i}`}
+                        role="option"
+                        aria-selected={i === companyActive}
+                        className={`customer-option${i === companyActive ? ' is-active' : ''}`}
+                        onMouseDown={() => selectCompany(c)}
+                        onMouseEnter={() => setCompanyActive(i)}
+                      >
                         <strong>{c.name}</strong>
                         {(c.people || []).length > 0 && (
                           <span className="contact-name"> ({(c.people || []).map(p => p.contactName).filter(Boolean).join(', ')})</span>
@@ -239,9 +296,10 @@ export default function DetailsTab({
               )}
             </div>
             <div className="form-group">
-              <label>Contact</label>
+              <label htmlFor="jc-contact">Contact</label>
               {selectedCompany && people.length > 0 ? (
                 <select
+                  id="jc-contact"
                   value={contactFormData.contactId}
                   onChange={(e) => selectPerson(e.target.value)}
                 >
@@ -252,11 +310,11 @@ export default function DetailsTab({
                 </select>
               ) : (
                 <input
+                  id="jc-contact"
                   type="text"
                   value={contactFormData.contactName}
                   onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
                   onBlur={titleCaseBlur('contactName', handleContactFieldChange)}
-                  placeholder=""
                 />
               )}
             </div>
@@ -264,13 +322,13 @@ export default function DetailsTab({
           {selectedCompany && people.length > 0 && !contactFormData.contactId && (
             <div className="form-row">
               <div className="form-group">
-                <label>New contact name</label>
+                <label htmlFor="jc-new-contact-name">New contact name</label>
                 <input
+                  id="jc-new-contact-name"
                   type="text"
                   value={contactFormData.contactName}
                   onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
                   onBlur={titleCaseBlur('contactName', handleContactFieldChange)}
-                  placeholder=""
                 />
                 <span className="field-hint">They'll be added under {selectedCompany.name}.</span>
               </div>
@@ -278,21 +336,21 @@ export default function DetailsTab({
           )}
           <div className="form-row">
             <div className="form-group">
-              <label>Phone</label>
+              <label htmlFor="jc-phone">Phone</label>
               <input
-                type="text"
+                id="jc-phone"
+                type="tel"
                 value={contactFormData.phone}
                 onChange={(e) => handleContactFieldChange('phone', e.target.value)}
-                placeholder=""
               />
             </div>
             <div className="form-group">
-              <label>Email</label>
+              <label htmlFor="jc-email">Email</label>
               <input
+                id="jc-email"
                 type="email"
                 value={contactFormData.email}
                 onChange={(e) => handleContactFieldChange('email', e.target.value)}
-                placeholder=""
               />
             </div>
           </div>
@@ -354,8 +412,9 @@ export default function DetailsTab({
         </div>
         <div className="form-row">
           <div className="form-group">
-            <label>Customer's PO Number</label>
+            <label htmlFor="jc-po-number">Customer's PO Number</label>
             <input
+              id="jc-po-number"
               type="text"
               name="poNumber"
               value={formData.poNumber}
@@ -364,8 +423,9 @@ export default function DetailsTab({
             />
           </div>
           <div className="form-group">
-            <label>Quote Reference</label>
+            <label htmlFor="jc-quote-reference">Quote Reference</label>
             <input
+              id="jc-quote-reference"
               type="text"
               name="quoteReference"
               value={formData.quoteReference}
@@ -374,8 +434,9 @@ export default function DetailsTab({
             />
           </div>
           <div className="form-group">
-            <label>Quality Level</label>
+            <label htmlFor="jc-qa-level">Quality Level</label>
             <select
+              id="jc-qa-level"
               name="qaLevelId"
               value={formData.qaLevelId || ''}
               onChange={(e) => {
@@ -403,9 +464,10 @@ export default function DetailsTab({
             </select>
           </div>
           <div className="form-group">
-            <label>Repeat Job</label>
+            <label htmlFor="jc-repeat-job">Repeat Job</label>
             <label className="checkbox-inline">
               <input
+                id="jc-repeat-job"
                 type="checkbox"
                 name="isRepeatJob"
                 checked={formData.isRepeatJob}
@@ -420,13 +482,19 @@ export default function DetailsTab({
         </div>
         {formData.isRepeatJob && (
           <div className="form-group" ref={jobSearch.containerRef}>
-            <label>Previous Job Reference</label>
+            <label htmlFor="jc-repeat-job-reference">Previous Job Reference</label>
             <div className="autocomplete-container">
               <input
+                id="jc-repeat-job-reference"
                 type="text"
                 name="repeatJobReference"
                 value={formData.repeatJobReference || ''}
                 onChange={(e) => {
+                  // The pick is only allowed to silence the blur that comes straight
+                  // behind it. Enter picks without blurring at all, so the flag would
+                  // otherwise sit armed and swallow whatever blur followed the user's
+                  // next edit — saving the picked number over the corrected one.
+                  justPickedRef.current = false;
                   jobSearch.setQuery(e.target.value);
                   handleChange(e);
                 }}
@@ -436,22 +504,35 @@ export default function DetailsTab({
                   if (justPickedRef.current) { justPickedRef.current = false; return; }
                   commitFieldBlur('repeatJobReference', e.target.value);
                 }}
-                onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); e.target.blur(); } }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') { e.stopPropagation(); e.target.blur(); return; }
+                  if (!jobRefListOpen) return;
+                  const next = moveWithin(jobSearch.matches.length, jobRefActive, e.key);
+                  if (next !== null) { e.preventDefault(); setJobRefActive(next); return; }
+                  if (e.key === 'Enter' && jobRefActive >= 0) {
+                    e.preventDefault();
+                    pickJobReference(jobSearch.matches[jobRefActive]);
+                  }
+                }}
+                role="combobox"
+                aria-expanded={jobRefListOpen}
+                aria-controls={jobRefListId}
+                aria-autocomplete="list"
+                aria-activedescendant={jobRefActive >= 0 ? `${jobRefListId}-${jobRefActive}` : undefined}
                 placeholder="DH-00001"
                 autoComplete="off"
               />
-              {jobSearch.showDropdown && jobSearch.focused && jobSearch.matches.length > 0 && (
-                <div className="customer-dropdown">
-                  {jobSearch.matches.map(j => (
+              {jobRefListOpen && (
+                <div className="customer-dropdown" id={jobRefListId} role="listbox" aria-label="Matching jobs">
+                  {jobSearch.matches.map((j, i) => (
                     <div
                       key={j.id}
-                      className="customer-option"
-                      onMouseDown={() => {
-                        setFormData(prev => ({ ...prev, repeatJobReference: j.jobNumber }));
-                        jobSearch.selectMatch(j.jobNumber);
-                        justPickedRef.current = true;
-                        commitFieldBlur('repeatJobReference', j.jobNumber);
-                      }}
+                      id={`${jobRefListId}-${i}`}
+                      role="option"
+                      aria-selected={i === jobRefActive}
+                      className={`customer-option${i === jobRefActive ? ' is-active' : ''}`}
+                      onMouseEnter={() => setJobRefActive(i)}
+                      onMouseDown={() => pickJobReference(j)}
                     >
                       <strong>{j.jobNumber}</strong>
                       {j.companyName && <span className="contact-name"> — {j.companyName}</span>}

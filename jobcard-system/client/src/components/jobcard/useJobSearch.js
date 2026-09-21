@@ -24,7 +24,9 @@ export function useJobSearch({ excludeJobNumber } = {}) {
       lastLoadedAtRef.current = Date.now();
       setLoadVersion(v => v + 1);
     } catch (err) {
-      toast.error('Failed to load jobs');
+      // One message, replaced rather than stacked: focusing this box repeatedly
+      // while the server is away would otherwise pile up a copy each time.
+      toast.error('Could not load the job list to search. Type the job number in full instead.', { id: 'job-search-load-failed' });
     }
   }, []);
 

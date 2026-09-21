@@ -2,7 +2,7 @@
 // what a job declared but has no file attached for. Shared by the close-out
 // confirm dialog on both the job card screen and the job list so they speak the
 // same language. Returns an array of strings, e.g.
-//   ["Drawing — item 2", "Customer property — item 3", "Quality form"]
+//   ["Drawing — part 2", "Customer property — part 3", "Quality form"]
 //
 // The server states each flagged item's `position` directly — the job's full
 // ordered parts list is exactly what it already has in hand when it builds this
@@ -17,8 +17,8 @@ export function describeAttachmentGaps(warnings) {
   const drawingItems = items.filter(i => i.missingDrawing).map(displayNumber);
   const propertyItems = items.filter(i => i.missingCustomerProperty).map(displayNumber);
   const gaps = [];
-  if (drawingItems.length) gaps.push(`Drawing — item ${drawingItems.join(', ')}`);
-  if (propertyItems.length) gaps.push(`Customer property — item ${propertyItems.join(', ')}`);
+  if (drawingItems.length) gaps.push(`Drawing — part ${drawingItems.join(', ')}`);
+  if (propertyItems.length) gaps.push(`Customer property — part ${propertyItems.join(', ')}`);
   if (warnings.missingQaForms) gaps.push('Quality form');
   return gaps;
 }

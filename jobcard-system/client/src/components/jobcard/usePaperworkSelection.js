@@ -4,7 +4,7 @@ import { ORDER, MAX_PACKET_FILES, keyOf } from './paperworkHubHelpers';
 // Which files (plus the pinned job card) are ticked for the combined packet, and
 // the per-section / per-part / whole-job pick-clear helpers the paperwork hub's
 // toolbar and "Select" menu use. Extracted out of JobPaperworkHub.jsx (a straight
-// lift, no behaviour change) to keep that file under the 600-line house limit —
+// lift, no behaviour change) because that file was getting long —
 // this hook only owns the selection bookkeeping; the hub still owns what a tick
 // means (print/save) and how it's drawn.
 export function usePaperworkSelection(filesByCategory) {

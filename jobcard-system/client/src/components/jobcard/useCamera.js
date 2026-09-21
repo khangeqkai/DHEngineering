@@ -9,12 +9,14 @@ function describeCameraError(err) {
       return 'Camera access was blocked. Allow camera permission for this app, then try again.';
     case 'NotFoundError':
     case 'DevicesNotFoundError':
-      return 'No camera was found on this computer.';
+      return 'No camera was found on this computer. Use Add to pick a photo from a file instead.';
     case 'NotReadableError':
     case 'TrackStartError':
       return 'The camera is already in use by another program. Close it and try again.';
     default:
-      return 'The camera could not be started.';
+      // Every other branch names a next step; this one has to as well, or the
+      // screen simply says no with nowhere to go.
+      return 'The camera could not be started. Try again, or use Add to pick a photo from a file.';
   }
 }
 
@@ -79,7 +81,8 @@ export function useCamera() {
     } catch (err) {
       const message = describeCameraError(err);
       setCameraError(message);
-      toast.error(message);
+      // The camera screen shows this too, so a repeat replaces rather than stacks.
+      toast.error(message, { id: 'camera-start-failed' });
     }
   }, []);
 

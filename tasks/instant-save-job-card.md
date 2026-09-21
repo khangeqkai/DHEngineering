@@ -76,8 +76,9 @@ action `'unassign'`. Idempotent: not assigned → 200 with the current list, no 
 - Insert with `jobItemQueries.create` using `item:${uuidv4()}` and `item_number` = current
   count + 1. Use `serializeTreatments` from `jobcard-helpers.js`.
 - History: `recordHistory('jobcard', id, 'update', ...)` with
-  `{ ['item #' + n + ' added']: { from: null, to: itemSummary(...) } }`, using `itemSummary`
-  from `jobcard-audit-text.js` — the same key shape the bulk route produces today.
+  `{ ['part ' + label + ' added']: { from: null, to: itemSummary(...) } }`, using `itemSummary`
+  from `jobcard-audit-text.js`. `label` is the part's quoted description from
+  `describePart` — a part's number is not stable enough to name it across edits.
 - Return the created row in the API's camelCase shape.
 
 ### 1d. `PATCH /jobcards/:id/items/:itemId` — change one part
@@ -89,7 +90,7 @@ action `'unassign'`. Idempotent: not assigned → 200 with the current list, no 
   merged item with the same one-element-array calls as 1c.
 - Write with `jobItemQueries.updateById`, passing the row's existing `item_number` unchanged —
   this route never moves a part.
-- History: `{ ['item #' + n]: { from: itemSummary(before), to: itemSummary(after) } }`, and
+- History: `{ ['part ' + label]: { from: itemSummary(before), to: itemSummary(after) } }`, and
   **skip the history call entirely if the summary is unchanged**.
 
 ### 1e. `DELETE /jobcards/:id/items/:itemId` — remove one part
@@ -102,7 +103,7 @@ action `'unassign'`. Idempotent: not assigned → 200 with the current list, no 
 - Delete with `jobItemQueries.deleteById`, then **renumber the remaining rows** 1..n in their
   current `item_number` order via `jobItemQueries.updateById`. Do the delete and the renumber
   in one `db.transaction`.
-- History: `{ ['item #' + n + ' removed']: { from: itemSummary(before), to: null } }`.
+- History: `{ ['part ' + label + ' removed']: { from: itemSummary(before), to: null } }`.
 
 ### Stage 1 gate
 
@@ -187,7 +188,7 @@ Customer fields stay frozen read-only on an existing job. Unchanged.
   > It hasn't been saved, so the job keeps the description it already has.
   > → `Close anyway` / `Fix it`
 
-  For a part, name which: *"Line 2 needs a description"*, *"Line 3 needs a quantity"*. More than
+  For a part, name which: *"Part 2 needs a description"*, *"Part 3 needs a quantity"*. More than
   one empty box → list them. `confirmVariant` is **warning**, not danger — nothing is being
   destroyed. **`Fix it` must put the cursor in the offending box**, not just return to the
   screen: `scrollFieldIntoView` in `hooks/useFieldErrors.js` already does this for a
@@ -203,7 +204,7 @@ Customer fields stay frozen read-only on an existing job. Unchanged.
   Where both (a) and (b) are outstanding, (b) wins the framing — something really is at risk —
   and (a) is mentioned as a second line.
 - **A started-but-not-yet-real part row counts as outstanding work too.** A row added with
-  "Add Item" stays local until its description commits it, and `useInstantItems` deliberately
+  "Add Part" stays local until its description commits it, and `useInstantItems` deliberately
   never *marks* a local row (a fresh row starts blank by design, that is not an error). So
   `hasIncompleteItem` is false for it, while `itemsDirty` is true. If 4b re-points
   `hasUnsavedWork` at `failedWrite || hasIncompleteItem || comment || stop-form` and stops
