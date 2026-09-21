@@ -93,6 +93,13 @@ export function useContactSearch() {
     }, 200);
   }, []);
 
+  // A pick closes the list by dropping the focus flag. Picking with the mouse
+  // takes the cursor out of the box, so coming back counts as a fresh visit and
+  // the flag returns on its own; Enter never moves the cursor, so typing after an
+  // Enter pick has to say the box is being worked in again — without this the
+  // suggestions never come back, however much is typed.
+  const noteCompanyTyping = useCallback(() => setFieldFocused(true), []);
+
   // The people at the picked company, for the person dropdown.
   const selectedCompany = companies.find(c => c.id === contactFormData.companyId) || null;
   const people = selectedCompany?.people || [];
@@ -256,6 +263,7 @@ export function useContactSearch() {
     selectCompany,
     selectPerson,
     handleContactFieldChange,
+    noteCompanyTyping,
     handleFieldFocus,
     handleFieldBlur,
     setContactFromJobCard,

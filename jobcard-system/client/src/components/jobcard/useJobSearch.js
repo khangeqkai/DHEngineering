@@ -84,6 +84,13 @@ export function useJobSearch({ excludeJobNumber } = {}) {
     }, 200);
   }, []);
 
+  // Same reason as the customer box: a pick closes the list by dropping the focus
+  // flag, and an Enter pick leaves the cursor where it is, so typing afterwards is
+  // the only thing that can say the box is being worked in again. Kept apart from
+  // setQuery, which is also called to keep the box in step with the saved job and
+  // must never open a list nobody asked for.
+  const noteTyping = useCallback(() => setFocused(true), []);
+
   const selectMatch = useCallback((value) => {
     if (blurTimeoutRef.current) {
       clearTimeout(blurTimeoutRef.current);
@@ -102,6 +109,7 @@ export function useJobSearch({ excludeJobNumber } = {}) {
     matches,
     query,
     setQuery,
+    noteTyping,
     handleFocus,
     handleBlur,
     setShowDropdown,

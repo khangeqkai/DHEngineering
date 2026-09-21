@@ -20,6 +20,7 @@ export default function DetailsTab({
   fieldStates = {},
   contactFormData,
   handleContactFieldChange,
+  noteCompanyTyping,
   selectCompany,
   selectPerson,
   selectedCompany,
@@ -245,7 +246,12 @@ export default function DetailsTab({
                   id="jc-company-name"
                   type="text"
                   value={contactFormData.companyName}
-                  onChange={(e) => handleContactFieldChange('companyName', e.target.value)}
+                  onChange={(e) => {
+                    // A pick closed the list; with Enter the cursor never left the
+                    // box, so only this brings the matching customers back.
+                    noteCompanyTyping();
+                    handleContactFieldChange('companyName', e.target.value);
+                  }}
                   onFocus={handleFieldFocus}
                   onBlur={(e) => {
                     handleFieldBlur();
@@ -495,6 +501,9 @@ export default function DetailsTab({
                   // otherwise sit armed and swallow whatever blur followed the user's
                   // next edit — saving the picked number over the corrected one.
                   justPickedRef.current = false;
+                  // And the list comes back: an Enter pick closed it without the
+                  // cursor ever leaving the box.
+                  jobSearch.noteTyping();
                   jobSearch.setQuery(e.target.value);
                   handleChange(e);
                 }}

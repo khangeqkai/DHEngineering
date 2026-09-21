@@ -15745,9 +15745,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-audit-text.js",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_audit_text_js",
-      "target": "routes_jobcard_audit_text_treatmentstotext",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_audit_text_treatmentstotext"
     },
     {
       "relation": "contains",
@@ -15785,9 +15785,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-audit-text.js",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_audit_text_js",
-      "target": "routes_jobcard_audit_text_itemsummary",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_audit_text_itemsummary"
     },
     {
       "relation": "contains",
@@ -15825,9 +15825,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-audit-text.js",
       "source_location": "L34",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_audit_text_js",
-      "target": "routes_jobcard_audit_text_assigneenames",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_audit_text_assigneenames"
     },
     {
       "relation": "contains",
@@ -15865,9 +15865,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-audit-text.js",
       "source_location": "L41",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_audit_text_js",
-      "target": "routes_jobcard_audit_text_buildqatemplatewarning",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_audit_text_buildqatemplatewarning"
     },
     {
       "relation": "contains",
@@ -16077,9 +16077,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-files.js",
       "source_location": "L67",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_files_js",
-      "target": "routes_jobcard_files_resolvejobfolder",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_resolvejobfolder"
     },
     {
       "relation": "contains",
@@ -16128,9 +16128,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-files.js",
       "source_location": "L111",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_files_js",
-      "target": "routes_jobcard_files_resolvecategoryfolder",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_resolvecategoryfolder"
     },
     {
       "relation": "contains",
@@ -16179,9 +16179,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-files.js",
       "source_location": "L135",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_files_js",
-      "target": "routes_jobcard_files_partfilecode",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_partfilecode"
     },
     {
       "relation": "contains",
@@ -16219,9 +16219,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-files.js",
       "source_location": "L147",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_files_js",
-      "target": "routes_jobcard_files_stripstoragetag",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_stripstoragetag"
     },
     {
       "relation": "contains",
@@ -16259,9 +16259,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-files.js",
       "source_location": "L159",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_files_js",
-      "target": "routes_jobcard_files_parttagregex",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_parttagregex"
     },
     {
       "relation": "contains",
@@ -16299,9 +16299,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-files.js",
       "source_location": "L171",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_files_js",
-      "target": "routes_jobcard_files_resolvefileowners",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_resolvefileowners"
     },
     {
       "relation": "contains",
@@ -16350,9 +16350,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-files.js",
       "source_location": "L202",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_files_js",
-      "target": "routes_jobcard_files_buildstoragefilename",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_buildstoragefilename"
     },
     {
       "relation": "contains",
@@ -16401,9 +16401,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-files.js",
       "source_location": "L224",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_files_js",
-      "target": "routes_jobcard_files_nextqaformnumber",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_nextqaformnumber"
     },
     {
       "relation": "contains",
@@ -16452,9 +16452,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-files.js",
       "source_location": "L242",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_files_js",
-      "target": "routes_jobcard_files_listfolderfiles",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_listfolderfiles"
     },
     {
       "relation": "contains",
@@ -16492,9 +16492,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-files.js",
       "source_location": "L274",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_files_js",
-      "target": "routes_jobcard_files_listcategoryfilenames",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_listcategoryfilenames"
     },
     {
       "relation": "contains",
@@ -16532,9 +16532,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-files.js",
       "source_location": "L388",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_files_js",
-      "target": "routes_jobcard_files_savefile",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_files_savefile"
     },
     {
       "relation": "contains",
@@ -19028,9 +19028,9 @@
       "source_file": "jobcard-system/server/src/routes/tags.js",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_tags_js",
-      "target": "routes_tags_nametovalue",
-      "confidence_score": 1.0
+      "target": "routes_tags_nametovalue"
     },
     {
       "relation": "contains",
@@ -19068,9 +19068,9 @@
       "source_file": "jobcard-system/server/src/routes/tags.js",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_tags_js",
-      "target": "routes_tags_formattag",
-      "confidence_score": 1.0
+      "target": "routes_tags_formattag"
     },
     {
       "relation": "contains",
@@ -26229,9 +26229,9 @@
       "source_file": "jobcard-system/client/src/components/common/CreatableTagSelect.jsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_common_creatabletagselect_jsx",
-      "target": "hooks_usetags_usetags",
-      "confidence_score": 1.0
+      "target": "hooks_usetags_usetags"
     },
     {
       "relation": "imports",
@@ -26240,9 +26240,9 @@
       "source_file": "jobcard-system/client/src/components/common/CreatableTagSelect.jsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_common_creatabletagselect_jsx",
-      "target": "hooks_usetags_invalidatetagcache",
-      "confidence_score": 1.0
+      "target": "hooks_usetags_invalidatetagcache"
     },
     {
       "relation": "imports",
@@ -26251,9 +26251,9 @@
       "source_file": "jobcard-system/client/src/components/common/CreatableTagSelect.jsx",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_common_creatabletagselect_jsx",
-      "target": "utils_formatters_totitlecase",
-      "confidence_score": 1.0
+      "target": "utils_formatters_totitlecase"
     },
     {
       "relation": "contains",
@@ -26261,9 +26261,9 @@
       "source_file": "jobcard-system/client/src/components/common/CreatableTagSelect.jsx",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_common_creatabletagselect_jsx",
-      "target": "common_creatabletagselect_creatabletagselect",
-      "confidence_score": 1.0
+      "target": "common_creatabletagselect_creatabletagselect"
     },
     {
       "relation": "calls",
@@ -26802,9 +26802,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/LineItemTimerButton.jsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_lineitemtimerbutton_jsx",
-      "target": "common_modalstack_pushmodal",
-      "confidence_score": 1.0
+      "target": "common_modalstack_pushmodal"
     },
     {
       "relation": "imports",
@@ -26824,9 +26824,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/tabs/TimeEntryCard.jsx",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_tabs_timeentrycard_jsx",
-      "target": "common_modalstack_pushmodal",
-      "confidence_score": 1.0
+      "target": "common_modalstack_pushmodal"
     },
     {
       "relation": "imports",
@@ -27009,9 +27009,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/LineItemTimerButton.jsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_lineitemtimerbutton_jsx",
-      "target": "common_modalstack_removemodal",
-      "confidence_score": 1.0
+      "target": "common_modalstack_removemodal"
     },
     {
       "relation": "imports",
@@ -27031,9 +27031,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/tabs/TimeEntryCard.jsx",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_tabs_timeentrycard_jsx",
-      "target": "common_modalstack_removemodal",
-      "confidence_score": 1.0
+      "target": "common_modalstack_removemodal"
     },
     {
       "relation": "imports",
@@ -27216,9 +27216,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/LineItemTimerButton.jsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_lineitemtimerbutton_jsx",
-      "target": "common_modalstack_istopmodal",
-      "confidence_score": 1.0
+      "target": "common_modalstack_istopmodal"
     },
     {
       "relation": "imports",
@@ -27238,9 +27238,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/tabs/TimeEntryCard.jsx",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_tabs_timeentrycard_jsx",
-      "target": "common_modalstack_istopmodal",
-      "confidence_score": 1.0
+      "target": "common_modalstack_istopmodal"
     },
     {
       "relation": "imports",
@@ -30667,9 +30667,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/useActivityLog.js",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_useactivitylog_js",
-      "target": "jobcard_useactivitylog_useactivitylog",
-      "confidence_score": 1.0
+      "target": "jobcard_useactivitylog_useactivitylog"
     },
     {
       "relation": "contains",
@@ -30719,9 +30719,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/useCamera.js",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_usecamera_js",
-      "target": "jobcard_usecamera_describecameraerror",
-      "confidence_score": 1.0
+      "target": "jobcard_usecamera_describecameraerror"
     },
     {
       "relation": "contains",
@@ -30729,9 +30729,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/useCamera.js",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_usecamera_js",
-      "target": "jobcard_usecamera_usecamera",
-      "confidence_score": 1.0
+      "target": "jobcard_usecamera_usecamera"
     },
     {
       "relation": "contains",
@@ -31666,9 +31666,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/useJobSearch.js",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_usejobsearch_js",
-      "target": "jobcard_usejobsearch_usejobsearch",
-      "confidence_score": 1.0
+      "target": "jobcard_usejobsearch_usejobsearch"
     },
     {
       "relation": "imports",
@@ -32624,9 +32624,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/tabs/DetailsReadOnlyView.jsx",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_tabs_detailsreadonlyview_jsx",
-      "target": "tabs_detailsreadonlyview_detailsreadonlyview",
-      "confidence_score": 1.0
+      "target": "tabs_detailsreadonlyview_detailsreadonlyview"
     },
     {
       "relation": "contains",
@@ -32811,9 +32811,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/tabs/LineItemProgress.jsx",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_tabs_lineitemprogress_jsx",
-      "target": "utils_formatters_formatcount",
-      "confidence_score": 1.0
+      "target": "utils_formatters_formatcount"
     },
     {
       "relation": "contains",
@@ -33231,9 +33231,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/tabs/ScrapStat.jsx",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_tabs_scrapstat_jsx",
-      "target": "utils_formatters_formatcount",
-      "confidence_score": 1.0
+      "target": "utils_formatters_formatcount"
     },
     {
       "relation": "contains",
@@ -33304,9 +33304,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/tabs/TimeEntryCard.jsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_tabs_timeentrycard_jsx",
-      "target": "utils_formatters_formatdate",
-      "confidence_score": 1.0
+      "target": "utils_formatters_formatdate"
     },
     {
       "relation": "imports",
@@ -33315,9 +33315,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/tabs/TimeEntryCard.jsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_tabs_timeentrycard_jsx",
-      "target": "utils_formatters_formattime",
-      "confidence_score": 1.0
+      "target": "utils_formatters_formattime"
     },
     {
       "relation": "imports",
@@ -33326,9 +33326,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/tabs/TimeEntryCard.jsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_tabs_timeentrycard_jsx",
-      "target": "utils_formatters_formatcount",
-      "confidence_score": 1.0
+      "target": "utils_formatters_formatcount"
     },
     {
       "relation": "contains",
@@ -33336,9 +33336,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/tabs/TimeEntryCard.jsx",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_tabs_timeentrycard_jsx",
-      "target": "tabs_timeentrycard_formatelapsed",
-      "confidence_score": 1.0
+      "target": "tabs_timeentrycard_formatelapsed"
     },
     {
       "relation": "contains",
@@ -33346,9 +33346,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/tabs/TimeEntryCard.jsx",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_tabs_timeentrycard_jsx",
-      "target": "tabs_timeentrycard_liveelapsed",
-      "confidence_score": 1.0
+      "target": "tabs_timeentrycard_liveelapsed"
     },
     {
       "relation": "contains",
@@ -33356,9 +33356,9 @@
       "source_file": "jobcard-system/client/src/components/jobcard/tabs/TimeEntryCard.jsx",
       "source_location": "L32",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_components_jobcard_tabs_timeentrycard_jsx",
-      "target": "tabs_timeentrycard_timeentrycard",
-      "confidence_score": 1.0
+      "target": "tabs_timeentrycard_timeentrycard"
     },
     {
       "relation": "calls",
@@ -35455,9 +35455,9 @@
       "source_file": "jobcard-system/client/src/hooks/useTags.js",
       "source_location": "L17",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_hooks_usetags_js",
-      "target": "hooks_usetags_usetags",
-      "confidence_score": 1.0
+      "target": "hooks_usetags_usetags"
     },
     {
       "relation": "contains",
@@ -35465,9 +35465,9 @@
       "source_file": "jobcard-system/client/src/hooks/useTags.js",
       "source_location": "L75",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_hooks_usetags_js",
-      "target": "hooks_usetags_invalidatetagcache",
-      "confidence_score": 1.0
+      "target": "hooks_usetags_invalidatetagcache"
     },
     {
       "relation": "imports",
@@ -39576,9 +39576,9 @@
       "source_file": "jobcard-system/client/src/utils/formatters.js",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_utils_formatters_js",
-      "target": "utils_formatters_totitlecase",
-      "confidence_score": 1.0
+      "target": "utils_formatters_totitlecase"
     },
     {
       "relation": "contains",
@@ -39586,9 +39586,9 @@
       "source_file": "jobcard-system/client/src/utils/formatters.js",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_utils_formatters_js",
-      "target": "utils_formatters_autoresize",
-      "confidence_score": 1.0
+      "target": "utils_formatters_autoresize"
     },
     {
       "relation": "contains",
@@ -39596,9 +39596,9 @@
       "source_file": "jobcard-system/client/src/utils/formatters.js",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_utils_formatters_js",
-      "target": "utils_formatters_capitalizefirst",
-      "confidence_score": 1.0
+      "target": "utils_formatters_capitalizefirst"
     },
     {
       "relation": "contains",
@@ -39606,9 +39606,9 @@
       "source_file": "jobcard-system/client/src/utils/formatters.js",
       "source_location": "L17",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_utils_formatters_js",
-      "target": "utils_formatters_validatepassword",
-      "confidence_score": 1.0
+      "target": "utils_formatters_validatepassword"
     },
     {
       "relation": "contains",
@@ -39616,9 +39616,9 @@
       "source_file": "jobcard-system/client/src/utils/formatters.js",
       "source_location": "L31",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_utils_formatters_js",
-      "target": "utils_formatters_parsedatevalue",
-      "confidence_score": 1.0
+      "target": "utils_formatters_parsedatevalue"
     },
     {
       "relation": "contains",
@@ -39626,9 +39626,9 @@
       "source_file": "jobcard-system/client/src/utils/formatters.js",
       "source_location": "L44",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_utils_formatters_js",
-      "target": "utils_formatters_todayisodate",
-      "confidence_score": 1.0
+      "target": "utils_formatters_todayisodate"
     },
     {
       "relation": "contains",
@@ -39636,9 +39636,9 @@
       "source_file": "jobcard-system/client/src/utils/formatters.js",
       "source_location": "L51",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_utils_formatters_js",
-      "target": "utils_formatters_formatdate",
-      "confidence_score": 1.0
+      "target": "utils_formatters_formatdate"
     },
     {
       "relation": "contains",
@@ -39646,9 +39646,9 @@
       "source_file": "jobcard-system/client/src/utils/formatters.js",
       "source_location": "L57",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_utils_formatters_js",
-      "target": "utils_formatters_formatdatetime",
-      "confidence_score": 1.0
+      "target": "utils_formatters_formatdatetime"
     },
     {
       "relation": "contains",
@@ -39656,9 +39656,9 @@
       "source_file": "jobcard-system/client/src/utils/formatters.js",
       "source_location": "L63",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_utils_formatters_js",
-      "target": "utils_formatters_formattime",
-      "confidence_score": 1.0
+      "target": "utils_formatters_formattime"
     },
     {
       "relation": "contains",
@@ -39666,9 +39666,9 @@
       "source_file": "jobcard-system/client/src/utils/formatters.js",
       "source_location": "L74",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_utils_formatters_js",
-      "target": "utils_formatters_formathistoryvalue",
-      "confidence_score": 1.0
+      "target": "utils_formatters_formathistoryvalue"
     },
     {
       "relation": "contains",
@@ -39676,9 +39676,9 @@
       "source_file": "jobcard-system/client/src/utils/formatters.js",
       "source_location": "L86",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_client_src_utils_formatters_js",
-      "target": "utils_formatters_formatcount",
-      "confidence_score": 1.0
+      "target": "utils_formatters_formatcount"
     },
     {
       "relation": "imports",
@@ -42072,9 +42072,9 @@
       "source_file": "jobcard-system/server/src/routes/jobcard-audit-text.js",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "jobcard_system_server_src_routes_jobcard_audit_text_js",
-      "target": "routes_jobcard_audit_text_describepart",
-      "confidence_score": 1.0
+      "target": "routes_jobcard_audit_text_describepart"
     },
     {
       "relation": "contains",
