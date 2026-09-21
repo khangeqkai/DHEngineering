@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, AlertTriangle, Check } from 'lucide-react';
+import FieldError from '../../common/FieldError';
 
 // A per-line-item multi-select stored as a comma-separated string of tag values.
 // Rendered as a compact dropdown (closed state matches the Job Type / Material
@@ -8,7 +9,13 @@ import { ChevronDown, AlertTriangle, Check } from 'lucide-react';
 // picking it clears the rest, and picking any other value clears it. An empty
 // string means "not answered yet" (fails the required check). In read-only mode
 // the selection shows as plain text.
+//
+// error: a saved part's own required-field check clearing it back to "not
+// answered yet" (see useInstantItems.js) — marks the trigger and shows the
+// message the same way a text field's FieldError does, since this control has
+// no native <select> for the generic .field-error CSS to catch on its own.
 export default function LineItemTagSelect({
+  id,
   label,
   required = false,
   readOnly = false,
@@ -19,7 +26,8 @@ export default function LineItemTagSelect({
   onChange,
   warning = false,
   attachedFiles = [],
-  onAttach
+  onAttach,
+  error = null
 }) {
   const selected = value ? value.split(',').filter(Boolean) : [];
   // "Declares something" = a real value picked, not the explicit N/A answer.
@@ -109,12 +117,13 @@ export default function LineItemTagSelect({
   };
 
   return (
-    <div className="line-item-tagselect" ref={ref}>
+    <div className={`line-item-tagselect${error ? ' field-error' : ''}`} ref={ref}>
       <label>{label} {required && <span className="required">*</span>}</label>
       <div className="lit-select">
         <button
+          id={id}
           type="button"
-          className={`lit-select-btn${value ? '' : ' lit-select-btn--empty'}${hasRetired ? ' lit-select-btn--retired' : ''}`}
+          className={`lit-select-btn${value ? '' : ' lit-select-btn--empty'}${hasRetired ? ' lit-select-btn--retired' : ''}${error ? ' lit-select-btn--error' : ''}`}
           onClick={() => setOpen(o => !o)}
           aria-haspopup="listbox"
           aria-expanded={open}
@@ -145,6 +154,7 @@ export default function LineItemTagSelect({
         )}
       </div>
       {warningPill}
+      <FieldError message={error} />
     </div>
   );
 }

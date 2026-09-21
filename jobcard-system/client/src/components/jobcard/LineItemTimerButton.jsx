@@ -12,6 +12,7 @@ function formatElapsed(seconds) {
 export default function LineItemTimerButton({
   itemId,
   itemNumber,
+  displayNumber,
   activeTimer,
   elapsed,
   loading,
@@ -57,13 +58,15 @@ export default function LineItemTimerButton({
     );
   }
 
-  // Regular worker: one button that starts their own timer immediately.
+  // Regular worker: one button that starts their own timer immediately. The
+  // part is identified to the server by its permanent id — displayNumber only
+  // ever reaches the user, in the toasts onStart raises.
   if (!canManage || employees.length === 0) {
     return (
       <button
         type="button"
         className="lit-btn lit-btn-start"
-        onClick={() => onStart(itemNumber)}
+        onClick={() => onStart(itemId, displayNumber)}
         disabled={loading}
         title="Start timer for this item"
       >
@@ -79,7 +82,7 @@ export default function LineItemTimerButton({
 
   const startFor = (workerId, workerName) => {
     setOpen(false);
-    onStart(itemNumber, workerId, workerName);
+    onStart(itemId, displayNumber, workerId, workerName);
   };
 
   return (

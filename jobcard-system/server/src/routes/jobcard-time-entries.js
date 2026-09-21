@@ -53,7 +53,7 @@ router.get('/active-timer', authenticate, (req, res) => {
 router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req, res) => {
   try {
     const { id } = req.params;
-    const { itemNumber, workerId } = req.body;
+    const { itemId, workerId } = req.body;
 
     // Decide whose timer this is. Normally it's the caller's own. An admin may
     // start a timer FOR another worker by naming them (workerId) — e.g. setting
@@ -73,11 +73,12 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
 
     // Verify the item exists on this jobcard, and bind the timer to the line's
     // stable id so it keeps pointing at the same line even if the lines are later
-    // edited or reordered.
+    // edited or reordered. The id is the part's identity — its item_number is only
+    // a sort order the server owns, and gaps in it after a delete are expected.
     const items = jobItemQueries.getByJobcard.all(id);
-    const targetItem = items.find(item => item.item_number === itemNumber);
+    const targetItem = items.find(item => item.id === itemId);
     if (!targetItem) {
-      return res.status(400).json({ error: `Item #${itemNumber} does not exist on this job card` });
+      return res.status(400).json({ error: 'That part does not exist on this job card' });
     }
 
     const entryId = `timeentry:${uuidv4()}`;
@@ -135,7 +136,9 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
     const targetWorker = isSelf ? null : userQueries.getById.get(targetWorkerId);
     recordHistory('jobcard', id, 'start_timer', req.user.userId, req.user.name || req.user.username, {
       timer: { from: null, to: startTime },
-      itemNumber: { from: null, to: itemNumber },
+      // Named by description, not position — item_number is a sort order the
+      // server owns and isn't stable enough to identify a part in the trail.
+      item: { from: null, to: targetItem.description },
       ...(targetWorker ? { worker: { from: null, to: targetWorker.name || targetWorker.username } } : {}),
       ...(statusChange ? { status: statusChange } : {})
     }, null);
@@ -149,7 +152,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
       jobcardId: id,
       userId: targetWorkerId,
       itemId: targetItem.id,
-      itemNumber,
+      itemNumber: targetItem.item_number,
       startTime
     });
   } catch (err) {
@@ -230,7 +233,7 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
       return res.status(400).json({ error: durationError });
     }
 
-    const { itemId, error: itemError } = resolveItemId(id, data.itemNumber);
+    const { itemId, error: itemError } = resolveItemId(id, data.itemId);
     if (itemError) {
       return res.status(400).json({ error: itemError });
     }
@@ -426,7 +429,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       workerId = resolved.userId;
     }
 
-    const { itemId, error: itemError } = resolveItemId(id, data.itemNumber);
+    const { itemId, error: itemError } = resolveItemId(id, data.itemId);
     if (itemError) {
       return res.status(400).json({ error: itemError });
     }
@@ -487,10 +490,15 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     }
 
     // The entry's line is decided by its stable id, not its position number, so only
-    // log a line change when it actually points at a different line. Display the
-    // human-friendly position numbers (old → new) so the activity log stays readable.
+    // log a line change when it actually points at a different line. Named by
+    // description, not number — item_number is a sort order the server owns and
+    // isn't stable enough to identify a part in the trail (nothing renumbers on
+    // delete, so two jobs' history could both say "item #2" about different parts).
     if (normalizeEmpty(itemId) !== normalizeEmpty(existing.item_id)) {
-      changes.itemNumber = { from: existing.item_number, to: data.itemNumber || null };
+      const jobItems = jobItemQueries.getByJobcard.all(id);
+      const oldItem = jobItems.find(it => it.id === existing.item_id);
+      const newItem = itemId ? jobItems.find(it => it.id === itemId) : null;
+      changes.item = { from: oldItem ? oldItem.description : null, to: newItem ? newItem.description : null };
     }
 
     // Show who the block was re-credited to, by name, when an admin changed the owner.

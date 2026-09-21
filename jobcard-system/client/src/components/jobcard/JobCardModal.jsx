@@ -13,8 +13,10 @@ import { useJobCardCosting } from './useJobCardCosting';
 import { useTimeEntries } from './useTimeEntries';
 import { useContactSearch } from './useContactSearch';
 import { useJobCardForm } from './useJobCardForm';
+import { useJobCardInstantSaves } from './useJobCardInstantSaves';
 import { useJobCardSave } from './useJobCardSave';
-import { useUnsavedGuard } from './useUnsavedGuard';
+import { useJobCardCloseGuard, useJobCardListRefresh } from './useJobCardCloseGuard';
+import { useJobCardTimerActions } from './useJobCardTimerActions';
 import DetailsTab from './tabs/DetailsTab';
 import CostingTab from './tabs/CostingTab';
 import ActivityLogTab from './tabs/ActivityLogTab';
@@ -26,7 +28,6 @@ import JobPaperworkHub from './JobPaperworkHub';
 import JobIdentityStrip from './JobIdentityStrip';
 import { mapTimeEntryFromApi } from './mappers';
 
-// Read a picked file into the base64 string the upload route expects.
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onPrinted, initialTab = null }) {
   const { user } = useAuth();
   const isEdit = Boolean(jobCardId);
@@ -42,15 +43,29 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const [timeEntries, setTimeEntries] = useState([]);
   const [qaLevels, setQaLevels] = useState([]);
   const [attachmentWarnings, setAttachmentWarnings] = useState(null);
+  // An instant write never touches the list behind this modal — useJobCardCloseGuard.js.
+  const { flagInstantSave, closeAndRefresh } = useJobCardListRefresh({ isOpen, isEdit, onSuccess, onClose });
   const contactHook = useContactSearch();
-  const formHook = useJobCardForm();
+  // formHook also owns the one save queue for this open job card (Contract A) —
+  // formHook.saveQueue — that every instant write (a field, a part, a worker)
+  // routes through, so what's queued, in flight or failed is one recorded fact
+  // instead of three separate hand-rolled promise-chain registries.
+  const formHook = useJobCardForm(jobCardId, { onInstantSave: flagInstantSave });
+  // The details fields and the parts list save themselves through these (see
+  // useJobCardInstantSaves.js). A part write's reply also refreshes the file
+  // notes here (Contract B) — setAttachmentWarnings is the one landing point,
+  // whether the write came from a part being added, edited or removed.
+  const { instantSave, instantItems, resetInstantSaves } = useJobCardInstantSaves(formHook, isEdit, jobCardId, formHook.saveQueue, setAttachmentWarnings);
   const activityLog = useActivityLog(jobCardId);
   const reloadTimeEntriesRef = useRef(null);
+  const resetInstantSavesRef = useRef(null);
   const hubRef = useRef(null);
   const onExternalStop = useCallback(() => {
     if (reloadTimeEntriesRef.current) reloadTimeEntriesRef.current();
   }, []);
-  const timer = useTimer(isEdit ? jobCardId : null, { onExternalStop });
+  // lineItems is handed in so the timer's own toasts and switch-timer prompts can
+  // name a part by its position in this job's list, never by its stored number.
+  const timer = useTimer(isEdit ? jobCardId : null, { onExternalStop, lineItems: formHook.lineItems });
   const { dialogState, showConfirm, handleCancel, handleConfirm, handleAlt, cancelConfirms } = useConfirmDialog();
 
   // Questions belong to the open card. Once it closes nothing renders the box any more,
@@ -190,79 +205,23 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   }, [isEdit, jobCardId, setFormData]);
 
   const { costingLoaded, refreshCosting } = costingHook;
-  const reloadTimeEntriesAndCosting = useCallback(async () => {
-    await reloadTimeEntries();
-    // Costing endpoint is admin-only; skip for non-admin to avoid 403 toast. Also skip
-    // unless this job's stored pricing has actually arrived on screen — before that
-    // there's nothing to update, and the first load is already on its way with the
-    // latest hours anyway. Tests costingLoaded rather than costingOpened so a load that
-    // failed isn't retried on every timer tick, and so this never writes hours onto a
-    // still-default sheet ahead of the real figures landing.
-    if (isAdmin && costingLoaded) await refreshCosting();
-    await refreshJobStatus();
-  }, [reloadTimeEntries, isAdmin, costingLoaded, refreshCosting, refreshJobStatus]);
-
-  const handleSubmitEntryForm = useCallback(async () => {
-    await timer.submitEntryForm(reloadTimeEntriesAndCosting);
-    if (onTimerChange) onTimerChange();
-  }, [timer, reloadTimeEntriesAndCosting, onTimerChange]);
-
-  const handleCancelEntryForm = useCallback(async () => {
-    await timer.cancelEntryForm(reloadTimeEntriesAndCosting);
-    if (onTimerChange) onTimerChange();
-  }, [timer, reloadTimeEntriesAndCosting, onTimerChange]);
-
   const { creditAssignee, dropAssignee } = formHook;
-  const apiTimeEntryOperations = {
-    addTimeEntry: async (data) => {
-      await api.addTimeEntry(jobCardId, data);
-      creditAssignee(data.workerId, employees);
-      await reloadTimeEntriesAndCosting();
-    },
-    updateTimeEntry: async (id, data) => {
-      await api.updateTimeEntry(jobCardId, id, data);
-      creditAssignee(data.workerId, employees);
-      await reloadTimeEntriesAndCosting();
-    },
-    deleteTimeEntry: async (id) => {
-      await api.deleteTimeEntry(jobCardId, id);
-      await reloadTimeEntriesAndCosting();
-    }
-  };
-
-  const handleStartItemTimer = useCallback(async (itemNumber, workerId, workerName) => {
-    await timer.startTimerWithConflictCheck(itemNumber, showConfirm, workerId, workerName);
-    await reloadTimeEntries();
-    // Server may have auto-assigned the timer's worker and nudged the status.
-    creditAssignee(workerId || user?.id, employees);
-    try {
-      const fresh = await api.getJobcard(jobCardId);
-      if (fresh.status) setFormData(prev => ({ ...prev, status: fresh.status }));
-    } catch {
-      // Non-fatal — status will refresh next time the modal opens
-    }
-    if (onTimerChange) onTimerChange();
-  }, [timer, showConfirm, reloadTimeEntries, onTimerChange, jobCardId, creditAssignee, employees, setFormData, user?.id]);
-
-  // Both stop paths land here. A tap discarded as an accident is undone server-side,
-  // so untick the worker it put on — a Save would otherwise put them straight back.
-  const afterStop = useCallback(async (result) => {
-    if (result?.unassignedUserId) {
-      dropAssignee(result.unassignedUserId);
-    }
-    await reloadTimeEntries();
-    await refreshJobStatus();
-    if (onTimerChange) onTimerChange();
-  }, [reloadTimeEntries, refreshJobStatus, onTimerChange, dropAssignee]);
-
-  const handleStopItemTimer = useCallback(
-    () => timer.stopTimer().then(afterStop), [timer, afterStop]);
-
-  // Admin stops a running timer from a line's Progress list (their own or one they
-  // set up for a worker). Opens the same fill-in form so the pieces/scrap/description
-  // for that run get recorded, instead of silently dropping a blank block.
-  const handleStopEntryWithForm = useCallback(
-    (entry) => timer.stopEntryWithForm(entry).then(afterStop), [timer, afterStop]);
+  // Starting/stopping a timer, the stop-timer form and the manual add/edit form —
+  // pulled into its own hook (useJobCardTimerActions.js) purely to keep this file
+  // under the 600-line limit; every dependency here is something this component
+  // already holds.
+  const {
+    apiTimeEntryOperations,
+    handleStartItemTimer,
+    handleStopItemTimer,
+    handleStopEntryWithForm,
+    handleSubmitEntryForm,
+    handleCancelEntryForm
+  } = useJobCardTimerActions({
+    jobCardId, isAdmin, costingLoaded, refreshCosting, refreshJobStatus,
+    reloadTimeEntries, timer, showConfirm, creditAssignee, dropAssignee,
+    employees, currentUserId: user?.id, setFormData, onTimerChange
+  });
 
   const timeEntry = useTimeEntries(jobCardId, {
     ...apiTimeEntryOperations,
@@ -309,10 +268,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   resetFormRef.current = resetForm;
   loadJobCardRef.current = loadJobCard;
   loadActiveTimerRef.current = timer.loadActiveTimer;
+  resetInstantSavesRef.current = resetInstantSaves;
 
   useEffect(() => {
     if (!isOpen) return;
-    resetFormRef.current();
+    resetFormRef.current(); // also clears formHook's save queue — see useJobCardForm.js
+    resetInstantSavesRef.current();
     if (isEdit) {
       loadJobCardRef.current();
       // Re-fetch active timer every time the modal opens — useTimer's own
@@ -326,10 +287,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const selectPerson = (personId) => contactHook.selectPerson(personId, formHook.setFormData);
   const handleContactFieldChange = (field, value) => contactHook.handleContactFieldChange(field, value, formHook.setFormData);
 
-  // The Save itself — validation, the customer on a new job, the pricing flush before
-  // invoicing, and the "files still missing" reply — lives in useJobCardSave.js.
+  // Create-only now (useJobCardSave.js) — an existing job has nothing left for a
+  // Save to do; every field, row and worker writes itself the moment it changes.
   const { saving, handleSubmit } = useJobCardSave({
-    canManage, isEdit, jobCardId, formHook, contactHook, costingHook,
+    canManage, isEdit, formHook, contactHook,
     showConfirm, onSuccess, onClose, setAttachmentWarnings
   });
 
@@ -350,18 +311,15 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   );
   const isDirty = formHook.isDirty || isContactDirty;
 
-  // Everything about work that would be lost if this screen went away — the close
-  // question, the refresh guard, the inactivity countdown and the spoken status — lives
-  // in useUnsavedGuard.js. It answers a wider question than isDirty: see its header.
-  const { hasEditedSinceOpen, handleRequestClose } = useUnsavedGuard({
-    isOpen,
-    isDirty,
-    saving,
-    hasUnpostedNote: jobNotes.newNote.trim() !== '',
-    stopFormOpen: timer.showEntryForm,
-    costingDirty: isAdmin ? costingHook.costingDirty : false,
-    showConfirm,
-    onClose
+  // Work that would be lost if this screen went away: the close question (which
+  // box is empty vs. what failed to save — closeReasons.js), the refresh guard,
+  // the inactivity countdown and the spoken status (useUnsavedGuard.js's header).
+  // Every real close funnels through the onClose handed to it below.
+  const showDetailsTab = useCallback(() => setActiveTab('details'), []);
+  const { hasEditedSinceOpen, handleRequestClose } = useJobCardCloseGuard({
+    isOpen, isEdit, jobCardId, isAdmin, isDirty,
+    formHook, instantItems, saveQueue: formHook.saveQueue, jobNotes, timer, costingHook,
+    saving, showConfirm, onClose: closeAndRefresh, revealDetails: showDetailsTab
   });
 
   if (!isOpen) return null;
@@ -377,6 +335,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       jobNumber={formHook.jobNumber}
       formData={formHook.formData}
       setFormData={formHook.setFormData}
+      savedForm={formHook.savedForm}
+      saveField={instantSave.saveField}
+      fieldStates={instantSave.fieldStates}
       isOverdue={isOverdue}
       showConfirm={showConfirm}
       onSuccess={onSuccess}
@@ -384,6 +345,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       canSeeTotal={isAdmin && isEdit}
       fetchCurrentTotal={costingHook.fetchCurrentTotal}
       saveCosting={costingHook.handleSaveCosting}
+      descriptionError={formHook.descriptionError}
+      setDescriptionError={formHook.setDescriptionError}
     />
   );
 
@@ -392,6 +355,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       <BottomSheet
         isOpen={isOpen}
         onClose={handleRequestClose}
+        // No Save button any more, so this now means "something hasn't reached the
+        // job" — a failed write, an empty required box, or a row mid-create/delete.
+        // See useJobCardForm.js's isDirty comment and closeReasons.js.
         unsaved={isEdit && isDirty}
         headerSlot={headerStrip}
         size="large"
@@ -445,6 +411,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   formData={formHook.formData}
                   setFormData={formHook.setFormData}
                   handleChange={formHook.handleChange}
+                  savedForm={formHook.savedForm}
+                  saveField={instantSave.saveField}
+                  fieldStates={instantSave.fieldStates}
                   contactFormData={contactHook.contactFormData}
                   selectedCompany={contactHook.selectedCompany}
                   people={contactHook.people}
@@ -463,7 +432,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   lineItems={formHook.lineItems}
                   addLineItem={formHook.addLineItem}
                   updateLineItem={formHook.updateLineItem}
-                  removeLineItem={formHook.removeLineItem}
+                  removeLineItem={instantItems.removeItem}
+                  onItemFieldChange={instantItems.handleItemFieldChange}
+                  onItemFieldBlur={instantItems.commitItemFieldBlur}
+                  onItemFieldType={instantItems.clearItemFieldErrorOnType}
+                  itemErrorFor={instantItems.itemErrorFor}
                   suppliers={suppliers || []}
                   onSuppliersChanged={reloadSuppliers}
                   attachmentWarnings={attachmentWarnings}
@@ -524,22 +497,21 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               </div>
             </BottomSheet.Body>
 
-            {(canManage || !isEdit) && (
+            {/* A new job keeps the Create button. An existing job writes itself, so
+                there's no footer at all (an empty one would still draw its border) —
+                just a bare sr-only status line, same approach as the pricing sheet's. */}
+            {!isEdit ? (
               <BottomSheet.Footer>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Saving...' : !isEdit ? 'Create' : isDirty ? 'Save changes' : 'Update'}
+                  {saving ? 'Saving...' : 'Create'}
                 </button>
-                {/* The amber ring and the button's change of wording both say "not saved
-                    yet" silently. This is the same thing in words, for a screen reader —
-                    the same approach the pricing sheet's status line already takes. It
-                    holds one message at a time, so the reader is told once when edits
-                    appear and once when they are gone, not on every keystroke. */}
-                <span className="sr-only" role="status" aria-live="polite">
-                  {isEdit && hasEditedSinceOpen
-                    ? (isDirty ? 'This job card has unsaved changes.' : 'All changes saved.')
-                    : ''}
-                </span>
               </BottomSheet.Footer>
+            ) : canManage && (
+              <span className="sr-only" role="status" aria-live="polite">
+                {hasEditedSinceOpen
+                  ? (isDirty ? 'This job card has unsaved changes.' : 'All changes saved.')
+                  : ''}
+              </span>
             )}
           </form>
         )}
@@ -548,7 +520,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       <StopTimerForm
         isOpen={timer.showEntryForm}
         jobCard={timer.stoppedEntryJobCard || (jobCardId ? { id: jobCardId, jobNumber: formHook.jobNumber } : null)}
-        itemNumber={timer.stoppedEntry?.itemNumber}
+        itemId={timer.stoppedEntry?.itemId}
         stoppedEntry={timer.stoppedEntry}
         entryForm={timer.entryForm}
         onFieldChange={timer.handleEntryFieldChange}

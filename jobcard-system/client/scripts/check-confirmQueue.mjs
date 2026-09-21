@@ -35,11 +35,11 @@ const settled = () => new Promise(r => setTimeout(r, 0));
   const box = fresh();
   let close = 'unanswered';
   let pricing = 'unanswered';
-  box.showConfirm({ title: 'Unsaved changes', message: 'Close it and lose them?' }).then(v => { close = v; });
-  assert.equal(cell.title, 'Unsaved changes', 'the first question must be the one on screen');
+  box.showConfirm({ title: 'Discard draft?', message: 'Close it and lose them?' }).then(v => { close = v; });
+  assert.equal(cell.title, 'Discard draft?', 'the first question must be the one on screen');
 
   box.showConfirm({ title: 'Change an invoiced job?', message: 'Are you sure?' }).then(v => { pricing = v; });
-  assert.equal(cell.title, 'Unsaved changes', 'a second question must not reword the box under the reader');
+  assert.equal(cell.title, 'Discard draft?', 'a second question must not reword the box under the reader');
 
   box.handleCancel();
   await settled();

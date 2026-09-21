@@ -123,14 +123,18 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [], mac
     };
     const totalOf = (key) => (buckets.get(key) ? buckets.get(key).totalMs : 0);
 
+    // Sort by the stored order (item_number — the server's sort key, which can
+    // have gaps once a part is deleted) so the rows list in the same order as
+    // the Line Items tab. The number shown is the server-stated position on
+    // each item, never counted again here.
     const partList = [...lineItems]
       .sort((a, b) => (Number(a.itemNumber) || 0) - (Number(b.itemNumber) || 0))
-      .map(item => {
+      .map((item, idx) => {
         const key = item.id != null ? String(item.id) : '';
         const treatment = (Array.isArray(item.treatments) && item.treatments[0]) || null;
         return {
           id: item.id,
-          itemNumber: item.itemNumber,
+          displayNumber: item.position != null ? item.position : idx + 1,
           description: item.description || '',
           jobType: item.jobType ? nameOf(jobTypeTags, item.jobType) : '',
           material: item.material ? nameOf(materialTags, item.material) : '',
@@ -169,7 +173,7 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [], mac
           <>
             <th scope="rowgroup" rowSpan={span} className="cb-c-item">
               <span className="cb-item-line">
-                <span className="cb-item-no">{part.itemNumber}</span>
+                <span className="cb-item-no">{part.displayNumber}</span>
                 <span className="cb-item-name">{part.description || 'No description'}</span>
               </span>
               <span className="cb-item-sub">
@@ -251,12 +255,12 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [], mac
           </thead>
           <tbody>
             {parts.map(part => (
-              <Fragment key={part.id || part.itemNumber}>{partBlock(part, part.id)}</Fragment>
+              <Fragment key={part.id || part.displayNumber}>{partBlock(part, part.id)}</Fragment>
             ))}
             {orphan && (
               <Fragment key="orphan">
                 {partBlock({
-                  itemNumber: '—',
+                  displayNumber: '—',
                   description: 'Work on a deleted part',
                   jobType: '',
                   material: '',

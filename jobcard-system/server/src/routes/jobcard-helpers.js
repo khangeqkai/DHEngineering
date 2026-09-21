@@ -1,11 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
-const fs = require('fs');
 const path = require('path');
 
-const logger = require('../utils/logger');
 const { isManagement } = require('../middleware/auth');
-const { sanitizeFolderName, isWithinBase, findQaLevelFolder, ensureCompanyFolder, resolveCompanyFolder } = require('../utils/folderCreation');
-const { fillPdfTemplate } = require('../utils/pdfFiller');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -103,10 +99,15 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
   // Normalise items once — they may be DB rows (snake_case) or formatted/request
   // items (camelCase). itemNumber is only carried back so the UI can line each
   // warning up with the row it's showing; files are matched by the part's id.
+  // `items` always arrives as the job's full list ordered by item_number ascending
+  // (jobItemQueries.getByJobcard.all, or a route's own freshly-formatted items),
+  // so this array's own index IS the part's 1-based position — the server states
+  // it here rather than leaving every caller to count it again.
   const normItems = items.map((it, idx) => ({
     id: it.id,
     itemNumber: it.itemNumber != null ? it.itemNumber
       : (it.item_number != null ? it.item_number : idx + 1),
+    position: idx + 1,
     drawings: it.drawingsType !== undefined ? it.drawingsType : it.drawings_type,
     customerProperty: it.customerProperty !== undefined ? it.customerProperty : it.customer_property
   }));
@@ -154,14 +155,14 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
       const missingDrawing = declaresValue(it.drawings);
       const missingCustomerProperty = declaresValue(it.customerProperty);
       if (missingDrawing || missingCustomerProperty) {
-        flagged.push({ itemNumber: it.itemNumber, missingDrawing, missingCustomerProperty });
+        flagged.push({ itemNumber: it.itemNumber, position: it.position, missingDrawing, missingCustomerProperty });
       }
       return;
     }
     const missingDrawing = declaresValue(it.drawings) && !hasItemFile(jobFileNames, it.id);
     const missingCustomerProperty = declaresValue(it.customerProperty) && !hasItemFile(customerPropertyNames, it.id);
     if (missingDrawing || missingCustomerProperty) {
-      flagged.push({ itemNumber: it.itemNumber, missingDrawing, missingCustomerProperty });
+      flagged.push({ itemNumber: it.itemNumber, position: it.position, missingDrawing, missingCustomerProperty });
     }
 
     // Collect the names of files already attached to this part, so the field can
@@ -230,9 +231,13 @@ function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
     updatedBy: row.updated_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    items: items.map(item => ({
+    // `items` is always this job's parts ordered by item_number ascending
+    // (jobItemQueries.getByJobcard.all), so the array index IS the part's
+    // 1-based position — display-only, never stored, never sent back.
+    items: items.map((item, idx) => ({
       id: item.id,
       itemNumber: item.item_number,
+      position: idx + 1,
       qty: item.qty,
       description: item.description,
       jobType: item.job_type || null,
@@ -268,7 +273,12 @@ function buildChanges(existing, data) {
     ['description', 'description'],
     ['is_repeat_job', 'isRepeatJob'],
     ['repeat_job_reference', 'repeatJobReference'],
-    ['qa_level_id', 'qaLevelId'],
+    // qa_level_id itself is deliberately not tracked here — an internal id means
+    // nothing to a person reading the trail. The screen only ever sends
+    // `qaLevelId`, never `qualityLevel`, so the caller (jobcard-mutations.js)
+    // derives the level's readable name and sets `data.qualityLevel` to it
+    // before calling this function, which is what the `quality_level` row above
+    // actually picks up and records — "Standard → Premium" instead of two ids.
   ];
 
   const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
@@ -384,7 +394,10 @@ function buildJobCardView(jobcardId, jc) {
   const jobFileNames = folderNames['job-files'] || [];
   const customerPropertyNames = folderNames['customer-property-files'] || [];
 
-  const items = rows.map(r => {
+  // rows is ordered by item_number ascending (jobItemQueries.getByJobcard.all),
+  // so this loop's own index gives each part's 1-based position — what the
+  // printed card shows, never the stored (possibly gapped) item_number.
+  const items = rows.map((r, idx) => {
     const dVals = splitValues(r.drawings_type);
     const drawingsIsNa = dVals.length === 0 || (dVals.length === 1 && dVals[0] === 'N_A');
     const drawings = drawingsIsNa
@@ -411,6 +424,7 @@ function buildJobCardView(jobcardId, jc) {
     const customerPropertyMissing = !customerPropertyIsNa && propertyFiles.length === 0;
     return {
       number: r.item_number,
+      position: idx + 1,
       qty: (r.qty == null || r.qty === '') ? '—' : r.qty,
       jobType: tagName('job_type', r.job_type) || '—',
       description: r.description || '',
@@ -474,180 +488,9 @@ function createRelatedRecords(jobcardId, data) {
   }
 }
 
-/**
- * Copy a QA level's template PDFs into the job's QA Forms folder, filling
- * in fillable fields from job data. Templates without fillable fields are
- * copied as-is.
- * @param {string} jobcardId
- * @param {string} qaLevelId
- * @param {Object} jobData - Full job data for PDF pre-fill
- */
-async function copyQaTemplatesForJob(jobcardId, qaLevelId, jobData) {
-  const level = qaLevelQueries.getById.get(qaLevelId);
-  if (!level) {
-    return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'QA level not found' };
-  }
+// Copying a QA level's templates onto disk (copyQaTemplatesForJob) and the
+// pre-save availability check (verifyQaTemplatesAvailable) now live in
+// utils/qaTemplateProvisioning.js — extracted out of this file (a straight
+// lift, no behaviour change) to keep it under the 600-line house limit.
 
-  const templates = qaLevelTemplateQueries.getByLevel.all(qaLevelId);
-  if (templates.length === 0) {
-    return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'No templates configured for QA level' };
-  }
-
-  return await copyTemplatesToJobFolder(jobcardId, level, templates, jobData);
-}
-
-/**
- * Copy template PDFs from QA Level folder to job's QA Forms folder.
- * Awaits PDF fill so files exist on disk before the API response is sent.
- */
-async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
-  const totalTemplates = templates.length;
-  try {
-    const settings = getSettings();
-    const basePath = settings.job_folders_base;
-    if (!basePath || !basePath.trim()) {
-      return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'No job folders base configured' };
-    }
-
-    const base = basePath.trim();
-    // Locate the customer's company folder by permanent company id (created if
-    // needed) so QA forms land in the same folder the job's files resolve to —
-    // even after a company-name change. Jobs with no company fall back to the
-    // name-built folder.
-    const companyId = jobData.companyId || null;
-    const companyFolder = companyId
-      ? ensureCompanyFolder(companyId, jobData.companyName)
-      : resolveCompanyFolder(base, null, jobData.companyName);
-    const sanitizedJob = sanitizeFolderName(jobData.jobNumber);
-    if (!companyFolder || !sanitizedJob) {
-      return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'Invalid company or job folder name' };
-    }
-
-    const qaFormsFolder = path.join(companyFolder, sanitizedJob, 'QA Forms');
-    if (!isWithinBase(base, qaFormsFolder)) {
-      return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'QA Forms folder path outside base' };
-    }
-
-    // Locate the level's template folder by the code in its name, not the name
-    // itself, so a renamed level still resolves to the right folder.
-    const qaLevelsBase = path.join(basePath.trim(), 'QA Levels');
-    const levelFolder = findQaLevelFolder(qaLevelsBase, level.id);
-
-    if (!levelFolder) {
-      return { totalTemplates: 0, succeeded: 0, failed: [], skipped: true, skipReason: 'QA level folder not found' };
-    }
-
-    fs.mkdirSync(qaFormsFolder, { recursive: true });
-
-    const fillData = {
-      ...jobData,
-      date: new Date().toLocaleDateString('en-AU'),
-      qualityLevel: jobData.qualityLevel || level.name,
-      items: jobData.items || []
-    };
-
-    const failed = [];
-    let succeeded = 0;
-    const copyPromises = [];
-    for (const tmpl of templates) {
-      const srcPath = path.join(levelFolder, tmpl.file_name);
-      const destPath = path.join(qaFormsFolder, tmpl.file_name);
-
-      if (!fs.existsSync(srcPath)) {
-        failed.push({ fileName: tmpl.file_name, reason: 'Source template file not found' });
-        continue;
-      }
-      if (!isWithinBase(levelFolder, srcPath) || !isWithinBase(qaFormsFolder, destPath)) {
-        failed.push({ fileName: tmpl.file_name, reason: 'Path outside permitted base' });
-        continue;
-      }
-
-      const sourceBuffer = fs.readFileSync(srcPath);
-      copyPromises.push(
-        fillPdfTemplate(sourceBuffer, fillData)
-          .then(filledBuffer => {
-            fs.writeFileSync(destPath, filledBuffer);
-            logger.info({ destPath }, 'Copied QA template to job folder');
-            succeeded += 1;
-          })
-          .catch(err => {
-            try {
-              fs.copyFileSync(srcPath, destPath);
-              succeeded += 1;
-            } catch (copyErr) {
-              logger.error({ err: copyErr, srcPath, destPath }, 'Failed to copy QA template');
-              failed.push({ fileName: tmpl.file_name, reason: copyErr.message || String(copyErr) });
-            }
-          })
-      );
-    }
-
-    await Promise.all(copyPromises);
-
-    return { totalTemplates, succeeded, failed, skipped: false };
-  } catch (err) {
-    logger.error({ err }, 'Failed to copy templates to job folder');
-    return {
-      totalTemplates,
-      succeeded: 0,
-      failed: [{ fileName: '*', reason: err.message || String(err) }],
-      skipped: false
-    };
-  }
-}
-
-/**
- * Pre-save check: confirm a QA level's template files are present and readable
- * BEFORE the job is written, so a job can never be saved believing it has
- * inspection forms that were never created. Mirrors the source-side checks in
- * copyTemplatesToJobFolder (level folder found, each source file exists + is
- * within base) — these are the only failures that are predictable before the
- * copy runs.
- *
- * Returns { ok: true } when there is nothing that could fail, including the
- * cases where the copy would be legitimately skipped (no storage configured, or
- * the level has no templates). Returns { ok: false, reason } with a plain
- * message when a form file is missing. Rare runtime errors (full disk, locked
- * file) can't be foreseen here; the post-save warning still covers those.
- */
-function verifyQaTemplatesAvailable(qaLevelId) {
-  if (!qaLevelId) return { ok: true };
-
-  const level = qaLevelQueries.getById.get(qaLevelId);
-  if (!level) return { ok: false, reason: 'The selected quality level no longer exists.' };
-
-  const templates = qaLevelTemplateQueries.getByLevel.all(qaLevelId);
-  if (templates.length === 0) return { ok: true };
-
-  const settings = getSettings();
-  const basePath = settings.job_folders_base;
-  if (!basePath || !basePath.trim()) return { ok: true };
-
-  const qaLevelsBase = path.join(basePath.trim(), 'QA Levels');
-  const levelFolder = findQaLevelFolder(qaLevelsBase, level.id);
-  if (!levelFolder) {
-    return {
-      ok: false,
-      reason: `Quality level "${level.name}" has forms listed but its folder is missing. Re-upload its forms under Quality Levels, then try again.`
-    };
-  }
-
-  const missing = [];
-  for (const tmpl of templates) {
-    const srcPath = path.join(levelFolder, tmpl.file_name);
-    if (!isWithinBase(levelFolder, srcPath) || !fs.existsSync(srcPath)) {
-      missing.push(tmpl.file_name);
-    }
-  }
-  if (missing.length > 0) {
-    const plural = missing.length > 1;
-    return {
-      ok: false,
-      reason: `Quality level "${level.name}" is missing ${missing.length} form file${plural ? 's' : ''} (${missing.join(', ')}). Re-upload ${plural ? 'them' : 'it'} under Quality Levels, then try again.`
-    };
-  }
-
-  return { ok: true };
-}
-
-module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, buildJobCardView, copyQaTemplatesForJob, verifyQaTemplatesAvailable, computeAttachmentWarnings };
+module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, buildJobCardView, computeAttachmentWarnings };

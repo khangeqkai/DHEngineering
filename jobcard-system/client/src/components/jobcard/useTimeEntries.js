@@ -31,11 +31,11 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     }));
   }, [clearFieldError]);
 
-  const handleAddTimeEntry = useCallback((itemNumber = '') => {
+  const handleAddTimeEntry = useCallback((itemId = '') => {
     resetTimeEntryForm();
     setTimeEntryForm(prev => ({
       ...prev,
-      itemNumber: itemNumber !== '' && itemNumber != null ? String(itemNumber) : '',
+      itemId: itemId || '',
       startTime: isoToLocalInput(new Date().toISOString())
     }));
     setShowTimeEntryForm(true);
@@ -46,7 +46,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     setEditingTimeEntryId(entry.id);
     setTimeEntryForm({
       workerId: entry.userId || '',
-      itemNumber: entry.itemNumber || '',
+      itemId: entry.itemId || '',
       machineNumber: entry.machineNumber || '',
       qty: entry.qty ?? '',
       scrapBinQty: entry.scrapBinQty ?? '',
@@ -119,7 +119,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     try {
       const entryData = {
         ...timeEntryForm,
-        itemNumber: timeEntryForm.itemNumber ? parseInt(timeEntryForm.itemNumber) : null,
+        itemId: timeEntryForm.itemId || null,
         // Store both ends with full time-zone info so a block's start and finish
         // can never end up in mismatched formats (would mis-calculate duration).
         startTime: localInputToIso(timeEntryForm.startTime),

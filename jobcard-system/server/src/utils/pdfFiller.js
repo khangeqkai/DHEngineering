@@ -147,8 +147,15 @@ async function fillPdfTemplate(sourceBuffer, jobData) {
           let value;
           if (prop === 'treatment') {
             value = formatTreatments(item.treatments);
+          } else if (prop === 'number') {
+            // The printed form shows the part's position in this job's ordered
+            // list (1, 2, 3…), same as every other screen — never the stored
+            // item_number, which is only a sort order the server owns and can
+            // have gaps once a part is deleted. `items` is that ordered list, so
+            // this field's own index (1-based) IS the position.
+            value = index + 1;
           } else {
-            const keyMap = { number: 'itemNumber', qty: 'qty', description: 'description', job_type: 'jobType', material: 'material', drawings: 'drawingsType' };
+            const keyMap = { qty: 'qty', description: 'description', job_type: 'jobType', material: 'material', drawings: 'drawingsType' };
             value = item[keyMap[prop]];
           }
           if (value !== null && value !== undefined && value !== '') {

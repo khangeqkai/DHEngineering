@@ -140,6 +140,57 @@ function renameLegacyPrintTrail() {
   }
 }
 
+// A part's number (item_number) is a sort order the server owns, not its identity —
+// its permanent id is. Before this change a new part's number was `existingItems.length
+// + 1` (computed outside any transaction) and deleting a part renumbered the survivors
+// 1..n; a database from before this change can therefore hold duplicate numbers (two
+// parts added at once both counted the same existing rows) or, less likely, an
+// inconsistency left by an interrupted renumber. Neither is possible going forward —
+// new parts take MAX(item_number) + 1 inside the same transaction as their insert, and
+// deletes no longer renumber anyone — but existing data needs folding onto a clean
+// ordering once. Naturally idempotent (like foldGoodPiecesToWhole above): a job whose
+// item_numbers already run 1..n in order is left untouched, so a second pass — or every
+// later boot — finds nothing to fix and does nothing. No done-once flag needed.
+function cleanUpDuplicateItemNumbering() {
+  // item_number is a sort order the server owns. Nothing renumbers on delete any
+  // more, so GAPS ARE EXPECTED AND MUST BE LEFT ALONE — this runs on every boot,
+  // and closing a job's gaps here would silently shuffle its part numbers every
+  // time the app restarted, which is the very instability this change removed.
+  //
+  // The one thing that genuinely needs repairing is a DUPLICATE number, which the
+  // old count-based numbering could produce when two people added a part to the
+  // same job at the same moment. A job holding one is already inconsistent, so it
+  // is folded onto a clean 1..n; a job that merely has gaps is skipped untouched.
+  // Naturally idempotent: once a job has no duplicates it is never rewritten again.
+  const jobIds = db.prepare('SELECT DISTINCT jobcard_id FROM job_items').all().map(r => r.jobcard_id);
+  const setNumber = db.prepare('UPDATE job_items SET item_number = ? WHERE id = ?');
+  const renumberJob = db.transaction((rows) => {
+    rows.forEach((row, idx) => {
+      const wanted = idx + 1;
+      if (row.item_number !== wanted) {
+        setNumber.run(wanted, row.id);
+      }
+    });
+  });
+
+  let jobsFixed = 0;
+  for (const jobcardId of jobIds) {
+    // Order by the existing number first (so the job keeps its current relative
+    // order), then by when the row was created as a stable tie-break between two
+    // parts sharing a number.
+    const rows = db.prepare(
+      'SELECT id, item_number FROM job_items WHERE jobcard_id = ? ORDER BY item_number ASC, created_at ASC, id ASC'
+    ).all(jobcardId);
+    const hasDuplicates = new Set(rows.map(r => r.item_number)).size !== rows.length;
+    if (!hasDuplicates) continue;
+    renumberJob(rows);
+    jobsFixed++;
+  }
+  if (jobsFixed > 0) {
+    logger.info({ jobsFixed }, 'Migration: Folded duplicate job item numbers onto a clean per-job ordering');
+  }
+}
+
 function runMigrations() {
   logger.info('Running migrations...');
 
@@ -156,6 +207,7 @@ function runMigrations() {
   }
 
   foldGoodPiecesToWhole();
+  cleanUpDuplicateItemNumbering();
 
   // A quality level's form file on disk IS the record, so two records naming the same file
   // share one file: removing either takes the file away and every job on that level then
@@ -465,4 +517,4 @@ async function initializeDatabase() {
   logger.info('Database initialization complete');
 }
 
-module.exports = { initializeDatabase, foldGoodPiecesToWhole, renameLegacyPrintTrail, PRINT_NAMING_CUTOVER_KEY };
+module.exports = { initializeDatabase, foldGoodPiecesToWhole, cleanUpDuplicateItemNumbering, renameLegacyPrintTrail, PRINT_NAMING_CUTOVER_KEY };

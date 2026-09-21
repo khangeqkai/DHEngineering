@@ -163,7 +163,10 @@ const JOBCARD_SUMMARY_COLS = [
   { label: 'Due Date', value: r => fmtDate(r.dueDate) },
   { label: 'Description', value: r => r.description },
   { label: 'Assigned To', value: r => (r.assignees || []).map(a => a.userName || a.name).join(', ') },
-  { label: 'Items', value: r => (r.items || []).map(it => `#${it.itemNumber}: ${it.description || ''}`).join(', ') },
+  // #N here is the part's position, stated by the server on each item — matches
+  // the screen, never its stored sort-order number, which can have gaps once a
+  // part is deleted.
+  { label: 'Items', value: r => (r.items || []).map((it, idx) => `#${it.position != null ? it.position : idx + 1}: ${it.description || ''}`).join(', ') },
   { label: 'PO Number', value: r => r.poNumber },
   { label: 'Job Type', value: r => {
     const items = r.items || [];
@@ -201,7 +204,10 @@ const JOBCARD_SUMMARY_COLS = [
 const TIME_ENTRY_COLS = [
   { label: 'Job #', value: r => r._jobNumber },
   { label: 'Worker', value: r => r.userName },
-  { label: 'Item #', value: r => r.itemNumber },
+  // The part's position in the job's ordered list, not its stored item_number —
+  // resolved in buildJobCardWorkbook from the part's permanent id, since a
+  // deleted part's own stored number no longer means anything.
+  { label: 'Item #', value: r => r._displayItemNumber ?? '' },
   { label: 'Machine #', value: r => r.machineNumber },
   { label: 'Qty', value: r => r.qty },
   { label: 'Description', value: r => r.description },
@@ -212,7 +218,9 @@ const TIME_ENTRY_COLS = [
 
 const ITEM_COLS = [
   { label: 'Job #', value: r => r._jobNumber },
-  { label: 'Item #', value: r => r.itemNumber },
+  // Position in the job's ordered list, not the stored item_number — see
+  // buildJobCardWorkbook, which numbers each job's items as it flattens them.
+  { label: 'Item #', value: r => r._displayNumber },
   { label: 'Qty', value: r => r.qty },
   { label: 'Description', value: r => r.description },
   { label: 'Treatments', value: r => (r.treatments || []).map(t => {
@@ -347,17 +355,28 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
     _notes: notesByJob[c.id] || [],
   }));
 
+  // The server states each item's position directly (item.position) — the same
+  // number the job screen shows — so it's never recounted here. Keyed by the
+  // part's permanent id (not its stored item_number, which a deleted part can
+  // leave with gaps), so a time entry can look its part's position up below
+  // even though the part itself may since have been deleted.
   const allItems = [];
+  const itemPositionById = {};
   for (const c of mergedCards) {
-    for (const item of c.items || []) {
-      allItems.push({ ...item, _jobNumber: c.jobNumber });
-    }
+    (c.items || []).forEach((item, idx) => {
+      const displayNumber = item.position != null ? item.position : idx + 1;
+      if (item.id != null) itemPositionById[item.id] = displayNumber;
+      allItems.push({ ...item, _jobNumber: c.jobNumber, _displayNumber: displayNumber });
+    });
   }
 
   const allTimeEntries = [];
   for (const { id, entries } of timeEntriesPerJob) {
     for (const e of entries) {
-      allTimeEntries.push({ ...e, _jobNumber: jobLookup[id] });
+      // Work on a since-deleted part has no position to show — same as the
+      // costing tab's "orphan" grouping.
+      const displayItemNumber = e.itemId != null ? (itemPositionById[e.itemId] ?? '') : '';
+      allTimeEntries.push({ ...e, _jobNumber: jobLookup[id], _displayItemNumber: displayItemNumber });
     }
   }
 

@@ -140,7 +140,7 @@ Files live on disk under the configured job-folders base, **not** in the databas
 
 Main routes: `/auth`, `/jobcards`, `/companies`, `/contacts`, `/suppliers`, `/machines`, `/settings`, `/history`, `/qa-levels`, `/tags`, `/search`, `/statistics`
 
-Job card sub-routes: `/assignees`, `/time-entries`, `/costing`, `/files/:category`, `/history`, `/notes`
+Job card sub-routes: `/assignees`, `/items`, `/time-entries`, `/costing`, `/files/:category`, `/history`, `/notes`
 
 ### Core tables
 
@@ -240,6 +240,7 @@ Short list of things that are easy to break by default and expensive to un-break
 - **Work drives job status, and it overrides a manual change.** Invoiced is terminal and archives the job. → `jobs-and-status.md`
 - **Files are matched to a part by the part's permanent id, never by its position number.** The number shifts as parts are added or removed. → `files-and-qa.md`
 - **The costing sheet saves itself and has no Save button.** Its guards exist because each one was a real way to bill the wrong number. → `time-and-costing.md`
+- **An existing job card saves itself too — one field, one part, one worker at a time — and has no Save button.** Creating a new job still uses one. → `client-patterns.md`
 - **A write is never re-sent automatically.** Only reads retry — a resent write creates two of whatever was being saved. → `client-patterns.md`
 
 ## Environment Variables

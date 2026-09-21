@@ -1351,6 +1351,14 @@
   position: relative;
 }
 
+/* Drawings / Customer Property emptied on a saved part: its trigger is a button,
+   not a native input/select, so it needs its own rule rather than the generic
+   .field-error one (index.css) that catches those automatically. */
+.lit-select-btn--error {
+  border-color: var(--danger-color) !important;
+  background-color: rgba(var(--danger-rgb), 0.04) !important;
+}
+
 /* Amber "no file yet" nudge shown beside a Drawings / Customer Property field
    that declares something is supplied but has no attached file. */
 .lit-missing-file {
@@ -2503,6 +2511,38 @@
 
 .costing-save-status--error {
   color: var(--danger-ink);
+}
+
+/* Shared save status for the details fields (identity strip, Details tab) — same
+   idea as the costing sheet's status above, just for fields that save themselves
+   one at a time instead of the whole pricing sheet together. */
+.instant-save-status {
+  font-size: var(--text-xs);
+  font-weight: var(--font-regular);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.instant-save-status--saving {
+  color: var(--text-tertiary);
+}
+
+.instant-save-status--saved {
+  color: var(--success-ink);
+}
+
+.instant-save-status--failed {
+  color: var(--danger-ink);
+}
+
+/* Sits in the split title bar's right-hand corner (see the .form-section-header /
+   .form-section-title comment above) — vertically centred against the title, with
+   the section's own inner gutter on the right instead of the bar's full padding. */
+.form-section-header .instant-save-status {
+  align-self: center;
+  padding-right: 1rem;
 }
 
 /* Shown in place of the sheet while the job's pricing is still loading, or when it

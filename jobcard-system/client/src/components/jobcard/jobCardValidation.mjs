@@ -1,6 +1,11 @@
 // Job card form validation for JobCardModal
 // Pure function: takes form state, returns the list of error messages plus the
 // filtered valid line items (reused by the caller when building the payload).
+//
+// The rules about what a box must contain live in fieldRules.mjs, read here and
+// by each box's own instant-save check — see the header comment there.
+
+import { itemFieldMessage, jobFieldMessage, ITEM_QTY_REQUIRED } from './fieldRules.mjs';
 
 // A line is "already saved" when it carries the server's stable "item:" id —
 // fresh rows only get a temporary local number. buildJobcardPayload (mappers.js)
@@ -14,8 +19,9 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
   if (canManage && !contactFormData.companyName.trim()) {
     errors.push('Pick a customer for this job');
   }
-  if (!formData.description?.trim()) {
-    errors.push('Job description is required');
+  const descriptionMessage = jobFieldMessage('description', formData.description);
+  if (descriptionMessage) {
+    errors.push(descriptionMessage);
   }
 
   // A blank line can't be saved, so it is marked rather than quietly discarded — on an
@@ -28,8 +34,8 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
   // about the same empty card. A job that DOES have a saved part is different — blanking
   // its only part is a mistake about that part, so the message names it. The two are
   // mutually exclusive, so only ever one message comes out of this block.
-  const validItems = lineItems.filter(item => item.description.trim());
-  const blankIdx = lineItems.findIndex(item => !item.description.trim());
+  const validItems = lineItems.filter(item => !itemFieldMessage('description', item.description));
+  const blankIdx = lineItems.findIndex(item => itemFieldMessage('description', item.description));
   const hasSavedPart = lineItems.some(isSavedLineItem);
   if (blankIdx !== -1 && (validItems.length > 0 || hasSavedPart)) {
     const blank = lineItems[blankIdx];
@@ -43,17 +49,17 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
   // index-based numbering can point at the wrong row.
   const itemNo = (i) => validItems[i].itemNumber || i + 1;
 
-  const itemMissingJobType = validItems.findIndex(item => !item.jobType);
+  const itemMissingJobType = validItems.findIndex(item => itemFieldMessage('jobType', item.jobType));
   if (itemMissingJobType !== -1) {
     errors.push(`Job type is required on item #${itemNo(itemMissingJobType)}`);
   }
 
-  const itemMissingDrawings = validItems.findIndex(item => !item.drawingsType);
+  const itemMissingDrawings = validItems.findIndex(item => itemFieldMessage('drawingsType', item.drawingsType));
   if (itemMissingDrawings !== -1) {
     errors.push(`Drawings is required on item #${itemNo(itemMissingDrawings)}`);
   }
 
-  const itemMissingProperty = validItems.findIndex(item => !item.customerProperty);
+  const itemMissingProperty = validItems.findIndex(item => itemFieldMessage('customerProperty', item.customerProperty));
   if (itemMissingProperty !== -1) {
     errors.push(`Customer property is required on item #${itemNo(itemMissingProperty)}`);
   }
@@ -76,11 +82,15 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
 
   // Quantity is compulsory and must be a positive whole number (it drives the
   // "all parts finished -> Done" check). Blanks, zero, and decimals are rejected.
+  // itemFieldMessage produces exactly one of two messages for qty, and the two
+  // sentences below infix the item number differently, so neither is that message
+  // plus a suffix. Telling them apart by the exported constant rather than by a
+  // copy of the wording keeps the two files from drifting apart silently.
   for (let i = 0; i < validItems.length; i++) {
-    const qty = String(validItems[i].qty ?? '').trim();
-    if (!qty) {
+    const qtyMessage = itemFieldMessage('qty', validItems[i].qty);
+    if (qtyMessage === ITEM_QTY_REQUIRED) {
       errors.push(`Quantity is required on item #${itemNo(i)}`);
-    } else if (!/^\d+$/.test(qty) || parseInt(qty, 10) < 1) {
+    } else if (qtyMessage) {
       errors.push(`Quantity on item #${itemNo(i)} must be a whole number of 1 or more`);
     }
   }

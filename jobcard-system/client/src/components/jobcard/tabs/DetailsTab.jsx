@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { toTitleCase } from '../../../utils/formatters';
 import { useJobSearch } from '../useJobSearch';
+import { summarizeFieldStates, INSTANT_SAVE_STATUS_TEXT } from '../useInstantSave';
 import ItemsTab from './ItemsTab';
 import DetailsReadOnlyView from './DetailsReadOnlyView';
 import NotesSection from './NotesSection';
@@ -14,6 +15,9 @@ export default function DetailsTab({
   formData,
   setFormData,
   handleChange,
+  savedForm = {},
+  saveField,
+  fieldStates = {},
   contactFormData,
   handleContactFieldChange,
   selectCompany,
@@ -33,6 +37,10 @@ export default function DetailsTab({
   addLineItem,
   updateLineItem,
   removeLineItem,
+  onItemFieldChange,
+  onItemFieldBlur,
+  onItemFieldType,
+  itemErrorFor,
   suppliers,
   onSuppliersChanged,
   attachmentWarnings,
@@ -71,7 +79,37 @@ export default function DetailsTab({
 }) {
   const readOnly = isEdit && !canManage;
 
+  // An existing job writes each of these fields the moment it changes (or, for the
+  // reference boxes, the moment it's left) — a brand-new job has nothing to write
+  // to yet and stays local-only, same as the identity strip's fields.
+  const canWriteInstantly = isEdit && Boolean(jobCardId);
+  // A blur write is skipped when nothing actually changed, so tabbing through a
+  // reference box without typing into it produces no write and no activity-trail
+  // entry — compared against the last known persisted value, not what the box
+  // read when it gained focus, so retyping back to that same stored value after a
+  // failed write is also correctly seen as "nothing to send" once it succeeds.
+  const commitFieldBlur = (field, value) => {
+    if (!canWriteInstantly) return;
+    // Hand the baseline over rather than skipping the call here when nothing has
+    // changed: saveField also has to drop a stale "Not saved" mark left by an
+    // earlier failed attempt at a DIFFERENT value, which a user very reasonably
+    // reacts to by putting the box back the way it was. Returning early here
+    // would leave that mark showing with nothing left to send (defect C,
+    // tasks/instant-save-root-causes.md). It still never re-sends anything.
+    saveField(field, value, { baseline: savedForm[field] ?? '' });
+  };
+  // One combined status for the whole tab rather than one per field — see the
+  // identical reasoning in JobIdentityStrip.jsx.
+  const detailsStatus = summarizeFieldStates(fieldStates, [
+    'poNumber', 'quoteReference', 'repeatJobReference', 'qaLevelId', 'isRepeatJob'
+  ]);
+
   const jobSearch = useJobSearch({ excludeJobNumber: jobNumber });
+  // Picking a suggestion fires mousedown, which sets the field, BEFORE the input
+  // blurs — and that blur still reads the DOM's old text, so letting it write
+  // would put the half-typed reference back over the job number just chosen. The
+  // pick does its own write and flips this, and the blur behind it stands aside.
+  const justPickedRef = useRef(false);
   const { setQuery: setJobSearchQuery } = jobSearch;
 
   useEffect(() => {
@@ -268,6 +306,10 @@ export default function DetailsTab({
         addLineItem={addLineItem}
         updateLineItem={updateLineItem}
         removeLineItem={removeLineItem}
+        onItemFieldChange={onItemFieldChange}
+        onItemFieldBlur={onItemFieldBlur}
+        onItemFieldType={onItemFieldType}
+        itemErrorFor={itemErrorFor}
         suppliers={suppliers}
         onSuppliersChanged={onSuppliersChanged}
         attachmentWarnings={attachmentWarnings}
@@ -298,15 +340,38 @@ export default function DetailsTab({
 
       {/* Customer Input */}
       <div className="form-section">
-        <h3 className="form-section-title">Customer Input</h3>
+        <div className="form-section-header">
+          <h3 className="form-section-title">Customer Input</h3>
+          {detailsStatus !== 'idle' && (
+            <span
+              className={`instant-save-status instant-save-status--${detailsStatus}`}
+              role="status"
+              aria-live="polite"
+            >
+              {INSTANT_SAVE_STATUS_TEXT[detailsStatus]}
+            </span>
+          )}
+        </div>
         <div className="form-row">
           <div className="form-group">
             <label>Customer's PO Number</label>
-            <input type="text" name="poNumber" value={formData.poNumber} onChange={handleChange} />
+            <input
+              type="text"
+              name="poNumber"
+              value={formData.poNumber}
+              onChange={handleChange}
+              onBlur={(e) => commitFieldBlur('poNumber', e.target.value)}
+            />
           </div>
           <div className="form-group">
             <label>Quote Reference</label>
-            <input type="text" name="quoteReference" value={formData.quoteReference} onChange={handleChange} />
+            <input
+              type="text"
+              name="quoteReference"
+              value={formData.quoteReference}
+              onChange={handleChange}
+              onBlur={(e) => commitFieldBlur('quoteReference', e.target.value)}
+            />
           </div>
           <div className="form-group">
             <label>Quality Level</label>
@@ -315,11 +380,18 @@ export default function DetailsTab({
               value={formData.qaLevelId || ''}
               onChange={(e) => {
                 const selectedLevel = (qaLevels || []).find(l => l.id === e.target.value);
+                const qaLevelId = e.target.value || null;
+                const qualityLevel = selectedLevel ? selectedLevel.name.toUpperCase() : 'STANDARD';
                 setFormData(prev => ({
                   ...prev,
-                  qaLevelId: e.target.value || null,
-                  qualityLevel: selectedLevel ? selectedLevel.name.toUpperCase() : 'STANDARD'
+                  qaLevelId,
+                  qualityLevel
                 }));
+                // Only qaLevelId travels over the wire — the server derives its own
+                // copy of qualityLevel from it (jobcard-mutations.js) — but both
+                // baselines move together on success, since both changed as one
+                // user action. See useInstantSave.js's alsoMarkSaved.
+                if (canWriteInstantly) saveField('qaLevelId', qaLevelId, { alsoMarkSaved: { qualityLevel } });
               }}
             >
               {/* "Standard" is the baseline — no special level. It's the default and
@@ -337,7 +409,10 @@ export default function DetailsTab({
                 type="checkbox"
                 name="isRepeatJob"
                 checked={formData.isRepeatJob}
-                onChange={handleChange}
+                onChange={(e) => {
+                  handleChange(e);
+                  if (canWriteInstantly) saveField('isRepeatJob', e.target.checked);
+                }}
               />
               {formData.isRepeatJob ? 'Yes' : 'No'}
             </label>
@@ -356,7 +431,11 @@ export default function DetailsTab({
                   handleChange(e);
                 }}
                 onFocus={jobSearch.handleFocus}
-                onBlur={jobSearch.handleBlur}
+                onBlur={(e) => {
+                  jobSearch.handleBlur();
+                  if (justPickedRef.current) { justPickedRef.current = false; return; }
+                  commitFieldBlur('repeatJobReference', e.target.value);
+                }}
                 onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); e.target.blur(); } }}
                 placeholder="DH-00001"
                 autoComplete="off"
@@ -370,6 +449,8 @@ export default function DetailsTab({
                       onMouseDown={() => {
                         setFormData(prev => ({ ...prev, repeatJobReference: j.jobNumber }));
                         jobSearch.selectMatch(j.jobNumber);
+                        justPickedRef.current = true;
+                        commitFieldBlur('repeatJobReference', j.jobNumber);
                       }}
                     >
                       <strong>{j.jobNumber}</strong>

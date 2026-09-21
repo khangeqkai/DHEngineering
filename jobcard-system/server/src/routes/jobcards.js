@@ -10,6 +10,7 @@ const {
   jobItemQueries,
   jobAssigneeQueries,
   timeEntryQueries,
+  userQueries,
   getAssigneesForJobcards,
   getLatestNotesForJobcards,
   historyQueries,
@@ -19,11 +20,13 @@ const { db } = require('../db/connection');
 const { formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings } = require('./jobcard-helpers');
 const jobcardMutationsRoutes = require('./jobcard-mutations');
 const jobcardPrintoutRoutes = require('./jobcard-printout');
+const jobcardItemsRoutes = require('./jobcard-items');
 
 const router = express.Router();
 
 router.use('/', jobcardMutationsRoutes);
 router.use('/', jobcardPrintoutRoutes);
+router.use('/', jobcardItemsRoutes);
 
 // Get all job cards
 router.get('/', authenticate, validateJobcardListQuery, (req, res) => {
@@ -234,6 +237,110 @@ router.delete('/:id/assignees/self', authenticate, (req, res) => {
   } catch (err) {
     logger.error({ err }, 'Self-unassign error');
     res.status(500).json({ error: 'Failed to self-unassign' });
+  }
+});
+
+// Put one worker on the job (management, idempotent) — the instant-save
+// equivalent of the self-assign route above, for the person ticking names.
+router.put('/:id/assignees/:userId', authenticate, requireManagement, (req, res) => {
+  try {
+    const { id, userId } = req.params;
+
+    const existing = jobcardQueries.getById.get(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Job card not found' });
+    }
+
+    const user = userQueries.getById.get(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const before = jobAssigneeQueries.getByJobcard.all(id);
+    const alreadyAssigned = before.some(a => a.user_id === userId);
+
+    if (alreadyAssigned) {
+      return res.status(200).json({
+        assignees: before.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
+      });
+    }
+
+    const assigneeId = `assignee:${uuidv4()}`;
+    let inserted = true;
+    try {
+      jobAssigneeQueries.create.run(assigneeId, id, userId);
+    } catch (e) {
+      if (e && e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        inserted = false;
+      } else {
+        throw e;
+      }
+    }
+
+    const after = jobAssigneeQueries.getByJobcard.all(id);
+
+    if (!inserted) {
+      return res.status(200).json({
+        assignees: after.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
+      });
+    }
+
+    const fromNames = before.map(a => a.user_name).join(', ') || 'none';
+    const toNames = after.map(a => a.user_name).join(', ') || 'none';
+
+    recordHistory('jobcard', id, 'assign', req.user.userId, req.user.name || req.user.username, {
+      assignees: { from: fromNames, to: toNames }
+    });
+
+    res.status(201).json({
+      assignees: after.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
+    });
+  } catch (err) {
+    logger.error({ err }, 'Assign worker error');
+    res.status(500).json({ error: 'Failed to assign worker' });
+  }
+});
+
+// Take one worker off the job (management, idempotent)
+router.delete('/:id/assignees/:userId', authenticate, requireManagement, (req, res) => {
+  try {
+    const { id, userId } = req.params;
+
+    const existing = jobcardQueries.getById.get(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Job card not found' });
+    }
+
+    const user = userQueries.getById.get(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const before = jobAssigneeQueries.getByJobcard.all(id);
+    const wasAssigned = before.some(a => a.user_id === userId);
+
+    if (!wasAssigned) {
+      return res.status(200).json({
+        assignees: before.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
+      });
+    }
+
+    jobAssigneeQueries.deleteByJobcardAndUser.run(id, userId);
+
+    const after = jobAssigneeQueries.getByJobcard.all(id);
+    const fromNames = before.map(a => a.user_name).join(', ') || 'none';
+    const toNames = after.map(a => a.user_name).join(', ') || 'none';
+
+    recordHistory('jobcard', id, 'unassign', req.user.userId, req.user.name || req.user.username, {
+      assignees: { from: fromNames, to: toNames }
+    });
+
+    res.status(200).json({
+      assignees: after.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
+    });
+  } catch (err) {
+    logger.error({ err }, 'Unassign worker error');
+    res.status(500).json({ error: 'Failed to unassign worker' });
   }
 });
 

@@ -4,19 +4,19 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { createJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
-const { validateJobcardEnums, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions, validateItemQuantities } = require('../middleware/validation');
+const { validateJobcardEnums, validateJobcardDescriptionRequired, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions, validateItemQuantities } = require('../middleware/validation');
 const {
   jobcardQueries,
   jobItemQueries,
   jobAssigneeQueries,
   qaLevelQueries,
-  timeEntryQueries,
   companyQueries,
   contactQueries,
   getSettings,
   recordHistory
 } = require('../db/database');
-const { formatJobcard, buildChanges, createRelatedRecords, serializeTreatments, buildQaFillData, copyQaTemplatesForJob, verifyQaTemplatesAvailable, computeAttachmentWarnings } = require('./jobcard-helpers');
+const { formatJobcard, buildChanges, createRelatedRecords, buildQaFillData, computeAttachmentWarnings } = require('./jobcard-helpers');
+const { copyQaTemplatesForJob, verifyQaTemplatesAvailable } = require('../utils/qaTemplateProvisioning');
 const { itemSummary, assigneeNames, buildQaTemplateWarning } = require('./jobcard-audit-text');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
@@ -24,7 +24,7 @@ const { db } = require('../db/connection');
 
 const router = express.Router();
 
-router.post('/', authenticate, requireManagement, ...validateJobcardEnums, async (req, res) => {
+router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequired, ...validateJobcardEnums, async (req, res) => {
   try {
     const data = req.body;
 
@@ -296,71 +296,6 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       return res.status(409).json({ error: 'This job is invoiced and filed away. Un-file it before changing its status.' });
     }
 
-    // Items already saved on this job — used to grandfather unchanged treatment
-    // lines past the supplier-active/offers checks, and reused for change tracking.
-    const existingItems = data.items !== undefined ? jobItemQueries.getByJobcard.all(id) : [];
-
-    if (data.items !== undefined) {
-      // When a save sends a parts list, it can't be empty — a job always keeps
-      // at least one line, and the per-line rules below no-op on an empty list.
-      if (!Array.isArray(data.items) || data.items.length === 0) {
-        return res.status(400).json({ error: 'A job must have at least one part' });
-      }
-      const treatmentError = validateItemTreatments(data.items, existingItems);
-      if (treatmentError) {
-        return res.status(400).json({ error: treatmentError });
-      }
-      const materialError = validateItemMaterials(data.items, existingItems);
-      if (materialError) {
-        return res.status(400).json({ error: materialError });
-      }
-      const jobTypeError = validateItemJobTypes(data.items, existingItems);
-      if (jobTypeError) {
-        return res.status(400).json({ error: jobTypeError });
-      }
-      const drawingsError = validateItemDrawings(data.items, existingItems);
-      if (drawingsError) {
-        return res.status(400).json({ error: drawingsError });
-      }
-      const propertyError = validateItemCustomerProperty(data.items, existingItems);
-      if (propertyError) {
-        return res.status(400).json({ error: propertyError });
-      }
-      const descriptionError = validateItemDescriptions(data.items);
-      if (descriptionError) {
-        return res.status(400).json({ error: descriptionError });
-      }
-      const quantityError = validateItemQuantities(data.items);
-      if (quantityError) {
-        return res.status(400).json({ error: quantityError });
-      }
-
-      // Block removing a line that already has recorded work. Each line has a stable
-      // id and recorded work points to that id, so a line carrying time can't be
-      // deleted out from under it (mirrors how QA levels protect themselves).
-      const keptIds = new Set(
-        data.items
-          .map(it => it.id)
-          .filter(itemId => typeof itemId === 'string' && itemId.startsWith('item:'))
-      );
-      const blockedLines = existingItems
-        .filter(it => !keptIds.has(it.id) && timeEntryQueries.countByItemId.get(it.id).count > 0)
-        .map(it => it.item_number)
-        .sort((a, b) => a - b);
-      if (blockedLines.length > 0) {
-        const many = blockedLines.length > 1;
-        return res.status(400).json({
-          error: `Cannot remove line${many ? 's' : ''} ${blockedLines.join(', ')} — time is logged against ${many ? 'them' : 'it'}. Clear that time first.`
-        });
-      }
-    }
-
-    const changes = buildChanges(existing, data);
-
-    // Snapshot current assignees before any writes, for change tracking after commit
-    // (existingItems was fetched above, before validation).
-    const existingAssignees = data.assigneeIds !== undefined ? jobAssigneeQueries.getByJobcard.all(id) : [];
-
     // Validate a changed QA level BEFORE touching the database, so an invalid
     // selection can't leave a half-applied update committed.
     // A job always keeps a quality level — if the edit clears it (or an old job had
@@ -387,6 +322,17 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       }
     }
 
+    // The screen sends only `qaLevelId`, never `qualityLevel` — but the trail
+    // should read "Standard → Premium", not an id-to-id change nobody can make
+    // sense of. Hand buildChanges the readable value this route already derived
+    // above, as if the caller had sent it, so its normal quality_level tracking
+    // picks it up (a no-op when the level didn't actually change, since
+    // newQualityLevel then equals the existing label).
+    if (qaLevelChanged) {
+      data.qualityLevel = newQualityLevel;
+    }
+    const changes = buildChanges(existing, data);
+
     const newStatus = data.status !== undefined ? data.status : existing.status;
     const shouldArchive = newStatus === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
     const invoicedDate = shouldArchive ? new Date().toISOString() : null;
@@ -394,21 +340,19 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     // Soft close-out checkpoint: when this update would invoice (and archive) the
     // job but files were declared and never attached, stop before any write and
     // report the gaps — unless the caller already confirmed "invoice anyway".
-    // Uses the items being saved (or the current ones if items aren't changing).
+    // Parts and their attachments are never part of this route any more (see
+    // jobcard-items.js and the files routes), so this always reads the job's
+    // current, already-saved items.
     if (shouldArchive && data.confirmMissingAttachments !== true) {
-      const itemsForCheck = data.items !== undefined ? data.items : jobItemQueries.getByJobcard.all(id);
-      // flagUnsaved: a part added in this same save can't have a file attached yet,
-      // so a drawing/customer-property it declares is genuinely missing — the gate
-      // must catch it, even though the live scan skips not-yet-saved parts.
+      const itemsForCheck = jobItemQueries.getByJobcard.all(id);
       const warnings = computeAttachmentWarnings(id, itemsForCheck, newQaLevelId, true);
       if (warnings.hasAny) {
         return res.status(409).json({ error: 'MISSING_ATTACHMENTS', attachmentWarnings: warnings });
       }
     }
 
-    // All database writes happen in one transaction: either every change lands,
-    // or none do. A failure partway through (e.g. a rejected line item) rolls the
-    // whole update back, so existing items/assignees are never lost.
+    // All database writes happen in one transaction: either the status/field
+    // update lands, or none of it does.
     const applyUpdate = db.transaction(() => {
       jobcardQueries.update.run(
         existing.card_type,
@@ -435,56 +379,6 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
         id
       );
 
-      if (data.items !== undefined) {
-        // Reconcile lines in place by their stable id so recorded work follows its
-        // line: update kept lines (including their new position number), insert new
-        // ones, and delete only removed lines that carry no recorded work (the
-        // delete-guard above already rejected removing any line that has time logged).
-        const keptIds = new Set();
-        for (let i = 0; i < data.items.length; i++) {
-          const item = data.items[i];
-          const isExisting = typeof item.id === 'string'
-            && item.id.startsWith('item:')
-            && existingItems.some(ei => ei.id === item.id);
-          if (isExisting) {
-            jobItemQueries.updateById.run(
-              i + 1,
-              item.qty || null, item.description,
-              item.jobType || null, item.material || null,
-              serializeTreatments(item.treatments),
-              item.drawingsType || null, item.customerProperty || null,
-              item.id
-            );
-            keptIds.add(item.id);
-          } else {
-            jobItemQueries.create.run(
-              `item:${uuidv4()}`, id, i + 1,
-              item.qty || null, item.description,
-              item.jobType || null, item.material || null,
-              serializeTreatments(item.treatments),
-              item.drawingsType || null, item.customerProperty || null
-            );
-          }
-        }
-        for (const ei of existingItems) {
-          if (!keptIds.has(ei.id)) {
-            jobItemQueries.deleteById.run(ei.id);
-          }
-        }
-      }
-
-      if (data.assigneeIds !== undefined) {
-        jobAssigneeQueries.deleteByJobcard.run(id);
-        for (const userId of data.assigneeIds) {
-          const assigneeId = `assignee:${uuidv4()}`;
-          try {
-            jobAssigneeQueries.create.run(assigneeId, id, userId);
-          } catch (e) {
-            // Swallow UNIQUE-constraint duplicates from repeated userId in payload
-          }
-        }
-      }
-
       if (shouldArchive) {
         jobcardQueries.archive.run(invoicedDate, req.user.userId, id);
       }
@@ -495,7 +389,7 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     // own overtime rules and rate, so recomputing its costing later always reproduces
     // the billed number — there is nothing a settings change could move.
 
-    // ---- Change tracking (pure computation; uses the snapshots captured above) ----
+    // ---- Change tracking (pure computation; uses `existing`, fetched above) ----
     if (data.photos !== undefined) {
       const newPhotos = JSON.stringify(data.photos);
       const oldPhotos = existing.photos || '[]';
@@ -503,47 +397,6 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
         const oldCount = existing.photos ? JSON.parse(existing.photos).length : 0;
         const newCount = data.photos.length;
         changes['photos'] = { from: `${oldCount} photos`, to: `${newCount} photos` };
-      }
-    }
-
-    if (data.items !== undefined) {
-      // Match lines by their stable id (the same id the save reconciles on) so
-      // renumbering after a delete/reorder can't fabricate phantom add/edit/remove
-      // entries. Position numbers are used only as human-readable labels.
-      const oldById = new Map(existingItems.map(i => [i.id, {
-        num: i.item_number,
-        summary: itemSummary(i.qty, i.description, i.job_type, i.material, i.treatments, i.drawings_type, i.customer_property)
-      }]));
-      const seenIds = new Set();
-      data.items.forEach((item, idx) => {
-        const pos = idx + 1; // the new position the save just assigned this line
-        const summary = itemSummary(item.qty, item.description, item.jobType, item.material, item.treatments, item.drawingsType, item.customerProperty);
-        const prior = (typeof item.id === 'string' && item.id.startsWith('item:'))
-          ? oldById.get(item.id)
-          : null;
-        if (!prior) {
-          changes[`item #${pos} added`] = { from: null, to: summary };
-        } else {
-          seenIds.add(item.id);
-          if (prior.summary !== summary) {
-            changes[`item #${pos}`] = { from: prior.summary, to: summary };
-          }
-        }
-      });
-      for (const [id, prior] of oldById) {
-        if (!seenIds.has(id)) {
-          changes[`item #${prior.num} removed`] = { from: prior.summary, to: null };
-        }
-      }
-    }
-
-    if (data.assigneeIds !== undefined) {
-      const oldIds = existingAssignees.map(a => a.user_id).sort().join(',');
-      const newIds = [...data.assigneeIds].sort().join(',');
-      if (oldIds !== newIds) {
-        const oldNames = existingAssignees.map(a => a.user_name).join(', ') || 'none';
-        const newNames = assigneeNames(data.assigneeIds) || 'none';
-        changes['assignees'] = { from: oldNames, to: newNames };
       }
     }
 

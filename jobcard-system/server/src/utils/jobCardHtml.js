@@ -85,7 +85,13 @@ const CSS = `
   @media print { .sheet { padding:0; } }
 `;
 
-function renderItem(it) {
+// displayNumber is the part's position in the printed list (1, 2, 3…), not its
+// stored item_number (it.number, from buildJobCardView) — that's only a sort
+// order the server owns and can have gaps once a part is deleted. The printed
+// card must read the same numbers as the job screen, so the caller below
+// passes each item's own `position` (buildJobCardView states it, once, for
+// every consumer) straight through.
+function renderItem(it, displayNumber) {
   let drawings;
   if (it.drawingsIsNa) {
     drawings = `<div class="val na">${esc(it.drawings || 'N/A')}</div>`;
@@ -110,7 +116,7 @@ function renderItem(it) {
   }
   return `
   <div class="item">
-    <div class="no">${esc(it.number)}</div>
+    <div class="no">${esc(displayNumber)}</div>
     <div class="body">
       <div class="frow">
         <div class="f jobtype"><div class="lbl">Job type</div><div class="val">${esc(it.jobType)}</div></div>
@@ -160,7 +166,7 @@ function renderJobCardHtml(view) {
     <div class="cell"><div class="lbl">Quote reference</div><div class="val">${esc(v.quoteReference) || '&mdash;'}</div></div>
   </div>
   <div class="items-h"><h2>Items</h2><span class="count">${items.length} ${items.length === 1 ? 'part' : 'parts'}</span></div>
-  ${items.map(renderItem).join('')}
+  ${items.map(it => renderItem(it, it.position)).join('')}
   <div class="foot">
     <div class="sign">
       <div class="slot"><div class="ln"></div><div class="cap">Inspected by</div></div>

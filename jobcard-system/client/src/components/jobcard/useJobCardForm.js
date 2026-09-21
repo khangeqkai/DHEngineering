@@ -1,6 +1,9 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { getDefaultFormData, mapLineItemFromApi } from './mappers';
+import { useState, useCallback, useMemo, useRef } from 'react';
+import { api } from '../../services/api';
+import { getDefaultFormData, mapLineItemFromApi, buildItemPayload } from './mappers';
 import { isSavedLineItem } from './jobCardValidation.mjs';
+import { lineItemHasContent } from './closeReasons';
+import { useSaveQueue } from './useSaveQueue';
 
 const makeEmptyLineItem = (itemNumber = 1) => ({
   id: Date.now() + Math.random(),
@@ -36,20 +39,44 @@ const snapshotItems = (lineItems) =>
 // What a brand-new, untouched job card looks like: the default form values, no
 // assignees, and the single blank part row the state below starts with. This is
 // the baseline a new card gets instead of null — see the comment on `saved` below.
+//
+// itemFields is the existing-job counterpart to `items` above: a brand-new job has
+// no real ("item:"-id) rows yet, so it starts empty and is never read until one
+// exists (see setFormDataFromJobCard and the isDirty comment below).
 const pristineSaved = () => ({
   form: snapshotForm(getDefaultFormData()),
   assignees: snapshotAssignees([]),
-  items: snapshotItems([makeEmptyLineItem(1)])
+  items: snapshotItems([makeEmptyLineItem(1)]),
+  itemFields: {}
 });
 
 /**
  * Custom hook for job card form state management
  * Handles form data, line items, and assignees
+ *
+ * jobCardId is null/undefined for a brand-new job and the stored job's id once one
+ * exists — it decides whether toggling a worker stays purely on screen (create) or
+ * writes itself immediately (existing job), and which job an in-flight write belongs to.
+ *
+ * onInstantSave (optional) fires once for every write that actually lands here — an
+ * assignee toggle, and (via markFieldSaved/markItemSaved/markItemRemoved, called by
+ * useJobCardInstantSaves.js) a field or a part — never on every keystroke. This is
+ * the one seam all of those seemingly-separate writes share, which is what lets
+ * JobCardModal.jsx tell whether the job list behind it needs refreshing when this
+ * card closes, without listening to each write path individually.
+ *
+ * Also owns the one save queue (useSaveQueue.js, Contract A) for this open job
+ * card — every worker tick/untick routes through it under key
+ * `assignee:<userId>`, and it's handed out (as `saveQueue` on the return value)
+ * for the details fields and the parts list to write through too
+ * (useJobCardInstantSaves.js), so every instant write on the card shares the one
+ * record instead of each area keeping its own.
  */
-export function useJobCardForm() {
+export function useJobCardForm(jobCardId, { onInstantSave } = {}) {
   // Core form data
   const [formData, setFormData] = useState(getDefaultFormData());
   const [jobNumber, setJobNumber] = useState('');
+  const saveQueue = useSaveQueue(jobCardId);
 
   // Related data (locally managed for create mode, from API for edit mode)
   const [assignees, setAssignees] = useState([]);
@@ -61,20 +88,99 @@ export function useJobCardForm() {
   // handleRequestClose most needs to protect. loadJobCard/setFormDataFromJobCard
   // below replaces this with the loaded job's own snapshot once a job is loaded.
   const [saved, setSaved] = useState(pristineSaved);
-  const liveRef = useRef({ formData, assignees, lineItems });
-  useEffect(() => {
-    liveRef.current = { formData, assignees, lineItems };
-  }, [formData, assignees, lineItems]);
-  // Assigned during render rather than in an effect, so the two handlers below always
-  // compare against the baseline as it stands right now, not one commit behind.
-  const savedRef = useRef(saved);
-  savedRef.current = saved;
+  // False from the moment an existing job starts opening (resetForm runs first,
+  // dropping in one blank local row) until setFormDataFromJobCard has replaced it
+  // with the real one. Without this, itemsDirty below reads that placeholder row
+  // as an unsaved part for the whole loading window — the header wears the amber
+  // ring and Escape asks about a change nobody made. A brand-new job never sets
+  // this at all, so its own itemsDirty branch (below) is untouched by it.
+  const [loaded, setLoaded] = useState(false);
+  // The job description's own required-box mark. Lifted up from JobIdentityStrip
+  // (rather than kept as that component's local state) so the close question
+  // (useUnsavedGuard.js, via closeReasons.js) can see it — JobIdentityStrip
+  // unmounts on every close (JobCardModal returns null rather than hiding it), so
+  // resetForm below clears this the same way a fresh mount would have.
+  const [descriptionError, setDescriptionError] = useState(null);
+  // Assigned during render rather than in an effect, so toggleAssignee below always
+  // reads the people list and the open job as they stand right now, not one commit
+  // behind: assigneesRef decides the next tap's direction without listing
+  // `assignees` as a dependency (which would rebuild its promise-chaining closure
+  // on every tick), and jobCardIdRef tells whether a write that lands late still
+  // belongs to the job on screen.
+  const assigneesRef = useRef(assignees);
+  assigneesRef.current = assignees;
+  const jobCardIdRef = useRef(jobCardId);
+  jobCardIdRef.current = jobCardId;
+
+  // A part now saves itself row by row (useInstantItems.js), so "are the parts
+  // dirty" is no longer one whole-list comparison — it's asked per row:
+  //   - a brand-new job has nothing to write to yet, so every row is still local
+  //     and the parts list is exactly the old whole-snapshot compare.
+  //   - an existing job only ever has a row worth flagging in one of two states: a
+  //     row that hasn't become real yet (isSavedLineItem false — nothing has been
+  //     sent for it at all), or a real row whose on-screen value has drifted from
+  //     what saved.itemFields last recorded the server actually storing for it
+  //     (mid-typing before its blur/change write lands, or a write that failed).
+  const itemsDirty = useMemo(() => {
+    if (!jobCardId) {
+      return snapshotItems(lineItems) !== saved.items;
+    }
+    // Still loading: lineItems is resetForm's placeholder blank row, not anything
+    // the user has touched — nothing to flag yet.
+    if (!loaded) return false;
+    return lineItems.some(item => {
+      // A still-local row only counts once something has actually been typed
+      // into it — the normal starting state for a fresh "Add Item" row is a
+      // blank row, not an edit waiting to be lost. closeReasons.js's own dirty
+      // narration uses this exact same check (lineItemHasContent), so the two
+      // can never disagree about whether there's really anything here (defect 5
+      // — an untouched blank row used to flag this true regardless, which meant
+      // Escape asked about "changes" the close-reason builder could never name).
+      if (!isSavedLineItem(item)) return lineItemHasContent(item);
+      const base = saved.itemFields[item.id];
+      return base === undefined || JSON.stringify(buildItemPayload(item)) !== base;
+    });
+  }, [jobCardId, lineItems, saved, loaded]);
+
+  // Named on its own (not just folded into isDirty below) so the close question
+  // (closeReasons.js) can say a team assignment hasn't reached the job, without
+  // having to re-derive the same comparison a second time.
+  const assigneesDirty = useMemo(() => snapshotAssignees(assignees) !== saved.assignees, [assignees, saved.assignees]);
 
   const isDirty = useMemo(() => {
     return snapshotForm(formData) !== saved.form
-      || snapshotAssignees(assignees) !== saved.assignees
-      || snapshotItems(lineItems) !== saved.items;
-  }, [saved, formData, assignees, lineItems]);
+      || assigneesDirty
+      || itemsDirty;
+  }, [saved, formData, assigneesDirty, itemsDirty]);
+
+  // The last known persisted value for each form field — the baseline a blur write
+  // (useInstantSave, wired up in JobIdentityStrip/DetailsTab) compares against so
+  // tabbing through a field without editing it produces no write, and a value typed
+  // back to what's already stored produces none either. Status is left out, same as
+  // snapshotForm above, since it's never written through this path.
+  const savedForm = useMemo(() => {
+    try {
+      return JSON.parse(saved.form);
+    } catch {
+      return {};
+    }
+  }, [saved.form]);
+
+  // The per-row counterpart to savedForm above — each real row's last known
+  // persisted field values, keyed by its stored id, for useInstantItems.js's
+  // skip-if-unchanged blur check (commitItemFieldBlur) and for itemsDirty above.
+  const savedItemFields = useMemo(() => {
+    const out = {};
+    for (const [id, json] of Object.entries(saved.itemFields || {})) {
+      try {
+        out[id] = JSON.parse(json);
+      } catch {
+        // Malformed baseline entry — treat as absent so the row reads as dirty
+        // rather than silently comparing against garbage.
+      }
+    }
+    return out;
+  }, [saved.itemFields]);
 
   const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
@@ -108,59 +214,122 @@ export function useJobCardForm() {
   }, []);
 
   // Assignee handlers
-  const toggleAssignee = useCallback((employee) => {
-    setAssignees(prev => {
-      const exists = prev.find(a => a.userId === employee.id);
-      if (exists) {
-        return prev.filter(a => a.userId !== employee.id);
-      } else {
-        return [...prev, { userId: employee.id, userName: employee.name || employee.username }];
-      }
-    });
-  }, []);
-
-  // Has the user made an unsaved change about THIS worker — ticked them on, or unticked
-  // them — that no Save has sent yet? Compared one worker at a time, because the two
-  // handlers below are each about one worker and must not read a change to somebody else
-  // as a reason to back off.
-  const hasPendingChangeFor = (workerId) => {
-    const inBaseline = JSON.parse(savedRef.current.assignees).includes(workerId);
-    const onScreen = liveRef.current.assignees.some(a => a.userId === workerId);
-    return inBaseline !== onScreen;
-  };
-
-  // Crediting work to someone puts them on the job server-side. Fold that one worker
-  // into the on-screen list so a later Save doesn't send a list without them and undo
-  // it — only them, since replacing the whole list would drop unsaved ticks/unticks.
   //
-  // Unless the user has already decided otherwise about this same worker: a manager who
-  // unticks someone and hasn't saved it yet has made a deliberate choice, and putting
-  // that person straight back — and calling the card saved while doing it — threw the
-  // choice away without a word. When the two disagree the user wins and the card stays
-  // marked unsaved, so the decision is theirs to keep or undo.
+  // On a brand-new job there is nothing to write to yet, so the tick stays purely on
+  // screen and travels in the create payload instead. On an existing job it's
+  // optimistic: the screen updates immediately, then the one worker is written
+  // through the shared save queue (useSaveQueue.js) under key `assignee:<userId>` —
+  // same key runs in order for a fast tick/untick/tick of the same person, and a
+  // write for one worker never blocks a write for somebody else. Success moves the
+  // saved baseline to match, so the change stops reading as unsaved; failure leaves
+  // the screen as the user set it and leaves the baseline where it was, so the amber
+  // unsaved ring correctly flags it — writes are never re-sent automatically, so it
+  // waits on the user to retry.
+  const toggleAssignee = useCallback((employee) => {
+    const workerId = employee.id;
+    const willAssign = !assigneesRef.current.some(a => a.userId === workerId);
+
+    setAssignees(prev => {
+      const exists = prev.some(a => a.userId === workerId);
+      if (willAssign) {
+        return exists ? prev : [...prev, { userId: workerId, userName: employee.name || employee.username }];
+      }
+      return prev.filter(a => a.userId !== workerId);
+    });
+
+    const forJobCardId = jobCardIdRef.current;
+    if (!forJobCardId) return; // new job — local only
+
+    const label = `${employee.name || employee.username || 'that worker'}'s assignment`;
+    saveQueue.enqueue(`assignee:${workerId}`, () => (willAssign
+      ? api.assignWorker(forJobCardId, workerId)
+      : api.unassignWorker(forJobCardId, workerId))
+      .then(() => {
+        // A reply for a job the user has since left must not mark some OTHER job's
+        // people list as saved — only fold the baseline forward while this is
+        // still the job on screen.
+        if (jobCardIdRef.current !== forJobCardId) return;
+        onInstantSave?.();
+        setSaved(prev => ({
+          ...prev,
+          assignees: willAssign
+            ? snapshotAssignees([...JSON.parse(prev.assignees), workerId].map(id => ({ userId: id })))
+            : snapshotAssignees(JSON.parse(prev.assignees).filter(id => id !== workerId).map(id => ({ userId: id })))
+        }));
+      }), { label });
+  }, [onInstantSave, saveQueue]);
+
+  // Moves one field's baseline forward after an instant-save write succeeds (see
+  // useInstantSave.js) — the same idea as toggleAssignee moving the assignees
+  // baseline forward one worker at a time, just for the details fields instead.
+  // Only the one key changes: a field that failed to save, or one the user is
+  // still mid-edit on, keeps reading as unsaved while everything that DID save
+  // stops flagging itself. Replacing the whole form snapshot instead would
+  // wrongly call both clean.
+  const markFieldSaved = useCallback((name, value) => {
+    onInstantSave?.();
+    setSaved(prev => {
+      const parsed = JSON.parse(prev.form);
+      if (!(name in parsed)) {
+        // Every instantly-saved field already exists on the form baseline — it's
+        // seeded from getDefaultFormData/setFormDataFromJobCard — so a key that
+        // isn't there yet would be appended instead of replacing, shifting
+        // JSON.stringify's key order and making the form compare unequal to
+        // itself forever. Safer to leave the baseline untouched than risk that.
+        return prev;
+      }
+      parsed[name] = value;
+      return { ...prev, form: JSON.stringify(parsed) };
+    });
+  }, [onInstantSave]);
+
+  // The per-row counterpart to markFieldSaved above, called by useInstantItems.js
+  // once a row's create or update actually lands. payload is what the server
+  // confirmed it stored (buildItemPayload of its reply), not what was on screen at
+  // send time — an edit made to the row while that request was travelling must stay
+  // marked unsaved, and recording the server's own copy is what keeps it so.
+  const markItemSaved = useCallback((itemId, payload) => {
+    onInstantSave?.();
+    setSaved(prev => ({
+      ...prev,
+      itemFields: { ...prev.itemFields, [itemId]: JSON.stringify(payload) }
+    }));
+  }, [onInstantSave]);
+
+  // A row removed server-side has nothing left to track a baseline for.
+  const markItemRemoved = useCallback((itemId) => {
+    onInstantSave?.();
+    setSaved(prev => {
+      const { [itemId]: _removed, ...rest } = prev.itemFields;
+      return { ...prev, itemFields: rest };
+    });
+  }, [onInstantSave]);
+
+  // Crediting work to someone puts them on the job server-side — the write has
+  // already happened, so this only brings the screen and its baseline into line with
+  // it. Fold in just this one worker, since replacing the whole list would drop a
+  // tick/untick made to somebody else that hasn't reached the server yet.
+  //
+  // Stands aside while this worker's own tick/untick is still queued or in flight
+  // (defect 7): unticking someone and then starting a timer for them used to credit
+  // them straight back onto the screen AND move the saved baseline, so the card read
+  // as fully saved while the still-travelling unassign was about to remove them
+  // server-side. Once that write has actually settled (landed or failed), there's
+  // nothing left to race and this can run as normal.
   const creditAssignee = useCallback((workerId, employees = []) => {
-    if (!workerId || hasPendingChangeFor(workerId)) return;
+    if (!workerId || saveQueue.isPending(`assignee:${workerId}`)) return;
     setAssignees(prev => prev.some(a => a.userId === workerId) ? prev
       : [...prev, { userId: workerId, userName: employees.find(e => e.id === workerId)?.name || '' }]);
-    // The server put them on the job already, so this is not an edit awaiting a Save.
-    // Unless a Save is in flight, which carries a people list built before this and will
-    // take them straight back off — markSaved measures against that list and hands the
-    // worker back as an unsaved edit when the reply lands.
-    setSaved(prev => prev
-      ? { ...prev, assignees: snapshotAssignees([...JSON.parse(prev.assignees), workerId].map(id => ({ userId: id }))) }
-      : prev);
-  }, []);
+    setSaved(prev => ({ ...prev, assignees: snapshotAssignees([...JSON.parse(prev.assignees), workerId].map(id => ({ userId: id }))) }));
+  }, [saveQueue]);
 
   // A tap discarded as an accident takes its worker back off the job server-side.
-  // Same reasoning as above in reverse, including standing aside for an unsaved tick
-  // the user has made about this same worker.
+  // Same reasoning as above, in reverse — including the same stand-aside guard.
   const dropAssignee = useCallback((workerId) => {
-    if (!workerId || hasPendingChangeFor(workerId)) return;
+    if (!workerId || saveQueue.isPending(`assignee:${workerId}`)) return;
     setAssignees(prev => prev.filter(a => a.userId !== workerId));
-    setSaved(prev => prev
-      ? { ...prev, assignees: snapshotAssignees(JSON.parse(prev.assignees).filter(id => id !== workerId).map(id => ({ userId: id }))) }
-      : prev);
-  }, []);
+    setSaved(prev => ({ ...prev, assignees: snapshotAssignees(JSON.parse(prev.assignees).filter(id => id !== workerId).map(id => ({ userId: id }))) }));
+  }, [saveQueue]);
 
   // Set form data from loaded job card
   const setFormDataFromJobCard = useCallback((jobcardData) => {
@@ -202,151 +371,21 @@ export function useJobCardForm() {
     setLineItems(loadedItems);
 
     // Everything on screen now matches what is stored — the starting point the
-    // header's unsaved-edits mark is measured against.
-    setSaved({
+    // header's unsaved-edits mark is measured against. `items` (the whole-array
+    // snapshot) is left exactly as resetForm just set it — itemsDirty never reads
+    // it once jobCardId is set, so there's nothing here worth computing again;
+    // itemFields is its real replacement for an existing job, and only ever holds
+    // real rows (a job always loads with at least one) — see the isDirty comment.
+    setSaved(prev => ({
+      ...prev,
       form: snapshotForm(loadedForm),
       assignees: snapshotAssignees(loadedAssignees),
-      items: snapshotItems(loadedItems)
-    });
-  }, []);
-
-  // Take a copy of what is about to be sent — form, assignees and parts alike.
-  // Nothing on screen is locked while a save is in flight, so anything typed in the
-  // meantime has to stay marked unsaved — measuring against what came back would
-  // quietly swallow it. The form/assignees baseline in markSaved is taken straight
-  // from the string snapshots below; the line items are handled differently there
-  // (see markSaved) because merging in the reply's ids and numbers means matching
-  // rows first, which needs the raw, un-stringified rows as they stood at send time.
-  const captureSent = useCallback(() => {
-    return {
-      form: snapshotForm(liveRef.current.formData),
-      assignees: snapshotAssignees(liveRef.current.assignees),
-      items: snapshotItems(liveRef.current.lineItems),
-      // The actual rows (with ids) as they stood at send time. Used only by markSaved,
-      // to work out which reply row belongs to which on-screen row.
-      sentLineItems: liveRef.current.lineItems
-    };
-  }, []);
-
-  // Called after a save that leaves the job open, with what the reply carried back and
-  // what captureSent recorded before the request went out. Two jobs, kept separate on
-  // purpose:
-  //
-  // 1. Adopt the stored ids and numbers onto the screen — a part added on screen carries
-  //    a temporary id until it is saved, and logged work is matched to a part by its
-  //    stored id and number, so without this the hours logged from here on could land on
-  //    the wrong part, or on one that no longer exists. The rows themselves come from
-  //    React's own current state (a functional update), not from a ref that is a beat
-  //    behind: only the id and itemNumber move across, so an edit made while the request
-  //    was in flight is never quietly overwritten by the reply's older copy of that row.
-  //
-  //    Reply rows are matched to sent rows by id, not by position: a row that already
-  //    had a stored id (isSavedLineItem) keeps that same id across the save (the server
-  //    only ever reassigns numbers on kept rows), so the reply row carrying that id is
-  //    unambiguously its match. A row that had no stored id when it was sent — a newly
-  //    added part — can't be matched this way, because the server mints its id fresh;
-  //    for those, the reply is ordered by stored number and new rows are always appended
-  //    last (addLineItem), so pairing the leftover new sent-rows with the leftover reply
-  //    rows in that same order is the best available match, not a guaranteed one.
-  //    Once a sent row is matched to a reply row, that match is applied to whichever
-  //    on-screen row carries the same id the sent row had — the row that was actually
-  //    sent, even if it was edited, added or removed on screen since. A row added to the
-  //    screen after the request went out was never sent and has nothing to match against,
-  //    so it's left with its temporary id, waiting for the next save.
-  //
-  //    If a sent row carried a stored id and NO reply row comes back with that same id,
-  //    while the reply is non-empty, someone else deleted that part from the server while
-  //    this job was open — the server then recreated the row under a fresh id, which would
-  //    otherwise fall through to the "new part" matching above and hand it to the wrong
-  //    sent row. Rather than guess, the parts are taken wholesale from the reply and the
-  //    caller is told (see the return value below) so it can say what happened. Only the
-  //    parts: the job's own fields and its people were never in doubt, so they keep what
-  //    is on screen, including anything typed while the request was in flight.
-  //
-  // 2. Move the starting point forward. The form and assignees baseline still comes from
-  //    `sent`, not the reply — nothing on screen is locked mid-save, so anything typed or
-  //    ticked while the request was travelling must stay marked unsaved. The line-item
-  //    baseline is built from those same sent rows too (with each matched reply row's id
-  //    and itemNumber folded in), never from the rows on screen when the reply lands —
-  //    the screen can carry edits, additions or removals made after the request went out,
-  //    and none of those are saved yet, so a baseline built from the screen would wrongly
-  //    call them clean.
-  const markSaved = useCallback((apiItems, sent) => {
-    const reply = (apiItems || []).map(mapLineItemFromApi);
-    const sentItems = sent.sentLineItems || [];
-
-    // Reply rows already claimed by a sent row that carried a stored id.
-    const claimedReplyIds = new Set(
-      sentItems.filter(isSavedLineItem).map(item => item.id)
-    );
-    // What's left over, in reply order, is for the new rows — order-matched below.
-    const leftoverReply = reply.filter(row => !claimedReplyIds.has(row.id));
-    let leftoverIdx = 0;
-
-    // sent-row local id -> the reply row that belongs to it.
-    const matchForSentId = new Map();
-    // A sent row that carried a stored id but has no reply row carrying that id,
-    // even though the reply carried rows — see the comment above markSaved.
-    let conflict = false;
-    for (const sentItem of sentItems) {
-      if (isSavedLineItem(sentItem)) {
-        const match = reply.find(row => row.id === sentItem.id);
-        if (match) {
-          matchForSentId.set(sentItem.id, match);
-        } else if (reply.length > 0) {
-          conflict = true;
-        }
-      } else {
-        const match = leftoverReply[leftoverIdx++];
-        if (match) matchForSentId.set(sentItem.id, match);
-      }
-    }
-
-    // The people baseline is exactly what was sent, because a save hands over a whole
-    // list and the server throws its own away and stores that list verbatim. So anything
-    // the server had done to the list while the request was travelling — crediting the
-    // worker on a timer started mid-save, taking back a discarded run — is undone the
-    // moment this save lands. Those workers are still on screen, and measuring against
-    // what was sent is what leaves them marked unsaved, so the next Save puts them back.
-    // Folding them into the baseline instead showed them assigned while calling the card
-    // saved, and the server no longer had them on the job at all.
-    const assigneesSnapshot = sent.assignees;
-
-    if (conflict) {
-      // Only the parts are in doubt, so only the parts are replaced. The reply's rows go
-      // straight onto the screen — that is the whole point, since guessing which row is
-      // which risks logging later work against the wrong part — but the job's own fields
-      // and its people are left exactly as they are. They were never ambiguous, and
-      // anything typed into them while the request was travelling is unsaved work that
-      // reloading the server's copy over the top would destroy without asking. The form
-      // and people baselines still move forward from what was sent, because that much
-      // really did save. (`reply` is never empty here: an empty reply can't raise this.)
-      setLineItems(reply);
-      setSaved({
-        form: sent.form,
-        assignees: assigneesSnapshot,
-        items: snapshotItems(reply)
-      });
-      return { conflict: true };
-    }
-
-    const savedItems = reply.length === 0
-      ? sentItems
-      : sentItems.map(item => {
-        const match = matchForSentId.get(item.id);
-        return match ? { ...item, id: match.id, itemNumber: match.itemNumber } : item;
-      });
-
-    setLineItems(prev => reply.length === 0 ? prev : prev.map(item => {
-      const match = matchForSentId.get(item.id);
-      return match ? { ...item, id: match.id, itemNumber: match.itemNumber } : item;
+      itemFields: Object.fromEntries(
+        loadedItems.filter(isSavedLineItem).map(item => [item.id, JSON.stringify(buildItemPayload(item))])
+      )
     }));
-    setSaved({
-      form: sent.form,
-      assignees: assigneesSnapshot,
-      items: snapshotItems(savedItems)
-    });
-    return { conflict: false };
+    // The real rows are in now — itemsDirty can safely look at them.
+    setLoaded(true);
   }, []);
 
   const resetForm = useCallback(() => {
@@ -354,10 +393,19 @@ export function useJobCardForm() {
     setJobNumber('');
     setAssignees([]);
     setLineItems([makeEmptyLineItem(1)]);
+    setDescriptionError(null);
     // Back to the pristine baseline, same as the hook's own initial state, so a
     // second new card starts clean exactly like the first one did.
     setSaved(pristineSaved());
-  }, []);
+    // Runs before an existing job's own data has arrived — see the comment on
+    // `loaded`'s declaration above.
+    setLoaded(false);
+    // JobCardModal returns null when closed rather than unmounting, so the save
+    // queue outlives a close the same way every other piece of state here does —
+    // without this, opening the next job would still show whatever was left
+    // queued or failed on the previous one.
+    saveQueue.reset();
+  }, [saveQueue]);
 
   return {
     // Form state
@@ -365,9 +413,14 @@ export function useJobCardForm() {
     setFormData,
     jobNumber,
     setJobNumber,
+    // The one save queue for this open job card (Contract A) — shared out to
+    // useJobCardInstantSaves.js and useJobCardCloseGuard.js so every instant
+    // write on the card, and the close question, read the same record.
+    saveQueue,
     // Related data
     assignees,
     lineItems,
+    setLineItems,
     // Handlers
     handleChange,
     addLineItem,
@@ -377,10 +430,19 @@ export function useJobCardForm() {
     creditAssignee,
     dropAssignee,
     setFormDataFromJobCard,
-    captureSent,
-    markSaved,
+    markFieldSaved,
+    markItemSaved,
+    markItemRemoved,
+    savedForm,
+    savedItemFields,
     resetForm,
-    // True once a loaded job has edits that no Save has sent yet.
+    descriptionError,
+    setDescriptionError,
+    // True once a loaded job has edits that haven't reached the job yet — a failed
+    // write, a required box left empty, or a part row still waiting on its own
+    // create/update/delete. See the header comment on isDirty in
+    // tasks/instant-save-job-card.md's Stage 4 section for why this is enough on
+    // its own and nothing here invents a parallel "failed" flag to replace it.
     isDirty
   };
 }

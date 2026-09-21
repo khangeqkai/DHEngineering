@@ -11,6 +11,7 @@ import { usePacketPrint } from './usePacketPrint';
 import HubFileRow from './HubFileRow';
 import HubCameraView from './HubCameraView';
 import { ORDER, MAX_PACKET_FILES, keyOf, cleanQaName, fileKindLabel, PickCircle } from './paperworkHubHelpers';
+import { usePaperworkSelection } from './usePaperworkSelection';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { isManagement } from '../../utils/roles';
@@ -28,13 +29,12 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
   const [cameraCategory, setCameraCategory] = useState(null);
   // When opened from a part's Attach button: the part any file added here should
   // belong to, plus which section to highlight. Null = opened plainly (whole-job).
-  const [attachTarget, setAttachTarget] = useState(null); // { itemId, itemNumber, category }
-  const [selected, setSelected] = useState(() => new Set());
-  const [cardTicked, setCardTicked] = useState(true);
+  // displayNumber is the part's position in the parts list, never its stored
+  // item_number — the caller (ItemsTab) already resolves that before calling in.
+  const [attachTarget, setAttachTarget] = useState(null); // { itemId, displayNumber, category }
   const [pickMenuOpen, setPickMenuOpen] = useState(false); // per-part "Select all" menu (only when 2+ parts)
   const [cardPreview, setCardPreview] = useState(null); // generated job-card HTML, shown in the viewer
   const [cardPreviewLoading, setCardPreviewLoading] = useState(false);
-  const seenRef = useRef(new Set());
   const pendingUploadCat = useRef(null);
   const fileInputRef = useRef(null);
   const overlayRef = useRef(null);
@@ -57,15 +57,28 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
   const files = useJobFiles(jobcardId);
   const camera = useCamera();
   const packet = usePacketPrint(jobcardId, jobNumber, onPrinted);
+  const {
+    selected, cardTicked, setCardTicked, toggle,
+    sectionState, toggleSection, selectedItems,
+    totalFileCount, totalSelectable, tickedFileCount, tickedCount, overFileLimit, masterState,
+    selectAll, clearAll, toggleMaster, partFileKeys, selectPart, resetSelection,
+    carryTickToRename, forgetFile
+  } = usePaperworkSelection(files.filesByCategory);
 
-  // Only saved parts (with a permanent "item:" id) can own a file.
-  const assignableParts = parts.filter(p => typeof p.id === 'string' && p.id.startsWith('item:'));
+  // Only saved parts (with a permanent "item:" id) can own a file. Each part
+  // already carries its own server-stated position (matching the Line Items
+  // tab) — never its stored item_number, which is only a sort order the server
+  // owns and can have gaps once a part is deleted, and never recounted here.
+  const assignableParts = parts
+    .filter(p => typeof p.id === 'string' && p.id.startsWith('item:'))
+    .map(p => ({ ...p, displayNumber: p.position }));
 
   // Let the job card screen open this panel already pointed at a part, so the
-  // per-part Attach button lands here instead of a bare file dialog.
+  // per-part Attach button lands here instead of a bare file dialog. The caller
+  // passes the part's display position, not its stored number.
   useImperativeHandle(ref, () => ({
-    openForPart(itemId, itemNumber, category) {
-      setAttachTarget({ itemId, itemNumber, category });
+    openForPart(itemId, displayNumber, category) {
+      setAttachTarget({ itemId, displayNumber, category });
       setView('hub');
       setOpen(true);
     }
@@ -79,113 +92,21 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
     }
   }, [open, jobcardId, loadFiles]);
 
-  // Pre-tick newly-seen files (so the packet starts with everything ticked) while
-  // never re-ticking something the user has since unticked.
-  useEffect(() => {
-    setSelected(prev => {
-      let changed = false;
-      const next = new Set(prev);
-      for (const cat of ORDER) {
-        for (const f of files.filesByCategory[cat] || []) {
-          const k = keyOf(cat, f.name);
-          if (!seenRef.current.has(k)) {
-            seenRef.current.add(k);
-            next.add(k);
-            changed = true;
-          }
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [files.filesByCategory]);
-
-  const toggle = useCallback((cat, name) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      const k = keyOf(cat, name);
-      if (next.has(k)) next.delete(k); else next.add(k);
-      return next;
-    });
-  }, []);
-
-  // --- Selection helpers (whole-group + whole-job pick/clear) ---
-  const sectionFileKeys = useCallback(
-    (cat) => (files.filesByCategory[cat] || []).map(f => keyOf(cat, f.name)),
-    [files.filesByCategory]
-  );
-
-  const sectionState = useCallback((cat) => {
-    const keys = sectionFileKeys(cat);
-    if (keys.length === 0) return 'empty';
-    const picked = keys.filter(k => selected.has(k)).length;
-    return picked === 0 ? 'none' : picked === keys.length ? 'all' : 'some';
-  }, [sectionFileKeys, selected]);
-
-  const toggleSection = useCallback((cat) => {
-    const keys = sectionFileKeys(cat);
-    const fullySelected = sectionState(cat) === 'all';
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (fullySelected) keys.forEach(k => next.delete(k));
-      else keys.forEach(k => next.add(k));
-      return next;
-    });
-  }, [sectionFileKeys, sectionState]);
-
-  const allFileKeys = useCallback(() => ORDER.flatMap(sectionFileKeys), [sectionFileKeys]);
-
-  // Build the ordered {category, filename} list from the current ticks.
-  const selectedItems = () => {
-    const items = [];
-    for (const cat of ORDER) {
-      for (const f of files.filesByCategory[cat] || []) {
-        if (selected.has(keyOf(cat, f.name))) items.push({ category: cat, filename: f.name });
-      }
-    }
-    return items;
-  };
-
-  const totalFileCount = allFileKeys().length;
-  const totalSelectable = totalFileCount + 1; // + the job card
-  const tickedFileCount = selectedItems().length;
-  const tickedCount = tickedFileCount + (cardTicked ? 1 : 0);
-  const overFileLimit = tickedFileCount > MAX_PACKET_FILES;
-  // Whole-job pick state: card + every file, for the master Select all / Clear all.
-  const masterState = tickedCount === 0 ? 'none'
-    : tickedCount === totalSelectable ? 'all' : 'some';
-
-  const selectAll = () => { setCardTicked(true); setSelected(new Set(allFileKeys())); };
-  const clearAll = () => { setCardTicked(false); setSelected(new Set()); };
-  const toggleMaster = () => { if (masterState === 'all') clearAll(); else selectAll(); };
-
-  // Every file (across all folders) tied to one part, for the per-part "Select all
-  // Part N" option when a job has more than one part.
-  const partFileKeys = useCallback((partId) => {
-    const keys = [];
-    for (const cat of ORDER) {
-      for (const f of files.filesByCategory[cat] || []) {
-        if (f.itemId === partId) keys.push(keyOf(cat, f.name));
-      }
-    }
-    return keys;
-  }, [files.filesByCategory]);
-
-  // Pick exactly one part's files (plus the job card, which the packet leads with).
-  const selectPart = (partId) => { setCardTicked(true); setSelected(new Set(partFileKeys(partId))); };
+  // Ticking/clearing (whole-job, per-section, per-part), the running counts and
+  // the master Select-all state all live in usePaperworkSelection — see `selection`
+  // above.
 
   const closeAll = useCallback(() => {
     camera.stopCamera();
     files.reset();
-    seenRef.current = new Set();
-    setSelected(new Set());
-    setCardTicked(true);
+    resetSelection();
     setPickMenuOpen(false);
     setCardPreview(null);
     setView('hub');
     setCameraCategory(null);
     setAttachTarget(null);
     setOpen(false);
-  }, [camera, files]);
+  }, [camera, files, resetSelection]);
 
   // Escape to close + Tab to trap focus inside the overlay (keyboard users can't
   // tab out to the page behind it).
@@ -278,16 +199,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
     const wasTicked = selected.has(oldKey);
     const newName = await files.assignFile(cat, name, itemId);
     if (!newName) return;
-    const newKey = keyOf(cat, newName);
-    // Mark the new name as already-seen so the pre-tick effect leaves it alone,
-    // then set its tick to match what the old row had.
-    seenRef.current.add(newKey);
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.delete(oldKey);
-      if (wasTicked) next.add(newKey); else next.delete(newKey);
-      return next;
-    });
+    carryTickToRename(oldKey, keyOf(cat, newName), wasTicked);
     onFilesChanged?.();
   };
 
@@ -296,14 +208,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
   const handleDelete = async (cat, name) => {
     const ok = await files.deleteFile(cat, name);
     if (!ok) return;
-    const k = keyOf(cat, name);
-    seenRef.current.delete(k);
-    setSelected(prev => {
-      if (!prev.has(k)) return prev;
-      const next = new Set(prev);
-      next.delete(k);
-      return next;
-    });
+    forgetFile(keyOf(cat, name));
     onFilesChanged?.();
   };
 
@@ -373,7 +278,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
     return (
       <div className={`hub-group${targeted ? ' hub-group--targeted' : ''}`} key={cat}>
         {targeted && (
-          <div className="hub-group-hint">Adding to Part {attachTarget.itemNumber} — use Add or Photo below</div>
+          <div className="hub-group-hint">Adding to Part {attachTarget.displayNumber} — use Add or Photo below</div>
         )}
         <div className="hub-group-head">
           {/* Quiet section label. Clicking it picks/clears the whole group. */}
@@ -506,7 +411,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
                                   disabled={n === 0}
                                   onClick={() => { selectPart(p.id); setPickMenuOpen(false); }}
                                 >
-                                  <span>All of Part {p.itemNumber}</span>
+                                  <span>All of Part {p.displayNumber}</span>
                                   <span className="hub-pickmenu-count">{n === 0 ? 'none' : n}</span>
                                 </button>
                               );

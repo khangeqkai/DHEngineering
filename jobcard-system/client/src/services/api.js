@@ -280,6 +280,15 @@ class ApiService {
   // Job Assignees
   selfAssign(jobcardId) { return this._post(`/jobcards/${jobcardId}/assignees/self`); }
   selfUnassign(jobcardId) { return this._del(`/jobcards/${jobcardId}/assignees/self`); }
+  // Management ticking a worker on/off someone else's behalf, from the people list.
+  assignWorker(jobcardId, userId) { return this._put(`/jobcards/${jobcardId}/assignees/${userId}`); }
+  unassignWorker(jobcardId, userId) { return this._del(`/jobcards/${jobcardId}/assignees/${userId}`); }
+
+  // Job Items — instant-save equivalents of the items branch of PUT /jobcards/:id,
+  // one part at a time (see tasks/instant-save-job-card.md, Stage 4a).
+  addJobItem(jobcardId, item) { return this._post(`/jobcards/${jobcardId}/items`, item); }
+  updateJobItem(jobcardId, itemId, fields) { return this._patch(`/jobcards/${jobcardId}/items/${itemId}`, fields); }
+  deleteJobItem(jobcardId, itemId) { return this._del(`/jobcards/${jobcardId}/items/${itemId}`); }
 
   // Time Entries
   getTimeEntries(jobcardId) { return this.request(`/jobcards/${jobcardId}/time-entries`); }
@@ -289,8 +298,8 @@ class ApiService {
 
   // Timer endpoints
   getActiveTimer() { return this.request('/jobcards/active-timer'); }
-  startTimer(jobcardId, itemNumber, workerId) {
-    const body = { itemNumber };
+  startTimer(jobcardId, itemId, workerId) {
+    const body = { itemId };
     if (workerId) body.workerId = workerId;
     return this._post(`/jobcards/${jobcardId}/time-entries/start`, body);
   }

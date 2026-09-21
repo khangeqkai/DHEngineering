@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { scrollFieldIntoView } from '../../hooks/useFieldErrors';
+import { describeAtRisk, describeSafe, describeSafeAsSecondLine } from './closeReasons';
 
 // Everything the job screen does about work that would be lost if the screen went away.
 // Pulled out of JobCardModal.jsx because it grew to cover four separate ways a job card
@@ -25,7 +27,7 @@ import { useAuth } from '../../context/AuthContext';
 // flush — they just make the screen disappear — so the two effects below that guard
 // against those need a wider question still: hasWorkToLose, which folds costingDirty in
 // alongside hasUnsavedWork.
-export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNote, stopFormOpen, costingDirty = false, showConfirm, onClose }) {
+export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNote, stopFormOpen, costingDirty = false, showConfirm, onClose, isEdit = false, closeReasons = { safe: [], atRisk: [] }, revealDetails }) {
   const { registerUnsavedWork } = useAuth();
   const hasUnsavedWork = isDirty || hasUnpostedNote || stopFormOpen;
   const hasWorkToLose = hasUnsavedWork || costingDirty;
@@ -70,23 +72,84 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
       onClose();
       return;
     }
-    // Pricing is the exception to "discard": closing the job sends those figures to the
-    // server rather than dropping them (see the note above). Saying "lose them" while
-    // money quietly goes the other way is the kind of surprise this question exists to
-    // prevent, so when pricing is also waiting the answer says plainly which half is
-    // kept and which is thrown away.
+
+    // A brand-new job keeps the Save button and the plain original question — the
+    // required-box/failed-write split below only means something once a job
+    // exists for a field, a row or a worker to have been sent to.
+    if (!isEdit) {
+      const ok = await showConfirm({
+        title: 'Unsaved changes',
+        message: costingDirty
+          ? "This job card has changes that haven't been saved yet. Close it and lose them? Your pricing changes are saved either way."
+          : "This job card has changes that haven't been saved yet. Close it and lose them?",
+        confirmLabel: 'Discard changes',
+        cancelLabel: 'Keep editing',
+        confirmVariant: 'danger'
+      });
+      if (!ok) return;
+      onClose();
+      return;
+    }
+
+    // hasUnpostedNote and stopFormOpen are folded in here (rather than inside
+    // closeReasons.js, which only ever sees isDirty's own ingredients) so they
+    // can be named for what they are — "an unposted comment" / "the timer entry
+    // form" — instead of a shared, vaguer "changes".
+    const atRisk = [...closeReasons.atRisk];
+    if (hasUnpostedNote) atRisk.push({ text: 'your unposted comment', verb: "hasn't been posted" });
+    if (stopFormOpen) atRisk.push({ text: 'the open timer entry form', verb: "hasn't been saved" });
+    const { safe } = closeReasons;
+
+    // Real risk beats "nothing to lose": if anything could actually be lost by
+    // closing, that is what the question leads with, and an empty required box
+    // (if there's also one of those) is folded in as a second line rather than
+    // its own dialog.
+    if (atRisk.length > 0) {
+      let message = describeAtRisk(atRisk) + describeSafeAsSecondLine(safe);
+      // Pricing is the exception to "discard": closing the job sends those figures to
+      // the server rather than dropping them (see the note above). Saying "lose them"
+      // while money quietly goes the other way is the kind of surprise this question
+      // exists to prevent, so when pricing is also waiting the answer says plainly
+      // which half is kept and which is thrown away.
+      if (costingDirty) message += ' Your pricing changes are saved either way.';
+      const ok = await showConfirm({
+        title: 'Unsaved changes',
+        message,
+        confirmLabel: 'Discard changes',
+        cancelLabel: 'Keep editing',
+        confirmVariant: 'danger'
+      });
+      if (!ok) return;
+      onClose();
+      return;
+    }
+
+    // Only empty required boxes are outstanding: nothing is actually at risk, so
+    // this doesn't talk about losing anything — it offers to go fix the box
+    // instead. safe.length is guaranteed > 0 here: hasUnsavedWork is true and
+    // nothing above explained it, so closeReasons.js's own fallback (a field
+    // still mid-flight) would already have landed in atRisk if this job's dirt
+    // came from anywhere else.
+    let { title, message } = describeSafe(safe);
+    if (costingDirty) message += ' Your pricing changes are saved either way.';
     const ok = await showConfirm({
-      title: 'Unsaved changes',
-      message: costingDirty
-        ? "This job card has changes that haven't been saved yet. Close it and lose them? Your pricing changes are saved either way."
-        : "This job card has changes that haven't been saved yet. Close it and lose them?",
-      confirmLabel: 'Discard changes',
-      cancelLabel: 'Keep editing',
-      confirmVariant: 'danger'
+      title,
+      message,
+      confirmLabel: 'Close anyway',
+      cancelLabel: 'Fix it',
+      confirmVariant: 'warning'
     });
-    if (!ok) return;
-    onClose();
-  }, [saving, hasUnsavedWork, costingDirty, showConfirm, onClose]);
+    if (ok) {
+      onClose();
+      return;
+    }
+    // Every box this can name — the job description and the parts list — lives on the
+    // Details tab, so an admin who hit Escape from Costing or Activity would be sent
+    // back to a box that isn't on screen and scrollFieldIntoView would find nothing.
+    // Switch there first, then let that render land before reaching for the element.
+    revealDetails?.(); // the caller switches to the Details tab; see the comment above
+    requestAnimationFrame(() => scrollFieldIntoView(safe[0].key));
+  }, [saving, hasUnsavedWork, isEdit, closeReasons, hasUnpostedNote, stopFormOpen, costingDirty, showConfirm, onClose, revealDetails]);
 
   // A browser refresh (Ctrl+R) and closing the tab never reach handleRequestClose — they
   // were throwing a half-filled card away in silence, which is the same hole that was

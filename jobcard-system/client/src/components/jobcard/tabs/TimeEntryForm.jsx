@@ -64,11 +64,15 @@ export default function TimeEntryForm({
       <div className="form-row">
         <div className="form-group">
           <label>Item #</label>
-          <select name="itemNumber" value={timeEntryForm.itemNumber} onChange={handleTimeEntryChange}>
+          {/* Identifies the part to the server by its permanent id — never its
+              item_number, which is only a sort order and may have gaps. The
+              number shown here is the row's position in this same list, so it
+              always matches the badge on the part's own card. */}
+          <select name="itemId" value={timeEntryForm.itemId} onChange={handleTimeEntryChange}>
             <option value="">Select item...</option>
-            {lineItems.map(item => (
-              <option key={item.itemNumber} value={item.itemNumber}>
-                #{item.itemNumber} - {item.description?.substring(0, 30)}
+            {lineItems.map((item, idx) => (
+              <option key={item.id} value={item.id}>
+                #{item.position != null ? item.position : idx + 1} - {item.description?.substring(0, 30)}
               </option>
             ))}
           </select>

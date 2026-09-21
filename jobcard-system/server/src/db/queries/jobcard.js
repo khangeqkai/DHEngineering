@@ -115,6 +115,13 @@ const jobcardQueries = {
 const jobItemQueries = {
   getByJobcard: db.prepare('SELECT * FROM job_items WHERE jobcard_id = ? ORDER BY item_number ASC'),
 
+  // A new part's number is the highest one this job currently holds, plus one —
+  // read and acted on inside the same transaction as the insert (see the /items
+  // POST route), so it can never collide with a number picked at the same moment
+  // and never repeats a gap left by a deleted part (item_number is a sort order
+  // the server owns; nothing renumbers on delete, so gaps are expected).
+  getMaxItemNumber: db.prepare('SELECT COALESCE(MAX(item_number), 0) as maxNumber FROM job_items WHERE jobcard_id = ?'),
+
   create: db.prepare(`
     INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments, drawings_type, customer_property, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))

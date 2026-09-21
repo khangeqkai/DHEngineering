@@ -18,22 +18,19 @@ function normalizeTime(value) {
   return d.toISOString();
 }
 
-// Resolve a line's position number to its stable id for the given job card, so a
-// manually entered or edited time record links to the line itself (and follows it
-// through later edits), not to a fragile position number. Returns { itemId: null }
-// when no line number was given (a record may legitimately have no line), but
-// returns { error } when a number WAS typed that matches no current line — so a
-// manual record can never silently attach to nothing.
-function resolveItemId(jobcardId, itemNumber) {
-  if (itemNumber === null || itemNumber === undefined || itemNumber === '') {
+// Confirm a line's permanent id actually belongs to this job card, so a manually
+// entered or edited time record links to the line itself, not to a position
+// number that can repeat, shift, or leave a gap. Returns { itemId: null } when no
+// id was given (a record may legitimately have no line), but returns { error }
+// when an id WAS given that matches no current line on this job — so a manual
+// record can never silently attach to nothing, or to a part on a different job.
+function resolveItemId(jobcardId, itemId) {
+  if (itemId === null || itemId === undefined || itemId === '') {
     return { itemId: null };
   }
-  const num = parseInt(itemNumber, 10);
-  const match = isNaN(num)
-    ? undefined
-    : jobItemQueries.getByJobcard.all(jobcardId).find(it => it.item_number === num);
+  const match = jobItemQueries.getByJobcard.all(jobcardId).find(it => it.id === itemId);
   if (!match) {
-    return { error: `Item #${itemNumber} does not exist on this job card` };
+    return { error: 'That part does not exist on this job card' };
   }
   return { itemId: match.id };
 }

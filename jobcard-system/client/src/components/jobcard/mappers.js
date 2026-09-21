@@ -27,17 +27,14 @@ export function mapTimeEntryFromApi(e) {
   };
 }
 
-export function mapAssigneeFromApi(a) {
-  return {
-    userId: a.userId,
-    userName: a.userName || a.username
-  };
-}
-
 export function mapLineItemFromApi(item) {
   return {
     id: item.id,
     itemNumber: item.itemNumber,
+    // The part's position in the job's ordered list (1, 2, 3…) — the server
+    // states it; nothing on screen recomputes it. null for a row the server
+    // hasn't seen yet (there is none on a brand-new job's initial payload).
+    position: item.position != null ? item.position : null,
     qty: item.qty || '',
     description: item.description || '',
     jobType: item.jobType || '',
@@ -103,7 +100,9 @@ export function localInputToIso(localStr) {
 export function getDefaultTimeEntryForm() {
   return {
     workerId: '',
-    itemNumber: '',
+    // The part this block belongs to, by its permanent id — never its
+    // item_number, which is only a sort order the server owns and may have gaps.
+    itemId: '',
     machineNumber: '',
     qty: '',
     scrapBinQty: '',
@@ -164,6 +163,25 @@ export function getDefaultCostingForm() {
   };
 }
 
+// The subset of a line item's own fields the server accepts, shared by the
+// create payload below and the per-row instant-save writes in useInstantItems.js —
+// one shape, so the two send paths can't quietly drift apart.
+export function buildItemPayload(item) {
+  return {
+    qty: item.qty,
+    description: item.description,
+    jobType: item.jobType || null,
+    material: item.material || null,
+    treatments: (item.treatments || []).map(t => ({
+      value: t.value,
+      supplierId: t.supplierId || '',
+      supplierName: t.supplierName || ''
+    })),
+    drawingsType: item.drawingsType || null,
+    customerProperty: item.customerProperty || null
+  };
+}
+
 // Build the job-card save payload the server expects from the open form. Customer
 // details are only sent on a brand-new job (they're frozen and read-only once a job
 // exists, and the server ignores them on edit anyway).
@@ -189,26 +207,23 @@ export function buildJobcardPayload({ formData, contactFormData, assignees, vali
     dueDate: formData.dueDate,
     isRepeatJob: formData.isRepeatJob,
     repeatJobReference: formData.repeatJobReference,
-    assigneeIds: assignees.map(a => a.userId),
-    items: validItems.map((item, idx) => ({
-      // Send the line's saved id (only real, already-saved lines have an "item:" id)
-      // so the server keeps each line's identity across the edit and a worker's
-      // recorded time/scrap stays with the right line. New lines have a temporary
-      // local id and are left without one so the server makes one.
-      ...(isSavedLineItem(item) ? { id: item.id } : {}),
-      itemNumber: item.itemNumber || idx + 1,
-      qty: item.qty,
-      description: item.description,
-      jobType: item.jobType || null,
-      material: item.material || null,
-      treatments: (item.treatments || []).map(t => ({
-        value: t.value,
-        supplierId: t.supplierId || '',
-        supplierName: t.supplierName || ''
-      })),
-      drawingsType: item.drawingsType || null,
-      customerProperty: item.customerProperty || null
-    }))
+    // Assignees and parts are only sent here on a brand-new job — there's nobody to
+    // write to yet, so both travel in the create payload as a one-shot. On an
+    // existing job each tick and each row edit already wrote itself through the
+    // instant assignee/item routes, so sending either list again here would flatten
+    // anything a timer credited, or another row's edit, since the screen loaded.
+    ...(!isEdit && {
+      assigneeIds: assignees.map(a => a.userId),
+      items: validItems.map((item, idx) => ({
+        // Send the line's saved id (only real, already-saved lines have an "item:" id)
+        // so the server keeps each line's identity across the edit and a worker's
+        // recorded time/scrap stays with the right line. New lines have a temporary
+        // local id and are left without one so the server makes one.
+        ...(isSavedLineItem(item) ? { id: item.id } : {}),
+        itemNumber: item.itemNumber || idx + 1,
+        ...buildItemPayload(item)
+      }))
+    })
   };
 }
 

@@ -47,7 +47,9 @@ export default function HubFileRow({
             <option value="">Whole job</option>
             {parts.map(p => (
               <option key={p.id} value={p.id}>
-                Part {p.itemNumber}{p.description ? ` — ${p.description.slice(0, 24)}` : ''}
+                {/* displayNumber is the part's position in the parts list (set by
+                    the caller), never its stored item_number. */}
+                Part {p.displayNumber}{p.description ? ` — ${p.description.slice(0, 24)}` : ''}
               </option>
             ))}
           </select>

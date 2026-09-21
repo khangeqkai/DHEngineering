@@ -8,6 +8,9 @@ import { api } from '../../services/api';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from './constants';
 import { statusToken, priorityToken } from '../JobCardList.constants';
 import { confirmInvoiceAnyway } from './jobCardPrompts';
+import { summarizeFieldStates, INSTANT_SAVE_STATUS_TEXT } from './useInstantSave';
+import { jobFieldMessage } from './fieldRules.mjs';
+import FieldError from '../common/FieldError';
 
 const PRIORITY_VALUES = PRIORITY_OPTIONS.map(p => p.value);
 
@@ -18,13 +21,18 @@ export default function JobIdentityStrip({
   jobNumber,
   formData,
   setFormData,
+  savedForm = {},
+  saveField,
+  fieldStates = {},
   isOverdue,
   showConfirm,
   onSuccess,
   costingDirty = false,
   canSeeTotal = false,
   saveCosting,
-  fetchCurrentTotal
+  fetchCurrentTotal,
+  descriptionError = null,
+  setDescriptionError
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
@@ -67,6 +75,14 @@ export default function JobIdentityStrip({
   const editable = canManage;
   const priority = formData.priority || 'NONE';
   const description = formData.description || '';
+  // A job must have a description. With no Save button to refuse, clearing the box
+  // is marked on the field and simply not sent — the stored description stands
+  // until a valid one is typed, so a cleared box can never destroy it. The server
+  // doesn't check this field on an update, so without this the empty value would
+  // save silently. Marking the field rather than firing a toast is the house rule
+  // for a check that belongs to a named field, and the two must never both fire.
+  // Lifted up into useJobCardForm.js (rather than local state here) so the close
+  // question can name it — see the comment there.
   const dueDate = formData.dueDate;
   const status = formData.status || 'OPEN';
 
@@ -95,6 +111,29 @@ export default function JobIdentityStrip({
   const statusClass = `jc-strip-status status-${statusToken(status)}`;
 
   const setField = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
+
+  // An existing job writes each of these fields the moment it changes; a brand-new
+  // job has nothing to write to yet, so the change stays purely on screen and
+  // travels in the create payload instead — same seam runStatusChange below uses.
+  const canWriteInstantly = isEdit && Boolean(jobCardId);
+  // baseline is what the server last confirmed storing for this field. The screen
+  // always takes the new value regardless, but the write is only sent when it
+  // actually differs from what's stored — comparing against the on-screen value
+  // instead would mean a failed write can never be retried by re-picking the same
+  // value, since the screen already shows it. Same reasoning as the description
+  // box's own `formatted !== (savedForm.description ?? '')` check below.
+  // saveField itself decides whether that comparison means "send it" or, if a
+  // prior attempt at some other value is sitting there failed, just "drop that
+  // stale mark" (defect C, root-causes.md) — so this always calls it and hands
+  // the baseline along rather than skipping the call itself.
+  const setFieldInstant = (field, value, baseline) => {
+    setField(field, value);
+    if (canWriteInstantly) saveField(field, value, { baseline });
+  };
+
+  // One combined status for the whole strip rather than one per field — an aria-live
+  // region announcing three separate lines for one tab-through would be unusable.
+  const identityStatus = summarizeFieldStates(fieldStates, ['priority', 'dueDate', 'description']);
 
   const runStatusChange = async (newStatus) => {
     if (!isEdit || !jobCardId) {
@@ -231,7 +270,7 @@ export default function JobIdentityStrip({
                       className={`jc-strip-priority-menu-item jc-strip-priority-menu-item-${priorityToken(val)}${priority === val ? ' is-active' : ''}`}
                       onMouseDown={(e) => {
                         e.preventDefault();
-                        setField('priority', val);
+                        setFieldInstant('priority', val, savedForm.priority ?? 'NONE');
                         setShowPriorityMenu(false);
                       }}
                     >
@@ -244,16 +283,42 @@ export default function JobIdentityStrip({
             )}
           </div>
 
-          <div className="jc-strip-description">
+          <div className={descriptionError ? 'jc-strip-description field-error' : 'jc-strip-description'}>
             {editable ? (
               <input
+                id="jc-description"
                 type="text"
                 className="jc-strip-description-input"
                 value={description}
-                onChange={(e) => setField('description', e.target.value)}
+                onChange={(e) => {
+                  setField('description', e.target.value);
+                  if (descriptionError && e.target.value.trim()) setDescriptionError(null);
+                }}
                 onBlur={(e) => {
+                  // The tidy-up and the write are one action: capitalizeFirst runs
+                  // first, and the tidied value — not what was actually typed — is
+                  // what gets sent.
                   const formatted = capitalizeFirst(e.target.value);
                   if (formatted !== e.target.value) setField('description', formatted);
+                  // A brand-new job has no instant write to hold back — Create still
+                  // runs the whole-form check, and that pop-up is the only thing
+                  // that should complain about this box. Marking it here too would
+                  // fire both signals for the one mistake (CLAUDE.md house rule), so
+                  // the mark is gated on there being a write to hold back at all.
+                  if (!canWriteInstantly) return;
+                  const message = jobFieldMessage('description', formatted);
+                  if (message) {
+                    // Emptied: mark the field, send nothing, leave the stored
+                    // description alone. Typing a real one clears the mark above.
+                    setDescriptionError(message);
+                    return;
+                  }
+                  setDescriptionError(null);
+                  // Always calls saveField, even when nothing changed — see its
+                  // own baseline comment (useInstantSave.js): that's what lets it
+                  // drop a stale failure left over from reverting the box back to
+                  // what's already stored, instead of only skipping the write.
+                  saveField('description', formatted, { baseline: savedForm.description ?? '' });
                 }}
                 placeholder="Describe the work…"
                 aria-label="Job description"
@@ -267,6 +332,7 @@ export default function JobIdentityStrip({
                 {description || '—'}
               </span>
             )}
+            <FieldError message={descriptionError} />
           </div>
 
           <div className={statusClass}>
@@ -310,10 +376,20 @@ export default function JobIdentityStrip({
             <CalendarPicker
               isOpen={showCalendar}
               value={dueDate}
-              onSelect={(dateStr) => setField('dueDate', dateStr)}
+              onSelect={(dateStr) => setFieldInstant('dueDate', dateStr, savedForm.dueDate ?? '')}
               onClose={() => setShowCalendar(false)}
             />
       </div>
+
+      {identityStatus !== 'idle' && (
+        <span
+          className={`instant-save-status instant-save-status--${identityStatus}`}
+          role="status"
+          aria-live="polite"
+        >
+          {INSTANT_SAVE_STATUS_TEXT[identityStatus]}
+        </span>
+      )}
     </div>
   );
 }

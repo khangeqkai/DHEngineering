@@ -314,7 +314,28 @@ const validateJobcardListQuery = [
  * Job card enum field validation
  * Used for both create and update routes
  */
+// A job must have a description — the same rule every line already carries. Sent as
+// two pieces because create and update need different things from it: creating
+// requires the field, while an update may leave it out entirely (an absent field
+// means "leave this alone"). What neither may do is send a blank one, because that
+// would strip a required value. The job screen marks the box and sends nothing at
+// all instead, so these are the backstop for anything that isn't that screen — the
+// rule used to live only on the screen, which is the weaker of the two places.
+const nonBlankDescription = (value) => {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error('Job description is required');
+  }
+  return true;
+};
+
+// Create: the field has to be there, and has to say something.
+const validateJobcardDescriptionRequired = body('description').custom(nonBlankDescription);
+
 const validateJobcardEnums = [
+  // Update: optional, but blank is refused if it is sent. `.optional()` skips an
+  // absent field only — an explicit null still reaches the check and is refused,
+  // which is right, since null is not a description either.
+  body('description').optional().custom(nonBlankDescription),
   optionalEnum('status', 'Status', JOBCARD_STATUSES),
   optionalEnum('priority', 'Priority', PRIORITY_OPTIONS),
   // qualityLevel is now validated dynamically against qa_levels table (no enum check)
@@ -331,16 +352,20 @@ const validateJobcardEnums = [
 /**
  * Start timer validation
  * POST /jobcards/:id/time-entries/start
- * itemNumber is required so the timer is bound to a specific line item.
+ * itemId (the part's permanent id) is required so the timer is bound to a
+ * specific line item — never its item_number, which is only a sort order the
+ * server owns and may have gaps.
  */
 const validateStartTimer = [
-  body('itemNumber')
+  body('itemId')
     .exists({ checkNull: true })
-    .withMessage('itemNumber is required')
+    .withMessage('itemId is required')
     .bail()
-    .isInt({ min: 1 })
-    .withMessage('itemNumber must be a positive integer')
-    .toInt(),
+    .isString()
+    .withMessage('itemId must be a string')
+    .trim()
+    .notEmpty()
+    .withMessage('itemId is required'),
   // Optional: an admin may start the timer for another worker. Light guard only —
   // the route validates the worker exists and is active via resolveWorkerId.
   body('workerId')
@@ -405,28 +430,40 @@ function buildGrandfatheredPairs(existingItems) {
   return pairs;
 }
 
-function validateItemTreatments(items, existingItems) {
+// Every list-item validator names the item it's complaining about with this
+// helper. The default (used by the bulk create/update routes, which validate a
+// real array in on-screen order) is positional — "Item #3" genuinely is the
+// third row. A caller validating a single part against a one-element array
+// (jobcard-items.js) passes its own `getItemLabel` that ignores the index and
+// names the part by its description instead, since position 0 in a one-element
+// array tells the user nothing about which of their parts failed.
+function defaultItemLabel(item, i) {
+  return `Item #${i + 1}`;
+}
+
+function validateItemTreatments(items, existingItems, getItemLabel = defaultItemLabel) {
   if (!Array.isArray(items)) return null;
   const allowedTreatments = getTagValues('treatment');
   const grandfathered = buildGrandfatheredPairs(existingItems);
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
+    const label = getItemLabel(item, i);
     const treatments = item.treatments;
     if (treatments === undefined || treatments === null) continue;
     if (!Array.isArray(treatments)) {
-      return `Item #${i + 1} treatments must be an array`;
+      return `${label} treatments must be an array`;
     }
     for (let t = 0; t < treatments.length; t++) {
       const tr = treatments[t];
       if (!tr || typeof tr !== 'object') {
-        return `Item #${i + 1} treatment ${t + 1} must be an object`;
+        return `${label} treatment ${t + 1} must be an object`;
       }
       const value = tr.value ? String(tr.value).trim() : '';
       if (!value) {
-        return `Item #${i + 1} treatment ${t + 1} is missing a treatment value`;
+        return `${label} treatment ${t + 1} is missing a treatment value`;
       }
       if (allowedTreatments.length > 0 && !allowedTreatments.includes(value)) {
-        return `Item #${i + 1} treatment ${t + 1} has invalid value: ${value}`;
+        return `${label} treatment ${t + 1} has invalid value: ${value}`;
       }
       // Supplier is optional — a treatment can be saved with none. When one is
       // given, it just has to be a real, active supplier; it no longer has to be
@@ -435,10 +472,10 @@ function validateItemTreatments(items, existingItems) {
       if (supplierId && !grandfathered.has(`${supplierId}|${value}`)) {
         const supplier = getSupplierQueries().getById.get(supplierId);
         if (!supplier) {
-          return `Item #${i + 1} treatment ${t + 1}: selected supplier no longer exists`;
+          return `${label} treatment ${t + 1}: selected supplier no longer exists`;
         }
         if (supplier.active !== 1) {
-          return `Item #${i + 1} treatment ${t + 1}: selected supplier is switched off`;
+          return `${label} treatment ${t + 1}: selected supplier is switched off`;
         }
       }
     }
@@ -471,7 +508,7 @@ function buildGrandfatheredValues(existingItems, column) {
  * `existingItems` (optional, raw DB rows) grandfather values already saved on the job.
  * Returns error string or null if valid.
  */
-function validateItemMaterials(items, existingItems) {
+function validateItemMaterials(items, existingItems, getItemLabel = defaultItemLabel) {
   if (!Array.isArray(items)) return null;
   const allowedMaterials = getTagValues('material');
   const grandfathered = buildGrandfatheredValues(existingItems, 'material');
@@ -480,7 +517,7 @@ function validateItemMaterials(items, existingItems) {
     if (item.material) {
       const value = String(item.material).trim();
       if (value && allowedMaterials.length > 0 && !allowedMaterials.includes(value) && !grandfathered.has(value)) {
-        return `Item #${i + 1} has invalid material value: ${value}`;
+        return `${getItemLabel(item, i)} has invalid material value: ${value}`;
       }
     }
   }
@@ -494,18 +531,19 @@ function validateItemMaterials(items, existingItems) {
  * `existingItems` (optional, raw DB rows) grandfather values already saved on the job.
  * Returns error string or null if valid.
  */
-function validateItemJobTypes(items, existingItems) {
+function validateItemJobTypes(items, existingItems, getItemLabel = defaultItemLabel) {
   if (!Array.isArray(items)) return null;
   const allowedJobTypes = getTagValues('job_type');
   const grandfathered = buildGrandfatheredValues(existingItems, 'job_type');
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
+    const label = getItemLabel(item, i);
     const value = item.jobType ? String(item.jobType).trim() : '';
     if (!value) {
-      return `Item #${i + 1} is missing job type`;
+      return `${label} is missing job type`;
     }
     if (allowedJobTypes.length > 0 && !allowedJobTypes.includes(value) && !grandfathered.has(value)) {
-      return `Item #${i + 1} has invalid job type value: ${value}`;
+      return `${label} has invalid job type value: ${value}`;
     }
   }
   return null;
@@ -522,39 +560,42 @@ function validateItemJobTypes(items, existingItems) {
  * @param {string} label - human-readable label for error messages
  * @param {Array} existingItems - raw DB rows; values already saved are grandfathered
  * @param {string} column - the snake_case DB column to read grandfathered values from
+ * @param {Function} [getItemLabel] - names the item in the message; defaults to positional
  * @returns {string|null} error string or null if valid
  */
-function validateItemTagList(items, field, category, label, existingItems, column) {
+function validateItemTagList(items, field, category, label, existingItems, column, getItemLabel = defaultItemLabel) {
   if (!Array.isArray(items)) return null;
   const allowed = getTagValues(category);
   const grandfathered = buildGrandfatheredValues(existingItems, column);
   for (let i = 0; i < items.length; i++) {
-    const raw = items[i][field];
+    const item = items[i];
+    const itemLabel = getItemLabel(item, i);
+    const raw = item[field];
     const values = (raw ? String(raw) : '').split(',').map(v => v.trim()).filter(Boolean);
     if (values.length === 0) {
-      return `Item #${i + 1} is missing ${label}`;
+      return `${itemLabel} is missing ${label}`;
     }
     // "N/A" is the standalone "no drawing / nothing supplied" answer, so it can't
     // be combined with a real value for the same line.
     if (values.includes('N_A') && values.length > 1) {
-      return `Item #${i + 1} cannot combine "N/A" with other ${label} values`;
+      return `${itemLabel} cannot combine "N/A" with other ${label} values`;
     }
     if (allowed.length > 0) {
       const invalid = values.filter(v => !allowed.includes(v) && !grandfathered.has(v));
       if (invalid.length > 0) {
-        return `Item #${i + 1} has invalid ${label} values: ${invalid.join(', ')}`;
+        return `${itemLabel} has invalid ${label} values: ${invalid.join(', ')}`;
       }
     }
   }
   return null;
 }
 
-function validateItemDrawings(items, existingItems) {
-  return validateItemTagList(items, 'drawingsType', 'drawings', 'drawings', existingItems, 'drawings_type');
+function validateItemDrawings(items, existingItems, getItemLabel = defaultItemLabel) {
+  return validateItemTagList(items, 'drawingsType', 'drawings', 'drawings', existingItems, 'drawings_type', getItemLabel);
 }
 
-function validateItemCustomerProperty(items, existingItems) {
-  return validateItemTagList(items, 'customerProperty', 'customer_property', 'customer property', existingItems, 'customer_property');
+function validateItemCustomerProperty(items, existingItems, getItemLabel = defaultItemLabel) {
+  return validateItemTagList(items, 'customerProperty', 'customer_property', 'customer property', existingItems, 'customer_property', getItemLabel);
 }
 
 /**
@@ -565,16 +606,18 @@ function validateItemCustomerProperty(items, existingItems) {
  * completion impossible to judge.
  * Returns error string or null if valid.
  */
-function validateItemQuantities(items) {
+function validateItemQuantities(items, getItemLabel = defaultItemLabel) {
   if (!Array.isArray(items)) return null;
   for (let i = 0; i < items.length; i++) {
-    const raw = items[i].qty;
+    const item = items[i];
+    const label = getItemLabel(item, i);
+    const raw = item.qty;
     const str = (raw === undefined || raw === null) ? '' : String(raw).trim();
     if (!str) {
-      return `Item #${i + 1} is missing a quantity`;
+      return `${label} is missing a quantity`;
     }
     if (!/^\d+$/.test(str) || parseInt(str, 10) < 1) {
-      return `Item #${i + 1} quantity must be a whole number of 1 or more`;
+      return `${label} quantity must be a whole number of 1 or more`;
     }
   }
   return null;
@@ -587,12 +630,13 @@ function validateItemQuantities(items) {
  * server cannot rely on that for non-standard requests.
  * Returns error string or null if valid.
  */
-function validateItemDescriptions(items) {
+function validateItemDescriptions(items, getItemLabel = defaultItemLabel) {
   if (!Array.isArray(items)) return null;
   for (let i = 0; i < items.length; i++) {
-    const value = items[i].description ? String(items[i].description).trim() : '';
+    const item = items[i];
+    const value = item.description ? String(item.description).trim() : '';
     if (!value) {
-      return `Item #${i + 1} is missing a description`;
+      return `${getItemLabel(item, i)} is missing a description`;
     }
   }
   return null;
@@ -620,6 +664,7 @@ module.exports = {
   validateUpdateContact,
   validateJobcardListQuery,
   validateJobcardEnums,
+  validateJobcardDescriptionRequired,
   validateStartTimer,
   validateManualTimeEntry,
   validateItemTreatments,

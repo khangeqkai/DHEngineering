@@ -75,7 +75,7 @@ function Counter({ value, onChange, inputRef, hero, ariaLabel }) {
 export default function StopTimerForm({
   isOpen,
   jobCard,
-  itemNumber,
+  itemId,
   stoppedEntry,
   entryForm,
   onFieldChange,
@@ -85,6 +85,9 @@ export default function StopTimerForm({
   loading
 }) {
   const [item, setItem] = useState(null);
+  // The part's position in this job's own ordered list — never its stored
+  // item_number, which is only a sort order the server owns and may have gaps.
+  const [displayNumber, setDisplayNumber] = useState(null);
   const [machines, setMachines] = useState([]);
   const [machineFilter, setMachineFilter] = useState('');
   const [isCritical, setIsCritical] = useState(false);
@@ -112,20 +115,23 @@ export default function StopTimerForm({
       api.getMachines()
     ]).then(([jobcardRes, machinesRes]) => {
       const items = jobcardRes?.items || [];
-      const target = itemNumber != null ? Number(itemNumber) : null;
-      const matched = target != null ? items.find(i => i.itemNumber === target) : null;
-      setItem(matched || null);
+      const idx = itemId != null ? items.findIndex(i => i.id === itemId) : -1;
+      const found = idx !== -1 ? items[idx] : null;
+      setItem(found);
+      // The server states each part's position directly — never recounted here.
+      setDisplayNumber(found ? (found.position != null ? found.position : idx + 1) : null);
       // Only Critical jobs get the extra inspection checklist.
       setIsCritical(String(jobcardRes?.qualityLevel || '').toUpperCase() === 'CRITICAL');
       setMachines((machinesRes || []).filter(m => m.active !== 0 && m.active !== false));
     }).catch(() => {
       setItem(null);
+      setDisplayNumber(null);
       setIsCritical(false);
       setMachines([]);
     }).finally(() => {
       setDataLoading(false);
     });
-  }, [isOpen, jobCard?.id, itemNumber]);
+  }, [isOpen, jobCard?.id, itemId]);
 
   useEffect(() => {
     if (isOpen && !dataLoading && firstInputRef.current) {
@@ -210,7 +216,7 @@ export default function StopTimerForm({
 
   const targetQty = item && parseFloat(item.qty) > 0 ? item.qty : null;
   const partTitle = [
-    itemNumber != null ? `Part #${itemNumber}` : null,
+    displayNumber != null ? `Part #${displayNumber}` : null,
     item?.description
   ].filter(Boolean).join(' — ');
 
