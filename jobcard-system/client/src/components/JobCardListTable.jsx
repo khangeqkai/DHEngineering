@@ -24,7 +24,7 @@ export default function JobCardListTable({
     // table needs its own scroll region rather than relying on the card to
     // grow — see `.jc-table-scroll` in JobCardList.css for the full story.
     <div className="jc-table-scroll">
-      <table className="table table-compact">
+      <table className="table">
         <thead>
           <tr>
             {visibleColumns.map(col => {

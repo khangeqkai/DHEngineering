@@ -1,7 +1,7 @@
 .toggle-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--tt-min, 112px), 1fr));
-  gap: 0.5rem;
+  gap: var(--gap-tight);
 }
 
 .toggle-tile {
@@ -10,9 +10,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
   min-height: 48px;
-  padding: 0.55rem 0.6rem;
+  padding: var(--space-2) var(--space-2-5);
   border: 1.5px solid var(--border-color);
   border-radius: var(--radius-md);
   background: var(--surface);

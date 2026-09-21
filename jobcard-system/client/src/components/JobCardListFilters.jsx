@@ -38,7 +38,7 @@ export default function JobCardListFilters({
         </select>
       )}
       {!showArchived && (
-        <>
+        <div className="status-filter-cluster">
           <button
             className={`btn btn-sm filter-btn-mine ${myJobsOnly ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => onMyJobsOnlyChange(!myJobsOnly)}
@@ -58,7 +58,7 @@ export default function JobCardListFilters({
               </button>
             ))}
           </div>
-        </>
+        </div>
       )}
       <div className="filters-right">
         {columnsMenu}

@@ -1,27 +1,27 @@
 /* Styles for the Tags management screen — category tabs, tag chip cards
    and the archived-tag styling for each chip. */
 .tag-category-tabs {
-  display: flex; gap: 0.25rem; margin-bottom: var(--space-4);
+  display: flex; gap: var(--space-1); margin-bottom: var(--space-4);
   border-bottom: 2px solid var(--border-color); padding-bottom: 0; overflow-x: auto;
 }
 .tag-category-tab {
-  padding: 0.5rem 1rem; border: none; background: transparent; color: var(--text-secondary);
+  padding: var(--space-2) var(--space-4); border: none; background: transparent; color: var(--text-secondary);
   font-size: var(--text-sm); font-weight: var(--font-regular); cursor: pointer;
   border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all var(--duration-fast); white-space: nowrap;
 }
 .tag-category-tab:hover { color: var(--text-primary); }
 .tag-category-tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
-.tag-section-desc { margin: 0.25rem 0 0; font-size: var(--text-sm); color: var(--text-secondary); font-weight: 400; }
+.tag-section-desc { margin: var(--space-1) 0 0; font-size: var(--text-sm); color: var(--text-secondary); font-weight: 400; }
 .tag-empty-text { color: var(--text-secondary); font-size: var(--text-sm); margin: 0; }
-.tag-chips-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.tag-chips-grid { display: flex; flex-wrap: wrap; gap: var(--gap-tight); }
 .tag-chip-card {
-  display: inline-flex; align-items: center; gap: 0.5rem;
-  padding: 0.375rem 0.5rem 0.375rem 0.75rem;
+  display: inline-flex; align-items: center; gap: var(--gap-tight);
+  padding: var(--space-1-5) var(--space-2) var(--space-1-5) var(--space-3);
   border: 1px solid var(--border-color); border-radius: 20px; background: var(--surface); transition: all var(--duration-fast);
 }
 .tag-chip-card:hover { border-color: var(--primary-color); box-shadow: 0 0 0 1px var(--primary-color); }
 .tag-chip-name { font-size: var(--text-sm); font-weight: var(--font-regular); color: var(--text-primary); white-space: nowrap; }
-.tag-chip-actions { display: flex; align-items: center; gap: 2px; }
+.tag-chip-actions { display: flex; align-items: center; gap: var(--space-0-5); }
 .tag-action-btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border: none; border-radius: 50%;
@@ -32,7 +32,7 @@
 .tag-action-btn.restore:hover { background: rgba(34, 197, 94, 0.12); color: var(--success-ink); }
 .tag-chip-card.archived { opacity: 0.65; border-style: dashed; }
 .tag-archived-badge {
-  margin-left: 0.5rem; padding: 0.05rem 0.4rem; border-radius: 10px;
+  margin-left: var(--space-2); padding: var(--space-0-5) var(--space-1-5); border-radius: 10px;
   font-size: 0.7rem; font-weight: var(--font-regular); text-transform: uppercase; letter-spacing: 0.02em;
   background: var(--surface-inset); color: var(--text-tertiary);
 }

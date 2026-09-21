@@ -1,6 +1,6 @@
 /* Styles for the global Activity Log screen — the row-count select. */
 .limit-select {
-  padding: 0.5rem 0.75rem;
+  padding: var(--pad-control);
   border-radius: 0.375rem;
   border: 1px solid var(--border-color);
   background: var(--surface);

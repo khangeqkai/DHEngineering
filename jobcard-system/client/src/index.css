@@ -94,15 +94,63 @@
   --tracking-wide: 0.01em;
   --tracking-wider: 0.04em;
 
-  /* Spacing Scale */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
+  /* =============================================
+     Spacing — the steps, then the jobs they do
+     =============================================
+     This scale existed before anything used it: the app had grown ~590
+     hand-typed margins, paddings and gaps spread over 59 different sizes,
+     a third of which sat off the grid entirely (6.4px, 8.8px, 10.4px,
+     13.6px). Nothing read as deliberately tight or deliberately generous,
+     because every interval was within a pixel or two of every other one.
+
+     STEPS. 2px apart at the small end, where chips and icon gaps live and
+     2px is visible; 4px apart from 12 up, where the difference has to be
+     obvious. Nothing between 12 and 16, or 24 and 32 — a step that can't
+     be told apart from its neighbour is just another way to guess. */
+  --space-0-5: 0.125rem; /*  2px */
+  --space-1: 0.25rem;    /*  4px */
+  --space-1-5: 0.375rem; /*  6px */
+  --space-2: 0.5rem;     /*  8px */
+  --space-2-5: 0.625rem; /* 10px */
+  --space-3: 0.75rem;    /* 12px */
+  --space-4: 1rem;       /* 16px */
+  --space-5: 1.25rem;    /* 20px */
+  --space-6: 1.5rem;     /* 24px */
+  --space-7: 1.75rem;    /* 28px */
+  --space-8: 2rem;       /* 32px */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3rem;      /* 48px */
+
+  /* JOBS. Reach for these first; a raw --space-N is the fallback for the
+     one-offs they don't cover. Naming the job is what keeps the rhythm:
+     two things 8px apart and two things 20px apart now mean something
+     different, instead of being two developers' guesses on the same day.
+
+     The five intervals widen as they go — 6, 8, 12, 20, 32 — so each
+     boundary is unmistakably bigger than the one inside it. That widening
+     IS the cadence; evenly-spaced steps would read as flat as the values
+     they replaced. */
+  --gap-inline: var(--space-1-5);  /*  6px  an icon and its label; a chip's own padding */
+  --gap-tight: var(--space-2);     /*  8px  controls that act as one cluster */
+  --gap-field: var(--space-3);     /* 12px  fields inside one group; a heading and its content */
+  --gap-group: var(--space-5);     /* 20px  groups inside one section */
+  --gap-section: var(--space-8);   /* 32px  section to section */
+
+  /* A heading belongs to what follows it, so it takes more room above than
+     below — otherwise it floats equidistant between two groups and reads as
+     ending the last one. Pair --lead-heading with --gap-field beneath. */
+  --lead-heading: var(--space-6);  /* 24px */
+
+  /* Container padding. One table density, app-wide — there is no compact
+     variant to drift back to. The row padding sits deliberately between the
+     two the app used to have: the job list is scanned all day and wants rows
+     close together, the admin tables are read slowly and want air. 8px is
+     the setting that serves both; 6px was cramped, 12px cost too many
+     visible rows on the screen people live in. */
+  --pad-control: var(--space-2) var(--space-3);
+  --pad-card: var(--space-5);
+  --pad-page: var(--space-7);
+  --pad-cell: var(--space-2) var(--space-4);
 
   /* Border Radius — crisper, instrument-grade */
   --radius-sm: 5px;
@@ -670,10 +718,10 @@ a:hover {
 .field-error-message {
   font-size: var(--text-xs);
   color: var(--danger-ink);
-  margin-top: 0.25rem;
+  margin-top: var(--space-1);
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--gap-inline);
 }
 
 /* Reduced motion */

@@ -1,7 +1,7 @@
 .filters {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: var(--gap-group);
+  margin-bottom: var(--space-6);
   flex-wrap: wrap;
   align-items: center;
 }
@@ -19,7 +19,7 @@
 .filters-right {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--gap-tight);
   margin-left: auto;
   flex-shrink: 0;
 }
@@ -36,18 +36,18 @@
   right: 0;
   z-index: 50;
   min-width: 200px;
-  padding: 6px;
+  padding: var(--space-1-5);
   background: var(--surface-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .columns-menu-title {
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   font-size: var(--text-2xs);
   font-weight: var(--font-bold);
   text-transform: uppercase;
@@ -62,7 +62,7 @@
 .columns-menu-row {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .columns-menu-row .columns-menu-item {
@@ -74,9 +74,9 @@
 .columns-menu-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--gap-tight);
   width: 100%;
-  padding: 7px 8px;
+  padding: var(--space-2);
   border: none;
   background: none;
   border-radius: 6px;
@@ -94,7 +94,7 @@
 .columns-menu-move {
   display: inline-flex;
   flex-shrink: 0;
-  gap: 1px;
+  gap: var(--space-0-5);
 }
 
 .columns-menu-move-btn {
@@ -140,8 +140,8 @@
 }
 
 .columns-menu-reset {
-  margin-top: 4px;
-  padding: 7px 8px;
+  margin-top: var(--space-1);
+  padding: var(--space-2);
   border: none;
   border-top: 1px solid var(--border-color);
   background: none;
@@ -160,9 +160,9 @@
 .timer-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-left: 8px;
-  padding: 2px 8px;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
+  padding: var(--space-0-5) var(--space-2);
   border-radius: 999px;
   background: rgba(34, 197, 94, 0.12);
   color: var(--status-done-text);
@@ -286,7 +286,7 @@
   z-index: 60;
   min-width: 170px;
   max-width: 280px;
-  padding: 9px 11px;
+  padding: var(--space-2-5) var(--space-3);
   background: var(--surface-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -325,7 +325,7 @@
 
 .mf-tooltip-title {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: var(--space-1-5);
   font-size: var(--text-xs);
   font-weight: var(--font-bold);
   letter-spacing: 0.04em;
@@ -336,7 +336,7 @@
 .mf-tooltip-item {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-2);
   font-size: var(--text-sm);
   font-weight: var(--font-regular);
   line-height: 1.55;
@@ -375,23 +375,10 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* Job card list table sizing */
-.table.table-compact th,
-.table.table-compact td {
-  padding: 0.4rem 0.75rem;
-  font-size: var(--text-xs);
-}
-
-.table.table-compact .avatar-circle {
-  width: 22px !important;
-  height: 22px !important;
-  font-size: var(--text-2xs) !important;
-}
-
 .search-input {
   flex: 1;
   min-width: 250px;
-  padding: 0.5rem 0.875rem;
+  padding: var(--pad-control);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
@@ -406,7 +393,7 @@
 }
 
 .assignee-filter {
-  padding: 0.5rem 0.875rem;
+  padding: var(--pad-control);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
@@ -454,7 +441,7 @@
 }
 
 .avatar-stack .avatar-chip + .avatar-chip {
-  margin-left: -8px;
+  margin-left: calc(-1 * var(--space-2));
 }
 
 .avatar-overflow {
@@ -470,7 +457,7 @@
   z-index: 1000;
   min-width: 170px;
   max-width: 280px;
-  padding: 9px 11px;
+  padding: var(--space-2-5) var(--space-3);
   background: var(--surface-elevated);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
@@ -493,20 +480,20 @@
   display: block;
   font-size: var(--text-xs);
   color: var(--text-secondary);
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--space-1);
 }
 
 .filter-buttons {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--gap-tight);
   flex-wrap: wrap;
 }
 
 .filter-btn-mine {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding-right: 0.65rem;
+  gap: var(--gap-inline);
+  padding-right: var(--space-2-5);
 }
 
 .pinned-timer-row > td:first-child {
@@ -517,15 +504,22 @@
   background: rgba(34, 197, 94, 0.04);
 }
 
-.filter-btn-mine + .filter-buttons {
-  padding-left: 0.5rem;
-  border-left: 1px solid var(--border-color);
+/* Groups the "My Jobs" toggle with the status pills it sits beside — space
+   carries the grouping now, so the border that used to mark it off is gone. */
+/* "My Jobs" and the status pills are one thought — which jobs am I looking at —
+   so they sit at --gap-tight inside this cluster while the filter row around
+   them uses --gap-group. That difference is what separates them from the search
+   box and the Columns button; a border used to do it, and no longer needs to. */
+.status-filter-cluster {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
 }
 
 .archive-toggle {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--gap-tight);
   font-size: var(--text-sm);
   cursor: pointer;
 }
@@ -536,6 +530,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--text-secondary);
+}
+
+/* Same truncate-with-hover treatment as .description-cell / .latest-note-cell
+   above, sized for a name rather than a sentence. */
+.company-cell,
+.customer-cell {
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* One line of the job's newest comment; the rest floats on hover. */
@@ -550,14 +554,14 @@
 .overdue-label {
   display: block;
   font-size: var(--text-xs);
-  margin-top: 0.25rem;
+  margin-top: var(--space-1);
 }
 
 .pagination-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--border-color);
   background: var(--surface-inset);
   flex-shrink: 0;
@@ -570,12 +574,12 @@
 
 .pagination-buttons {
   display: flex;
-  gap: 0.25rem;
+  gap: var(--space-1);
   align-items: center;
 }
 
 .pagination-ellipsis {
-  padding: 0 0.25rem;
+  padding: 0 var(--space-1);
   color: var(--text-tertiary);
   font-size: var(--text-sm);
   user-select: none;
@@ -645,7 +649,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 100;
   min-width: 150px;
-  padding: 0.25rem 0;
+  padding: var(--space-1) 0;
 }
 
 .status-popover-item {
@@ -653,7 +657,7 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 0.375rem 0.75rem;
+  padding: var(--space-1-5) var(--space-3);
   border: none;
   background: none;
   cursor: pointer;
@@ -670,7 +674,7 @@
 }
 
 .status-check {
-  margin-left: 0.5rem;
+  margin-left: var(--space-2);
   color: var(--success-ink);
   font-weight: var(--font-bold);
 }
@@ -678,7 +682,7 @@
 .action-buttons {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: var(--space-1-5);
   flex-wrap: nowrap;
 }
 
@@ -692,14 +696,14 @@ th.jc-align-center { text-align: center; }
 .btn-outline-success {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
   background: transparent;
   /* Text takes the ink token, not the saturated fill token — the fill is for
      shapes, not words (it doesn't clear contrast at this size). */
   color: var(--success-ink);
   border: 1px solid var(--success-color, #16a34a);
   border-radius: var(--radius-md);
-  padding: 0.25rem 0.625rem;
+  padding: var(--space-1) var(--space-2-5);
   font-size: var(--text-sm);
   font-weight: var(--font-regular);
   cursor: pointer;
@@ -716,12 +720,12 @@ th.jc-align-center { text-align: center; }
 .btn-outline-danger {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
   background: transparent;
   color: var(--text-tertiary, #94a3b8);
   border: 1px solid var(--border-color, #e2e8f0);
   border-radius: var(--radius-md);
-  padding: 0.25rem 0.625rem;
+  padding: var(--space-1) var(--space-2-5);
   font-size: var(--text-sm);
   font-weight: var(--font-regular);
   cursor: pointer;
@@ -750,7 +754,7 @@ th.jc-align-center { text-align: center; }
 }
 
 .jc-th .jc-th-label {
-  margin-right: 0.35rem;
+  margin-right: var(--gap-inline);
 }
 
 .jc-th .jc-sort-icon {
@@ -775,12 +779,12 @@ th.jc-align-center { text-align: center; }
   .filter-buttons {
     width: 100%;
     overflow-x: auto;
-    padding-bottom: 0.5rem;
+    padding-bottom: var(--space-2);
   }
 
   .pagination-bar {
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--gap-tight);
   }
 
   .pagination-buttons {
@@ -789,18 +793,16 @@ th.jc-align-center { text-align: center; }
   }
 
   /* Touch-only: raise the status pill and the worker-avatar button to a 44px
-     minimum hit area. Desktop keeps the tighter 24px target the compact
-     table depends on to stay compact — this only fires under this
-     breakpoint. The drawn artwork (badge text, avatar chip) keeps its own
-     size; only the tappable area around it grows, centered by the flex
-     rules already on these elements. Selectors are qualified with
-     .table-compact so this still wins over that rule's own avatar-shrinking
-     (see `.table.table-compact .avatar-circle` above). */
-  .table-compact .badge-clickable {
+     minimum hit area. Desktop keeps the tighter 24px target set on these
+     elements themselves — this only fires under this breakpoint. The drawn
+     artwork (badge text, avatar chip) keeps its own size; only the tappable
+     area around it grows, centered by the flex rules already on these
+     elements. */
+  .badge-clickable {
     min-height: 44px;
   }
 
-  .table-compact .assignee-trigger {
+  .assignee-trigger {
     min-width: 44px;
     min-height: 44px;
   }

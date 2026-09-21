@@ -9,7 +9,13 @@
 .jc-identity-strip {
   display: flex;
   align-items: center;
-  gap: 0.875rem;
+  /* Wraps rather than overflows. The description below keeps a 120px floor so
+     it can't be squeezed to nothing; without wrapping, that floor would push
+     the due-date pill out of the header instead. On a narrow window the
+     description drops to its own line and the pills stay put — the header has
+     no fixed height, so it just grows. */
+  flex-wrap: wrap;
+  gap: var(--gap-tight) var(--gap-field);
   flex: 1;
   min-width: 0;
   margin-right: auto;
@@ -18,8 +24,8 @@
 /* Keep the header on one even rhythm: the Files button and the close button
    sit the same distance apart as the pills inside the strip. */
 .jc-identity-strip + .modal-header-actions {
-  margin-left: 0.875rem;
-  margin-right: 0.875rem;
+  margin-left: var(--space-3);
+  margin-right: var(--space-3);
 }
 
 .jc-strip-jobnumber {
@@ -95,8 +101,8 @@
 .jc-strip-priority-static {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.65rem 0.3rem 0.55rem;
+  gap: var(--gap-inline);
+  padding: var(--space-1) var(--space-2-5) var(--space-1) var(--space-2);
   background: var(--p-bg);
   color: var(--p-color);
   border: 1px solid var(--p-border);
@@ -132,7 +138,7 @@
 
 .jc-strip-priority-caret {
   opacity: 0.6;
-  margin-left: 0.1rem;
+  margin-left: var(--space-0-5);
 }
 
 .jc-strip-priority-menu {
@@ -142,7 +148,7 @@
   z-index: 10;
   min-width: 9rem;
   margin: 0;
-  padding: 0.3rem;
+  padding: var(--space-1);
   list-style: none;
   background: var(--surface);
   border: 1px solid var(--border-color);
@@ -155,9 +161,9 @@
 .jc-strip-priority-menu-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--gap-tight);
   width: 100%;
-  padding: 0.45rem 0.65rem;
+  padding: var(--space-2) var(--space-2-5);
   border: none;
   background: transparent;
   font-family: inherit;
@@ -197,7 +203,11 @@
 /* Description — borderless inline input that flexes */
 .jc-strip-description {
   flex: 1;
-  min-width: 0;
+  /* A long job number plus a priority chip plus an overdue pill could squeeze
+     this to nothing before the 880px query kicks in and tightens the row.
+     120px keeps a handful of words legible; below that the strip wraps this
+     field onto its own line rather than letting it vanish. */
+  min-width: 120px;
   display: flex;
   align-items: center;
 }
@@ -208,7 +218,7 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   outline: none;
-  padding: 0.35rem 0.6rem;
+  padding: var(--space-1-5) var(--space-2-5);
   font-size: var(--text-base);
   font-weight: var(--font-regular);
   color: var(--text-primary);
@@ -242,7 +252,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0.35rem 0.25rem;
+  padding: var(--space-1-5) var(--space-1);
 }
 
 /* Status — styled native select pill */
@@ -250,8 +260,8 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.55rem 0.3rem 0.6rem;
+  gap: var(--gap-inline);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-2-5);
   background: var(--s-bg, var(--surface));
   color: var(--s-color, var(--text-primary));
   border: 1px solid var(--s-border, var(--border-color));
@@ -285,7 +295,7 @@
   border: none;
   background: transparent;
   outline: none;
-  padding: 0 0.2rem;
+  padding: 0 var(--space-1);
   margin: 0;
   font: inherit;
   color: inherit;
@@ -349,8 +359,8 @@
 .jc-strip-duedate-static {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.7rem;
+  gap: var(--gap-inline);
+  padding: var(--space-1) var(--space-3);
   background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: 999px;
@@ -387,8 +397,8 @@
 }
 
 .jc-strip-duedate-flag {
-  margin-left: 0.4rem;
-  padding: 0.05rem 0.4rem;
+  margin-left: var(--space-1-5);
+  padding: var(--space-0-5) var(--space-1-5);
   font-size: var(--text-2xs);
   font-weight: var(--font-bold);
   letter-spacing: 0.06em;
@@ -421,18 +431,18 @@
    shell reflows. */
 @media (max-width: 880px) {
   .jc-identity-strip {
-    gap: 0.5rem;
+    gap: var(--gap-tight);
   }
   .jc-strip-jobnumber {
     font-size: var(--text-lg);
   }
   .jc-strip-priority-trigger,
   .jc-strip-priority-static {
-    padding: 0.25rem 0.5rem;
+    padding: var(--space-1) var(--space-2);
   }
   .jc-strip-duedate-trigger,
   .jc-strip-duedate-static {
-    padding: 0.25rem 0.55rem;
+    padding: var(--space-1) var(--space-2);
   }
 }
 
@@ -445,13 +455,15 @@
    above it.
 
    The margins are divided by the zoom because the padding they cancel is applied outside
-   this strip's zoomed layer — a plain -1.25rem would come up short by a tenth and leave
-   a hairline of white at each edge, which is the whole fault over again in miniature. */
+   this strip's zoomed layer — a plain -20px would come up short by a tenth and leave
+   a hairline of white at each edge, which is the whole fault over again in miniature.
+   They name --pad-card rather than repeating its value: it IS the body padding being
+   cancelled, so the two can never drift apart. */
 .modal-tabs {
   display: flex;
   gap: 0;
   padding: 0;
-  margin: calc(-1.25rem / var(--jc-zoom)) calc(-1.25rem / var(--jc-zoom)) 1rem;
+  margin: calc(var(--pad-card) * -1 / var(--jc-zoom)) calc(var(--pad-card) * -1 / var(--jc-zoom)) var(--space-4);
   background: var(--surface-inset);
   border-bottom: 1px solid var(--border-color);
   overflow-x: auto;
@@ -461,7 +473,7 @@
   position: relative;
   /* Trimmed from 0.75rem 1.25rem — still comfortably above a 36px tap target once
      the label's own line-height is added in. */
-  padding: 0.65rem 1.1rem;
+  padding: var(--space-2-5) var(--space-4);
   border: none;
   background: transparent;
   color: var(--text-secondary);
@@ -492,8 +504,8 @@
   justify-content: center;
   min-width: 18px;
   height: 18px;
-  padding: 0 5px;
-  margin-left: 0.4rem;
+  padding: 0 var(--space-1-5);
+  margin-left: var(--space-1-5);
   font-size: var(--text-2xs);
   font-weight: var(--font-bold);
   line-height: 1;
@@ -515,7 +527,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-3);
+  gap: var(--gap-field);
   padding: var(--space-10) var(--space-4);
   color: var(--text-tertiary);
   font-size: var(--text-sm);
@@ -525,10 +537,13 @@
 .modal-form-grid {
   display: flex;
   flex-direction: column;
-  /* Tightened from 1.5rem now that the surrounding zoom no longer buys this back —
-     the gap between sections is the single biggest lever on how much of the job
-     card fits without scrolling. */
-  gap: 1.25rem;
+  /* A section boundary here reads as a break because each section carries its
+     own bordered box and tinted heading bar — the border does the separating,
+     so this gap only has to keep the boxes from touching. It stays at
+     --gap-group rather than --gap-section on purpose: this is the single
+     biggest lever on how much of the job card fits without scrolling, and the
+     zoom that used to buy the extra room back is gone. */
+  gap: var(--gap-group);
 }
 
 /* Form Section */
@@ -541,24 +556,38 @@
   overflow: visible;
 }
 
+/* Parts only: the part cards already carry their own border, and sitting them
+   inside a bordered .form-section which itself sits inside the bottom-sheet
+   panel was a third box saying the same thing — "this is a group" — twice
+   too many. Drop this middle border/background; the tinted heading bar plus
+   --gap-section above and below it does the grouping instead. */
+.form-section--unboxed {
+  background: transparent;
+  border: none;
+}
+
 /* Section content gutter, tightened from 1rem — spacing's job now that the zoom
    that used to buy this back is gone. */
 .form-section > *:not(.form-section-title):not(.form-section-header):not(.line-items-list) {
-  padding-left: 0.85rem;
-  padding-right: 0.85rem;
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
 }
 
 .form-section > *:last-child {
-  padding-bottom: 0.85rem;
+  padding-bottom: var(--space-3);
 }
 
 /* Section Title */
 .form-section-title {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
-  margin: 0 0 0.6rem 0;
+  gap: var(--gap-field);
+  padding: var(--space-2) var(--space-4);
+  /* No top space: this heading is always the first child of its section, and
+     the tinted band sits flush with the box's own rounded top corner — see
+     the border-radius rules just below. --gap-field goes below, same as any
+     other heading. */
+  margin: 0 0 var(--gap-field) 0;
   background: var(--surface-inset);
   border-bottom: 1px solid var(--border-color);
   font-size: var(--text-lg);
@@ -591,7 +620,9 @@
   display: flex;
   justify-content: space-between;
   align-items: stretch;
-  margin-bottom: 0.6rem;
+  /* Same heading rule as .form-section-title: no top space (always the first
+     child of its section), --gap-field below. */
+  margin-bottom: var(--gap-field);
   padding: 0 !important;
 }
 
@@ -602,7 +633,7 @@
 
 .form-section-header .btn {
   margin: 0;
-  padding: 0.625rem 1rem;
+  padding: var(--space-2-5) var(--space-4);
   background: var(--primary-accent);
   color: var(--text-inverse);
   border: none;
@@ -622,14 +653,14 @@
 .checkbox-inline {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--gap-tight);
   cursor: pointer;
   font-weight: normal;
   min-height: 24px;
   /* Mirror the input box-model (vertical padding + a transparent border the
      same width as a field's border) so this cell is exactly as tall as the
      text/dropdown boxes beside it and the row lines up. */
-  padding: 0.5625rem 0;
+  padding: var(--space-2-5) 0;
   border: 1.5px solid transparent;
   text-transform: none;
   letter-spacing: normal;
@@ -667,20 +698,20 @@
   z-index: 9999;
   max-height: 240px;
   overflow-y: auto;
-  padding: 0.25rem;
+  padding: var(--space-1);
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: var(--space-0-5);
 }
 
 .customer-option {
-  padding: 0.5rem 0.55rem;
+  padding: var(--space-2) var(--space-2);
   border-radius: var(--radius-sm);
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.375rem;
+  gap: var(--gap-inline);
   font-size: var(--text-sm);
   font-weight: var(--font-regular);
   color: var(--text-primary);
@@ -705,12 +736,12 @@
 .customer-option-create {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--gap-inline);
 }
 
 /* Contact Linked Badge */
 .contact-linked-badge {
-  margin-left: 0.5rem;
+  margin-left: var(--space-2);
   font-size: var(--text-xs);
   font-weight: var(--font-bold);
   color: var(--success-ink);
@@ -718,13 +749,13 @@
 
 /* Contact Fields */
 .contact-fields-inline {
-  margin: 0 1rem;
+  margin: 0 var(--space-4);
 }
 
 .field-note {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
   font-style: italic;
 }
 
@@ -732,7 +763,7 @@
   display: block;
   font-size: var(--text-xs);
   color: var(--text-tertiary);
-  margin-top: 0.25rem;
+  margin-top: var(--space-1);
 }
 
 .input-disabled {
@@ -759,7 +790,7 @@
   background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 1.5rem;
+  padding: var(--space-6);
   box-shadow: var(--shadow-lg, 0 8px 32px rgba(0, 0, 0, 0.2));
   /* A fixed min-width overflowed a 320px-wide phone before its own padding was even
      counted. `.calendar-overlay` centers this with no side gutter, so 100% of it is
@@ -773,7 +804,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .calendar-title {
@@ -804,7 +835,7 @@
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .calendar-day-label {
@@ -812,7 +843,7 @@
   font-size: var(--text-xs);
   font-weight: var(--font-bold);
   color: var(--text-tertiary);
-  padding: 0.5rem 0;
+  padding: var(--space-2) 0;
 }
 
 .calendar-cell {
@@ -866,15 +897,15 @@
 .line-items-list {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0 0.85rem 0.85rem 0.85rem;
+  gap: var(--gap-inline);
+  padding: 0 var(--space-3) var(--space-3) var(--space-3);
 }
 
 .line-item-card {
   display: flex;
   align-items: flex-end;
-  gap: 0.65rem;
-  padding: 0.5rem 0.65rem;
+  gap: var(--space-2-5);
+  padding: var(--space-2) var(--space-2-5);
   background: var(--surface-inset);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -892,19 +923,19 @@
   font-weight: var(--font-bold);
   color: var(--primary-accent);
   background: rgba(var(--accent-rgb, 2, 132, 199), 0.1);
-  padding: 0.375rem 0.5rem;
+  padding: var(--space-1-5) var(--space-2);
   border-radius: var(--radius-md);
   white-space: nowrap;
   flex-shrink: 0;
   line-height: 1.25;
   align-self: flex-start;
-  margin-top: 1.625rem;
+  margin-top: var(--space-6);
 }
 
 .line-item-fields {
   display: flex;
   align-items: flex-end;
-  gap: 0.65rem;
+  gap: var(--space-2-5);
   flex: 1;
   min-width: 0;
   flex-wrap: wrap;
@@ -914,7 +945,7 @@
   font-size: var(--text-base);
   font-weight: var(--font-bold);
   color: var(--text-tertiary);
-  margin-bottom: 0.125rem;
+  margin-bottom: var(--space-0-5);
   line-height: 1.5;
 }
 
@@ -930,7 +961,7 @@
      attached file name(s) beneath their dropdown, making them taller; bottom-
      aligning would push their dropdowns up out of line with the others. */
   align-items: flex-start;
-  gap: 0.65rem;
+  gap: var(--space-2-5);
   flex: 1 1 100%;
   min-width: 0;
 }
@@ -938,17 +969,17 @@
 .line-item-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--gap-tight);
   width: 100%;
   flex-wrap: wrap;
-  margin-top: 0.25rem;
+  margin-top: var(--space-1);
 }
 
 .lit-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.75rem;
+  gap: var(--gap-inline);
+  padding: var(--space-1-5) var(--space-3);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background: var(--surface);
@@ -1005,14 +1036,14 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
-  padding: 0.25rem;
+  padding: var(--space-1);
 }
 
 .lit-picker-option {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 0.45rem 0.6rem;
+  padding: var(--space-2) var(--space-2-5);
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -1029,12 +1060,12 @@
   font-weight: var(--font-bold);
   border-bottom: 1px solid var(--border-color);
   border-radius: 0;
-  margin-bottom: 0.2rem;
-  padding-bottom: 0.5rem;
+  margin-bottom: var(--space-1);
+  padding-bottom: var(--space-2);
 }
 
 .line-item-fields .readonly-value {
-  padding: 0.375rem 0;
+  padding: var(--space-1-5) 0;
   font-size: var(--text-sm);
   color: var(--text-primary);
   white-space: pre-wrap;
@@ -1049,7 +1080,7 @@
 
 .line-item-qty input {
   width: 100%;
-  padding: 0.375rem 0.5rem;
+  padding: var(--space-1-5) var(--space-2);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -1073,7 +1104,7 @@
 
 .line-item-desc input {
   width: 100%;
-  padding: 0.375rem 0.5rem;
+  padding: var(--space-1-5) var(--space-2);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -1098,7 +1129,7 @@
   justify-content: center;
   flex-shrink: 0;
   align-self: flex-start;
-  margin-top: 1.625rem;
+  margin-top: var(--space-6);
   padding: 0;
   line-height: 1;
   transition: all var(--duration-fast) ease;
@@ -1147,7 +1178,7 @@
 .lit-select-btn {
   width: 100%;
   min-height: 34px;
-  padding: 0.4rem 0.6rem;
+  padding: var(--space-1-5) var(--space-2-5);
   border: 1.5px solid var(--border-color);
   border-radius: var(--radius-md);
   background-color: var(--surface);
@@ -1179,7 +1210,7 @@
    focused). Room is reserved on the right so typed text never runs under it. */
 .line-item-material .autocomplete-container input,
 .line-item-treatment-field .autocomplete-container input {
-  padding-right: 1.9rem;
+  padding-right: var(--space-8);
 }
 
 .autocomplete-caret {
@@ -1207,7 +1238,7 @@
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  padding-right: 1.9rem;
+  padding-right: var(--space-8);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%233b4563' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.6rem center;
@@ -1250,10 +1281,10 @@
 }
 
 .inline-supplier-form-body {
-  padding: 0.875rem 1rem 1rem;
+  padding: var(--space-3) var(--space-4) var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--gap-field);
 }
 
 /* Stack fields in one column — the treatment group isn't wide enough for the
@@ -1286,7 +1317,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: var(--gap-field);
   /* Capped at 100% so this group can't push past the visible edge on a narrow
      phone screen, where 95vw minus padding leaves less than 362px to work with. */
   width: min(362px, 100%);
@@ -1339,9 +1370,9 @@
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
-  gap: 3px;
-  margin-top: 4px;
-  padding: 1px 6px;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  padding: var(--space-0-5) var(--space-1-5);
   border-radius: 999px;
   background: rgba(var(--warning-rgb), 0.14);
   color: var(--warning-ink);
@@ -1356,9 +1387,9 @@
 .lit-attach {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  margin-top: 4px;
-  padding: 2px 8px;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  padding: var(--space-0-5) var(--space-2);
   border: 1px solid transparent;
   border-radius: 999px;
   font-size: var(--text-2xs);
@@ -1384,8 +1415,8 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 3px;
-  margin-top: 4px;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
   max-width: 100%;
 }
 
@@ -1393,8 +1424,8 @@
   display: inline-flex;
   align-items: center;
   max-width: 100%;
-  gap: 3px;
-  padding: 1px 6px;
+  gap: var(--space-1);
+  padding: var(--space-0-5) var(--space-1-5);
   border-radius: 999px;
   background: rgba(34, 197, 94, 0.14);
   color: var(--status-done-text);
@@ -1423,7 +1454,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.25rem;
+  gap: var(--space-1);
   cursor: pointer;
   text-align: left;
 }
@@ -1461,18 +1492,18 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.15));
   z-index: 200;
-  padding: 0.25rem;
+  padding: var(--space-1);
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: var(--space-0-5);
 }
 
 .lit-select-option {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: var(--gap-inline);
   text-align: left;
-  padding: 0.5rem 0.55rem;
+  padding: var(--space-2) var(--space-2);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -1503,7 +1534,7 @@
 .line-item-progress {
   flex: 1 1 100%;
   min-width: 0;
-  margin-top: 0.5rem;
+  margin-top: var(--space-2);
 }
 
 /* === Glanceable status bar (always visible summary) === */
@@ -1517,8 +1548,8 @@
 .lip-summary {
   display: flex;
   align-items: baseline;
-  gap: 0.55rem;
-  padding: 0.4rem 0.6rem 0.4rem 0.75rem;
+  gap: var(--gap-tight);
+  padding: var(--space-1-5) var(--space-2-5) var(--space-1-5) var(--space-3);
   background: var(--surface-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -1561,8 +1592,8 @@
 .lip-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.32rem;
-  padding: 0.18rem 0.55rem;
+  gap: var(--gap-inline);
+  padding: var(--space-0-5) var(--space-2);
   border-radius: 999px;
   font-size: var(--text-xs);
   font-weight: var(--font-bold);
@@ -1664,15 +1695,15 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.3rem 0;
+  gap: var(--space-1) 0;
   flex: 0 0 auto;
 }
 
 .lip-stat {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.4rem;
-  padding: 0 1.1rem;
+  gap: var(--gap-inline);
+  padding: 0 var(--space-4);
   border-left: 1px solid var(--border-color);
 }
 
@@ -1711,8 +1742,8 @@
 .scrap-stat {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.3rem;
-  padding: 0.2rem 0.55rem;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   background: rgba(220, 38, 38, 0.10);
   border: 1px solid rgba(220, 38, 38, 0.28);
@@ -1757,7 +1788,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--gap-field);
 }
 
 .te-body-head > .te-item-note,
@@ -1773,8 +1804,8 @@
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.2rem 0.5rem 0.2rem 0.3rem;
+  gap: var(--gap-inline);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--surface-inset);
@@ -1814,15 +1845,15 @@
 .te-insp-detail {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 0.5rem;
-  margin-top: 0.4rem;
+  gap: var(--space-1-5) var(--space-2);
+  margin-top: var(--space-1-5);
 }
 
 .te-insp-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.15rem 0.5rem;
+  gap: var(--gap-inline);
+  padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
   font-size: var(--text-xs);
@@ -1861,15 +1892,15 @@
 .te-inspection-admin .te-inspection-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: var(--gap-tight);
+  margin-bottom: var(--space-2);
 }
 
 .te-inspection-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--gap-tight);
 }
 
 .te-inspection-name {
@@ -1887,7 +1918,7 @@
 
 .te-yesno-btn {
   min-width: 2.75rem;
-  padding: 0.3rem 0.65rem;
+  padding: var(--space-1) var(--space-2-5);
   border: none;
   background: var(--surface);
   color: var(--text-secondary);
@@ -1919,15 +1950,15 @@
   color: var(--text-tertiary);
   flex-shrink: 0;
   transition: transform var(--duration-normal) ease;
-  margin-left: 0.1rem;
+  margin-left: var(--space-0-5);
 }
 .line-item-progress[open] .lip-chevron {
   transform: rotate(180deg);
 }
 
 .line-item-progress .empty-message {
-  margin: 0.55rem 0 0;
-  padding: 0 0.85rem;
+  margin: var(--space-2) 0 0;
+  padding: 0 var(--space-3);
   color: var(--text-tertiary);
   font-size: var(--text-sm);
 }
@@ -1939,7 +1970,7 @@
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
-  margin-left: 0.25rem;
+  margin-left: var(--space-1);
   background: var(--surface);
   border: 1px dashed var(--border-color);
   border-radius: 50%;
@@ -1957,14 +1988,14 @@
 }
 
 .line-item-progress[open] > .te-list {
-  margin-top: 0.5rem;
+  margin-top: var(--space-2);
   padding: 0;
 }
 
 /* Tighter layout on narrow modals */
 .empty-state {
   text-align: center;
-  padding: 1.5rem 1rem;
+  padding: var(--space-6) var(--space-4);
   color: var(--text-tertiary);
   font-style: italic;
   font-size: var(--text-sm);
@@ -1980,24 +2011,24 @@
 .te-list {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0 0.85rem 0.6rem 0.85rem;
+  gap: var(--gap-inline);
+  padding: 0 var(--space-3) var(--space-2-5) var(--space-3);
 }
 
 /* Group labels (Active / Completed) */
 .te-group {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--gap-inline);
 }
 
 .te-group-label {
   font-size: var(--text-xs);
   font-weight: var(--font-bold);
   color: var(--text-secondary);
-  padding: 0.35rem 0;
+  padding: var(--space-1-5) 0;
   border-bottom: 1px solid var(--border-color);
-  margin-top: 0.25rem;
+  margin-top: var(--space-1);
 }
 
 .te-group-label--active {
@@ -2005,7 +2036,7 @@
   border-bottom-color: var(--success-color);
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--gap-inline);
 }
 
 .te-group-dot {
@@ -2040,8 +2071,8 @@
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.35rem 0.65rem;
-  padding: 0.35rem 0.65rem;
+  gap: var(--space-1-5) var(--space-2-5);
+  padding: var(--space-1-5) var(--space-2-5);
   background: var(--surface-elevated);
   border-bottom: 1px solid var(--border-color);
   border-radius: var(--radius-md) var(--radius-md) 0 0;
@@ -2054,7 +2085,7 @@
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.45rem 0.65rem;
+  gap: var(--space-2) var(--space-2-5);
   margin-left: auto;
 }
 
@@ -2062,7 +2093,7 @@
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 0.2rem 0.7rem;
+  gap: var(--space-1) var(--space-3);
 }
 
 .te-duration-badge {
@@ -2083,7 +2114,7 @@
 .te-btn {
   font-size: var(--text-xs);
   font-weight: var(--font-bold);
-  padding: 0.2rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
   background: var(--surface);
@@ -2142,10 +2173,10 @@
   right: 0;
   z-index: 30;
   min-width: 168px;
-  padding: 0.25rem;
+  padding: var(--space-1);
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: var(--space-0-5);
   background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -2155,9 +2186,9 @@
 .te-menu-item {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: var(--gap-tight);
   width: 100%;
-  padding: 0.42rem 0.55rem;
+  padding: var(--space-1-5) var(--space-2);
   border: none;
   background: transparent;
   border-radius: var(--radius-sm);
@@ -2181,7 +2212,7 @@
 
 /* Body: just the worker's comment */
 .te-body {
-  padding: 0.55rem 0.75rem 0.65rem;
+  padding: var(--space-2) var(--space-3) var(--space-2-5);
 }
 
 /* Worker name — the lead item on the top line */
@@ -2219,7 +2250,7 @@
 .te-machines {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .te-machine-tag {
@@ -2230,7 +2261,7 @@
   font-size: var(--text-sm);
   font-weight: var(--font-bold);
   letter-spacing: -0.01em;
-  padding: 0.2rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--primary-accent) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--primary-accent) 30%, transparent);
@@ -2242,14 +2273,14 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--gap-tight);
 }
 
 .te-qty-done {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.35rem;
-  padding: 0.2rem 0.55rem;
+  gap: var(--gap-inline);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--success-color) 10%, var(--surface-elevated));
   border: 1px solid color-mix(in srgb, var(--success-color) 28%, transparent);
@@ -2287,7 +2318,7 @@
 .te-qty-cumul {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
 }
 
 .te-qty-cumul-num {
@@ -2340,7 +2371,7 @@
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-left: 0.1rem;
+  margin-left: var(--space-0-5);
 }
 
 .te-active-hint {
@@ -2356,9 +2387,9 @@
 .te-item-note {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: var(--gap-tight);
   margin: 0;
-  padding: 0.5rem 0.75rem 0.55rem 0.65rem;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2-5);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   background: color-mix(in srgb, var(--primary-accent) 6%, var(--surface-elevated));
 }
@@ -2492,7 +2523,7 @@
    the section's own inner gutter on the right instead of the bar's full padding. */
 .form-section-header .instant-save-status {
   align-self: center;
-  padding-right: 1rem;
+  padding-right: var(--space-4);
 }
 
 /* Shown in place of the sheet while the job's pricing is still loading, or when it
@@ -2501,7 +2532,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--gap-field);
   padding: var(--space-8) var(--space-5);
   text-align: center;
   color: var(--text-secondary);
@@ -2618,7 +2649,7 @@
 }
 
 .cb-table thead th {
-  padding: 0.4rem var(--space-3);
+  padding: var(--space-1-5) var(--space-3);
   background: var(--surface-elevated);
   border-bottom: 1px solid var(--border-strong);
   font-size: var(--text-2xs);
@@ -2633,7 +2664,7 @@
 .cb-table tbody td,
 .cb-table tfoot th,
 .cb-table tfoot td {
-  padding: 0.3rem var(--space-3);
+  padding: var(--space-1) var(--space-3);
   text-align: left;
   vertical-align: top;
 }
@@ -2737,7 +2768,7 @@
   text-overflow: ellipsis;
 }
 .cb-mach-line + .cb-mach-line {
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 .cb-mach-code {
   display: block;
@@ -2823,7 +2854,7 @@
      finger's width of dragging for no reason anyone could see. */
   .lip-summary {
     flex-wrap: wrap;
-    row-gap: 0.4rem;
+    row-gap: var(--gap-inline);
   }
 
   .cost-brief {
@@ -2845,7 +2876,7 @@
   display: grid;
   grid-template-columns: 132px 92px 18px 116px 16px 1fr;
   align-items: end;
-  column-gap: var(--space-3);
+  column-gap: var(--gap-field);
   padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border-color);
 }
@@ -2859,7 +2890,7 @@
   font-weight: var(--font-bold);
   color: var(--text-primary);
   letter-spacing: var(--tracking-normal);
-  padding-bottom: 0.42rem;
+  padding-bottom: var(--space-1-5);
 }
 
 .ledger-field {
@@ -2879,7 +2910,7 @@
 
 .ledger-field input {
   width: 100%;
-  padding: 0.4rem 0.55rem;
+  padding: var(--space-1-5) var(--space-2);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -2917,7 +2948,7 @@
 
 .ledger-note input {
   width: 100%;
-  padding: 0.4rem 0.55rem;
+  padding: var(--space-1-5) var(--space-2);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -2974,11 +3005,11 @@
 }
 
 .ledger-affix--prefix .ledger-affix-mark {
-  padding-left: 0.55rem;
+  padding-left: var(--space-2);
 }
 
 .ledger-affix--suffix .ledger-affix-mark {
-  padding-right: 0.55rem;
+  padding-right: var(--space-2);
 }
 
 /* ── Labour panel — base rate set once, tiers as a rate ladder ── */
@@ -3001,7 +3032,7 @@
 .labour-block-heading {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .labour-block-title {
@@ -3020,7 +3051,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 1px;
+  gap: var(--space-0-5);
 }
 
 .labour-subtotal-label {
@@ -3044,7 +3075,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--gap-tight);
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
@@ -3071,7 +3102,7 @@
   font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
   text-align: right;
-  padding: 0.4rem 0.55rem;
+  padding: var(--space-1-5) var(--space-2);
   color: var(--text-primary);
 }
 
@@ -3097,7 +3128,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 84px 88px 92px 104px;
   align-items: center;
-  column-gap: var(--space-3);
+  column-gap: var(--gap-field);
 }
 
 .tier-head {
@@ -3118,7 +3149,7 @@
 }
 
 .tier-row {
-  padding: 0.3rem 0;
+  padding: var(--space-1) 0;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -3129,7 +3160,7 @@
 .tier-when {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--gap-inline);
   font-size: var(--text-sm);
   font-weight: var(--font-regular);
   color: var(--text-primary);
@@ -3142,7 +3173,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 /* Editable overtime multiplier — the ×N chip becomes a small typeable box, with the
@@ -3151,13 +3182,13 @@
   display: inline-flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .tier-mult-box {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-0-5);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
@@ -3166,7 +3197,7 @@
   background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 1px 4px 1px 6px;
+  padding: var(--space-0-5) var(--space-1) var(--space-0-5) var(--space-1-5);
 }
 
 /* The number inside every multiplier box — the live input and the read-only static
@@ -3176,7 +3207,7 @@
   width: 3.2em;
   border: none;
   background: transparent;
-  padding: 1px 2px;
+  padding: var(--space-0-5);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -3224,12 +3255,12 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .tier-hours-cell input {
   width: 100%;
-  padding: 0.4rem 0.55rem;
+  padding: var(--space-1-5) var(--space-2);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -3299,7 +3330,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--gap-field);
   flex-wrap: wrap;
   padding: var(--space-3) var(--space-4);
   font-size: var(--text-xs);
@@ -3315,7 +3346,7 @@
 .ledger-field-opening {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--gap-inline);
   color: var(--warning-ink);
   font-weight: var(--font-regular);
 }
@@ -3339,7 +3370,7 @@
   font-size: var(--text-sm);
   color: var(--text-tertiary);
   text-align: center;
-  padding-bottom: 0.42rem;
+  padding-bottom: var(--space-1-5);
 }
 
 .ledger-total {
@@ -3349,7 +3380,7 @@
   font-weight: var(--font-bold);
   color: var(--text-primary);
   text-align: right;
-  padding-bottom: 0.42rem;
+  padding-bottom: var(--space-1-5);
 }
 
 .btn-link {
@@ -3366,9 +3397,9 @@
 .costing-grand {
   display: flex;
   align-items: baseline;
-  gap: var(--space-3);
+  gap: var(--gap-field);
   margin-left: auto;
-  padding: 0.4rem 0.95rem;
+  padding: var(--space-1-5) var(--space-4);
   background: var(--primary-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
@@ -3433,7 +3464,7 @@
   .tier-head,
   .tier-row {
     grid-template-columns: minmax(0, 1fr) 60px 72px 92px;
-    column-gap: var(--space-2);
+    column-gap: var(--gap-tight);
   }
   .tier-head span:nth-child(4),
   .tier-rate {
@@ -3442,13 +3473,13 @@
 }
 
 .costing-entry-form {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .empty-message {
   color: var(--text-tertiary);
   text-align: center;
-  padding: 1.5rem 1rem;
+  padding: var(--space-6) var(--space-4);
   font-style: italic;
 }
 
@@ -3457,11 +3488,11 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 0 0.85rem 0.85rem 0.85rem;
+  padding: 0 var(--space-3) var(--space-3) var(--space-3);
 }
 
 .activity-log-entry {
-  padding: 0.6rem 0;
+  padding: var(--space-2-5) 0;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -3472,7 +3503,7 @@
 .activity-log-meta {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
+  gap: var(--space-2-5);
   flex-wrap: wrap;
 }
 
@@ -3490,8 +3521,8 @@
 }
 
 .activity-log-changes {
-  margin-top: 0.375rem;
-  padding-left: 0.25rem;
+  margin-top: var(--space-1-5);
+  padding-left: var(--space-1);
 }
 
 .activity-log-change {
@@ -3505,15 +3536,15 @@
    ============================================= */
 
 .readonly-view .form-section {
-  padding-bottom: 0.85rem;
+  padding-bottom: var(--space-3);
 }
 
 /* Customer Input — stacked label/value cells laid out in a row */
 .customer-input-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem 2rem;
-  padding: 0.7rem 0.85rem;
+  gap: var(--space-2-5) var(--space-8);
+  padding: var(--space-3) var(--space-3);
   background: var(--surface-elevated, var(--surface));
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -3522,7 +3553,7 @@
 .cis-item {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -3569,9 +3600,9 @@
 
 .notes-add {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--gap-field);
   align-items: flex-start;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .notes-textarea {
@@ -3579,7 +3610,7 @@
   resize: vertical;
   min-height: 2.5rem;
   font-size: var(--text-sm);
-  padding: 0.5rem 0.75rem;
+  padding: var(--pad-control);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -3595,11 +3626,11 @@
 .notes-list {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--gap-inline);
 }
 
 .note-card {
-  padding: 0.65rem;
+  padding: var(--space-2-5);
   background: var(--surface-inset);
   border-radius: var(--radius-sm);
 }
@@ -3607,8 +3638,8 @@
 .note-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.375rem;
+  gap: var(--gap-field);
+  margin-bottom: var(--space-1-5);
 }
 
 .note-author {
@@ -3626,7 +3657,7 @@
 
 .note-delete {
   margin-left: auto;
-  padding: 0.15rem 0.5rem;
+  padding: var(--space-0-5) var(--space-2);
   font-size: var(--text-xs);
 }
 

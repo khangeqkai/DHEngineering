@@ -161,7 +161,7 @@ export default function ItemsTab({
 
   return (
     <div className="modal-form-grid">
-      <div className="form-section">
+      <div className="form-section form-section--unboxed">
         <div className="form-section-header">
           <h3 className="form-section-title">Parts <span className="required">*</span></h3>
           {!fieldsLocked && (

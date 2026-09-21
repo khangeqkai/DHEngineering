@@ -3,7 +3,7 @@
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
+  gap: var(--space-6);
 }
 
 .full-width {
@@ -13,13 +13,13 @@
 .info-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .info-item {
   display: flex;
   justify-content: space-between;
-  padding-bottom: 0.75rem;
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -41,11 +41,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .backup-export-row {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .setting-info {
@@ -54,7 +54,7 @@
 
 .setting-label {
   font-weight: var(--font-regular);
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--space-1);
 }
 
 .setting-description {
@@ -64,8 +64,8 @@
 
 .folder-input-group {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  gap: var(--gap-tight);
+  margin-top: var(--space-4);
 }
 
 .folder-input-group .form-control {
@@ -75,21 +75,21 @@
 .job-number-input-group {
   display: flex;
   align-items: flex-end;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: var(--gap-field);
+  margin-top: var(--space-4);
 }
 
 .job-number-input-group .form-label {
   font-size: 0.8rem;
   color: var(--text-secondary);
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--space-1);
 }
 
 .timeout-input-group {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: var(--gap-field);
+  margin-top: var(--space-4);
 }
 
 .timeout-input {

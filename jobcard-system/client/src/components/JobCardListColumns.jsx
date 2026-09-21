@@ -86,13 +86,43 @@ export function getJobCardColumns({
       id: 'company',
       label: 'Company',
       managementOnly: true,
-      renderCell: (card) => <td key="company">{card.companyName || '-'}</td>
+      renderCell: (card) => (
+        <td
+          key="company"
+          className="company-cell"
+          title={card.companyName || undefined}
+          onMouseEnter={(e) => {
+            const el = e.currentTarget;
+            if (!card.companyName || el.scrollWidth <= el.clientWidth) return;
+            const r = el.getBoundingClientRect();
+            setHoverDesc({ top: r.bottom + 6, left: r.left, title: 'Company', text: card.companyName });
+          }}
+          onMouseLeave={() => setHoverDesc(null)}
+        >
+          {card.companyName || '-'}
+        </td>
+      )
     },
     {
       id: 'customer',
       label: 'Customer',
       managementOnly: true,
-      renderCell: (card) => <td key="customer">{card.contactName || '-'}</td>
+      renderCell: (card) => (
+        <td
+          key="customer"
+          className="customer-cell"
+          title={card.contactName || undefined}
+          onMouseEnter={(e) => {
+            const el = e.currentTarget;
+            if (!card.contactName || el.scrollWidth <= el.clientWidth) return;
+            const r = el.getBoundingClientRect();
+            setHoverDesc({ top: r.bottom + 6, left: r.left, title: 'Customer', text: card.contactName });
+          }}
+          onMouseLeave={() => setHoverDesc(null)}
+        >
+          {card.contactName || '-'}
+        </td>
+      )
     },
     {
       id: 'assignedTo',

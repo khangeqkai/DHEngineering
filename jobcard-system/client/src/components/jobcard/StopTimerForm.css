@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   z-index: 1100;
-  padding: 1rem;
+  padding: var(--space-4);
 }
 
 /* Right-sized focused card — fits the content instead of a small column lost in
@@ -33,7 +33,7 @@
 
 /* ── Header ── */
 .stop-timer-header {
-  padding: 1.5rem 1.75rem 1.15rem;
+  padding: var(--space-6) var(--space-7) var(--space-5);
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
@@ -42,7 +42,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--gap-tight);
 }
 
 .stf-head-titles {
@@ -59,7 +59,7 @@
 }
 
 .stop-timer-header h3 {
-  margin: 0.15rem 0 0;
+  margin: var(--space-0-5) 0 0;
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
   color: var(--text-primary);
@@ -67,12 +67,12 @@
 }
 
 .stf-head-sep {
-  margin: 0 0.4rem;
+  margin: 0 var(--space-1-5);
   color: var(--text-tertiary);
 }
 
 .stf-logged {
-  margin: 0.5rem 0 0;
+  margin: var(--space-2) 0 0;
   font-size: var(--text-sm);
   color: var(--text-secondary);
 }
@@ -113,17 +113,17 @@
 }
 
 .stop-timer-loading {
-  padding: 3rem;
+  padding: var(--space-12);
   text-align: center;
   color: var(--text-secondary);
 }
 
 /* ── Body ── */
 .stop-timer-fields {
-  padding: 1.75rem;
+  padding: var(--space-7);
   display: flex;
   flex-direction: column;
-  gap: 1.85rem;
+  gap: var(--space-7);
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -132,14 +132,14 @@
 .stf-section {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: var(--gap-field);
 }
 
 .stf-section-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--gap-tight);
 }
 
 .stf-label {
@@ -211,7 +211,7 @@
   font-feature-settings: "tnum" 1;
   font-weight: var(--font-bold);
   font-size: var(--text-lg);
-  padding: 0.65rem 0.5rem;
+  padding: var(--space-2-5) var(--space-2);
 }
 
 .stf-count-input:focus {
@@ -228,7 +228,7 @@
 .stf-counter--hero .stf-count-input {
   font-size: 2.25rem;
   font-weight: var(--font-light);
-  padding: 0.5rem;
+  padding: var(--space-2);
   color: var(--status-done-text);
   letter-spacing: 0.01em;
 }
@@ -242,14 +242,14 @@
 
 .stf-scrap-row {
   display: flex;
-  gap: 1.35rem;
+  gap: var(--gap-group);
 }
 
 .stf-scrap-cell {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .stf-scrap-cap {
@@ -271,11 +271,11 @@
 .stf-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: var(--gap-inline);
 }
 
 .stf-chip {
-  padding: 0.35rem 0.7rem;
+  padding: var(--space-1-5) var(--space-3);
   border: 1px solid var(--border-color);
   border-radius: 999px;
   background: var(--surface);
@@ -298,7 +298,7 @@
 }
 
 .stf-note-input {
-  padding: 0.55rem 0.75rem;
+  padding: var(--pad-control);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--text-base);
@@ -316,7 +316,7 @@
    box that draws the eye with a soft accent ring while still empty, then settles
    into a normal field once the worker starts typing. */
 .stf-desc-input {
-  padding: 0.85rem 0.9rem;
+  padding: var(--space-3) var(--space-4);
   font-size: var(--text-base);
   border-width: 1.5px;
 }
@@ -329,7 +329,7 @@
 
 /* ── Machines (scales to a long equipment list) ── */
 .stf-machine-filter {
-  margin-bottom: 0.1rem;
+  margin-bottom: var(--space-0-5);
 }
 
 /* Once there are many machines, cap the tile area and let it scroll instead of
@@ -337,14 +337,14 @@
 .stf-machine-scroll {
   max-height: 196px;
   overflow-y: auto;
-  padding: 0.5rem;
+  padding: var(--space-2);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background: var(--surface-inset);
 }
 
 .stf-machine-empty {
-  margin: 0.35rem 0.25rem 0.1rem;
+  margin: var(--space-1-5) var(--space-1) var(--space-0-5);
   font-size: var(--text-sm);
   color: var(--text-tertiary);
 }
@@ -353,8 +353,8 @@
 .stf-signoff {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
-  padding: 1.25rem 1.35rem;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5);
   border: 1px solid var(--warning-color, #d97706);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--warning-color, #d97706) 8%, var(--surface));
@@ -364,7 +364,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--gap-tight);
 }
 
 .stf-signoff-title {
@@ -377,7 +377,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 0.75rem;
+  gap: var(--space-2) var(--space-3);
 }
 
 .stf-check-label {
@@ -398,7 +398,7 @@
 
 .stf-yesno-btn {
   min-width: 3.75rem;
-  padding: 0.45rem 1rem;
+  padding: var(--space-2) var(--space-4);
   border: none;
   background: var(--surface);
   color: var(--text-secondary);
@@ -433,7 +433,7 @@
 
 .stf-check-comments {
   flex: 1 1 100%;
-  padding: 0.45rem 0.65rem;
+  padding: var(--space-2) var(--space-2-5);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
@@ -449,11 +449,11 @@
 
 /* ── Footer action bar ── */
 .stop-timer-actions {
-  padding: 1.1rem 1.75rem;
+  padding: var(--space-4) var(--space-7);
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.75rem;
+  gap: var(--gap-field);
   border-top: 1px solid var(--border-color);
   background: var(--surface-elevated);
   flex-shrink: 0;
@@ -461,7 +461,7 @@
 
 .stop-timer-actions .btn {
   min-width: 150px;
-  padding: 0.65rem 1.25rem;
+  padding: var(--space-2-5) var(--space-5);
   font-size: var(--text-base);
 }
 
