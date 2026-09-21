@@ -41,6 +41,16 @@ export function useSaveQueue(jobCardId) {
   // something still queued, in flight, or failed has anything to show.
   const [entries, setEntries] = useState({});
 
+  // How many writes for this job the server has actually confirmed. The map above can
+  // only ever describe what is still outstanding, because a settled success is deleted
+  // from it — so "nothing outstanding" cannot, on its own, tell a write that landed
+  // from a write that was never sent at all (a box typed back to what was already
+  // stored, a still-local row deleted before it became real, or a card nobody has
+  // touched). This counter is the positive fact, and the only honest basis for saying
+  // "that saved". Cleared with the rest of the queue on open, so it always counts this
+  // job's landings and no one else's.
+  const [landedCount, setLandedCount] = useState(0);
+
   // One promise-chain tail per key, so same-key writes always run in the order
   // they were asked for while different keys never wait on each other — the
   // exact shape every hand-rolled version of this used to build for itself.
@@ -78,7 +88,10 @@ export function useSaveQueue(jobCardId) {
         (result) => {
           // A reply for a job the user has since left must not touch this job's
           // record — every hand-rolled version of this guard is now just this one.
-          if (jobCardIdRef.current === forJobCardId) setEntry(key, null);
+          if (jobCardIdRef.current === forJobCardId) {
+            setEntry(key, null);
+            setLandedCount(n => n + 1);
+          }
           return result;
         },
         (err) => {
@@ -147,8 +160,9 @@ export function useSaveQueue(jobCardId) {
 
   const reset = useCallback(() => {
     setEntries({});
+    setLandedCount(0);
     chains.current = {};
   }, []);
 
-  return { enqueue, stateOf, isPending, pending, reset, clearFailure };
+  return { enqueue, stateOf, isPending, pending, reset, clearFailure, landedCount };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import BottomSheet from '../common/BottomSheet';
 import ConfirmDialog from '../common/ConfirmDialog';
@@ -271,7 +271,15 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   loadActiveTimerRef.current = timer.loadActiveTimer;
   resetInstantSavesRef.current = resetInstantSaves;
 
-  useEffect(() => {
+  // Before the browser paints, not after: this modal returns null while closed rather
+  // than unmounting, so the commit that reopens it still holds the PREVIOUS opening's
+  // form, baseline and save queue. As a plain effect the reset landed one paint too
+  // late and that stale state was shown — the job that was just closed with an edit
+  // discarded came back wearing its amber frame, and a write that landed after the
+  // window went brought its green with it. Resetting here means the reopened window is
+  // measured, framed and (once loadJobCard flips `loading`) drawn as the new opening
+  // from its very first frame.
+  useLayoutEffect(() => {
     if (!isOpen) return;
     resetFormRef.current(); // also clears formHook's save queue — see useJobCardForm.js
     resetInstantSavesRef.current();
@@ -314,21 +322,48 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   // Work that would be lost if this screen went away: the close question (which
   // box is empty vs. what failed to save — closeReasons.js), the refresh guard,
-  // the inactivity countdown and the spoken status (useUnsavedGuard.js's header).
+  // and the inactivity countdown (useUnsavedGuard.js).
   // Every real close funnels through the onClose handed to it below.
   const showDetailsTab = useCallback(() => setActiveTab('details'), []);
-  const { hasEditedSinceOpen, handleRequestClose } = useJobCardCloseGuard({
+  const { handleRequestClose } = useJobCardCloseGuard({
     isOpen, isEdit, jobCardId, isAdmin, isDirty,
     formHook, instantItems, saveQueue: formHook.saveQueue, jobNotes, timer, costingHook,
     saving, showConfirm, onClose: closeAndRefresh, revealDetails: showDetailsTab
   });
 
+  // The pricing sheet is admin-only and saves itself on a short countdown, so a figure
+  // can still be on its way (or stopped after a failed attempt) while the rest of the
+  // job is settled. Named once here because two different things need it: the header's
+  // running total, and the "everything landed" signals below, which must not say
+  // everything while money is still outstanding.
+  const costingOutstanding = isAdmin && costingHook.costingDirty;
+
+  // Everything still on its way to the job: the job's own fields, parts and people
+  // (isDirty) plus the pricing countdown. This is the single question both halves of
+  // the frame are asked — see useSavedFlash.js for why an unposted comment is in
+  // neither half.
+  const waitingOnSave = isEdit && (isDirty || costingOutstanding);
+
+  // Everything that has actually reached the job. It has to cover exactly what
+  // waitingOnSave covers, or the two halves of the frame disagree: pricing writes go out
+  // on their own path rather than through the job's save queue, so a visit that only
+  // touched money would turn the frame amber and then never answer it. Both counts are
+  // cleared together when a job opens (the reset above), so a previous opening's tally
+  // can never be mistaken for this one's.
+  const landedOnJob = formHook.saveQueue.landedCount + costingHook.costingLandedCount;
+
   // The window frame is the whole answer to "did that save?" on an existing job —
   // amber while something on screen hasn't reached the job, green for a moment once
-  // it has. It replaces the small "Saving… / Saved" the header used to carry, which
-  // there is no longer room for beside the job number, priority, description, status
-  // and due date. Must sit above the early return below — it is a hook.
-  const savedFlash = useSavedFlash(isEdit && hasEditedSinceOpen && !isDirty);
+  // the last of it has landed. It replaces the small "Saving… / Saved" the header used
+  // to carry, which there is no longer room for beside the job number, priority,
+  // description, status and due date. Green is driven by writes the server actually
+  // confirmed rather than by unsaved work disappearing, so abandoning an edit no longer
+  // reads as saving it. Must sit above the early return below — it is a hook.
+  const { flashing: savedFlash, anythingLanded } = useSavedFlash({
+    landedCount: landedOnJob,
+    waiting: waitingOnSave,
+    active: isOpen && isEdit
+  });
 
   if (!isOpen) return null;
   // Same plain calendar-date comparison the job list uses, so the two never disagree.
@@ -349,7 +384,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       isOverdue={isOverdue}
       showConfirm={showConfirm}
       onSuccess={onSuccess}
-      costingDirty={isAdmin ? costingHook.costingDirty : false}
+      costingDirty={costingOutstanding}
       canSeeTotal={isAdmin && isEdit}
       fetchCurrentTotal={costingHook.fetchCurrentTotal}
       saveCosting={costingHook.handleSaveCosting}
@@ -364,12 +399,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         isOpen={isOpen}
         onClose={handleRequestClose}
         // No Save button any more, so this now means "something hasn't reached the
-        // job" — a failed write, an empty required box, or a row mid-create/delete.
+        // job" — a failed write, an empty required box, a row mid-create/delete, or a
+        // figure still sitting out the pricing screen's countdown. Amber and green are
+        // asked the same question about the same work, so a price behaves exactly like
+        // every other box: amber while it travels, green when it lands. Leaving pricing
+        // out of this one made the frame answer a save it had never announced.
         // See useJobCardForm.js's isDirty comment and closeReasons.js.
-        unsaved={isEdit && isDirty}
-        // ...and green for a moment once the last of it has landed. Only after the
-        // card has actually been edited: a window nobody has touched has nothing to
-        // report, and a green frame on arrival would be reporting someone else's save.
+        unsaved={waitingOnSave}
+        // ...and green for a moment once the last of it has landed — driven by what the
+        // server confirmed, so a card nobody has touched, an abandoned edit and a box put
+        // back the way it was all stay quiet rather than claiming a save (useSavedFlash.js).
         saved={savedFlash}
         headerSlot={headerStrip}
         size="large"
@@ -490,6 +529,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   calculateCostingTotals={costingHook.calculateCostingTotals}
                   saveState={costingHook.costingSaveState}
                   onFlushCosting={costingHook.flushCosting}
+                  onBoxBlur={costingHook.saveOnBoxBlur}
+                  onRevertField={costingHook.revertField}
                   loaded={costingHook.costingLoaded}
                   loadFailed={costingHook.costingLoadFailed}
                   onRetryLoad={costingHook.retryLoadCosting}
@@ -511,7 +552,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
             {/* A new job keeps the Create button. An existing job writes itself, so
                 there's no footer at all (an empty one would still draw its border) —
-                just a bare sr-only status line, same approach as the pricing sheet's. */}
+                just a bare sr-only status line, same approach as the pricing sheet's.
+                That line is the spoken twin of the window frame and is held to the same
+                standard: it only says everything is saved once something has actually
+                been confirmed and nothing — pricing included — is still on its way. A
+                card nobody has changed yet says nothing at all. */}
             {!isEdit ? (
               <BottomSheet.Footer>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
@@ -520,9 +565,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               </BottomSheet.Footer>
             ) : canManage && (
               <span className="sr-only" role="status" aria-live="polite">
-                {hasEditedSinceOpen
-                  ? (isDirty ? 'This job card has unsaved changes.' : 'All changes saved.')
-                  : ''}
+                {waitingOnSave
+                  ? 'This job card has unsaved changes.'
+                  : (anythingLanded ? 'All changes saved.' : '')}
               </span>
             )}
           </form>

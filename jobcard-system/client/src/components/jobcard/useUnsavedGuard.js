@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { scrollFieldIntoView } from '../../hooks/useFieldErrors';
 import { describeAtRisk, describeSafe, describeSafeAsSecondLine } from './closeReasons';
@@ -31,18 +31,6 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
   const { registerUnsavedWork } = useAuth();
   const hasUnsavedWork = isDirty || hasUnpostedNote || stopFormOpen;
   const hasWorkToLose = hasUnsavedWork || costingDirty;
-
-  // Whether anything has been edited at all since the card opened. It keeps the two
-  // "everything landed" signals quiet on arrival — the spoken status and the window
-  // frame's green flash (useSavedFlash.js): both are worth having after a save, and
-  // worth nothing at all on a card nobody has touched yet.
-  const [hasEditedSinceOpen, setHasEditedSinceOpen] = useState(false);
-  useEffect(() => {
-    if (isDirty) setHasEditedSinceOpen(true);
-  }, [isDirty]);
-  useEffect(() => {
-    if (!isOpen) setHasEditedSinceOpen(false);
-  }, [isOpen]);
 
   // Escape and the header X both close through this (it is wired as BottomSheet's
   // onClose), so the "are you sure" question lives in one place rather than at each
@@ -180,5 +168,5 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
     return registerUnsavedWork('job card');
   }, [isOpen, hasWorkToLose, registerUnsavedWork]);
 
-  return { hasUnsavedWork, hasEditedSinceOpen, handleRequestClose };
+  return { hasUnsavedWork, handleRequestClose };
 }

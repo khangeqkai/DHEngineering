@@ -94,6 +94,14 @@ export function useCosting(jobCardId, {
   // What the status line beside the grand total shows, in place of the old Save button:
   // 'idle' | 'pending' (edited, save due) | 'saving' | 'saved' | 'error'.
   const [saveState, setSaveState] = useState('idle');
+  // How many of this screen's writes the server has confirmed during this opening —
+  // the pricing half of the job window's "that reached the job" green, counted the same
+  // way and for the same reason as the job's own writes (useSaveQueue.js's landedCount).
+  // `costingDirty` going false cannot stand in for it: it also goes false when a figure
+  // is put back the way it was, and answering that with green would report a save that
+  // never happened. Reset with the rest of the screen on open, so it only ever counts
+  // this job's landings.
+  const [landedCount, setLandedCount] = useState(0);
   // A failed save stops the countdown re-arming itself, so a server that's down gets one
   // attempt per typing burst instead of one every second. Cleared by the next edit or by
   // the "try again" link.
@@ -180,6 +188,20 @@ export function useCosting(jobCardId, {
     }));
   }, [markEdited]);
 
+  // A figure changed by PRESSING A LINK rather than by typing — a tier's "reset to
+  // logged", an overtime multiplier's "standard ×N", "use company default", "put it
+  // back", "Reset all to auto" — has no box for the user to leave, so the blur path
+  // never fires for it and it used to sit out the full countdown before saving.
+  //
+  // It is a request rather than a call because the save has to read the figures as they
+  // are AFTER the change it belongs to, and a link's click handler cannot: the new value
+  // is still a queued state update at that point, so saving there would send the old one.
+  // Bumping this counter lets the effect further down carry it out one render later, when
+  // the new figures are really on screen. Several bumps in one click (Reset all to auto
+  // resets six things) batch into a single render, and so into a single save.
+  const [linkSaveSeq, setLinkSaveSeq] = useState(0);
+  const requestImmediateSave = useCallback(() => setLinkSaveSeq(n => n + 1), []);
+
   // Drop a tier's manual override and snap its hours back to the auto-tallied figure.
   // tier is '' (normal), 'Ot1', 'Ot2', or 'Holiday'.
   const resetTierHours = useCallback((tier = '') => {
@@ -192,7 +214,8 @@ export function useCosting(jobCardId, {
       [hoursKey]: prev[calcKey],
       [flagKey]: false
     }));
-  }, [markEdited]);
+    requestImmediateSave();
+  }, [markEdited, requestImmediateSave]);
 
   // Drop an overtime tier's hand-typed multiplier and snap it back to the company
   // setting. tier is 'Ot1' or 'Ot2' (the only tiers with a per-job multiplier).
@@ -206,14 +229,24 @@ export function useCosting(jobCardId, {
       [multKey]: prev[calcKey],
       [flagKey]: false
     }));
-  }, [markEdited]);
+    requestImmediateSave();
+  }, [markEdited, requestImmediateSave]);
 
   // Fill the base rate with the current company default — a one-tap convenience. It's a
   // plain value set (the job still owns its rate); nothing "follows" the default after.
   const useDefaultRate = useCallback(() => {
     markEdited();
     setCostingForm(prev => ({ ...prev, labourRate: prev.labourDefaultRate }));
-  }, [markEdited]);
+    requestImmediateSave();
+  }, [markEdited, requestImmediateSave]);
+
+  // The "opened at $X · put it back" link beside each manual money box. It goes through
+  // here rather than calling handleCostingChange directly from the sheet, so that pressing
+  // it saves straight away like the other links — typing into the same box must not.
+  const revertField = useCallback((name, value) => {
+    handleCostingChange({ target: { name, value } });
+    requestImmediateSave();
+  }, [handleCostingChange, requestImmediateSave]);
 
   const calculateCostingTotals = useCallback(() => {
     // A cleared override box ('') is "follow the logged / company figure", so the totals
@@ -311,6 +344,7 @@ export function useCosting(jobCardId, {
         }
         setCostingDirty(false);
         setSaveState('saved');
+        setLandedCount(n => n + 1);
       }
       return true;
     } catch (err) {
@@ -360,6 +394,13 @@ export function useCosting(jobCardId, {
     return () => clearTimeout(timerId);
   }, [costingForm, costingDirty, savingCosting, autoSavePaused]);
 
+  // Carries out a link press's save, one render after the press, so it sends the figures
+  // the press produced rather than the ones it replaced. See requestImmediateSave above.
+  useEffect(() => {
+    if (linkSaveSeq === 0) return;
+    saveNowRef.current();
+  }, [linkSaveSeq]);
+
   // Save right now instead of waiting out the countdown — used by Enter, by leaving the
   // pricing screen, and by closing the job.
   const flushCosting = useCallback(async () => {
@@ -367,6 +408,21 @@ export function useCosting(jobCardId, {
     setAutoSavePaused(false);
     return saveNowRef.current();
   }, [costingDirty]);
+
+  // Clicking or tabbing out of a box sends it straight away, so a price behaves like
+  // every other box on the job screen rather than sitting out a countdown the person
+  // can't see. The countdown above stays as the backstop for a figure typed and then
+  // left alone — money is worth keeping that safety net even though the job's own
+  // fields don't have one.
+  //
+  // Unlike flushCosting this does NOT lift autoSavePaused: a failed save means the
+  // server is refusing, and tabbing across the sheet's boxes would otherwise fire one
+  // doomed retry per box. The pause lifts on the next real edit (markEdited) or on the
+  // "try again" link, which is what it has always done.
+  const saveOnBoxBlur = useCallback(() => {
+    if (!costingDirty || autoSavePaused) return;
+    saveNowRef.current();
+  }, [costingDirty, autoSavePaused]);
 
   // Used by the invoicing paths, which run their own "this will archive the job / your
   // unsaved pricing will be billed" prompt before calling it.
@@ -413,6 +469,7 @@ export function useCosting(jobCardId, {
   const resetCosting = useCallback(() => {
     setCostingDirty(false);
     setSaveState('idle');
+    setLandedCount(0);
     loadedRef.current = null;
     openingRef.current = null;
     // Count the reset as an edit, so a close-time save that resolves after the job is
@@ -436,8 +493,11 @@ export function useCosting(jobCardId, {
     costingForm,
     costingSaveState: saveState,
     costingDirty,
+    costingLandedCount: landedCount,
     openedAt,
     flushCosting,
+    saveOnBoxBlur,
+    revertField,
     handleCostingChange,
     resetTierHours,
     resetTierMultiplier,

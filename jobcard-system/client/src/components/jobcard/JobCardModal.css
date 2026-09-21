@@ -2991,7 +2991,14 @@
   background: transparent;
 }
 
+/* The wrapper wears the focus ring for the pair, so the input inside must not draw one
+   of its own. Without the outline reset the app-wide :focus-visible rule fires on the
+   borderless inner input and its 2px/2px-offset outline lands INSIDE the wrapper —
+   a stray line cutting past the $ or % marker, clipped square by the wrapper's
+   overflow, sitting on top of the ring that is already showing focus correctly.
+   Every other custom-ringed field in this sheet resets it the same way. */
 .ledger-affix input:focus {
+  outline: none;
   box-shadow: none;
 }
 
