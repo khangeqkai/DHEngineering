@@ -574,7 +574,8 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
     // Removing finished pieces changes completion — recompute the job's status against the
     // post-delete state and fold any change into this deletion's history so it reads as one
     // event. Must run after the delete: isJobComplete sums the remaining blocks' pieces.
-    const statusChange = syncStatusToWork(id, req.user);
+    // workRemoved: deleting the last block must still undo the Done that block caused.
+    const statusChange = syncStatusToWork(id, req.user, { workRemoved: true });
 
     const changes = {
       timeEntryId: { from: entryId, to: null },

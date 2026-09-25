@@ -19,6 +19,10 @@
 // reality to snap its status to, so its status is whatever people set it to (Quote,
 // Open, Awaiting Material, …). This also means a part being added, changed or removed
 // before work starts must not move it — that's a paperwork edit, not a work event.
+// Deleting a job's last time block is different: it IS a work event, and the status it
+// leaves behind (often Done) came from the work just removed, not from a person. The
+// delete route passes `workRemoved` so the normal rule still runs and the job drops
+// back to In Progress instead of claiming Done with nothing logged.
 //
 // It does NOT write its own history row. Instead it RETURNS the status change (or
 // null), and the caller folds it into the history entry it already writes for the
@@ -60,15 +64,17 @@ function isJobComplete(jobcardId, entries) {
 // when nothing changed (already correct, archived, invoiced, or it failed) — the
 // caller folds a non-null result into the work event's own history entry. Never lets
 // an auto-status failure break the work action that triggered it.
-function syncStatusToWork(jobcardId, actor) {
+// `workRemoved` is set by the time-block delete so an empty job is still recomputed.
+function syncStatusToWork(jobcardId, actor, { workRemoved = false } = {}) {
   try {
     const job = jobcardQueries.getById.get(jobcardId);
     if (!job || job.archived === 1) return null;
     if (job.status === 'INVOICED') return null; // terminal — leave filed-away jobs alone
 
-    // No work logged yet — nothing to follow (see the header).
+    // No work logged yet — nothing to follow, unless the last of it was just
+    // deleted (see the header).
     const entries = timeEntryQueries.getByJobcard.all(jobcardId);
-    if (entries.length === 0) return null;
+    if (entries.length === 0 && !workRemoved) return null;
 
     const target = isJobComplete(jobcardId, entries) ? 'DONE' : 'IN_PROGRESS';
     if (job.status === target) return null; // already correct — don't re-write
