@@ -50,6 +50,19 @@ const timeEntryQueries = {
   // a line that already carries recorded work.
   countByItemId: db.prepare('SELECT COUNT(*) as count FROM time_entries WHERE item_id = ?'),
 
+  // How many timers are still running on a job — used to refuse marking a job
+  // invoiced while a timer is running (a running block can't be confirmed away).
+  countRunningByJobcard: db.prepare(
+    'SELECT COUNT(*) as count FROM time_entries WHERE jobcard_id = ? AND end_time IS NULL'
+  ),
+
+  // Whether this worker has started a MORE RECENT block than the given one, on any
+  // job — used to confirm a block being resumed is the worker's own most recently
+  // started run, not some older block they still happen to own.
+  hasLaterStartByUser: db.prepare(
+    'SELECT COUNT(*) as count FROM time_entries WHERE user_id = ? AND start_time > ?'
+  ),
+
   getActiveByUser: db.prepare(`
     SELECT te.*, u.name as user_name, j.job_number, ji.item_number as item_number
     FROM time_entries te

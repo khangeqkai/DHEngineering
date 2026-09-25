@@ -377,6 +377,14 @@ router.patch('/:id/status', authenticate, (req, res) => {
 
     const isInvoicingTransition = status === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
 
+    // A running timer can't be confirmed away like a missing attachment can — refuse
+    // before any write, and before the soft attachment checkpoint below.
+    if (isInvoicingTransition && timeEntryQueries.countRunningByJobcard.get(id).count > 0) {
+      return res.status(409).json({
+        error: 'A timer is still running on this job. Stop it before marking the job invoiced.'
+      });
+    }
+
     // Soft close-out checkpoint: when invoicing (which also archives) and files
     // were declared but never attached, stop and report the gaps instead of
     // writing — unless the caller has already confirmed "invoice anyway".

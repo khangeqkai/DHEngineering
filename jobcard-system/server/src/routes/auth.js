@@ -404,6 +404,14 @@ router.put('/users/:id', authenticate, async (req, res) => {
       return res.status(403).json({ error: 'Only admins can modify admin accounts' });
     }
 
+    // The last admin can't demote themselves (or be demoted) — with nobody left in
+    // the role, nobody could ever grant it back. Checked against OTHER active admins,
+    // so this only ever blocks the very last one.
+    if (user.role === 'admin' && role && role !== 'admin' &&
+        userQueries.countOtherActiveAdmins.get(id).count === 0) {
+      return res.status(400).json({ error: 'This is the only admin account. Make another person an admin first.' });
+    }
+
     // Track changes for audit (normalize empty string / null for comparison)
     const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
     const changes = {};

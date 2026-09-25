@@ -15,6 +15,7 @@ const {
 const { jobcardQueries, jobItemQueries, timeEntryQueries, recordHistory } = require('../db/database');
 const { serializeTreatments, parseTreatments, computeAttachmentWarnings } = require('./jobcard-helpers');
 const { itemSummary, describePart } = require('./jobcard-audit-text');
+const { syncStatusToWork } = require('../utils/jobStatusAuto');
 const { db } = require('../db/connection');
 
 const router = express.Router();
@@ -119,9 +120,15 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
     });
     addItem();
 
+    // A new part changes what completion needs, so recompute the job's status
+    // (e.g. a job that read Done can drop back to In Progress) and fold any change
+    // into this add's own history entry, the same way the time routes do.
+    const statusChange = syncStatusToWork(id, req.user);
+
     const summary = itemSummary(item.qty, item.description, item.jobType, item.material, item.treatments, item.drawingsType, item.customerProperty);
     recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, {
-      [`part ${label} added`]: { from: null, to: summary }
+      [`part ${label} added`]: { from: null, to: summary },
+      ...(statusChange ? { status: statusChange } : {})
     });
 
     const allItems = jobItemQueries.getByJobcard.all(id);
@@ -131,8 +138,11 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
     // recomputed from the item list this write actually produced, so the screen
     // never has to remember to go fetch them separately.
     const attachmentWarnings = computeAttachmentWarnings(id, items, existing.qa_level_id);
+    // Carried on every reply (not only when it changed) so the screen can show the
+    // job's current status without a separate re-fetch — see docs/notes/jobs-and-status.md.
+    const jobStatus = jobcardQueries.getById.get(id).status;
 
-    res.status(201).json({ ...created, item: created, items, attachmentWarnings });
+    res.status(201).json({ ...created, item: created, items, attachmentWarnings, jobStatus });
   } catch (err) {
     logger.error({ err }, 'Add job item error');
     res.status(500).json({ error: 'Could not add the part' });
@@ -189,9 +199,15 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
     const beforeSummary = itemSummary(stored.qty, stored.description, stored.job_type, stored.material, stored.treatments, stored.drawings_type, stored.customer_property);
     const afterSummary = itemSummary(merged.qty, merged.description, merged.jobType, merged.material, merged.treatments, merged.drawingsType, merged.customerProperty);
 
-    if (beforeSummary !== afterSummary) {
+    // A changed quantity (or a line no longer matching what's been made) changes
+    // completion, so recompute the job's status and fold any change into this
+    // edit's own history entry, the same way the time routes do.
+    const statusChange = syncStatusToWork(id, req.user);
+
+    if (beforeSummary !== afterSummary || statusChange) {
       recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, {
-        [`part ${label}`]: { from: beforeSummary, to: afterSummary }
+        ...(beforeSummary !== afterSummary ? { [`part ${label}`]: { from: beforeSummary, to: afterSummary } } : {}),
+        ...(statusChange ? { status: statusChange } : {})
       });
     }
 
@@ -199,8 +215,9 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
     const items = formatItems(allItems);
     const updated = items.find(i => i.id === itemId);
     const attachmentWarnings = computeAttachmentWarnings(id, items, existing.qa_level_id);
+    const jobStatus = jobcardQueries.getById.get(id).status;
 
-    res.json({ ...updated, item: updated, items, attachmentWarnings });
+    res.json({ ...updated, item: updated, items, attachmentWarnings, jobStatus });
   } catch (err) {
     logger.error({ err }, 'Update job item error');
     res.status(500).json({ error: 'Could not update the part' });
@@ -247,14 +264,21 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
     // draws, never predicted or recomputed here.
     jobItemQueries.deleteById.run(itemId);
 
+    // Removing a part changes what completion needs (one fewer line to satisfy),
+    // so recompute the job's status and fold any change into this delete's own
+    // history entry, the same way the time routes do.
+    const statusChange = syncStatusToWork(id, req.user);
+
     recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, {
-      [`part ${label} removed`]: { from: summary, to: null }
+      [`part ${label} removed`]: { from: summary, to: null },
+      ...(statusChange ? { status: statusChange } : {})
     });
 
     const items = formatItems(jobItemQueries.getByJobcard.all(id));
     const attachmentWarnings = computeAttachmentWarnings(id, items, existing.qa_level_id);
+    const jobStatus = jobcardQueries.getById.get(id).status;
 
-    res.json({ success: true, items, attachmentWarnings });
+    res.json({ success: true, items, attachmentWarnings, jobStatus });
   } catch (err) {
     logger.error({ err }, 'Delete job item error');
     res.status(500).json({ error: 'Could not remove the part' });

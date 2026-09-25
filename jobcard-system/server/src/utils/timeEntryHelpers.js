@@ -1,7 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('./logger');
-const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, recordHistory } = require('../db/database');
+const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, jobcardQueries, recordHistory } = require('../db/database');
 
 // Normalise a hand-entered time into a full ISO timestamp with time zone, so
 // every stored time block is in the same format (a block's start and finish can
@@ -115,6 +115,22 @@ function findEntryForJob(res, jobcardId, entryId) {
   return existing;
 }
 
+// A filed-away (invoiced) job's time can't be changed — start, manual add, edit
+// (including resuming/clearing a finish time) and delete all refuse before any
+// write. Stop is never gated here: a running timer must always be stoppable, even
+// on a job that somehow got archived with one still going. Returns true (and has
+// already sent the 409) when the caller should stop.
+function refuseIfArchived(res, jobcardId) {
+  const jobcard = jobcardQueries.getById.get(jobcardId);
+  if (jobcard && jobcard.archived === 1) {
+    res.status(409).json({
+      error: 'This job has been invoiced and filed away. Reopen it before changing its time.'
+    });
+    return true;
+  }
+  return false;
+}
+
 // Good pieces are counted, not measured: every reader (auto-status, statistics, the
 // part's progress bar) must agree, so the stored value is a whole number or NULL.
 // Blank/garbage → NULL (nothing recorded), "2.5" → 2, negatives → 0.
@@ -213,6 +229,7 @@ module.exports = {
   toBoolFlag,
   wholeQty,
   findEntryForJob,
+  refuseIfArchived,
   flagToBool,
   isCriticalJob,
   checkCriticalInspection,

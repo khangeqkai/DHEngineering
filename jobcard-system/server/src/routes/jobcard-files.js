@@ -151,6 +151,18 @@ function stripStorageTag(name) {
 }
 
 /**
+ * Read back the trailing "[tag]" a stored filename carries (a part's "p{code}", or
+ * a whole-job file's 14-digit timestamp), stripping any " (n)" clash suffix — the
+ * inverse of what buildStorageFilename writes. Returns null for a name with no tag.
+ */
+function currentFileTag(name) {
+  const ext = path.extname(name);
+  const base = name.slice(0, name.length - ext.length);
+  const m = base.match(/\[([^\]]+)\](?: \(\d+\))?$/);
+  return m ? m[1] : null;
+}
+
+/**
  * Regex that matches a part's "[p{code}]" tag only at the END of a base name
  * (optionally followed by a " (n)" clash suffix) — the exact spot the upload
  * route writes it, so a file whose human name merely contains the code can't
@@ -493,15 +505,18 @@ router.post('/:id/files/:category/:filename/assign', authenticate, validateCateg
       }
     }
 
-    const cleanName = stripStorageTag(filename);
-    const newName = buildStorageFilename(folderRes.folderPath, cleanName, partFileCode(itemId));
-
-    // Already tagged for this owner (same base + tag) → nothing to do. buildStorageFilename
-    // adds a " (n)" only on a real clash, so an unchanged owner reproduces the same name.
-    if (newName === filename) {
+    // Already tagged for this owner → nothing to do. Decided BEFORE building a new
+    // name: the file already exists on disk under its current name, so asking
+    // buildStorageFilename to reproduce that same "[p{code}]" tag always finds a
+    // clash (itself) and appends " (n)" — comparing the new name to the old one
+    // then always looks different, and an unchanged part got renamed every time.
+    if (currentFileTag(filename) === partFileCode(itemId)) {
       const [same] = resolveFileOwners(id, listFolderFiles(folderRes.folderPath)).filter(f => f.name === filename);
       return res.json(same || { name: filename });
     }
+
+    const cleanName = stripStorageTag(filename);
+    const newName = buildStorageFilename(folderRes.folderPath, cleanName, partFileCode(itemId));
 
     const newPath = path.join(folderRes.folderPath, newName);
     if (!isWithinBase(folderRes.folderPath, newPath)) {

@@ -1,6 +1,19 @@
 import { useRef, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 
+// A `run()` a caller resolves with this instead of its usual result to mean
+// "nothing was stored by this attempt, so there is nothing to count as
+// landed" — a refused create or remove that already told the user with its
+// own toast (useInstantItems.js's createItemFromRow/removeItem catches). Without this,
+// `run()` resolving at all (rather than rejecting) read as a save, so a
+// refused create counted toward `landedCount` and armed the green saved
+// flash for work that was never stored. Rejecting instead isn't right either
+// — that's 'failed', which flags the key and waits for the user to retry,
+// and these callers deliberately do NOT want that (their own comments
+// explain why: the row already shows its own reason, or there's nothing left
+// to retry).
+export const NOT_LANDED = Symbol('notLanded');
+
 /**
  * One saving record per open job card — Contract A of
  * tasks/instant-save-root-causes.md. Every instant write (a job-level field, a
@@ -100,7 +113,11 @@ export function useSaveQueue(jobCardId) {
           // version of this guard is now just this one.
           if (jobCardIdRef.current === forJobCardId && openingRef.current === forOpening) {
             setEntry(key, null);
-            setLandedCount(n => n + 1);
+            // NOT_LANDED means nothing was stored (a refused create/remove that
+            // already reported itself) — clear the key so it stops
+            // reading as outstanding, but don't count it as a landing: nothing was
+            // actually saved, so the green flash must not arm for it.
+            if (result !== NOT_LANDED) setLandedCount(n => n + 1);
           }
           return result;
         },

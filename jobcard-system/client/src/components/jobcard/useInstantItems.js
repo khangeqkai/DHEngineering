@@ -5,6 +5,7 @@ import { buildItemPayload, mapLineItemFromApi } from './mappers';
 import { isSavedLineItem } from './jobCardValidation.mjs';
 import { itemFieldMessage, REQUIRED_ITEM_FIELDS, isItemRowComplete } from './fieldRules.mjs';
 import { useFieldErrors } from '../../hooks/useFieldErrors';
+import { NOT_LANDED } from './useSaveQueue';
 
 // Noun used in the save queue's label for a field write on a real row — e.g.
 // "part 2's description" — so a queued/failed entry reads the same way the close
@@ -60,7 +61,7 @@ export const fieldErrorKey = (itemId, field) => `${itemId}|${field}`;
  * locally and travels once in the create payload — every function below is then a
  * no-op, same as useInstantSave's saveField and toggleAssignee before a job exists.
  */
-export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLineItem, savedItemFields, onItemSaved, onItemRemoved, onAttachmentWarnings, saveQueue }) {
+export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLineItem, savedItemFields, onItemSaved, onItemRemoved, onAttachmentWarnings, onJobStatusChange, saveQueue }) {
   const jobCardIdRef = useRef(jobCardId);
   jobCardIdRef.current = jobCardId;
   // Read the live rows from a ref rather than closing over the lineItems argument,
@@ -85,10 +86,12 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
   const creatingRef = useRef(new Set());
 
   // One landing point for every part write's reply (Contract B, tasks/instant-
-  // save-root-causes.md) — the screen rows, the saved baseline and the file notes
-  // all move together here, so no call site can forget one of the three. That gap
-  // was defect 1: only a file upload used to refresh the notes, so adding,
-  // removing or editing a part left every part showing another part's notes.
+  // save-root-causes.md) — the screen rows, the saved baseline, the file notes and
+  // the job's own status all move together here, so no call site can forget one
+  // of the four. That gap was defect 1: only a file upload used to refresh the
+  // notes, so adding, removing or editing a part left every part showing another
+  // part's notes; a part change nudging the job's status (jobs-and-status.md) had
+  // the same gap until onJobStatusChange was added here.
   //
   // The server's reply carries the job's full, ordered real-part list once
   // Contract B has landed on that route (`items`, plus `item` for the one just
@@ -166,8 +169,12 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     }
 
     if (reply.attachmentWarnings !== undefined) onAttachmentWarnings?.(reply.attachmentWarnings);
+    // A part create/update can auto-advance the job's status the same way starting
+    // a timer does — the reply carries it top-level (jobStatus), always, not only
+    // when it changed, so this just mirrors it onto the screen every time.
+    if (reply.jobStatus !== undefined) onJobStatusChange?.(reply.jobStatus);
     return bareSingle ? mapLineItemFromApi(bareSingle) : null;
-  }, [setLineItems, onItemSaved, onAttachmentWarnings]);
+  }, [setLineItems, onItemSaved, onAttachmentWarnings, onJobStatusChange]);
 
   // One field on an already-real row. Absent-means-unchanged on the server, so only
   // the one field travels, never the rest of the row. Declared ahead of
@@ -263,6 +270,11 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
           // Never re-sent automatically — the row stays local, exactly as typed.
           // Completing it again (any required box) is what retries.
           toast.error(err.message || "Couldn't add that part", { id: `item-create-${localId}` });
+          // Reported above with its own toast, not flagged 'failed' in the queue
+          // (there's nothing stored to retry against — the row is still local) —
+          // and NOT a landing either, so it must not count toward landedCount or
+          // arm the green saved flash for a part that was never created.
+          return NOT_LANDED;
         })
         .finally(() => creatingRef.current.delete(localId));
     }, { label: 'a new part' });
@@ -369,6 +381,10 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
           // ourselves. Nothing renumbers any more: the server owns item_number
           // as a sort key and gaps after a delete are expected and fine.
           setLineItems(prev => prev.filter(it => it.id !== item.id));
+          // applyItemReply isn't called on this branch, so jobStatus has to be
+          // picked up here too — the delete route already carries it top-level
+          // even on this shape.
+          if (reply?.jobStatus !== undefined) onJobStatusChange?.(reply.jobStatus);
         }
         onItemRemoved?.(item.id);
         // Nothing left to mark on a row that no longer exists.
@@ -380,10 +396,13 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
         // so this is reported with its own toast rather than left marked failed
         // in the queue (same reasoning as a failed create above). The server's
         // own wording — time logged against it, or the job's last line — is
-        // what the user needs to hear, not a paraphrase.
+        // what the user needs to hear, not a paraphrase. Also NOT a landing —
+        // nothing was actually removed, so it must not count toward
+        // landedCount or arm the green saved flash.
         toast.error(err.message || "Couldn't remove that part", { id: `item-remove-${item.id}` });
+        return NOT_LANDED;
       }), { label });
-  }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, clearFieldError, saveQueue]);
+  }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, clearFieldError, saveQueue, onJobStatusChange]);
 
   // JobCardModal returns null when closed rather than unmounting, so these marks
   // outlive a close. Without clearing them, a box left empty on one job would keep

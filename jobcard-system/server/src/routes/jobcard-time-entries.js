@@ -18,6 +18,7 @@ const {
   toBoolFlag,
   wholeQty,
   findEntryForJob,
+  refuseIfArchived,
   checkCriticalInspection,
   toCamelCase
 } = require('../utils/timeEntryHelpers');
@@ -54,6 +55,8 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
   try {
     const { id } = req.params;
     const { itemId, workerId } = req.body;
+
+    if (refuseIfArchived(res, id)) return;
 
     // Decide whose timer this is. Normally it's the caller's own. An admin may
     // start a timer FOR another worker by naming them (workerId) — e.g. setting
@@ -220,6 +223,8 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
     const { id } = req.params;
     const data = req.body;
 
+    if (refuseIfArchived(res, id)) return;
+
     let startTime, endTime;
     try {
       startTime = normalizeTime(data.startTime);
@@ -316,7 +321,8 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
       }
     }
 
-    const workerName = userQueries.getById.get(workerId).name;
+    const workerRecord = userQueries.getById.get(workerId);
+    const workerName = workerRecord.name || workerRecord.username;
     recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name || req.user.username, {
       worker: { from: null, to: workerName },
       machineNumber: { from: null, to: data.machineNumber || null },
@@ -346,6 +352,8 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     const { id, entryId } = req.params;
     const data = req.body;
 
+    if (refuseIfArchived(res, id)) return;
+
     const existing = findEntryForJob(res, id, entryId);
     if (!existing) return;
 
@@ -374,7 +382,25 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     // Only admins/managers may set an arbitrary start/finish time (manual corrections).
     if (!isManagement(req.user.role)) {
       startTime = existing.start_time;
-      endTime = endTime === null ? null : existing.end_time;
+      const isResuming = endTime === null;
+      endTime = isResuming ? null : existing.end_time;
+
+      // Resuming reopens a finished block — a worker may only reopen the run they
+      // JUST stopped, never reach back into an older block of their own. All three
+      // must hold: this is the most recently STARTED block they own (nothing else,
+      // on any job, started later); it was stopped within the last 12 hours (a
+      // "just stopped" run, not a wrap-up days later); and they have no other timer
+      // running right now (reopening this one would give them two at once).
+      if (isResuming) {
+        const withinLast12h = !!existing.end_time &&
+          (Date.now() - new Date(existing.end_time).getTime()) <= 12 * 60 * 60 * 1000;
+        const isMostRecentStart =
+          timeEntryQueries.hasLaterStartByUser.get(existing.user_id, existing.start_time).count === 0;
+        const noOtherRunning = !timeEntryQueries.getActiveByUser.get(existing.user_id);
+        if (!(withinLast12h && isMostRecentStart && noOtherRunning)) {
+          return res.status(403).json({ error: 'Only the run you just stopped can be resumed.' });
+        }
+      }
     }
 
     const durationError = checkEntryDuration(startTime, endTime);
@@ -533,6 +559,8 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
 router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (req, res) => {
   try {
     const { id, entryId } = req.params;
+
+    if (refuseIfArchived(res, id)) return;
 
     const existing = findEntryForJob(res, id, entryId);
     if (!existing) return;

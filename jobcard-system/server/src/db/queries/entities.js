@@ -50,7 +50,12 @@ const userQueries = {
   updateJobcardHiddenColumns: db.prepare(`
     UPDATE users SET jobcard_hidden_columns = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
-  `)
+  `),
+
+  // How many OTHER active admins exist — used to refuse demoting the last one.
+  countOtherActiveAdmins: db.prepare(
+    "SELECT COUNT(*) as count FROM users WHERE role = 'admin' AND active = 1 AND id != ?"
+  )
 };
 
 // Company queries — the company IS the customer. Its id is the permanent code

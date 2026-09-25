@@ -17,10 +17,21 @@ import { useInstantItems } from './useInstantItems';
  * already do — see useInstantItems.js's applyItemReply.
  */
 export function useJobCardInstantSaves(formHook, isEdit, jobCardId, saveQueue, onAttachmentWarnings) {
-  const { markFieldSaved, markItemSaved, markItemRemoved } = formHook;
+  const { markFieldSaved, markItemSaved, markItemRemoved, setFormData } = formHook;
   const forJobCardId = isEdit ? jobCardId : null;
 
   const instantSave = useInstantSave(forJobCardId, saveQueue, { onSaved: markFieldSaved });
+  // A part create/update/delete can auto-advance the job's status server-side, the
+  // same way starting/stopping a timer already does (JobCardModal.jsx's
+  // refreshJobStatus / useJobCardTimerActions.js) — folding the reply's own
+  // `jobStatus` straight into form state is the same "server-confirmed value,
+  // never an unsaved edit" route: `status` is stripped from the isDirty baseline
+  // (useJobCardForm.js), so this can never mark the card dirty or arm a save.
+  // setFormData is a raw useState setter (stable identity), so this callback never
+  // changes and doesn't churn applyItemReply/writeItemField/etc below it.
+  const onJobStatusChange = useCallback((status) => {
+    if (status) setFormData(prev => ({ ...prev, status }));
+  }, [setFormData]);
   const instantItems = useInstantItems({
     jobCardId: forJobCardId,
     lineItems: formHook.lineItems,
@@ -30,6 +41,7 @@ export function useJobCardInstantSaves(formHook, isEdit, jobCardId, saveQueue, o
     onItemSaved: markItemSaved,
     onItemRemoved: markItemRemoved,
     onAttachmentWarnings,
+    onJobStatusChange,
     saveQueue
   });
 

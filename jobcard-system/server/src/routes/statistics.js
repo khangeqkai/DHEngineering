@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { db, getSettings } = require('../db/database');
 const { officeTimeZone } = require('../utils/officeTime');
+const { computeLiveCosting } = require('../utils/costingCompute');
 const {
   FINISHED_STATUSES,
   makeDateFormatter,
@@ -44,7 +45,7 @@ router.get('/', (req, res) => {
     const defaultRules = { schedule: defaultSchedule, holidays: defaultHolidays, timezone };
 
     // 1. Fetch job costings map for exact billing rule consistency
-    const costingsRows = db.prepare('SELECT jobcard_id, labour_schedule, labour_public_holidays, labour_timezone, grand_total FROM job_costings').all();
+    const costingsRows = db.prepare('SELECT jobcard_id, labour_schedule, labour_public_holidays, labour_timezone FROM job_costings').all();
     const jobCostingsMap = new Map();
     for (const row of costingsRows) {
       let jSchedule = defaultSchedule;
@@ -52,8 +53,7 @@ router.get('/', (req, res) => {
       try { if (row.labour_schedule) jSchedule = JSON.parse(row.labour_schedule); } catch {}
       try { if (row.labour_public_holidays) jHolidays = JSON.parse(row.labour_public_holidays); } catch {}
       jobCostingsMap.set(row.jobcard_id, {
-        rules: { schedule: jSchedule, holidays: jHolidays, timezone: row.labour_timezone || timezone },
-        grandTotal: row.grand_total
+        rules: { schedule: jSchedule, holidays: jHolidays, timezone: row.labour_timezone || timezone }
       });
     }
 
@@ -451,8 +451,16 @@ router.get('/', (req, res) => {
         else c.lateCount++;
       }
       if (req.user.role === 'admin' && j.status === 'INVOICED') {
-        const jCosting = jobCostingsMap.get(j.id);
-        if (jCosting?.grandTotal) c.invoicedTotal += jCosting.grandTotal;
+        // No invoice-time freeze (docs/notes/time-and-costing.md, "Per-job rule
+        // ownership") — the stored grand_total is only refreshed by a pricing-sheet
+        // save, so it goes stale the moment logged time changes after invoicing.
+        // Recomputing here always reproduces the billed number without writing anything.
+        try {
+          const computed = computeLiveCosting(j.id, null);
+          c.invoicedTotal += computed.row.grand_total || 0;
+        } catch (err) {
+          logger.error({ err, jobId: j.id }, 'Failed to compute live costing for invoiced total in statistics');
+        }
       }
     }
 
