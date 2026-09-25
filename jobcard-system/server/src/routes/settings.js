@@ -63,6 +63,12 @@ router.get('/', requireManagement, (req, res) => {
     if (req.user.role !== 'admin') {
       for (const key of OVERTIME_DB_KEYS) delete settings[key];
     }
+    // The job-folders base path is admin-only too: it decides where every job's
+    // files and backups are written, so a manager should never even see it, let
+    // alone be able to work out or repoint where files land.
+    if (req.user.role !== 'admin') {
+      delete settings.job_folders_base;
+    }
     // Convert snake_case keys to camelCase
     const camelCaseSettings = convertKeysToCamel(settings);
     // Tell the admin exactly what address the OTHER computers should type: the

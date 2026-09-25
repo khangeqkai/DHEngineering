@@ -70,6 +70,7 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
     const fieldsToTrack = [
       ['labour_hours_override', 'labourHoursOverride'],
       ['labour_rate', 'labourRate'],
+      ['labour_total', 'labourTotal'],
       ['labour_ot1_override', 'labourOt1Override'],
       ['labour_ot1_multiplier_override', 'labourOt1MultiplierOverride'],
       ['labour_ot1_total', 'labourOt1Total'],

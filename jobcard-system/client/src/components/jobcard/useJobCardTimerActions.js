@@ -67,10 +67,13 @@ export function useJobCardTimerActions({
   };
 
   const handleStartItemTimer = useCallback(async (itemId, displayNumber, workerId, workerName) => {
-    await timer.startTimerWithConflictCheck(itemId, displayNumber, showConfirm, workerId, workerName);
+    const started = await timer.startTimerWithConflictCheck(itemId, displayNumber, showConfirm, workerId, workerName);
     await reloadTimeEntries();
-    // Server may have auto-assigned the timer's worker and nudged the status.
-    creditAssignee(workerId || currentUserId, employees);
+    // Only when a timer actually started — the server may have auto-assigned that
+    // worker and nudged the status. A failed or cancelled attempt (including "stop &
+    // start" queued behind the old run's fill-in form) credited nobody, so crediting
+    // here would wrongly add the worker to the job for a timer that never ran.
+    if (started) creditAssignee(workerId || currentUserId, employees);
     try {
       const fresh = await api.getJobcard(jobCardId);
       if (fresh.status) setFormData(prev => ({ ...prev, status: fresh.status }));

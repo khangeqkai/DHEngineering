@@ -198,5 +198,13 @@ export function useSaveQueue(jobCardId) {
     openingRef.current += 1;
   }, []);
 
-  return { enqueue, stateOf, isPending, pending, reset, clearFailure, landedCount };
+  // Resolves once every write queued so far — for every key, whatever its state —
+  // has settled, success or failure. Never rejects: a caller waiting on this (e.g.
+  // a status change that must not run ahead of a part save already in flight) needs
+  // to know the field is quiet either way, not to fail itself because one of those
+  // saves failed. A write enqueued AFTER this is called is not waited on — it
+  // belongs to the next look at "what's in flight now", not this one.
+  const whenSettled = useCallback(() => Promise.allSettled(Object.values(chains.current)), []);
+
+  return { enqueue, stateOf, isPending, pending, reset, clearFailure, landedCount, whenSettled };
 }

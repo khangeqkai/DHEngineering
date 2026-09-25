@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
+const { validateCreateSupplier, validateUpdateSupplier } = require('../middleware/validation');
 const { db, supplierQueries, tagQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
@@ -73,12 +74,19 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/suppliers - Create new supplier (admin or manager)
-router.post('/', requireManagement, (req, res) => {
+router.post('/', requireManagement, validateCreateSupplier, (req, res) => {
   try {
     const { name, contactName, contactPhone, contactEmail, address, notes, serviceTagIds } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ error: 'Supplier name is required' });
+    // Supplier names are unique (case-insensitive), same reasoning as companies —
+    // an archived supplier still owns its name, so point the caller at restoring it.
+    const existingByName = supplierQueries.getByName.get(name);
+    if (existingByName) {
+      return res.status(409).json({
+        error: existingByName.active === 0
+          ? 'A supplier with this name already exists in the archive. Restore it from the archived list instead.'
+          : 'A supplier with this name already exists'
+      });
     }
 
     const id = uuidv4();
@@ -121,7 +129,7 @@ router.post('/', requireManagement, (req, res) => {
 });
 
 // PUT /api/suppliers/:id - Update supplier (admin or manager)
-router.put('/:id', requireManagement, (req, res) => {
+router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
   try {
     const { id } = req.params;
     const { name, contactName, contactPhone, contactEmail, address, notes, serviceTagIds } = req.body;
@@ -131,8 +139,17 @@ router.put('/:id', requireManagement, (req, res) => {
       return res.status(404).json({ error: 'Supplier not found' });
     }
 
-    if (!name) {
-      return res.status(400).json({ error: 'Supplier name is required' });
+    // Case-insensitive match, same as companies. Only checked when the name actually
+    // changes: a database from before this check may already hold two suppliers with
+    // one name, and editing either one's phone must not be refused over it.
+    const nameChanged = String(name).toLowerCase() !== String(existing.name || '').toLowerCase();
+    const dupe = nameChanged ? supplierQueries.getByName.get(name) : null;
+    if (dupe && dupe.id !== id) {
+      return res.status(409).json({
+        error: dupe.active === 0
+          ? 'A supplier with this name already exists in the archive. Restore it from the archived list instead.'
+          : 'A supplier with this name already exists'
+      });
     }
 
     // Track changes for audit

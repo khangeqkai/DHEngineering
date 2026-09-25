@@ -171,8 +171,11 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     if (reply.attachmentWarnings !== undefined) onAttachmentWarnings?.(reply.attachmentWarnings);
     // A part create/update can auto-advance the job's status the same way starting
     // a timer does — the reply carries jobStatus top-level only when THIS write
-    // actually moved the status, so a reply that lands after the user has since
-    // picked a different status can never stomp it back onto the screen.
+    // actually moved the status. A reply that lands after the user has since picked
+    // their own status is handled upstream, not here: JobIdentityStrip.jsx waits for
+    // every part save already in flight to settle before it sends a hand-picked
+    // status change, so that pick is never sent while one of these replies is still
+    // outstanding.
     if (reply.jobStatus !== undefined) onJobStatusChange?.(reply.jobStatus);
     return bareSingle ? mapLineItemFromApi(bareSingle) : null;
   }, [setLineItems, onItemSaved, onAttachmentWarnings, onJobStatusChange]);
@@ -209,7 +212,9 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
           if (isCurrent()) {
             toast.error("That part was removed, so the change wasn't saved.", { id: `item-gone-${itemId}` });
           }
-          return;
+          // Nothing was stored — the row is gone — so this must not count toward
+          // landedCount or arm the green saved flash for a write that never landed.
+          return NOT_LANDED;
         }
         throw err;
       }), { label });
@@ -232,7 +237,10 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
       // anything typed after it is reconciled below once the reply lands.
       if (!current || isSavedLineItem(current)) {
         creatingRef.current.delete(localId);
-        return Promise.resolve();
+        // Nothing was sent — already real (an earlier queued create won) or removed
+        // since this was queued — so this must not count toward landedCount or arm
+        // the green saved flash for a create that never happened.
+        return Promise.resolve(NOT_LANDED);
       }
       return api.addJobItem(forJobCardId, buildItemPayload(row))
         .then((reply) => {

@@ -14,6 +14,7 @@ const {
 const { sanitizeFolderName, isWithinBase, resolveCompanyFolder, idSlug } = require('../utils/folderCreation');
 const { decodeBase64Strict, assertMatchesExtension } = require('../utils/fileValidation');
 const { handleValidationErrors } = require('../middleware/validation');
+const { describePart } = require('./jobcard-audit-text');
 const { body, param } = require('express-validator');
 
 const router = express.Router();
@@ -213,7 +214,13 @@ function resolveFileOwners(jobcardId, files) {
  */
 function buildStorageFilename(folderPath, displayName, partCode) {
   const ext = path.extname(displayName);
-  const base = path.basename(displayName, ext);
+  // Run the base name through the same cleanup folder names get (strips
+  // filesystem-unsafe characters, path-traversal sequences, and refuses a
+  // Windows-reserved device name like CON/PRN/COM1) — an uploaded name is
+  // typed by whoever scanned/renamed the file and isn't otherwise checked.
+  // The extension itself was already validated against VALID_EXTENSIONS, so
+  // it's kept as-is and only the base is sanitized.
+  const base = sanitizeFolderName(path.basename(displayName, ext)) || 'file';
   const tag = partCode || new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
   let candidate = `${base} [${tag}]${ext}`;
   let counter = 1;
@@ -401,6 +408,17 @@ function saveFile({ jobcardId, category, displayName, buffer, source, itemId, re
   const folderRes = resolveCategoryFolder(jobcardId, category);
   if (folderRes.error) return res.status(folderRes.status).json({ error: folderRes.error });
 
+  // A chosen part must still be a real line item on this job — the same check the
+  // /assign route runs. Without it, a stale itemId from a screen that hasn't
+  // refreshed since the part was removed would silently attach the file to a
+  // part reference that matches nothing.
+  if (itemId) {
+    const parts = jobItemQueries.getByJobcard.all(jobcardId) || [];
+    if (!parts.some(it => it.id === itemId)) {
+      return res.status(409).json({ error: "That part was removed from the job, so the file wasn't attached." });
+    }
+  }
+
   if (!fs.existsSync(folderRes.folderPath)) {
     fs.mkdirSync(folderRes.folderPath, { recursive: true });
   }
@@ -498,11 +516,10 @@ router.post('/:id/files/:category/:filename/assign', authenticate, validateCateg
 
     // A chosen part must be a real line item on this job — otherwise a file could
     // be tagged to a part that doesn't exist (and silently never match anything).
-    if (itemId) {
-      const parts = jobItemQueries.getByJobcard.all(id) || [];
-      if (!parts.some(it => it.id === itemId)) {
-        return res.status(400).json({ error: 'That part is not on this job card' });
-      }
+    // Fetched once and reused below to name the old/new owner in the history entry.
+    const parts = jobItemQueries.getByJobcard.all(id) || [];
+    if (itemId && !parts.some(it => it.id === itemId)) {
+      return res.status(400).json({ error: 'That part is not on this job card' });
     }
 
     // Already tagged for this owner → nothing to do. Decided BEFORE building a new
@@ -524,8 +541,22 @@ router.post('/:id/files/:category/:filename/assign', authenticate, validateCateg
     }
     fs.renameSync(currentPath, newPath);
 
+    // Name the part on each side of the move (by description, the same way item
+    // history does — a part's number isn't stable enough to identify it), not just
+    // the raw stored filenames, so the trail reads "part X to part Y" rather than
+    // two tagged filenames nobody can map back to a part by eye.
+    const oldTag = currentFileTag(filename);
+    const oldPart = oldTag ? parts.find(it => partFileCode(it.id) === oldTag) : null;
+    const newPart = itemId ? parts.find(it => it.id === itemId) : null;
+
     recordHistory('jobcard', id, 'reassign_file', req.user.userId, req.user.name || req.user.username,
-      { file: { from: filename, to: newName } },
+      {
+        file: { from: stripStorageTag(filename), to: stripStorageTag(newName) },
+        part: {
+          from: oldPart ? describePart(oldPart.description, null) : null,
+          to: newPart ? describePart(newPart.description, null) : null
+        }
+      },
       { destination: CATEGORY_FOLDER[category], itemId: itemId ?? null }
     );
 

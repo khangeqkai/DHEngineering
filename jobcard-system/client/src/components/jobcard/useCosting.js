@@ -485,10 +485,20 @@ export function useCosting(jobCardId, {
   // unsaved pricing will be billed" prompt before calling it.
   const handleSaveCosting = useCallback(() => saveNowRef.current(), []);
 
+  // Which job this refresh was asked for, and how many refreshes have been asked for
+  // altogether — both captured at call time, same as runSave's jobCardIdRef guard above.
+  // A reply is dropped when either has moved on by the time it lands: the job on screen
+  // has changed (this job's figures would otherwise land on the next job's sheet), or a
+  // later refresh was started after this one (two quick timer actions could otherwise
+  // land in either order, with the older reply overwriting the newer one's figures).
+  const refreshSeq = useRef(0);
   const refreshCosting = useCallback(async () => {
     if (!jobCardId) return;
+    const calledForJobId = jobCardId;
+    const seq = ++refreshSeq.current;
     try {
       const costingRes = await api.getCosting(jobCardId);
+      if (jobCardIdRef.current !== calledForJobId || refreshSeq.current !== seq) return;
       if (costingRes) {
         // Only labour hours are auto-tallied from time entries; this runs after a
         // timer event to pick that up. Every other field is manually entered, so
@@ -519,6 +529,7 @@ export function useCosting(jobCardId, {
         }));
       }
     } catch (err) {
+      if (jobCardIdRef.current !== calledForJobId || refreshSeq.current !== seq) return;
       toast.error(err.message || 'Failed to refresh costing hours');
     }
   }, [jobCardId]);

@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { deleteJobCardFolders } = require('../utils/folderCreation');
-const { authenticate, requireManagement, requireAdmin, isManagement } = require('../middleware/auth');
+const { authenticate, requireManagement, requireAdmin, canSetStatus } = require('../middleware/auth');
 const { validateJobcardListQuery, JOBCARD_STATUSES } = require('../middleware/validation');
 const {
   jobcardQueries,
@@ -355,13 +355,13 @@ router.patch('/:id/status', authenticate, (req, res) => {
       return res.status(400).json({ error: 'Invalid status value' });
     }
 
-    if (status === 'INVOICED' && !isManagement(req.user.role)) {
-      return res.status(403).json({ error: 'Only management can mark a job card as invoiced' });
-    }
-
     const existing = jobcardQueries.getById.get(id);
     if (!existing) {
       return res.status(404).json({ error: 'Job card not found' });
+    }
+
+    if (!canSetStatus(req.user.role, existing.status, status)) {
+      return res.status(403).json({ error: 'Only management can set that status' });
     }
 
     // A filed-away (archived) job is locked: refuse any status change before any

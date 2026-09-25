@@ -5,7 +5,7 @@ import CalendarPicker from '../common/CalendarPicker';
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import { capitalizeFirst, formatDate } from '../../utils/formatters';
 import { api } from '../../services/api';
-import { PRIORITY_OPTIONS, STATUS_OPTIONS } from './constants';
+import { PRIORITY_OPTIONS, STATUS_OPTIONS, canChangeStatus, getSettableStatusValues } from './constants';
 import { statusToken, priorityToken } from '../JobCardList.constants';
 import { confirmInvoiceAnyway } from './jobCardPrompts';
 import { summarizeFieldStates, INSTANT_SAVE_STATUS_TEXT } from './useInstantSave';
@@ -32,7 +32,8 @@ export default function JobIdentityStrip({
   saveCosting,
   fetchCurrentTotal,
   descriptionError = null,
-  setDescriptionError
+  setDescriptionError,
+  whenPartSavesSettled
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
@@ -132,7 +133,14 @@ export default function JobIdentityStrip({
   const formattedDate = formatDate(dueDate, { weekday: 'short', day: 'numeric', month: 'short' });
   const titleText = isEdit ? jobNumber : 'New Job Card';
 
+  // A non-management user only gets to pick among the statuses the server allows
+  // them to set, plus whatever the job currently sits on. When the job has already
+  // moved past the point where they may touch it at all, the control is locked —
+  // office statuses stay with management.
+  const statusChangeable = canChangeStatus(canManage, status);
+  const settableStatusValues = getSettableStatusValues(canManage, status);
   const baseStatusOptions = STATUS_OPTIONS.filter(opt => {
+    if (settableStatusValues && !settableStatusValues.has(opt.value)) return false;
     if (opt.value !== 'INVOICED') return true;
     // Invoicing files a job away and runs the missing-files check + auto-archive,
     // which only happen on an existing job. Never offer it while creating a new
@@ -236,6 +244,15 @@ export default function JobIdentityStrip({
       });
       if (!ok) return;
     }
+    // A part save already in flight (or queued behind one) must land BEFORE this
+    // status write is sent — its reply can carry its own jobStatus (see
+    // useInstantItems.js's applyItemReply) and, unguarded, a slow one of those could
+    // still arrive after this and stomp the status the user just picked by hand back
+    // to whatever the part write computed. Waiting here, not there, is what actually
+    // closes that race. Never rejects, so a part save failing doesn't block the
+    // status change — see useSaveQueue.js's whenSettled. statusBusy (set by the
+    // caller before runStatusChange is called) stays held across the wait.
+    await whenPartSavesSettled?.();
     const applyLocally = () => {
       setField('status', newStatus);
       onSuccess?.();
@@ -395,13 +412,16 @@ export default function JobIdentityStrip({
             <FieldError id="jc-description-error" message={descriptionError} />
           </div>
 
-          <div className={statusClass}>
+          <div
+            className={statusClass}
+            title={!statusChangeable ? 'Only management can change this status' : undefined}
+          >
             <span className="jc-strip-status-dot" aria-hidden="true" />
             <select
               className="jc-strip-status-select"
               value={status}
               onChange={(e) => handleStatusChange(e.target.value)}
-              disabled={statusBusy}
+              disabled={statusBusy || !statusChangeable}
               aria-label="Status"
             >
               {statusOptions.map(opt => (

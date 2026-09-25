@@ -247,6 +247,23 @@ const validateUpdateContact = [
   handleValidationErrors
 ];
 
+// POST /suppliers — a supplier is its name (required, non-blank) plus optional
+// contact details. Mirrors validateCreateContact.
+const validateCreateSupplier = [
+  requiredString('name', 'Supplier name'),
+  optionalEmail('contactEmail'),
+  optionalPhone('contactPhone'),
+  handleValidationErrors
+];
+
+// PUT /suppliers/:id
+const validateUpdateSupplier = [
+  requiredString('name', 'Supplier name'),
+  optionalEmail('contactEmail'),
+  optionalPhone('contactPhone'),
+  handleValidationErrors
+];
+
 /**
  * Update user preferences validation
  * PUT /auth/me/preferences
@@ -662,6 +679,8 @@ module.exports = {
   validateUpdateCompany,
   validateCreateContact,
   validateUpdateContact,
+  validateCreateSupplier,
+  validateUpdateSupplier,
   validateJobcardListQuery,
   validateJobcardEnums,
   validateJobcardDescriptionRequired,

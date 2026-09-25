@@ -460,6 +460,17 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       return res.status(400).json({ error: itemError });
     }
 
+    // awaiting_details only ends the wait on the worker's own stop-timer form
+    // save (detailsConfirmed, sent only by that form) or on a resume (clearing
+    // the finish time of a stopped block reopens it, so there's no pending form
+    // to wait on any more). A manager editing the block's other fields — or the
+    // separate manual time-entry form — leaves it exactly as it was, so invoicing
+    // still waits for the worker's own save.
+    const isResume = !!existing.end_time && endTime === null;
+    const awaitingDetails = (data.detailsConfirmed === true || isResume)
+      ? 0
+      : existing.awaiting_details;
+
     try {
       timeEntryQueries.update.run(
         workerId,
@@ -476,6 +487,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
         equipmentChecksComments,
         startTime,
         endTime,
+        awaitingDetails,
         entryId
       );
     } catch (e) {

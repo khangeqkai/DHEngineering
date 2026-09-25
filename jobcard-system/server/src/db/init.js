@@ -308,30 +308,30 @@ function runMigrations() {
   // Old jobs invoiced before per-job rule ownership may have no costing row at all.
   // Without a row, viewing one recomputes from live settings and would track a later
   // rate/schedule change instead of staying put. Give every rowless archived job a stored
-  // row ONCE (guarded by a settings flag) — computeLiveCosting captures today's rate/rules
-  // onto the row (best available; the originals were never recorded), so from then on the
-  // job owns them. Any DB that has archived jobs already has its settings, so the captured
-  // rate is the current company rate, not 0. New jobs always get a costing row at creation,
-  // so nothing new ever needs this.
-  const archivedCostingKey = 'archived_costing_backfill_at';
-  const archivedCostingFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(archivedCostingKey);
-  if (!archivedCostingFlag) {
-    const rowless = db.prepare(
-      'SELECT id FROM jobcards WHERE archived = 1 AND id NOT IN (SELECT jobcard_id FROM job_costings)'
-    ).all();
-    let stamped = 0;
-    for (const { id } of rowless) {
-      try {
-        persistCosting(computeLiveCosting(id, null));
-        stamped++;
-      } catch (err) {
-        logger.error({ err, jobcardId: id }, 'Migration: Failed to backfill costing row for archived job');
-      }
+  // row — computeLiveCosting captures today's rate/rules onto the row (best available;
+  // the originals were never recorded), so from then on the job owns them. Any DB that
+  // has archived jobs already has its settings, so the captured rate is the current
+  // company rate, not 0. New jobs always get a costing row at creation, so nothing new
+  // ever needs this. No settings flag guards this block — the query itself (any
+  // archived job still missing a row) is the idempotence guard, which means a job that
+  // failed to backfill on an earlier boot (a locked file, a bad rate, …) is retried on
+  // every boot until it succeeds, instead of being marked "done" despite failing. A
+  // stored `archived_costing_backfill_at` row from an older version of this migration
+  // is harmless and left alone; nothing reads it any more.
+  const rowless = db.prepare(
+    'SELECT id FROM jobcards WHERE archived = 1 AND id NOT IN (SELECT jobcard_id FROM job_costings)'
+  ).all();
+  let stamped = 0;
+  for (const { id } of rowless) {
+    try {
+      persistCosting(computeLiveCosting(id, null));
+      stamped++;
+    } catch (err) {
+      logger.error({ err, jobcardId: id }, 'Migration: Failed to backfill costing row for archived job');
     }
-    settingsQueries.upsert.run(archivedCostingKey, new Date().toISOString());
-    if (stamped > 0) {
-      logger.info({ stamped }, 'Migration: Backfilled costing rows for archived jobs');
-    }
+  }
+  if (stamped > 0) {
+    logger.info({ stamped }, 'Migration: Backfilled costing rows for archived jobs');
   }
 
   // Seed the Victorian (VIC) 2026 public holidays onto existing databases that never

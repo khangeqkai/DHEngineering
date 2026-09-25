@@ -33,8 +33,10 @@ const timeEntryQueries = {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
-  // Any save of the block — the worker's own stop-timer form or a manager's edit —
-  // means its details are no longer pending, so this always clears awaiting_details.
+  // awaitingDetails is computed by the caller (jobcard-time-entries.js): cleared to 0
+  // only by the worker's own stop-timer form save (detailsConfirmed) or by a resume
+  // (the finish time being cleared) — a manager editing the block's fields no longer
+  // ends the wait on its own, so invoicing can't slip through mid-form.
   update: db.prepare(`
     UPDATE time_entries SET
       user_id = ?, item_id = ?, machine_number = ?, qty = ?, description = ?,
@@ -42,7 +44,7 @@ const timeEntryQueries = {
       first_off_inspection = ?, in_process_validation = ?,
       measuring_equipment_verification = ?, equipment_checks = ?, equipment_checks_comments = ?,
       start_time = ?, end_time = ?,
-      awaiting_details = 0,
+      awaiting_details = ?,
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),

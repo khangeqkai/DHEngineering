@@ -128,10 +128,16 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
   // its item_number, which is only a sort order and may not match what's shown
   // on screen. displayNumber is the row's position on screen, purely for the
   // toasts and prompts below; it is never sent anywhere.
+  // Resolves true when a timer was actually started (for the caller's own itemId, or
+  // for the worker named by workerId), and false on every failure or cancel path —
+  // including the "stop & start" prompt when the person declines it, or accepts it but
+  // the old run needs its fill-in form first (the new timer only starts once that form
+  // is submitted, not here). Never throws — every failure is reported with its own
+  // toast, same as before; this only adds a return value on top.
   const startTimerWithConflictCheck = useCallback(async (itemId, displayNumber, showConfirm, workerId, workerName) => {
     if (!itemId) {
       toast.error('Pick a part to start the timer');
-      return;
+      return false;
     }
     // An admin can start a timer FOR another worker. When they do, the running
     // timer belongs to that person (it shows on the worker's own screen and in
@@ -153,6 +159,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
         });
         toast.success(`Timer started on part ${displayNumber}`);
       }
+      return true;
     } catch (err) {
       // On-behalf: the chosen worker already has a timer running elsewhere. This
       // is their conflict, not the admin's, so just report it — the admin's own
@@ -168,7 +175,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
         } else {
           toast.error(err.message || 'Failed to start timer', { id: 'start-timer-failed' });
         }
-        return;
+        return false;
       }
       // Check for 409 conflict (timer running on another job/item)
       if (err.message.includes('Timer running on another job')) {
@@ -202,7 +209,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
                   startTime: result.startTime
                 });
                 toast.success(`Timer started on part ${displayNumber}`);
-                return;
+                return true;
               }
               setStoppedEntry(entry);
               if (!onSameJob) {
@@ -214,13 +221,21 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
               setEntryForm(emptyEntryForm());
               setShowEntryForm(true);
               setPendingStartItem({ itemId, displayNumber });
+              // Not started yet — it only starts once the fill-in form for the old
+              // run is submitted (see submitEntryForm's pendingStartItem branch).
+              return false;
             }
+            // Declined the switch.
+            return false;
           }
         } catch (innerErr) {
           toast.error(innerErr.message || 'Failed to switch timer', { id: 'switch-timer-failed' });
+          return false;
         }
+        return false;
       } else {
         toast.error(err.message || 'Failed to start timer', { id: 'start-timer-failed' });
+        return false;
       }
     } finally {
       setLoading(false);
@@ -330,7 +345,13 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
         inProcessValidation: entryForm.inProcessValidation,
         measuringEquipmentVerification: entryForm.measuringEquipmentVerification,
         equipmentChecks: entryForm.equipmentChecks,
-        equipmentChecksComments: (entryForm.equipmentChecksComments || '').trim()
+        equipmentChecksComments: (entryForm.equipmentChecksComments || '').trim(),
+        // Tells the server this is the worker's own stop-timer form being saved, so
+        // it can clear the "still filling in the form" flag that blocks invoicing.
+        // Only the two saves this form itself makes (this one, and the resume below
+        // when the worker cancels instead) send it — a background resume forced by
+        // an auto-logout never does, since the worker never actually confirmed it.
+        detailsConfirmed: true
       });
 
       setShowEntryForm(false);
@@ -374,7 +395,11 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
     try {
       await api.updateTimeEntry(entryJobcardId, stoppedEntry.id, {
         ...stoppedEntry,
-        endTime: null
+        endTime: null,
+        // Same as the submit path above: this resume is the worker's own stop-timer
+        // form being answered (they chose to cancel and keep working), not a
+        // background resume forced by something else.
+        detailsConfirmed: true
       });
       // Re-adopt the resumed timer as our own only when it's actually ours. An admin
       // may be resuming a run that belongs to another worker (one they stopped from

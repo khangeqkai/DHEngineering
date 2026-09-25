@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { createJobCardFolders } = require('../utils/folderCreation');
-const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
+const { authenticate, requireManagement, isManagement, canSetStatus } = require('../middleware/auth');
 const { validateJobcardEnums, validateJobcardDescriptionRequired, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions, validateItemQuantities } = require('../middleware/validation');
 const {
   jobcardQueries,
@@ -291,8 +291,8 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
       return res.status(404).json({ error: 'Job card not found' });
     }
 
-    if (data.status !== undefined && data.status !== existing.status && !isManagement(req.user.role)) {
-      return res.status(403).json({ error: 'Only management can change job card status' });
+    if (data.status !== undefined && !canSetStatus(req.user.role, existing.status, data.status)) {
+      return res.status(403).json({ error: 'Only management can set that status' });
     }
 
     // A filed-away (archived) job is locked: refuse a status change here too, so

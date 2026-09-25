@@ -7,6 +7,7 @@ import {
   priorityToken,
   getStatusBadgeClass
 } from './JobCardList.constants';
+import { canChangeStatus, getSettableStatusValues } from './jobcard/constants';
 import { formatDate, formatDateTime } from '../utils/formatters';
 
 export function getJobCardColumns({
@@ -212,9 +213,27 @@ export function getJobCardColumns({
     {
       id: 'status',
       label: 'Status',
-      renderCell: (card) => (
-        <td key="status">
-          {!showArchived ? (
+      renderCell: (card) => {
+        // Mirrors the rule in JobIdentityStrip.jsx: a non-management user only gets
+        // the popover while the job is still somewhere they're allowed to act from.
+        // Once it's moved on (or the row is archived), the badge is plain text, not
+        // a button — nothing to click, nothing to offer.
+        const changeable = !showArchived && canChangeStatus(canManage, card.status);
+        if (!changeable) {
+          return (
+            <td key="status">
+              <span
+                className={`badge ${getStatusBadgeClass(card.status)}`}
+                title={!showArchived && !canManage ? 'Only management can change this status' : undefined}
+              >
+                {STATUS_LABELS[card.status] || card.status}
+              </span>
+            </td>
+          );
+        }
+        const settableValues = getSettableStatusValues(canManage, card.status);
+        return (
+          <td key="status">
             <div className="status-popover-wrapper" ref={statusPopoverId === card.id ? popoverRef : null}>
               <button
                 type="button"
@@ -230,7 +249,7 @@ export function getJobCardColumns({
               {statusPopoverId === card.id && (
                 <div className="status-popover">
                   {Object.entries(STATUS_LABELS)
-                    .filter(([value]) => canManage || value !== 'INVOICED')
+                    .filter(([value]) => (canManage || value !== 'INVOICED') && (!settableValues || settableValues.has(value)))
                     .map(([value, label]) => (
                     <button
                       key={value}
@@ -251,13 +270,9 @@ export function getJobCardColumns({
                 </div>
               )}
             </div>
-          ) : (
-            <span className={`badge ${getStatusBadgeClass(card.status)}`}>
-              {STATUS_LABELS[card.status] || card.status}
-            </span>
-          )}
-        </td>
-      )
+          </td>
+        );
+      }
     },
     {
       id: 'latestNote',

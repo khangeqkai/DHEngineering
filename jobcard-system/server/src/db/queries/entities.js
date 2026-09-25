@@ -121,6 +121,11 @@ const supplierQueries = {
   getAll: db.prepare('SELECT * FROM suppliers WHERE active = 1 ORDER BY name ASC'),
   getAllIncludeInactive: db.prepare('SELECT * FROM suppliers ORDER BY name ASC'),
 
+  // Supplier names are unique (case-insensitive), mirroring companyQueries.getByName.
+  // Matches archived (inactive) suppliers too, so the create/update routes can tell
+  // the caller to restore the archived one instead of leaving them at a dead end.
+  getByName: db.prepare('SELECT * FROM suppliers WHERE name = ? COLLATE NOCASE'),
+
   create: db.prepare(`
     INSERT INTO suppliers (id, name, contact_name, contact_phone, contact_email, address, services, approved, notes, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))

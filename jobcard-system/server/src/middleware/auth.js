@@ -79,4 +79,32 @@ const MANAGEMENT_ROLES = ['admin', 'manager'];
 const isManagement = (role) => MANAGEMENT_ROLES.includes(role);
 const requireManagement = requireRole(...MANAGEMENT_ROLES);
 
-module.exports = { authenticate, requireRole, requireAdmin, requireManagement, isManagement, MANAGEMENT_ROLES };
+// Which statuses a non-management user (a worker) may move a job TO, and which
+// current statuses they're allowed to move it FROM. In Progress and Done are
+// normally driven by logged work (see utils/jobStatusAuto.js); the one manual
+// nudge a worker needs is flagging "waiting on material" and clearing it again.
+// Every other status change is an office decision and stays management-only.
+const WORKER_SETTABLE_STATUSES = ['IN_PROGRESS', 'AWAITING_MATERIAL'];
+const WORKER_STATUS_FROM = ['OPEN', 'IN_PROGRESS', 'AWAITING_MATERIAL'];
+
+// Single source of truth for "may this role move this job from fromStatus to
+// toStatus?" — used by both the status-only route and the general job update
+// route so the rule can never drift between them. A no-op (status unchanged)
+// is always allowed, for any role.
+function canSetStatus(role, fromStatus, toStatus) {
+  if (fromStatus === toStatus) return true;
+  if (isManagement(role)) return true;
+  return WORKER_SETTABLE_STATUSES.includes(toStatus) && WORKER_STATUS_FROM.includes(fromStatus);
+}
+
+module.exports = {
+  authenticate,
+  requireRole,
+  requireAdmin,
+  requireManagement,
+  isManagement,
+  MANAGEMENT_ROLES,
+  WORKER_SETTABLE_STATUSES,
+  WORKER_STATUS_FROM,
+  canSetStatus
+};

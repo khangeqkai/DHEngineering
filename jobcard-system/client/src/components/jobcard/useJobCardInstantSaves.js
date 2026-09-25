@@ -28,7 +28,10 @@ export function useJobCardInstantSaves(formHook, isEdit, jobCardId, saveQueue, o
   // never an unsaved edit" route: `status` is stripped from the isDirty baseline
   // (useJobCardForm.js), so this can never mark the card dirty or arm a save.
   // `jobStatus` is only present on a reply when that write actually moved the
-  // status, so a slow reply can never undo a status the user has since picked.
+  // status. A slow reply landing after the user has since picked their own status
+  // by hand could otherwise still stomp it back — that race is closed not here but
+  // in JobIdentityStrip.jsx, which waits for every part save already in flight to
+  // settle before it sends a hand-picked status change.
   // setFormData is a raw useState setter (stable identity), so this callback never
   // changes and doesn't churn applyItemReply/writeItemField/etc below it.
   const onJobStatusChange = useCallback((status) => {

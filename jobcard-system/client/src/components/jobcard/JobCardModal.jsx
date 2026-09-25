@@ -420,6 +420,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       saveCosting={costingHook.handleSaveCosting}
       descriptionError={formHook.descriptionError}
       setDescriptionError={formHook.setDescriptionError}
+      whenPartSavesSettled={formHook.saveQueue.whenSettled}
     />
   );
 

@@ -3,6 +3,12 @@ const path = require('path');
 const logger = require('./logger');
 const db = require('../db/database');
 
+// Windows reserved device names: unusable as a file/folder name whether or not an
+// extension follows (CON, con.txt, COM1, lpt1.pdf, … are all reserved), regardless
+// of anything else in the name. Checked case-insensitively against the whole
+// sanitized string.
+const RESERVED_DEVICE_NAME = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.[^.]*)?$/i;
+
 /**
  * Sanitize a string for use as a folder name.
  * Removes filesystem-unsafe characters, path traversal sequences, and control characters.
@@ -10,7 +16,7 @@ const db = require('../db/database');
  */
 function sanitizeFolderName(name) {
   if (!name) return '';
-  return name
+  const cleaned = name
     .replace(/[<>:"/\\|?*]/g, '_')   // filesystem-unsafe chars (Windows + POSIX)
     .replace(/[\x00-\x1f\x7f]/g, '') // control characters
     .trim()
@@ -18,6 +24,10 @@ function sanitizeFolderName(name) {
     .replace(/^\.+/, '')             // leading dots (hidden files on POSIX)
     .replace(/\.+$/, '')             // trailing dots (invalid on Windows)
     .replace(/\s+$/, '');            // trailing whitespace (invalid on Windows)
+  // A reserved device name (CON, PRN, AUX, NUL, COM1-9, LPT1-9) can't be created
+  // on Windows at all — with or without an extension — so append an underscore
+  // rather than silently failing to write the file/folder.
+  return RESERVED_DEVICE_NAME.test(cleaned) ? `${cleaned}_` : cleaned;
 }
 
 /**
