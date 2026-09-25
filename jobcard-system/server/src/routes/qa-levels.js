@@ -292,8 +292,11 @@ router.post('/:id/templates', authenticate, requireManagement, (req, res) => {
 
     // One name, one form. The file on disk IS the form, so a second form under the same
     // name would overwrite it and leave two records sharing one file — removing either one
-    // then takes the file away and breaks every job on this level. Checked before the write.
-    if (qaLevelTemplateQueries.getByLevel.all(id).some(t => t.file_name === sanitizedFileName)) {
+    // then takes the file away and breaks every job on this level. Checked before the write,
+    // ignoring case: Windows file names are case-insensitive, so "Inspection.pdf" and
+    // "inspection.pdf" are the same file on disk.
+    const lowerName = sanitizedFileName.toLowerCase();
+    if (qaLevelTemplateQueries.getByLevel.all(id).some(t => t.file_name.toLowerCase() === lowerName)) {
       return res.status(409).json({
         error: `This level already has a form called "${sanitizedFileName}". Remove that one first if you're replacing it, or rename the file.`
       });

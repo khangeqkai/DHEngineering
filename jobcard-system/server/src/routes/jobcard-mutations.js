@@ -91,6 +91,11 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
       if (!contact || contact.company_id !== company.id) {
         return res.status(400).json({ error: 'That contact person does not work at the chosen customer' });
       }
+      // The picker hides archived people, but the form may have been open when they
+      // were archived — refuse, as for an archived customer, rather than start new work for them.
+      if (contact.archived) {
+        return res.status(400).json({ error: 'That contact person has been archived. Restore them or pick someone else.' });
+      }
     }
 
     const id = `jobcard:${uuidv4()}`;

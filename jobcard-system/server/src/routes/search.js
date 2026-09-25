@@ -331,8 +331,9 @@ function searchTime(req, res, canManage) {
     // machine_number is a comma-joined list (e.g. "5, 9"), so an exact match
     // drops entries where this machine was used alongside others. Normalize out
     // spaces and wrap both sides in commas for a boundary-safe membership test.
+    // The picked machine loses its spaces too, or "CNC 1" never matches "CNC1".
     conditions.push(`(',' || REPLACE(te.machine_number, ' ', '') || ',') LIKE ?`);
-    params.push(`%,${machineId},%`);
+    params.push(`%,${String(machineId).replace(/ /g, '')},%`);
   }
   if (jobNumber) { conditions.push('j.job_number LIKE ?'); params.push(`%${jobNumber.trim()}%`); }
   pushMomentRange(conditions, params, 'te.start_time', dateFrom, dateTo);
