@@ -17,6 +17,7 @@ const {
   recordHistory
 } = require('../db/database');
 const { db } = require('../db/connection');
+const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
 const { formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings } = require('./jobcard-helpers');
 const jobcardMutationsRoutes = require('./jobcard-mutations');
 const jobcardPrintoutRoutes = require('./jobcard-printout');
@@ -377,12 +378,12 @@ router.patch('/:id/status', authenticate, (req, res) => {
 
     const isInvoicingTransition = status === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
 
-    // A running timer can't be confirmed away like a missing attachment can — refuse
-    // before any write, and before the soft attachment checkpoint below.
-    if (isInvoicingTransition && timeEntryQueries.countRunningByJobcard.get(id).count > 0) {
-      return res.status(409).json({
-        error: 'A timer is still running on this job. Stop it before marking the job invoiced.'
-      });
+    // A running timer, or a just-stopped one whose form isn't saved yet, can't be
+    // confirmed away like a missing attachment can — refuse before any write, and
+    // before the soft attachment checkpoint below.
+    const timeBlock = isInvoicingTransition ? invoiceBlockedByTime(id) : null;
+    if (timeBlock) {
+      return res.status(409).json({ error: timeBlock });
     }
 
     // Soft close-out checkpoint: when invoicing (which also archives) and files

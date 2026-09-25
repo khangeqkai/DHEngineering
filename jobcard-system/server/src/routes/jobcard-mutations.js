@@ -12,7 +12,6 @@ const {
   qaLevelQueries,
   companyQueries,
   contactQueries,
-  timeEntryQueries,
   getSettings,
   recordHistory
 } = require('../db/database');
@@ -22,6 +21,7 @@ const { itemSummary, describePart, assigneeNames, buildQaTemplateWarning } = req
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
 const { db } = require('../db/connection');
+const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
 
 const router = express.Router();
 
@@ -345,12 +345,12 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     const shouldArchive = newStatus === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
     const invoicedDate = shouldArchive ? new Date().toISOString() : null;
 
-    // A running timer can't be confirmed away like a missing attachment can — refuse
-    // before any write, and before the soft attachment checkpoint below.
-    if (shouldArchive && timeEntryQueries.countRunningByJobcard.get(id).count > 0) {
-      return res.status(409).json({
-        error: 'A timer is still running on this job. Stop it before marking the job invoiced.'
-      });
+    // A running timer, or a just-stopped one whose form isn't saved yet, can't be
+    // confirmed away like a missing attachment can — refuse before any write, and
+    // before the soft attachment checkpoint below.
+    const timeBlock = shouldArchive ? invoiceBlockedByTime(id) : null;
+    if (timeBlock) {
+      return res.status(409).json({ error: timeBlock });
     }
 
     // Soft close-out checkpoint: when this update would invoice (and archive) the

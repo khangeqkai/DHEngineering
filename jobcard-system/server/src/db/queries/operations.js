@@ -56,6 +56,15 @@ const timeEntryQueries = {
     'SELECT COUNT(*) as count FROM time_entries WHERE jobcard_id = ? AND end_time IS NULL'
   ),
 
+  // How many blocks on a job were stopped since the given moment and still carry
+  // no description — a worker's stop-timer form not yet saved (that form will not
+  // save without one). Invoicing waits on these, because once the job is filed
+  // away the form's save is refused and its pieces, scrap and inspection answers
+  // are lost. end_time is ISO-8601 UTC, so the string comparison is chronological.
+  countAwaitingDetailsByJobcard: db.prepare(
+    "SELECT COUNT(*) as count FROM time_entries WHERE jobcard_id = ? AND end_time IS NOT NULL AND end_time >= ? AND (description IS NULL OR TRIM(description) = '')"
+  ),
+
   // Whether this worker has started a MORE RECENT block than the given one, on any
   // job — used to confirm a block being resumed is the worker's own most recently
   // started run, not some older block they still happen to own.

@@ -72,11 +72,11 @@ export function useInstantSave(jobCardId, saveQueue, { onSaved } = {}) {
       saveQueue.clearFailure(`field:${name}`);
       return;
     }
-    saveQueue.enqueue(`field:${name}`, () => api.updateJobcard(forJobCardId, { [name]: value })
+    saveQueue.enqueue(`field:${name}`, (isCurrent) => api.updateJobcard(forJobCardId, { [name]: value })
       .then((result) => {
-        // A reply for a job the user has since left must not mark some OTHER
-        // job's field as saved, or touch its screen state.
-        if (jobCardIdRef.current !== forJobCardId) return;
+        // A reply for a job the user has since left — or for an earlier opening of
+        // this same job — must not mark a field as saved on the screen now showing.
+        if (!isCurrent()) return;
         setSavedNames(prev => ({ ...prev, [name]: true }));
         onSaved?.(name, value);
         if (alsoMarkSaved) {

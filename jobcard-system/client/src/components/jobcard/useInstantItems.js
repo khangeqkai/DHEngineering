@@ -190,9 +190,9 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     const lineNo = lineItem ? (lineItem.position != null ? lineItem.position : lineIdx + 1) : null;
     const noun = ITEM_FIELD_NOUN[field] || field;
     const label = lineNo != null ? `part ${lineNo}'s ${noun}` : `that part's ${noun}`;
-    saveQueue.enqueue(`item:${itemId}`, () => api.updateJobItem(forJobCardId, itemId, { [field]: value })
+    saveQueue.enqueue(`item:${itemId}`, (isCurrent) => api.updateJobItem(forJobCardId, itemId, { [field]: value })
       .then((reply) => {
-        if (jobCardIdRef.current !== forJobCardId) return;
+        if (!isCurrent()) return;
         applyItemReply(reply);
       })
       .catch(err => {
@@ -205,7 +205,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
         // the queue doesn't hold this key open as a permanently "failed" write
         // for a row that no longer exists.
         if (err?.status === 404 && err?.data?.error === 'Part not found') {
-          if (jobCardIdRef.current === forJobCardId) {
+          if (isCurrent()) {
             toast.error("That part was removed, so the change wasn't saved.", { id: `item-gone-${itemId}` });
           }
           return;
@@ -220,7 +220,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     const localId = row.id;
     if (creatingRef.current.has(localId)) return;
     creatingRef.current.add(localId);
-    saveQueue.enqueue(`item:${localId}`, () => {
+    saveQueue.enqueue(`item:${localId}`, (isCurrent) => {
       const current = lineItemsRef.current.find(it => it.id === localId);
       // Already real (an earlier queued create for this row won) or removed since
       // this was queued — nothing left to send. Completeness is deliberately NOT
@@ -235,7 +235,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
       }
       return api.addJobItem(forJobCardId, buildItemPayload(row))
         .then((reply) => {
-          if (jobCardIdRef.current !== forJobCardId) return;
+          if (!isCurrent()) return;
           const nowOnScreen = lineItemsRef.current.find(it => it.id === localId);
           if (!nowOnScreen) {
             // Removed from the screen while the create was travelling (a local row's
@@ -266,7 +266,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
           }
         })
         .catch(err => {
-          if (jobCardIdRef.current !== forJobCardId) return;
+          if (!isCurrent()) return;
           // Never re-sent automatically — the row stays local, exactly as typed.
           // Completing it again (any required box) is what retries.
           toast.error(err.message || "Couldn't add that part", { id: `item-create-${localId}` });
@@ -370,10 +370,10 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     const lineItem = lineIdx !== -1 ? lineItemsRef.current[lineIdx] : null;
     const lineNo = lineItem ? (lineItem.position != null ? lineItem.position : lineIdx + 1) : null;
     const label = lineNo != null ? `removing part ${lineNo}` : 'removing that part';
-    saveQueue.enqueue(`item:${item.id}`, () => api.deleteJobItem(forJobCardId, item.id)
+    saveQueue.enqueue(`item:${item.id}`, (isCurrent) => api.deleteJobItem(forJobCardId, item.id)
       .then((reply) => {
         removingRef.current.delete(item.id);
-        if (jobCardIdRef.current !== forJobCardId) return;
+        if (!isCurrent()) return;
         if (Array.isArray(reply?.items)) {
           applyItemReply(reply);
         } else {

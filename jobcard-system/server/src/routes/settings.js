@@ -110,7 +110,8 @@ router.put('/', requireManagement, async (req, res) => {
     Object.assign(updates, home.updates);
     // Switching home access on/off is a security change, so it leaves a trace
     // (set/not set only — never the code).
-    const homeAccessChange = homeAccess.homeAccessChange(db.getSettings(), home.updates);
+    const before = db.getSettings();
+    const homeAccessChange = homeAccess.homeAccessChange(before, home.updates);
 
     // Validate job folders base path if provided
     if (jobFoldersBase !== undefined) {
@@ -184,6 +185,21 @@ router.put('/', requireManagement, async (req, res) => {
 
     if (Object.keys(updates).length > 0) {
       db.updateSettings(updates);
+    }
+    // Every other setting that actually changed leaves one trail entry, before and
+    // after — rates, overtime, time zone, job numbering and the folders path decide
+    // what gets billed and where files go, so each change must trace to a person.
+    // The home access code is left out: its set/not-set trace is recorded below,
+    // and the code itself is a secret.
+    const settingsChanges = {};
+    for (const [key, value] of Object.entries(updates)) {
+      if (homeAccess.HOME_ACCESS_SECRET_KEYS.includes(key)) continue;
+      const from = before[key] ?? '';
+      if (String(from) === String(value ?? '')) continue;
+      settingsChanges[snakeToCamel(key)] = { from, to: value };
+    }
+    if (Object.keys(settingsChanges).length > 0) {
+      recordHistory('settings', 'general', 'update', req.user.userId, req.user.name || req.user.username, settingsChanges);
     }
     if (homeAccessChange) {
       recordHistory('settings', 'home_access', 'update', req.user.userId, req.user.name || req.user.username, homeAccessChange);

@@ -93,6 +93,11 @@ export function useSaveQueue(jobCardId) {
     const label = options.label || key;
     const forJobCardId = jobCardIdRef.current;
     const forOpening = openingRef.current;
+    // Handed to `run` so a caller's own reply work can apply the same "still this
+    // job, still this opening" test the queue applies below — checking the job id
+    // alone lets a reply from before a close-and-reopen of the SAME job land on the
+    // fresh screen.
+    const isCurrent = () => jobCardIdRef.current === forJobCardId && openingRef.current === forOpening;
     const prior = chains.current[key];
 
     // Recorded the instant it's asked for, even if it turns out to run right
@@ -106,12 +111,11 @@ export function useSaveQueue(jobCardId) {
       // way the write actually starts here, which is the only place 'inFlight'
       // is set once a key has been queued behind something else.
       setEntry(key, { label, state: 'inFlight' });
-      return run().then(
+      return run(isCurrent).then(
         (result) => {
           // A reply for a job the user has since left — or for an earlier opening of
-          // this same job — must not touch what is on screen now. Every hand-rolled
-          // version of this guard is now just this one.
-          if (jobCardIdRef.current === forJobCardId && openingRef.current === forOpening) {
+          // this same job — must not touch what is on screen now.
+          if (isCurrent()) {
             setEntry(key, null);
             // NOT_LANDED means nothing was stored (a refused create/remove that
             // already reported itself) — clear the key so it stops
@@ -122,7 +126,7 @@ export function useSaveQueue(jobCardId) {
           return result;
         },
         (err) => {
-          if (jobCardIdRef.current === forJobCardId && openingRef.current === forOpening) {
+          if (isCurrent()) {
             setEntry(key, { label, state: 'failed' });
             // Never re-sent automatically — house rule. This only flags the key
             // and waits on the caller to enqueue it again (typically the user

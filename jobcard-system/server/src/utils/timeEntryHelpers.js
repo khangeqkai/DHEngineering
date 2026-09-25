@@ -115,6 +115,26 @@ function findEntryForJob(res, jobcardId, entryId) {
   return existing;
 }
 
+// How long after a stop invoicing waits for that block's fill-in form. Long enough
+// to count pieces and answer the inspection checks; short enough that a form the
+// worker walked away from never holds the job up for good.
+const AWAITING_DETAILS_WINDOW_MS = 30 * 60 * 1000;
+
+// Why a job can't be invoiced yet because of its time, or null when it can. A
+// running timer can't be confirmed away like a missing attachment can, and nor can
+// a just-stopped block whose worker is still filling in their form — invoicing
+// files the job away, after which that form's save is refused.
+function invoiceBlockedByTime(jobcardId) {
+  if (timeEntryQueries.countRunningByJobcard.get(jobcardId).count > 0) {
+    return 'A timer is still running on this job. Stop it before marking the job invoiced.';
+  }
+  const since = new Date(Date.now() - AWAITING_DETAILS_WINDOW_MS).toISOString();
+  if (timeEntryQueries.countAwaitingDetailsByJobcard.get(jobcardId, since).count > 0) {
+    return 'Someone has just stopped a timer on this job and is still filling in their pieces. Try again once they have saved it.';
+  }
+  return null;
+}
+
 // A filed-away (invoiced) job's time can't be changed — start, manual add, edit
 // (including resuming/clearing a finish time) and delete all refuse before any
 // write. Stop is never gated here: a running timer must always be stoppable, even
@@ -230,6 +250,7 @@ module.exports = {
   wholeQty,
   findEntryForJob,
   refuseIfArchived,
+  invoiceBlockedByTime,
   flagToBool,
   isCriticalJob,
   checkCriticalInspection,

@@ -96,7 +96,7 @@ function formatTimeEntry(row) {
     jobcardId: row.jobcard_id,
     jobNumber: row.job_number,
     workerName: row.user_name,
-    itemNumber: row.item_number,
+    itemNumber: row.part_position,
     machineNumber: row.machine_number,
     qty: row.qty,
     description: row.description,
@@ -315,9 +315,15 @@ function searchTime(req, res, canManage) {
 
   if (!canManage) { conditions.push('te.user_id = ?'); params.push(req.user.userId); }
 
+  // A part's number as the job screen shows it — its place among the job's parts —
+  // not the stored item_number, which is only a sort order and keeps its gaps after
+  // a part is removed (item_number is unique per job, see cleanUpDuplicateItemNumbering).
+  // NULL for a block logged against no part, so it never matches a typed number.
+  const partPosition = '(CASE WHEN ji.id IS NOT NULL THEN (SELECT COUNT(*) FROM job_items p WHERE p.jobcard_id = ji.jobcard_id AND p.item_number <= ji.item_number) END)';
+
   if (q) {
     const like = `%${q.trim()}%`;
-    conditions.push('(u.name LIKE ? OR te.description LIKE ? OR ji.item_number LIKE ? OR te.machine_number LIKE ?)');
+    conditions.push(`(u.name LIKE ? OR te.description LIKE ? OR ${partPosition} LIKE ? OR te.machine_number LIKE ?)`);
     params.push(like, like, like, like);
   }
   if (workerId) { conditions.push('te.user_id = ?'); params.push(workerId); }
@@ -341,7 +347,7 @@ function searchTime(req, res, canManage) {
 
   const offset = (page - 1) * PAGE_SIZE;
   const rows = db.prepare(
-    `SELECT te.*, u.name as user_name, j.job_number, ji.item_number as item_number, CASE WHEN te.end_time IS NOT NULL THEN (julianday(te.end_time) - julianday(te.start_time)) * 24 ELSE NULL END as duration_hours ${from} ${where} ORDER BY te.start_time DESC LIMIT ? OFFSET ?`
+    `SELECT te.*, u.name as user_name, j.job_number, ${partPosition} as part_position, CASE WHEN te.end_time IS NOT NULL THEN (julianday(te.end_time) - julianday(te.start_time)) * 24 ELSE NULL END as duration_hours ${from} ${where} ORDER BY te.start_time DESC LIMIT ? OFFSET ?`
   ).all(...params, PAGE_SIZE, offset);
 
   res.json({

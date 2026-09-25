@@ -241,14 +241,13 @@ export function useJobCardForm(jobCardId, { onInstantSave } = {}) {
     if (!forJobCardId) return; // new job — local only
 
     const label = `${employee.name || employee.username || 'that worker'}'s assignment`;
-    saveQueue.enqueue(`assignee:${workerId}`, () => (willAssign
+    saveQueue.enqueue(`assignee:${workerId}`, (isCurrent) => (willAssign
       ? api.assignWorker(forJobCardId, workerId)
       : api.unassignWorker(forJobCardId, workerId))
       .then(() => {
-        // A reply for a job the user has since left must not mark some OTHER job's
-        // people list as saved — only fold the baseline forward while this is
-        // still the job on screen.
-        if (jobCardIdRef.current !== forJobCardId) return;
+        // A reply for a job the user has since left — or for an earlier opening of
+        // this same job — must not mark the people list now on screen as saved.
+        if (!isCurrent()) return;
         onInstantSave?.();
         setSaved(prev => ({
           ...prev,
