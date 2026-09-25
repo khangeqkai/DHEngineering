@@ -170,8 +170,9 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
 
     if (reply.attachmentWarnings !== undefined) onAttachmentWarnings?.(reply.attachmentWarnings);
     // A part create/update can auto-advance the job's status the same way starting
-    // a timer does — the reply carries it top-level (jobStatus), always, not only
-    // when it changed, so this just mirrors it onto the screen every time.
+    // a timer does — the reply carries jobStatus top-level only when THIS write
+    // actually moved the status, so a reply that lands after the user has since
+    // picked a different status can never stomp it back onto the screen.
     if (reply.jobStatus !== undefined) onJobStatusChange?.(reply.jobStatus);
     return bareSingle ? mapLineItemFromApi(bareSingle) : null;
   }, [setLineItems, onItemSaved, onAttachmentWarnings, onJobStatusChange]);
@@ -382,8 +383,8 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
           // as a sort key and gaps after a delete are expected and fine.
           setLineItems(prev => prev.filter(it => it.id !== item.id));
           // applyItemReply isn't called on this branch, so jobStatus has to be
-          // picked up here too — the delete route already carries it top-level
-          // even on this shape.
+          // picked up here too — the delete route carries it top-level on this
+          // shape as well, but only when this delete actually moved the status.
           if (reply?.jobStatus !== undefined) onJobStatusChange?.(reply.jobStatus);
         }
         onItemRemoved?.(item.id);

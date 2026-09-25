@@ -15,6 +15,11 @@
 // change (raise a quantity, add a part, or remove the logged pieces that met a
 // target) — a bare status flip won't stick.
 //
+// A job nobody has logged any work on yet has nothing to follow: there's no shop-floor
+// reality to snap its status to, so its status is whatever people set it to (Quote,
+// Open, Awaiting Material, …). This also means a part being added, changed or removed
+// before work starts must not move it — that's a paperwork edit, not a work event.
+//
 // It does NOT write its own history row. Instead it RETURNS the status change (or
 // null), and the caller folds it into the history entry it already writes for the
 // work event (start/stop timer, add/edit time block) — so one work action shows as
@@ -29,11 +34,11 @@ const logger = require('./logger');
 // ordered quantity. A job with no lines is never "complete". Quantities are enforced
 // on save to be positive whole numbers, so a line whose quantity is missing or zero
 // can't be satisfied and blocks completion.
-function isJobComplete(jobcardId) {
+// `entries` is the job's time entries, already fetched by the caller.
+function isJobComplete(jobcardId, entries) {
   const items = jobItemQueries.getByJobcard.all(jobcardId);
   if (items.length === 0) return false;
 
-  const entries = timeEntryQueries.getByJobcard.all(jobcardId);
   const doneByItem = new Map();
   for (const e of entries) {
     if (!e.end_time) continue; // only finished work counts toward completion
@@ -61,7 +66,11 @@ function syncStatusToWork(jobcardId, actor) {
     if (!job || job.archived === 1) return null;
     if (job.status === 'INVOICED') return null; // terminal — leave filed-away jobs alone
 
-    const target = isJobComplete(jobcardId) ? 'DONE' : 'IN_PROGRESS';
+    // No work logged yet — nothing to follow (see the header).
+    const entries = timeEntryQueries.getByJobcard.all(jobcardId);
+    if (entries.length === 0) return null;
+
+    const target = isJobComplete(jobcardId, entries) ? 'DONE' : 'IN_PROGRESS';
     if (job.status === target) return null; // already correct — don't re-write
 
     // CUST_NOTIFIED sits AFTER done: the work is finished and the customer has been

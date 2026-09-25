@@ -27,6 +27,8 @@ export function useJobCardInstantSaves(formHook, isEdit, jobCardId, saveQueue, o
   // `jobStatus` straight into form state is the same "server-confirmed value,
   // never an unsaved edit" route: `status` is stripped from the isDirty baseline
   // (useJobCardForm.js), so this can never mark the card dirty or arm a save.
+  // `jobStatus` is only present on a reply when that write actually moved the
+  // status, so a slow reply can never undo a status the user has since picked.
   // setFormData is a raw useState setter (stable identity), so this callback never
   // changes and doesn't churn applyItemReply/writeItemField/etc below it.
   const onJobStatusChange = useCallback((status) => {

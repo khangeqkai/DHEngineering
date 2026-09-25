@@ -138,11 +138,12 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
     // recomputed from the item list this write actually produced, so the screen
     // never has to remember to go fetch them separately.
     const attachmentWarnings = computeAttachmentWarnings(id, items, existing.qa_level_id);
-    // Carried on every reply (not only when it changed) so the screen can show the
-    // job's current status without a separate re-fetch — see docs/notes/jobs-and-status.md.
-    const jobStatus = jobcardQueries.getById.get(id).status;
 
-    res.status(201).json({ ...created, item: created, items, attachmentWarnings, jobStatus });
+    // jobStatus only when this write moved it — see docs/notes/jobs-and-status.md.
+    res.status(201).json({
+      ...created, item: created, items, attachmentWarnings,
+      ...(statusChange ? { jobStatus: statusChange.to } : {})
+    });
   } catch (err) {
     logger.error({ err }, 'Add job item error');
     res.status(500).json({ error: 'Could not add the part' });
@@ -215,9 +216,12 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
     const items = formatItems(allItems);
     const updated = items.find(i => i.id === itemId);
     const attachmentWarnings = computeAttachmentWarnings(id, items, existing.qa_level_id);
-    const jobStatus = jobcardQueries.getById.get(id).status;
 
-    res.json({ ...updated, item: updated, items, attachmentWarnings, jobStatus });
+    // jobStatus only when this write moved it — see docs/notes/jobs-and-status.md.
+    res.json({
+      ...updated, item: updated, items, attachmentWarnings,
+      ...(statusChange ? { jobStatus: statusChange.to } : {})
+    });
   } catch (err) {
     logger.error({ err }, 'Update job item error');
     res.status(500).json({ error: 'Could not update the part' });
@@ -276,9 +280,12 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
 
     const items = formatItems(jobItemQueries.getByJobcard.all(id));
     const attachmentWarnings = computeAttachmentWarnings(id, items, existing.qa_level_id);
-    const jobStatus = jobcardQueries.getById.get(id).status;
 
-    res.json({ success: true, items, attachmentWarnings, jobStatus });
+    // jobStatus only when this write moved it — see docs/notes/jobs-and-status.md.
+    res.json({
+      success: true, items, attachmentWarnings,
+      ...(statusChange ? { jobStatus: statusChange.to } : {})
+    });
   } catch (err) {
     logger.error({ err }, 'Delete job item error');
     res.status(500).json({ error: 'Could not remove the part' });

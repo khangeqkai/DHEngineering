@@ -203,6 +203,11 @@ db.exec(`
     measuring_equipment_verification INTEGER,
     equipment_checks INTEGER,
     equipment_checks_comments TEXT,
+    -- Set by the stop-timer route the moment a block is stopped; cleared by any
+    -- edit of the block (the worker's own stop-timer form, or a manager's edit).
+    -- Invoicing waits on this — it names a block whose fill-in form is still open,
+    -- rather than guessing it from a blank description or a timing window.
+    awaiting_details INTEGER DEFAULT 0,
 
     created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),

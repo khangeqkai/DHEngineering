@@ -61,6 +61,9 @@ const migrations = [
   { table: 'time_entries', column: 'equipment_checks', type: 'INTEGER' },
   { table: 'time_entries', column: 'equipment_checks_comments', type: 'TEXT' },
   { table: 'time_entries', column: 'item_id', type: 'TEXT' },
+  // Set by the stop-timer route, cleared by any edit of the block; invoicing
+  // waits on it (see the CREATE TABLE comment in schema.js).
+  { table: 'time_entries', column: 'awaiting_details', type: 'INTEGER DEFAULT 0' },
   { table: 'job_items', column: 'material', type: 'TEXT' },
   // Added 2026-04-29 (per-line treatments). Every database made since the
   // June 2026 install already has it; this only guards a pre-April file.

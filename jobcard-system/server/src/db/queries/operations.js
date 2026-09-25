@@ -33,6 +33,8 @@ const timeEntryQueries = {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
+  // Any save of the block — the worker's own stop-timer form or a manager's edit —
+  // means its details are no longer pending, so this always clears awaiting_details.
   update: db.prepare(`
     UPDATE time_entries SET
       user_id = ?, item_id = ?, machine_number = ?, qty = ?, description = ?,
@@ -40,6 +42,7 @@ const timeEntryQueries = {
       first_off_inspection = ?, in_process_validation = ?,
       measuring_equipment_verification = ?, equipment_checks = ?, equipment_checks_comments = ?,
       start_time = ?, end_time = ?,
+      awaiting_details = 0,
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
@@ -56,13 +59,16 @@ const timeEntryQueries = {
     'SELECT COUNT(*) as count FROM time_entries WHERE jobcard_id = ? AND end_time IS NULL'
   ),
 
-  // How many blocks on a job were stopped since the given moment and still carry
-  // no description — a worker's stop-timer form not yet saved (that form will not
-  // save without one). Invoicing waits on these, because once the job is filed
-  // away the form's save is refused and its pieces, scrap and inspection answers
-  // are lost. end_time is ISO-8601 UTC, so the string comparison is chronological.
+  // How many blocks on a job were stopped by the stop route since the given moment
+  // and are still marked awaiting_details — a worker's stop-timer form not yet
+  // saved. Invoicing waits on these, because once the job is filed away the form's
+  // save is refused and its pieces, scrap and inspection answers are lost. The
+  // 30-minute window (applied by the caller) still frees a form someone walked
+  // away from, rather than blocking the job for good. A hand-added block never
+  // carries the flag (only the stop route sets it), so it never trips this.
+  // end_time is ISO-8601 UTC, so the string comparison is chronological.
   countAwaitingDetailsByJobcard: db.prepare(
-    "SELECT COUNT(*) as count FROM time_entries WHERE jobcard_id = ? AND end_time IS NOT NULL AND end_time >= ? AND (description IS NULL OR TRIM(description) = '')"
+    'SELECT COUNT(*) as count FROM time_entries WHERE jobcard_id = ? AND awaiting_details = 1 AND end_time >= ?'
   ),
 
   // Whether this worker has started a MORE RECENT block than the given one, on any
@@ -83,8 +89,11 @@ const timeEntryQueries = {
     LIMIT 1
   `),
 
+  // Marks the block awaiting_details = 1 — the stop route is the one place that
+  // opens a fill-in form nobody has saved yet; countAwaitingDetailsByJobcard below
+  // reads this back, and the update statement above is what clears it.
   stop: db.prepare(`
-    UPDATE time_entries SET end_time = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    UPDATE time_entries SET end_time = ?, awaiting_details = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
