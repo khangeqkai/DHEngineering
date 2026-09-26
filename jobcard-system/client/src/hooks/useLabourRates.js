@@ -173,7 +173,7 @@ export function useLabourRates() {
     setSavingSchedule(true);
     try {
       await api.updateSettings({ labourSchedule: tidied });
-      await load();
+      setSchedule(tidied);
       toast.success('Weekly schedule saved');
     } catch (err) {
       toast.error(err.message || 'Failed to save schedule');
@@ -200,14 +200,13 @@ export function useLabourRates() {
     setSavingDefaultRate(true);
     try {
       await api.updateSettings({ labourDefaultRate: defaultRate });
-      await load();
       toast.success('Default hourly rate saved');
     } catch (err) {
       toast.error(err.message || 'Failed to save default rate');
     } finally {
       setSavingDefaultRate(false);
     }
-  }, [defaultRate, load, setFieldErrors]);
+  }, [defaultRate, setFieldErrors]);
 
   const handleSaveMultipliers = useCallback(async () => {
     for (const [v, label, field] of [
@@ -229,14 +228,13 @@ export function useLabourRates() {
         labourOt2Multiplier: ot2Mult,
         labourHolidayMultiplier: holidayMult
       });
-      await load();
       toast.success('Overtime multipliers saved');
     } catch (err) {
       toast.error(err.message || 'Failed to save multipliers');
     } finally {
       setSavingMultipliers(false);
     }
-  }, [ot1Mult, ot2Mult, holidayMult, load, setFieldErrors]);
+  }, [ot1Mult, ot2Mult, holidayMult, setFieldErrors]);
 
   const addHoliday = useCallback((date) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
@@ -251,14 +249,13 @@ export function useLabourRates() {
     setSavingHolidays(true);
     try {
       await api.updateSettings({ labourPublicHolidays: holidays });
-      await load();
       toast.success('Public holidays saved');
     } catch (err) {
       toast.error(err.message || 'Failed to save public holidays');
     } finally {
       setSavingHolidays(false);
     }
-  }, [holidays, load]);
+  }, [holidays]);
 
   const handleSaveTimezone = useCallback(async () => {
     if (!timezone) {
@@ -269,14 +266,13 @@ export function useLabourRates() {
     setSavingTimezone(true);
     try {
       await api.updateSettings({ timezone });
-      await load();
       toast.success('Time zone saved');
     } catch (err) {
       toast.error(err.message || 'Failed to save time zone');
     } finally {
       setSavingTimezone(false);
     }
-  }, [timezone, load, setFieldErrors]);
+  }, [timezone, setFieldErrors]);
 
   return {
     loading,

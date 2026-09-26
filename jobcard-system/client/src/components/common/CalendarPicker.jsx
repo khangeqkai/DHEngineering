@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { pushModal, removeModal, isTopModal } from './modalStack';
+import './CalendarPicker.css';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
@@ -16,7 +17,7 @@ function toDateString(date) {
   return `${y}-${m}-${d}`;
 }
 
-export default function CalendarPicker({ isOpen, value, onSelect, onClose }) {
+export default function CalendarPicker({ isOpen, value, onSelect, onClose, allowClear = false }) {
   const initial = value ? new Date(value + 'T00:00:00') : new Date();
   const [viewYear, setViewYear] = useState(initial.getFullYear());
   const [viewMonth, setViewMonth] = useState(initial.getMonth());
@@ -100,6 +101,13 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose }) {
     onClose();
   };
 
+  // Only offered where the caller says the field is optional (allowClear) — the
+  // public holidays list, the picker's other caller, has no blank entry to save.
+  const handleClear = () => {
+    onSelect('');
+    onClose();
+  };
+
   // Target months for the nav buttons' accessible names, so the label says which
   // month pressing the button moves to rather than just "previous"/"next".
   const prevTargetMonth = viewMonth === 0 ? 11 : viewMonth - 1;
@@ -163,6 +171,18 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose }) {
           ))}
           {cells}
         </div>
+        {allowClear && (
+          <div className="calendar-footer">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm calendar-clear"
+              onClick={handleClear}
+              disabled={!value}
+            >
+              Clear date
+            </button>
+          </div>
+        )}
       </div>
     </div>,
     document.body

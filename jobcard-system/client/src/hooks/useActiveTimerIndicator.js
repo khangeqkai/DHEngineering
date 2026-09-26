@@ -37,7 +37,9 @@ export function useActiveTimerIndicator() {
     if (activeTimer) {
       const updateElapsed = () => {
         const start = new Date(activeTimer.startTime).getTime();
-        setElapsed(Math.floor((Date.now() - start) / 1000));
+        // Clamped at 0 — a clock skewed ahead of the server's own would otherwise
+        // read as a negative elapsed time for the first few ticks after starting.
+        setElapsed(Math.max(0, Math.floor((Date.now() - start) / 1000)));
       };
       updateElapsed();
       intervalRef.current = setInterval(updateElapsed, 1000);

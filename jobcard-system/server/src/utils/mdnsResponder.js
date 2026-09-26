@@ -18,17 +18,17 @@
  */
 
 const logger = require('./logger');
-const { lanIpv4s } = require('./netHost');
+const { lanIpv4s, lanInterfaces } = require('./netHost');
 
 function startMdnsResponder(name) {
   if (!name) return null;
   const target = name.toLowerCase();
 
-  const ips = lanIpv4s(); // real office-LAN IPv4s only (virtual connections filtered out)
-  const bindTargets = ips.length ? ips : [null]; // null = let the library choose (fallback)
+  const ifaces = lanInterfaces(); // real office-LAN connections only (virtual ones filtered out)
+  const bindTargets = ifaces.length ? ifaces : [{ name: null, address: null }]; // null = let the library choose (fallback)
   const instances = [];
 
-  for (const bindIp of bindTargets) {
+  for (const { name: ifaceName, address: bindIp } of bindTargets) {
     let mdns;
     try {
       mdns = require('multicast-dns')(bindIp ? { interface: bindIp } : undefined);
@@ -40,11 +40,19 @@ function startMdnsResponder(name) {
       continue;
     }
 
-    // Answer with this connection's own address when we bound to one, else with
-    // every current LAN address. Read fresh each time so the name always
-    // resolves to the current address, even if it changed.
-    const answersForName = () =>
-      (bindIp ? [bindIp] : lanIpv4s()).map((ip) => ({ name, type: 'A', ttl: 120, data: ip }));
+    // Answer with this connection's own CURRENT address when we bound to one, else
+    // with every current LAN address. Looked up fresh on every query (rather than
+    // captured once at startup) so a network change — the office router handing
+    // this adapter a new address, or the adapter list itself changing — is picked
+    // up immediately instead of the name resolving to wherever it pointed at boot.
+    const answersForName = () => {
+      if (bindIp) {
+        const current = lanInterfaces().find((i) => i.name === ifaceName);
+        const ip = (current && current.address) || bindIp;
+        return [{ name, type: 'A', ttl: 120, data: ip }];
+      }
+      return lanIpv4s().map((ip) => ({ name, type: 'A', ttl: 120, data: ip }));
+    };
 
     mdns.on('query', (query) => {
       const asked = (query.questions || []).some(
@@ -74,7 +82,7 @@ function startMdnsResponder(name) {
   }
 
   if (instances.length) {
-    logger.info({ name, on: ips.length ? ips : ['default'] }, 'Announcing the app on the local network by name');
+    logger.info({ name, on: ifaces.length ? ifaces.map((i) => i.address) : ['default'] }, 'Announcing the app on the local network by name');
   }
 
   // A small handle so the caller could stop it; the app never needs to today.

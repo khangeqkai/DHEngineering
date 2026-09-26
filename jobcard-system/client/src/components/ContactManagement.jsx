@@ -18,6 +18,10 @@ const blankCompany = () => ({ name: '', address: '', notes: '' });
 
 export default function ContactManagement() {
   const [companies, setCompanies] = useState([]);
+  // What the table is actually showing right now (after its own search box has
+  // filtered it) — kept separate so "Export Current View" sends exactly those
+  // rows instead of silently exporting every customer.
+  const [visibleCompanies, setVisibleCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
@@ -65,13 +69,17 @@ export default function ContactManagement() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // The name box only tidies itself on blur — hitting Enter from inside it
+    // submits the form directly and never fires that blur, so the same formatter
+    // is applied here too before the name goes out.
+    const payload = { ...formData, name: toTitleCase(formData.name) };
     setSaving(true);
     try {
       if (editingCompany) {
-        await api.updateCompany(editingCompany.id, formData);
+        await api.updateCompany(editingCompany.id, payload);
         toast.success('Customer saved');
       } else {
-        const created = await api.createCompany(formData);
+        const created = await api.createCompany(payload);
         toast.success('Customer added', { id: 'customer-added' });
         setEditingCompany({ ...created, people: [] });
       }
@@ -201,7 +209,8 @@ export default function ContactManagement() {
   };
 
   // The spreadsheet stays one row per person, carrying their company alongside.
-  const exportRows = companies.flatMap(c => (
+  // Built from what the table currently shows, so a search filters the export too.
+  const exportRows = visibleCompanies.flatMap(c => (
     (c.people || []).length
       ? c.people.map(p => ({ companyName: c.name, contactName: p.contactName, phone: p.phone, email: p.email, address: c.address, notes: c.notes }))
       : [{ companyName: c.name, contactName: '', phone: '', email: '', address: c.address, notes: c.notes }]
@@ -361,6 +370,7 @@ export default function ContactManagement() {
             searchable
             searchKeys={['name', 'peopleNames', 'address']}
             searchPlaceholder="Search customers..."
+            onVisibleRowsChange={setVisibleCompanies}
             emptyState={{
               icon: 'contacts',
               title: 'No customers yet',

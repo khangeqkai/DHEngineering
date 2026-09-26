@@ -163,20 +163,31 @@ router.put('/', requireManagement, async (req, res) => {
         const newNum = parseInt(jobNumberNext, 10);
         const width = jobNumberNext.length;
 
-        // Find all job numbers with this prefix and extract the highest numeric part
-        const rows = db.db.prepare("SELECT job_number FROM jobcards WHERE substr(job_number, 1, ?) = ?").all(effectivePrefix.length, effectivePrefix);
+        // Find every job number with this prefix that was actually handed out — the
+        // jobs that exist, plus deleted jobs, whose number the delete trail keeps. A
+        // deleted job's number is never reused. The counter's own current value is
+        // deliberately NOT a floor: it may have been moved past numbers nobody ever
+        // used (a mistyped 50000), and that mistake has to be undoable.
+        const existingRows = db.db.prepare("SELECT job_number FROM jobcards WHERE substr(job_number, 1, ?) = ?").all(effectivePrefix.length, effectivePrefix);
+        const deletedRows = db.db.prepare(
+          "SELECT json_extract(changes, '$.jobNumber.from') AS job_number FROM history WHERE entity_type = 'jobcard' AND action = 'delete'"
+        ).all();
         let maxExisting = 0;
-        for (const row of rows) {
-          const numPart = row.job_number.slice(effectivePrefix.length);
-          const num = parseInt(numPart, 10);
-          if (!isNaN(num) && num > maxExisting) maxExisting = num;
-        }
+        let maxIsDeleted = false;
+        const consider = (jobNumber, deleted) => {
+          if (typeof jobNumber !== 'string' || !jobNumber.startsWith(effectivePrefix)) return;
+          const num = parseInt(jobNumber.slice(effectivePrefix.length), 10);
+          if (!isNaN(num) && num > maxExisting) { maxExisting = num; maxIsDeleted = deleted; }
+        };
+        existingRows.forEach(r => consider(r.job_number, false));
+        deletedRows.forEach(r => consider(r.job_number, true));
 
         if (maxExisting > 0 && newNum <= maxExisting) {
           const paddedMax = String(maxExisting).padStart(width, '0');
-          return res.status(400).json({
-            error: `Starting number must be greater than ${paddedMax} — job ${effectivePrefix}${paddedMax} already exists`
-          });
+          const error = maxIsDeleted
+            ? `Starting number must be greater than ${paddedMax} — job ${effectivePrefix}${paddedMax} was used by a job that has since been deleted`
+            : `Starting number must be greater than ${paddedMax} — job ${effectivePrefix}${paddedMax} already exists`;
+          return res.status(400).json({ error });
         }
       }
 

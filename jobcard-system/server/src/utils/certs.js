@@ -28,6 +28,10 @@ const logger = require('./logger');
 const CA_VALIDITY_YEARS = 10;
 const LEAF_VALIDITY_YEARS = 2;
 
+// Re-mint the leaf this many days before it actually expires, so the app never
+// runs right up to the point where every browser starts rejecting it outright.
+const LEAF_RENEWAL_WINDOW_DAYS = 30;
+
 const CA_SUBJECT = [
   { name: 'commonName', value: 'DH Engineering Job Cards Local CA' },
   { name: 'organizationName', value: 'DH Engineering' }
@@ -155,6 +159,15 @@ function leafSanCoversNames(cert, names) {
   return names.every((n) => present.has(n.toLowerCase()));
 }
 
+// True once the leaf is within its renewal window (or already expired). A leaf
+// left to expire on its own would eventually get every browser rejecting the
+// app outright with no way back in — checked on every boot so a long-running
+// machine renews itself well before that happens. The CA is never touched here.
+function leafExpiringSoon(cert, days) {
+  const threshold = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  return cert.validity.notAfter <= threshold;
+}
+
 // Private keys are written owner-only. On Windows the POSIX mode is largely
 // cosmetic, so this is best-effort and never fatal.
 function writeSecret(filePath, contents) {
@@ -219,6 +232,7 @@ function ensureCertificates(dataDir, options = {}) {
         const leafCert = forge.pki.certificateFromPem(leafPem);
         if (!leafSanCoversIps(leafCert, san.ips)) needLeaf = true;
         if (!leafSanCoversNames(leafCert, extraDns)) needLeaf = true;
+        if (leafExpiringSoon(leafCert, LEAF_RENEWAL_WINDOW_DAYS)) needLeaf = true;
       } catch {
         needLeaf = true;
       }

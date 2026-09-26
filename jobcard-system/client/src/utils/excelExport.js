@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { formatDate as fmtDate, formatDateTime as fmtDateTime, todayIsoDate } from './formatters';
 import { STATUS_LABELS, PRIORITY_LABELS } from '../components/JobCardList.constants';
@@ -77,20 +78,33 @@ function valueToLabel(val) {
   return val.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
 }
 
-function fmtCodeList(val) {
-  if (!val) return '';
-  return val.split(',').map(v => valueToLabel(v.trim())).join(', ');
+// ── Tag label lookup (real names, not rebuilt from the stored value) ────────
+//
+// A stored option value like "PTFE_COATING" gets turned into "Ptfe Coating" by
+// valueToLabel above, which is only ever a guess at the option's real name —
+// wrong as soon as someone gives the option a name that doesn't title-case back
+// to itself. These look the value up in the tag lists (loaded once per export,
+// including archived options so a since-retired value still resolves) and only
+// fall back to the rebuilt guess when the value isn't found there at all.
+function labelFromMap(map, value) {
+  if (!value) return value;
+  return map.get(value) || valueToLabel(value);
 }
 
-function fmtMaterial(val) { return fmtCodeList(val); }
+function fmtCodeListWithMap(map, val) {
+  if (!val) return '';
+  return val.split(',').map(v => labelFromMap(map, v.trim())).join(', ');
+}
 
-// Collect a comma-separated, per-line-item tag field across all items on a job,
-// de-duped, for a single export cell (used for drawings + customer property).
-function fmtItemTagList(items, field) {
+function fmtItemTagListWithMap(map, items, field) {
   const all = [...new Set(
     (items || []).flatMap(i => (i[field] || '').split(',').map(v => v.trim()).filter(Boolean))
   )];
-  return fmtCodeList(all.join(','));
+  return fmtCodeListWithMap(map, all.join(','));
+}
+
+function tagLabelMap(tags) {
+  return new Map((tags || []).map(t => [t.value, t.name]));
 }
 
 // ── Column definitions per entity ────────────────────────────────────────────
@@ -168,30 +182,14 @@ const JOBCARD_SUMMARY_COLS = [
   // part is deleted.
   { label: 'Parts', value: r => (r.items || []).map((it, idx) => `#${it.position != null ? it.position : idx + 1}: ${it.description || ''}`).join(', ') },
   { label: 'PO Number', value: r => r.poNumber },
-  { label: 'Job Type', value: r => {
-    const items = r.items || [];
-    const all = [...new Set(items.map(i => i.jobType).filter(Boolean))];
-    return fmtCodeList(all.join(','));
-  }},
-  { label: 'Drawings', value: r => fmtItemTagList(r.items, 'drawingsType') },
-  { label: 'Material', value: r => {
-    const items = r.items || [];
-    const all = [...new Set(items.map(i => i.material).filter(Boolean))];
-    return fmtMaterial(all.join(','));
-  }},
-  { label: 'Treatment', value: r => {
-    const items = r.items || [];
-    const parts = [];
-    for (const item of items) {
-      for (const t of (item.treatments || [])) {
-        const tName = valueToLabel(t.value);
-        const sName = t.supplierName || '(no supplier)';
-        parts.push(`${tName}→${sName}`);
-      }
-    }
-    return parts.join(', ');
-  }},
-  { label: 'Customer Property', value: r => fmtItemTagList(r.items, 'customerProperty') },
+  // These read the label the tag lists actually hold for the value (attached in
+  // buildJobCardWorkbook as _jobTypeDisplay etc.), falling back to a guess
+  // rebuilt from the code only when the value isn't found in those lists.
+  { label: 'Job Type', value: r => r._jobTypeDisplay },
+  { label: 'Drawings', value: r => r._drawingsDisplay },
+  { label: 'Material', value: r => r._materialDisplay },
+  { label: 'Treatment', value: r => r._treatmentDisplay },
+  { label: 'Customer Property', value: r => r._customerPropertyDisplay },
   // Comments arrive newest-first (the on-screen thread reads that way), but an
   // exported record should read oldest-first like a diary, so flip them back.
   { label: 'Notes', value: r => (r._notes || []).slice().reverse().map(n => n.text).join(' | ') },
@@ -223,10 +221,7 @@ const ITEM_COLS = [
   { label: 'Part', value: r => r._displayNumber },
   { label: 'Qty', value: r => r.qty },
   { label: 'Description', value: r => r.description },
-  { label: 'Treatments', value: r => (r.treatments || []).map(t => {
-    const tName = valueToLabel(t.value);
-    return `${tName}→${t.supplierName || '(no supplier)'}`;
-  }).join(', ') },
+  { label: 'Treatments', value: r => r._treatmentDisplay },
 ];
 
 const COSTING_COLS = [
@@ -308,14 +303,24 @@ async function fetchInBatches(ids, fetcher, batchSize = 5) {
 }
 
 async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
-  if (!cards.length) return false;
+  if (!cards.length) return { wb: false, failedCount: 0 };
 
   const ids = cards.map(c => c.id);
 
-  // Fetch full card details (list endpoint omits items)
+  // Any of the fetches below (details, time entries, costing, notes) can fail
+  // for a given job without stopping the export — that job still gets a row,
+  // built from whatever did load, and previously nothing said so. Every job id
+  // that hits at least one failure lands here, so the caller can report how
+  // many jobs' exports are incomplete instead of leaving it unsaid.
+  const failedJobIds = new Set();
+
+  // Fetch full card details (list endpoint omits items). A failed fetch here
+  // falls back to the slim list-view card, which has no items/parts at all —
+  // the job still appears in the Summary sheet but with most of its detail
+  // missing.
   onProgress?.('Fetching job card details...');
   const fullCards = await fetchInBatches(ids, id =>
-    api.getJobcard(id).catch(() => null)
+    api.getJobcard(id).catch(() => { failedJobIds.add(id); return null; })
   );
   const fullCardMap = {};
   for (const fc of fullCards) {
@@ -323,9 +328,40 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
   }
   const mergedCards = cards.map(c => fullCardMap[c.id] || c);
 
+  // Tag lists (including archived options) to resolve each stored value to its
+  // real, current name — a rebuilt guess is only used when a value isn't found.
+  onProgress?.('Fetching tag lists...');
+  const [jobTypeTags, drawingsTags, materialTags, customerPropertyTags, treatmentTags] = await Promise.all([
+    api.getTags('job_type', true).catch(() => []),
+    api.getTags('drawings', true).catch(() => []),
+    api.getTags('material', true).catch(() => []),
+    api.getTags('customer_property', true).catch(() => []),
+    api.getTags('treatment', true).catch(() => [])
+  ]);
+  const jobTypeLabelMap = tagLabelMap(jobTypeTags);
+  const drawingsLabelMap = tagLabelMap(drawingsTags);
+  const materialLabelMap = tagLabelMap(materialTags);
+  const customerPropertyLabelMap = tagLabelMap(customerPropertyTags);
+  const treatmentLabelMap = tagLabelMap(treatmentTags);
+
+  function treatmentDisplay(items) {
+    const parts = [];
+    for (const item of (items || [])) {
+      for (const t of (item.treatments || [])) {
+        const tName = labelFromMap(treatmentLabelMap, t.value);
+        const sName = t.supplierName || '(no supplier)';
+        parts.push(`${tName}→${sName}`);
+      }
+    }
+    return parts.join(', ');
+  }
+
   onProgress?.('Fetching time entries...');
   const timeEntriesPerJob = await fetchInBatches(ids, id =>
-    api.getTimeEntries(id).then(entries => ({ id, entries })).catch(() => ({ id, entries: [] }))
+    api.getTimeEntries(id).then(entries => ({ id, entries })).catch(() => {
+      failedJobIds.add(id);
+      return { id, entries: [] };
+    })
   );
 
   // Costing is admin-only (the endpoint refuses non-admins). Skip the fetch and the
@@ -335,13 +371,19 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
   if (includeCosting) {
     onProgress?.('Fetching costing...');
     costingPerJob = await fetchInBatches(ids, id =>
-      api.getCosting(id).then(costing => ({ id, costing })).catch(() => ({ id, costing: null }))
+      api.getCosting(id).then(costing => ({ id, costing })).catch(() => {
+        failedJobIds.add(id);
+        return { id, costing: null };
+      })
     );
   }
 
   onProgress?.('Fetching notes...');
   const notesPerJob = await fetchInBatches(ids, id =>
-    api.getJobNotes(id).then(notes => ({ id, notes })).catch(() => ({ id, notes: [] }))
+    api.getJobNotes(id).then(notes => ({ id, notes })).catch(() => {
+      failedJobIds.add(id);
+      return { id, notes: [] };
+    })
   );
 
   const jobLookup = {};
@@ -350,10 +392,20 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
   const notesByJob = {};
   for (const { id, notes } of notesPerJob) notesByJob[id] = notes;
 
-  const enrichedCards = mergedCards.map(c => ({
-    ...c,
-    _notes: notesByJob[c.id] || [],
-  }));
+  const enrichedCards = mergedCards.map(c => {
+    const items = c.items || [];
+    const jobTypeAll = [...new Set(items.map(i => i.jobType).filter(Boolean))];
+    const materialAll = [...new Set(items.map(i => i.material).filter(Boolean))];
+    return {
+      ...c,
+      _notes: notesByJob[c.id] || [],
+      _jobTypeDisplay: fmtCodeListWithMap(jobTypeLabelMap, jobTypeAll.join(',')),
+      _materialDisplay: fmtCodeListWithMap(materialLabelMap, materialAll.join(',')),
+      _drawingsDisplay: fmtItemTagListWithMap(drawingsLabelMap, items, 'drawingsType'),
+      _customerPropertyDisplay: fmtItemTagListWithMap(customerPropertyLabelMap, items, 'customerProperty'),
+      _treatmentDisplay: treatmentDisplay(items),
+    };
+  });
 
   // The server states each item's position directly (item.position) — the same
   // number the job screen shows — so it's never recounted here. Keyed by the
@@ -366,7 +418,12 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
     (c.items || []).forEach((item, idx) => {
       const displayNumber = item.position != null ? item.position : idx + 1;
       if (item.id != null) itemPositionById[item.id] = displayNumber;
-      allItems.push({ ...item, _jobNumber: c.jobNumber, _displayNumber: displayNumber });
+      allItems.push({
+        ...item,
+        _jobNumber: c.jobNumber,
+        _displayNumber: displayNumber,
+        _treatmentDisplay: treatmentDisplay([item]),
+      });
     });
   }
 
@@ -397,13 +454,29 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
     XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allCosting, COSTING_COLS), 'Costing');
   }
 
-  return wb;
+  return { wb, failedCount: failedJobIds.size };
+}
+
+// A partial fetch failure never blocks the export itself — the workbook still
+// saves with what did load — but it has to say so, or the person has no way of
+// knowing some jobs' rows are incomplete. failedCount is the number of distinct
+// jobs that hit at least one failed fetch (details, time entries, costing or
+// notes), not the number of failed requests.
+function warnIfIncomplete(failedCount, savedResult) {
+  if (failedCount > 0 && savedResult !== 'canceled') {
+    toast.error(
+      `${failedCount} job${failedCount === 1 ? '' : 's'} couldn't be fully loaded — the export may be missing some of their details`,
+      { id: 'export-jobs-missing' }
+    );
+  }
 }
 
 export async function exportJobCardList(cards, onProgress, includeCosting = true) {
-  const wb = await buildJobCardWorkbook(cards, onProgress, includeCosting);
+  const { wb, failedCount } = await buildJobCardWorkbook(cards, onProgress, includeCosting);
   if (!wb) return false;
-  return saveWorkbook(wb, `Job_Cards_${timestamp()}.xlsx`);
+  const result = await saveWorkbook(wb, `Job_Cards_${timestamp()}.xlsx`);
+  warnIfIncomplete(failedCount, result);
+  return result;
 }
 
 export async function exportJobCardsFull(onProgress, includeCosting = true) {
@@ -414,9 +487,11 @@ export async function exportJobCardsFull(onProgress, includeCosting = true) {
   const cards = [...open, ...filed];
   if (!cards.length) return false;
 
-  const wb = await buildJobCardWorkbook(cards, onProgress, includeCosting);
+  const { wb, failedCount } = await buildJobCardWorkbook(cards, onProgress, includeCosting);
   if (!wb) return false;
-  return saveWorkbook(wb, `Job_Cards_Full_${timestamp()}.xlsx`);
+  const result = await saveWorkbook(wb, `Job_Cards_Full_${timestamp()}.xlsx`);
+  warnIfIncomplete(failedCount, result);
+  return result;
 }
 
 // ── Statistics Export ────────────────────────────────────────────────────────
@@ -479,10 +554,10 @@ const getStatsCustomerCols = (hasMoney) => [
 const STATS_DELAYED_COLS = [
   { label: 'Job #', value: r => r.jobNumber },
   { label: 'Customer', value: r => r.companyName },
-  { label: 'Due Date', value: r => r.dueDate },
-  { label: 'Finish Date', value: r => r.finishDate },
+  { label: 'Due Date', value: r => fmtDate(r.dueDate) },
+  { label: 'Finish Date', value: r => fmtDate(r.finishDate) },
   { label: 'Days Late', value: r => r.daysLate },
-  { label: 'Status', value: r => r.status },
+  { label: 'Status', value: r => STATUS_LABELS[r.status] || r.status },
   { label: 'QA Level', value: r => r.qualityLevel },
 ];
 

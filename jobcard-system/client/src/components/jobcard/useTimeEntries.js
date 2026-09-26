@@ -1,14 +1,30 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { getDefaultTimeEntryForm, isoToLocalInput, localInputToIso } from './mappers';
 import { formatDate } from '../../utils/formatters';
 import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
+
+// Shown wherever adding, editing or deleting recorded time is refused because
+// the job is invoiced — one stable id so repeated attempts replace the same
+// toast instead of stacking.
+const INVOICED_LOCK_MESSAGE = 'Reopen the job to change its time';
+const invoicedLockToast = () => toast.error(INVOICED_LOCK_MESSAGE, { id: 'invoiced-time-locked' });
 
 export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, showConfirm, isInvoiced = false }) {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
   const [editingTimeEntryId, setEditingTimeEntryId] = useState(null);
   const [timeEntryForm, setTimeEntryForm] = useState(getDefaultTimeEntryForm());
   const { setFieldErrors, clearFieldError, clearAll: clearFieldErrors, groupClass, errorFor } = useFieldErrors();
+
+  // The stored start/finish this form opened with, and whether the user has
+  // actually touched each one since. A datetime-local input only carries
+  // minute precision, so re-deriving an untouched field from it on save would
+  // quietly drop any seconds/ms the stored value had — only a field the user
+  // actually edited should be rebuilt from the input; an untouched one is sent
+  // back exactly as it was stored. A brand-new entry has no original, so both
+  // start out "touched" (there's nothing to fall back to).
+  const originalTimesRef = useRef({ startTime: null, endTime: null });
+  const touchedTimesRef = useRef({ startTime: true, endTime: true });
 
   const resetTimeEntryForm = useCallback(() => {
     setTimeEntryForm({
@@ -18,12 +34,20 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     setEditingTimeEntryId(null);
     setShowTimeEntryForm(false);
     clearFieldErrors();
+    originalTimesRef.current = { startTime: null, endTime: null };
+    touchedTimesRef.current = { startTime: true, endTime: true };
   }, [clearFieldErrors]);
 
   const handleTimeEntryChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
-    // Pieces are counted, so the qty box only takes digits (matches the stop-timer form).
-    const clean = name === 'qty' ? value.replace(/\D/g, '') : value;
+    // Pieces are counted, so the qty/scrap boxes only take digits (matches the
+    // stop-timer form).
+    const clean = (name === 'qty' || name === 'scrapBinQty' || name === 'scrapRecycleQty')
+      ? value.replace(/\D/g, '')
+      : value;
+    if (name === 'startTime' || name === 'endTime') {
+      touchedTimesRef.current = { ...touchedTimesRef.current, [name]: true };
+    }
     clearFieldError(name);
     setTimeEntryForm(prev => ({
       ...prev,
@@ -32,6 +56,10 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   }, [clearFieldError]);
 
   const handleAddTimeEntry = useCallback((itemId = '') => {
+    if (isInvoiced) {
+      invoicedLockToast();
+      return;
+    }
     resetTimeEntryForm();
     setTimeEntryForm(prev => ({
       ...prev,
@@ -39,13 +67,20 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       startTime: isoToLocalInput(new Date().toISOString())
     }));
     setShowTimeEntryForm(true);
-  }, [resetTimeEntryForm]);
+  }, [resetTimeEntryForm, isInvoiced]);
 
   const handleEditTimeEntry = useCallback((entry) => {
+    if (isInvoiced) {
+      invoicedLockToast();
+      return;
+    }
     clearFieldErrors();
     setEditingTimeEntryId(entry.id);
     setTimeEntryForm({
       workerId: entry.userId || '',
+      // Fallback label for an archived worker, who won't be in the active
+      // dropdown any more — see TimeEntryForm.jsx.
+      workerName: entry.userName || '',
       itemId: entry.itemId || '',
       machineNumber: entry.machineNumber || '',
       qty: entry.qty ?? '',
@@ -60,11 +95,20 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       startTime: isoToLocalInput(entry.startTime),
       endTime: isoToLocalInput(entry.endTime)
     });
+    originalTimesRef.current = { startTime: entry.startTime || null, endTime: entry.endTime || null };
+    touchedTimesRef.current = { startTime: false, endTime: false };
     setShowTimeEntryForm(true);
-  }, [clearFieldErrors]);
+  }, [clearFieldErrors, isInvoiced]);
 
   const handleSaveTimeEntry = useCallback(async () => {
     if (!jobCardId) return;
+
+    // The server refuses this outright once a job is invoiced (reopen it
+    // first) — don't even ask; just say so and stop here.
+    if (isInvoiced) {
+      invoicedLockToast();
+      return;
+    }
 
     // Sanity-check hand-entered times before saving: both must be real,
     // and the finish must come after the start, so bad times can't poison
@@ -103,27 +147,21 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       }
     }
 
-    // Editing recorded time on an invoiced job isn't blocked, but it changes the job's
-    // final total — so ask first, then save and let the total recalculate.
-    if (isInvoiced) {
-      const ok = await showConfirm({
-        title: 'Change an invoiced job?',
-        message: "This job has been invoiced. Changing its recorded time will update the job's final total. Are you sure you want to continue?",
-        confirmLabel: 'Yes, change it',
-        cancelLabel: 'Cancel',
-        confirmVariant: 'danger'
-      });
-      if (!ok) return;
-    }
-
     try {
+      const { workerName, ...rest } = timeEntryForm;
       const entryData = {
-        ...timeEntryForm,
+        ...rest,
         itemId: timeEntryForm.itemId || null,
-        // Store both ends with full time-zone info so a block's start and finish
-        // can never end up in mismatched formats (would mis-calculate duration).
-        startTime: localInputToIso(timeEntryForm.startTime),
-        endTime: localInputToIso(timeEntryForm.endTime)
+        // Only a field the user actually changed is rebuilt from the
+        // minute-precision input — an untouched one is sent back exactly as
+        // it was stored, so editing one end of a block never truncates the
+        // other end's seconds.
+        startTime: touchedTimesRef.current.startTime
+          ? localInputToIso(timeEntryForm.startTime)
+          : originalTimesRef.current.startTime,
+        endTime: touchedTimesRef.current.endTime
+          ? localInputToIso(timeEntryForm.endTime)
+          : originalTimesRef.current.endTime
       };
 
       if (editingTimeEntryId) {
@@ -136,10 +174,14 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     } catch (err) {
       toast.error(err.message || 'Failed to save time entry');
     }
-  }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry, isInvoiced, showConfirm, setFieldErrors]);
+  }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry, isInvoiced, setFieldErrors]);
 
   const handleDeleteTimeEntry = useCallback(async (entry) => {
     if (!jobCardId) return;
+    if (isInvoiced) {
+      invoicedLockToast();
+      return;
+    }
 
     // Spell out exactly what's being erased — whose hours, how many, and when —
     // so an admin can't wipe a worker's recorded labour (which feeds the job's
@@ -166,7 +208,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     } catch (err) {
       toast.error(err.message || 'Failed to delete time entry');
     }
-  }, [jobCardId, deleteTimeEntry, showConfirm]);
+  }, [jobCardId, deleteTimeEntry, showConfirm, isInvoiced]);
 
   const resetTimeEntries = useCallback(() => {
     resetTimeEntryForm();

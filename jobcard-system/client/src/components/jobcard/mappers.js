@@ -100,6 +100,11 @@ export function localInputToIso(localStr) {
 export function getDefaultTimeEntryForm() {
   return {
     workerId: '',
+    // The worker's stored name, kept alongside workerId only so an edit on an
+    // archived worker's block can still show who it is — the active-workers
+    // dropdown won't carry them any more once they're archived, so this is the
+    // fallback text (see TimeEntryForm.jsx).
+    workerName: '',
     // The part this block belongs to, by its permanent id — never its
     // item_number, which is only a sort order the server owns and may have gaps.
     itemId: '',

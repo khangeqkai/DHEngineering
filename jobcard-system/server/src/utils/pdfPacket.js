@@ -25,7 +25,10 @@ async function appendPdf(out, bytes) {
 
 async function appendImage(out, bytes) {
   // Normalise any image format to a baseline PNG buffer pdf-lib can embed.
-  const pngBytes = await sharp(bytes).png().toBuffer();
+  // .rotate() with no args reads the image's own EXIF orientation and applies
+  // it (then strips the tag) — without it a phone photo taken sideways/upside
+  // down keeps its EXIF flag but pdf-lib draws the raw, unrotated pixels.
+  const pngBytes = await sharp(bytes).rotate().png().toBuffer();
   const img = await out.embedPng(pngBytes);
 
   const page = out.addPage([A4_W, A4_H]);

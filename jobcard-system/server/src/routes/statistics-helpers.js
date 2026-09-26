@@ -161,10 +161,18 @@ function daysDiff(d1Str, d2Str) {
 const FINISHED_STATUSES = ['DONE', 'CUST_NOTIFIED', 'INVOICED'];
 
 function getJobFinishDate(job, maxTimeEntryEnd, fmt) {
+  // The finish day is when the shop actually finished the work — the end of the
+  // last logged time block — not when the office got around to invoicing it.
+  // Using the invoice date flipped an on-time job to late the moment it was
+  // invoiced days or weeks after the work was done. Fall back to the
+  // invoice/done date only when a job has no logged work to date from at all.
   let raw = null;
-  if (job.invoiced_date) raw = job.invoiced_date;
-  else if (job.status === 'DONE' || job.status === 'CUST_NOTIFIED') {
-    raw = maxTimeEntryEnd || job.done_history_at || job.updated_at;
+  if (maxTimeEntryEnd) {
+    raw = maxTimeEntryEnd;
+  } else if (job.invoiced_date) {
+    raw = job.invoiced_date;
+  } else if (job.status === 'DONE' || job.status === 'CUST_NOTIFIED') {
+    raw = job.done_history_at || job.updated_at;
   }
   if (!raw) return null;
   if (fmt) {

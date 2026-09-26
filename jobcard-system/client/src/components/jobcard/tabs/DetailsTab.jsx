@@ -135,6 +135,12 @@ export default function DetailsTab({
   // Typing again disarms it: an Enter pick leaves focus in the box, so without that
   // the flag would outlive the blur it was meant for and eat a real edit.
   const justPickedRef = useRef(false);
+  // Same race, for the company box: a pick's mousedown sets companyId BEFORE the
+  // blur that follows it fires, and that blur's e.target.value is still the
+  // pre-pick typed text — so the box's own re-capitalisation on blur was rebuilding
+  // that stale text and writing it back over the just-picked customer, dropping
+  // the pick (companyId cleared) and offering to create a duplicate instead.
+  const justPickedCompanyRef = useRef(false);
   const { setQuery: setJobSearchQuery } = jobSearch;
 
   useEffect(() => {
@@ -247,6 +253,10 @@ export default function DetailsTab({
                   type="text"
                   value={contactFormData.companyName}
                   onChange={(e) => {
+                    // Typing again after a pick disarms the guard below — an Enter
+                    // pick leaves focus in the box, so without this the flag would
+                    // outlive the blur it was meant for and eat a real edit.
+                    justPickedCompanyRef.current = false;
                     // A pick closed the list; with Enter the cursor never left the
                     // box, so only this brings the matching customers back.
                     noteCompanyTyping();
@@ -255,6 +265,10 @@ export default function DetailsTab({
                   onFocus={handleFieldFocus}
                   onBlur={(e) => {
                     handleFieldBlur();
+                    // The pick just fired its own write; this blur's e.target.value
+                    // is still the pre-pick text, so re-capitalising it here would
+                    // overwrite the pick with a mis-cased version of what was typed.
+                    if (justPickedCompanyRef.current) { justPickedCompanyRef.current = false; return; }
                     const formatted = toTitleCase(e.target.value);
                     if (formatted !== e.target.value) handleContactFieldChange('companyName', formatted);
                   }}
@@ -265,6 +279,7 @@ export default function DetailsTab({
                     if (next !== null) { e.preventDefault(); setCompanyActive(next); return; }
                     if (e.key === 'Enter' && companyActive >= 0) {
                       e.preventDefault();
+                      justPickedCompanyRef.current = true;
                       selectCompany(companyMatches[companyActive]);
                     }
                   }}
@@ -285,7 +300,7 @@ export default function DetailsTab({
                         role="option"
                         aria-selected={i === companyActive}
                         className={`customer-option${i === companyActive ? ' is-active' : ''}`}
-                        onMouseDown={() => selectCompany(c)}
+                        onMouseDown={() => { justPickedCompanyRef.current = true; selectCompany(c); }}
                         onMouseEnter={() => setCompanyActive(i)}
                       >
                         <strong>{c.name}</strong>
@@ -561,10 +576,25 @@ export default function DetailsTab({
         <ToggleTiles
           ariaLabel="Assignees"
           minTileWidth={130}
-          options={employees.map(emp => ({ value: emp.id, label: emp.name || emp.username }))}
+          // employees is the active list only (loaded by the modal that owns
+          // this screen) — a worker archived after being put on this job would
+          // otherwise vanish from the tiles with no way to untick them. Their own
+          // assignee record still carries their name, so they're added back in
+          // here, marked "(archived)"; an archived worker not on this job is
+          // never shown.
+          options={[
+            ...employees.map(emp => ({ value: emp.id, label: emp.name || emp.username })),
+            ...assignees
+              .filter(a => !employees.some(e => e.id === a.userId))
+              .map(a => ({ value: a.userId, label: `${a.userName || 'Unknown'} (archived)` }))
+          ]}
           selectedValues={assignees.map(a => a.userId)}
           onToggle={(empId) => {
-            const emp = employees.find(e => e.id === empId);
+            const emp = employees.find(e => e.id === empId)
+              || (() => {
+                const archived = assignees.find(a => a.userId === empId);
+                return archived ? { id: archived.userId, name: archived.userName } : null;
+              })();
             if (emp) toggleAssignee(emp);
           }}
         />

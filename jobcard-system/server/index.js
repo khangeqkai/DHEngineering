@@ -121,6 +121,17 @@ if (fs.existsSync(clientBuildPath)) {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  // A body over the express.json limit above (or a malformed one) throws before
+  // any route runs, so without this it fell through to the generic 500 below and
+  // told the user "Internal server error" for what's really just too big a file.
+  if (err && (err.type === 'entity.too.large' || err.status === 413 || err.statusCode === 413)) {
+    logger.warn({ url: req.url, method: req.method }, 'Request body too large');
+    return res.status(413).json({ error: 'This file is too large' });
+  }
+  if (err && err.type === 'entity.parse.failed') {
+    logger.warn({ url: req.url, method: req.method }, 'Request body could not be parsed');
+    return res.status(400).json({ error: 'This request could not be read — please try again' });
+  }
   logger.error({ err, url: req.url, method: req.method }, 'Server error');
   res.status(500).json({
     error: 'Internal server error',

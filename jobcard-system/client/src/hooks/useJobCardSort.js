@@ -55,6 +55,11 @@ export default function useJobCardSort(cards) {
       if (va == null) return 1;
       if (vb == null) return -1;
       if (typeof va === 'string' && typeof vb === 'string') {
+        // Job # is a text field but reads as a number to the person looking at
+        // it — a numeric-aware compare puts "10" after "9", not between "1" and "2".
+        if (sortBy === 'jobNumber') {
+          return va.localeCompare(vb, undefined, { numeric: true }) * dir;
+        }
         return va.localeCompare(vb) * dir;
       }
       if (va < vb) return -1 * dir;

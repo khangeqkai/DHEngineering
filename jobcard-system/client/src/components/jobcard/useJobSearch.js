@@ -19,8 +19,14 @@ export function useJobSearch({ excludeJobNumber } = {}) {
   const loadAllJobs = useCallback(async () => {
     if (Date.now() - lastLoadedAtRef.current < CACHE_TTL_MS) return;
     try {
-      const results = await api.getJobcards();
-      allJobsRef.current = results || [];
+      // Invoicing archives a job, so a repeat job's most recent run is very
+      // often exactly the one this used to leave out — both lists are loaded
+      // and merged rather than just the active one.
+      const [active, archived] = await Promise.all([
+        api.getJobcards(),
+        api.getJobcards({ archived: true })
+      ]);
+      allJobsRef.current = [...(active || []), ...(archived || [])];
       lastLoadedAtRef.current = Date.now();
       setLoadVersion(v => v + 1);
     } catch (err) {

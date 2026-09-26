@@ -8,7 +8,7 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateLogin, validateCreateUser, validateUpdatePreferences } = require('../middleware/validation');
-const { userQueries, recordHistory, getSettings } = require('../db/database');
+const { db, userQueries, jobNoteQueries, recordHistory, getSettings } = require('../db/database');
 const { isViaTunnel, clientIp } = require('../utils/homeAccess');
 
 const router = express.Router();
@@ -240,15 +240,19 @@ router.put('/me/preferences', authenticate, validateUpdatePreferences, (req, res
   }
 });
 
-// List active employees (all authenticated users) - lightweight for dropdowns
+// List employees (all authenticated users) - lightweight for dropdowns.
+// Active only by default; ?includeInactive=true also returns archived accounts
+// so a record that still points at one (an assignee, a time block, a search
+// filter) can name it and let it be removed.
 router.get('/employees', authenticate, (req, res) => {
   try {
-    const users = userQueries.getAllActive.all();
+    const includeInactive = req.query.includeInactive === 'true';
+    const users = includeInactive ? userQueries.getAll.all() : userQueries.getAllActive.all();
     res.json(users.map(user => ({
       id: user.id,
       username: user.username,
       name: user.name,
-      active: true
+      active: !!user.active
     })));
   } catch (err) {
     logger.error({ err }, 'List employees error');
@@ -431,14 +435,25 @@ router.put('/users/:id', authenticate, async (req, res) => {
 
     // Update user (normalize empty email to null for DB consistency)
     const emailToStore = email !== undefined ? (email || null) : user.email;
-    userQueries.update.run(
-      name || user.name,
-      emailToStore,
-      user.phone,       // preserve existing phone
-      user.employee_id, // preserve existing employee_id
-      role || user.role,
-      id
-    );
+    const newName = name || user.name;
+    // A comment's author name is a snapshot frozen at write time; when the name
+    // actually changes, fold every one of that user's past job notes onto the new
+    // name in the same transaction, so a rename doesn't leave old comments reading
+    // whoever they used to be called.
+    const updateUserAndNotes = db.transaction(() => {
+      userQueries.update.run(
+        newName,
+        emailToStore,
+        user.phone,       // preserve existing phone
+        user.employee_id, // preserve existing employee_id
+        role || user.role,
+        id
+      );
+      if (changes.name) {
+        jobNoteQueries.updateAuthorNameByUserId.run(newName, id);
+      }
+    });
+    updateUserAndNotes();
 
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);

@@ -38,16 +38,26 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
   const blankIdx = lineItems.findIndex(item => itemFieldMessage('description', item.description));
   const hasSavedPart = lineItems.some(isSavedLineItem);
   if (blankIdx !== -1 && (validItems.length > 0 || hasSavedPart)) {
-    const blank = lineItems[blankIdx];
-    errors.push(`Description is required on part ${blank.itemNumber || blankIdx + 1}`);
+    // This only ever runs on a brand-new job (useJobCardSave.js returns early on
+    // an existing one), where a row has no server-stated position yet — ItemsTab.jsx's
+    // own badge for a still-local row is its place in the full list (itemIdx + 1),
+    // never itemNumber, which is only an internal counter that can skip a number
+    // once a row has been added and removed. Naming itemNumber here used to point
+    // this message at a part other than the one the screen numbers this way.
+    errors.push(`Description is required on part ${blankIdx + 1}`);
   } else if (validItems.length === 0) {
     errors.push('Add at least one part');
   }
 
-  // Per-part errors name the row's real itemNumber (the badge ItemsTab shows);
-  // positions in the filtered list shift when a blanked line is dropped, so
-  // index-based numbering can point at the wrong row.
-  const itemNo = (i) => validItems[i].itemNumber || i + 1;
+  // Each valid item's position in the FULL list — matching the badge ItemsTab.jsx
+  // shows for a still-local row (itemIdx + 1) — not its slot in this filtered
+  // array, which shifts when a blanked row above it is dropped, and not
+  // itemNumber, which can have gaps and never matches what's on screen.
+  const validItemPositions = [];
+  lineItems.forEach((item, idx) => {
+    if (!itemFieldMessage('description', item.description)) validItemPositions.push(idx + 1);
+  });
+  const itemNo = (i) => validItemPositions[i];
 
   const itemMissingJobType = validItems.findIndex(item => itemFieldMessage('jobType', item.jobType));
   if (itemMissingJobType !== -1) {

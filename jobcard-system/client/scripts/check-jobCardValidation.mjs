@@ -36,14 +36,15 @@ const freshRow = () => ({
 });
 
 // 1. Saved line blanked -> error, save blocked. Whitespace-only description
-// pins the guard's .trim(); itemNumber 2 at index 0 (part 1 was deleted) pins
-// that the message reports the row's real itemNumber, not its array position.
+// pins the guard's .trim(); itemNumber 2 at index 0 pins that the message
+// reports the row's place in the list (the badge the screen shows), not its
+// itemNumber, which is an internal counter that can skip a number.
 {
   const { errors } = validateJobCardForm({
     ...base,
     lineItems: [savedLine({ itemNumber: 2, description: ' ' }), savedLine({ itemNumber: 3 })],
   });
-  assert(errors.includes('Description is required on part 2'),
+  assert(errors.includes('Description is required on part 1'),
     'blanked saved line must error: ' + JSON.stringify(errors));
 }
 

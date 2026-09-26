@@ -22,13 +22,15 @@ function isVirtualIface(name) {
   return VIRTUAL_IFACE_PATTERNS.some((p) => lower.includes(p));
 }
 
-// The machine's own network addresses that OTHER computers can reach it at —
-// every non-internal IPv4 (skips the 127.x loopback and any down interface),
-// with obvious virtual adapters filtered out so the admin sees only the real
-// office address(es). If the filter would leave nothing (an unusual setup where
-// the only address rides a virtual-looking adapter), fall back to showing all
-// so the hint is never empty.
-function lanIpv4s() {
+// The machine's own network connections that OTHER computers can reach it
+// through — every non-internal IPv4 (skips the 127.x loopback and any down
+// interface), with obvious virtual adapters filtered out so the admin sees
+// only the real office connection(s). If the filter would leave nothing (an
+// unusual setup where the only address rides a virtual-looking adapter), fall
+// back to showing all so the hint is never empty. Kept as {name, address}
+// pairs (rather than bare addresses) so a caller — the mDNS responder — can
+// look a specific connection's address back up later and notice if it changed.
+function lanInterfaces() {
   const real = [];
   const all = [];
   const ifaces = os.networkInterfaces();
@@ -36,11 +38,15 @@ function lanIpv4s() {
     for (const iface of ifaces[name] || []) {
       const isV4 = iface.family === 'IPv4' || iface.family === 4;
       if (!isV4 || iface.internal || !iface.address) continue;
-      all.push(iface.address);
-      if (!isVirtualIface(name)) real.push(iface.address);
+      all.push({ name, address: iface.address });
+      if (!isVirtualIface(name)) real.push({ name, address: iface.address });
     }
   }
   return real.length ? real : all;
+}
+
+function lanIpv4s() {
+  return lanInterfaces().map((i) => i.address);
 }
 
 // A Host header is caller-controlled. Before we bake it into content that gets
@@ -68,4 +74,4 @@ function hostWithoutPort(hostHeader) {
   return host.split(':')[0];
 }
 
-module.exports = { hostWithoutPort, safeHost, lanIpv4s };
+module.exports = { hostWithoutPort, safeHost, lanIpv4s, lanInterfaces };

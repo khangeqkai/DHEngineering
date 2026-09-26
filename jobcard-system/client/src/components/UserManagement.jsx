@@ -23,6 +23,10 @@ export default function UserManagement() {
   // enforces the same rules.
   const isAdmin = currentUser?.role === 'admin';
   const [users, setUsers] = useState([]);
+  // What the table is actually showing right now (after its own search box has
+  // filtered it) — kept separate from `users` so "Export Current View" can send
+  // exactly those rows instead of silently exporting everyone.
+  const [visibleUsers, setVisibleUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -196,7 +200,7 @@ export default function UserManagement() {
           Show archived
         </label>
         <ExportButton
-          onExportView={() => users.length ? exportUsers(users) : false}
+          onExportView={() => visibleUsers.length ? exportUsers(visibleUsers) : false}
           onExportAll={async () => {
             const all = await api.getUsers(true);
             return all.length ? exportUsers(all) : false;
@@ -393,6 +397,7 @@ export default function UserManagement() {
             searchable
             searchKeys={['username', 'name', 'email']}
             searchPlaceholder="Search users..."
+            onVisibleRowsChange={setVisibleUsers}
             emptyState={{
               icon: 'users',
               title: 'No users found',

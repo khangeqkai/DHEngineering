@@ -20,6 +20,7 @@ const {
   recordHistory,
   getSettings
 } = require('../db/database');
+const { db } = require('../db/connection');
 
 const router = express.Router();
 
@@ -168,6 +169,20 @@ router.put('/:id',
         return res.status(400).json({ error: 'A QA level with this name already exists' });
       }
 
+      // Whether a job is Critical is read from its copied level name, and a rename
+      // is copied onto every job already on the level. So moving a level onto or
+      // off the name "Critical" while jobs use it would switch the inspection
+      // checklist on or off for work that was quoted and done under the old rule.
+      const wasCritical = existing.name.trim().toUpperCase() === 'CRITICAL';
+      const willBeCritical = name.trim().toUpperCase() === 'CRITICAL';
+      if (wasCritical !== willBeCritical && qaLevelQueries.countJobsByLevel.get(id).count > 0) {
+        return res.status(400).json({
+          error: wasCritical
+            ? 'Jobs already on this level rely on its Critical inspection checks, so it can\'t be renamed away from "Critical".'
+            : 'Jobs already use this level, so it can\'t be renamed to "Critical" — that would add inspection checks to work already done.'
+        });
+      }
+
       // Keep the existing setting when the field is omitted, so a name-only edit
       // doesn't silently turn the "needs form back" switch off.
       const requiresReturnedForm = req.body.requiresReturnedForm === undefined
@@ -195,12 +210,21 @@ router.put('/:id',
         };
       }
 
-      qaLevelQueries.update.run(
-        name.trim(),
-        nameLower,
-        requiresReturnedForm,
-        id
-      );
+      // The level's row and every job already copied onto it are updated together:
+      // a job's stored quality_level is that copy, and it must never be left
+      // pointing at a name the level no longer has.
+      const applyRename = db.transaction(() => {
+        qaLevelQueries.update.run(
+          name.trim(),
+          nameLower,
+          requiresReturnedForm,
+          id
+        );
+        if (changes.name) {
+          qaLevelQueries.renameOnJobs.run(name.trim().toUpperCase(), id);
+        }
+      });
+      applyRename();
 
       // Best-effort cosmetic rename so the folder name tracks the level name.
       // Lookups go by the code in the folder name, so a failed/skipped rename
@@ -279,6 +303,13 @@ router.post('/:id/templates', authenticate, requireManagement, (req, res) => {
 
     if (!fileName || !fileData) {
       return res.status(400).json({ error: 'fileName and fileData (base64) are required' });
+    }
+
+    // Quality forms are PDFs only — checked by extension here (the magic-bytes
+    // check below only confirms a .pdf actually starts with %PDF; it doesn't
+    // reject a non-.pdf extension in the first place).
+    if (path.extname(fileName).toLowerCase() !== '.pdf') {
+      return res.status(400).json({ error: 'Quality forms must be PDF files' });
     }
 
     const level = qaLevelQueries.getById.get(id);

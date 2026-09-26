@@ -36,6 +36,14 @@ export default function SupplierManagement() {
   const [customTagName, setCustomTagName] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
+  // What the table is actually showing right now (after its own search box has
+  // filtered it) — kept separate so "Export Current View" sends exactly those
+  // rows instead of silently exporting every supplier.
+  const [visibleSuppliers, setVisibleSuppliers] = useState([]);
+  // Names for tags archived during this session, keyed by id — a tag disappears
+  // from `serviceTags` the moment it's archived, so this is what lets a "(retired)"
+  // chip still show its name afterwards, for any supplier that holds it.
+  const [retiredTagsCache, setRetiredTagsCache] = useState({});
 
   const loadData = useCallback(async () => {
     try {
@@ -187,10 +195,10 @@ export default function SupplierManagement() {
     try {
       await api.archiveTag(tag.id);
       setServiceTags(prev => prev.filter(t => t.id !== tag.id));
-      setFormData(prev => ({
-        ...prev,
-        serviceTagIds: prev.serviceTagIds.filter(id => id !== tag.id)
-      }));
+      // Leave the tag ticked on the supplier being edited — retiring a service must
+      // not silently drop it from what's about to be saved. It reappears below as
+      // a "(retired)" chip instead of disappearing.
+      setRetiredTagsCache(prev => ({ ...prev, [tag.id]: tag }));
       toast.success('Service archived');
     } catch (err) {
       toast.error(err.message || 'Failed to archive service');
@@ -213,10 +221,14 @@ export default function SupplierManagement() {
     setCustomTagName('');
   };
 
-  // Services already on the supplier being edited whose tag has since been archived:
-  // held (in serviceTagIds) but absent from the active picker list above.
+  // Services already on the supplier being edited whose tag has since been archived
+  // (either before this form opened, or just now from inside it): held (in
+  // serviceTagIds) but absent from the active picker list above. Names come from
+  // whichever source still has them — the supplier's own saved list, or the
+  // session cache for one retired while this form was open.
   const activeTagIds = new Set(serviceTags.map(t => t.id));
-  const retiredHeldTags = (editingSupplier?.serviceTags || [])
+  const retiredHeldTags = [...(editingSupplier?.serviceTags || []), ...Object.values(retiredTagsCache)]
+    .filter((t, idx, arr) => arr.findIndex(x => x.id === t.id) === idx)
     .filter(t => formData.serviceTagIds.includes(t.id) && !activeTagIds.has(t.id));
 
   return (
@@ -231,7 +243,7 @@ export default function SupplierManagement() {
           Show archived
         </label>
         <ExportButton
-          onExportView={() => suppliers.length ? exportSuppliers(suppliers) : false}
+          onExportView={() => visibleSuppliers.length ? exportSuppliers(visibleSuppliers) : false}
         />
         <button className="btn btn-secondary" onClick={() => setShowActivityLog(true)}>
           <History size={16} /> Activity Log
@@ -508,6 +520,7 @@ export default function SupplierManagement() {
             searchable
             searchKeys={['name', 'contactName', 'contactPhone']}
             searchPlaceholder="Search suppliers..."
+            onVisibleRowsChange={setVisibleSuppliers}
             emptyState={{
               icon: 'suppliers',
               title: 'No suppliers yet',

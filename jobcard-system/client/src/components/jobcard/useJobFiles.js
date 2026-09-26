@@ -176,27 +176,50 @@ export function useJobFiles(jobcardId) {
     }
   }, [jobcardId, refreshCount]);
 
-  const savePhotos = useCallback(async (photos, category, clearPhotos, itemId = null) => {
+  // `removePhoto(id)` is called right after each individual photo finishes
+  // uploading — never a single "clear the whole strip" at the end. That's what
+  // keeps this safe against two things happening at once: a photo captured while
+  // this save is still running gets a new id and is never targeted, so it survives
+  // (instead of being wiped by a blanket clear); and if an upload partway through
+  // fails, everything before it is already gone from the strip, so a retry only
+  // re-sends what didn't go up the first time.
+  const savePhotos = useCallback(async (photos, category, removePhoto, itemId = null) => {
     if (!jobcardId || !photos || photos.length === 0) return;
     setSavingPhotos(true);
     // Photos go up one at a time and can take a while on a phone. Say so while it
     // runs, the same as picking files from disk already does.
     const toastId = toast.loading(photos.length > 1 ? `Saving ${photos.length} photos…` : 'Saving the photo…');
+    let saved = 0;
+    const failed = [];
     try {
       const now = new Date();
-      const timestamp = now.toISOString().replace(/[-:T]/g, '').slice(0, 14);
+      // Local date/time, not UTC — a name built from midnight UTC can land on the
+      // wrong calendar day everywhere west of it.
+      const pad = (n) => String(n).padStart(2, '0');
+      const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
       for (let i = 0; i < photos.length; i++) {
         const photo = photos[i];
         const suffix = photos.length > 1 ? `_${i + 1}` : '';
         const filename = `photo_${timestamp}${suffix}.jpg`;
         const raw = photo.data.replace(/^data:image\/\w+;base64,/, '');
-        await api.uploadToJobcardFiles(jobcardId, category, filename, raw, itemId);
+        try {
+          await api.uploadToJobcardFiles(jobcardId, category, filename, raw, itemId);
+          saved++;
+          if (removePhoto) removePhoto(photo.id);
+        } catch (err) {
+          failed.push({ photo, message: err.message });
+        }
       }
-      toast.success(`${photos.length} photo(s) saved to ${CATEGORY_LABELS[category]}`, { id: toastId });
-      if (clearPhotos) clearPhotos();
-      refreshCount(category);
-    } catch (err) {
-      toast.error(err.message || 'Could not save the photos — try again in a moment.', { id: toastId });
+      if (saved > 0) refreshCount(category);
+      if (failed.length === 0) {
+        toast.success(`${saved} photo(s) saved to ${CATEGORY_LABELS[category]}`, { id: toastId });
+      } else if (saved > 0) {
+        toast.error(`${saved} photo(s) saved, but ${failed.length} didn't save — ${failed[0].message || 'try again for those.'}`, { id: toastId });
+      } else {
+        // Keep the server's reason (e.g. "This file is too large") — a fixed
+        // "try again" would send the user retrying something that can never work.
+        toast.error(failed[0].message || 'Could not save the photos — try again in a moment.', { id: toastId });
+      }
     } finally {
       setSavingPhotos(false);
     }

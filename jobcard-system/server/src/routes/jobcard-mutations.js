@@ -237,8 +237,9 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
         jobNumber: jobNumber,
         status: status,
         companyId: company.id,
+        // Used only to name the customer's folder on disk — never printed on the
+        // forms (copyTemplatesToJobFolder blanks it before filling).
         companyName: company.name,
-        contactName: data.contactName || null,
         description: data.description || null,
         priority: data.priority || 'NONE',
         dueDate: data.dueDate || null,
@@ -290,6 +291,11 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     delete data.companyName;
     delete data.contactPhone;
     delete data.contactEmail;
+
+    // A cleared due date arrives as an empty string; store it as "no date" so a
+    // due-before search can't treat it as earlier than every real day, and the
+    // trail records the date as removed rather than changed to blank.
+    if (data.dueDate === '') data.dueDate = null;
 
     const existing = jobcardQueries.getById.get(id);
     if (!existing) {
@@ -434,8 +440,9 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
         jobNumber: current.job_number,
         status: current.status,
         companyId: current.company_id || null,
+        // Used only to name the customer's folder on disk — never printed on the
+        // forms (copyTemplatesToJobFolder blanks it before filling).
         companyName: current.company_name || null,
-        contactName: current.contact_name || null,
         description: current.description || data.description || null,
         priority: current.priority || data.priority || 'NONE',
         dueDate: current.due_date || data.dueDate || null,

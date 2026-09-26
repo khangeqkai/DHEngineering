@@ -20,7 +20,14 @@ const qaLevelQueries = {
   delete: db.prepare('DELETE FROM qa_levels WHERE id = ?'),
 
   // Check if any job cards use this level
-  countJobsByLevel: db.prepare('SELECT COUNT(*) as count FROM jobcards WHERE qa_level_id = ?')
+  countJobsByLevel: db.prepare('SELECT COUNT(*) as count FROM jobcards WHERE qa_level_id = ?'),
+
+  // Cascade a rename onto every job already on this level, so the copied label
+  // (jobcards.quality_level) never drifts from the level's current name — the
+  // job list, search and the invoice-gate's CRITICAL checklist all key off that
+  // copied name, not off qa_level_id. Deliberately leaves updated_at alone (a
+  // level rename isn't an edit to the job itself, so it must not re-sort the list).
+  renameOnJobs: db.prepare('UPDATE jobcards SET quality_level = ? WHERE qa_level_id = ?')
 };
 
 // QA Level Template queries

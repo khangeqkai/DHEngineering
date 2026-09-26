@@ -51,11 +51,15 @@ export default function useSearch(role) {
   const loadFilterOptions = useCallback(async () => {
     setFiltersError(false);
     try {
+      // Archived entries still come through — a filter needs to match work that was
+      // logged against a worker, machine or job type before it was retired, not just
+      // what's currently offered on a new job. SearchPage sinks them below the
+      // active ones and marks them, so "currently offered" still reads clearly.
       const [emp, mach, qa, jt] = await Promise.all([
-        api.getEmployees(),
-        api.getMachines(),
+        api.getEmployees(true),
+        api.getMachines(true),
         api.getQaLevels(),
-        api.getTags('job_type'),
+        api.getTags('job_type', true),
       ]);
       setEmployees(emp);
       setMachines(mach);
@@ -93,7 +97,9 @@ export default function useSearch(role) {
           if (filters.assigneeId) params.assigneeId = filters.assigneeId;
           if (filters.priority) params.priority = filters.priority;
           if (filters.jobType) params.jobType = filters.jobType;
-          if (filters.qaLevel) params.qaLevel = filters.qaLevel;
+          // Sent by id, not name — a level rename must not strand jobs that were
+          // already filed under the old name (the server filters on qa_level_id).
+          if (filters.qaLevel) params.qaLevelId = filters.qaLevel;
           if (filters.dateFrom) params.dateFrom = filters.dateFrom;
           if (filters.dateTo) params.dateTo = filters.dateTo;
           if (filters.dateField !== 'created') params.dateField = filters.dateField;

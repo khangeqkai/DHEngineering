@@ -92,7 +92,12 @@ export default function JobCardList() {
   const { hiddenColumns, toggleColumn, resetColumns } = useJobCardColumnVisibility();
 
   const hasLoadedOnceRef = useRef(false);
+  // Toggling Show Archived while a previous load is still in flight can let that
+  // stale reply land after the newer one — a request counter lets a reply ignore
+  // itself once a newer request has been made, instead of racing to overwrite it.
+  const loadRequestIdRef = useRef(0);
   const loadJobcards = useCallback(async () => {
+    const requestId = ++loadRequestIdRef.current;
     try {
       if (!hasLoadedOnceRef.current) setLoading(true);
       const filters = {};
@@ -101,12 +106,16 @@ export default function JobCardList() {
         filters.assigneeId = assigneeFilter;
       }
       const data = await api.getJobcards(filters);
+      if (requestId !== loadRequestIdRef.current) return;
       setJobcards(data);
     } catch (err) {
+      if (requestId !== loadRequestIdRef.current) return;
       toast.error(err.message || 'Failed to load job cards');
     } finally {
-      hasLoadedOnceRef.current = true;
-      setLoading(false);
+      if (requestId === loadRequestIdRef.current) {
+        hasLoadedOnceRef.current = true;
+        setLoading(false);
+      }
     }
   }, [showArchived, assigneeFilter, canManage]);
 
@@ -180,6 +189,19 @@ export default function JobCardList() {
 
   const handleQuickStatusChange = useCallback(async (cardId, newStatus) => {
     setStatusPopoverId(null);
+    if (newStatus === 'INVOICED') {
+      // Same question and mechanism the job screen asks before invoicing
+      // (JobIdentityStrip.jsx) — picking Invoiced from the list's status badge
+      // must not archive the job with no confirmation at all.
+      const proceed = await showConfirm({
+        title: 'Mark as Invoiced',
+        message: 'This will archive the job card. Continue?',
+        confirmLabel: 'Archive',
+        cancelLabel: 'Cancel',
+        confirmVariant: 'danger'
+      });
+      if (!proceed) return;
+    }
     const applyLocally = async () => {
       toast.success(`Status updated to ${STATUS_LABELS[newStatus]}`);
       // Invoicing files the job away, so it drops out of the active list — reload
@@ -300,7 +322,11 @@ export default function JobCardList() {
     const today = todayIsoDate();
     return jobcards.filter((card) => {
       let matchesFilter;
-      if (filter === 'all') {
+      // The status filter buttons aren't shown in the archived view (see
+      // JobCardListFilters), but the chosen filter value stays in state — without
+      // this, a filter picked before switching to Show Archived keeps applying
+      // invisibly and can filter the whole archived list down to nothing.
+      if (showArchived || filter === 'all') {
         matchesFilter = true;
       } else if (filter === 'OVERDUE') {
         matchesFilter = isJobOverdue(card.dueDate, card.status, today);
@@ -425,6 +451,15 @@ export default function JobCardList() {
   const visibleColumns = permittedColumns
     .filter(col => col.id === 'jobNumber' || !hiddenColumns.includes(col.id));
 
+  // What the Columns menu's move buttons treat as a valid swap target: a column
+  // actually shown in the table right now (permitted for this role and not
+  // hidden). Anything else gets skipped over — see useJobCardColumnOrder.js.
+  const visibleColumnIds = useMemo(
+    () => new Set(visibleColumns.map(c => c.id)),
+    [visibleColumns]
+  );
+  const isColumnVisible = useCallback((id) => visibleColumnIds.has(id), [visibleColumnIds]);
+
   if (loading) {
     return <div className="loading">Loading job cards...</div>;
   }
@@ -471,7 +506,7 @@ export default function JobCardList() {
             hiddenColumns={hiddenColumns}
             onToggle={toggleColumn}
             onReset={resetColumns}
-            onMove={moveColumn}
+            onMove={(colId, direction) => moveColumn(colId, direction, isColumnVisible)}
           />
         }
       />

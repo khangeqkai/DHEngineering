@@ -68,7 +68,14 @@ export function useInstantSave(jobCardId, saveQueue, { onSaved } = {}) {
     if (!forJobCardId) return; // new job — nothing to write to yet
 
     const { alsoMarkSaved, baseline } = options;
-    if (baseline !== undefined && value === baseline) {
+    // Skipping here when a write for this same field is still queued or in
+    // flight would let that earlier write land last: change a field, change it
+    // straight back, and the "back to what's stored" shortcut used to see
+    // nothing left to send — but the first change was still travelling, so it
+    // landed after this one was dropped and the server kept the wrong value.
+    // Falling through instead queues the revert, so whichever value the user
+    // left it on is always the one that lands last.
+    if (baseline !== undefined && value === baseline && !saveQueue.isPending(`field:${name}`)) {
       saveQueue.clearFailure(`field:${name}`);
       return;
     }

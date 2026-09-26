@@ -242,6 +242,7 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
     if (itemError) {
       return res.status(400).json({ error: itemError });
     }
+    const itemRecord = itemId ? jobItemQueries.getByJobcard.all(id).find(it => it.id === itemId) : null;
 
     // Credit the block to the worker the admin picked, not the admin filling in the
     // form, so per-worker hours and labour reports are accurate.
@@ -325,12 +326,15 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
     const workerName = workerRecord.name || workerRecord.username;
     recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name || req.user.username, {
       worker: { from: null, to: workerName },
+      item: { from: null, to: itemRecord ? itemRecord.description : null },
       machineNumber: { from: null, to: data.machineNumber || null },
       description: { from: null, to: data.description || null },
+      qty: { from: null, to: wholeQty(data.qty) },
       scrapBin: { from: null, to: scrapBinQty },
       scrapRecycle: { from: null, to: scrapRecycleQty },
       ...inspectionChanges,
       startTime: { from: null, to: startTime },
+      endTime: { from: null, to: endTime },
       ...(statusChange ? { status: statusChange } : {})
     }, { timeEntryId: entryId });
 
@@ -403,9 +407,17 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       }
     }
 
-    const durationError = checkEntryDuration(startTime, endTime);
-    if (durationError) {
-      return res.status(400).json({ error: durationError });
+    // The 31-day cap catches a mistyped date on a hand-entered/edited block. It must
+    // only fire when this request is actually changing the start/finish — not when
+    // a worker is just filling in pieces on a long-running stopped timer whose own
+    // times were reused as-is (a legitimately long-open block would otherwise block
+    // every future save of it).
+    const timesChanged = startTime !== existing.start_time || endTime !== existing.end_time;
+    if (timesChanged) {
+      const durationError = checkEntryDuration(startTime, endTime);
+      if (durationError) {
+        return res.status(400).json({ error: durationError });
+      }
     }
 
     // Scrap comes from the worker's stop-timer form or the admin's time-entry
@@ -581,6 +593,11 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
       return res.status(400).json({ error: 'Stop the timer before deleting this entry' });
     }
 
+    // Named by description, not position — see the same note on the update route.
+    const itemRecord = existing.item_id
+      ? jobItemQueries.getByJobcard.all(id).find(it => it.id === existing.item_id)
+      : null;
+
     timeEntryQueries.delete.run(entryId);
 
     // Removing finished pieces changes completion — recompute the job's status against the
@@ -591,9 +608,15 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
 
     const changes = {
       timeEntryId: { from: entryId, to: null },
+      worker: { from: existing.user_name, to: null },
+      item: { from: itemRecord ? itemRecord.description : null, to: null },
       machineNumber: { from: existing.machine_number, to: null },
       description: { from: existing.description, to: null },
-      startTime: { from: existing.start_time, to: null }
+      qty: { from: existing.qty, to: null },
+      scrapBin: { from: existing.scrap_bin_qty, to: null },
+      scrapRecycle: { from: existing.scrap_recycle_qty, to: null },
+      startTime: { from: existing.start_time, to: null },
+      endTime: { from: existing.end_time, to: null }
     };
     if (statusChange) changes.status = statusChange;
 

@@ -209,6 +209,14 @@ function runMigrations() {
   foldGoodPiecesToWhole();
   cleanUpDuplicateItemNumbering();
 
+  // Clearing a job's due date used to save an empty string instead of "no date",
+  // which a due-before search reads as earlier than every real day. Fold those
+  // into NULL. Naturally idempotent (a second run finds none).
+  const clearedDueDates = db.prepare("UPDATE jobcards SET due_date = NULL WHERE due_date = ''").run();
+  if (clearedDueDates.changes > 0) {
+    logger.info({ fixed: clearedDueDates.changes }, 'Migration: Stored cleared due dates as no date');
+  }
+
   // A quality level's form file on disk IS the record, so two records naming the same file
   // share one file: removing either takes the file away and every job on that level then
   // refuses to save. Uploading a duplicate name is now refused, but existing databases may

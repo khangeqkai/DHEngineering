@@ -220,9 +220,9 @@ class ApiService {
     return this.request(`/auth/users${includeInactive ? '?includeInactive=true' : ''}`);
   }
 
-  // Active employees list (available to all authenticated users)
-  getEmployees() {
-    return this.request('/auth/employees');
+  // Employees list (available to all authenticated users); active only unless includeInactive
+  getEmployees(includeInactive = false) {
+    return this.request(`/auth/employees${includeInactive ? '?includeInactive=true' : ''}`);
   }
 
   getUser(id) {

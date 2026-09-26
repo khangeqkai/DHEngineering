@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ChevronUp, ChevronDown, ChevronsUpDown, Search, Inbox } from 'lucide-react';
 import useTableSort from '../../hooks/useTableSort';
 import useTableFilter from '../../hooks/useTableFilter';
@@ -36,6 +37,11 @@ export default function DataTable({
   defaultSortKey = null,
   defaultSortOrder = 'asc',
   rowClassName,
+  // Called with the rows currently on screen (search-filtered, sorted) whenever
+  // they change, so a caller like "Export Current View" can send exactly what the
+  // table shows instead of the whole unfiltered dataset. Pass a plain useState
+  // setter — it's referentially stable, so this never loops.
+  onVisibleRowsChange,
 }) {
   const { searchTerm, setSearchTerm, filteredData } = useTableFilter(
     data,
@@ -47,6 +53,17 @@ export default function DataTable({
     defaultSortOrder
   );
   const { columnWidths, onMouseDown } = useTableResize(columns);
+
+  useEffect(() => {
+    if (onVisibleRowsChange) onVisibleRowsChange(sortedData);
+  }, [sortedData, onVisibleRowsChange]);
+
+  // A search that matches nothing is a different situation from there being no
+  // rows at all — "no matches for the term you typed" instead of the page's usual
+  // "nothing here yet" empty state, which would otherwise wrongly invite the user
+  // to add their first row when rows already exist.
+  const hasRowsOverall = Array.isArray(data) && data.length > 0;
+  const noMatches = searchable && searchTerm.trim() && hasRowsOverall && sortedData.length === 0;
 
   const getSortIcon = (columnKey) => {
     if (sortKey !== columnKey) return <ChevronsUpDown size={14} />;
@@ -78,7 +95,9 @@ export default function DataTable({
 
       <div className="data-table-container">
         {!loading && sortedData.length === 0 ? (
-          emptyState ? (
+          noMatches ? (
+            <EmptyState icon="search" title="No matches" description={`No matches for "${searchTerm.trim()}"`} />
+          ) : emptyState ? (
             <EmptyState {...emptyState} />
           ) : (
             <div className="data-table-empty">

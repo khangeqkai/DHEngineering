@@ -329,11 +329,17 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     }
     clearFieldError(key);
     const base = savedItemFieldsRef.current[item.id];
-    if (base && String(value ?? '') === String(base[field] ?? '')) {
-      // Back to what's already stored — nothing to send, but a stale "failed"
-      // mark from an earlier attempt at a DIFFERENT value must not survive the
-      // user reacting to it by putting the box back the way it was (defect C,
-      // root-causes.md). Never re-sends anything — only drops that mark.
+    // Same "back to stored, nothing to send" shortcut as useInstantSave.js's
+    // saveField, and the same reason it must stand aside while a write for this
+    // row is still queued or in flight: change a box, change it straight back
+    // before the first write has landed, and skipping here would let that first
+    // (now-stale) value be the one that survives. Falling through instead queues
+    // the revert under the row's own key, so it lands after and wins.
+    if (base && String(value ?? '') === String(base[field] ?? '') && !saveQueue.isPending(`item:${item.id}`)) {
+      // Nothing in flight for this row either — a stale "failed" mark from an
+      // earlier attempt at a DIFFERENT value must not survive the user reacting
+      // to it by putting the box back the way it was (defect C, root-causes.md).
+      // Never re-sends anything — only drops that mark.
       saveQueue.clearFailure(`item:${item.id}`);
       return;
     }

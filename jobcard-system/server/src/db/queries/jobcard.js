@@ -115,6 +115,11 @@ const jobcardQueries = {
 const jobItemQueries = {
   getByJobcard: db.prepare('SELECT * FROM job_items WHERE jobcard_id = ? ORDER BY item_number ASC'),
 
+  // Parts whose treatments JSON mentions a supplier id — a substring pre-filter for
+  // the supplier-rename cascade (suppliers.js), which parses and checks each row.
+  getWithSupplierIdLike: db.prepare("SELECT id, treatments FROM job_items WHERE treatments LIKE '%' || ? || '%'"),
+  updateTreatments: db.prepare('UPDATE job_items SET treatments = ? WHERE id = ?'),
+
   // A new part's number is the highest one this job currently holds, plus one —
   // read and acted on inside the same transaction as the insert (see the /items
   // POST route), so it can never collide with a number picked at the same moment

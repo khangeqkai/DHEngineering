@@ -172,14 +172,19 @@ export function useSaveQueue(jobCardId) {
 
   const stateOf = useCallback((key) => entries[key]?.state || 'idle', [entries]);
 
-  // Prefix match, so a caller can ask about a whole item ('item:item:abc') or a
-  // whole worker ('assignee:u7') without knowing every field key underneath.
-  // Only 'queued'/'inFlight' count as pending — a settled failure isn't still
-  // travelling, so it must not block a guard like creditAssignee/dropAssignee
-  // that exists specifically to stand aside from something still in the air.
+  // Exact match, or a prefix followed by the key separator itself — never a
+  // bare prefix. A bare-prefix match let 'assignee:1' collide with
+  // 'assignee:12' (a plain startsWith saw "1" at the front of "12" and called
+  // it a match), which meant worker #1's own guard could be tripped by worker
+  // #12's write. Requiring the separator after the prefix still lets a caller
+  // ask about a whole key family ('item:item:abc' catching a sub-key like
+  // 'item:item:abc:qty') without that boundary bug. Only 'queued'/'inFlight'
+  // count as pending — a settled failure isn't still travelling, so it must
+  // not block a guard like creditAssignee/dropAssignee that exists
+  // specifically to stand aside from something still in the air.
   const isPending = useCallback((keyOrPrefix) => {
     return Object.entries(entries).some(([k, v]) =>
-      (k === keyOrPrefix || k.startsWith(keyOrPrefix)) && v.state !== 'failed');
+      (k === keyOrPrefix || k.startsWith(`${keyOrPrefix}:`)) && v.state !== 'failed');
   }, [entries]);
 
   // Every outstanding key, in whatever state — queued, in flight or failed —

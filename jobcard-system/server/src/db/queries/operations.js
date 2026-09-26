@@ -110,6 +110,20 @@ const timeEntryQueries = {
   getCompletedByJobcard: db.prepare(`
     SELECT start_time, end_time
     FROM time_entries WHERE jobcard_id = ? AND end_time IS NOT NULL
+  `),
+
+  // Every distinct machine-number string logged from a given moment on.
+  // machine_number is free text that can hold several machines at once (e.g.
+  // "01, 02"), so it can't be exactly matched or safely rewritten token-by-token
+  // for every format in the wild — used to check whether a machine being
+  // renumbered has any logged work before refusing the renumber outright (see
+  // machines.js). The moment is the machine's creation: an archived machine's
+  // number can be reused, so work logged before this machine existed belongs to
+  // the retired one. Both columns are UTC ISO-8601, so they compare as text.
+  getDistinctMachineNumbersSince: db.prepare(`
+    SELECT DISTINCT machine_number FROM time_entries
+    WHERE machine_number IS NOT NULL AND machine_number != ''
+      AND start_time >= ?
   `)
 };
 
@@ -131,7 +145,13 @@ const jobNoteQueries = {
 
   getById: db.prepare('SELECT * FROM job_notes WHERE id = ?'),
 
-  delete: db.prepare('DELETE FROM job_notes WHERE id = ?')
+  delete: db.prepare('DELETE FROM job_notes WHERE id = ?'),
+
+  // The author's name is copied onto each note at write time (so an old comment
+  // still reads who wrote it even if that person later leaves), but that means a
+  // rename leaves every past comment showing the old name unless it's kept in
+  // sync — called from the user-update route whenever a name actually changes.
+  updateAuthorNameByUserId: db.prepare('UPDATE job_notes SET user_name = ? WHERE user_id = ?')
 };
 
 // Latest comment per job card, in one pass — the job list shows it as a column,

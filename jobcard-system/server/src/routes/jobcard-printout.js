@@ -4,7 +4,7 @@ const path = require('path');
 const { body, param } = require('express-validator');
 
 const logger = require('../utils/logger');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, isManagement } = require('../middleware/auth');
 const { handleValidationErrors } = require('../middleware/validation');
 const { buildJobCardView } = require('./jobcard-helpers');
 const { renderJobCardHtml } = require('../utils/jobCardHtml');
@@ -42,7 +42,7 @@ printRouter.post('/:id/print', authenticate, (req, res) => {
       return res.status(404).json({ error: 'Job card not found' });
     }
 
-    const view = buildJobCardView(req.params.id, jobcard);
+    const view = buildJobCardView(req.params.id, jobcard, isManagement(req.user.role));
     const html = renderJobCardHtml(view);
 
     recordHistory('jobcard', req.params.id, 'update', req.user.userId, req.user.name || req.user.username, {
@@ -115,7 +115,7 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
     // failing the whole packet.
     let cardBuf = null;
     if (includeJobCard) {
-      const html = renderJobCardHtml(buildJobCardView(id, jobcard));
+      const html = renderJobCardHtml(buildJobCardView(id, jobcard, isManagement(req.user.role)));
       // Try once, and if it fails for any reason other than the engine being missing,
       // try one more time: the common failure is a cold first render (the browser was
       // still starting up), and the second attempt reuses the now-warm browser.

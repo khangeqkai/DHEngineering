@@ -23,6 +23,10 @@ const MIN_LOGGED_MS = 15 * 1000;
 // screen to skip the fill-in form is returned. Returns null for a genuine run.
 function discardIfAccidentalTap(jobcardId, entry, actor) {
   const ranMs = Date.now() - new Date(entry.start_time).getTime();
+  // A negative span — a block whose start is still ahead of this clock, from a PC
+  // clock that runs fast — counts as a tap too: saving it would record a finish
+  // before its start. A start far in the future is refused when the block is
+  // entered (validation.js), so only clock drift ever reaches here.
   if (!Number.isFinite(ranMs) || ranMs >= MIN_LOGGED_MS) return null;
 
   timeEntryQueries.delete.run(entry.id);
@@ -37,8 +41,13 @@ function discardIfAccidentalTap(jobcardId, entry, actor) {
     // The Start's own trail entry recorded the status move it made, if any.
     const logged = historyQueries.getStartTimer.get(jobcardId, entry.start_time);
     const status = logged && JSON.parse(logged.changes).status;
-    // Only put the status back if nothing else has moved it since the Start.
-    if (status && jobcardQueries.getById.get(jobcardId)?.status === status.to) {
+    // Only put the status back if nothing else has moved it since the Start, and no
+    // OTHER timer is still running on this job (this block was already deleted above,
+    // so a count here is every timer besides it) — a colleague's still-running work
+    // earned that status honestly and an accidental tap from someone else must not
+    // undo it out from under them.
+    const otherTimerRunning = timeEntryQueries.countRunningByJobcard.get(jobcardId).count > 0;
+    if (status && !otherTimerRunning && jobcardQueries.getById.get(jobcardId)?.status === status.to) {
       jobcardQueries.updateStatus.run(status.from, actor.userId, jobcardId);
       changes.status = { from: status.to, to: status.from };
     }

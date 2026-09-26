@@ -4,9 +4,12 @@ import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import { workBelongsToItem } from './workMatch.mjs';
 
 function formatElapsed(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
+  // Defensive clamp — clock skew can otherwise hand this a negative value for
+  // the first tick or two of a fresh timer, which would print as e.g. "-1".
+  const safeSeconds = Math.max(0, seconds);
+  const h = Math.floor(safeSeconds / 3600);
+  const m = Math.floor((safeSeconds % 3600) / 60);
+  const s = safeSeconds % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 

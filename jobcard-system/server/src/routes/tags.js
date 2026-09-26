@@ -118,9 +118,11 @@ router.post('/', requireManagement, (req, res) => {
         tagQueries.update.run(trimmedName, value, existing.id);
         tagQueries.unarchive.run(existing.id);
         const restored = tagQueries.getById.get(existing.id);
-        recordHistory('tag', existing.id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
-          status: { from: 'Archived', to: 'Active' }
-        });
+        const restoreChanges = { status: { from: 'Archived', to: 'Active' } };
+        if (trimmedName !== existing.name) {
+          restoreChanges.name = { from: existing.name, to: trimmedName };
+        }
+        recordHistory('tag', existing.id, 'unarchive', req.user.userId, req.user.name || req.user.username, restoreChanges);
         return res.status(200).json(formatTag(restored));
       }
       return res.status(200).json(formatTag(existing));

@@ -1,6 +1,12 @@
 export function toTitleCase(str) {
   if (!str) return str;
-  return str.trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const titled = str.trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  // The rule above sees straight past an apostrophe (it's not a word character), so
+  // it also capitalizes the letter right after one — "bob's" became "Bob'S". Only
+  // fold that back down for an actual contraction/possessive suffix ('s, 't, 'd,
+  // 'll, 're, 've, 'm); a name like "O'Brien" doesn't match "brien" against any of
+  // these, so it's untouched.
+  return titled.replace(/'(s|t|d|m|ll|re|ve)\b/gi, (m) => m.toLowerCase());
 }
 
 export function autoResize(textarea) {

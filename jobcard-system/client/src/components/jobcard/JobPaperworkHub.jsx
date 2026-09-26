@@ -183,7 +183,9 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
   const openCamera = (cat) => { camera.setPhotos([]); setCameraCategory(cat); setView('camera'); camera.startCamera(); };
   const saveCameraPhotos = async () => {
     if (camera.photos.length === 0) return;
-    await files.savePhotos(camera.photos, cameraCategory, () => camera.setPhotos([]), ownerForCategory(cameraCategory));
+    // Removes each photo from the strip as it finishes uploading (by id), not the
+    // whole strip once the batch ends — see useJobFiles.savePhotos.
+    await files.savePhotos(camera.photos, cameraCategory, camera.removePhoto, ownerForCategory(cameraCategory));
     afterChange(cameraCategory);
     clearTargetIfMatches(cameraCategory);
   };

@@ -142,6 +142,11 @@ export default function QALevelManagement() {
     }
   };
 
+  // Same cap the job-file upload uses (client/src/components/jobcard/useJobFiles.js
+  // MAX_UPLOAD_BYTES) — checked here too so an oversized template is caught before
+  // the base64 encode/send instead of only after the server's body-size limit rejects it.
+  const MAX_TEMPLATE_UPLOAD_BYTES = 30 * 1024 * 1024;
+
   const handleFileUpload = async (levelId, e) => {
     const input = e.target;
     const file = input.files?.[0];
@@ -149,6 +154,12 @@ export default function QALevelManagement() {
 
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       toast.error('Only PDF files are allowed');
+      input.value = '';
+      return;
+    }
+
+    if (file.size > MAX_TEMPLATE_UPLOAD_BYTES) {
+      toast.error('This file is too large (max 30 MB)');
       input.value = '';
       return;
     }
@@ -239,13 +250,16 @@ export default function QALevelManagement() {
                       <FieldError {...errorProps('renameName')} message={errorFor('renameName')} />
                     </div>
                   ) : (
-                    <h2
-                      className="qa-level-name qa-level-name--editable"
-                      title="Click to rename"
-                      onClick={() => startRename(level)}
-                    >
-                      {level.name}
-                      <Pencil size={14} className="qa-level-name-pencil" />
+                    <h2 className="qa-level-name">
+                      <button
+                        type="button"
+                        className="qa-level-name-btn qa-level-name--editable"
+                        aria-label={`Rename "${level.name}"`}
+                        onClick={() => startRename(level)}
+                      >
+                        {level.name}
+                        <Pencil size={14} className="qa-level-name-pencil" />
+                      </button>
                     </h2>
                   )}
                   <span className="qa-level-meta">
@@ -267,7 +281,12 @@ export default function QALevelManagement() {
                     />
                     <span className="toggle-switch"></span>
                   </label>
-                  <button className="btn btn-danger btn-sm" onClick={() => handleDelete(level)}>
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm"
+                    aria-label={`Delete "${level.name}"`}
+                    onClick={() => handleDelete(level)}
+                  >
                     <Trash2 size={14} />
                   </button>
                 </div>

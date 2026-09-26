@@ -312,39 +312,80 @@ function serializeTreatments(treatments) {
   return JSON.stringify(treatments);
 }
 
+// Mirrors the client's STATUS_OPTIONS labels (client/src/components/jobcard/
+// constants.js) — there's no shared import path between server and client, so
+// the two are kept in step by hand, the same way PRIORITY_LABELS below already
+// is. Used only to keep the QA form's printed status word human-readable.
+const STATUS_LABELS = {
+  QUOTE: 'Quote',
+  OPEN: 'Open',
+  AWAITING_MATERIAL: 'Material/Service',
+  PO_REQUESTED: 'PO Requested',
+  IN_PROGRESS: 'In Progress',
+  DONE: 'Done',
+  CUST_NOTIFIED: 'Cust. Notified',
+  INVOICED: 'Invoiced'
+};
+
+// Friendly, comma-joined label for a stored multi-value tag field (drawings /
+// customer property), matching exactly how the job card printout shows them
+// (buildJobCardView below): the explicit "N/A" sentinel reads as "N/A" and
+// everything else resolves through tagName — so a QA form and the job card
+// never disagree on what a stored code means.
+function friendlyTagList(raw, category) {
+  const vals = splitValues(raw);
+  const isNa = vals.length === 0 || (vals.length === 1 && vals[0] === 'N_A');
+  if (isNa) return 'N/A';
+  return [...new Set(vals.map(v => tagName(category, v)))].join(', ');
+}
+
 // Build the data object passed to copyQaTemplatesForJob for PDF pre-fill.
 // Loads current items from DB and aggregates treatments/job types across them.
+// Every code/enum value is resolved to the same human-readable label the job
+// card printout uses (tagName, PRIORITY_LABELS, STATUS_LABELS, formatAuDate),
+// and every date goes through the same AU-date formatting — a quality form is
+// a file any worker can open, so it must never show a raw internal code like
+// ZINC_PLATE, N_A or SAME_DAY, or a raw ISO timestamp.
 function buildQaFillData(jobcardId, fields) {
   const items = jobItemQueries.getByJobcard.all(jobcardId);
   const itemsForPdf = items.map(i => ({
     itemNumber: i.item_number,
     qty: i.qty,
     description: i.description,
-    jobType: i.job_type,
-    material: i.material,
-    treatments: parseTreatments(i.treatments),
-    drawingsType: i.drawings_type,
-    customerProperty: i.customer_property
+    jobType: tagName('job_type', i.job_type),
+    material: tagName('material', i.material),
+    treatments: parseTreatments(i.treatments).map(t => ({ ...t, value: tagName('treatment', t.value) })),
+    drawingsType: friendlyTagList(i.drawings_type, 'drawings'),
+    customerProperty: friendlyTagList(i.customer_property, 'customer_property')
   }));
   const allTreatments = itemsForPdf.flatMap(i => i.treatments).map(t => {
     const name = t.value;
     return t.supplierName ? `${name} - ${t.supplierName}` : name;
   });
-  const allJobTypes = [...new Set(items.map(i => i.job_type).filter(Boolean))];
-  // Drawings + customer property now live per line item; aggregate (de-duped)
-  // across the job so the job-level PDF fields still fill.
-  const splitValues = raw => (raw ? String(raw) : '').split(',').map(v => v.trim()).filter(Boolean);
-  const allDrawings = [...new Set(items.flatMap(i => splitValues(i.drawings_type)))];
-  const allProperty = [...new Set(items.flatMap(i => splitValues(i.customer_property)))];
-  // The job's creation date, formatted for any "date created" PDF field.
+  const allJobTypes = [...new Set(itemsForPdf.map(i => i.jobType).filter(Boolean))];
+  // Drawings + customer property now live per line item; aggregate them across
+  // the job so the job-level PDF fields still fill — de-duped per single value
+  // (not per part's whole list, or "A, B" and "A" would repeat A), resolved to
+  // the friendly label, with "N/A" excluded since it isn't a declared value.
+  const jobTagList = (field, category) => [...new Set(items
+    .flatMap(i => splitValues(i[field]))
+    .filter(v => v !== 'N_A')
+    .map(v => tagName(category, v)))];
+  const allDrawings = jobTagList('drawings_type', 'drawings');
+  const allProperty = jobTagList('customer_property', 'customer_property');
+  // The job's creation date, formatted for any "date created" PDF field — same
+  // formatAuDate the printout uses.
   const jc = jobcardQueries.getById.get(jobcardId);
   return {
     ...fields,
     dateCreated: jc ? formatAuDate(jc.created_at) : null,
-    jobType: allJobTypes.join(',') || null,
+    dueDate: fields.dueDate ? formatAuDate(fields.dueDate) : fields.dueDate,
+    priority: fields.priority ? (PRIORITY_LABELS[fields.priority] || fields.priority) : fields.priority,
+    status: fields.status ? (STATUS_LABELS[fields.status] || fields.status) : fields.status,
+    jobType: allJobTypes.join(', ') || null,
     treatmentRequired: allTreatments.join(', ') || null,
-    drawingsType: allDrawings.join(',') || null,
-    customerProperty: allProperty.join(',') || null,
+    drawingsType: allDrawings.join(', ') || null,
+    customerProperty: allProperty.join(', ') || null,
     items: itemsForPdf
   };
 }
@@ -381,8 +422,9 @@ function formatAuDate(raw) {
 
 // Build friendly, pre-formatted data for the generated job card printout
 // (rendered by renderJobCardHtml in utils/jobCardHtml.js). `jc` is the raw
-// jobcards row.
-function buildJobCardView(jobcardId, jc) {
+// jobcards row. `canManage` gates the customer company name — non-management
+// requesters never see who the job is for, same as the live job card.
+function buildJobCardView(jobcardId, jc, canManage = false) {
   const rows = jobItemQueries.getByJobcard.all(jobcardId);
 
   // Read the Job Files and Customer Property folders once so each part's drawing
@@ -451,9 +493,10 @@ function buildJobCardView(jobcardId, jc) {
     priorityClass: PRIORITY_PILL_CLASSES[priorityKey] || 'normal',
     dateCreated: formatAuDate(jc.created_at),
     dueDate: formatAuDate(jc.due_date),
-    // The shop-floor printout shows the company so workers know whose job it is.
-    // Contact name / phone / email are never on the printout for anyone.
-    company: jc.company_name || '',
+    // The shop-floor printout shows the company to management requesters so they
+    // know whose job it is. Non-management requesters never see the customer —
+    // contact name / phone / email are never on the printout for anyone.
+    company: canManage ? (jc.company_name || '') : '',
     poNumber: jc.po_number || '',
     quoteReference: jc.quote_reference || '',
     printed: new Date().toLocaleDateString('en-AU'),

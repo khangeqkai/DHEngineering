@@ -130,7 +130,17 @@ export default function JobIdentityStrip({
   const priorityLabel =
     PRIORITY_OPTIONS.find(p => p.value === priority)?.label || 'Priority';
   const priorityClass = `jc-strip-priority jc-strip-priority-${priorityToken(priority)}`;
-  const formattedDate = formatDate(dueDate, { weekday: 'short', day: 'numeric', month: 'short' });
+  // The year is left out for a due date in the current year (the common case) and
+  // shown for any other — a bare "Fri, 25 Dec" left every date before or after this
+  // year looking like it belonged to it.
+  const dueDateYear = dueDate ? dueDate.slice(0, 4) : null;
+  const currentYear = String(new Date().getFullYear());
+  const formattedDate = formatDate(dueDate, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    ...(dueDateYear && dueDateYear !== currentYear ? { year: 'numeric' } : {})
+  });
   const titleText = isEdit ? jobNumber : 'New Job Card';
 
   // A non-management user only gets to pick among the statuses the server allows
@@ -458,6 +468,9 @@ export default function JobIdentityStrip({
               value={dueDate}
               onSelect={(dateStr) => setFieldInstant('dueDate', dateStr, savedForm.dueDate ?? '')}
               onClose={() => setShowCalendar(false)}
+              // The due date is optional — unlike the public holidays list
+              // (the picker's other caller), where a blank entry makes no sense.
+              allowClear
             />
       </div>
 

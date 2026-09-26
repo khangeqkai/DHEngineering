@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { validatePassword, todayIsoDate } from '../utils/formatters';
 import { isManagement } from '../utils/roles';
+import { useFieldErrors, scrollFieldIntoView } from './useFieldErrors';
 
 export function useSettings() {
   const { user, refreshInactivityTimeout } = useAuth();
@@ -21,8 +22,13 @@ export function useSettings() {
     return localStorage.getItem('darkMode') === 'true';
   });
 
+  const { setFieldErrors, clearFieldError, errorFor } = useFieldErrors();
+
   const [jobFoldersBase, setJobFoldersBase] = useState('');
-  const [inactivityTimeout, setInactivityTimeout] = useState(5);
+  // Kept as a string, not a number, so the box can hold "" or a partial digit while
+  // the user is typing — clamping every keystroke made 6 unkeyable (it kept
+  // snapping back to 1 before the second digit landed). Range is checked on save.
+  const [inactivityTimeout, setInactivityTimeoutState] = useState('5');
   const [jobNumberPrefix, setJobNumberPrefix] = useState('');
   const [jobNumberNext, setJobNumberNext] = useState('');
   const [savingJobFolders, setSavingJobFolders] = useState(false);
@@ -43,6 +49,13 @@ export function useSettings() {
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [pendingImportPath, setPendingImportPath] = useState(null);
 
+  // Clears this field's submit-time error mark the moment the user types again,
+  // same shape as useLabourRates' per-field setters.
+  const setInactivityTimeout = useCallback((v) => {
+    clearFieldError('inactivityTimeout');
+    setInactivityTimeoutState(v);
+  }, [clearFieldError]);
+
   const loadSettings = useCallback(async () => {
     if (!canManage) {
       setLoading(false);
@@ -54,7 +67,7 @@ export function useSettings() {
       setSettings(data);
       if (data) {
         setJobFoldersBase(data.jobFoldersBase || '');
-        setInactivityTimeout(parseInt(data.inactivityTimeoutMinutes, 10) || 5);
+        setInactivityTimeoutState(String(parseInt(data.inactivityTimeoutMinutes, 10) || 5));
         setJobNumberPrefix(data.jobNumberPrefix || '');
         setJobNumberNext(data.jobNumberNext || '');
         setHomeAddress(data.homeAddress || '');
@@ -100,52 +113,62 @@ export function useSettings() {
     }
   }, [jobFoldersBase]);
 
+  // Each card saves and updates only its own saved values from what was just sent —
+  // never a full loadSettings(), which would refetch every field at once and wipe
+  // out unsaved edits sitting in the other cards, and never flips the page-level
+  // `loading` flag, which would flash the whole page back to "Loading...".
   const handleSaveJobFolders = useCallback(async () => {
     setSavingJobFolders(true);
     try {
       await api.updateSettings({ jobFoldersBase });
-      await loadSettings();
       toast.success('Job folders base path saved');
     } catch (err) {
       toast.error(err.message || 'Failed to save job folders base path');
     } finally {
       setSavingJobFolders(false);
     }
-  }, [jobFoldersBase, loadSettings]);
+  }, [jobFoldersBase]);
 
   // Blank = switch home access off (the server refuses tunnel sign-ins with no code).
   const handleSaveHomeAccessCode = useCallback(async () => {
+    const wasSet = !!homeAccessCode;
     setSavingHomeAccess(true);
     try {
       await api.updateSettings({ homeAccessCode });
       setHomeAccessCode('');
-      await loadSettings();
-      toast.success(homeAccessCode ? 'Home access code saved' : 'Home access switched off');
+      setSettings(prev => (prev ? { ...prev, homeAccessCodeSet: wasSet } : prev));
+      toast.success(wasSet ? 'Home access code saved' : 'Home access switched off');
     } catch (err) {
       toast.error(err.message || 'Failed to save the home access code');
     } finally {
       setSavingHomeAccess(false);
     }
-  }, [homeAccessCode, loadSettings]);
+  }, [homeAccessCode]);
 
   const handleSaveHomeAddress = useCallback(async () => {
     setSavingHomeAddress(true);
     try {
       await api.updateSettings({ homeAddress });
-      await loadSettings();
+      setSettings(prev => (prev ? { ...prev, homeAddress } : prev));
       toast.success('Home address saved');
     } catch (err) {
       toast.error(err.message || 'Failed to save the home address');
     } finally {
       setSavingHomeAddress(false);
     }
-  }, [homeAddress, loadSettings]);
+  }, [homeAddress]);
 
   const handleSaveInactivityTimeout = useCallback(async () => {
+    const n = parseInt(String(inactivityTimeout).trim(), 10);
+    if (String(inactivityTimeout).trim() === '' || !Number.isFinite(n) || n < 1 || n > 60) {
+      setFieldErrors({ inactivityTimeout: 'Enter a number of minutes between 1 and 60' });
+      scrollFieldIntoView('inactivityTimeout');
+      return;
+    }
     setSavingTimeout(true);
     try {
-      await api.updateSettings({ inactivityTimeoutMinutes: inactivityTimeout });
-      await loadSettings();
+      await api.updateSettings({ inactivityTimeoutMinutes: n });
+      setInactivityTimeoutState(String(n));
       if (refreshInactivityTimeout) await refreshInactivityTimeout();
       toast.success('Inactivity timeout saved');
     } catch (err) {
@@ -153,7 +176,7 @@ export function useSettings() {
     } finally {
       setSavingTimeout(false);
     }
-  }, [inactivityTimeout, loadSettings, refreshInactivityTimeout]);
+  }, [inactivityTimeout, refreshInactivityTimeout, setFieldErrors]);
 
   const handleSaveJobNumber = useCallback(async () => {
     if (jobNumberNext && !/^\d+$/.test(jobNumberNext)) {
@@ -163,14 +186,13 @@ export function useSettings() {
     setSavingJobNumber(true);
     try {
       await api.updateSettings({ jobNumberPrefix, jobNumberNext });
-      await loadSettings();
       toast.success('Job number settings saved');
     } catch (err) {
       toast.error(err.message || 'Failed to save job number settings');
     } finally {
       setSavingJobNumber(false);
     }
-  }, [jobNumberPrefix, jobNumberNext, loadSettings]);
+  }, [jobNumberPrefix, jobNumberNext]);
 
   const toggleDarkMode = useCallback(() => setDarkMode(prev => !prev), []);
 
@@ -283,6 +305,7 @@ export function useSettings() {
     darkMode, toggleDarkMode,
     jobFoldersBase, setJobFoldersBase, handleSelectJobFolders, handleSaveJobFolders, savingJobFolders,
     inactivityTimeout, setInactivityTimeout, handleSaveInactivityTimeout, savingTimeout,
+    errorFor,
     jobNumberPrefix, setJobNumberPrefix, jobNumberNext, setJobNumberNext, handleSaveJobNumber, savingJobNumber,
     homeAccessCode, setHomeAccessCode, handleSaveHomeAccessCode, savingHomeAccess,
     homeAddress, setHomeAddress, handleSaveHomeAddress, savingHomeAddress,

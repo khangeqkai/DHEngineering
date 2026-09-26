@@ -22,7 +22,10 @@ export default function MachinesTab({ machineUtilization = [], loading = false }
   const totalMachineHours = machineUtilization.reduce((sum, m) => sum + (m.totalHours || 0), 0);
   const maxMachineHours = machineUtilization.reduce((max, m) => Math.max(max, m.totalHours || 0), 1) || 1;
   const activeMachinesCount = machineUtilization.filter(m => m.totalHours > 0).length;
-  const topMachine = machineUtilization.length > 0 ? machineUtilization[0] : null;
+  // A machine with 0 hours logged isn't "busiest" — there's nothing to compare.
+  const topMachine = machineUtilization.length > 0 && machineUtilization[0].totalHours > 0
+    ? machineUtilization[0]
+    : null;
   const topMachineShare = totalMachineHours > 0 && topMachine
     ? Math.round((topMachine.totalHours / totalMachineHours) * 1000) / 10
     : 0;
@@ -60,7 +63,7 @@ export default function MachinesTab({ machineUtilization = [], loading = false }
           </div>
           <div className="kpi-body">
             <div className="kpi-value" style={{ fontSize: 'var(--text-xl)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-              {loading ? <span className="stat-dash">—</span> : (topMachine ? topMachine.name : <span className="stat-dash">—</span>)}
+              {loading ? <span className="stat-dash">—</span> : (topMachine ? (topMachine.name || topMachine.machineNumber) : <span className="stat-dash">—</span>)}
             </div>
           </div>
           <div className="kpi-footer">

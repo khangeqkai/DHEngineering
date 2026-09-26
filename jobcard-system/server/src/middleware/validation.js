@@ -397,6 +397,18 @@ const validateStartTimer = [
 // labour-hour totals. The Start/Stop timer's own start/stop routes are
 // separate and skip this; its stop-form save and resume/cancel reuse the
 // edit route and pass it (real elapsed time, or a cleared finish time).
+// A hand-entered/edited block's good-piece and scrap counts must be plain
+// non-negative whole numbers — "-3", "2.5" and "3 pcs" are all rejected here
+// instead of being silently coerced by the route. Blank/absent is left alone
+// (the route treats that as "nothing recorded" / 0).
+const wholeNonNegative = (value) => {
+  if (value === undefined || value === null || value === '') return true;
+  if (!/^\d+$/.test(String(value).trim())) {
+    throw new Error('Must be a whole number, 0 or more');
+  }
+  return true;
+};
+
 const validateManualTimeEntry = [
   body('startTime')
     .exists({ checkNull: true })
@@ -404,6 +416,14 @@ const validateManualTimeEntry = [
     .bail()
     .custom(v => !isNaN(new Date(v).getTime()))
     .withMessage('Start time is not a valid date'),
+  // The form fills its start box from the office PC's own clock, which can run
+  // several minutes ahead of this one, so up to 15 minutes ahead is taken as
+  // "now". Further than that is a mistyped hour or day, not clock drift. A Stop
+  // on a block that still starts ahead of the clock is discarded as a tap (see
+  // startTimerUndo.js), so the leeway can never produce a negative block.
+  body('startTime')
+    .custom(v => new Date(v).getTime() <= Date.now() + 15 * 60 * 1000)
+    .withMessage('Start time cannot be in the future'),
   body('endTime')
     .optional({ nullable: true, checkFalsy: true })
     .custom(v => !isNaN(new Date(v).getTime()))
@@ -412,6 +432,9 @@ const validateManualTimeEntry = [
     .optional({ nullable: true, checkFalsy: true })
     .custom((v, { req }) => new Date(v).getTime() > new Date(req.body.startTime).getTime())
     .withMessage('Finish time must be after the start time'),
+  body('qty').custom(wholeNonNegative).withMessage('Good pieces must be a whole number, 0 or more'),
+  body('scrapBinQty').custom(wholeNonNegative).withMessage('Scrap (bin) must be a whole number, 0 or more'),
+  body('scrapRecycleQty').custom(wholeNonNegative).withMessage('Scrap (recycle) must be a whole number, 0 or more'),
   handleValidationErrors
 ];
 
@@ -486,13 +509,24 @@ function validateItemTreatments(items, existingItems, getItemLabel = defaultItem
       // given, it just has to be a real, active supplier; it no longer has to be
       // pre-linked to this treatment (a treatment added on the spot has no links).
       const supplierId = tr.supplierId ? String(tr.supplierId).trim() : '';
-      if (supplierId && !grandfathered.has(`${supplierId}|${value}`)) {
+      if (supplierId) {
+        const isGrandfathered = grandfathered.has(`${supplierId}|${value}`);
         const supplier = getSupplierQueries().getById.get(supplierId);
-        if (!supplier) {
-          return `${label} treatment ${t + 1}: selected supplier no longer exists`;
+        if (!isGrandfathered) {
+          if (!supplier) {
+            return `${label} treatment ${t + 1}: selected supplier no longer exists`;
+          }
+          if (supplier.active !== 1) {
+            return `${label} treatment ${t + 1}: selected supplier is switched off`;
+          }
         }
-        if (supplier.active !== 1) {
-          return `${label} treatment ${t + 1}: selected supplier is switched off`;
+        // The part always stores the supplier's current name from the database,
+        // never whatever the client happened to send — so a rename is reflected
+        // even on a pairing this save didn't otherwise touch, and a stale or
+        // wrong name typed on the client can never stick. `items` is the same
+        // array the caller goes on to persist, so this mutation is what gets saved.
+        if (supplier) {
+          tr.supplierName = supplier.name;
         }
       }
     }

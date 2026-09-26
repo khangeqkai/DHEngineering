@@ -527,7 +527,17 @@ router.post('/:id/files/:category/:filename/assign', authenticate, validateCateg
     // buildStorageFilename to reproduce that same "[p{code}]" tag always finds a
     // clash (itself) and appends " (n)" — comparing the new name to the old one
     // then always looks different, and an unchanged part got renamed every time.
-    if (currentFileTag(filename) === partFileCode(itemId)) {
+    // A part owner matches by comparing stable codes directly. A whole-job owner
+    // can't be decided that way — a whole-job file's tag is a per-upload
+    // timestamp, not a fixed code — so "already whole job" instead means the
+    // file's current tag isn't any real part's code (untagged counts as whole
+    // job too), otherwise re-picking "Whole job" on a whole-job file renamed it
+    // and wrote a needless history entry every time.
+    const currentTag = currentFileTag(filename);
+    const alreadySameOwner = itemId
+      ? currentTag === partFileCode(itemId)
+      : !parts.some(it => partFileCode(it.id) === currentTag);
+    if (alreadySameOwner) {
       const [same] = resolveFileOwners(id, listFolderFiles(folderRes.folderPath)).filter(f => f.name === filename);
       return res.json(same || { name: filename });
     }

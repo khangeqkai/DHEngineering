@@ -80,6 +80,11 @@ async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
 
     const fillData = {
       ...jobData,
+      // Quality forms are files on disk that any worker can open, so the
+      // customer is never printed on them — neither the company (only needed
+      // above to find or create the customer's folder) nor the contact person.
+      companyName: null,
+      contactName: null,
       date: new Date().toLocaleDateString('en-AU'),
       qualityLevel: jobData.qualityLevel || level.name,
       items: jobData.items || []

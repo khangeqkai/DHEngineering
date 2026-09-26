@@ -108,7 +108,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         // that already chose a since-archived supplier needs it here to show it "(retired)".
         api.getSuppliers(true),
         api.getEmployees(),
-        api.getMachines(),
+        // Include archived machines too, for the same reason — the time-entry
+        // Machines picker (TimeEntryForm.jsx) filters to active itself, but a
+        // block already ticked against a since-archived machine needs it here
+        // to show it "(retired)" instead of silently hiding it.
+        api.getMachines(true),
         api.getQaLevels()
       ]);
       setSuppliers(suppliersRes || []);
@@ -237,6 +241,17 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   const { costingLoaded, refreshCosting } = costingHook;
   const { creditAssignee, dropAssignee } = formHook;
+  // A save/timer action that's still in flight when the user closes this job and
+  // opens another must not let its late reply patch the now-different job's
+  // screen — this stays current every render (unlike a plain closed-over
+  // jobCardId, fixed at the moment the action started), so useJobCardTimerActions
+  // can tell a reply that's still for the open job apart from a stale one.
+  const currentJobIdRef = useRef(jobCardId);
+  currentJobIdRef.current = jobCardId;
+  // An invoiced job's time is locked server-side; kept here (rather than reading
+  // formHook.formData.status inline below) so both the timer actions and the
+  // manual add/edit form agree on exactly the same test.
+  const isInvoiced = formHook.formData.status === 'INVOICED';
   // Starting/stopping a timer, the stop-timer form and the manual add/edit form —
   // pulled into its own hook (useJobCardTimerActions.js) purely to keep this file
   // from growing further; every dependency here is something this component
@@ -249,15 +264,15 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     handleSubmitEntryForm,
     handleCancelEntryForm
   } = useJobCardTimerActions({
-    jobCardId, isAdmin, costingLoaded, refreshCosting, refreshJobStatus,
+    jobCardId, isAdmin, isInvoiced, costingLoaded, refreshCosting, refreshJobStatus,
     reloadTimeEntries, timer, showConfirm, creditAssignee, dropAssignee,
-    employees, currentUserId: user?.id, setFormData, onTimerChange
+    employees, currentUserId: user?.id, setFormData, onTimerChange, currentJobIdRef
   });
 
   const timeEntry = useTimeEntries(jobCardId, {
     ...apiTimeEntryOperations,
     showConfirm,
-    isInvoiced: formHook.formData.status === 'INVOICED'
+    isInvoiced
   });
   const { resetTimeEntries } = timeEntry;
   const { resetCosting } = costingHook;

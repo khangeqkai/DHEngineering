@@ -71,10 +71,14 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [], mac
 
   // Code → friendly machine name, so the machine cell can show both. A machine that
   // isn't in the current list (removed since) just shows its code with no name.
+  // A retired machine's number can be reused by a new one, so the working machine
+  // is laid down last and its name wins over the retired one's. Keyed without
+  // capitals, because a block keeps the number as it was typed back then.
   const machineNames = useMemo(() => {
     const map = new Map();
-    machines.forEach(m => {
-      if (m.machineNumber != null) map.set(String(m.machineNumber), m.name || '');
+    const isActive = m => m.active === 1 || m.active === true;
+    [...machines.filter(m => !isActive(m)), ...machines.filter(isActive)].forEach(m => {
+      if (m.machineNumber != null) map.set(String(m.machineNumber).toLowerCase(), m.name || '');
     });
     return map;
   }, [machines]);
@@ -203,7 +207,7 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [], mac
             <span className="cb-nil">No machine</span>
           ) : (
             run.codes.map((code, ci) => {
-              const name = machineNames.get(code);
+              const name = machineNames.get(String(code).toLowerCase());
               return (
                 <span className="cb-mach-line" key={ci}>
                   <span className="cb-mach-code">{code}</span>

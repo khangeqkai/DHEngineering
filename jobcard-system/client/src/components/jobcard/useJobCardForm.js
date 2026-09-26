@@ -111,6 +111,13 @@ export function useJobCardForm(jobCardId, { onInstantSave } = {}) {
   assigneesRef.current = assignees;
   const jobCardIdRef = useRef(jobCardId);
   jobCardIdRef.current = jobCardId;
+  // Bumped every time resetForm runs — which is every time this window (re)opens,
+  // on any job. A brand-new create that's still travelling when the window is
+  // closed and reopened (same job or a different one) can capture this before it
+  // sends and compare afterwards, so its reply knows the window it was meant for
+  // is gone and must not close, or set warnings on, whichever job is open now.
+  // See useJobCardSave.js.
+  const sessionRef = useRef(0);
 
   // A part now saves itself row by row (useInstantItems.js), so "are the parts
   // dirty" is no longer one whole-list comparison — it's asked per row:
@@ -404,6 +411,7 @@ export function useJobCardForm(jobCardId, { onInstantSave } = {}) {
     // without this, opening the next job would still show whatever was left
     // queued or failed on the previous one.
     saveQueue.reset();
+    sessionRef.current += 1;
   }, [saveQueue]);
 
   return {
@@ -412,6 +420,9 @@ export function useJobCardForm(jobCardId, { onInstantSave } = {}) {
     setFormData,
     jobNumber,
     setJobNumber,
+    // See its own declaration above — useJobCardSave.js reads this to tell
+    // whether a create it sent still belongs to the window now on screen.
+    sessionRef,
     // The one save queue for this open job card (Contract A) — shared out to
     // useJobCardInstantSaves.js and useJobCardCloseGuard.js so every instant
     // write on the card, and the close question, read the same record.

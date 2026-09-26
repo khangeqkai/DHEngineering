@@ -1,0 +1,9 @@
+/* Calendar-picker-only rules. The picker's shared look (overlay, grid, cells) lives
+   in JobCardModal.css alongside the job card's other floating panels — this file
+   only holds what's specific to the optional "Clear date" action. */
+
+.calendar-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-4);
+}

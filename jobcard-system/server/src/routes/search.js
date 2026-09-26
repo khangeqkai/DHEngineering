@@ -31,6 +31,19 @@ function pushMomentRange(conditions, params, column, dateFrom, dateTo) {
   if (to) { conditions.push(`${column} <= ?`); params.push(to); }
 }
 
+// Escape LIKE metacharacters (% and _) in raw, user-typed text — every LIKE
+// clause built from free text pairs the escaped param with `ESCAPE '\\'` on the
+// SQL side, so a literal % or _ someone types can't silently widen the match
+// (e.g. typing "50%" only finds jobs containing "50%", not every "500", "501", …).
+function escapeLikeChars(raw) {
+  return String(raw).replace(/[\\%_]/g, c => `\\${c}`);
+}
+
+// Wrap already-escaped or raw free text in wildcards for a substring LIKE.
+function likeTerm(raw) {
+  return `%${escapeLikeChars(raw)}%`;
+}
+
 // --- Formatters (snake_case → camelCase) ---
 
 function formatJob(row, assignees, canManage) {
@@ -141,7 +154,7 @@ router.get('/', authenticate, (req, res) => {
 function searchAll(req, res, canManage) {
   const q = (req.query.q || '').trim();
   if (!q) return res.json({ groups: {} });
-  const like = `%${q}%`;
+  const like = likeTerm(q);
   const groups = {};
 
   // Jobs — hide archived by default so the combined preview's count and rows match
@@ -149,8 +162,8 @@ function searchAll(req, res, canManage) {
   // toggle that flips this, and that choice is carried through on "see all".
   const includeArchived = req.query.includeArchived === 'true';
   const jobMatch = canManage
-    ? '(j.job_number LIKE ? OR j.description LIKE ? OR j.company_name LIKE ? OR j.contact_name LIKE ? OR j.po_number LIKE ?)'
-    : '(j.job_number LIKE ? OR j.description LIKE ?)';
+    ? "(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\' OR j.company_name LIKE ? ESCAPE '\\' OR j.contact_name LIKE ? ESCAPE '\\' OR j.po_number LIKE ? ESCAPE '\\')"
+    : "(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\')";
   const jobWhere = includeArchived ? jobMatch : `${jobMatch} AND j.archived = 0`;
   const jobParams = canManage ? [like, like, like, like, like] : [like, like];
   const jobFrom = 'FROM jobcards j';
@@ -167,7 +180,7 @@ function searchAll(req, res, canManage) {
     // LEFT JOIN from the company outwards, so a customer with nobody recorded
     // there is still findable by name.
     const cFrom = 'FROM companies co LEFT JOIN contacts c ON c.company_id = co.id AND c.archived = 0';
-    const cWhere = 'co.archived = 0 AND (co.name LIKE ? OR c.contact_name LIKE ? OR c.phone LIKE ? OR c.email LIKE ?)';
+    const cWhere = "co.archived = 0 AND (co.name LIKE ? ESCAPE '\\' OR c.contact_name LIKE ? ESCAPE '\\' OR c.phone LIKE ? ESCAPE '\\' OR c.email LIKE ? ESCAPE '\\')";
     const cSelect = 'c.id AS id, c.contact_name, c.phone, c.email, co.id AS company_id, co.name AS company_name, co.address AS address';
     groups.contacts = {
       count: db.prepare(`SELECT COUNT(*) as count ${cFrom} WHERE ${cWhere}`).get(like, like, like, like).count,
@@ -175,7 +188,7 @@ function searchAll(req, res, canManage) {
     };
 
     // Suppliers
-    const sWhere = 'active = 1 AND (name LIKE ? OR contact_name LIKE ? OR contact_phone LIKE ? OR contact_email LIKE ?)';
+    const sWhere = "active = 1 AND (name LIKE ? ESCAPE '\\' OR contact_name LIKE ? ESCAPE '\\' OR contact_phone LIKE ? ESCAPE '\\' OR contact_email LIKE ? ESCAPE '\\')";
     groups.suppliers = {
       count: db.prepare(`SELECT COUNT(*) as count FROM suppliers WHERE ${sWhere}`).get(like, like, like, like).count,
       results: db.prepare(`SELECT * FROM suppliers WHERE ${sWhere} ORDER BY name ASC LIMIT ?`).all(like, like, like, like, PREVIEW_LIMIT).map(formatSupplier)
@@ -185,7 +198,7 @@ function searchAll(req, res, canManage) {
   // Activity — admin only (the history trail carries pricing changes, which managers
   // are barred from seeing), so it sits outside the management block above.
   if (req.user.role === 'admin') {
-    const hWhere = '(user_name LIKE ? OR entity_id LIKE ? OR changes LIKE ?)';
+    const hWhere = "(user_name LIKE ? ESCAPE '\\' OR entity_id LIKE ? ESCAPE '\\' OR changes LIKE ? ESCAPE '\\')";
     groups.activity = {
       count: db.prepare(`SELECT COUNT(*) as count FROM history WHERE ${hWhere}`).get(like, like, like).count,
       results: db.prepare(`SELECT * FROM history WHERE ${hWhere} ORDER BY created_at DESC LIMIT ?`).all(like, like, like, PREVIEW_LIMIT).map(formatActivity)
@@ -196,18 +209,18 @@ function searchAll(req, res, canManage) {
 }
 
 function searchJobs(req, res, canManage) {
-  const { q, status, assigneeId, priority, jobType, qaLevel, dateFrom, dateTo, dateField, includeArchived } = req.query;
+  const { q, status, assigneeId, priority, jobType, qaLevelId, dateFrom, dateTo, dateField, includeArchived } = req.query;
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const conditions = [];
   const params = [];
 
   if (q) {
-    const like = `%${q.trim()}%`;
+    const like = likeTerm(q.trim());
     if (canManage) {
-      conditions.push('(j.job_number LIKE ? OR j.description LIKE ? OR j.company_name LIKE ? OR j.contact_name LIKE ? OR j.po_number LIKE ?)');
+      conditions.push("(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\' OR j.company_name LIKE ? ESCAPE '\\' OR j.contact_name LIKE ? ESCAPE '\\' OR j.po_number LIKE ? ESCAPE '\\')");
       params.push(like, like, like, like, like);
     } else {
-      conditions.push('(j.job_number LIKE ? OR j.description LIKE ?)');
+      conditions.push("(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\')");
       params.push(like, like);
     }
   }
@@ -223,7 +236,9 @@ function searchJobs(req, res, canManage) {
   }
   if (priority) { conditions.push('j.priority = ?'); params.push(priority); }
   if (jobType) { conditions.push('j.id IN (SELECT jobcard_id FROM job_items WHERE job_type = ?)'); params.push(jobType); }
-  if (qaLevel) { conditions.push('j.quality_level = ?'); params.push(qaLevel); }
+  // Filter by the level's permanent id, not the name snapshot copied onto the job —
+  // a level renamed since the job was created would otherwise never match it.
+  if (qaLevelId) { conditions.push('j.qa_level_id = ?'); params.push(qaLevelId); }
   if (dateField === 'due') {
     // A due date is a calendar day, not a moment, so it compares straight against the
     // picked day with no time-zone step.
@@ -249,12 +264,12 @@ function searchJobs(req, res, canManage) {
 function searchPeople(req, res) {
   const { q, peopleType = 'both' } = req.query;
   const page = Math.max(1, parseInt(req.query.page) || 1);
-  const like = q ? `%${q.trim()}%` : null;
+  const like = q ? likeTerm(q.trim()) : null;
   let all = [];
 
   if (peopleType !== 'suppliers') {
     const cond = ['co.archived = 0']; const p = [];
-    if (like) { cond.push('(co.name LIKE ? OR c.contact_name LIKE ? OR c.phone LIKE ? OR c.email LIKE ?)'); p.push(like, like, like, like); }
+    if (like) { cond.push("(co.name LIKE ? ESCAPE '\\' OR c.contact_name LIKE ? ESCAPE '\\' OR c.phone LIKE ? ESCAPE '\\' OR c.email LIKE ? ESCAPE '\\')"); p.push(like, like, like, like); }
     all.push(...db.prepare(
       `SELECT c.id AS id, c.contact_name, c.phone, c.email,
               co.id AS company_id, co.name AS company_name, co.address AS address
@@ -264,7 +279,7 @@ function searchPeople(req, res) {
   }
   if (peopleType !== 'contacts') {
     const cond = ['active = 1']; const p = [];
-    if (like) { cond.push('(name LIKE ? OR contact_name LIKE ? OR contact_phone LIKE ? OR contact_email LIKE ?)'); p.push(like, like, like, like); }
+    if (like) { cond.push("(name LIKE ? ESCAPE '\\' OR contact_name LIKE ? ESCAPE '\\' OR contact_phone LIKE ? ESCAPE '\\' OR contact_email LIKE ? ESCAPE '\\')"); p.push(like, like, like, like); }
     all.push(...db.prepare(`SELECT * FROM suppliers WHERE ${cond.join(' AND ')} ORDER BY name ASC`).all(...p).map(r => ({ ...formatSupplier(r), type: 'supplier' })));
   }
 
@@ -280,8 +295,8 @@ function searchActivity(req, res) {
   const params = [];
 
   if (q) {
-    const like = `%${q.trim()}%`;
-    conditions.push('(user_name LIKE ? OR entity_id LIKE ? OR changes LIKE ?)');
+    const like = likeTerm(q.trim());
+    conditions.push("(user_name LIKE ? ESCAPE '\\' OR entity_id LIKE ? ESCAPE '\\' OR changes LIKE ? ESCAPE '\\')");
     params.push(like, like, like);
   }
   if (userId) { conditions.push('user_id = ?'); params.push(userId); }
@@ -293,7 +308,7 @@ function searchActivity(req, res) {
   if (field) {
     // This is a precise field-name match, so escape LIKE metacharacters
     // (% and _) the admin might type — otherwise they widen the match.
-    const escaped = field.replace(/[\\%_]/g, c => `\\${c}`);
+    const escaped = escapeLikeChars(field);
     conditions.push("changes LIKE ? ESCAPE '\\'");
     params.push(`%"${escaped}"%`);
   }
@@ -322,8 +337,8 @@ function searchTime(req, res, canManage) {
   const partPosition = '(CASE WHEN ji.id IS NOT NULL THEN (SELECT COUNT(*) FROM job_items p WHERE p.jobcard_id = ji.jobcard_id AND p.item_number <= ji.item_number) END)';
 
   if (q) {
-    const like = `%${q.trim()}%`;
-    conditions.push(`(u.name LIKE ? OR te.description LIKE ? OR ${partPosition} LIKE ? OR te.machine_number LIKE ?)`);
+    const like = likeTerm(q.trim());
+    conditions.push(`(u.name LIKE ? ESCAPE '\\' OR te.description LIKE ? ESCAPE '\\' OR ${partPosition} LIKE ? ESCAPE '\\' OR te.machine_number LIKE ? ESCAPE '\\')`);
     params.push(like, like, like, like);
   }
   if (workerId) { conditions.push('te.user_id = ?'); params.push(workerId); }
@@ -335,7 +350,7 @@ function searchTime(req, res, canManage) {
     conditions.push(`(',' || REPLACE(te.machine_number, ' ', '') || ',') LIKE ?`);
     params.push(`%,${String(machineId).replace(/ /g, '')},%`);
   }
-  if (jobNumber) { conditions.push('j.job_number LIKE ?'); params.push(`%${jobNumber.trim()}%`); }
+  if (jobNumber) { conditions.push("j.job_number LIKE ? ESCAPE '\\'"); params.push(likeTerm(jobNumber.trim())); }
   pushMomentRange(conditions, params, 'te.start_time', dateFrom, dateTo);
 
   const from = 'FROM time_entries te JOIN users u ON te.user_id = u.id JOIN jobcards j ON te.jobcard_id = j.id LEFT JOIN job_items ji ON te.item_id = ji.id';

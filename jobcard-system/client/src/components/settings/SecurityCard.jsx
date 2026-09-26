@@ -1,4 +1,7 @@
+import FieldError from '../common/FieldError';
+
 export default function SecurityCard({ s }) {
+  const timeoutError = s.errorFor('inactivityTimeout');
   return (
     <>
       <div className="card full-width">
@@ -16,14 +19,16 @@ export default function SecurityCard({ s }) {
               </div>
             </div>
           </div>
-          <div className="timeout-input-group">
+          <div className={timeoutError ? 'timeout-input-group field-error' : 'timeout-input-group'}>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              id="inactivityTimeout"
               className="form-control timeout-input"
               value={s.inactivityTimeout}
-              onChange={(e) => s.setInactivityTimeout(Math.max(1, Math.min(60, parseInt(e.target.value, 10) || 1)))}
-              min="1"
-              max="60"
+              onChange={(e) => s.setInactivityTimeout(e.target.value.replace(/[^0-9]/g, ''))}
+              aria-invalid={timeoutError ? true : undefined}
+              aria-describedby={timeoutError ? 'inactivityTimeout-error' : undefined}
             />
             <span className="timeout-label">minutes</span>
             <button
@@ -35,6 +40,7 @@ export default function SecurityCard({ s }) {
               {s.savingTimeout ? 'Saving...' : 'Save'}
             </button>
           </div>
+          <FieldError message={timeoutError} id="inactivityTimeout-error" />
         </div>
       </div>
 

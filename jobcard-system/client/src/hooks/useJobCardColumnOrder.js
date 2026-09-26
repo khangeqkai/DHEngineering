@@ -57,10 +57,25 @@ export default function useJobCardColumnOrder() {
   // on a touch screen and isn't reachable from the keyboard at all, so this
   // is the only way those users can reorder columns — same persistence call
   // and the same failure handling as handleDrop.
-  const moveColumn = (colId, direction) => {
+  // `isVisible(colId)` (optional) tells this which columns are actually shown
+  // in the table right now — not permitted for this role, or hidden via the
+  // Columns menu. Without it, swapping with one of those looks like nothing
+  // happened, since the column traded places with isn't on screen either way.
+  // It walks past any such column to the next one that is, and trades places
+  // with that one instead of the immediate neighbour.
+  const moveColumn = (colId, direction, isVisible) => {
     const idx = columnOrder.indexOf(colId);
-    const targetIdx = idx + (direction === 'earlier' ? -1 : 1);
-    if (idx === -1 || targetIdx < 0 || targetIdx >= columnOrder.length) return;
+    if (idx === -1) return;
+    let targetIdx = idx + (direction === 'earlier' ? -1 : 1);
+    while (
+      targetIdx >= 0 &&
+      targetIdx < columnOrder.length &&
+      isVisible &&
+      !isVisible(columnOrder[targetIdx])
+    ) {
+      targetIdx += direction === 'earlier' ? -1 : 1;
+    }
+    if (targetIdx < 0 || targetIdx >= columnOrder.length) return;
 
     const newOrder = [...columnOrder];
     [newOrder[idx], newOrder[targetIdx]] = [newOrder[targetIdx], newOrder[idx]];

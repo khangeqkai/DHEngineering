@@ -3,9 +3,37 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
 const { validateCreateSupplier, validateUpdateSupplier } = require('../middleware/validation');
-const { db, supplierQueries, tagQueries, recordHistory } = require('../db/database');
+const { db, supplierQueries, tagQueries, jobItemQueries, recordHistory } = require('../db/database');
 
 const router = express.Router();
+
+// A part's treatments carry a snapshot of the supplier's name (job_items.treatments,
+// a JSON array of { value, supplierId, supplierName, ... }), so a rename has to reach
+// every part already pointing at this supplier or the copied name goes stale.
+// Rewrite the supplierName on every treatment line that points at this supplier id.
+// The LIKE pre-filter needs no escaping: a supplier id is a UUID.
+function renameSupplierOnParts(supplierId, newName) {
+  const rows = jobItemQueries.getWithSupplierIdLike.all(supplierId);
+  for (const row of rows) {
+    let treatments;
+    try {
+      treatments = JSON.parse(row.treatments);
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(treatments)) continue;
+    let changed = false;
+    for (const tr of treatments) {
+      if (tr && tr.supplierId === supplierId && tr.supplierName !== newName) {
+        tr.supplierName = newName;
+        changed = true;
+      }
+    }
+    if (changed) {
+      jobItemQueries.updateTreatments.run(JSON.stringify(treatments), row.id);
+    }
+  }
+}
 
 // All routes require authentication
 router.use(authenticate);
@@ -194,6 +222,14 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
         for (const tagId of serviceTagIds) {
           tagQueries.addToSupplier.run(id, tagId);
         }
+      }
+
+      // The rename must reach every part already carrying this supplier's name,
+      // in the same all-or-nothing step as the supplier row itself.
+      // Exact compare, not nameChanged: a capitals-only fix skips the duplicate
+      // check above but must still reach the parts.
+      if (name !== existing.name) {
+        renameSupplierOnParts(id, name);
       }
     })();
 

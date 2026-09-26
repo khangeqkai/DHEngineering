@@ -1,8 +1,9 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
-const { machineQueries, recordHistory } = require('../db/database');
+const { machineQueries, timeEntryQueries, recordHistory } = require('../db/database');
 const { authenticate, isManagement } = require('../middleware/auth');
+const { parseMachineTokens } = require('./statistics-helpers');
 
 const router = express.Router();
 
@@ -89,10 +90,30 @@ router.put('/:id', (req, res) => {
     }
 
     // Check for duplicate machine number among active machines (archived ones don't count)
-    if (machineNumber !== existing.machine_number) {
+    // A capitals-only change ("cnc-01" → "CNC-01") is not a renumber: the check
+    // below matches this machine itself, and logged work already matches its
+    // number with capitals ignored, so it needs neither check.
+    const numberChanged = String(machineNumber).trim().toLowerCase()
+      !== String(existing.machine_number).trim().toLowerCase();
+    if (numberChanged) {
       const duplicate = machineQueries.getActiveByNumber.get(machineNumber);
-      if (duplicate) {
+      if (duplicate && duplicate.id !== id) {
         return res.status(400).json({ error: 'Machine number already exists' });
+      }
+
+      // Time entries store machine numbers as a free-text list (e.g. "01, 02") that
+      // can't be exactly matched, or safely rewritten token-by-token, for every
+      // format logged over the years — so a renumber is refused outright once any
+      // logged work references the old number, rather than risking a rewrite that
+      // silently misses or mangles an entry. Only work logged since this machine
+      // was added counts: a reused number's older work is a retired machine's.
+      const oldKey = String(existing.machine_number).trim().toLowerCase();
+      const loggedAgainstOldNumber = timeEntryQueries.getDistinctMachineNumbersSince.all(existing.created_at || '')
+        .some((row) => parseMachineTokens(row.machine_number).some((tok) => tok.toLowerCase() === oldKey));
+      if (loggedAgainstOldNumber) {
+        return res.status(400).json({
+          error: 'This machine has logged work; archive it and add a new one instead.'
+        });
       }
     }
 

@@ -68,7 +68,9 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
       const updateElapsed = () => {
         const start = new Date(activeTimer.startTime).getTime();
         const now = Date.now();
-        setElapsed(Math.floor((now - start) / 1000));
+        // Clamped at 0: a clock skewed ahead of the server's own would otherwise
+        // read as a negative elapsed time for the first few ticks after starting.
+        setElapsed(Math.max(0, Math.floor((now - start) / 1000)));
       };
       updateElapsed();
       intervalRef.current = setInterval(updateElapsed, 1000);
@@ -359,6 +361,12 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
       setStoppedEntryJobCard(null);
       setEntryForm(emptyEntryForm());
 
+      // Tells the caller whether this call actually started a fresh timer (the
+      // "Stop & Start" switch, queued behind the old run's fill-in form) — always
+      // this same user's own timer, so the caller can credit them exactly as a
+      // direct Start would (useJobCardTimerActions.js's handleSubmitEntryForm).
+      let startedNewTimer = false;
+
       if (pendingStartItem != null) {
         const { itemId: nextItemId, displayNumber: nextDisplayNumber } = pendingStartItem;
         setPendingStartItem(null);
@@ -372,6 +380,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
             startTime: result.startTime
           });
           toast.success(`Timer started on part ${nextDisplayNumber}`);
+          startedNewTimer = true;
         } catch (startErr) {
           toast.error(startErr.message || 'Failed to start new timer', { id: 'start-new-timer-failed' });
         }
@@ -380,8 +389,10 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
       }
 
       if (reloadEntries) await reloadEntries();
+      return { startedNewTimer };
     } catch (err) {
       toast.error(err.message || 'Failed to update time entry', { id: 'update-time-entry-failed' });
+      return { startedNewTimer: false };
     } finally {
       setLoading(false);
     }

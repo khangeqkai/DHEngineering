@@ -48,6 +48,13 @@ export function useJobCardSave({
     }
 
     setSaving(true);
+    // Captured before anything travels: if the window is closed and reopened —
+    // on this same create or a different job entirely — before the reply lands,
+    // formHook's sessionRef has moved on by the time it does. The list still
+    // gets refreshed either way (the job really was created), but this reply is
+    // no longer allowed to close, or set file warnings on, whichever job happens
+    // to be open when it arrives.
+    const sessionToken = formHook.sessionRef.current;
 
     try {
       // Customer details are chosen once, at creation — resolve/create the contact.
@@ -71,9 +78,17 @@ export function useJobCardSave({
       const result = await api.createJobcard(jobcardData);
 
       onSuccess?.();
+      // The quality-form warning is about the job just created, not whatever is
+      // on screen now, so it is shown even after the window has moved on — named
+      // by job number in that case so it can't be read as about the open job.
+      const moved = formHook.sessionRef.current !== sessionToken;
       if (result?.qaTemplateWarning) {
-        toast(result.qaTemplateWarning, { icon: warningToastIcon, duration: 8000 });
+        const message = moved && result.jobNumber
+          ? `Job ${result.jobNumber}: ${result.qaTemplateWarning}`
+          : result.qaTemplateWarning;
+        toast(message, { icon: warningToastIcon, duration: 8000 });
       }
+      if (moved) return;
       setAttachmentWarnings(result?.attachmentWarnings || null);
       onClose();
     } catch (err) {

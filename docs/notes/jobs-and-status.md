@@ -4,7 +4,7 @@
 
 ## Numbering
 
-**Job card auto-numbering**: Job numbers are auto-generated from two settings: `job_number_prefix` (e.g. `"DH-"`) and `job_number_next` (e.g. `"00001"`). The format preserves leading zeros (width of `job_number_next` string). On each job card creation, the server generates `{prefix}{paddedNumber}`, validates uniqueness, inserts the record, then increments `job_number_next`. Deleted job numbers are never reused (counter only goes forward). The job number field is read-only in the create form. Admin configures prefix and starting number in Settings > Job Card Numbering. If not configured, job card creation is blocked with an error message.
+**Job card auto-numbering**: Job numbers are auto-generated from two settings: `job_number_prefix` (e.g. `"DH-"`) and `job_number_next` (e.g. `"00001"`). The format preserves leading zeros (width of `job_number_next` string). On each job card creation, the server generates `{prefix}{paddedNumber}`, validates uniqueness, inserts the record, then increments `job_number_next`. Deleted job numbers are never reused. Settings refuses a starting number at or below the highest number actually handed out — the existing jobs plus deleted ones (read from the delete entries in the trail). The counter's own current value is not a floor, so a mistyped jump (e.g. 50000 for 00500) can be set back down. The job number field is read-only in the create form. Admin configures prefix and starting number in Settings > Job Card Numbering. If not configured, job card creation is blocked with an error message.
 
 ## Work-driven automatic status
 

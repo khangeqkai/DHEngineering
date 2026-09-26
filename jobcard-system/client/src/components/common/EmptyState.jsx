@@ -47,6 +47,13 @@ const icons = {
       <line x1="20" y1="48" x2="30" y2="48" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   ),
+  search: (
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="28" cy="28" r="16" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="40" y1="40" x2="54" y2="54" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="22" y1="28" x2="34" y2="28" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  ),
   activity: (
     <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="32" cy="32" r="22" stroke="currentColor" strokeWidth="1.5" />

@@ -38,6 +38,51 @@ export default function TimeEntryForm({
   // by hand: groupClass/errorFor arrive as plain functions from the caller's own
   // hook instance, not the hook object itself, so there's no fieldProps to spread.
   const errorIdFor = (name) => `${idFor(name)}-error`;
+
+  // The active-workers list won't carry someone who's since been archived, so
+  // an edit on their block would otherwise show a blank "Select worker…" even
+  // though workerId is set. Add them back as one extra, clearly-marked option —
+  // built from the entry's own stored name (mappers.js's workerName), not a
+  // second load of every worker — so the box still shows who it is and lets
+  // them be swapped for someone else without ever re-offering them for new work.
+  const workerMissing = !!timeEntryForm.workerId && !employees.some(u => String(u.id) === String(timeEntryForm.workerId));
+  const workerOptions = workerMissing
+    ? [...employees, { id: timeEntryForm.workerId, name: `${timeEntryForm.workerName || 'Unknown worker'} (archived)` }]
+    : employees;
+
+  // Same idea for machines: a machine ticked on this entry may since have been
+  // archived, so it won't be in the active `machines` list passed in. Add it
+  // back into the picker's options, labelled "(retired)", so it can still be
+  // seen and unticked — but only that one; an archived machine not already on
+  // this entry is never offered.
+  // Capitals don't matter when matching a stored number to a machine: a number
+  // saved as "cnc-01" and since re-saved as "CNC-01" is still the same working
+  // machine, so it is ticked under that machine's own entry, not as "(retired)".
+  const activeMachines = machines.filter(m => m.active !== 0 && m.active !== false);
+  const sameNumber = (m, v) => String(m.machineNumber).toLowerCase() === v.toLowerCase();
+  const selectedMachineValues = machineListToArray(timeEntryForm.machineNumber).map(v => {
+    const active = activeMachines.find(m => sameNumber(m, v));
+    return active ? String(active.machineNumber) : v;
+  });
+  const missingMachineValues = selectedMachineValues.filter(
+    v => !activeMachines.some(m => sameNumber(m, v))
+  );
+  const machineOptions = [
+    ...activeMachines.map(m => ({
+      value: String(m.machineNumber),
+      label: String(m.machineNumber),
+      sublabel: m.name || undefined
+    })),
+    ...missingMachineValues.map(v => {
+      const retired = machines.find(m => sameNumber(m, v));
+      return {
+        value: v,
+        label: `${v} (retired)`,
+        sublabel: retired?.name || undefined
+      };
+    })
+  ];
+
   const handleSave = async () => {
     if (saving) return;
     setSaving(true);
@@ -70,7 +115,7 @@ export default function TimeEntryForm({
           aria-describedby={errorFor('workerId') ? errorIdFor('workerId') : undefined}
         >
           <option value="">Select worker...</option>
-          {employees.map(u => (
+          {workerOptions.map(u => (
             <option key={u.id} value={u.id}>{u.name || u.username}</option>
           ))}
         </select>
@@ -98,14 +143,10 @@ export default function TimeEntryForm({
           <CheckboxDropdown
             ariaLabel="Machines used"
             placeholder="Select machines..."
-            options={machines.map(m => ({
-              value: String(m.machineNumber),
-              label: String(m.machineNumber),
-              sublabel: m.name || undefined
-            }))}
-            selectedValues={machineListToArray(timeEntryForm.machineNumber)}
+            options={machineOptions}
+            selectedValues={selectedMachineValues}
             onToggle={(value) => {
-              const current = machineListToArray(timeEntryForm.machineNumber);
+              const current = selectedMachineValues;
               const next = current.includes(value)
                 ? current.filter(v => v !== value)
                 : [...current, value];

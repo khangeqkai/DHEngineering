@@ -1,6 +1,7 @@
 import { CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import DataTable from '../common/DataTable';
 import { STATUS_LABELS } from '../JobCardList.constants';
+import { formatDate } from '../../utils/formatters';
 
 export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading = false }) {
   const onTimeRate = summary.onTimeRate;
@@ -119,12 +120,14 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
               {
                 key: 'dueDate',
                 label: 'Due Date',
-                sortable: true
+                sortable: true,
+                render: (val) => formatDate(val)
               },
               {
                 key: 'finishDate',
                 label: 'Finished',
-                sortable: true
+                sortable: true,
+                render: (val) => formatDate(val)
               },
               {
                 key: 'daysLate',

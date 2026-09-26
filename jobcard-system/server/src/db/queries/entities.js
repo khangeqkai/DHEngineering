@@ -228,7 +228,8 @@ const machineQueries = {
   getAllIncludeInactive: db.prepare('SELECT * FROM machines ORDER BY machine_number ASC'),
   // Uniqueness only matters among active machines: an archived machine keeps its
   // number for history, but that number is free to reuse on a new active machine.
-  getActiveByNumber: db.prepare('SELECT * FROM machines WHERE machine_number = ? AND active = 1'),
+  // Case-insensitive so "cnc-01" and "CNC-01" collide (mirrors companyQueries.getByName).
+  getActiveByNumber: db.prepare('SELECT * FROM machines WHERE machine_number = ? COLLATE NOCASE AND active = 1'),
 
   create: db.prepare(`
     INSERT INTO machines (id, machine_number, name, description, created_at)

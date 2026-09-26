@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, ChevronLeft, ChevronRight, Briefcase, Users as UsersIcon, Clock, Timer, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,7 @@ import JobCardModal from './jobcard/JobCardModal';
 import { ACTIVITY_FIELDS } from './searchFields';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { formatHistoryValue } from '../utils/formatters';
-import { statusToken, priorityToken, PRIORITY_LABELS } from './JobCardList.constants';
+import { statusToken, priorityToken, PRIORITY_LABELS, STATUS_LABELS } from './JobCardList.constants';
 import { STATUS_OPTIONS, PRIORITY_OPTIONS } from './jobcard/constants';
 import { actionColor, ACTION_NAMES } from '../utils/activityColors';
 import './SearchPage.css';
@@ -60,7 +60,7 @@ function FilterRow({ label, children }) {
 }
 
 function StatusBadge({ status }) {
-  return <span className={`badge status-${statusToken(status)}`}>{fmt(status)}</span>;
+  return <span className={`badge status-${statusToken(status)}`}>{STATUS_LABELS[status] || fmt(status)}</span>;
 }
 
 // Same soft-tinted pill as the job list, so status and priority read as one set here too.
@@ -114,6 +114,25 @@ export default function SearchPage() {
     filtersError, retryFilters, refresh,
   } = useSearch(user?.role);
 
+  // Archived workers/machines/job types still filter on old data, so the lists come
+  // back with them included — sunk below the active ones and marked, so "currently
+  // offered" still reads clearly at a glance.
+  const employeeOptions = useMemo(() => (
+    [...employees]
+      .sort((a, b) => (a.active === b.active ? 0 : a.active ? -1 : 1))
+      .map(e => ({ ...e, displayName: e.active ? e.name : `${e.name} (archived)` }))
+  ), [employees]);
+  const machineOptions = useMemo(() => (
+    [...machines]
+      .sort((a, b) => (a.active === b.active ? 0 : a.active ? -1 : 1))
+      .map(m => ({ ...m, displayLabel: `${m.machineNumber} - ${m.name}${m.active ? '' : ' (retired)'}` }))
+  ), [machines]);
+  const jobTypeOptions = useMemo(() => (
+    [...jobTypes]
+      .sort((a, b) => (!!a.archived === !!b.archived ? 0 : a.archived ? 1 : -1))
+      .map(t => ({ ...t, displayName: t.archived ? `${t.name} (archived)` : t.name }))
+  ), [jobTypes]);
+
   // Job card modal state. Open/closed is tracked separately from which job is open, so
   // closing doesn't clear the job id in the same breath: the job screen saves pending
   // pricing edits on the way out, and that save needs to know which job it belongs to.
@@ -131,7 +150,7 @@ export default function SearchPage() {
     if (row.entityType === 'jobcard') {
       const tab = ACTION_TO_TAB[row.action] || (row.action === 'create' || row.action === 'update' ? 'details' : 'activity');
       openJobModal(row.entityId, canManage ? tab : null);
-    } else if (row.entityType === 'contact') {
+    } else if (row.entityType === 'contact' || row.entityType === 'company') {
       navigate('/contacts');
     } else if (row.entityType === 'supplier') {
       navigate('/suppliers');
@@ -274,13 +293,13 @@ export default function SearchPage() {
 
             {scope === 'jobs' && <>
               <FilterRow label="Status">
-                <Chips options={STATUSES} selected={filters.status} onToggle={(v) => toggleArrayFilter('status', v)} multi />
+                <Chips options={STATUSES} selected={filters.status} onToggle={(v) => toggleArrayFilter('status', v)} formatLabel={(v) => STATUS_LABELS[v] || fmt(v)} multi />
               </FilterRow>
               {canManage && <FilterRow label="Assignee">
                 <select className="search-select" value={filters.assigneeId} onChange={e => updateFilter('assigneeId', e.target.value)}>
                   <option value="">All</option>
                   <option value="UNASSIGNED">Unassigned</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                  {employeeOptions.map(e => <option key={e.id} value={e.id}>{e.displayName}</option>)}
                 </select>
               </FilterRow>}
               <FilterRow label="Priority">
@@ -289,13 +308,13 @@ export default function SearchPage() {
               <FilterRow label="Job Type">
                 <select className="search-select" value={filters.jobType} onChange={e => updateFilter('jobType', e.target.value)}>
                   <option value="">All</option>
-                  {jobTypes.map(t => <option key={t.id} value={t.value}>{t.name}</option>)}
+                  {jobTypeOptions.map(t => <option key={t.id} value={t.value}>{t.displayName}</option>)}
                 </select>
               </FilterRow>
               <FilterRow label="QA Level">
                 <select className="search-select" value={filters.qaLevel} onChange={e => updateFilter('qaLevel', e.target.value)}>
                   <option value="">All</option>
-                  {qaLevels.map(l => <option key={l.id} value={l.name.toUpperCase()}>{l.name}</option>)}
+                  {qaLevels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
               </FilterRow>
               <FilterRow label="Date Range">
@@ -328,7 +347,7 @@ export default function SearchPage() {
               <FilterRow label="User">
                 <select className="search-select" value={filters.userId} onChange={e => updateFilter('userId', e.target.value)}>
                   <option value="">All users</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                  {employeeOptions.map(e => <option key={e.id} value={e.id}>{e.displayName}</option>)}
                 </select>
               </FilterRow>
               <FilterRow label="Action">
@@ -360,13 +379,13 @@ export default function SearchPage() {
               <FilterRow label="Worker">
                 <select className="search-select" value={filters.workerId} onChange={e => updateFilter('workerId', e.target.value)}>
                   <option value="">All workers</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                  {employeeOptions.map(e => <option key={e.id} value={e.id}>{e.displayName}</option>)}
                 </select>
               </FilterRow>
               <FilterRow label="Machine">
                 <select className="search-select" value={filters.machineId} onChange={e => updateFilter('machineId', e.target.value)}>
                   <option value="">All machines</option>
-                  {machines.map(m => <option key={m.id} value={m.machineNumber}>{m.machineNumber} - {m.name}</option>)}
+                  {machineOptions.map(m => <option key={m.id} value={m.machineNumber}>{m.displayLabel}</option>)}
                 </select>
               </FilterRow>
               <FilterRow label="Job #">

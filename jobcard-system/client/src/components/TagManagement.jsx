@@ -95,26 +95,31 @@ export default function TagManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
+    // Each field only tidies itself on blur — hitting Enter from inside the box
+    // submits the form directly and never fires that blur, so the same formatting
+    // is applied here too before anything goes out.
+    const machineNumber = formData.machineNumber.toUpperCase().trim();
+    const name = toTitleCase(formData.name.trim());
     try {
       if (isFormEquipment) {
-        if (!formData.machineNumber.trim()) return;
+        if (!machineNumber) return;
         if (editingItem) {
-          await api.updateMachine(editingItem.id, { machineNumber: formData.machineNumber.trim(), name: formData.name.trim() });
+          await api.updateMachine(editingItem.id, { machineNumber, name });
           toast.success('Machine updated');
         } else {
-          await api.createMachine({ machineNumber: formData.machineNumber.trim(), name: formData.name.trim() });
+          await api.createMachine({ machineNumber, name });
           toast.success('Machine created');
         }
         await loadMachines();
       } else {
-        if (!formData.name.trim()) return;
+        if (!name) return;
         if (editingItem) {
-          await api.updateTag(editingItem.id, { name: formData.name.trim() });
+          await api.updateTag(editingItem.id, { name });
           toast.success('Tag updated');
         } else {
           // Creating is idempotent server-side: a name that already exists just
           // returns the existing option, so the wording stays true either way.
-          await api.createTag({ category: formCategory, name: formData.name.trim() });
+          await api.createTag({ category: formCategory, name });
           toast.success('Tag saved');
         }
         invalidateTagCache(formCategory);
