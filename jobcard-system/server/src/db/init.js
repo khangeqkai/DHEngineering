@@ -194,6 +194,14 @@ function cleanUpDuplicateItemNumbering() {
 function runMigrations() {
   logger.info('Running migrations...');
 
+  // idx_history_user (user_id) and idx_history_entity (entity_type, entity_id) are
+  // superseded by idx_history_user_created (user_id, created_at) and
+  // idx_history_entity_created (entity_type, entity_id, created_at) in schema.js, which
+  // cover the same lookups plus their ORDER BY created_at. Drop the old ones from an
+  // existing database — naturally idempotent, no settings flag needed.
+  db.exec('DROP INDEX IF EXISTS idx_history_user');
+  db.exec('DROP INDEX IF EXISTS idx_history_entity');
+
   // One-shot wipe of legacy time_entries (Task 6 — per-item timer rewrite).
   // CSV item_number rows can't be mapped onto the new per-item shape, so this
   // conversion clears them rather than folding them; it runs once (guarded by

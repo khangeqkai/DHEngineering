@@ -261,31 +261,73 @@ function searchJobs(req, res, canManage) {
   res.json({ results: rows.map(j => formatJob(j, assigneeMap[j.id], canManage)), total, page, totalPages: Math.ceil(total / PAGE_SIZE) });
 }
 
+// Both branches below select the SAME column list so they can UNION ALL into one
+// paged query instead of loading every customer/contact/supplier and slicing in JS.
+// sort_group keeps the combined order identical to before — every contact row (already
+// sorted the way the old contacts query sorted it) ahead of every supplier row (already
+// sorted the way the old suppliers query sorted it) — never interleaved by name across
+// the two kinds, exactly like the two arrays that used to be concatenated. A column only
+// one branch's format function reads is NULL in the other branch (e.g. `name` is a
+// supplier's own name and unused by formatContact; `contact_name` is read by both, but
+// means the person at the company in the contacts branch and the supplier's own contact
+// person in the suppliers branch, exactly as each original query already had it).
 function searchPeople(req, res) {
   const { q, peopleType = 'both' } = req.query;
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const like = q ? likeTerm(q.trim()) : null;
-  let all = [];
+
+  const branches = [];
 
   if (peopleType !== 'suppliers') {
-    const cond = ['co.archived = 0']; const p = [];
-    if (like) { cond.push("(co.name LIKE ? ESCAPE '\\' OR c.contact_name LIKE ? ESCAPE '\\' OR c.phone LIKE ? ESCAPE '\\' OR c.email LIKE ? ESCAPE '\\')"); p.push(like, like, like, like); }
-    all.push(...db.prepare(
-      `SELECT c.id AS id, c.contact_name, c.phone, c.email,
-              co.id AS company_id, co.name AS company_name, co.address AS address
-       FROM companies co LEFT JOIN contacts c ON c.company_id = co.id AND c.archived = 0
-       WHERE ${cond.join(' AND ')} ORDER BY co.name ASC, c.contact_name ASC`
-    ).all(...p).map(r => ({ ...formatContact(r), type: 'contact' })));
+    let cond = 'co.archived = 0';
+    const p = [];
+    if (like) {
+      cond += " AND (co.name LIKE ? ESCAPE '\\' OR c.contact_name LIKE ? ESCAPE '\\' OR c.phone LIKE ? ESCAPE '\\' OR c.email LIKE ? ESCAPE '\\')";
+      p.push(like, like, like, like);
+    }
+    branches.push({
+      sql: `SELECT 0 AS sort_group, co.name AS sort1, c.contact_name AS sort2, 'contact' AS type,
+                   c.id AS id, c.contact_name AS contact_name, c.phone AS phone, c.email AS email,
+                   co.id AS company_id, co.name AS company_name, co.address AS address,
+                   NULL AS name, NULL AS contact_phone, NULL AS contact_email
+            FROM companies co LEFT JOIN contacts c ON c.company_id = co.id AND c.archived = 0
+            WHERE ${cond}`,
+      params: p
+    });
   }
   if (peopleType !== 'contacts') {
-    const cond = ['active = 1']; const p = [];
-    if (like) { cond.push("(name LIKE ? ESCAPE '\\' OR contact_name LIKE ? ESCAPE '\\' OR contact_phone LIKE ? ESCAPE '\\' OR contact_email LIKE ? ESCAPE '\\')"); p.push(like, like, like, like); }
-    all.push(...db.prepare(`SELECT * FROM suppliers WHERE ${cond.join(' AND ')} ORDER BY name ASC`).all(...p).map(r => ({ ...formatSupplier(r), type: 'supplier' })));
+    let cond = 'active = 1';
+    const p = [];
+    if (like) {
+      cond += " AND (name LIKE ? ESCAPE '\\' OR contact_name LIKE ? ESCAPE '\\' OR contact_phone LIKE ? ESCAPE '\\' OR contact_email LIKE ? ESCAPE '\\')";
+      p.push(like, like, like, like);
+    }
+    branches.push({
+      sql: `SELECT 1 AS sort_group, name AS sort1, NULL AS sort2, 'supplier' AS type,
+                   id AS id, contact_name AS contact_name, NULL AS phone, NULL AS email,
+                   NULL AS company_id, NULL AS company_name, address AS address,
+                   name AS name, contact_phone AS contact_phone, contact_email AS contact_email
+            FROM suppliers
+            WHERE ${cond}`,
+      params: p
+    });
   }
 
-  const total = all.length;
+  const unionSql = branches.map(b => b.sql).join(' UNION ALL ');
+  const allParams = branches.flatMap(b => b.params);
+
+  const total = db.prepare(`SELECT COUNT(*) AS count FROM (${unionSql})`).get(...allParams).count;
   const offset = (page - 1) * PAGE_SIZE;
-  res.json({ results: all.slice(offset, offset + PAGE_SIZE), total, page, totalPages: Math.ceil(total / PAGE_SIZE) });
+  const rows = db.prepare(
+    `SELECT * FROM (${unionSql}) ORDER BY sort_group ASC, sort1 ASC, sort2 ASC LIMIT ? OFFSET ?`
+  ).all(...allParams, PAGE_SIZE, offset);
+
+  const results = rows.map(r => r.type === 'supplier'
+    ? { ...formatSupplier(r), type: 'supplier' }
+    : { ...formatContact(r), type: 'contact' }
+  );
+
+  res.json({ results, total, page, totalPages: Math.ceil(total / PAGE_SIZE) });
 }
 
 function searchActivity(req, res) {

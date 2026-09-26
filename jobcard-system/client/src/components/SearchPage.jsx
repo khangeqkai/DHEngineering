@@ -175,6 +175,21 @@ export default function SearchPage() {
     }
   }, [scope, navigate, openJobModal, navigateActivity]);
 
+  // What pressing a row's open button says it does — same wording as the "all
+  // scopes" preview buttons above, so a row reads the same whether it's found
+  // there or in one scope's full table.
+  const getResultRowAriaLabel = useCallback((row) => {
+    if (scope === 'jobs') return `Open job ${row.jobNumber}`;
+    if (scope === 'people') {
+      return row.type === 'contact'
+        ? `Open contact ${row.companyName || row.contactName || ''}`.trim()
+        : `Open supplier ${row.name || ''}`.trim();
+    }
+    if (scope === 'activity') return `Open activity: ${fmt(row.action)} on ${fmt(row.entityType)}`;
+    if (scope === 'time') return `Open job ${row.jobNumber}`;
+    return undefined;
+  }, [scope]);
+
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   const handleSeeAll = (groupKey) => {
@@ -468,6 +483,7 @@ export default function SearchPage() {
                 data={results.results || []}
                 loading={false}
                 onRowClick={handleRowClick}
+                getRowAriaLabel={getResultRowAriaLabel}
                 emptyState={{ icon: 'search', title: 'No results', description: q ? `No results for "${q}"` : 'Adjust your filters to find results' }}
               />
             </div>

@@ -1,11 +1,11 @@
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { SORT_VALUE_GETTERS } from '../hooks/useJobCardSort';
-import { todayIsoDate } from '../utils/formatters';
 import { isJobOverdue } from './JobCardList.constants';
 
 export default function JobCardListTable({
   visibleColumns,
   paginatedCards,
+  today,
   sortBy,
   sortDir,
   onSort,
@@ -15,9 +15,9 @@ export default function JobCardListTable({
   handleDragOver,
   handleDrop
 }) {
-  // Compared as plain calendar dates against the local day, so a row turns red at local
-  // midnight and matches what the OVERDUE filter counts.
-  const today = todayIsoDate();
+  // `today` comes from the parent's useLocalToday() — one source shared with the
+  // OVERDUE filter and its counts, so a row and the filter never disagree about
+  // what day it is, and both move together at local midnight.
 
   return (
     // The shared `.card` rule clips overflow (for its rounded corners), so the

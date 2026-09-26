@@ -74,10 +74,18 @@ function autoAssignWorker(jobcardId, workerId, actor, action = 'assign') {
   }
 }
 
-// True when an error is the database rejecting a second open timer for one user
-// (the partial unique index idx_time_entries_one_active).
+// True when an error is specifically the database rejecting a second open timer
+// for one user — the partial unique index idx_time_entries_one_active, defined
+// as `ON time_entries(user_id) WHERE end_time IS NULL` (schema.js). SQLite names
+// the index's columns (not the index itself) in the violation text, and user_id
+// is the only column that index — or any unique constraint on this table —
+// covers, so matching the code AND that column name can't be confused with a
+// different constraint on time_entries. Any other failure (a bad foreign key, a
+// NOT NULL slip, an unrelated unique clash) falls through to the caller's normal
+// error handling instead of being misreported as "timer already running".
 function isOpenTimerConflict(e) {
-  return !!(e && typeof e.code === 'string' && e.code.startsWith('SQLITE_CONSTRAINT'));
+  return !!(e && e.code === 'SQLITE_CONSTRAINT_UNIQUE' &&
+    typeof e.message === 'string' && e.message.includes('time_entries.user_id'));
 }
 
 // Send the standard "you already have a timer running" 409 from the user's

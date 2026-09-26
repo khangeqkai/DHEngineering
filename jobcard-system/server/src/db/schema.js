@@ -342,8 +342,16 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_job_assignees_jobcard ON job_assignees(jobcard_id);
   CREATE INDEX IF NOT EXISTS idx_time_entries_jobcard ON time_entries(jobcard_id);
   CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id);
-  CREATE INDEX IF NOT EXISTS idx_history_entity ON history(entity_type, entity_id);
-  CREATE INDEX IF NOT EXISTS idx_history_user ON history(user_id);
+  CREATE INDEX IF NOT EXISTS idx_time_entries_item ON time_entries(item_id);
+  CREATE INDEX IF NOT EXISTS idx_time_entries_start ON time_entries(start_time);
+  CREATE INDEX IF NOT EXISTS idx_job_assignees_user ON job_assignees(user_id);
+  -- Superseded by the two sort-covered composites below (they cover every existing
+  -- lookup on this table, plus the ORDER BY created_at each of those lookups already
+  -- did as a separate sort step) — the old single-column indexes are dropped from an
+  -- existing database in runMigrations() (db/init.js).
+  CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at);
+  CREATE INDEX IF NOT EXISTS idx_history_user_created ON history(user_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_history_entity_created ON history(entity_type, entity_id, created_at);
   -- The contacts indexes are created further down, after the companies/contacts
   -- conversion — an existing database still has the old contacts table here.
   CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name);

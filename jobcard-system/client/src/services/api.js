@@ -378,8 +378,15 @@ class ApiService {
   archiveTag(id) { return this._del(`/tags/${id}`); }
   activateTag(id) { return this._post(`/tags/${id}/activate`); }
 
-  // Activity history (management only)
-  getActivityHistory(limit = 50, offset = 0) { return this.request(`/history?limit=${limit}&offset=${offset}`); }
+  // Activity history (management only). `before` (optional, { createdAt, id } — the
+  // last row a page already has) walks the trail with a cursor instead of an offset;
+  // only the Activity Log's "export all" uses it, on-screen paging keeps offset.
+  getActivityHistory(limit = 50, offset = 0, before = null) {
+    const query = before
+      ? `limit=${limit}&before=${encodeURIComponent(`${before.createdAt},${before.id}`)}`
+      : `limit=${limit}&offset=${offset}`;
+    return this.request(`/history?${query}`);
+  }
   getUserActivity(userId, limit = 50) { return this.request(`/history/user/${userId}?limit=${limit}`); }
   getEntityHistory(entityType, page = 1) { return this.request(`/history/entity/${entityType}?page=${page}`); }
 

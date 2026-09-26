@@ -14,6 +14,7 @@ const {
   renameQaLevelFolder
 } = require('../utils/folderCreation');
 const { decodeBase64Strict, assertMatchesExtension } = require('../utils/fileValidation');
+const { MAX_FILE_DATA_CHARS } = require('./jobcard-files');
 const {
   qaLevelQueries,
   qaLevelTemplateQueries,
@@ -333,6 +334,13 @@ router.post('/:id/templates', authenticate, requireManagement, (req, res) => {
       });
     }
 
+    // Cap the upload the same way job file uploads are capped (one definition,
+    // imported — see jobcard-files.js), checked before decoding so an oversized
+    // payload is rejected cheaply rather than blown up into a buffer first.
+    if (fileData.length > MAX_FILE_DATA_CHARS) {
+      return res.status(400).json({ error: 'File too large (max 30 MB)' });
+    }
+
     // Reject a corrupt/cut-off upload before creating any record. Templates are PDFs.
     let buffer;
     try {
@@ -407,6 +415,20 @@ router.delete('/:id/templates/:tid', authenticate, requireManagement, (req, res)
     }
 
     const level = qaLevelQueries.getById.get(id);
+
+    // A level that needs a completed form back must always have at least one
+    // template to print — otherwise there'd be nothing to fill in and return.
+    // PUT /:id already blocks turning the switch ON with zero templates; this
+    // blocks reaching the same invalid state the other way, by deleting the
+    // last template while the switch is already on.
+    if (level && level.requires_returned_form === 1) {
+      const remaining = qaLevelTemplateQueries.getByLevel.all(id).filter(t => t.id !== tid);
+      if (remaining.length === 0) {
+        return res.status(409).json({
+          error: 'This is the only form for a level that needs a completed form back. Upload the replacement first, or turn off \'needs a completed form back\', then delete this one.'
+        });
+      }
+    }
 
     // Delete file from disk, locating the level folder by the code in its name.
     const basePath = getQaLevelsBasePath();

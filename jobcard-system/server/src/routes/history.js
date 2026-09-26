@@ -5,13 +5,34 @@ const { historyQueries, db } = require('../db/database');
 
 const router = express.Router();
 
+// A cursor is "<createdAt>,<id>" — the last row a page already holds. Only the
+// Activity Log's "export all" sends one (see getBeforeCursor in db/queries/support.js);
+// on-screen paging keeps using limit/offset. Returns null for anything malformed so
+// the route can 400 rather than run a query with a garbage bound.
+function parseHistoryCursor(raw) {
+  if (!raw) return null;
+  const parts = String(raw).split(',');
+  if (parts.length !== 2) return null;
+  const [createdAt, idPart] = parts;
+  if (!/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(createdAt)) return null;
+  if (!/^\d+$/.test(idPart)) return null;
+  return { createdAt, id: Number(idPart) };
+}
+
 // Get recent activity (admin only — the trail carries pricing changes, which
 // managers are barred from seeing)
 router.get('/', authenticate, requireAdmin, (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
-    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
-    const history = historyQueries.getRecent.all(limit, offset);
+    let history;
+    if (req.query.before !== undefined) {
+      const cursor = parseHistoryCursor(req.query.before);
+      if (!cursor) return res.status(400).json({ error: 'Invalid cursor' });
+      history = historyQueries.getBeforeCursor.all(cursor.createdAt, cursor.createdAt, cursor.id, limit);
+    } else {
+      const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+      history = historyQueries.getRecent.all(limit, offset);
+    }
 
     res.json(history.map(h => ({
       id: h.id,

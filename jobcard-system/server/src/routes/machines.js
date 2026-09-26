@@ -83,6 +83,10 @@ router.put('/:id', (req, res) => {
   const { id } = req.params;
   const { machineNumber, name, description } = req.body;
 
+  if (!machineNumber) {
+    return res.status(400).json({ error: 'Machine number is required' });
+  }
+
   try {
     const existing = machineQueries.getById.get(id);
     if (!existing) {

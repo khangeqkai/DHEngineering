@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Minus, Plus } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { X, Minus, Plus, RotateCw } from 'lucide-react';
 import { api } from '../../services/api';
 import { capitalizeFirst, formatTime } from '../../utils/formatters';
 import ToggleTiles from '../common/ToggleTiles';
@@ -92,10 +91,20 @@ export default function StopTimerForm({
   const [machines, setMachines] = useState([]);
   const [machineFilter, setMachineFilter] = useState('');
   const [isCritical, setIsCritical] = useState(false);
-  const [dataLoading, setDataLoading] = useState(false);
+  // The job details load (which decides Critical) and the machines load are
+  // independent: a machines failure must never be read as "not Critical", so each
+  // gets its own loading/error flags instead of one combined flag standing in for both.
+  const [jobLoading, setJobLoading] = useState(false);
+  const [jobError, setJobError] = useState(false);
+  const [machinesError, setMachinesError] = useState(false);
   const formRef = useRef(null);
   const firstInputRef = useRef(null);
   const modalId = useId();
+  // A retry, or a fresh open, can outrun an in-flight load — a request counter lets
+  // a stale reply ignore itself once a newer request has been made (same pattern as
+  // JobCardList's loadJobcards), instead of racing to overwrite the current state.
+  const jobLoadRequestIdRef = useRef(0);
+  const machinesLoadRequestIdRef = useRef(0);
 
   // Join the shared modal stack while open. This form opens on top of the job
   // card (itself a dialog with its own Tab trap); registering here makes this the
@@ -107,14 +116,20 @@ export default function StopTimerForm({
     return () => removeModal(modalId);
   }, [isOpen, modalId]);
 
-  useEffect(() => {
-    if (!isOpen || !jobCard?.id) return;
-    setMachineFilter('');
-    setDataLoading(true);
-    Promise.all([
-      api.getJobcard(jobCard.id),
-      api.getMachines()
-    ]).then(([jobcardRes, machinesRes]) => {
+  // The job's own details — item, part position, and whether it's Critical. A
+  // failure here must NOT be read as "not Critical": it leaves isCritical at
+  // whatever it already was (false on the first attempt) and blocks Submit via
+  // jobError instead, so the sign-off can never be silently skipped.
+  const loadJob = useCallback(() => {
+    if (!jobCard?.id) return;
+    const requestId = ++jobLoadRequestIdRef.current;
+    setJobLoading(true);
+    setJobError(false);
+    // Clear the previous job's part so a failed load never shows it on this one.
+    setItem(null);
+    setDisplayNumber(null);
+    api.getJobcard(jobCard.id).then((jobcardRes) => {
+      if (requestId !== jobLoadRequestIdRef.current) return;
       const items = jobcardRes?.items || [];
       const idx = itemId != null ? items.findIndex(i => i.id === itemId) : -1;
       const found = idx !== -1 ? items[idx] : null;
@@ -123,26 +138,44 @@ export default function StopTimerForm({
       setDisplayNumber(found ? (found.position != null ? found.position : idx + 1) : null);
       // Only Critical jobs get the extra inspection checklist.
       setIsCritical(String(jobcardRes?.qualityLevel || '').toUpperCase() === 'CRITICAL');
+    }).catch(() => {
+      if (requestId !== jobLoadRequestIdRef.current) return;
+      setJobError(true);
+    }).finally(() => {
+      if (requestId !== jobLoadRequestIdRef.current) return;
+      setJobLoading(false);
+    });
+  }, [jobCard?.id, itemId]);
+
+  // The machine list is independent of the Critical decision — a failure here only
+  // ever costs the machine picker, so it gets its own short message and never
+  // touches Submit or the sign-off.
+  const loadMachines = useCallback(() => {
+    if (!jobCard?.id) return;
+    const requestId = ++machinesLoadRequestIdRef.current;
+    setMachinesError(false);
+    api.getMachines().then((machinesRes) => {
+      if (requestId !== machinesLoadRequestIdRef.current) return;
       setMachines((machinesRes || []).filter(m => m.active !== 0 && m.active !== false));
     }).catch(() => {
-      setItem(null);
-      setDisplayNumber(null);
-      setIsCritical(false);
+      if (requestId !== machinesLoadRequestIdRef.current) return;
       setMachines([]);
-      // Silence here meant a worker got a form with an empty machine list and no
-      // inspection checks on a Critical job, with nothing saying why. The run itself
-      // is already recorded, so this is about the details going on it.
-      toast.error('Could not load this job’s machines and checks. You can still record the time, or close this and stop the timer again.', { id: 'stop-timer-load-failed' });
-    }).finally(() => {
-      setDataLoading(false);
+      setMachinesError(true);
     });
-  }, [isOpen, jobCard?.id, itemId]);
+  }, [jobCard?.id]);
 
   useEffect(() => {
-    if (isOpen && !dataLoading && firstInputRef.current) {
+    if (!isOpen || !jobCard?.id) return;
+    setMachineFilter('');
+    loadJob();
+    loadMachines();
+  }, [isOpen, jobCard?.id, itemId, loadJob, loadMachines]);
+
+  useEffect(() => {
+    if (isOpen && !jobLoading && firstInputRef.current) {
       firstInputRef.current.focus();
     }
-  }, [isOpen, dataLoading]);
+  }, [isOpen, jobLoading]);
 
   const handleKeyDown = useCallback((e) => {
     // Only the top-most dialog reacts to global keys (a confirmation layered over
@@ -186,7 +219,10 @@ export default function StopTimerForm({
   const hasDescription = entryForm.description && String(entryForm.description).trim() !== '';
   const inspectionComplete = !isCritical ||
     INSPECTION_ITEMS.every(i => entryForm[i.field] === true || entryForm[i.field] === false);
-  const canSubmit = hasDescription && inspectionComplete;
+  // A failed (or still-loading) job load means the Critical decision can't be
+  // trusted, so Submit stays disabled no matter what else is filled in.
+  const jobReady = !jobLoading && !jobError;
+  const canSubmit = jobReady && hasDescription && inspectionComplete;
 
   // What the worker just logged, so they trust what's being recorded.
   const startIso = stoppedEntry?.startTime;
@@ -276,11 +312,20 @@ export default function StopTimerForm({
           </p>
         </div>
 
-        {dataLoading ? (
+        {jobLoading ? (
           <div className="stop-timer-loading">Loading...</div>
         ) : (
           <form onSubmit={handleFormSubmit} className="stop-timer-form-body">
             <div className="stop-timer-fields">
+              {jobError && (
+                <div className="stf-load-error" role="alert">
+                  <p>Couldn't load this job's checks.</p>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={loadJob}>
+                    <RotateCw size={16} />
+                    Retry
+                  </button>
+                </div>
+              )}
               <section className="stf-section">
                 <div className="stf-section-head">
                   <span className="stf-label">Good pieces</span>
@@ -322,7 +367,7 @@ export default function StopTimerForm({
                 </div>
               </section>
 
-              {machines.length > 0 && (
+              {(machines.length > 0 || machinesError) && (
                 <section className="stf-section">
                   <div className="stf-section-head">
                     <span className="stf-label">Machines used</span>
@@ -330,30 +375,36 @@ export default function StopTimerForm({
                       <span className="stf-target">{selectedMachines.length} selected</span>
                     )}
                   </div>
-                  {manyMachines && (
-                    <input
-                      type="text"
-                      className="stf-note-input stf-machine-filter"
-                      placeholder="Filter machines…"
-                      value={machineFilter}
-                      onChange={(e) => setMachineFilter(e.target.value)}
-                    />
+                  {machinesError ? (
+                    <p className="stf-machine-empty">Couldn't load machines.</p>
+                  ) : (
+                    <>
+                      {manyMachines && (
+                        <input
+                          type="text"
+                          className="stf-note-input stf-machine-filter"
+                          placeholder="Filter machines…"
+                          value={machineFilter}
+                          onChange={(e) => setMachineFilter(e.target.value)}
+                        />
+                      )}
+                      <div className={manyMachines ? 'stf-machine-scroll' : undefined}>
+                        <ToggleTiles
+                          ariaLabel="Machines used"
+                          options={machineOptions.map(m => ({
+                            value: m.machineNumber,
+                            label: String(m.machineNumber),
+                            sublabel: m.name || undefined
+                          }))}
+                          selectedValues={selectedMachines}
+                          onToggle={onMachineToggle}
+                        />
+                        {manyMachines && machineOptions.length === 0 && (
+                          <p className="stf-machine-empty">No machines match “{machineFilter}”.</p>
+                        )}
+                      </div>
+                    </>
                   )}
-                  <div className={manyMachines ? 'stf-machine-scroll' : undefined}>
-                    <ToggleTiles
-                      ariaLabel="Machines used"
-                      options={machineOptions.map(m => ({
-                        value: m.machineNumber,
-                        label: String(m.machineNumber),
-                        sublabel: m.name || undefined
-                      }))}
-                      selectedValues={selectedMachines}
-                      onToggle={onMachineToggle}
-                    />
-                    {manyMachines && machineOptions.length === 0 && (
-                      <p className="stf-machine-empty">No machines match “{machineFilter}”.</p>
-                    )}
-                  </div>
                 </section>
               )}
 
@@ -384,7 +435,7 @@ export default function StopTimerForm({
                 />
               </section>
 
-              {isCritical && (
+              {isCritical && !jobError && (
                 <section className="stf-signoff">
                   <div className="stf-signoff-head">
                     <span className="stf-signoff-title">Inspection sign-off</span>
@@ -427,7 +478,7 @@ export default function StopTimerForm({
             </div>
 
             <div className="stop-timer-actions">
-              {!canSubmit && !loading && (
+              {!canSubmit && !loading && jobReady && (
                 <span className="stop-timer-hint">
                   {!hasDescription
                     ? 'Add a description of what you worked on to finish.'

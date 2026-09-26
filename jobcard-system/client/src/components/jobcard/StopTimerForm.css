@@ -349,6 +349,33 @@
   color: var(--text-tertiary);
 }
 
+/* ── Job details failed to load (Critical can't be decided) ── */
+.stf-load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-field);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--danger-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--danger-color) 8%, var(--surface));
+}
+
+.stf-load-error p {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--danger-ink);
+}
+
+.stf-load-error .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-inline);
+  flex-shrink: 0;
+}
+
 /* ── Critical-job inspection sign-off ── */
 .stf-signoff {
   display: flex;

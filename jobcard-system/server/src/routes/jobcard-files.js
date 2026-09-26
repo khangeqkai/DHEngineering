@@ -621,3 +621,8 @@ module.exports.listCategoryFileNames = listCategoryFileNames;
 module.exports.partFileCode = partFileCode;
 module.exports.resolveJobFolder = resolveJobFolder;
 module.exports.resolveCategoryFolder = resolveCategoryFolder;
+// The one place the upload size cap is defined — other routes accepting a
+// base64 file upload (e.g. QA template uploads) import these rather than
+// keeping their own copy, so the limit can never drift between them.
+module.exports.MAX_UPLOAD_BYTES = MAX_UPLOAD_BYTES;
+module.exports.MAX_FILE_DATA_CHARS = MAX_FILE_DATA_CHARS;

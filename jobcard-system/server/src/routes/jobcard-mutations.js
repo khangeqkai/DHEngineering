@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { createJobCardFolders } = require('../utils/folderCreation');
-const { authenticate, requireManagement, isManagement, canSetStatus } = require('../middleware/auth');
+const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateJobcardEnums, validateJobcardDescriptionRequired, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions, validateItemQuantities } = require('../middleware/validation');
 const {
   jobcardQueries,
@@ -267,19 +267,10 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
   }
 });
 
-router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
+router.put('/:id', authenticate, requireManagement, ...validateJobcardEnums, async (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
-
-    if (!isManagement(req.user.role)) {
-      const allowedFields = ['photos'];
-      const submittedFields = Object.keys(data).filter(k => data[k] !== undefined);
-      const disallowed = submittedFields.filter(f => !allowedFields.includes(f));
-      if (disallowed.length > 0) {
-        return res.status(403).json({ error: 'Employees can only update photos' });
-      }
-    }
 
     // Customer details are frozen at creation and can never change on an existing
     // job (traceability: a job is a permanent record of who the work was for, as
@@ -300,10 +291,6 @@ router.put('/:id', authenticate, ...validateJobcardEnums, async (req, res) => {
     const existing = jobcardQueries.getById.get(id);
     if (!existing) {
       return res.status(404).json({ error: 'Job card not found' });
-    }
-
-    if (data.status !== undefined && !canSetStatus(req.user.role, existing.status, data.status)) {
-      return res.status(403).json({ error: 'Only management can set that status' });
     }
 
     // A filed-away (archived) job is locked: refuse a status change here too, so

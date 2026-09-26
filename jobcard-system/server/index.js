@@ -8,7 +8,6 @@ try {
 }
 
 const express = require('express');
-const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -51,10 +50,9 @@ const app = express();
 app.set('trust proxy', 'loopback');
 
 // Middleware
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
+// No CORS middleware: every client loads the page from this server (the Vite
+// dev proxy, the packaged app and Electron all stay same-origin), so there is
+// no other site that should ever be allowed to call it.
 app.use(express.json({ limit: '50mb' })); // Large limit for photos
 app.use(requestLogger); // Request logging
 

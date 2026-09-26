@@ -44,34 +44,72 @@ router.get('/', (req, res) => {
 
     const defaultRules = { schedule: defaultSchedule, holidays: defaultHolidays, timezone };
 
-    // 1. Fetch job costings map for exact billing rule consistency
-    const costingsRows = db.prepare('SELECT jobcard_id, labour_schedule, labour_public_holidays, labour_timezone FROM job_costings').all();
-    const jobCostingsMap = new Map();
-    for (const row of costingsRows) {
-      let jSchedule = defaultSchedule;
-      let jHolidays = defaultHolidays;
-      try { if (row.labour_schedule) jSchedule = JSON.parse(row.labour_schedule); } catch {}
-      try { if (row.labour_public_holidays) jHolidays = JSON.parse(row.labour_public_holidays); } catch {}
-      jobCostingsMap.set(row.jobcard_id, {
-        rules: { schedule: jSchedule, holidays: jHolidays, timezone: row.labour_timezone || timezone }
-      });
+    // Shared 2-day boundary buffer (same margin the time-entries query below already
+    // used) so a UTC timestamp comparison in SQL can never exclude a row whose LOCAL
+    // calendar date (in the shop's timezone) is genuinely inside [startDate, endDate].
+    // Only startDate/endDate === null (the "all" preset) skips bounding entirely.
+    const bufferedStartIso = startDate
+      ? (() => { const d = new Date(startDate); d.setDate(d.getDate() - 2); return d.toISOString(); })()
+      : null;
+    const bufferedEndIso = endDate
+      ? (() => { const d = new Date(endDate); d.setDate(d.getDate() + 2); return d.toISOString(); })()
+      : null;
+
+    // 1. Fetch jobcards. A job matters to SOME statistic below only if it is one of:
+    //   (a) currently active/unfinished — the active/in-progress/overdue counters are a
+    //       live snapshot, read for every preset regardless of the date range, so these
+    //       rows are never bounded by date;
+    //   (b) created inside the (buffered) range — feeds totalJobsCreated, the QA/priority
+    //       distributions, repeat-job count, and the "jobsCreated" trend/customer buckets;
+    //   (c) possibly finished inside the (buffered) range — a job's finish date is
+    //       COALESCE(last logged time-entry end, invoiced_date, the DONE history
+    //       timestamp, updated_at), the exact same fallback order getJobFinishDate uses
+    //       (see statistics-helpers.js) — feeds completedJobsCount, on-time/late, and the
+    //       "jobsCompleted"/customer buckets.
+    // The WHERE below is a strict superset of that (2-day buffer either side, and the
+    // finish-date OR-branch is looser than getJobFinishDate's per-status gating), so the
+    // unchanged JS loop further down still decides exactly which of these fetched jobs
+    // count for which figure — no figure can change, only the row count fetched shrinks.
+    // For the "all" preset (both null) no bound is applied at all, matching today exactly.
+    let jobsSql = `
+      WITH job_calc AS (
+        SELECT
+          j.*,
+          c.name AS resolved_company_name,
+          qa.name AS qa_level_name,
+          (SELECT MAX(te.end_time) FROM time_entries te WHERE te.jobcard_id = j.id AND te.end_time IS NOT NULL) AS max_entry_end,
+          (SELECT MAX(h.created_at) FROM history h WHERE h.entity_type = 'jobcard' AND h.entity_id = j.id AND (h.changes LIKE '%"to":"DONE"%' OR h.changes LIKE '%"to": "DONE"%')) AS done_history_at
+        FROM jobcards j
+        LEFT JOIN companies c ON j.company_id = c.id
+        LEFT JOIN qa_levels qa ON j.qa_level_id = qa.id
+      )
+      SELECT * FROM job_calc
+    `;
+    const jobsParams = [];
+    if (startDate || endDate) {
+      const finishedPlaceholders = FINISHED_STATUSES.map(() => '?').join(', ');
+      const createdCond = [];
+      if (bufferedStartIso) { createdCond.push('created_at >= ?'); }
+      if (bufferedEndIso) { createdCond.push('created_at <= ?'); }
+      const finishExpr = 'COALESCE(max_entry_end, invoiced_date, done_history_at, updated_at)';
+      const finishCond = [];
+      if (bufferedStartIso) { finishCond.push(`${finishExpr} >= ?`); }
+      if (bufferedEndIso) { finishCond.push(`${finishExpr} <= ?`); }
+      jobsSql += `
+        WHERE (archived = 0 AND status NOT IN (${finishedPlaceholders}))
+           OR (${createdCond.join(' AND ')})
+           OR (${finishCond.join(' AND ')})
+      `;
+      jobsParams.push(...FINISHED_STATUSES);
+      if (bufferedStartIso) jobsParams.push(bufferedStartIso);
+      if (bufferedEndIso) jobsParams.push(bufferedEndIso);
+      if (bufferedStartIso) jobsParams.push(bufferedStartIso);
+      if (bufferedEndIso) jobsParams.push(bufferedEndIso);
     }
+    jobsSql += ' ORDER BY created_at DESC';
+    const allJobs = db.prepare(jobsSql).all(...jobsParams);
 
-    // 2. Fetch all jobcards
-    const allJobs = db.prepare(`
-      SELECT 
-        j.*,
-        c.name AS resolved_company_name,
-        qa.name AS qa_level_name,
-        (SELECT MAX(te.end_time) FROM time_entries te WHERE te.jobcard_id = j.id AND te.end_time IS NOT NULL) AS max_entry_end,
-        (SELECT MAX(h.created_at) FROM history h WHERE h.entity_type = 'jobcard' AND h.entity_id = j.id AND (h.changes LIKE '%"to":"DONE"%' OR h.changes LIKE '%"to": "DONE"%')) AS done_history_at
-      FROM jobcards j
-      LEFT JOIN companies c ON j.company_id = c.id
-      LEFT JOIN qa_levels qa ON j.qa_level_id = qa.id
-      ORDER BY j.created_at DESC
-    `).all();
-
-    // 3. Fetch machines: active machines sorted first so they take priority in lookup
+    // 2. Fetch machines: active machines sorted first so they take priority in lookup
     const machinesList = db.prepare('SELECT * FROM machines ORDER BY active DESC, id DESC').all();
     const activeMachinesMap = new Map();
     const machineStatsMap = new Map();
@@ -94,7 +132,8 @@ router.get('/', (req, res) => {
       }
     }
 
-    // 4. Time entries query (with 2-day SQL boundary buffer when dates are bounded to avoid loading all history)
+    // 3. Time entries query (same 2-day SQL boundary buffer as the jobs query above,
+    // so dates bounded here never load all history)
     let teSql = `
       SELECT te.id, te.jobcard_id, te.user_id, te.machine_number, te.start_time, te.end_time,
              te.qty, te.scrap_bin_qty, te.scrap_recycle_qty,
@@ -109,17 +148,13 @@ router.get('/', (req, res) => {
       WHERE te.end_time IS NOT NULL
     `;
     const teParams = [];
-    if (startDate) {
-      const bufferedStart = new Date(startDate);
-      bufferedStart.setDate(bufferedStart.getDate() - 2);
+    if (bufferedStartIso) {
       teSql += ' AND te.start_time >= ?';
-      teParams.push(bufferedStart.toISOString());
+      teParams.push(bufferedStartIso);
     }
-    if (endDate) {
-      const bufferedEnd = new Date(endDate);
-      bufferedEnd.setDate(bufferedEnd.getDate() + 2);
+    if (bufferedEndIso) {
       teSql += ' AND te.start_time <= ?';
-      teParams.push(bufferedEnd.toISOString());
+      teParams.push(bufferedEndIso);
     }
     teSql += ' ORDER BY te.start_time ASC';
 
@@ -132,6 +167,28 @@ router.get('/', (req, res) => {
       if (startDate && localDate < startDate) continue;
       if (endDate && localDate > endDate) continue;
       inRangeTimeEntries.push({ ...te, localDate });
+    }
+
+    // 4. Fetch job costings only for the jobs whose logged time is actually in range —
+    // jobCostingsMap below is only ever looked up by an in-range time entry's
+    // jobcard_id (see w.entriesByJob further down), so a job with no in-range time
+    // entries can never be consulted and doesn't need a row fetched for it.
+    const costingJobIds = [...new Set(inRangeTimeEntries.map(te => te.jobcard_id))];
+    const costingsRows = costingJobIds.length
+      ? db.prepare(
+          `SELECT jobcard_id, labour_schedule, labour_public_holidays, labour_timezone
+           FROM job_costings WHERE jobcard_id IN (${costingJobIds.map(() => '?').join(', ')})`
+        ).all(...costingJobIds)
+      : [];
+    const jobCostingsMap = new Map();
+    for (const row of costingsRows) {
+      let jSchedule = defaultSchedule;
+      let jHolidays = defaultHolidays;
+      try { if (row.labour_schedule) jSchedule = JSON.parse(row.labour_schedule); } catch {}
+      try { if (row.labour_public_holidays) jHolidays = JSON.parse(row.labour_public_holidays); } catch {}
+      jobCostingsMap.set(row.jobcard_id, {
+        rules: { schedule: jSchedule, holidays: jHolidays, timezone: row.labour_timezone || timezone }
+      });
     }
 
     // ── Process Job Metrics ──

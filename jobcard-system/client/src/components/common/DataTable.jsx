@@ -42,6 +42,10 @@ export default function DataTable({
   // table shows instead of the whole unfiltered dataset. Pass a plain useState
   // setter — it's referentially stable, so this never loops.
   onVisibleRowsChange,
+  // Only used when onRowClick is set: (row) => string, the label read out for the
+  // button that opens the row — e.g. "Open job 1234". Optional; without it the
+  // button falls back to a generic label.
+  getRowAriaLabel,
 }) {
   const { searchTerm, setSearchTerm, filteredData } = useTableFilter(
     data,
@@ -157,20 +161,30 @@ export default function DataTable({
                     key={row.id || rowIndex}
                     className={`${onRowClick ? 'clickable' : ''} ${typeof rowClassName === 'function' ? rowClassName(row) : ''}`}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
-                    onKeyDown={onRowClick ? (e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onRowClick(row);
-                      }
-                    } : undefined}
-                    tabIndex={onRowClick ? 0 : undefined}
-                    role={onRowClick ? 'button' : undefined}
                   >
-                    {columns.map((col) => (
-                      <td key={col.key}>
-                        {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '-')}
-                      </td>
-                    ))}
+                    {columns.map((col, colIndex) => {
+                      const cellContent = col.render ? col.render(row[col.key], row) : (row[col.key] ?? '-');
+                      // Keyboard/screen-reader access to a clickable row lives on a real
+                      // button in the first cell, not on the <tr> — a row keeps its native
+                      // table semantics instead of masquerading as a button. The click still
+                      // opens the row (stopPropagation keeps the row's own onClick from
+                      // firing a second time on top of it).
+                      if (onRowClick && colIndex === 0) {
+                        return (
+                          <td key={col.key}>
+                            <button
+                              type="button"
+                              className="row-link-btn"
+                              onClick={(e) => { e.stopPropagation(); onRowClick(row); }}
+                              aria-label={getRowAriaLabel ? getRowAriaLabel(row) : 'Open row'}
+                            >
+                              {cellContent}
+                            </button>
+                          </td>
+                        );
+                      }
+                      return <td key={col.key}>{cellContent}</td>;
+                    })}
                   </tr>
                 ))
               )}

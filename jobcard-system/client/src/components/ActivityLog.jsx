@@ -76,11 +76,17 @@ export default function ActivityLog() {
           onExportView={() => activities.length ? exportActivityLog(activities) : false}
           onExportAll={async () => {
             // The server caps a page at 500, so walk pages until one comes back short.
+            // Each page after the first asks for rows strictly older than the last row
+            // the previous page returned (by time + id), so the cost stays linear in the
+            // trail's size instead of the quadratic cost of walking it with an offset.
             const all = [];
-            for (let offset = 0; ; offset += 500) {
-              const page = await api.getActivityHistory(500, offset);
+            let cursor = null;
+            for (;;) {
+              const page = await api.getActivityHistory(500, 0, cursor);
               all.push(...page);
               if (page.length < 500) break;
+              const last = page[page.length - 1];
+              cursor = { createdAt: last.createdAt, id: last.id };
             }
             return all.length ? exportActivityLog(all) : false;
           }}

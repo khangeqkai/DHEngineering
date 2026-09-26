@@ -6,7 +6,7 @@ import { Plus } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { isManagement } from '../utils/roles';
-import { todayIsoDate } from '../utils/formatters';
+import { useLocalToday } from '../hooks/useLocalToday';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportJobCardList, exportJobCardsFull } from '../utils/excelExport';
@@ -85,6 +85,10 @@ export default function JobCardList() {
   const [hoverNames, setHoverNames] = useState(null);
   const [hoverDesc, setHoverDesc] = useState(null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
+  // The one source for "today" this screen uses for overdue — flips at local
+  // midnight and on a tab/window regaining focus, so a job list left open
+  // overnight still moves jobs into Overdue without a reload.
+  const today = useLocalToday();
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
   const { warningsById: missingFilesIds, checkedIds: attachmentCheckedIds, ensure: ensureMissingFiles, refresh: refreshMissingFiles } = useMissingFilesIndicator();
 
@@ -319,7 +323,6 @@ export default function JobCardList() {
   }, [editingCardId]);
 
   const filteredCards = useMemo(() => {
-    const today = todayIsoDate();
     return jobcards.filter((card) => {
       let matchesFilter;
       // The status filter buttons aren't shown in the archived view (see
@@ -344,7 +347,7 @@ export default function JobCardList() {
         card.description?.toLowerCase().includes(lowerSearch);
       return matchesFilter && matchesMine && matchesSearch;
     });
-  }, [jobcards, filter, myJobsOnly, showArchived, search, canManage, user?.id]);
+  }, [jobcards, filter, myJobsOnly, showArchived, search, canManage, user?.id, today]);
 
   const { sortBy, sortDir, handleSort, sortedCards } = useJobCardSort(filteredCards);
 
@@ -533,6 +536,7 @@ export default function JobCardList() {
               <JobCardListTable
                 visibleColumns={visibleColumns}
                 paginatedCards={paginatedCards}
+                today={today}
                 sortBy={sortBy}
                 sortDir={sortDir}
                 onSort={handleSort}
