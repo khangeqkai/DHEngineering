@@ -9,7 +9,7 @@ export default function DataBackupCard({ s }) {
           <div className="setting-info">
             <div className="setting-label">Export Full Backup</div>
             <div className="setting-description">
-              Save all data (database + job folder files) to a ZIP file. Use this before updating or reinstalling the application.
+              Save all data (database + job folder files) to a ZIP file. Use this before updating or reinstalling the application. Save it outside the job folders location — a backup saved in there is refused, because restoring replaces everything in that folder. Older backups already kept in there are left out and listed, so they can be moved.
             </div>
           </div>
           <button
@@ -25,7 +25,7 @@ export default function DataBackupCard({ s }) {
           <div className="setting-info">
             <div className="setting-label">Import Backup</div>
             <div className="setting-description">
-              Restore all data from a previously exported backup. This will replace all current data and files.
+              Restore all data from a previously exported backup. This will replace all current data and files. The backup must sit outside the job folders location, and no other backups may be kept in there, or the restore would delete them.
             </div>
           </div>
           <button

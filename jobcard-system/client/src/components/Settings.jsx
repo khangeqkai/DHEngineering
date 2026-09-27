@@ -6,6 +6,7 @@ import SecurityCard from './settings/SecurityCard';
 import FoldersCard from './settings/FoldersCard';
 import HomeAccessCard from './settings/HomeAccessCard';
 import DataBackupCard from './settings/DataBackupCard';
+import FieldError from './common/FieldError';
 import './Settings.css';
 
 export default function Settings() {
@@ -56,7 +57,7 @@ export default function Settings() {
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => s.setShowPasswordModal(true)}
+                onClick={s.openPasswordModal}
               >
                 Change PIN
               </button>
@@ -269,10 +270,10 @@ export default function Settings() {
                 required
               />
             </div>
-            <div className="form-group">
+            <div className={s.pinFieldErrors.groupClass('newPin')}>
               <label className="form-label" htmlFor="newPin">New PIN</label>
               <input
-                id="newPin"
+                {...s.pinFieldErrors.fieldProps('newPin')}
                 type="password"
                 inputMode="numeric"
                 maxLength={4}
@@ -282,11 +283,12 @@ export default function Settings() {
                 placeholder="Enter 4-digit PIN"
                 required
               />
+              <FieldError {...s.pinFieldErrors.errorProps('newPin')} message={s.pinFieldErrors.errorFor('newPin')} />
             </div>
-            <div className="form-group">
+            <div className={s.pinFieldErrors.groupClass('confirmPin')}>
               <label className="form-label" htmlFor="confirmPin">Confirm New PIN</label>
               <input
-                id="confirmPin"
+                {...s.pinFieldErrors.fieldProps('confirmPin')}
                 type="password"
                 inputMode="numeric"
                 maxLength={4}
@@ -296,6 +298,7 @@ export default function Settings() {
                 placeholder="Re-enter 4-digit PIN"
                 required
               />
+              <FieldError {...s.pinFieldErrors.errorProps('confirmPin')} message={s.pinFieldErrors.errorFor('confirmPin')} />
             </div>
           </form>
         </BottomSheet.Body>

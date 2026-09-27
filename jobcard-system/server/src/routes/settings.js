@@ -15,6 +15,9 @@ const { setMaintenance } = require('../middleware/maintenance');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
 const { version: appVersion } = require('../../package.json');
 const {
+  JOB_FOLDERS_ROOT_MESSAGE,
+  isDriveOrShareRoot,
+  isInsideFolder,
   listFilesRecursive,
   verifyStagedFiles,
   copyDirRecursive,
@@ -136,6 +139,9 @@ router.put('/', requireManagement, async (req, res) => {
         if (!stats.isDirectory()) {
           return res.status(400).json({ error: 'Job folders base path is not a directory' });
         }
+        if (isDriveOrShareRoot(jobFoldersBase)) {
+          return res.status(400).json({ error: JOB_FOLDERS_ROOT_MESSAGE });
+        }
       }
       updates.job_folders_base = jobFoldersBase || '';
     }
@@ -253,6 +259,16 @@ router.post('/export-backup', requirePermission('systemData'), [
 
   try {
     const settings = db.getSettings();
+    const jobBase = settings.job_folders_base;
+    // A restore replaces the whole job-folders location and deletes what was there
+    // before, so a backup saved inside it would be lost by the very restore that
+    // needs it (and packed into every later backup). Refused before anything is
+    // written, so a file already at that path is never touched.
+    if (jobBase && isInsideFolder(outputPath, jobBase)) {
+      return res.status(400).json({
+        error: 'A backup cannot be saved inside the job folders location, because restoring a backup replaces everything in there. Save it somewhere else.'
+      });
+    }
 
     // Read every table inside one transaction so the snapshot is internally
     // consistent even if someone saves while the export is running.
@@ -267,16 +283,24 @@ router.post('/export-backup', requirePermission('systemData'), [
     // Walk the job folders first to build a candidate list of files to archive.
     // The final manifest is built later from only the files that actually land
     // in the zip, so a restore can confirm every listed file unpacked.
-    const jobBase = settings.job_folders_base;
     const collected = [];
     let walkSkipped = 0;
+    // Whether the job folders were actually read. A restore only empties the live
+    // job folders for a file-less backup that says so — otherwise a backup taken
+    // while the folder was missing would wipe every file on the machine restored.
+    let jobFoldersRead = false;
+    // The app's own backups already sitting in the job folders (saved there before
+    // that was refused). They are left out of this backup, and a restore would
+    // delete them, so the reply names them and the admin is asked to move them.
+    const backupsLeftOut = [];
     if (jobBase && fs.existsSync(jobBase)) {
       const files = [];
-      listFilesRecursive(jobBase, jobBase, files);
+      walkSkipped += listFilesRecursive(jobBase, jobBase, files, backupsLeftOut);
+      jobFoldersRead = true;
       for (const f of files) {
         try {
-          const { size } = fs.statSync(f.abs);
-          collected.push({ abs: f.abs, relPath: f.rel, size });
+          const stats = fs.statSync(f.abs);
+          collected.push({ abs: f.abs, relPath: f.rel, stats });
         } catch (err) {
           walkSkipped++;
           logger.warn({ err, file: f.abs }, 'File skipped during backup export');
@@ -295,7 +319,8 @@ router.post('/export-backup', requirePermission('systemData'), [
     const metadata = {
       exportedAt: new Date().toISOString(),
       appVersion,
-      schemaVersion: SCHEMA_VERSION
+      schemaVersion: SCHEMA_VERSION,
+      jobFoldersRead
     };
 
     // Delegate packing + manifest assembly so the manifest and the reported
@@ -322,7 +347,10 @@ router.post('/export-backup', requirePermission('systemData'), [
       logger.error({ err: histErr }, 'Failed to record export history');
     }
 
-    res.json({ success: true, size: stats.size, filesSkipped: skipped });
+    if (backupsLeftOut.length > 0) {
+      logger.warn({ backupsLeftOut }, 'Earlier backups inside the job folders left out of backup export');
+    }
+    res.json({ success: true, size: stats.size, filesSkipped: skipped, backupsLeftOut });
   } catch (err) {
     try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch (_) { /* ignore */ }
     logger.error({ err }, 'Error exporting backup');
@@ -351,6 +379,37 @@ router.post('/import-backup', requirePermission('systemData'), [
   if (!currentJobBase) {
     return res.status(400).json({
       error: 'Please configure the Job Folders Base path in Settings before importing a backup'
+    });
+  }
+  // The swap below renames the whole location and builds its side folders beside
+  // it — impossible at the top of a drive or share (older settings may still
+  // point there), so say so plainly instead of failing on a rename.
+  if (isDriveOrShareRoot(currentJobBase)) {
+    return res.status(400).json({ error: JOB_FOLDERS_ROOT_MESSAGE });
+  }
+  // A successful restore deletes everything that was in the job-folders location
+  // before, which would include the very zip being restored from.
+  if (isInsideFolder(inputPath, currentJobBase)) {
+    return res.status(400).json({
+      error: 'This backup is inside the job folders location, and restoring replaces everything in there, so the backup itself would be deleted. Move it somewhere else first, then import it from there.'
+    });
+  }
+
+  // Same for any other of the app's backups kept in there (saved before that was
+  // refused): the restore would delete them for good, and none of them is inside
+  // the backup being restored, so refuse until they are moved out.
+  const backupsInside = [];
+  if (fs.existsSync(currentJobBase)) {
+    try {
+      listFilesRecursive(currentJobBase, currentJobBase, [], backupsInside);
+    } catch (err) {
+      logger.error({ err }, 'Error checking job folders before restore');
+      return res.status(500).json({ error: 'Could not read the job folders location, so the restore was not started: ' + err.message });
+    }
+  }
+  if (backupsInside.length > 0) {
+    return res.status(400).json({
+      error: `Restoring replaces everything in the job folders location, and ${backupsInside.length} earlier backup file(s) are kept in there, so they would be deleted. Move them somewhere else first, then import again: ${backupsInside.join(', ')}`
     });
   }
 
@@ -388,11 +447,11 @@ router.post('/import-backup', requirePermission('systemData'), [
     //    manifest unpacked correctly, then swap them into place with instant
     //    renames. If a rename fails, undo it and abort with the live folders
     //    untouched.
-    let hasFiles;
     try {
-      ({ filesSwapped, hasFiles } = swapJobFolders({
+      ({ filesSwapped } = swapJobFolders({
         tempDir, currentJobBase, stagingDir, oldDir,
-        fileManifest: data._metadata.fileManifest
+        fileManifest: data._metadata.fileManifest,
+        jobFoldersRead: data._metadata.jobFoldersRead
       }));
     } catch (swapErr) {
       if (swapErr.filesUnrecoverable) filesUnrecoverable = true;
@@ -422,23 +481,33 @@ router.post('/import-backup', requirePermission('systemData'), [
 
     // 4. Success — discard the old files and any staging leftovers. The restore
     //    has already committed, so a leftover-folder lock must never report failure.
+    const filesReplaced = filesSwapped;
     bestEffortRemove(oldDir);
     bestEffortRemove(stagingDir);
-    logger.info({ jobBase: currentJobBase, filesRestored: hasFiles }, 'Backup restored successfully');
+    logger.info({ jobBase: currentJobBase, filesRestored: filesReplaced }, 'Backup restored successfully');
 
-    // Record import in history (wrap in try-catch since the importing user
-    // may not exist in the restored data, which would cause an FK violation)
+    // The restore replaced the user list, so the importing account may no longer
+    // exist (a fresh install's admin has its own random id). Link the entry to it
+    // only when it does; otherwise the entry carries the importer's name alone, so
+    // the restore always leaves a trace.
+    const importerStillExists = !!db.userQueries.getById.get(req.user.userId);
     try {
-      recordHistory('system', 'backup', 'data_import', req.user.userId, actorName(req), {
+      recordHistory('system', 'backup', 'data_import', importerStillExists ? req.user.userId : null, actorName(req), {
         source: { from: null, to: data._metadata.exportedAt },
         tables: { from: null, to: TABLE_ORDER.length + ' tables restored' },
-        filesRestored: { from: null, to: hasFiles ? 'yes' : 'no' }
+        filesRestored: { from: null, to: filesReplaced ? 'yes' : 'no' }
       }, null);
     } catch (histErr) {
-      logger.error({ err: histErr }, 'Failed to record import history (user may not exist in restored data)');
+      logger.error({ err: histErr }, 'Failed to record import history');
     }
 
-    res.json({ success: true, message: 'Backup imported successfully' });
+    res.json({
+      success: true,
+      filesReplaced,
+      message: filesReplaced
+        ? 'Backup imported successfully'
+        : 'Backup imported successfully. This backup does not say it holds the job files, so the files already in the job folders were left unchanged.'
+    });
   } catch (err) {
     try { db.db.pragma('foreign_keys = ON'); } catch (_) { /* ignore */ }
     // If we staged files but never swapped them in, remove the staging copy.

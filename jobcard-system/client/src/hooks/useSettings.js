@@ -51,6 +51,14 @@ export function useSettings() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+  // The Change PIN form keeps its own marks, so opening or resetting it clears
+  // only its boxes and never the marks on the page's other cards.
+  const pinFieldErrors = useFieldErrors((name) => {
+    if (name === 'newPin') return newPassword;
+    if (name === 'confirmPin') return confirmPassword;
+    return undefined;
+  });
+  const { setFieldErrors: setPinFieldErrors, clearAll: clearPinFieldErrors } = pinFieldErrors;
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
@@ -201,22 +209,30 @@ export function useSettings() {
 
   const toggleDarkMode = useCallback(() => setDarkMode(prev => !prev), []);
 
+  const openPasswordModal = useCallback(() => {
+    clearPinFieldErrors();
+    setShowPasswordModal(true);
+  }, [clearPinFieldErrors]);
+
   const resetPasswordForm = useCallback(() => {
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
+    clearPinFieldErrors();
     setShowPasswordModal(false);
-  }, []);
+  }, [clearPinFieldErrors]);
 
   const handleChangePassword = useCallback(async (e) => {
     e.preventDefault();
     const passwordError = validatePassword(newPassword);
     if (passwordError) {
-      toast.error(passwordError);
+      setPinFieldErrors({ newPin: passwordError });
+      scrollFieldIntoView('newPin');
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match');
+      setPinFieldErrors({ confirmPin: 'New PINs do not match' });
+      scrollFieldIntoView('confirmPin');
       return;
     }
     setSavingPassword(true);
@@ -229,7 +245,7 @@ export function useSettings() {
     } finally {
       setSavingPassword(false);
     }
-  }, [newPassword, confirmPassword, currentPassword, resetPasswordForm]);
+  }, [newPassword, confirmPassword, currentPassword, resetPasswordForm, setPinFieldErrors]);
 
   const handleExportBackup = useCallback(async () => {
     if (!window.electronAPI?.showSaveDialog) {
@@ -250,7 +266,15 @@ export function useSettings() {
     try {
       const result = await api.exportBackup(outputPath);
       const sizeMB = result?.size ? (result.size / 1024 / 1024).toFixed(1) : null;
-      if (result?.filesSkipped > 0) {
+      const backupsLeftOut = result?.backupsLeftOut || [];
+      if (backupsLeftOut.length > 0) {
+        // Earlier backups kept inside the job folders are not in this backup, and a
+        // restore replaces everything in there — the admin has to move them out.
+        const unreadNote = result.filesSkipped > 0
+          ? ` Also, ${result.filesSkipped} file(s) couldn't be read and were left out.`
+          : '';
+        toast.error(`Backup saved, but ${backupsLeftOut.length} earlier backup file(s) are kept inside the job folders and were left out. Restoring a backup replaces everything in there, so move them somewhere else: ${backupsLeftOut.join(', ')}.${unreadNote}`, { id: toastId, duration: 20000 });
+      } else if (result?.filesSkipped > 0) {
         toast.error(`Backup saved, but ${result.filesSkipped} file(s) couldn't be read and were left out. Check those files and back up again.`, { id: toastId });
       } else {
         toast.success(sizeMB ? `Backup exported (${sizeMB} MB)` : 'Backup exported', { id: toastId });
@@ -286,11 +310,17 @@ export function useSettings() {
     // A loading toast shows for the length of the restore, not just after it finishes.
     const toastId = toast.loading('Restoring backup…');
     try {
-      await api.importBackup(pendingImportPath);
-      toast.success('Restore complete. Returning to the login screen...', { id: toastId });
+      const result = await api.importBackup(pendingImportPath);
+      // An older backup that doesn't say it holds the job files leaves the files
+      // already on disk as they are — say so rather than implying they were replaced.
+      const filesKept = result?.filesReplaced === false;
+      toast.success(filesKept
+        ? 'Restore complete. This backup does not say it holds the job files, so the files already in the job folders were left as they were. Returning to the login screen...'
+        : 'Restore complete. Returning to the login screen...', { id: toastId });
       // No saved login survives a reload, so this lands on the login screen —
-      // exactly the intended end state after a full rewind.
-      setTimeout(() => window.location.reload(), 1500);
+      // exactly the intended end state after a full rewind. The longer message
+      // gets long enough on screen to be read.
+      setTimeout(() => window.location.reload(), filesKept ? 6000 : 1500);
       // Leave the "Restoring..." overlay up until the reload happens.
     } catch (err) {
       toast.error(err.message || 'Failed to import backup', { id: toastId });
@@ -314,7 +344,7 @@ export function useSettings() {
     jobNumberPrefix, setJobNumberPrefix, jobNumberNext, setJobNumberNext, handleSaveJobNumber, savingJobNumber,
     homeAccessCode, setHomeAccessCode, handleSaveHomeAccessCode, savingHomeAccess,
     homeAddress, setHomeAddress, handleSaveHomeAddress, savingHomeAddress,
-    showPasswordModal, setShowPasswordModal,
+    showPasswordModal, openPasswordModal, pinFieldErrors,
     currentPassword, setCurrentPassword,
     newPassword, setNewPassword,
     confirmPassword, setConfirmPassword,

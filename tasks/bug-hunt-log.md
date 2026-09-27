@@ -38,9 +38,19 @@ _None yet._
 - Title-casing capitalised the letter after an accented letter.
 - A half-filled New supplier form on a new part vanished when the part saved.
 - Known small leftover (accepted): typing a previous-job reference then instantly unticking Repeat Job can briefly show the reference on screen until the job reloads; the stored data is always correct.
+### Round 3 — database start-up, backup and restore, settings
+- A restore deleted backup zips kept inside the job folders, and each export packed in earlier backups: export/restore refuse a location inside the job folders; existing app backups found there are skipped.
+- Restore always failed when Job Folders was a drive/share root or mount point: such a location is refused on save and at restore start with a plain message; an unreadable subfolder no longer stops an export.
+- A backup could become unrestorable if a file changed during export: the file list records the bytes actually packed.
+- Restoring a backup with no files left newer files on disk (showing up on reused job numbers): backups record that the folders were read; an empty one swaps in an empty folder.
+- A restore onto a new PC left no activity-trail entry.
+- Customers restored from a pre-split backup kept time-zone-less dates.
+- A starting job number over ~15 digits was rounded and then blocked new jobs: refused as too long.
+- The Change PIN form showed field mistakes as pop-ups instead of marking the box.
 
 ## Rounds
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
 |---|---|---|---|---|---|
 | 1 | Pricing sheet + job screen | 13 | 8 | 8 | 0 |
 | 2 | Job details + parts | 16 | 9 | 9 | 0 |
+| 3 | Database, backup, settings | 13 | 8 | 8 | 0 |

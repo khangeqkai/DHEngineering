@@ -13,11 +13,16 @@ function isInactivityMinutes(value) {
 }
 
 // The starting job number: digits only (leading zeros are kept, so it stays a
-// string, never parsed as a number).
+// string). At most 15 digits: the counter does its arithmetic on it as a number,
+// and past 15 digits a number is rounded, so the first job would get a different
+// number from the one typed and adding 1 would stop moving it on.
+const STARTING_JOB_NUMBER_MAX_DIGITS = 15;
+
 function isStartingJobNumber(value) {
-  return /^\d+$/.test(value);
+  return /^\d+$/.test(value) && value.length <= STARTING_JOB_NUMBER_MAX_DIGITS;
 }
 
-const STARTING_JOB_NUMBER_MESSAGE = 'Starting number must contain only digits (e.g. 00001)';
+const STARTING_JOB_NUMBER_MESSAGE =
+  `Starting number must contain only digits, at most ${STARTING_JOB_NUMBER_MAX_DIGITS} (e.g. 00001)`;
 
 module.exports = { INACTIVITY_MINUTES, isInactivityMinutes, isStartingJobNumber, STARTING_JOB_NUMBER_MESSAGE };

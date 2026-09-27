@@ -8,17 +8,127 @@ const { runStartupConversions } = require('../db/init');
 const { PRINT_NAMING_CUTOVER_KEY } = require('../db/legacyMigrations');
 const { splitCustomersInBackup } = require('../db/splitCustomers');
 
+// The restore swaps the whole job-folders location out with renames and builds
+// its staging/old folders beside it, so the location must be an ordinary folder
+// with a parent. The top of a drive (D:\) or of a network share
+// (\\server\jobs\) has no parent to sit beside and can never be renamed, so
+// every restore onto it would fail. Refused when the location is saved and again
+// when a restore starts.
+const JOB_FOLDERS_ROOT_MESSAGE =
+  'The job folders location cannot be the top of a drive or network share. Choose a folder inside it instead, for example D:\\Jobs.';
+
+function isDriveOrShareRoot(dir) {
+  const resolved = path.resolve(dir);
+  return resolved === path.parse(resolved).root;
+}
+
+// Resolve a path through any links in the part of it that already exists (the
+// file being saved to does not exist yet), so two spellings of one place compare
+// equal.
+function resolveExisting(p) {
+  const resolved = path.resolve(p);
+  try { return fs.realpathSync.native(resolved); } catch (_) { /* not there yet */ }
+  const parent = path.dirname(resolved);
+  if (parent === resolved) return resolved;
+  return path.join(resolveExisting(parent), path.basename(resolved));
+}
+
+// True when `target` sits inside the folder `dir` (or is it). path.relative
+// already ignores letter case on Windows, where paths are case-insensitive.
+function isInsideFolder(target, dir) {
+  const rel = path.relative(resolveExisting(dir), resolveExisting(target));
+  // A leading '..' only means "outside" when it is the whole first part of the
+  // path — a subfolder named '..old' is still inside.
+  return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
+}
+
+// Does this .zip look like one of the app's own backups — database.json at its
+// top level? Reads only the zip's table of contents (the central directory at
+// its end), never the packed files. Anything unreadable or malformed is simply
+// "not a backup", so the export treats it like any other job file.
+function isAppBackupZip(absPath) {
+  let fd;
+  try {
+    fd = fs.openSync(absPath, 'r');
+    const fileSize = fs.fstatSync(fd).size;
+    const read = (pos, len) => {
+      const buf = Buffer.alloc(len);
+      fs.readSync(fd, buf, 0, len, pos);
+      return buf;
+    };
+    // End-of-central-directory record: 22 bytes plus an optional comment of up
+    // to 64 KB, so it sits in the last 65,557 bytes.
+    const tailLen = Math.min(fileSize, 65557);
+    const tail = read(fileSize - tailLen, tailLen);
+    let eocd = -1;
+    for (let i = tail.length - 22; i >= 0; i--) {
+      if (tail.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) return false;
+    let cdSize = tail.readUInt32LE(eocd + 12);
+    let cdOffset = tail.readUInt32LE(eocd + 16);
+    // Large archives (over 4 GB or 65,535 entries) keep the real figures in the
+    // zip64 record, found through the locator just before the normal record.
+    if ((cdOffset === 0xffffffff || cdSize === 0xffffffff) && eocd >= 20
+      && tail.readUInt32LE(eocd - 20) === 0x07064b50) {
+      const zip64Pos = Number(tail.readBigUInt64LE(eocd - 12));
+      const zip64 = read(zip64Pos, 56);
+      if (zip64.readUInt32LE(0) !== 0x06064b50) return false;
+      cdSize = Number(zip64.readBigUInt64LE(40));
+      cdOffset = Number(zip64.readBigUInt64LE(48));
+    }
+    if (cdOffset + cdSize > fileSize) return false;
+    const cd = read(cdOffset, cdSize);
+    let pos = 0;
+    while (pos + 46 <= cd.length && cd.readUInt32LE(pos) === 0x02014b50) {
+      const nameLen = cd.readUInt16LE(pos + 28);
+      const extraLen = cd.readUInt16LE(pos + 30);
+      const commentLen = cd.readUInt16LE(pos + 32);
+      if (cd.toString('utf8', pos + 46, pos + 46 + nameLen) === 'database.json') return true;
+      pos += 46 + nameLen + extraLen + commentLen;
+    }
+    return false;
+  } catch (_) {
+    return false;
+  } finally {
+    if (fd !== undefined) { try { fs.closeSync(fd); } catch (_) { /* ignore */ } }
+  }
+}
+
 // Helper: collect every file under dir, with forward-slash paths relative to
 // baseDir. Symlinks and other special entries are ignored (real files only).
-function listFilesRecursive(dir, baseDir, out) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+// A subfolder that cannot be listed (a protected system folder, a permission
+// problem) is skipped and counted, the same way an unreadable file is, so one
+// such folder never stops the whole backup; the returned number is how many were
+// skipped. The top folder itself must be listable — that failure still throws.
+// The app's own backup zips found inside are left out altogether, so a backup
+// saved into the job folders before this was refused is not packed into every
+// later backup; their full paths go into `backupsFound` instead, so the export
+// can tell the admin to move them out (a restore deletes everything in there,
+// and would refuse to run while they remain).
+function listFilesRecursive(dir, baseDir, out, backupsFound = []) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch (err) {
+    if (dir === baseDir) throw err;
+    logger.warn({ err, dir }, 'Folder skipped during backup export');
+    return 1;
+  }
+  let skipped = 0;
+  for (const entry of entries) {
     const abs = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      listFilesRecursive(abs, baseDir, out);
+      skipped += listFilesRecursive(abs, baseDir, out, backupsFound);
     } else if (entry.isFile()) {
+      if (entry.name.toLowerCase().endsWith('.zip') && isAppBackupZip(abs)) {
+        backupsFound.push(abs);
+        continue;
+      }
       out.push({ abs, rel: path.relative(baseDir, abs).split(path.sep).join('/') });
     }
   }
+  return skipped;
 }
 
 // Helper: confirm every file the backup claims to contain actually unpacked into
@@ -98,38 +208,44 @@ function partitionReadableFiles(collected) {
 // Pack the backup ZIP so the manifest and the reported skipped count reflect
 // exactly what actually landed in the archive.
 //
-// Files are appended FIRST, then we watch the archiver's `entry` events (which
-// fire only once a file's bytes are in the zip) and ENOENT `warning` events
-// (which fire when a file vanished between the up-front stat and the append).
-// Once every collected file has resolved one way or the other, we build the
-// manifest from only the files that truly made it in, append database.json LAST
-// with that accurate manifest, then finalize.
+// Files are appended FIRST, one at a time: each is opened only once the one
+// before it is in the zip (the archiver's `entry` event), so a large job-folders
+// location never holds more than one file open. Each file's bytes are counted
+// as they are read into the zip, and that count is the size the manifest
+// records — not an earlier look at the file, which a file saved again during a
+// long export would no longer match, leaving a backup that could never be
+// restored. Once every collected file is in, we build the manifest, append
+// database.json LAST with it, then finalize. A file that vanished or became
+// unreadable after the pre-flight fails the pack with its read error; the retry
+// wrapper below drops it and packs again.
 //
 // `preSkipped` carries forward files dropped before this call (walk-time stat
 // failures live in `walkSkipped`; files dropped by the readable pre-flight live
 // in `preSkipped`). The `collected` array passed here is the readable-only list.
 //
-// Returns the accurate total skipped count (walk-time stat failures + pre-flight
-// unreadable files + files that disappeared before the append).
+// Returns the accurate total skipped count (walk-time failures + pre-flight
+// unreadable files).
 function archiveBackup({ metadata, tables, collected, outputPath, walkSkipped, preSkipped = 0 }) {
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(outputPath);
     const archive = archiver('zip', { zlib: { level: 5 } });
 
-    // Track which file names actually entered the zip.
+    // Track which file names actually entered the zip, and how many bytes each
+    // one carried.
     const archivedNames = new Set();
+    const packedSizes = new Map();
     let fileEventCount = 0;
     let manifestAppended = false;
     let settled = false;
 
-    const buildDbJson = (skipped) => {
+    const buildDbJson = () => {
       const archivedFiles = collected.filter(c => archivedNames.has(`files/${c.relPath}`));
       const totalSkipped = walkSkipped + preSkipped + (collected.length - archivedFiles.length);
       const dbData = {
         _metadata: {
           ...metadata,
           fileManifest: {
-            files: archivedFiles.map(c => ({ relPath: c.relPath, size: c.size })),
+            files: archivedFiles.map(c => ({ relPath: c.relPath, size: packedSizes.get(c.relPath) })),
             skipped: totalSkipped
           }
         },
@@ -147,40 +263,42 @@ function archiveBackup({ metadata, tables, collected, outputPath, walkSkipped, p
       archive.finalize();
     };
 
+    // Give up on this attempt: stop packing and let go of the half-written file
+    // before reporting, so a retry can safely write the same path afresh.
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      archive.abort();
+      archive.unpipe(output);
+      if (output.closed) { reject(err); return; }
+      output.once('close', () => reject(err));
+      output.destroy();
+    };
+
     output.on('close', () => {
       if (settled) return;
       settled = true;
       resolve(archive._dhTotalSkipped);
     });
 
-    archive.on('error', (err) => {
-      if (settled) return;
-      settled = true;
-      reject(err);
-    });
+    archive.on('error', fail);
 
     // The destination can fail on its own (folder gone, drive unplugged, full,
     // read-only). pipe() re-emits that on `output`, and an 'error' with no listener
     // throws out of the event loop and kills the whole server — not just this
     // request. Route it into the same reject so the admin gets "backup failed".
-    output.on('error', (err) => {
-      if (settled) return;
-      settled = true;
-      archive.abort();
-      reject(err);
-    });
+    output.on('error', fail);
 
-    archive.on('warning', (err) => {
-      if (err.code === 'ENOENT') {
-        // A collected file disappeared before its bytes could be appended.
-        logger.warn({ err }, 'File skipped during backup export');
-        fileEventCount++;
-        if (fileEventCount === collected.length) appendManifestAndFinalize();
-      } else if (!settled) {
-        settled = true;
-        reject(err);
-      }
-    });
+    archive.on('warning', fail);
+
+    const appendFile = (c) => {
+      const source = fs.createReadStream(c.abs);
+      let bytes = 0;
+      source.on('data', (chunk) => { bytes += chunk.length; });
+      source.on('end', () => packedSizes.set(c.relPath, bytes));
+      source.on('error', fail);
+      archive.append(source, { name: `files/${c.relPath}`, stats: c.stats });
+    };
 
     archive.on('entry', (data) => {
       // Only count file entries; database.json is appended last and must not be
@@ -189,6 +307,7 @@ function archiveBackup({ metadata, tables, collected, outputPath, walkSkipped, p
       archivedNames.add(data.name);
       fileEventCount++;
       if (fileEventCount === collected.length) appendManifestAndFinalize();
+      else if (!settled) appendFile(collected[fileEventCount]);
     });
 
     archive.pipe(output);
@@ -199,9 +318,7 @@ function archiveBackup({ metadata, tables, collected, outputPath, walkSkipped, p
       return;
     }
 
-    for (const c of collected) {
-      archive.file(c.abs, { name: `files/${c.relPath}` });
-    }
+    appendFile(collected[0]);
   });
 }
 
@@ -292,14 +409,22 @@ async function stageBackupArchive(inputPath, tempDir, schemaVersion, tableOrder)
 // renames. If the second rename fails, undo the first and re-throw so the live
 // folders are left untouched; if undoing that also fails, the thrown error
 // carries `.filesUnrecoverable = true` so the caller knows manual review is
-// needed. Returns { filesSwapped, hasFiles } on success (filesSwapped is false,
-// same as today, when the backup carries no files at all).
-function swapJobFolders({ tempDir, currentJobBase, stagingDir, oldDir, fileManifest }) {
+// needed. Returns { filesSwapped }.
+//
+// A backup with no files is only swapped in — as an empty folder — when its
+// details say the export actually read the job folders (`jobFoldersRead`) and
+// found nothing. Without that record (older backups, or one taken while the
+// folder was missing) an empty backup can't be told apart from one that simply
+// never looked, so the live files are left as they are (filesSwapped false).
+function swapJobFolders({ tempDir, currentJobBase, stagingDir, oldDir, fileManifest, jobFoldersRead }) {
   const filesDir = path.join(tempDir, 'files');
-  const hasFiles = fs.existsSync(filesDir);
-  if (!hasFiles) return { filesSwapped: false, hasFiles: false };
-
-  copyDirRecursive(filesDir, stagingDir);
+  if (fs.existsSync(filesDir)) {
+    copyDirRecursive(filesDir, stagingDir);
+  } else if (jobFoldersRead === true) {
+    fs.mkdirSync(stagingDir, { recursive: true });
+  } else {
+    return { filesSwapped: false };
+  }
   verifyStagedFiles(stagingDir, fileManifest);
 
   fs.renameSync(currentJobBase, oldDir);
@@ -321,7 +446,7 @@ function swapJobFolders({ tempDir, currentJobBase, stagingDir, oldDir, fileManif
     throw swapErr;
   }
 
-  return { filesSwapped: true, hasFiles: true };
+  return { filesSwapped: true };
 }
 
 // RESTORE TABLES — reload every table as one all-or-nothing transaction, then run
@@ -437,6 +562,9 @@ function rollbackJobFolderSwap({ currentJobBase, stagingDir, oldDir }) {
 }
 
 module.exports = {
+  JOB_FOLDERS_ROOT_MESSAGE,
+  isDriveOrShareRoot,
+  isInsideFolder,
   listFilesRecursive,
   verifyStagedFiles,
   copyDirRecursive,

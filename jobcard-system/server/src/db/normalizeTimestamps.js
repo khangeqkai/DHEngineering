@@ -13,6 +13,7 @@ const { officeTimeZone, wallClockToIso } = require('../utils/officeTime');
 // deliberately absent — they are a day, not an instant, and are 10 characters anyway.
 const TIMESTAMP_COLUMNS = {
   users: ['created_at', 'updated_at'],
+  companies: ['created_at', 'updated_at'],
   contacts: ['created_at', 'updated_at'],
   suppliers: ['created_at', 'updated_at'],
   tags: ['created_at'],
