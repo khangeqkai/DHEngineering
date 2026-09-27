@@ -185,3 +185,9 @@ Nothing here has an automatic test, so click through these once on a real PC. Ea
 **Installed app**
 21. Build the installer on a PC with no review-tool key; install on a fresh PC with no internet → starts, sign in admin / 1234.
 22. Run the PIN-reset command on the installed PC → it finds the app's real database.
+
+**Added after the hunt**
+23. Restart the workshop PC and sign in to Windows → the app starts by itself into the tray; another PC can connect without anyone opening it.
+24. Close the app window → it hides to the tray; right-click the tray icon → Quit → confirm → it really stops.
+25. Open an old job that had quality forms → Files shows only Job Files and Customer Property, and the old forms are in Job Files.
+26. Quality Levels page → only add / rename / delete; no upload button. A Critical job's stop-timer form still asks the 4 inspection questions.
