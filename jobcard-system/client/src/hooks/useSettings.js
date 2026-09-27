@@ -145,7 +145,7 @@ export function useSettings() {
     setSavingJobFolders(true);
     try {
       await api.updateSettings({ jobFoldersBase });
-      toast.success('Job folders base path saved');
+      toast.success('Job folders base path updated');
     } catch (err) {
       showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save job folders base path' });
     } finally {
@@ -167,7 +167,7 @@ export function useSettings() {
       await api.updateSettings({ homeAccessCode });
       setHomeAccessCode('');
       setSettings(prev => (prev ? { ...prev, homeAccessCodeSet: wasSet } : prev));
-      toast.success(wasSet ? 'Home access code saved' : 'Home access switched off');
+      toast.success(wasSet ? 'Home access code updated' : 'Home access switched off');
     } catch (err) {
       showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save the home access code' });
     } finally {
@@ -186,7 +186,7 @@ export function useSettings() {
     try {
       await api.updateSettings({ homeAddress });
       setSettings(prev => (prev ? { ...prev, homeAddress } : prev));
-      toast.success('Home address saved');
+      toast.success('Home address updated');
     } catch (err) {
       showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save the home address' });
     } finally {
@@ -208,7 +208,7 @@ export function useSettings() {
       await api.updateSettings({ inactivityTimeoutMinutes: n });
       setInactivityTimeoutState(String(n));
       if (refreshInactivityTimeout) await refreshInactivityTimeout();
-      toast.success('Inactivity timeout saved');
+      toast.success('Inactivity timeout updated');
     } catch (err) {
       showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save inactivity timeout' });
     } finally {
@@ -225,7 +225,7 @@ export function useSettings() {
     setSavingJobNumber(true);
     try {
       await api.updateSettings({ jobNumberPrefix, jobNumberNext });
-      toast.success('Job number settings saved');
+      toast.success('Job number settings updated');
     } catch (err) {
       showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save job number settings' });
     } finally {
@@ -264,7 +264,7 @@ export function useSettings() {
     setSavingPassword(true);
     try {
       await api.changePassword(currentPassword, newPassword);
-      toast.success('Password changed');
+      toast.success('Password updated');
       resetPasswordForm();
     } catch (err) {
       toast.error(err.message || 'Failed to change password');

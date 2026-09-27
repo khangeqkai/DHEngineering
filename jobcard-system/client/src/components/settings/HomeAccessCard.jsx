@@ -65,7 +65,7 @@ export default function HomeAccessCard({ s }) {
                   onClick={s.handleSaveHomeAddress}
                   disabled={s.savingHomeAddress}
                 >
-                  {s.savingHomeAddress ? 'Saving...' : 'Save address'}
+                  {s.savingHomeAddress ? 'Saving...' : 'Save Address'}
                 </button>
               </div>
               <FieldError {...s.errorProps('homeAddress')} message={addressError} />
@@ -89,7 +89,7 @@ export default function HomeAccessCard({ s }) {
                   onClick={s.handleSaveHomeAccessCode}
                   disabled={s.savingHomeAccess || (!s.homeAccessCode && !codeSet)}
                 >
-                  {s.savingHomeAccess ? 'Saving...' : s.homeAccessCode ? 'Save code' : 'Switch off'}
+                  {s.savingHomeAccess ? 'Saving...' : s.homeAccessCode ? 'Save Code' : 'Switch Off'}
                 </button>
               </div>
               <FieldError {...s.errorProps('homeAccessCode')} message={codeError} />

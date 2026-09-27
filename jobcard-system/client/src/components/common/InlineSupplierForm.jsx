@@ -52,7 +52,7 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
         notes: form.notes.trim() || null,
         serviceTagIds: treatmentTagId ? [treatmentTagId] : []
       });
-      toast.success('Supplier added');
+      toast.success('Supplier updated');
       onCreated(supplier);
     } catch (err) {
       toast.error(err.message || 'Could not add that supplier');

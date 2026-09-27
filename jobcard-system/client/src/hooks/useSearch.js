@@ -8,7 +8,7 @@ const INITIAL_FILTERS = {
   assigneeId: '',
   priority: '',
   jobType: '',
-  qaLevel: '',
+  qualityLevel: '',
   dateFrom: '',
   dateTo: '',
   dateField: 'created',
@@ -35,7 +35,6 @@ export default function useSearch(role) {
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [machines, setMachines] = useState([]);
-  const [qaLevels, setQaLevels] = useState([]);
   const [jobTypes, setJobTypes] = useState([]);
   const [filtersError, setFiltersError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -55,15 +54,13 @@ export default function useSearch(role) {
       // logged against a worker, machine or job type before it was retired, not just
       // what's currently offered on a new job. SearchPage sinks them below the
       // active ones and marks them, so "currently offered" still reads clearly.
-      const [emp, mach, qa, jt] = await Promise.all([
+      const [emp, mach, jt] = await Promise.all([
         api.getEmployees(true),
         api.getMachines(true),
-        api.getQaLevels(),
         api.getTags('job_type', true),
       ]);
       setEmployees(emp);
       setMachines(mach);
-      setQaLevels(qa);
       setJobTypes(jt);
     } catch (err) {
       setFiltersError(true);
@@ -97,9 +94,7 @@ export default function useSearch(role) {
           if (filters.assigneeId) params.assigneeId = filters.assigneeId;
           if (filters.priority) params.priority = filters.priority;
           if (filters.jobType) params.jobType = filters.jobType;
-          // Sent by id, not name — a level rename must not strand jobs that were
-          // already filed under the old name (the server filters on qa_level_id).
-          if (filters.qaLevel) params.qaLevelId = filters.qaLevel;
+          if (filters.qualityLevel) params.qualityLevel = filters.qualityLevel;
           if (filters.dateFrom) params.dateFrom = filters.dateFrom;
           if (filters.dateTo) params.dateTo = filters.dateTo;
           if (filters.dateField !== 'created') params.dateField = filters.dateField;
@@ -193,7 +188,7 @@ export default function useSearch(role) {
     q, setQ: changeQuery, scope, changeScope,
     filters, updateFilter, toggleArrayFilter, clearFilters, hasActiveFilters,
     page, setPage, results, loading,
-    employees, machines, qaLevels, jobTypes,
+    employees, machines, jobTypes,
     filtersError, retryFilters: loadFilterOptions, refresh
   };
 }

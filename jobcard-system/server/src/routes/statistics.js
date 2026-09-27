@@ -79,7 +79,7 @@ router.get('/', (req, res) => {
       overdueActiveJobsCount,
       repeatJobsCount,
       delayedJobsList,
-      qaLevelDistribution,
+      qualityLevelDistribution,
       priorityDistribution,
       inRangeJobs,
       completedInRangeJobs,
@@ -133,7 +133,7 @@ router.get('/', (req, res) => {
       periodTrends,
       customerRankings,
       delayedJobsList,
-      qaLevelDistribution,
+      qualityLevelDistribution,
       priorityDistribution
     });
   } catch (err) {

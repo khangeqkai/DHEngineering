@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useJobSearch } from '../useJobSearch';
 import { useComboboxNav } from '../useComboboxNav';
 import { summarizeFieldStates } from '../useInstantSave';
+import { isCriticalLevel } from '../../../../../server/src/shared/qualityLevels';
 import ItemsTab from './ItemsTab';
 import DetailsReadOnlyView from './DetailsReadOnlyView';
 import NotesSection from './NotesSection';
@@ -52,8 +53,6 @@ export default function DetailsTab({
   onSuppliersChanged,
   attachmentWarnings,
   onAttachItemFile,
-  // QA Levels
-  qaLevels,
   // Notes props
   notes,
   newNote,
@@ -117,7 +116,7 @@ export default function DetailsTab({
   // One combined status for the whole tab rather than one per field — see the
   // identical reasoning in JobIdentityStrip.jsx.
   const detailsStatus = summarizeFieldStates(fieldStates, [
-    'poNumber', 'quoteReference', 'repeatJobReference', 'qaLevelId', 'isRepeatJob'
+    'poNumber', 'quoteReference', 'repeatJobReference', 'qualityLevel', 'isRepeatJob'
   ]);
 
   const jobSearch = useJobSearch({ excludeJobNumber: jobNumber });
@@ -250,7 +249,7 @@ export default function DetailsTab({
         machines={machines}
         employees={employees}
         canManage={canManage && isEdit}
-        isCritical={String(formData.qualityLevel || '').toUpperCase() === 'CRITICAL'}
+        isCritical={isCriticalLevel(formData.qualityLevel)}
         showTimeEntryForm={showTimeEntryForm}
         editingTimeEntryId={editingTimeEntryId}
         timeEntryForm={timeEntryForm}
@@ -274,7 +273,6 @@ export default function DetailsTab({
         formData={formData}
         handleChange={handleChange}
         commitFieldBlur={commitFieldBlur}
-        qaLevels={qaLevels}
         setFormData={setFormData}
         canWriteInstantly={canWriteInstantly}
         saveField={saveField}

@@ -139,7 +139,7 @@ export function useLabourRates() {
     try {
       await api.updateSettings({ labourSchedule: tidied });
       setSchedule(tidied);
-      toast.success('Weekly schedule saved');
+      toast.success('Weekly schedule updated');
     } catch (err) {
       toast.error(err.message || 'Failed to save schedule');
     } finally {
@@ -165,7 +165,7 @@ export function useLabourRates() {
     setSavingDefaultRate(true);
     try {
       await api.updateSettings({ labourDefaultRate: defaultRate });
-      toast.success('Default hourly rate saved');
+      toast.success('Default hourly rate updated');
     } catch (err) {
       toast.error(err.message || 'Failed to save default rate');
     } finally {
@@ -193,7 +193,7 @@ export function useLabourRates() {
         labourOt2Multiplier: ot2Mult,
         labourHolidayMultiplier: holidayMult
       });
-      toast.success('Overtime multipliers saved');
+      toast.success('Overtime multipliers updated');
     } catch (err) {
       toast.error(err.message || 'Failed to save multipliers');
     } finally {
@@ -214,7 +214,7 @@ export function useLabourRates() {
     setSavingHolidays(true);
     try {
       await api.updateSettings({ labourPublicHolidays: holidays });
-      toast.success('Public holidays saved');
+      toast.success('Public holidays updated');
     } catch (err) {
       toast.error(err.message || 'Failed to save public holidays');
     } finally {
@@ -231,7 +231,7 @@ export function useLabourRates() {
     setSavingTimezone(true);
     try {
       await api.updateSettings({ timezone });
-      toast.success('Time zone saved');
+      toast.success('Time zone updated');
     } catch (err) {
       toast.error(err.message || 'Failed to save time zone');
     } finally {

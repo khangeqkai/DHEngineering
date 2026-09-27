@@ -13,7 +13,6 @@ import {
   Clock,
   Settings,
   LogOut,
-  ShieldCheck,
   Tag,
   DollarSign,
   PanelLeftClose,
@@ -197,14 +196,6 @@ export default function Layout() {
                       <Tag size={18} />
                     </span>
                     <span className="nav-text">Tags &amp; Equipment</span>
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink to="/qa-levels" onClick={handleNavClick}>
-                    <span className="nav-icon">
-                      <ShieldCheck size={18} />
-                    </span>
-                    <span className="nav-text">QA Levels</span>
                   </NavLink>
                 </li>
                 {can(user, 'pricing') && (

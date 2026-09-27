@@ -13,11 +13,11 @@ const columnDrops = [
   { table: 'job_items', column: 'qa_files_status' },
   { table: 'job_items', column: 'job_files_status' },
   { table: 'job_items', column: 'customer_property_status' },
-  // No longer tracked.
-  { table: 'qa_levels', column: 'require_scanned_forms' },
-  // The "completed form must come back" switch — removed with the quality-form
-  // templates it governed.
-  { table: 'qa_levels', column: 'requires_returned_form' },
+  // Quality levels are now the two fixed values Standard/Critical
+  // (server/src/shared/qualityLevels.js) — the admin-managed qa_levels table
+  // this pointed at is dropped in schema.js, and jobcards.quality_level is the
+  // only store left (see its own startup fold in legacyMigrations.js).
+  { table: 'jobcards', column: 'qa_level_id' },
   // Work blocks can no longer be marked "special" — special labour is now a
   // manually-entered costing line instead, so the per-block flag is gone.
   { table: 'time_entries', column: 'is_special_labour' },

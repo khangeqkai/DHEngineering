@@ -38,7 +38,7 @@ export default function DataBackupCard({ s }) {
           </button>
         </div>
         {!window.electronAPI && (
-          <p className="setting-description" style={{ marginTop: '1rem' }}>
+          <p className="setting-description setting-description--spaced">
             Backup features require the desktop application.
           </p>
         )}

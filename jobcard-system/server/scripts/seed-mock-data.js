@@ -16,12 +16,13 @@ const { normalizeStoredTimestamps } = require('../src/db/normalizeTimestamps');
 const { seedHistory } = require('./seed-history');
 const { buildScenarios } = require('./seed-scenarios');
 const refData = require('./seed-data');
+const { QUALITY_LEVELS } = require('../src/shared/qualityLevels');
 
 const uid = (prefix) => `${prefix}:${uuidv4()}`;
 
 // `--no-jobs` (alias `--empty`) seeds everything EXCEPT job cards, so the app
-// starts with users/suppliers/contacts/machines/tags/QA levels in place and an
-// empty job list — handy for testing job-card creation one at a time.
+// starts with users/suppliers/contacts/machines/tags in place and an empty job
+// list — handy for testing job-card creation one at a time.
 const SKIP_JOBS = process.argv.slice(2).some(a => ['--no-jobs', '--empty'].includes(a));
 
 // Give every reference record an id up front so the rest of the script can wire
@@ -34,7 +35,6 @@ const contacts = companies.flatMap(co =>
 );
 const suppliers = refData.suppliers.map(s => ({ ...s, id: uid('supplier') }));
 const machines = refData.machines.map(m => ({ ...m, id: uid('machine') }));
-const qaLevels = refData.qaLevels.map(q => ({ ...q, id: uid('qalevel') }));
 
 // ─── WIPE ALL TABLES ───
 console.log('Wiping all data...');
@@ -42,7 +42,7 @@ const tables = [
   'history', 'job_costings',
   'time_entries', 'job_notes', 'job_assignees', 'job_items',
   'jobcards', 'supplier_service_tags', 'tags', 'machines', 'suppliers',
-  'contacts', 'companies', 'users', 'qa_levels'
+  'contacts', 'companies', 'users'
 ];
 
 db.pragma('foreign_keys = OFF');
@@ -147,30 +147,17 @@ settingsQueries.upsert.run('labour_schedule_whole_hours_at', seededAt);
 settingsQueries.upsert.run('overtime_ownership_at', seededAt);
 console.log(`Settings configured (prefix: ${refData.settings.job_number_prefix}, starting: ${refData.settings.job_number_next}).`);
 
-// ─── QA LEVELS ───
-console.log('Creating QA levels...');
-const insertQALevel = db.prepare('INSERT INTO qa_levels (id, name, name_lower, is_active) VALUES (?, ?, ?, ?)');
-for (const q of qaLevels) {
-  insertQALevel.run(q.id, q.name, q.nameLower, q.isActive);
-}
-console.log(`Created ${qaLevels.length} QA levels.`);
-
-// "Standard" is the baseline — no saved level, no Critical inspection sign-off. Give the job
-// scenarios a Standard entry (id null) alongside the real levels so some seeded jobs
-// sit on the plain baseline, just like real jobs do.
-const scenarioLevels = [{ id: null, name: 'Standard' }, ...qaLevels];
-
 // ─── JOB CARDS ───
 console.log('Creating job cards...');
 
 const insertJobcard = db.prepare(`INSERT INTO jobcards (
   id, job_number, card_type, status, company_id, contact_id, contact_name, company_name,
   contact_phone, contact_email,
-  quality_level, qa_level_id, priority,
+  quality_level, priority,
   quote_reference, po_number,
   description, due_date, is_repeat_job, created_by, updated_by, created_at,
   archived, invoiced_date
-) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
 const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments, drawings_type, customer_property) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
@@ -221,7 +208,7 @@ function buildTreatments(treatmentStr) {
 
 // Generated job set covering every status, job type, material, treatment, drawing,
 // customer-property value, the repeat flag, and every priority — see seed-scenarios.js.
-const scenarios = SKIP_JOBS ? [] : buildScenarios(contacts, scenarioLevels, {
+const scenarios = SKIP_JOBS ? [] : buildScenarios(contacts, QUALITY_LEVELS, {
   workerCount: workers.length,
   machineNumbers: machines.map(m => m.number),
 });
@@ -254,7 +241,7 @@ const createJobs = db.transaction(() => {
     insertJobcard.run(
       jobId, jobNumber, s.status, s.contact.companyId, s.contact.id, s.contact.contactName, s.contact.companyName,
       s.contact.phone, s.contact.email,
-      s.qaLevel.name.toUpperCase(), s.qaLevel.id, s.priority,
+      s.qualityLevel, s.priority,
       s.quoteReference || null, s.poNumber || null,
       s.description, dueDate, s.isRepeat ? 1 : 0,
       adminId, adminId, createdAt,
@@ -356,7 +343,7 @@ console.log(SKIP_JOBS
 console.log('Generating activity history...');
 const historyRows = seedHistory({
   db, adminId, adminName: users[0].name,
-  users, companies, contacts, suppliers, machines, qaLevels,
+  users, companies, contacts, suppliers, machines,
   jobs: jobsForHistory,
   setupAt: makeDate(40, 8, 0).toISOString(),
 });
@@ -386,7 +373,6 @@ console.log(`  - ${users.length} users (all PIN 1234): ${users.map(u => u.userna
 console.log(`  - ${companies.length} companies with ${contacts.length} contact people (Australian industrial customers across WA/NSW/VIC/QLD)`);
 console.log(`  - ${suppliers.length} suppliers covering every treatment type`);
 console.log(`  - ${machines.length} machines`);
-console.log(`  - ${qaLevels.length} QA levels (${qaLevels.map(q => q.name).join(', ')})`);
 if (SKIP_JOBS) {
   console.log('  - 0 job cards (--no-jobs): create them one at a time in the app to test');
   console.log('  - Job numbering: starts at DH-00001');

@@ -114,14 +114,6 @@ const machines = [
   { number: 'WJET-01',  name: 'Flow Mach 200',         description: 'Waterjet Cutter' },
 ];
 
-// ─── QA LEVELS: only the extra levels someone creates. "Standard" is the baseline,
-// not a row — a job is labelled STANDARD whenever no special level is chosen (qa_level_id
-// NULL), so it's never seeded here. Whether a job needs a form is decided by whether the
-// level has a form attached, not by any per-level flag. ───
-const qaLevels = [
-  { name: 'Critical',   nameLower: 'critical',   isActive: 1 },
-];
-
 // ─── TAGS: every dropdown/multi-select option the app supports ───
 const tagData = {
   treatment: ['Heat Treatment', 'Precision Grinding', 'Anodise', 'Electroplate', 'Blasting', 'Powdercoat', 'Spraypaint', 'Galvanise', 'Specialised Coating'],
@@ -161,4 +153,4 @@ const settings = {
   labour_public_holidays: JSON.stringify(DEFAULT_VIC_PUBLIC_HOLIDAYS_2026),
 };
 
-module.exports = { users, companies, suppliers, machines, qaLevels, tagData, settings };
+module.exports = { users, companies, suppliers, machines, tagData, settings };

@@ -1,5 +1,6 @@
 import ItemsTab from './ItemsTab';
 import ToggleTiles from '../../common/ToggleTiles';
+import { qualityLevelLabel } from '../../../../../server/src/shared/qualityLevels';
 
 export default function DetailsReadOnlyView({
   formData,
@@ -57,7 +58,7 @@ export default function DetailsReadOnlyView({
         <div className="customer-input-strip">
           <div className="cis-item">
             <span className="cis-label">Quality</span>
-            <span className="cis-value">{formData.qualityLevel || 'STANDARD'}</span>
+            <span className="cis-value">{qualityLevelLabel(formData.qualityLevel)}</span>
           </div>
           {formData.poNumber && (
             <div className="cis-item">

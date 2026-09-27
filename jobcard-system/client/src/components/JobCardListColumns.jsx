@@ -8,6 +8,7 @@ import {
   getStatusBadgeClass
 } from './JobCardList.constants';
 import { canChangeStatus, offeredStatusValues } from '../../../server/src/shared/jobStatus';
+import { isCriticalLevel } from '../../../server/src/shared/qualityLevels';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { isJobClosed } from '../utils/jobLock';
 import { can } from '../utils/roles';
@@ -55,7 +56,7 @@ export function getJobCardColumns({
               {formattedElapsed}
             </span>
           )}
-          {card.qualityLevel === 'CRITICAL' && (
+          {isCriticalLevel(card.qualityLevel) && (
             <span className="critical-badge">Critical QA</span>
           )}
         </td>

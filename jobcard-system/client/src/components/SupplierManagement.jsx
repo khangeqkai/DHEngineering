@@ -123,7 +123,7 @@ export default function SupplierManagement() {
         toast.success('Supplier updated');
       } else {
         await api.createSupplier({ ...tidied, serviceTagIds });
-        toast.success('Supplier created');
+        toast.success('Supplier updated');
       }
       await loadData();
       bumpActivity();
@@ -221,7 +221,7 @@ export default function SupplierManagement() {
       }));
       setCustomTagName('');
       setShowCustomTagInput(false);
-      toast.success('Service tag created');
+      toast.success('Service updated');
     } catch (err) {
       toast.error(err.message || 'Failed to create tag');
     }
@@ -505,7 +505,7 @@ export default function SupplierManagement() {
       </BottomSheet>
 
       <div className="card">
-        <div className="card-body" style={{ padding: 0 }}>
+        <div className="card-body card-body-flush">
           <DataTable
             columns={[
               {

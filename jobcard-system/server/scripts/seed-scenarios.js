@@ -11,7 +11,7 @@
  *
  * Output shape per job (consumed by server/scripts/seed-mock-data.js):
  *   description, quoteReference, poNumber?, status, priority, isRepeat,
- *   contact, qaLevel, daysAgoCreated, daysFromNowDue, invoicedDaysAgo?,
+ *   contact, qualityLevel, daysAgoCreated, daysFromNowDue, invoicedDaysAgo?,
  *   costing?, items[], assignees[], notes[], timeEntries[]
  *   items[].treatment       — comma-separated treatment values, or null
  *   items[].drawings / .customerProperty — single tag value (per line item)
@@ -92,7 +92,7 @@ const COSTED = new Set(['IN_PROGRESS', 'DONE', 'CUST_NOTIFIED', 'INVOICED']);
 const BASE_AGE = { QUOTE: 2, OPEN: 3, AWAITING_MATERIAL: 6, PO_REQUESTED: 7, IN_PROGRESS: 9, DONE: 22, CUST_NOTIFIED: 26, INVOICED: 32 };
 const BASE_DUE = { QUOTE: 21, OPEN: 14, AWAITING_MATERIAL: 18, PO_REQUESTED: 12, IN_PROGRESS: 8, DONE: 3, CUST_NOTIFIED: -3, INVOICED: -8 };
 
-function buildScenarios(contacts, qaLevels, opts = {}) {
+function buildScenarios(contacts, qualityLevels, opts = {}) {
   const workerCount = opts.workerCount || 5;
   const machineNumbers = opts.machineNumbers || ['CNC-01'];
   // Machines that suit metal removal vs. fabrication — keeps time entries believable.
@@ -130,7 +130,7 @@ function buildScenarios(contacts, qaLevels, opts = {}) {
     }
 
     const contact = contacts[c.contact++ % contacts.length];
-    const qaLevel = qaLevels[c.qa++ % qaLevels.length];
+    const qualityLevel = qualityLevels[c.qa++ % qualityLevels.length];
     const priority = rot(PRIORITIES, 'prio');
     const isRepeat = jobIdx % 5 === 0;
     const daysAgoCreated = BASE_AGE[status] + (jobIdx % 4);
@@ -218,7 +218,7 @@ function buildScenarios(contacts, qaLevels, opts = {}) {
       priority,
       isRepeat,
       contact,
-      qaLevel,
+      qualityLevel,
       daysAgoCreated,
       daysFromNowDue,
       invoicedDaysAgo: status === 'INVOICED' ? Math.max(1, Math.floor(daysAgoCreated / 3)) : undefined,

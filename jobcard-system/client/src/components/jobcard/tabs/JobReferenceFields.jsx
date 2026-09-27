@@ -1,4 +1,5 @@
 import { INSTANT_SAVE_STATUS_TEXT } from '../useInstantSave';
+import { QUALITY_LEVELS, QUALITY_LEVEL_LABELS } from '../../../../../server/src/shared/qualityLevels';
 
 // The Customer Input card: PO number, quote reference, quality level, repeat-job
 // toggle and (once that's ticked) the previous-job-reference combobox. Split out
@@ -8,7 +9,6 @@ export default function JobReferenceFields({
   formData,
   handleChange,
   commitFieldBlur,
-  qaLevels,
   setFormData,
   canWriteInstantly,
   saveField,
@@ -58,29 +58,16 @@ export default function JobReferenceFields({
           <label htmlFor="jc-qa-level">Quality Level</label>
           <select
             id="jc-qa-level"
-            name="qaLevelId"
-            value={formData.qaLevelId || ''}
+            name="qualityLevel"
+            value={formData.qualityLevel || 'STANDARD'}
             onChange={(e) => {
-              const selectedLevel = (qaLevels || []).find(l => l.id === e.target.value);
-              const qaLevelId = e.target.value || null;
-              const qualityLevel = selectedLevel ? selectedLevel.name.toUpperCase() : 'STANDARD';
-              setFormData(prev => ({
-                ...prev,
-                qaLevelId,
-                qualityLevel
-              }));
-              // Only qaLevelId travels over the wire — the server derives its own
-              // copy of qualityLevel from it (jobcard-mutations.js) — but both
-              // baselines move together on success, since both changed as one
-              // user action. See useInstantSave.js's alsoMarkSaved.
-              if (canWriteInstantly) saveField('qaLevelId', qaLevelId, { alsoMarkSaved: { qualityLevel } });
+              const qualityLevel = e.target.value;
+              setFormData(prev => ({ ...prev, qualityLevel }));
+              if (canWriteInstantly) saveField('qualityLevel', qualityLevel);
             }}
           >
-            {/* "Standard" is the baseline — no special level. It's the default and
-                shows first; the saved levels (Critical, etc.) are the upgrades. */}
-            <option value="">Standard</option>
-            {(qaLevels || []).map(level => (
-              <option key={level.id} value={level.id}>{level.name}</option>
+            {QUALITY_LEVELS.map(level => (
+              <option key={level} value={level}>{QUALITY_LEVEL_LABELS[level]}</option>
             ))}
           </select>
         </div>

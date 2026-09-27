@@ -56,7 +56,7 @@ export async function resolveJobContactId({ canManage, isEdit, contactHook, show
     const company = await api.createCompany({ name: typed });
     companyId = company.id;
     contactHook.registerCompany(company);
-    toast.success('Customer added', { id: 'customer-added' });
+    toast.success('Customer updated', { id: 'customer-updated' });
   }
 
   // Nobody picked, but a person's name was typed — add them at this company.
@@ -102,7 +102,7 @@ export async function resolveJobContactId({ canManage, isEdit, contactHook, show
         email: form.email.trim() || null
       });
       contactHook.adoptPerson(person2);
-      toast.success('New person added');
+      toast.success('Person updated');
       return { companyId, contactId: person2.id };
     }
 

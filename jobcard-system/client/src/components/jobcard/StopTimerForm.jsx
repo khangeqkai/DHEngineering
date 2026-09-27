@@ -4,6 +4,7 @@ import { X, Minus, Plus, RotateCw } from 'lucide-react';
 import { api } from '../../services/api';
 import { capitalizeFirst, formatTime } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
+import { isCriticalLevel } from '../../../../server/src/shared/qualityLevels';
 import ToggleTiles from '../common/ToggleTiles';
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import './StopTimerForm.css';
@@ -138,7 +139,7 @@ export default function StopTimerForm({
       // The server states each part's position directly — never recounted here.
       setDisplayNumber(found ? (found.position != null ? found.position : idx + 1) : null);
       // Only Critical jobs get the extra inspection checklist.
-      setIsCritical(String(jobcardRes?.qualityLevel || '').toUpperCase() === 'CRITICAL');
+      setIsCritical(isCriticalLevel(jobcardRes?.qualityLevel));
     }).catch(() => {
       if (requestId !== jobLoadRequestIdRef.current) return;
       setJobError(true);

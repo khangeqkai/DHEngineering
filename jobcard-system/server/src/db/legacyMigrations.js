@@ -11,6 +11,7 @@ const { DEFAULT_VIC_PUBLIC_HOLIDAYS_2026 } = require('../utils/defaultHolidays')
 const { scheduleToWholeHours } = require('../shared/overtimeSchedule');
 const { readOvertimeSettings } = require('../utils/overtimeSettings');
 const { isCalendarDate } = require('../shared/calendarDate');
+const { QUALITY_LEVELS } = require('../shared/qualityLevels');
 const { officeDateString } = require('../utils/officeTime');
 const { isBaseReachable, isWithinBase, idSlug, folderSlugOf, sanitizeFolderName } = require('../utils/folderCreation');
 
@@ -503,6 +504,37 @@ function normalizeDueDateShapes() {
   }
 }
 
+// Quality levels used to be admin-managed rows (the qa_levels table, dropped along
+// with qa_level_id — see schema.js/columnDrops.js) whose name was copied onto the
+// job as quality_level. Now there are exactly two fixed levels, QUALITY_LEVELS
+// ('STANDARD'/'CRITICAL'). Fold any job whose stored quality_level isn't one of
+// those two (a stale level name, NULL, blank, or odd casing/whitespace) onto the
+// nearer of the two: anything that reads as "critical" once trimmed and
+// upper-cased becomes 'CRITICAL' (a renamed-but-still-critical level, or a value
+// saved with different casing); everything else becomes 'STANDARD'. Idempotent —
+// a value already exactly 'STANDARD' or 'CRITICAL' is skipped by the WHERE, so a
+// second run finds nothing left to fold. No settings flag needed.
+function foldQualityLevels() {
+  const rows = db.prepare(
+    `SELECT id, quality_level FROM jobcards WHERE quality_level IS NULL OR quality_level NOT IN (${QUALITY_LEVELS.map(() => '?').join(', ')})`
+  ).all(...QUALITY_LEVELS);
+  const setQualityLevel = db.prepare('UPDATE jobcards SET quality_level = ? WHERE id = ?');
+
+  let folded = 0;
+  for (const row of rows) {
+    const trimmedUpper = String(row.quality_level || '').trim().toUpperCase();
+    const next = trimmedUpper === 'CRITICAL' ? 'CRITICAL' : 'STANDARD';
+    setQualityLevel.run(next, row.id);
+    recordHistory('jobcard', row.id, 'update', null, 'system', {
+      qualityLevel: { from: row.quality_level, to: next }
+    });
+    folded++;
+  }
+  if (folded > 0) {
+    logger.info({ folded }, 'Migration: Folded stored quality levels onto the fixed Standard/Critical set');
+  }
+}
+
 function runLegacyMigrations() {
   logger.info('Running migrations...');
 
@@ -564,6 +596,12 @@ function runLegacyMigrations() {
     normalizeDueDateShapes();
   } catch (err) {
     logger.error({ err }, 'Migration: Failed to normalize stored due date shapes');
+  }
+
+  try {
+    foldQualityLevels();
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to fold stored quality levels onto Standard/Critical');
   }
 
   try {

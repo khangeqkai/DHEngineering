@@ -5,6 +5,7 @@ import { History } from 'lucide-react';
 import BottomSheet from './BottomSheet';
 import { formatHistoryValue, formatDateTime } from '../../utils/formatters';
 import { actionColor } from '../../utils/activityColors';
+import { TAG_CATEGORY_INFO } from '../../utils/tagCategories';
 import './EntityActivityLog.css';
 
 const PAGE_SIZE = 50;
@@ -17,6 +18,12 @@ function formatAction(action) {
   );
 }
 
+// Tag trail entries store the category's internal key; show its on-screen name.
+function formatValue(field, value) {
+  if (field === 'category' && TAG_CATEGORY_INFO[value]) return TAG_CATEGORY_INFO[value].label;
+  return formatHistoryValue(field, value);
+}
+
 function formatChanges(changes) {
   if (!changes) return null;
   return Object.entries(changes).map(([field, change]) => (
@@ -27,11 +34,11 @@ function formatChanges(changes) {
       ) : (
         <span className="eal-diff">
           <span className="eal-from">
-            {formatHistoryValue(field, change.from) || '(empty)'}
+            {formatValue(field, change.from) || '(empty)'}
           </span>
           <span className="eal-arrow">&rarr;</span>
           <span className="eal-to">
-            {formatHistoryValue(field, change.to) || '(empty)'}
+            {formatValue(field, change.to) || '(empty)'}
           </span>
         </span>
       )}
@@ -48,6 +55,11 @@ function formatTarget(snapshot) {
   // Machine: show machine number (name)
   if (snapshot.machineNumber) {
     return snapshot.name ? `${snapshot.machineNumber} (${snapshot.name})` : snapshot.machineNumber;
+  }
+  // Tag: show option name (category)
+  if (snapshot.category && snapshot.name) {
+    const label = TAG_CATEGORY_INFO[snapshot.category]?.label;
+    return label ? `${snapshot.name} (${label})` : snapshot.name;
   }
   // Contact: show company name (contact)
   if (snapshot.companyName && snapshot.contactName) {

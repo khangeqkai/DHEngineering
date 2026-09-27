@@ -122,7 +122,7 @@ export default function ScheduleEditor({ schedule, paintHour, copyDayToAll, onSa
                     title="Copy this day to every day"
                     onClick={() => copyDayToAll(day.key)}
                   >
-                    <Copy size={14} />
+                    <Copy size={16} />
                   </button>
                 </div>
               );
@@ -132,7 +132,7 @@ export default function ScheduleEditor({ schedule, paintHour, copyDayToAll, onSa
 
         <div className="sched-save">
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save schedule'}
+            {saving ? 'Saving…' : 'Save Schedule'}
           </button>
         </div>
       </div>

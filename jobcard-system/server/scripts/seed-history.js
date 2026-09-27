@@ -23,7 +23,7 @@ const PREVIOUS_STATUS = {
   INVOICED: 'DONE',
 };
 
-function seedHistory({ db, adminId, adminName, users, companies, contacts, suppliers, machines, qaLevels, jobs, setupAt }) {
+function seedHistory({ db, adminId, adminName, users, companies, contacts, suppliers, machines, jobs, setupAt }) {
   const insert = db.prepare(`
     INSERT INTO history (entity_type, entity_id, action, user_id, user_name, changes, snapshot, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -52,9 +52,6 @@ function seedHistory({ db, adminId, adminName, users, companies, contacts, suppl
     }
     for (const m of machines) {
       add('machine', m.id, 'create', adminId, adminName, { machine_number: { from: null, to: m.number } }, setupAt);
-    }
-    for (const q of qaLevels) {
-      add('qa_level', q.id, 'create', adminId, adminName, { name: { from: null, to: q.name } }, setupAt);
     }
 
     // ── Per job: create, optional status transition, notes, timer stops ──
@@ -91,7 +88,7 @@ function seedHistory({ db, adminId, adminName, users, companies, contacts, suppl
   run();
 
   // Total rows added, for the seed summary.
-  return users.length + companies.length + contacts.length + suppliers.length + machines.length + qaLevels.length
+  return users.length + companies.length + contacts.length + suppliers.length + machines.length
     + jobs.reduce((sum, j) => sum + 1 + (PREVIOUS_STATUS[j.status] ? 1 : 0) + j.notes.length + j.timers.length, 0);
 }
 

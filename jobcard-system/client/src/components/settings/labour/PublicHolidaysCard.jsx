@@ -28,7 +28,7 @@ export default function PublicHolidaysCard({ holidays, addHoliday, removeHoliday
         </p>
 
         <button type="button" className="btn btn-secondary" onClick={() => setPickerOpen(true)}>
-          <CalendarPlus size={16} /> Add a date
+          <CalendarPlus size={16} /> Add a Date
         </button>
 
         {holidays.length === 0 ? (
@@ -48,7 +48,7 @@ export default function PublicHolidaysCard({ holidays, addHoliday, removeHoliday
 
         <div className="sched-save">
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save holidays'}
+            {saving ? 'Saving…' : 'Save Holidays'}
           </button>
         </div>
       </div>

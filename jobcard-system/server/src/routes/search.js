@@ -243,7 +243,7 @@ function searchAll(req, res, canManage) {
 }
 
 function searchJobs(req, res, canManage) {
-  const { q, status, assigneeId, priority, jobType, qaLevelId, dateFrom, dateTo, dateField, includeArchived } = req.query;
+  const { q, status, assigneeId, priority, jobType, qualityLevel, dateFrom, dateTo, dateField, includeArchived } = req.query;
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const conditions = [];
   const params = [];
@@ -266,9 +266,7 @@ function searchJobs(req, res, canManage) {
   }
   if (priority) { conditions.push('j.priority = ?'); params.push(priority); }
   if (jobType) { conditions.push('j.id IN (SELECT jobcard_id FROM job_items WHERE job_type = ?)'); params.push(jobType); }
-  // Filter by the level's permanent id, not the name snapshot copied onto the job —
-  // a level renamed since the job was created would otherwise never match it.
-  if (qaLevelId) { conditions.push('j.qa_level_id = ?'); params.push(qaLevelId); }
+  if (qualityLevel) { conditions.push('j.quality_level = ?'); params.push(qualityLevel); }
   if (dateField === 'due') {
     // A due date is a calendar day, not a moment, so it compares straight against the
     // picked day with no time-zone step.

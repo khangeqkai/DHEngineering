@@ -25,8 +25,7 @@ const TIMESTAMP_COLUMNS = {
   machines: ['created_at', 'updated_at'],
   history: ['created_at'],
   settings: ['updated_at'],
-  job_notes: ['created_at'],
-  qa_levels: ['created_at', 'updated_at']
+  job_notes: ['created_at']
 };
 
 // A work block's start/finish time is the one moment the app never wrote with SQL — it

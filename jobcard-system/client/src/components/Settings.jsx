@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
 import Spinner from './common/Spinner';
@@ -7,10 +8,17 @@ import FoldersCard from './settings/FoldersCard';
 import HomeAccessCard from './settings/HomeAccessCard';
 import DataBackupCard from './settings/DataBackupCard';
 import FieldError from './common/FieldError';
+import { pushModal, removeModal } from './common/modalStack';
 import './Settings.css';
 
 export default function Settings() {
   const s = useSettings();
+
+  useEffect(() => {
+    if (!s.importing) return;
+    pushModal('restore-overlay');
+    return () => removeModal('restore-overlay');
+  }, [s.importing]);
 
   return (
     <div className="settings page-enter">
@@ -29,7 +37,7 @@ export default function Settings() {
                   Switch between light and dark theme
                 </div>
               </div>
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+              <label className="settings-toggle">
                 <input
                   className="toggle-input"
                   type="checkbox"
@@ -121,9 +129,9 @@ export default function Settings() {
               </div>
               <div className="card-body">
                 {s.loadingPrinters ? (
-                  <p>Loading printers...</p>
+                  <p className="setting-description">Loading printers…</p>
                 ) : s.printers.length === 0 ? (
-                  <p style={{ color: 'var(--text-secondary)' }}>
+                  <p className="setting-description">
                     No printers found. Make sure you're running in Electron and printers are connected.
                   </p>
                 ) : (
@@ -182,15 +190,13 @@ export default function Settings() {
                   const addrs = s.settings?.serverAddresses || [];
                   const secure = s.settings?.secureServing;
                   const name = s.settings?.mdnsName;
-                  const listStyle = { marginTop: '.4rem', lineHeight: 1.8 };
-                  const hintStyle = { marginTop: '.3rem', fontSize: '.85rem', opacity: 0.7 };
                   if (!secure) {
                     return (
                       <div className="info-item">
                         <dt>Open it from another computer</dt>
                         <dd>
                           In a web browser on the same office network, go to:
-                          <div style={listStyle}>
+                          <div className="settings-list">
                             {addrs.length
                               ? addrs.map((ip) => <div key={ip}><strong>{`http://${ip}:3000`}</strong></div>)
                               : <em>address not showing yet — reopen this page in a moment</em>}
@@ -219,17 +225,17 @@ export default function Settings() {
                         <dt>Open it from another computer</dt>
                         <dd>
                           In a web browser on the same office network, go to{openLines.length > 1 ? ' one of these' : ''}:
-                          <div style={listStyle}>
+                          <div className="settings-list">
                             {openLines.map((a) => <div key={a}><strong>{a}</strong></div>)}
                           </div>
-                          {name && <div style={hintStyle}>The name usually works best. If it doesn't on some computer, use one of the number addresses instead.</div>}
+                          {name && <div className="settings-hint">The name usually works best. If it doesn't on some computer, use one of the number addresses instead.</div>}
                         </dd>
                       </div>
                       <div className="info-item">
                         <dt>Set up another computer (first time)</dt>
                         <dd>
                           Before the address above works, set up each computer once. In its web browser, go to:
-                          <div style={listStyle}>
+                          <div className="settings-list">
                             {setupLines.map((a) => <div key={a}><strong>{a}</strong></div>)}
                           </div>
                           It walks you through a one-time setup so the camera works and downloads aren't blocked. If the browser shows a safety warning, choose <strong>Continue</strong> to reach the page.
@@ -321,17 +327,17 @@ export default function Settings() {
         size="small"
       >
         <BottomSheet.Body>
-          <p style={{ marginBottom: 'var(--space-3)', fontWeight: 400 }}>
+          <p className="settings-note">
             This will REPLACE all current data with the backup contents:
           </p>
-          <ul style={{ margin: '0 0 var(--space-4) var(--space-5)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+          <ul className="settings-note-list">
             <li>All database records (job cards, contacts, users, etc.)</li>
             <li>All job folder files (drawings, photos, scanned documents, etc.)</li>
           </ul>
-          <p style={{ marginBottom: 'var(--space-3)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+          <p className="settings-note">
             Everyone will be signed out and the app will reload when it finishes.
           </p>
-          <p style={{ color: 'var(--danger-ink)', fontWeight: 400 }}>
+          <p className="settings-note settings-note--danger">
             This cannot be undone.
           </p>
         </BottomSheet.Body>
@@ -358,24 +364,11 @@ export default function Settings() {
           role="alertdialog"
           aria-modal="true"
           aria-label="Restoring backup"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: 'rgba(0, 0, 0, 0.6)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 'var(--space-4)',
-            color: '#fff',
-            textAlign: 'center',
-            padding: 'var(--space-8)'
-          }}
+          className="restore-overlay"
         >
           <Spinner size={40} />
-          <h2 style={{ margin: 0, color: '#fff' }}>Restoring…</h2>
-          <p style={{ margin: 0, maxWidth: '24rem', opacity: 0.85 }}>
+          <h2>Restoring…</h2>
+          <p>
             Please wait and don't close the app. The screen will return to the login page when it's done.
           </p>
         </div>

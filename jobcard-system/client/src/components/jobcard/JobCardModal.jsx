@@ -107,13 +107,13 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // see useJobCardCosting.js.
   const costingHook = useJobCardCosting({ isOpen, isEdit, canSeePricing, jobCardId, activeTab, onJobClosed: handleJobClosedWrite });
 
-  // The lists every picker on this screen draws from — suppliers, workers, machines,
-  // quality levels — loaded once (with its own retry-on-reopen and failure toast),
-  // because this component stays mounted behind the list rather than unmounting on
-  // close. Pulled into its own hook (useJobCardReferenceData.js) purely to keep this
-  // file from growing further, the same reason useJobCardTimerActions.js and
+  // The lists every picker on this screen draws from — suppliers, workers, machines —
+  // loaded once (with its own retry-on-reopen and failure toast), because this
+  // component stays mounted behind the list rather than unmounting on close. Pulled
+  // into its own hook (useJobCardReferenceData.js) purely to keep this file from
+  // growing further, the same reason useJobCardTimerActions.js and
   // useJobCardCloseGuard.js exist.
-  const { suppliers, employees, machines, qaLevels, reloadSuppliers } = useJobCardReferenceData({ isOpen });
+  const { suppliers, employees, machines, reloadSuppliers } = useJobCardReferenceData({ isOpen });
 
   const { setFormDataFromJobCard, setFormData, resetForm: resetFormHook } = formHook;
   const { setContactFromJobCard, resetContact } = contactHook;
@@ -618,7 +618,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   onSuppliersChanged={reloadSuppliers}
                   attachmentWarnings={attachmentWarnings}
                   onAttachItemFile={isEdit && !jobClosed ? handleAttachItemFile : undefined}
-                  qaLevels={qaLevels}
                   notes={jobNotes.notes}
                   newNote={jobNotes.newNote}
                   setNewNote={jobNotes.setNewNote}

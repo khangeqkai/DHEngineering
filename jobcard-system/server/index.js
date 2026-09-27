@@ -33,7 +33,6 @@ const suppliersRoutes = require('./src/routes/suppliers');
 const tagsRoutes = require('./src/routes/tags');
 const machinesRoutes = require('./src/routes/machines');
 const settingsRoutes = require('./src/routes/settings');
-const qaLevelsRoutes = require('./src/routes/qa-levels');
 const searchRoutes = require('./src/routes/search');
 const statisticsRoutes = require('./src/routes/statistics');
 const { initializeDatabase } = require('./src/db/init');
@@ -111,7 +110,6 @@ app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/tags', tagsRoutes);
 app.use('/api/machines', machinesRoutes);
 app.use('/api/settings', settingsRoutes);
-app.use('/api/qa-levels', qaLevelsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/statistics', statisticsRoutes);
 

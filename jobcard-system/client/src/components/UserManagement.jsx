@@ -62,7 +62,7 @@ export default function UserManagement() {
   const loadUsers = async () => {
     await runLoad(
       async () => { setUsers(await api.getUsers(showInactive)); },
-      (err) => toast.error(err.message || 'Failed to load users'),
+      (err) => toast.error(err.message || 'Failed to load users', { id: 'user-list-load-failed' }),
       { resetLoading: false }
     );
   };
@@ -120,6 +120,8 @@ export default function UserManagement() {
       } else {
         await api.createUser(payload);
       }
+      // The own-access-level message above already confirms the save.
+      if (!ownNewRole) toast.success('User updated');
 
       // Demoting yourself out of management puts this page out of reach: the
       // route guard is about to move us off it and the reload would be refused,
@@ -205,8 +207,8 @@ export default function UserManagement() {
 
 
   return (
-    <div className="user-management page-users page-enter">
-      <PageHeader title="User Management">
+    <div className="user-management page-users page-scroll-layout page-enter">
+      <PageHeader title="Users">
         <label className="show-inactive-label">
           <input
             type="checkbox"
@@ -258,7 +260,7 @@ export default function UserManagement() {
                   PIN {editingUser ? '(leave blank to keep current)' : '*'}
                 </label>
                 {editingSelf ? (
-                  <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Change your own PIN in Settings &gt; Change PIN.</p>
+                  <p className="field-note">Change your own PIN in Settings &gt; Change PIN.</p>
                 ) : (
                   <>
                     <input
@@ -337,7 +339,7 @@ export default function UserManagement() {
       </BottomSheet>
 
       <div className="card">
-        <div className="card-body" style={{ padding: 0 }}>
+        <div className="card-body card-body-flush">
           <DataTable
             columns={[
               {
@@ -413,8 +415,8 @@ export default function UserManagement() {
             onVisibleRowsChange={setVisibleUsers}
             emptyState={{
               icon: 'users',
-              title: 'No users found',
-              description: 'Create a user account to get started.',
+              title: 'No users yet',
+              description: 'Add your first user to get started.',
               actionLabel: 'Add User',
               onAction: () => setShowForm(true),
             }}

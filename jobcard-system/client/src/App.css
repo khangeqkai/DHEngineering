@@ -381,6 +381,24 @@
   min-height: 0;
 }
 
+/* The two-column card grid used by both the Settings screen and the (separately
+   lazy-loaded) Labour Rates screen. */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 768px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ========================================
    BUTTONS — Modern, clean
    ======================================== */
@@ -863,6 +881,30 @@ select.has-retired option.retired-option {
   padding: var(--pad-card);
 }
 
+.card-body-flush {
+  padding: 0;
+}
+
+/* Shared helper-text classes — moved here from JobCardModal.css since the
+   Customers screen uses them too. */
+.field-note {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-2);
+  font-style: italic;
+}
+
+.field-hint {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+.text-muted {
+  color: var(--text-secondary);
+}
+
 /* ========================================
    TABLES — Clean, modern
    ======================================== */
@@ -980,6 +1022,9 @@ select.has-retired option.retired-option {
   border-radius: 999px;
   border: 1px solid transparent;
   letter-spacing: var(--tracking-wide);
+  /* A pill is one label — in a narrow column "Same Day Service" otherwise broke
+     onto three lines. The column widens to fit it instead. */
+  white-space: nowrap;
 }
 
 /* LED indicator dot */
@@ -1930,105 +1975,6 @@ div[data-hot-toast] > div {
 .toast-dismiss:hover {
   color: var(--text-primary);
   background: var(--surface-inset);
-}
-
-/* QA Level Management */
-.qa-levels-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.qa-level-card {
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.qa-level-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-4) var(--space-5);
-  gap: var(--space-4);
-}
-
-.qa-level-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.qa-level-name {
-  font-size: 1rem;
-  font-weight: var(--font-bold);
-  color: var(--text-primary);
-  margin: 0;
-}
-
-/* The rename control is a real button (Tab-reachable, Enter/Space activates it),
-   so its own chrome — background, border, system font — is stripped back to look
-   like the plain heading text it replaces. */
-.qa-level-name-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  gap: var(--gap-tight);
-}
-
-/* Click-to-rename title: the pencil sits faint until the row is hovered */
-.qa-level-name--editable {
-  cursor: text;
-  border-radius: var(--radius-sm);
-  padding: var(--space-0-5) var(--space-1-5);
-  margin: calc(var(--space-0-5) * -1) calc(var(--space-1-5) * -1);
-  transition: background 0.15s ease;
-}
-
-.qa-level-name--editable:hover {
-  background: var(--surface-inset);
-}
-
-.qa-level-name-pencil {
-  opacity: 0;
-  color: var(--text-tertiary);
-  transition: opacity 0.15s ease;
-}
-
-.qa-level-card:hover .qa-level-name-pencil,
-.qa-level-name--editable:hover .qa-level-name-pencil {
-  opacity: 1;
-}
-
-.qa-level-name-input {
-  font-size: 1rem;
-  font-weight: var(--font-bold);
-  color: var(--text-primary);
-  padding: var(--space-0-5) var(--space-1-5);
-  border: 1.5px solid var(--primary-accent);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  min-width: 12rem;
-}
-
-.qa-level-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-tight);
-  flex-shrink: 0;
-}
-
-.qa-level-card .badge {
-  font-size: var(--text-xs);
-  padding: var(--space-0-5) var(--space-1-5);
-  border-radius: var(--radius-sm);
-  font-weight: var(--font-regular);
 }
 
 .badge-inactive {

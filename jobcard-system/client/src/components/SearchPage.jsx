@@ -15,6 +15,7 @@ import { statusToken, priorityToken, PRIORITY_LABELS, STATUS_LABELS } from './Jo
 import { STATUS_OPTIONS, PRIORITY_OPTIONS } from './jobcard/constants';
 import { actionColor, ACTION_NAMES } from '../utils/activityColors';
 import { JOB_DELETED_MESSAGE, JOB_DELETED_TOAST_ID } from '../utils/jobLock';
+import { QUALITY_LEVELS, QUALITY_LEVEL_LABELS } from '../../../server/src/shared/qualityLevels';
 import './SearchPage.css';
 
 // Both lists come from the job screen, so every chip can match and every stored value
@@ -22,7 +23,12 @@ import './SearchPage.css';
 const STATUSES = STATUS_OPTIONS.map(s => s.value);
 const PRIORITIES = PRIORITY_OPTIONS.map(p => p.value);
 // Every entity type a recordHistory() call writes — a new one must be added here.
-const ENTITY_TYPES = ['jobcard', 'company', 'contact', 'supplier', 'user', 'machine', 'auth', 'tag', 'qa_level', 'settings', 'system'];
+// 'qa_level' is no longer written (quality levels stopped being admin-managed), but
+// the trail entries the old quality-levels page left behind are still stored, so
+// the chip stays to keep them filterable.
+const ENTITY_TYPES = ['jobcard', 'company', 'contact', 'supplier', 'user', 'machine', 'auth', 'tag', 'settings', 'system', 'qa_level'];
+const ENTITY_TYPE_LABELS = { qa_level: 'Quality Level' };
+const fmtEntityType = (t) => ENTITY_TYPE_LABELS[t] || fmt(t);
 const SCOPES = [
   { key: 'all', label: 'All', icon: Search },
   { key: 'jobs', label: 'Jobs', icon: Briefcase },
@@ -112,7 +118,7 @@ export default function SearchPage() {
     q, setQ, scope, changeScope,
     filters, updateFilter, toggleArrayFilter, clearFilters, hasActiveFilters,
     page, setPage, results, loading,
-    employees, machines, qaLevels, jobTypes,
+    employees, machines, jobTypes,
     filtersError, retryFilters, refresh,
   } = useSearch(user?.role);
 
@@ -166,8 +172,6 @@ export default function SearchPage() {
       navigate('/users');
     } else if (row.entityType === 'machine' || row.entityType === 'tag') {
       navigate('/tags');
-    } else if (row.entityType === 'qa_level') {
-      navigate('/qa-levels');
     }
   }, [navigate, openJobModal, canManage]);
 
@@ -193,7 +197,7 @@ export default function SearchPage() {
         ? `Open contact ${row.companyName || row.contactName || ''}`.trim()
         : `Open supplier ${row.name || ''}`.trim();
     }
-    if (scope === 'activity') return `Open activity: ${fmt(row.action)} on ${fmt(row.entityType)}`;
+    if (scope === 'activity') return `Open activity: ${fmt(row.action)} on ${fmtEntityType(row.entityType)}`;
     if (scope === 'time') return `Open job ${row.jobNumber}`;
     return undefined;
   }, [scope]);
@@ -237,7 +241,7 @@ export default function SearchPage() {
     { key: 'createdAt', label: 'Time', render: (v) => <span style={{ whiteSpace: 'nowrap' }}>{fmtDate(v)}</span> },
     { key: 'userName', label: 'User', render: (v) => v || 'System' },
     { key: 'action', label: 'Action', render: (v) => <ActionBadge action={v} /> },
-    { key: 'entityType', label: 'Type', render: (v) => fmt(v) },
+    { key: 'entityType', label: 'Type', render: (v) => fmtEntityType(v) },
     {
       key: 'entityId', label: 'Details', render: (v, row) => (
         <>
@@ -334,10 +338,10 @@ export default function SearchPage() {
                   {jobTypeOptions.map(t => <option key={t.id} value={t.value}>{t.displayName}</option>)}
                 </select>
               </FilterRow>
-              <FilterRow label="QA Level">
-                <select className="search-select" value={filters.qaLevel} onChange={e => updateFilter('qaLevel', e.target.value)}>
+              <FilterRow label="Quality Level">
+                <select className="search-select" value={filters.qualityLevel} onChange={e => updateFilter('qualityLevel', e.target.value)}>
                   <option value="">All</option>
-                  {qaLevels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  {QUALITY_LEVELS.map(l => <option key={l} value={l}>{QUALITY_LEVEL_LABELS[l]}</option>)}
                 </select>
               </FilterRow>
               <FilterRow label="Date Range">
@@ -377,7 +381,7 @@ export default function SearchPage() {
                 <Chips options={ACTION_NAMES} selected={filters.action} onToggle={(v) => toggleArrayFilter('action', v)} multi />
               </FilterRow>
               <FilterRow label="Entity Type">
-                <Chips options={ENTITY_TYPES} selected={filters.entityType}
+                <Chips options={ENTITY_TYPES} selected={filters.entityType} formatLabel={fmtEntityType}
                   onToggle={(v) => updateFilter('entityType', filters.entityType === v ? '' : v)} />
               </FilterRow>
               <FilterRow label="Date Range">
@@ -466,11 +470,11 @@ export default function SearchPage() {
                     </button>
                   ))}
                   {key === 'activity' && group.results.map(a => (
-                    <button key={a.id} type="button" className="search-preview-item clickable" onClick={() => navigateActivity(a)} aria-label={`Open activity: ${fmt(a.action)} on ${fmt(a.entityType)}`}>
+                    <button key={a.id} type="button" className="search-preview-item clickable" onClick={() => navigateActivity(a)} aria-label={`Open activity: ${fmt(a.action)} on ${fmtEntityType(a.entityType)}`}>
                       <span className="search-preview-meta">{fmtDate(a.createdAt)}</span>
                       <strong>{a.userName || 'System'}</strong>
                       <ActionBadge action={a.action} />
-                      <span>{fmt(a.entityType)}</span>
+                      <span>{fmtEntityType(a.entityType)}</span>
                       {a.jobNumber ? <strong>Job {a.jobNumber}</strong> : <code className="search-entity-id">{a.entityId}</code>}
                     </button>
                   ))}

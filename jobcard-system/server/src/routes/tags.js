@@ -135,7 +135,8 @@ router.post('/', requireManagement, (req, res) => {
         if (trimmedName !== existing.name) {
           restoreChanges.name = { from: existing.name, to: trimmedName };
         }
-        recordHistory('tag', existing.id, 'unarchive', req.user.userId, actorName(req), restoreChanges);
+        recordHistory('tag', existing.id, 'unarchive', req.user.userId, actorName(req), restoreChanges,
+          { name: restored.name, category: restored.category });
         return res.status(200).json(formatTag(restored));
       }
       return res.status(200).json(formatTag(existing));
@@ -151,7 +152,7 @@ router.post('/', requireManagement, (req, res) => {
     recordHistory('tag', id, 'create', req.user.userId, actorName(req), {
       name: { from: null, to: tag.name },
       category: { from: null, to: tag.category }
-    });
+    }, { name: tag.name, category: tag.category });
 
     res.status(201).json(formatTag(tag));
   } catch (err) {
@@ -222,7 +223,8 @@ router.put('/:id', requireManagement, (req, res) => {
     }
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('tag', id, 'update', req.user.userId, actorName(req), changes);
+      recordHistory('tag', id, 'update', req.user.userId, actorName(req), changes,
+        { name: trimmedName, category: existing.category });
     }
 
     res.json(formatTag(tagQueries.getById.get(id)));
@@ -245,7 +247,7 @@ router.delete('/:id', requireManagement, (req, res) => {
     archive: true,
     write: (row) => tagQueries.archive.run(row.id),
     respond: () => ({ success: true }),
-    snapshot: (row) => ({ name: row.name })
+    snapshot: (row) => ({ name: row.name, category: row.category })
   });
 });
 
@@ -260,7 +262,7 @@ router.post('/:id/activate', requireManagement, (req, res) => {
     archive: false,
     write: (row) => tagQueries.unarchive.run(row.id),
     respond: (row) => formatTag(row),
-    snapshot: (row) => ({ name: row.name })
+    snapshot: (row) => ({ name: row.name, category: row.category })
   });
 });
 

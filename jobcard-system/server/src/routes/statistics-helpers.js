@@ -8,6 +8,7 @@ const { db, getJobCostingOvertimeRowsByJobcardIds, jobCostingQueries, timeEntryQ
 const { splitMachineCodes } = require('../shared/machineList');
 const { computeCosting, jobOvertimeBaseline } = require('../utils/costingCompute');
 const { can } = require('../middleware/auth');
+const { qualityLevelLabel } = require('../shared/qualityLevels');
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -248,12 +249,10 @@ function fetchStatsJobs(startDate, endDate, bufferedStartIso, bufferedEndIso) {
       SELECT
         j.*,
         c.name AS resolved_company_name,
-        qa.name AS qa_level_name,
         (SELECT MAX(te.end_time) FROM time_entries te WHERE te.jobcard_id = j.id AND te.end_time IS NOT NULL) AS max_entry_end,
         (SELECT MAX(h.created_at) FROM history h WHERE h.entity_type = 'jobcard' AND h.entity_id = j.id AND (h.changes LIKE '%"to":"DONE"%' OR h.changes LIKE '%"to": "DONE"%')) AS done_history_at
       FROM jobcards j
       LEFT JOIN companies c ON j.company_id = c.id
-      LEFT JOIN qa_levels qa ON j.qa_level_id = qa.id
     )
     SELECT * FROM job_calc
   `;
@@ -385,7 +384,7 @@ function processJobMetrics(allJobs, fmt, todayStr, startDate, endDate) {
   let repeatJobsCount = 0;
 
   const delayedJobsList = [];
-  const qaLevelDistribution = {};
+  const qualityLevelDistribution = {};
   const priorityDistribution = {};
   const inRangeJobs = [];
   const completedInRangeJobs = [];
@@ -406,8 +405,8 @@ function processJobMetrics(allJobs, fmt, todayStr, startDate, endDate) {
       totalJobsCreated++;
       inRangeJobs.push(job);
 
-      const qaName = job.qa_level_name || (job.quality_level ? (job.quality_level.charAt(0).toUpperCase() + job.quality_level.slice(1).toLowerCase()) : 'Standard');
-      qaLevelDistribution[qaName] = (qaLevelDistribution[qaName] || 0) + 1;
+      const qualityName = qualityLevelLabel(job.quality_level);
+      qualityLevelDistribution[qualityName] = (qualityLevelDistribution[qualityName] || 0) + 1;
 
       const prio = job.priority || 'NONE';
       priorityDistribution[prio] = (priorityDistribution[prio] || 0) + 1;
@@ -446,7 +445,7 @@ function processJobMetrics(allJobs, fmt, todayStr, startDate, endDate) {
             finishDate,
             daysLate: diff,
             status: job.status,
-            qualityLevel: job.qa_level_name || (job.quality_level ? (job.quality_level.charAt(0).toUpperCase() + job.quality_level.slice(1).toLowerCase()) : 'Standard')
+            qualityLevel: qualityLevelLabel(job.quality_level)
           });
         }
       }
@@ -473,7 +472,7 @@ function processJobMetrics(allJobs, fmt, todayStr, startDate, endDate) {
     overdueActiveJobsCount,
     repeatJobsCount,
     delayedJobsList,
-    qaLevelDistribution,
+    qualityLevelDistribution,
     priorityDistribution,
     inRangeJobs,
     completedInRangeJobs,

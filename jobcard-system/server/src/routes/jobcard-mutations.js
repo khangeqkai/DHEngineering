@@ -10,7 +10,6 @@ const {
   jobcardQueries,
   jobItemQueries,
   jobAssigneeQueries,
-  qaLevelQueries,
   companyQueries,
   contactQueries,
   recordHistory,
@@ -119,19 +118,10 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
       return res.status(400).json({ error: 'A new job cannot be created as Invoiced. Save it first, then invoice it.' });
     }
 
-    // No level chosen means the plain "Standard" baseline (no special quality level),
-    // which is stored as the label STANDARD with no level id.
-    const qaLevelId = data.qaLevelId || null;
-    let qualityLevelName = 'STANDARD';
-
-    // QA level validity is a read — check it before touching the number.
-    if (qaLevelId) {
-      const level = qaLevelQueries.getById.get(qaLevelId);
-      if (!level) {
-        return res.status(400).json({ error: 'Invalid QA level selected' });
-      }
-      qualityLevelName = level.name.toUpperCase();
-    }
+    // A job always carries one of the two fixed quality levels — nothing chosen
+    // means the plain Standard baseline (validateJobcardEnums already refused
+    // anything that isn't 'STANDARD'/'CRITICAL').
+    const qualityLevelName = data.qualityLevel || 'STANDARD';
 
     // Write the job record, its line items, and the number-bump as ONE
     // all-or-nothing step. The counter advances LAST, so any failure rolls the
@@ -174,8 +164,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
         data.isRepeatJob ? (data.repeatJobReference || null) : null,
         data.photos ? JSON.stringify(data.photos) : null,
         req.user.userId,
-        req.user.userId,
-        qaLevelId
+        req.user.userId
       );
 
       createRelatedRecords(id, data);
@@ -278,35 +267,11 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     // allow-listed ones, so nothing on a filed-away job — including its status —
     // can change until it is unarchived.
 
-    // Validate a changed QA level BEFORE touching the database, so an invalid
-    // selection can't leave a half-applied update committed.
-    // A job always keeps a quality level — if the edit clears it (or an old job had
-    // none), fall back to the built-in Standard instead of saving "no level".
-    const newQaLevelId = data.qaLevelId !== undefined ? (data.qaLevelId || null) : existing.qa_level_id;
-    const qaLevelChanged = data.qaLevelId !== undefined && (data.qaLevelId || null) !== (existing.qa_level_id || null);
-    // The stored quality-level label follows the level: a special level's name, or
-    // the plain "Standard" baseline when no level is set.
-    let newQualityLevel = existing.quality_level;
-    if (qaLevelChanged) {
-      newQualityLevel = 'STANDARD';
-    }
-    if (qaLevelChanged && newQaLevelId) {
-      const newLevel = qaLevelQueries.getById.get(newQaLevelId);
-      if (!newLevel) {
-        return res.status(400).json({ error: 'Invalid QA level selected' });
-      }
-      newQualityLevel = newLevel.name.toUpperCase();
-    }
+    // A job always carries one of the two fixed quality levels — take what was
+    // sent (already validated against QUALITY_LEVELS by validateJobcardEnums), or
+    // keep the existing one when the field wasn't touched at all.
+    const newQualityLevel = data.qualityLevel !== undefined ? data.qualityLevel : existing.quality_level;
 
-    // The screen sends only `qaLevelId`, never `qualityLevel` — but the trail
-    // should read "Standard → Premium", not an id-to-id change nobody can make
-    // sense of. Hand buildChanges the readable value this route already derived
-    // above, as if the caller had sent it, so its normal quality_level tracking
-    // picks it up (a no-op when the level didn't actually change, since
-    // newQualityLevel then equals the existing label).
-    if (qaLevelChanged) {
-      data.qualityLevel = newQualityLevel;
-    }
     // A previous-job reference only exists on a repeat job: when the job ends up
     // not being one (unticked now, or already not one), the reference is cleared —
     // set on `data` so the write below stores it and the trail records it.
@@ -354,7 +319,6 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
         data.repeatJobReference !== undefined ? data.repeatJobReference : existing.repeat_job_reference,
         data.photos !== undefined ? JSON.stringify(data.photos) : existing.photos,
         req.user.userId,
-        data.qaLevelId !== undefined ? data.qaLevelId : existing.qa_level_id,
         id
       );
 

@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('./logger');
 const { isActiveRecord } = require('../shared/records');
+const { isCriticalLevel } = require('../shared/qualityLevels');
 const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, recordHistory } = require('../db/database');
 
 // Normalise a hand-entered time into a full ISO timestamp with time zone, so
@@ -178,7 +179,7 @@ const qualityLevelOfJob = db.prepare('SELECT quality_level FROM jobcards WHERE i
 // Only those jobs ask the worker the extra inspection checklist on finishing.
 function isCriticalJob(jobcardId) {
   const row = qualityLevelOfJob.get(jobcardId);
-  return !!row && String(row.quality_level || '').toUpperCase() === 'CRITICAL';
+  return !!row && isCriticalLevel(row.quality_level);
 }
 
 // On a Critical job, a finished time block must carry all four inspection answers.

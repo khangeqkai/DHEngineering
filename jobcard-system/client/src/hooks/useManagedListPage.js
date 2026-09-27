@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 
-// The shared skeleton behind the admin list pages (Users, Suppliers, Customers,
-// QA Levels): a loading flag around a fetch, a "show archived" toggle, the
+// The shared skeleton behind the admin list pages (Users, Suppliers, Customers):
+// a loading flag around a fetch, a "show archived" toggle, the
 // pendingId guard that stops a second click on an archive/restore row while the
 // first is still in flight, and the activity-log refresh key. Each page keeps
 // its own wording, its own columns, and the exact order it calls these in —

@@ -18,7 +18,6 @@ const UserManagement = lazy(() => import('./components/UserManagement'));
 const ContactManagement = lazy(() => import('./components/ContactManagement'));
 const SupplierManagement = lazy(() => import('./components/SupplierManagement'));
 const ActivityLog = lazy(() => import('./components/ActivityLog'));
-const QALevelManagement = lazy(() => import('./components/QALevelManagement'));
 const TagManagement = lazy(() => import('./components/TagManagement'));
 const LabourRatesSettings = lazy(() => import('./components/LabourRatesSettings'));
 const Settings = lazy(() => import('./components/Settings'));
@@ -168,14 +167,6 @@ function App() {
             element={
               <ManagementRoute>
                 <TagManagement />
-              </ManagementRoute>
-            }
-          />
-          <Route
-            path="qa-levels"
-            element={
-              <ManagementRoute>
-                <QALevelManagement />
               </ManagementRoute>
             }
           />

@@ -17,7 +17,7 @@ export default function DefaultRateCard({ defaultRate, setDefaultRate, onSave, s
           which also offers a one-tap link back to this default.
         </p>
         <div className={`mult-field${error ? ' field-error' : ''}`}>
-          <label className="setting-label">Rate per hour</label>
+          <label className="setting-label" htmlFor="defaultRate">Rate per hour</label>
           <div className="mult-input-wrap">
             <span className="mult-mark">$</span>
             <input
@@ -40,7 +40,7 @@ export default function DefaultRateCard({ defaultRate, setDefaultRate, onSave, s
         </div>
         <div className="sched-save">
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save default rate'}
+            {saving ? 'Saving…' : 'Save Default Rate'}
           </button>
         </div>
       </div>

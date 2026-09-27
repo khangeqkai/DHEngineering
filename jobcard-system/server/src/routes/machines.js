@@ -62,7 +62,7 @@ router.post('/', requireManagement, validateCreateMachine, (req, res) => {
       machineNumber: { from: null, to: created.machineNumber },
       name: { from: null, to: created.name },
       ...(created.description ? { description: { from: null, to: created.description } } : {})
-    });
+    }, created);
 
     res.status(201).json(toResponseFormat(machine));
   } catch (err) {

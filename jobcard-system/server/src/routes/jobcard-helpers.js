@@ -244,7 +244,6 @@ function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
     status: row.status,
     ...customerFields(row, canManage),
     qualityLevel: row.quality_level,
-    qaLevelId: row.qa_level_id || null,
     priority: row.priority,
     poNumber: row.po_number,
     quoteReference: row.quote_reference,
@@ -301,12 +300,6 @@ function buildChanges(existing, data) {
     ['description', 'description'],
     ['is_repeat_job', 'isRepeatJob'],
     ['repeat_job_reference', 'repeatJobReference'],
-    // qa_level_id itself is deliberately not tracked here — an internal id means
-    // nothing to a person reading the trail. The screen only ever sends
-    // `qaLevelId`, never `qualityLevel`, so the caller (jobcard-mutations.js)
-    // derives the level's readable name and sets `data.qualityLevel` to it
-    // before calling this function, which is what the `quality_level` row above
-    // actually picks up and records — "Standard → Premium" instead of two ids.
   ];
 
   // Only fields the caller actually sent are compared at all — this is a partial

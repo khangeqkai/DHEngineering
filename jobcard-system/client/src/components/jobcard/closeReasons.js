@@ -34,7 +34,7 @@ export const JOB_FIELD_LABEL = {
   poNumber: "the customer's PO number",
   quoteReference: 'the quote reference',
   repeatJobReference: 'the previous job reference',
-  qaLevelId: 'the quality level',
+  qualityLevel: 'the quality level',
   isRepeatJob: 'the repeat-job setting'
 };
 

@@ -32,7 +32,7 @@ function nameConflictOr409(res, existingRow, currentId, { entityLabel, nameLabel
 // The first row in `rows` (other than `currentId`, the record being edited) whose
 // name is the same as `name` under the shared rule, or null. A scan rather than a
 // SQL lookup because the rule collapses inner spaces, which SQL can't express; the
-// lists involved (customers, suppliers, quality levels) are small.
+// lists involved (customers, suppliers) are small.
 function findNameClash(rows, name, currentId) {
   return rows.find(r => r.id !== currentId && sameName(r.name, name)) || null;
 }

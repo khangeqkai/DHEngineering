@@ -752,20 +752,6 @@
   margin: 0 var(--space-4);
 }
 
-.field-note {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  margin-bottom: var(--space-2);
-  font-style: italic;
-}
-
-.field-hint {
-  display: block;
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  margin-top: var(--space-1);
-}
-
 .input-disabled {
   opacity: 0.6;
   cursor: not-allowed;

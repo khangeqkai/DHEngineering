@@ -248,7 +248,7 @@ export default function Statistics() {
           <div className={`stats-tab-panel ${activeTab === 'customers' ? 'tab-active' : 'tab-hidden'}`}>
             <CustomersTab
               customerRankings={data?.customerRankings || []}
-              qaLevelDistribution={data?.qaLevelDistribution || {}}
+              qualityLevelDistribution={data?.qualityLevelDistribution || {}}
               priorityDistribution={data?.priorityDistribution || {}}
               totalJobsCreated={summary.totalJobsCreated || 0}
               loading={loading}

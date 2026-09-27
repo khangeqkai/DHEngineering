@@ -33,6 +33,7 @@ export default function TimezoneCard({ timezone, setTimezone, onSave, saving, er
             <select
               className="form-control"
               id="timezone"
+              aria-label="Workshop time zone"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
               aria-invalid={error ? true : undefined}
@@ -45,6 +46,7 @@ export default function TimezoneCard({ timezone, setTimezone, onSave, saving, er
               type="text"
               className="form-control"
               id="timezone"
+              aria-label="Workshop time zone"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
               placeholder="e.g. Australia/Sydney"
@@ -57,7 +59,7 @@ export default function TimezoneCard({ timezone, setTimezone, onSave, saving, er
 
         <div className="sched-save">
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save time zone'}
+            {saving ? 'Saving…' : 'Save Time Zone'}
           </button>
         </div>
       </div>

@@ -2,7 +2,7 @@ const { body, query, validationResult } = require('express-validator');
 const jobStatuses = require('../shared/jobStatuses.json');
 const { ALL_ROLES } = require('./auth');
 const { isCalendarDate } = require('../shared/calendarDate');
-// The cap on a customer's or quality level's name.
+// The cap on a customer's name.
 const { NAME_MAX } = require('../shared/names');
 // The PIN rule ("exactly 4 numeric digits") and its wording, read from the one
 // shared copy — routes/auth.js's own inline password checks (update user,
@@ -12,6 +12,7 @@ const { PIN_REGEX, PIN_MESSAGE } = require('../shared/pin');
 // A machine number may not hold the separator the stored list of logged machines is
 // split on — read from the one shared copy of that split.
 const { hasMachineSeparator, MACHINE_SEPARATOR_MESSAGE } = require('../shared/machineList');
+const { QUALITY_LEVELS } = require('../shared/qualityLevels');
 
 /**
  * Middleware to handle validation errors
@@ -55,7 +56,7 @@ function requiredString(field, label) {
 }
 
 /**
- * Name-length cap (NAME_MAX) for customers and quality levels, reported as a
+ * Name-length cap (NAME_MAX) for customers, reported as a
  * field error on the name box. Only what is sent is checked: on an edit, a name identical to the stored one
  * passes even if it is longer (an older record re-saved without touching its
  * name), so a record saved before the cap still edits.
@@ -75,7 +76,6 @@ function nameLength(field, label, storedNameOf) {
 
 // Looked up lazily so this file doesn't load the database just by being required.
 const storedCompanyName = (req) => require('../db/database').companyQueries.getById.get(req.params.id)?.name;
-const storedQaLevelName = (req) => require('../db/database').qaLevelQueries.getById.get(req.params.id)?.name;
 
 /**
  * Optional email field validator
@@ -240,20 +240,6 @@ const validateUpdateCompany = [
   handleValidationErrors
 ];
 
-// POST /qa-levels
-const validateCreateQaLevel = [
-  requiredString('name', 'Name'),
-  nameLength('name', 'Name'),
-  handleValidationErrors
-];
-
-// PUT /qa-levels/:id
-const validateUpdateQaLevel = [
-  requiredString('name', 'Name'),
-  nameLength('name', 'Name', storedQaLevelName),
-  handleValidationErrors
-];
-
 // POST /contacts — a person always belongs to a company.
 const validateCreateContact = [
   requiredString('companyId', 'Company'),
@@ -400,12 +386,7 @@ const validateJobcardEnums = [
   body('description').optional().custom(nonBlankDescription),
   optionalEnum('status', 'Status', JOBCARD_STATUSES),
   optionalEnum('priority', 'Priority', PRIORITY_OPTIONS),
-  // qualityLevel is now validated dynamically against qa_levels table (no enum check)
-  body('qualityLevel')
-    .customSanitizer(value => (value === '' || value === null) ? undefined : value)
-    .optional()
-    .isString()
-    .withMessage('Quality level must be a string'),
+  optionalEnum('qualityLevel', 'Quality level', QUALITY_LEVELS),
   // drawings + customer property are now per-line-item (see validateItemDrawings /
   // validateItemCustomerProperty), so they are no longer validated at job level.
   handleValidationErrors
@@ -536,8 +517,6 @@ module.exports = {
   validateUpdatePreferences,
   validateCreateCompany,
   validateUpdateCompany,
-  validateCreateQaLevel,
-  validateUpdateQaLevel,
   validateCreateContact,
   validateUpdateContact,
   validateCreateSupplier,

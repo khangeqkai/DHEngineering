@@ -151,6 +151,18 @@ const USER_COLS = [
   { label: 'Created', value: r => fmtDateTime(r.createdAt) },
 ];
 
+const TAG_COLS = [
+  { label: 'Name', value: r => r.name },
+  { label: 'Status', value: r => r.archived ? 'Archived' : 'Active' },
+];
+
+const MACHINE_COLS = [
+  { label: 'Machine Number', value: r => r.machineNumber },
+  { label: 'Name', value: r => r.name },
+  { label: 'Description', value: r => r.description },
+  { label: 'Status', value: r => r.active ? 'Active' : 'Archived' },
+];
+
 const ACTIVITY_COLS = [
   { label: 'Time', value: r => fmtDateTime(r.createdAt) },
   { label: 'User', value: r => r.userName },
@@ -183,6 +195,21 @@ export async function exportUsers(users) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, users, USER_COLS), 'Users');
   return saveWorkbook(wb, `Users_${timestamp()}.xlsx`);
+}
+
+// One category of dropdown options (Service, Material, …), named in the sheet and file.
+export async function exportTags(tags, categoryLabel) {
+  const XLSX = await loadXlsx();
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, tags, TAG_COLS), categoryLabel);
+  return saveWorkbook(wb, `${categoryLabel.replace(/\s+/g, '_')}_Options_${timestamp()}.xlsx`);
+}
+
+export async function exportMachines(machines) {
+  const XLSX = await loadXlsx();
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, machines, MACHINE_COLS), 'Equipment');
+  return saveWorkbook(wb, `Equipment_${timestamp()}.xlsx`);
 }
 
 export async function exportActivityLog(activities) {

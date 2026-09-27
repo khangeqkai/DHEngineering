@@ -50,10 +50,10 @@ export function useInstantSave(jobCardId, saveQueue, { onSaved, onAttachmentWarn
 
   // options.alsoMarkSaved: extra {field: value} pairs whose baseline should move
   // forward alongside this write on success, WITHOUT being sent over the wire.
-  // Used for Quality Level: picking a level changes both qaLevelId (sent) and the
-  // display label qualityLevel (derived — the server works out its own copy from
-  // qaLevelId the same way, see jobcard-mutations.js). Both changed as one user
-  // action, so both baselines move together once the write covering them lands.
+  // Used for the repeat-job toggle: unticking it changes both isRepeatJob (sent)
+  // and clears repeatJobReference in the same write (jobcard-mutations.js clears
+  // its own copy server-side). Both changed as one user action, so both baselines
+  // move together once the write covering them lands.
   //
   // options.baseline: what the job last confirmed storing for this field. When
   // the value handed in is back to exactly that, there is nothing to send — but

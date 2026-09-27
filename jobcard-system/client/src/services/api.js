@@ -439,12 +439,6 @@ class ApiService {
     return this.request(`/search?${query.toString()}`);
   }
 
-  // QA Levels
-  getQaLevels() { return this.request('/qa-levels'); }
-  createQaLevel(data) { return this._post('/qa-levels', data); }
-  updateQaLevel(id, data) { return this._put(`/qa-levels/${id}`, data); }
-  deleteQaLevel(id) { return this._del(`/qa-levels/${id}`); }
-
   // Statistics
   getStatistics(params = {}) {
     const query = new URLSearchParams();

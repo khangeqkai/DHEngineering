@@ -10,7 +10,7 @@ export default function MultiplierInputs({
   // renders and typing never loses focus.
   const field = (key, label, hint, value, onChange, error) => (
     <div className={`mult-field${error ? ' field-error' : ''}`} key={key}>
-      <label className="setting-label">{label}</label>
+      <label className="setting-label" htmlFor={key}>{label}</label>
       <div className="mult-input-wrap">
         <span className="mult-mark">×</span>
         <input
@@ -50,7 +50,7 @@ export default function MultiplierInputs({
         </div>
         <div className="sched-save">
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save multipliers'}
+            {saving ? 'Saving…' : 'Save Multipliers'}
           </button>
         </div>
       </div>

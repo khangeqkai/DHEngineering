@@ -2,8 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase, capitalizeFirst } from '../utils/formatters';
-import { Plus, Edit2, Save, Archive, ArchiveRestore } from 'lucide-react';
+import { Plus, Edit2, Save, Archive, ArchiveRestore, History } from 'lucide-react';
 import PageHeader from './common/PageHeader';
+import ExportButton from './common/ExportButton';
+import EntityActivityLog from './common/EntityActivityLog';
+import { exportTags, exportMachines } from '../utils/excelExport';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
@@ -11,16 +14,8 @@ import { tagActions } from '../hooks/useTags';
 import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
 import FieldError from './common/FieldError';
 import { hasMachineSeparator, MACHINE_SEPARATOR_MESSAGE } from '../../../server/src/shared/machineList';
+import { TAG_CATEGORY_INFO as CATEGORY_INFO } from '../utils/tagCategories';
 import './TagManagement.css';
-
-const CATEGORY_INFO = {
-  treatment: { label: 'Service', description: 'Service options for parts. Used on job card parts and supplier services.' },
-  material: { label: 'Material', description: 'Material options for parts.' },
-  customer_property: { label: 'Customer Property', description: 'Types of customer property received with a job.' },
-  drawings: { label: 'Drawings', description: 'Drawing types associated with a job.' },
-  job_type: { label: 'Job Type', description: 'Classification of the type of work.' },
-  equipment: { label: 'Equipment', description: 'Machines and equipment used in time tracking.' }
-};
 
 const CATEGORIES = Object.keys(CATEGORY_INFO);
 
@@ -49,6 +44,10 @@ export default function TagManagement() {
   const [formData, setFormData] = useState({ name: '', machineNumber: '', description: '' });
   const [formCategory, setFormCategory] = useState('treatment');
   const [saving, setSaving] = useState(false);
+  // One trail for the whole page — options and machines are managed side by side here.
+  const [showActivityLog, setShowActivityLog] = useState(false);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
+  const bumpActivity = () => setActivityRefreshKey(k => k + 1);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   // The name box is spelled differently for a machine and a tag; both show formData.name.
   const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
@@ -66,10 +65,13 @@ export default function TagManagement() {
     if (isEquipment) return;
     try {
       setTagLoading(true);
+      // Drop the previous tab's rows first, so a slow or failed load never leaves
+      // them on screen (or in an export) under the newly chosen category's name.
+      setTags([]);
       const data = await api.getTags(selectedCategory, showArchivedTags);
       setTags(data);
     } catch (err) {
-      toast.error('Failed to load tags');
+      toast.error('Failed to load tags', { id: 'tag-list-load-failed' });
     } finally {
       setTagLoading(false);
     }
@@ -84,7 +86,7 @@ export default function TagManagement() {
       const data = await api.getMachines(showInactiveMachines);
       setMachines(data);
     } catch (err) {
-      toast.error('Failed to load machines');
+      toast.error('Failed to load machines', { id: 'machine-list-load-failed' });
     } finally {
       setEquipLoading(false);
     }
@@ -134,6 +136,9 @@ export default function TagManagement() {
       return;
     }
     setSaving(true);
+    // Deliberate house wording: every save on this page — adding or editing, a
+    // machine or an option — confirms with "… updated". Not a bug; don't change
+    // an add to "created"/"saved".
     try {
       if (isFormEquipment) {
         if (!machineNumber) return;
@@ -142,7 +147,7 @@ export default function TagManagement() {
           toast.success('Machine updated');
         } else {
           await api.createMachine({ machineNumber, name, description });
-          toast.success('Machine created');
+          toast.success('Machine updated');
         }
         await loadMachines();
       } else {
@@ -152,17 +157,18 @@ export default function TagManagement() {
           toast.success('Tag updated');
         } else {
           // Creating is idempotent server-side: a name that already exists just
-          // returns the existing option, so the wording stays true either way.
+          // returns the existing option. Same "updated" wording as an edit (see above).
           await tagActions.create({ category: formCategory, name });
-          toast.success('Tag saved');
+          toast.success('Tag updated');
         }
         if (formCategory === selectedCategory) await loadTags();
       }
+      bumpActivity();
       resetForm();
     } catch (err) {
       // A refusal naming one of the boxes (the server's comma refusal on the number,
       // say) marks that box; anything else is a pop-up.
-      showSaveRefusal(err, { boxFor: formBoxes, setFieldErrors, fallback: 'Failed to save' });
+      showSaveRefusal(err, { boxFor: formBoxes, setFieldErrors, fallback: isFormEquipment ? 'Failed to save machine' : 'Failed to save tag' });
     } finally {
       setSaving(false);
     }
@@ -187,7 +193,7 @@ export default function TagManagement() {
     });
     if (!confirmed) return;
     setPendingTagId(tag.id);
-    try { await tagActions.archive(tag); toast.success('Option archived'); await loadTags(); }
+    try { await tagActions.archive(tag); toast.success('Option archived'); bumpActivity(); await loadTags(); }
     catch (err) { toast.error(err.message || 'Failed to archive option'); }
     finally { setPendingTagId(null); }
   };
@@ -195,7 +201,7 @@ export default function TagManagement() {
   const handleRestoreTag = async (tag) => {
     if (pendingTagId !== null) return;
     setPendingTagId(tag.id);
-    try { await tagActions.restore(tag); toast.success('Option restored'); await loadTags(); }
+    try { await tagActions.restore(tag); toast.success('Option restored'); bumpActivity(); await loadTags(); }
     catch (err) { toast.error(err.message || 'Failed to restore option'); }
     finally { setPendingTagId(null); }
   };
@@ -220,7 +226,7 @@ export default function TagManagement() {
     });
     if (!confirmed) return;
     setPendingMachineId(m.id);
-    try { await api.archiveMachine(m.id); toast.success('Machine archived'); await loadMachines(); }
+    try { await api.archiveMachine(m.id); toast.success('Machine archived'); bumpActivity(); await loadMachines(); }
     catch (err) { toast.error(err.message || 'Failed to archive machine'); }
     finally { setPendingMachineId(null); }
   };
@@ -228,7 +234,7 @@ export default function TagManagement() {
   const handleRestoreMachine = async (m) => {
     if (pendingMachineId !== null) return;
     setPendingMachineId(m.id);
-    try { await api.activateMachine(m.id); toast.success('Machine restored'); await loadMachines(); }
+    try { await api.activateMachine(m.id); toast.success('Machine restored'); bumpActivity(); await loadMachines(); }
     catch (err) { toast.error(err.message || 'Failed to restore machine'); }
     finally { setPendingMachineId(null); }
   };
@@ -251,6 +257,16 @@ export default function TagManagement() {
           />
           Show archived
         </label>
+        <ExportButton
+          onExportView={() => {
+            // Exactly what the open tab lists — the chosen category, archived rows only when shown.
+            if (isEquipment) return machines.length ? exportMachines(machines) : false;
+            return tags.length ? exportTags(tags, CATEGORY_INFO[selectedCategory].label) : false;
+          }}
+        />
+        <button className="btn btn-secondary" onClick={() => setShowActivityLog(true)}>
+          <History size={16} /> Activity Log
+        </button>
         <button className="btn btn-primary" onClick={openAddForm}>
           <Plus size={16} /> {isEquipment ? 'Add Machine' : 'Add Tag'}
         </button>
@@ -396,6 +412,13 @@ export default function TagManagement() {
           )}
         </div>
       </div>
+
+      <EntityActivityLog
+        entityType="tag,machine"
+        isOpen={showActivityLog}
+        onClose={() => setShowActivityLog(false)}
+        refreshKey={activityRefreshKey}
+      />
 
       <ConfirmDialog isOpen={dialogState.isOpen} title={dialogState.title} message={dialogState.message} confirmLabel={dialogState.confirmLabel} cancelLabel={dialogState.cancelLabel} confirmVariant={dialogState.confirmVariant} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>

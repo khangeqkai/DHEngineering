@@ -12,7 +12,7 @@ export default function SecurityCard({ s }) {
         <div className="card-body">
           <div className="setting-item">
             <div className="setting-info">
-              <div className="setting-label">Inactivity Timeout</div>
+              <label className="setting-label" htmlFor="inactivityTimeout">Inactivity Timeout</label>
               <div className="setting-description">
                 Automatically log out users after this many minutes of inactivity.
                 A warning will appear 30 seconds before logout. (1-60 minutes)
@@ -60,33 +60,32 @@ export default function SecurityCard({ s }) {
             </div>
           </div>
           <div className="job-number-input-group">
-            <div className="form-group" style={{ flex: '0 0 auto' }}>
-              <label className="form-label">Prefix</label>
+            <div className="form-group job-number-field">
+              <label className="form-label" htmlFor="jobNumberPrefix">Prefix</label>
               <input
                 type="text"
-                className="form-control"
+                id="jobNumberPrefix"
+                className="form-control job-prefix-input"
                 value={s.jobNumberPrefix}
                 onChange={(e) => s.setJobNumberPrefix(e.target.value)}
                 placeholder="e.g. DH-"
-                style={{ width: '120px' }}
               />
             </div>
-            <div className={jobNumberNextError ? 'form-group field-error' : 'form-group'} style={{ flex: '0 0 auto' }}>
+            <div className={jobNumberNextError ? 'form-group field-error job-number-field' : 'form-group job-number-field'}>
               <label className="form-label" htmlFor="jobNumberNext">Starting Number</label>
               <input
                 type="text"
                 id="jobNumberNext"
-                className="form-control"
+                className="form-control job-start-input"
                 value={s.jobNumberNext}
                 onChange={(e) => s.setJobNumberNext(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="e.g. 00001"
-                style={{ width: '160px' }}
                 aria-invalid={jobNumberNextError ? true : undefined}
                 aria-describedby={jobNumberNextError ? 'jobNumberNext-error' : undefined}
               />
               <FieldError message={jobNumberNextError} id="jobNumberNext-error" />
             </div>
-            <div className="form-group" style={{ flex: '0 0 auto', alignSelf: 'flex-end' }}>
+            <div className="form-group job-number-field">
               <button
                 type="button"
                 className="btn btn-primary"

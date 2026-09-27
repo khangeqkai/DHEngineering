@@ -108,10 +108,10 @@ export default function ContactManagement() {
     try {
       if (editingCompany) {
         await api.updateCompany(editingCompany.id, payload);
-        toast.success('Customer saved');
+        toast.success('Customer updated');
       } else {
         const created = await api.createCompany(payload);
-        toast.success('Customer added', { id: 'customer-added' });
+        toast.success('Customer updated', { id: 'customer-updated' });
         setEditingCompany({ ...created, people: [] });
       }
       resetFieldErrors();
@@ -137,7 +137,7 @@ export default function ContactManagement() {
   const handleArchive = async (company) => {
     if (pendingId !== null) return;
     const confirmed = await showConfirm({
-      title: 'Archive customer',
+      title: 'Archive Customer',
       message: `Archive "${company.name}"? They will no longer appear when picking a customer for a job, but their existing jobs and files stay intact. You can restore them any time.`,
       confirmLabel: 'Archive',
       confirmVariant: 'warning'
@@ -176,7 +176,7 @@ export default function ContactManagement() {
     setSaving(true);
     try {
       await api.createContact({ companyId: editingCompany.id, ...person });
-      toast.success('Person added');
+      toast.success('Person updated');
       await refresh();
       return true;
     } catch (err) {
@@ -191,7 +191,7 @@ export default function ContactManagement() {
     setSaving(true);
     try {
       await api.updateContact(id, person);
-      toast.success('Person saved');
+      toast.success('Person updated');
       await refresh();
       return true;
     } catch (err) {
@@ -205,7 +205,7 @@ export default function ContactManagement() {
   const archivePerson = async (person) => {
     if (pendingId !== null) return;
     const confirmed = await showConfirm({
-      title: 'Retire this person',
+      title: 'Retire Person',
       message: `Retire ${person.contactName || 'this person'}? They stop being offered on new jobs, but the jobs already taken for them keep their name.`,
       confirmLabel: 'Retire',
       confirmVariant: 'warning'
@@ -214,6 +214,7 @@ export default function ContactManagement() {
     await runPending(person.id, async () => {
       try {
         await api.archiveContact(person.id);
+        toast.success('Person retired');
         await refresh();
       } catch (err) {
         toast.error(err.message || 'Could not retire the person');
@@ -226,6 +227,7 @@ export default function ContactManagement() {
     await runPending(person.id, async () => {
       try {
         await api.unarchiveContact(person.id);
+        toast.success('Person restored');
         await refresh();
       } catch (err) {
         toast.error(err.message || 'Could not restore the person');
@@ -361,7 +363,7 @@ export default function ContactManagement() {
       </BottomSheet>
 
       <div className="card">
-        <div className="card-body" style={{ padding: 0 }}>
+        <div className="card-body card-body-flush">
           <DataTable
             columns={[
               {

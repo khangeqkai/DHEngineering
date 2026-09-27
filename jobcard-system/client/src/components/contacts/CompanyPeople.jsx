@@ -78,7 +78,7 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
           <X size={14} /> Cancel
         </button>
         <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
-          <Save size={14} /> {saving ? 'Saving...' : adding ? 'Add person' : 'Save'}
+          <Save size={14} /> {saving ? 'Saving...' : adding ? 'Add Person' : 'Save'}
         </button>
       </div>
     </form>
@@ -93,7 +93,7 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
         <h2>Contacts</h2>
         {!adding && !companyArchived && (
           <button type="button" className="btn btn-secondary btn-sm" onClick={startAdd}>
-            <Plus size={14} /> Add person
+            <Plus size={14} /> Add Person
           </button>
         )}
       </div>

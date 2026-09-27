@@ -15,7 +15,7 @@ const PRIORITY_BAR_COLORS = {
 
 export default function CustomersTab({
   customerRankings = [],
-  qaLevelDistribution = {},
+  qualityLevelDistribution = {},
   priorityDistribution = {},
   totalJobsCreated = 0,
   loading = false
@@ -36,14 +36,14 @@ export default function CustomersTab({
           </div>
           <div className="stats-card-body">
             <div className="distribution-list">
-              {loading && Object.keys(qaLevelDistribution).length === 0 ? (
+              {loading && Object.keys(qualityLevelDistribution).length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-field)' }}>
                   <div className="skeleton-bar" style={{ width: '80%', height: '14px' }} />
                   <div className="skeleton-bar" style={{ width: '60%', height: '14px' }} />
                   <div className="skeleton-bar" style={{ width: '70%', height: '14px' }} />
                 </div>
               ) : (
-                Object.entries(qaLevelDistribution).map(([level, count]) => {
+                Object.entries(qualityLevelDistribution).map(([level, count]) => {
                   const pct = totalJobsCreated > 0
                     ? roundTo((count / totalJobsCreated) * 100, 0)
                     : 0;

@@ -79,10 +79,10 @@ router.get('/user/:userId', authenticate, requirePermission('activityTrail'), (r
 });
 
 // Get activity by entity type (admin or manager — user/company/contact/supplier/
-// machine history carries no pricing; managers manage these entities and see their logs)
+// machine/tag history carries no pricing; managers manage these entities and see their logs)
 router.get('/entity/:entityType', authenticate, requireManagement, (req, res) => {
   try {
-    const allowedTypes = ['user', 'company', 'contact', 'supplier', 'machine'];
+    const allowedTypes = ['user', 'company', 'contact', 'supplier', 'machine', 'tag'];
     // Comma-separated so one screen can show a combined trail — the Customers page
     // manages both the company and the people at it, and splitting their history
     // across two logs would hide "Jane became Janey" from whoever went looking.

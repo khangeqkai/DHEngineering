@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { formatDate as fmtDate, formatDateTime as fmtDateTime } from './formatters';
 import { STATUS_LABELS, PRIORITY_LABELS } from '../components/JobCardList.constants';
 import { loadXlsx, saveWorkbook, buildSheet, timestamp, durationHrs, labelFromMap, formatChangesText } from './excelExport';
+import { qualityLevelLabel } from '../../../server/src/shared/qualityLevels';
 
 // ── Tag label lookup (real names, not rebuilt from the stored value) ────────
 //
@@ -39,7 +40,7 @@ const JOBCARD_SUMMARY_COLS = [
   // Export the words people read on screen, not the stored codes.
   { label: 'Status', value: r => STATUS_LABELS[r.status] || r.status },
   { label: 'Priority', value: r => PRIORITY_LABELS[r.priority] || r.priority },
-  { label: 'QA Level', value: r => r.qualityLevel },
+  { label: 'QA Level', value: r => qualityLevelLabel(r.qualityLevel) },
   { label: 'Due Date', value: r => fmtDate(r.dueDate) },
   { label: 'Description', value: r => r.description },
   { label: 'Assigned To', value: r => (r.assignees || []).map(a => a.userName || a.name).join(', ') },
