@@ -9,7 +9,8 @@ const {
   jobItemQueries,
   companyQueries,
   getSettings,
-  recordHistory
+  recordHistory,
+  actorName
 } = require('../db/database');
 const { sanitizeFolderName, isWithinBase, resolveCompanyFolder, idSlug } = require('../utils/folderCreation');
 const { decodeBase64Strict, assertMatchesExtension } = require('../utils/fileValidation');
@@ -441,7 +442,7 @@ function saveFile({ jobcardId, category, displayName, buffer, source, itemId, re
 
   fs.writeFileSync(targetPath, buffer);
 
-  recordHistory('jobcard', jobcardId, 'upload_file', req.user.userId, req.user.name || req.user.username,
+  recordHistory('jobcard', jobcardId, 'upload_file', req.user.userId, actorName(req),
     { file: { from: null, to: effectiveName } },
     { destination: CATEGORY_FOLDER[category], source, itemId: itemId ?? null }
   );
@@ -559,7 +560,7 @@ router.post('/:id/files/:category/:filename/assign', authenticate, validateCateg
     const oldPart = oldTag ? parts.find(it => partFileCode(it.id) === oldTag) : null;
     const newPart = itemId ? parts.find(it => it.id === itemId) : null;
 
-    recordHistory('jobcard', id, 'reassign_file', req.user.userId, req.user.name || req.user.username,
+    recordHistory('jobcard', id, 'reassign_file', req.user.userId, actorName(req),
       {
         file: { from: stripStorageTag(filename), to: stripStorageTag(newName) },
         part: {
@@ -604,7 +605,7 @@ router.delete('/:id/files/:category/:filename', authenticate, requireManagement,
 
     fs.unlinkSync(filePath);
 
-    recordHistory('jobcard', id, 'delete_file', req.user.userId, req.user.name || req.user.username,
+    recordHistory('jobcard', id, 'delete_file', req.user.userId, actorName(req),
       { file: { from: stripStorageTag(filename), to: null } },
       { destination: CATEGORY_FOLDER[category], storedName: filename }
     );

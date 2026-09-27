@@ -18,6 +18,13 @@ function recordHistory(entityType, entityId, action, userId, userName, changes, 
   );
 }
 
+// The display name every route passed as recordHistory's `userName` — every
+// call site worked it out by hand the same way (req.user.name || req.user.
+// username). Kept next to recordHistory since it exists only to feed it.
+function actorName(req) {
+  return req.user.name || req.user.username;
+}
+
 // Compute the next job number WITHOUT touching the counter.
 // Returns { jobNumber, nextNum, width, error } - error if not configured.
 // The caller commits the bump (bumpJobNumber) only after the job record has been
@@ -69,6 +76,7 @@ function updateSettings(settingsObj) {
 
 module.exports = {
   recordHistory,
+  actorName,
   peekNextJobNumber,
   bumpJobNumber,
   getSettings,

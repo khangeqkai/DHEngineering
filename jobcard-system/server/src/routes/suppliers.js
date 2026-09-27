@@ -3,7 +3,8 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
 const { validateCreateSupplier, validateUpdateSupplier } = require('../middleware/validation');
-const { db, supplierQueries, tagQueries, jobItemQueries, recordHistory } = require('../db/database');
+const { db, supplierQueries, tagQueries, jobItemQueries, recordHistory, actorName } = require('../db/database');
+const { diffFields } = require('../utils/historyChanges');
 
 const router = express.Router();
 
@@ -144,7 +145,7 @@ router.post('/', requireManagement, validateCreateSupplier, (req, res) => {
 
     const supplier = getSupplierWithTags(id);
 
-    recordHistory('supplier', id, 'create', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('supplier', id, 'create', req.user.userId, actorName(req), {
       name: { from: null, to: supplier.name },
       contactName: { from: null, to: supplier.contactName }
     });
@@ -184,14 +185,14 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
     const oldTags = tagQueries.getForSupplier.all(id) || [];
     const oldTagIds = oldTags.map(t => t.id).sort().join(',');
     const newTagIds = Array.isArray(serviceTagIds) ? [...serviceTagIds].sort().join(',') : oldTagIds;
-    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
-    const changes = {};
-    if (normalizeEmpty(name) !== normalizeEmpty(existing.name)) changes.name = { from: existing.name, to: name };
-    if (normalizeEmpty(contactName) !== normalizeEmpty(existing.contact_name)) changes.contactName = { from: existing.contact_name, to: contactName || null };
-    if (normalizeEmpty(contactPhone) !== normalizeEmpty(existing.contact_phone)) changes.contactPhone = { from: existing.contact_phone, to: contactPhone || null };
-    if (normalizeEmpty(contactEmail) !== normalizeEmpty(existing.contact_email)) changes.contactEmail = { from: existing.contact_email, to: contactEmail || null };
-    if (normalizeEmpty(address) !== normalizeEmpty(existing.address)) changes.address = { from: existing.address, to: address || null };
-    if (normalizeEmpty(notes) !== normalizeEmpty(existing.notes)) changes.notes = { from: existing.notes, to: notes || null };
+    const changes = diffFields(existing, [
+      ['name', 'name', name],
+      ['contact_name', 'contactName', contactName || null],
+      ['contact_phone', 'contactPhone', contactPhone || null],
+      ['contact_email', 'contactEmail', contactEmail || null],
+      ['address', 'address', address || null],
+      ['notes', 'notes', notes || null],
+    ]);
     if (newTagIds !== oldTagIds) {
       const oldTagNames = oldTags.map(t => t.name).sort().join(', ') || null;
       const allTags = tagQueries.getByCategoryIncludeArchived.all('treatment') || [];
@@ -236,7 +237,7 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
     const supplier = getSupplierWithTags(id);
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('supplier', id, 'update', req.user.userId, req.user.name || req.user.username, changes, supplier);
+      recordHistory('supplier', id, 'update', req.user.userId, actorName(req), changes, supplier);
     }
 
     res.json(supplier);
@@ -261,7 +262,7 @@ router.post('/:id/deactivate', requireManagement, (req, res) => {
 
     supplierQueries.deactivate.run(id);
 
-    recordHistory('supplier', id, 'archive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('supplier', id, 'archive', req.user.userId, actorName(req), {
       status: { from: 'Active', to: 'Archived' }
     }, { name: existing.name });
 
@@ -284,7 +285,7 @@ router.post('/:id/activate', requireManagement, (req, res) => {
 
     supplierQueries.activate.run(id);
 
-    recordHistory('supplier', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('supplier', id, 'unarchive', req.user.userId, actorName(req), {
       status: { from: 'Archived', to: 'Active' }
     }, { name: existing.name });
 

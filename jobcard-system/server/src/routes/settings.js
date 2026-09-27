@@ -10,7 +10,7 @@ const db = require('../db/database');
 const config = require('../config');
 const { lanIpv4s } = require('../utils/netHost');
 const homeAccess = require('./settings-home-access');
-const { recordHistory } = require('../db/helpers');
+const { recordHistory, actorName } = require('../db/helpers');
 const { runStartupConversions, PRINT_NAMING_CUTOVER_KEY } = require('../db/init');
 const { splitCustomersInBackup } = require('../db/splitCustomers');
 const { setMaintenance } = require('../middleware/maintenance');
@@ -215,10 +215,10 @@ router.put('/', requireManagement, async (req, res) => {
       settingsChanges[snakeToCamel(key)] = { from, to: value };
     }
     if (Object.keys(settingsChanges).length > 0) {
-      recordHistory('settings', 'general', 'update', req.user.userId, req.user.name || req.user.username, settingsChanges);
+      recordHistory('settings', 'general', 'update', req.user.userId, actorName(req), settingsChanges);
     }
     if (homeAccessChange) {
-      recordHistory('settings', 'home_access', 'update', req.user.userId, req.user.name || req.user.username, homeAccessChange);
+      recordHistory('settings', 'home_access', 'update', req.user.userId, actorName(req), homeAccessChange);
     }
     res.json({ success: true });
   } catch (err) {
@@ -324,7 +324,7 @@ router.post('/export-backup', requireAdmin, [
     logger.info({ outputPath, size: stats.size }, 'Backup exported successfully');
 
     try {
-      recordHistory('system', 'backup', 'data_export', req.user.userId, req.user.name || req.user.username, {
+      recordHistory('system', 'backup', 'data_export', req.user.userId, actorName(req), {
         outputPath: { from: null, to: outputPath },
         size: { from: null, to: `${(stats.size / 1024 / 1024).toFixed(1)} MB` }
       }, null);
@@ -568,7 +568,7 @@ router.post('/import-backup', requireAdmin, [
     // Record import in history (wrap in try-catch since the importing user
     // may not exist in the restored data, which would cause an FK violation)
     try {
-      recordHistory('system', 'backup', 'data_import', req.user.userId, req.user.name || req.user.username, {
+      recordHistory('system', 'backup', 'data_import', req.user.userId, actorName(req), {
         source: { from: null, to: data._metadata.exportedAt },
         tables: { from: null, to: TABLE_ORDER.length + ' tables restored' },
         filesRestored: { from: null, to: hasFiles ? 'yes' : 'no' }

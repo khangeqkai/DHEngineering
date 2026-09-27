@@ -3,7 +3,8 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateCreateContact, validateUpdateContact } = require('../middleware/validation');
-const { companyQueries, contactQueries, recordHistory } = require('../db/database');
+const { companyQueries, contactQueries, recordHistory, actorName } = require('../db/database');
+const { diffFields } = require('../utils/historyChanges');
 const { toContactApi: toApiFormat } = require('./customer-format');
 
 const router = express.Router();
@@ -32,7 +33,7 @@ router.post('/', requireManagement, validateCreateContact, (req, res) => {
     contactQueries.create.run(id, companyId, contactName || null, phone || null, email || null);
 
     const contact = contactQueries.getById.get(id);
-    recordHistory('contact', id, 'create', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('contact', id, 'create', req.user.userId, actorName(req), {
       contactName: { from: null, to: contact.contact_name },
       companyName: { from: null, to: company.name }
     });
@@ -55,17 +56,17 @@ router.put('/:id', requireManagement, validateUpdateContact, (req, res) => {
     const existing = contactQueries.getById.get(id);
     if (!existing) return res.status(404).json({ error: 'Contact not found' });
 
-    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
-    const changes = {};
-    if (normalizeEmpty(contactName) !== normalizeEmpty(existing.contact_name)) changes.contactName = { from: existing.contact_name, to: contactName || null };
-    if (normalizeEmpty(phone) !== normalizeEmpty(existing.phone)) changes.phone = { from: existing.phone, to: phone || null };
-    if (normalizeEmpty(email) !== normalizeEmpty(existing.email)) changes.email = { from: existing.email, to: email || null };
+    const changes = diffFields(existing, [
+      ['contact_name', 'contactName', contactName || null],
+      ['phone', 'phone', phone || null],
+      ['email', 'email', email || null],
+    ]);
 
     contactQueries.update.run(contactName || null, phone || null, email || null, id);
     const contact = contactQueries.getById.get(id);
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('contact', id, 'update', req.user.userId, req.user.name || req.user.username, changes, toApiFormat(contact));
+      recordHistory('contact', id, 'update', req.user.userId, actorName(req), changes, toApiFormat(contact));
     }
 
     res.json(toApiFormat(contact));
@@ -87,7 +88,7 @@ router.post('/:id/archive', requireManagement, (req, res) => {
     contactQueries.archive.run(id);
     const contact = contactQueries.getById.get(id);
 
-    recordHistory('contact', id, 'archive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('contact', id, 'archive', req.user.userId, actorName(req), {
       status: { from: 'Active', to: 'Archived' }
     });
 
@@ -109,7 +110,7 @@ router.post('/:id/unarchive', requireManagement, (req, res) => {
     contactQueries.unarchive.run(id);
     const contact = contactQueries.getById.get(id);
 
-    recordHistory('contact', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('contact', id, 'unarchive', req.user.userId, actorName(req), {
       status: { from: 'Archived', to: 'Active' }
     });
 

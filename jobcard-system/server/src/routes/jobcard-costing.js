@@ -2,7 +2,7 @@ const express = require('express');
 
 const logger = require('../utils/logger');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { jobCostingQueries, recordHistory } = require('../db/database');
+const { jobCostingQueries, recordHistory, actorName } = require('../db/database');
 const {
   computeLiveCosting,
   persistCosting,
@@ -99,7 +99,7 @@ router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
     }
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('jobcard', jobId, 'update_costing', req.user.userId, req.user.name || req.user.username, changes, null);
+      recordHistory('jobcard', jobId, 'update_costing', req.user.userId, actorName(req), changes, null);
     }
 
     // Hand back the freshly computed figures, not just an acknowledgement: the server

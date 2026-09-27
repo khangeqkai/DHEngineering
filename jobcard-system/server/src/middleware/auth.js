@@ -80,6 +80,10 @@ const MANAGEMENT_ROLES = ['admin', 'manager'];
 const isManagement = (role) => MANAGEMENT_ROLES.includes(role);
 const requireManagement = requireRole(...MANAGEMENT_ROLES);
 
+// Every role that exists. Used wherever a role is checked against the full set
+// (creating/updating a user) rather than just against management vs. not.
+const ALL_ROLES = ['admin', 'manager', 'user'];
+
 // Which statuses a non-management user (a worker) may move a job TO, and which
 // current statuses they're allowed to move it FROM. In Progress and Done are
 // normally driven by logged work (see utils/jobStatusAuto.js); the one manual
@@ -107,6 +111,7 @@ module.exports = {
   requireManagement,
   isManagement,
   MANAGEMENT_ROLES,
+  ALL_ROLES,
   WORKER_SETTABLE_STATUSES,
   WORKER_STATUS_FROM,
   canSetStatus

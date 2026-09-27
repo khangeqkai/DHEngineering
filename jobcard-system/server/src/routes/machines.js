@@ -1,8 +1,10 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
-const { machineQueries, timeEntryQueries, recordHistory } = require('../db/database');
-const { authenticate, isManagement } = require('../middleware/auth');
+const { machineQueries, timeEntryQueries, recordHistory, actorName } = require('../db/database');
+const { authenticate, requireManagement } = require('../middleware/auth');
+const { validateCreateMachine, validateUpdateMachine } = require('../middleware/validation');
+const { diffFields } = require('../utils/historyChanges');
 const { parseMachineTokens } = require('./statistics-helpers');
 
 const router = express.Router();
@@ -38,16 +40,8 @@ router.get('/', (req, res) => {
 });
 
 // Create machine (admin or manager)
-router.post('/', (req, res) => {
-  if (!isManagement(req.user.role)) {
-    return res.status(403).json({ error: 'Insufficient permissions' });
-  }
-
+router.post('/', requireManagement, validateCreateMachine, (req, res) => {
   const { machineNumber, name, description } = req.body;
-
-  if (!machineNumber) {
-    return res.status(400).json({ error: 'Machine number is required' });
-  }
 
   try {
     // Check if an active machine already uses this number (archived ones don't count)
@@ -62,7 +56,7 @@ router.post('/', (req, res) => {
     const machine = machineQueries.getById.get(id);
 
     const created = toResponseFormat(machine);
-    recordHistory('machine', id, 'create', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('machine', id, 'create', req.user.userId, actorName(req), {
       machineNumber: { from: null, to: created.machineNumber },
       name: { from: null, to: created.name }
     });
@@ -75,17 +69,9 @@ router.post('/', (req, res) => {
 });
 
 // Update machine (admin or manager)
-router.put('/:id', (req, res) => {
-  if (!isManagement(req.user.role)) {
-    return res.status(403).json({ error: 'Insufficient permissions' });
-  }
-
+router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
   const { id } = req.params;
   const { machineNumber, name, description } = req.body;
-
-  if (!machineNumber) {
-    return res.status(400).json({ error: 'Machine number is required' });
-  }
 
   try {
     const existing = machineQueries.getById.get(id);
@@ -126,21 +112,14 @@ router.put('/:id', (req, res) => {
     const machine = machineQueries.getById.get(id);
 
     // Build proper diff of changed fields
-    const changes = {};
-    const fieldsToTrack = [
+    const changes = diffFields(existing, [
       ['machine_number', 'machineNumber', machineNumber],
       ['name', 'name', name || ''],
       ['description', 'description', description || ''],
-    ];
-    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
-    for (const [dbField, changeKey, newValue] of fieldsToTrack) {
-      if (normalizeEmpty(newValue) !== normalizeEmpty(existing[dbField])) {
-        changes[changeKey] = { from: existing[dbField], to: newValue };
-      }
-    }
+    ]);
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('machine', id, 'update', req.user.userId, req.user.name || req.user.username,
+      recordHistory('machine', id, 'update', req.user.userId, actorName(req),
         changes, toResponseFormat(machine));
     }
 
@@ -155,11 +134,7 @@ router.put('/:id', (req, res) => {
 // Machines are never permanently deleted: time entries record which machine ran a
 // job, so erasing one would leave that history pointing at nothing. Archiving keeps
 // the record (existing time entries stay valid) and frees its number for reuse.
-router.delete('/:id', (req, res) => {
-  if (!isManagement(req.user.role)) {
-    return res.status(403).json({ error: 'Insufficient permissions' });
-  }
-
+router.delete('/:id', requireManagement, (req, res) => {
   const { id } = req.params;
 
   try {
@@ -170,7 +145,7 @@ router.delete('/:id', (req, res) => {
 
     machineQueries.deactivate.run(id);
 
-    recordHistory('machine', id, 'archive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('machine', id, 'archive', req.user.userId, actorName(req), {
       status: { from: 'Active', to: 'Archived' }
     }, toResponseFormat(existing));
 
@@ -182,11 +157,7 @@ router.delete('/:id', (req, res) => {
 });
 
 // Restore archived machine (admin or manager)
-router.post('/:id/activate', (req, res) => {
-  if (!isManagement(req.user.role)) {
-    return res.status(403).json({ error: 'Insufficient permissions' });
-  }
-
+router.post('/:id/activate', requireManagement, (req, res) => {
   const { id } = req.params;
 
   try {
@@ -205,7 +176,7 @@ router.post('/:id/activate', (req, res) => {
 
     machineQueries.activate.run(id);
 
-    recordHistory('machine', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('machine', id, 'unarchive', req.user.userId, actorName(req), {
       status: { from: 'Archived', to: 'Active' }
     }, toResponseFormat(existing));
 

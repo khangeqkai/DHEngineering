@@ -12,7 +12,7 @@ const { resolveCategoryFolder, listCategoryFileNames } = require('./jobcard-file
 const { isWithinBase } = require('../utils/folderCreation');
 const { buildPacketPdf } = require('../utils/pdfPacket');
 const { renderHtmlToPdf } = require('../utils/htmlToPdf');
-const { jobcardQueries, recordHistory } = require('../db/database');
+const { jobcardQueries, recordHistory, actorName } = require('../db/database');
 
 const VALID_PACKET_EXT = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp', '.gif']);
 const MAX_PACKET_ITEMS = 20;
@@ -45,7 +45,7 @@ printRouter.post('/:id/print', authenticate, (req, res) => {
     const view = buildJobCardView(req.params.id, jobcard, isManagement(req.user.role));
     const html = renderJobCardHtml(view);
 
-    recordHistory('jobcard', req.params.id, 'update', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', req.params.id, 'update', req.user.userId, actorName(req), {
       jobCardPreviewed: { from: null, to: new Date().toISOString() }
     });
 
@@ -210,7 +210,7 @@ printRouter.post('/:id/printed', authenticate, validatePrinted, (req, res) => {
       return res.status(404).json({ error: 'Job card not found' });
     }
 
-    const userName = req.user.name || req.user.username;
+    const userName = actorName(req);
     const now = new Date().toISOString();
 
     if (req.body.cardIncluded === true) {
@@ -251,7 +251,7 @@ printRouter.post('/:id/saved', authenticate, validateSaved, (req, res) => {
       return res.status(404).json({ error: 'Job card not found' });
     }
 
-    recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
       packetSaved: { from: null, to: new Date().toISOString() }
     });
     res.json({ recorded: true });

@@ -13,7 +13,8 @@ const {
   companyQueries,
   contactQueries,
   getSettings,
-  recordHistory
+  recordHistory,
+  actorName
 } = require('../db/database');
 const { formatJobcard, buildChanges, createRelatedRecords, buildQaFillData, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
 const { copyQaTemplatesForJob, verifyQaTemplatesAvailable } = require('../utils/qaTemplateProvisioning');
@@ -224,7 +225,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
       if (Array.isArray(data.assigneeIds) && data.assigneeIds.length > 0) {
         createChanges['assignees'] = { from: null, to: assigneeNames(data.assigneeIds) };
       }
-      recordHistory('jobcard', id, 'create', req.user.userId, req.user.name || req.user.username, createChanges);
+      recordHistory('jobcard', id, 'create', req.user.userId, actorName(req), createChanges);
 
       return peek.jobNumber;
     });
@@ -429,7 +430,7 @@ router.put('/:id', authenticate, requireManagement, ...validateJobcardEnums, asy
     }
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, changes, null);
+      recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), changes, null);
     }
 
     const updated = jobcardQueries.getById.get(id);

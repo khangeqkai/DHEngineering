@@ -1,5 +1,15 @@
 const { body, param, query, validationResult } = require('express-validator');
 const jobStatuses = require('../shared/jobStatuses.json');
+const { ALL_ROLES } = require('./auth');
+
+// The PIN rule ("exactly 4 numeric digits") and its wording, in one place —
+// routes/auth.js's own inline password checks (update user, change own
+// password) reuse this instead of repeating the regex and picking their own
+// wording. The client has its own copy (client/src/utils/formatters.js,
+// PIN_REGEX) since client and server code can't share a module; the two are
+// cross-referenced by comment rather than kept in sync automatically.
+const PIN_REGEX = /^\d{4}$/;
+const PIN_MESSAGE = 'Password must be exactly 4 digits';
 
 // Lazy-loaded tag queries (avoids circular dependency with database.js)
 let _tagQueries = null;
@@ -212,13 +222,13 @@ const validateCreateUser = [
     .exists({ checkFalsy: true })
     .withMessage('Password is required')
     .isString()
-    .matches(/^\d{4}$/)
-    .withMessage('Password must be exactly 4 digits'),
+    .matches(PIN_REGEX)
+    .withMessage(PIN_MESSAGE),
   optionalEmail('email'),
   requiredString('name', 'Name').isLength({ max: 100 }).withMessage('Name cannot exceed 100 characters'),
   body('role')
     .optional()
-    .isIn(['admin', 'manager', 'user'])
+    .isIn(ALL_ROLES)
     .withMessage('Role must be "admin", "manager" or "user"'),
   handleValidationErrors
 ];
@@ -279,6 +289,20 @@ const validateUpdateSupplier = [
   requiredString('name', 'Supplier name'),
   optionalEmail('contactEmail'),
   optionalPhone('contactPhone'),
+  handleValidationErrors
+];
+
+// POST /machines — a machine is its number (required, non-blank); name and
+// description are optional free text, unvalidated here (as before). Mirrors
+// validateCreateSupplier.
+const validateCreateMachine = [
+  requiredString('machineNumber', 'Machine number'),
+  handleValidationErrors
+];
+
+// PUT /machines/:id
+const validateUpdateMachine = [
+  requiredString('machineNumber', 'Machine number'),
   handleValidationErrors
 ];
 
@@ -730,6 +754,10 @@ module.exports = {
   // Error handler
   handleValidationErrors,
 
+  // The PIN rule, for routes that check it inline instead of through a chain
+  PIN_REGEX,
+  PIN_MESSAGE,
+
   // Reusable validators (for building custom validation chains)
   requiredString,
   optionalEmail,
@@ -749,6 +777,8 @@ module.exports = {
   validateUpdateContact,
   validateCreateSupplier,
   validateUpdateSupplier,
+  validateCreateMachine,
+  validateUpdateMachine,
   validateJobcardListQuery,
   validateJobcardEnums,
   validateJobcardContactFields,

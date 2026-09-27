@@ -6,9 +6,10 @@ const rateLimit = require('express-rate-limit');
 
 const config = require('../config');
 const logger = require('../utils/logger');
-const { authenticate, requireManagement } = require('../middleware/auth');
-const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences } = require('../middleware/validation');
-const { db, userQueries, jobNoteQueries, recordHistory, getSettings } = require('../db/database');
+const { authenticate, requireManagement, ALL_ROLES } = require('../middleware/auth');
+const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences, PIN_REGEX, PIN_MESSAGE } = require('../middleware/validation');
+const { db, userQueries, jobNoteQueries, recordHistory, actorName, getSettings } = require('../db/database');
+const { diffFields } = require('../utils/historyChanges');
 const { isViaTunnel, clientIp } = require('../utils/homeAccess');
 
 const router = express.Router();
@@ -212,7 +213,7 @@ router.post('/login', validateLogin, async (req, res) => {
 router.post('/logout', authenticate, (req, res) => {
   try {
     userQueries.updateSessionToken.run(null, req.user.userId);
-    recordHistory('user', req.user.userId, 'logout', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('user', req.user.userId, 'logout', req.user.userId, actorName(req), {
       username: { from: req.user.username, to: null }
     });
     res.json({ success: true });
@@ -366,7 +367,7 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
     );
 
     // Record in history
-    recordHistory('user', userId, 'create', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('user', userId, 'create', req.user.userId, actorName(req), {
       username: { from: null, to: username },
       role: { from: null, to: role || 'user' },
       name: { from: null, to: name }
@@ -414,7 +415,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     if (role && !isAdmin && !isManager) {
       return res.status(403).json({ error: 'Only admins or managers can change roles' });
     }
-    if (role && !['admin', 'manager', 'user'].includes(role)) {
+    if (role && !ALL_ROLES.includes(role)) {
       return res.status(400).json({ error: 'Role must be "admin", "manager" or "user"' });
     }
     // A manager can never promote anyone to admin — that would let them grant
@@ -441,20 +442,21 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
       return res.status(400).json({ error: 'This is the only admin account. Make another person an admin first.' });
     }
 
-    // Track changes for audit (normalize empty string / null for comparison)
-    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
-    const changes = {};
-    if (name && normalizeEmpty(name) !== normalizeEmpty(user.name)) changes.name = { from: user.name, to: name };
-    if (email !== undefined && normalizeEmpty(email) !== normalizeEmpty(user.email)) {
-      changes.email = { from: user.email || null, to: email || null };
-    }
-    if (role && normalizeEmpty(role) !== normalizeEmpty(user.role)) changes.role = { from: user.role, to: role };
+    // Track changes for audit. Each field is only tracked when the caller actually
+    // sent it — name/role only when truthy (a falsy value here means "not provided",
+    // since neither can legitimately be cleared to blank), email whenever it's
+    // present at all (an empty string is a legitimate "clear the email" value).
+    const fieldsToTrack = [];
+    if (name) fieldsToTrack.push(['name', 'name', name]);
+    if (email !== undefined) fieldsToTrack.push(['email', 'email', email || null, user.email || null]);
+    if (role) fieldsToTrack.push(['role', 'role', role]);
+    const changes = diffFields(user, fieldsToTrack);
     if (password) changes.password = { from: '(hidden)', to: '(changed)' };
 
     // Validate password before any DB writes
     if (password) {
-      if (!/^\d{4}$/.test(password)) {
-        return res.status(400).json({ error: 'Password must be exactly 4 digits' });
+      if (!PIN_REGEX.test(password)) {
+        return res.status(400).json({ error: PIN_MESSAGE });
       }
     }
 
@@ -489,7 +491,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
 
     // Record in history
     if (Object.keys(changes).length > 0) {
-      recordHistory('user', id, 'update', req.user.userId, req.user.name || req.user.username, changes, { username: user.username, name: user.name });
+      recordHistory('user', id, 'update', req.user.userId, actorName(req), changes, { username: user.username, name: user.name });
     }
 
     const updatedUser = userQueries.getById.get(id);
@@ -532,7 +534,7 @@ router.post('/users/:id/deactivate', authenticate, requireManagement, (req, res)
     // blocked at next login. (The per-request active check also covers this.)
     userQueries.updateSessionToken.run(null, id);
 
-    recordHistory('user', id, 'archive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('user', id, 'archive', req.user.userId, actorName(req), {
       status: { from: 'Active', to: 'Archived' }
     }, { username: user.username, name: user.name });
 
@@ -560,7 +562,7 @@ router.post('/users/:id/activate', authenticate, requireManagement, (req, res) =
 
     userQueries.activate.run(id);
 
-    recordHistory('user', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('user', id, 'unarchive', req.user.userId, actorName(req), {
       status: { from: 'Archived', to: 'Active' }
     }, { username: user.username, name: user.name });
 
@@ -580,8 +582,8 @@ router.put('/change-password', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Current password and new password are required' });
     }
 
-    if (!/^\d{4}$/.test(newPassword)) {
-      return res.status(400).json({ error: 'New password must be exactly 4 digits' });
+    if (!PIN_REGEX.test(newPassword)) {
+      return res.status(400).json({ error: PIN_MESSAGE });
     }
 
     const user = userQueries.getById.get(req.user.userId);
@@ -612,7 +614,7 @@ router.put('/change-password', authenticate, async (req, res) => {
       { expiresIn: config.jwt.expiresIn }
     );
 
-    recordHistory('user', req.user.userId, 'update', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('user', req.user.userId, 'update', req.user.userId, actorName(req), {
       password: { from: '(hidden)', to: '(changed)' }
     }, { username: user.username, name: user.name });
 
