@@ -2,10 +2,7 @@ import { useState } from 'react';
 import { Info } from 'lucide-react';
 import CostingBreakdown from './CostingBreakdown';
 import FieldError from '../../common/FieldError';
-
-// Format a number as Australian currency with thousands separators.
-const money = (n) =>
-  `$${(Number(n) || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+import { formatMoney } from '../../../utils/formatters';
 
 // Format a multiplier for the read-only chips at a fixed two decimals, so the whole
 // multiplier column lines up spreadsheet-style: 1 → "1.00", 2.5 → "2.50", 1.75 → "1.75".
@@ -15,10 +12,10 @@ const mult = (n) => (Number(n) || 0).toFixed(2);
 // margins as a percentage, the special-labour hours as a plain figure.
 const REVERT_FORMAT = {
   labourSpecialHours: (n) => `${Number(n) || 0} hrs`,
-  labourSpecialRate: money,
-  materialsCost: money,
+  labourSpecialRate: formatMoney,
+  materialsCost: formatMoney,
   materialsProfitPercent: (n) => `${Number(n) || 0}%`,
-  subcontractorCost: money,
+  subcontractorCost: formatMoney,
   subcontractorProfitPercent: (n) => `${Number(n) || 0}%`
 };
 
@@ -274,8 +271,8 @@ export default function CostingTab({
           )}
           <FieldError message={hoursError} {...costingErrorProps(t.hoursName)} />
         </span>
-        <span className="tier-rate">{money(derivedRate)}</span>
-        <span className="tier-amount">{money(t.total)}</span>
+        <span className="tier-rate">{formatMoney(derivedRate)}</span>
+        <span className="tier-amount">{formatMoney(t.total)}</span>
       </div>
     );
   };
@@ -322,7 +319,7 @@ export default function CostingTab({
           </button>
           <div className="costing-grand">
             <span className="costing-grand-label">Grand total</span>
-            <span className="costing-grand-value">{money(totals.grandTotal)}</span>
+            <span className="costing-grand-value">{formatMoney(totals.grandTotal)}</span>
           </div>
           {status && (
             <span className={`costing-save-status ${status.className}`} role="status" aria-live="polite">
@@ -350,7 +347,7 @@ export default function CostingTab({
             </div>
             <div className="labour-block-subtotal">
               <span className="labour-subtotal-label">Labour subtotal</span>
-              <span className="labour-subtotal-value">{money(labourSubtotal)}</span>
+              <span className="labour-subtotal-value">{formatMoney(labourSubtotal)}</span>
             </div>
           </div>
 
@@ -376,7 +373,7 @@ export default function CostingTab({
                 <>
                   {' · '}
                   <button type="button" className="btn-link" onClick={useDefaultRate}>
-                    use company default ({money(costingForm.labourDefaultRate)})
+                    use company default ({formatMoney(costingForm.labourDefaultRate)})
                   </button>
                 </>
               )}
@@ -429,7 +426,7 @@ export default function CostingTab({
               <FieldError message={costingFieldError('labourSpecialRate')} {...costingErrorProps('labourSpecialRate')} />
             </div>
             <span className="ledger-eq">=</span>
-            <span className="ledger-total">{money(totals.labourSpecialTotal)}</span>
+            <span className="ledger-total">{formatMoney(totals.labourSpecialTotal)}</span>
             {costNote('labourSpecialDescription', 'e.g. Weekend shift to hit the shutdown date')}
           </div>
 
@@ -456,7 +453,7 @@ export default function CostingTab({
               <FieldError message={costingFieldError('materialsProfitPercent')} {...costingErrorProps('materialsProfitPercent')} />
             </div>
             <span className="ledger-eq">=</span>
-            <span className="ledger-total">{money(totals.materialsTotal)}</span>
+            <span className="ledger-total">{formatMoney(totals.materialsTotal)}</span>
             {costNote('materialsDescription', 'e.g. 316 stainless bar supplied for 4 parts')}
           </div>
 
@@ -483,7 +480,7 @@ export default function CostingTab({
               <FieldError message={costingFieldError('subcontractorProfitPercent')} {...costingErrorProps('subcontractorProfitPercent')} />
             </div>
             <span className="ledger-eq">=</span>
-            <span className="ledger-total">{money(totals.subcontractorTotal)}</span>
+            <span className="ledger-total">{formatMoney(totals.subcontractorTotal)}</span>
             {costNote('subcontractorDescription', 'e.g. Hard chrome plating and freight both ways')}
           </div>
         </div>

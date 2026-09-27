@@ -7,7 +7,7 @@ import { capitalizeFirst, formatDate } from '../../utils/formatters';
 import { api } from '../../services/api';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS, canChangeStatus, getSettableStatusValues } from './constants';
 import { statusToken, priorityToken } from '../JobCardList.constants';
-import { confirmInvoiceAnyway } from './jobCardPrompts';
+import { confirmInvoiceAnyway, confirmMarkInvoiced } from './jobCardPrompts';
 import { summarizeFieldStates, INSTANT_SAVE_STATUS_TEXT } from './useInstantSave';
 import { jobFieldMessage } from './fieldRules.mjs';
 import FieldError from '../common/FieldError';
@@ -244,9 +244,6 @@ export default function JobIdentityStrip({
           return;
         }
       }
-      const baseMessage = costingDirty
-        ? 'This will archive the job card. Your costing changes have been saved and will be billed. Continue?'
-        : 'This will archive the job card. Continue?';
       // The total is always asked of the server, never taken from the boxes on screen: the
       // server works it out afresh from the job's own rules every time it is asked, so it
       // carries every minute logged since this screen loaded, which the boxes do not.
@@ -265,19 +262,8 @@ export default function JobIdentityStrip({
           toast.dismiss(toastId);
         }
       }
-      // No shared money formatter exists in utils/formatters.js, and that file is out of
-      // scope for this change, so this mirrors CostingTab.jsx's `money()` (en-AU, two
-      // decimals) inline rather than adding a second maintained copy of it.
-      const message = typeof freshTotal === 'number'
-        ? <>{baseMessage}<br />Total: ${freshTotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
-        : baseMessage;
-      const ok = await showConfirm?.({
-        title: 'Mark as Invoiced',
-        message,
-        confirmLabel: 'Archive',
-        cancelLabel: 'Cancel',
-        confirmVariant: 'danger'
-      });
+      // Same question, same wording the job list's status badge asks — see jobCardPrompts.jsx.
+      const ok = await confirmMarkInvoiced(showConfirm, { total: freshTotal, costingChangesSaved: costingDirty });
       if (!ok) return;
     }
     // A part save already in flight (or queued behind one) must land BEFORE this

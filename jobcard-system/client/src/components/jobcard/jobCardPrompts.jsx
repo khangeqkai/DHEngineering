@@ -1,5 +1,6 @@
 import toast from 'react-hot-toast';
 import { describeAttachmentGaps } from '../../utils/attachmentWarnings';
+import { formatMoney } from '../../utils/formatters';
 
 // Show the job-card form validation errors as a toast: a single error plainly, or a
 // bulleted list when there are several.
@@ -38,5 +39,27 @@ export async function confirmInvoiceAnyway(warnings, showConfirm) {
     confirmLabel: 'Invoice anyway',
     cancelLabel: 'Go back',
     confirmVariant: 'warning'
+  }));
+}
+
+// The "mark as invoiced" confirm — archiving the job. Shared by the job screen's own
+// status control (JobIdentityStrip) and the job list's status badge, so both speak the
+// same words. `total` is a fresh figure fetched from the server (only the job screen
+// can fetch one, since only it has costing access — the list passes nothing and gets
+// the plain message); `costingChangesSaved` swaps in the sentence noting unsaved
+// pricing was saved first. Returns true if the user chose to archive.
+export async function confirmMarkInvoiced(showConfirm, { total = null, costingChangesSaved = false } = {}) {
+  const baseMessage = costingChangesSaved
+    ? 'This will archive the job card. Your costing changes have been saved and will be billed. Continue?'
+    : 'This will archive the job card. Continue?';
+  const message = typeof total === 'number'
+    ? <>{baseMessage}<br />Total: {formatMoney(total)}</>
+    : baseMessage;
+  return !!(await showConfirm?.({
+    title: 'Mark as Invoiced',
+    message,
+    confirmLabel: 'Archive',
+    cancelLabel: 'Cancel',
+    confirmVariant: 'danger'
   }));
 }

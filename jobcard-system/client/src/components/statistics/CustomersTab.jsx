@@ -2,6 +2,7 @@ import { Award, Filter, Building2 } from 'lucide-react';
 import DataTable from '../common/DataTable';
 import { useAuth } from '../../context/AuthContext';
 import { PRIORITY_LABELS } from '../JobCardList.constants';
+import { formatMoney } from '../../utils/formatters';
 
 // Bar colour per priority — anything not listed reads as the muted default.
 const PRIORITY_BAR_COLORS = {
@@ -166,7 +167,7 @@ export default function CustomersTab({
                 label: 'Invoiced Total',
                 sortable: true,
                 render: (val) => (
-                  <span>${Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span>{formatMoney(val)}</span>
                 )
               }] : [])
             ]}

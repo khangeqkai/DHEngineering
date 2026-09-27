@@ -108,3 +108,10 @@ export function formatCount(n) {
   if (!Number.isFinite(n)) return '0';
   return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
 }
+
+// A dollar amount for display: "$" + Australian thousands separators, always two
+// decimals ("$1,234.56"). Non-numbers read as $0.00. Always en-AU, never the
+// computer's own locale, so a total reads the same on every screen and PC.
+export function formatMoney(n) {
+  return `$${(Number(n) || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}

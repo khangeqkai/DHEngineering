@@ -54,7 +54,8 @@ export default function DataTable({
   const { sortKey, sortOrder, handleSort, sortedData } = useTableSort(
     filteredData,
     defaultSortKey,
-    defaultSortOrder
+    defaultSortOrder,
+    columns
   );
   const { columnWidths, onMouseDown } = useTableResize(columns);
 

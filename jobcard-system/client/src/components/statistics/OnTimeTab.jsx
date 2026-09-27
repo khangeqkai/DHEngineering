@@ -1,6 +1,7 @@
 import { CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import DataTable from '../common/DataTable';
 import { STATUS_LABELS } from '../JobCardList.constants';
+import { STATUS_SORT_ORDER } from '../jobcard/constants';
 import { formatDate } from '../../utils/formatters';
 
 export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading = false }) {
@@ -148,6 +149,7 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
                 key: 'status',
                 label: 'Status',
                 sortable: true,
+                sortValue: (row) => STATUS_SORT_ORDER[row.status] ?? 99,
                 render: (val) => (
                   <span className="tier-tag normal">{STATUS_LABELS[val] || val}</span>
                 )

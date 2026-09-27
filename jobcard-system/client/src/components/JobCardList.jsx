@@ -15,7 +15,8 @@ import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
 import { useMissingFilesIndicator } from '../hooks/useMissingFilesIndicator';
-import { describeAttachmentGaps, describeWorkWarning } from '../utils/attachmentWarnings';
+import { describeWorkWarning } from '../utils/attachmentWarnings';
+import { confirmInvoiceAnyway, confirmMarkInvoiced } from './jobcard/jobCardPrompts';
 import useJobCardSort from '../hooks/useJobCardSort';
 import useJobCardColumnOrder from '../hooks/useJobCardColumnOrder';
 import useJobCardColumnVisibility from '../hooks/useJobCardColumnVisibility';
@@ -194,16 +195,12 @@ export default function JobCardList() {
   const handleQuickStatusChange = useCallback(async (cardId, newStatus) => {
     setStatusPopoverId(null);
     if (newStatus === 'INVOICED') {
-      // Same question and mechanism the job screen asks before invoicing
-      // (JobIdentityStrip.jsx) — picking Invoiced from the list's status badge
-      // must not archive the job with no confirmation at all.
-      const proceed = await showConfirm({
-        title: 'Mark as Invoiced',
-        message: 'This will archive the job card. Continue?',
-        confirmLabel: 'Archive',
-        cancelLabel: 'Cancel',
-        confirmVariant: 'danger'
-      });
+      // Same question and wording the job screen asks before invoicing (see
+      // jobCardPrompts.jsx) — picking Invoiced from the list's status badge must
+      // not archive the job with no confirmation at all. The list has no costing
+      // access, so it never has a fresh total or unsaved pricing to mention —
+      // just the plain question.
+      const proceed = await confirmMarkInvoiced(showConfirm);
       if (!proceed) return;
     }
     const applyLocally = async () => {
@@ -222,34 +219,28 @@ export default function JobCardList() {
       await api.updateJobcardStatus(cardId, newStatus);
       await applyLocally();
     } catch (err) {
-      // Invoicing with declared-but-missing files: confirm, then resend.
+      // Invoicing with declared-but-missing files: confirm, then resend. Same
+      // shared confirm the job screen uses.
       if (err.status === 409 && err.data?.attachmentWarnings) {
-        const gaps = describeAttachmentGaps(err.data.attachmentWarnings);
-        const proceed = await showConfirm({
-          title: 'Files not attached',
-          message: (
-            <span>
-              This job was marked as having the following, but no file is attached yet:
-              <br />
-              {gaps.map((g, i) => <span key={i}>• {g}<br /></span>)}
-              <br />
-              Invoice anyway?
-            </span>
-          ),
-          confirmLabel: 'Invoice anyway',
-          cancelLabel: 'Go back',
-          confirmVariant: 'warning'
-        });
+        const proceed = await confirmInvoiceAnyway(err.data.attachmentWarnings, showConfirm);
         if (!proceed) return;
         try {
           await api.updateJobcardStatus(cardId, newStatus, true);
           await applyLocally();
         } catch (e2) {
+          // A failed resend still leaves this row stale (e.g. someone else invoiced
+          // or archived the job on another PC in the meantime) — reload so the row
+          // catches up with the server instead of sitting there wrong.
           toast.error(e2.message || 'Failed to update status', { id: 'status-update-failed' });
+          await loadJobcards();
         }
         return;
       }
+      // Any other failure can also mean the row is stale — most notably the job
+      // being invoiced/archived elsewhere already (closedJobGuard's 409), which
+      // otherwise left an errored-but-unchanged "Invoiced" row sitting in the list.
       toast.error(err.message || 'Failed to update status', { id: 'status-update-failed' });
+      await loadJobcards();
     }
   }, [showConfirm, refreshMissingFiles, loadJobcards]);
 

@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 
-export default function useTableSort(data, defaultSortKey = null, defaultSortOrder = 'asc') {
+export default function useTableSort(data, defaultSortKey = null, defaultSortOrder = 'asc', columns = []) {
   const [sortKey, setSortKey] = useState(defaultSortKey);
   const [sortOrder, setSortOrder] = useState(defaultSortOrder);
 
@@ -16,9 +16,14 @@ export default function useTableSort(data, defaultSortKey = null, defaultSortOrd
   const sortedData = useMemo(() => {
     if (!sortKey || !data) return data;
 
+    // A column can say "sort me by this instead" (e.g. a status pill sorting by
+    // workflow order rather than its label) by declaring sortValue(row).
+    const sortCol = columns.find(c => c.key === sortKey);
+    const getValue = sortCol?.sortValue ? sortCol.sortValue : (row) => row[sortKey];
+
     return [...data].sort((a, b) => {
-      let aVal = a[sortKey];
-      let bVal = b[sortKey];
+      let aVal = getValue(a);
+      let bVal = getValue(b);
 
       if (aVal == null && bVal == null) return 0;
       if (aVal == null) return 1;
@@ -34,18 +39,22 @@ export default function useTableSort(data, defaultSortKey = null, defaultSortOrd
       } else if (typeof aVal === 'number' && typeof bVal === 'number') {
         // no conversion needed
       } else {
-        aVal = String(aVal).toLowerCase();
-        bVal = String(bVal).toLowerCase();
+        aVal = String(aVal);
+        bVal = String(bVal);
       }
 
       let result;
-      if (aVal < bVal) result = -1;
+      if (typeof aVal === 'string') {
+        // Numeric-aware, case-insensitive compare so "Job 9" sorts before "Job 10"
+        // instead of "Job 10" landing between "Job 1" and "Job 2".
+        result = aVal.localeCompare(bVal, undefined, { numeric: true, sensitivity: 'base' });
+      } else if (aVal < bVal) result = -1;
       else if (aVal > bVal) result = 1;
       else result = 0;
 
       return sortOrder === 'desc' ? -result : result;
     });
-  }, [data, sortKey, sortOrder]);
+  }, [data, sortKey, sortOrder, columns]);
 
   return { sortKey, sortOrder, handleSort, sortedData };
 }

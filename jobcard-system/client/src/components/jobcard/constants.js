@@ -20,6 +20,10 @@ export const STATUS_OPTIONS = [
   { value: 'INVOICED', label: 'Invoiced' }
 ];
 
+// One workflow order for statuses, derived from STATUS_OPTIONS so every table
+// that sorts a status column (job list, search, statistics) agrees with it.
+export const STATUS_SORT_ORDER = Object.fromEntries(STATUS_OPTIONS.map((s, i) => [s.value, i]));
+
 export const QA_FORM_OPTIONS = [
   { code: 'DHE-F39', name: 'Critical QA Inspection Form' },
   { code: 'DHE-F15', name: 'First Article Inspection' },
