@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { getDefaultCostingForm } from './mappers';
 import { capitalizeFirst } from '../../utils/formatters';
 import { useFieldErrors } from '../../hooks/useFieldErrors';
+import { roundTo } from '../../../../server/src/shared/round';
 
 // The draft-text half of the pricing sheet: the committed figures, everything currently
 // being typed, and every commit/reset/revert operation on a single box. See
@@ -155,6 +156,12 @@ export function useCostingDrafts({ markEdited, requestImmediateSave }) {
       return { ok: false };
     }
     const parsed = parseFloat(trimmed);
+    // A figure too long to fit (over ~309 digits) parses as Infinity, which travels as
+    // empty and would save as 0 — or clear a hand-typed override.
+    if (!Number.isFinite(parsed)) {
+      setFieldErrors({ [name]: 'Enter a smaller number.' }, { [name]: raw });
+      return { ok: false };
+    }
     if (parsed < min) {
       setFieldErrors({ [name]: floorMessage(min) }, { [name]: raw });
       return { ok: false };
@@ -270,16 +277,20 @@ export function useCostingDrafts({ markEdited, requestImmediateSave }) {
       if (name in drafts) return parsedDraftValue(name, drafts[name], costingForm);
       return costingForm[name];
     };
+    // Each line rounded to whole cents and the grand total added up from those rounded
+    // lines — the same way the server works them out (costingCompute.js), so the figure
+    // on screen is the figure a save stores.
+    const cents = (n) => roundTo(n, 2);
     const labourRate = fig('labourRate');
-    const labourTotal = fig('labourHours') * labourRate;
-    const labourOt1Total = fig('labourOt1Hours') * labourRate * fig('labourOt1Multiplier');
-    const labourOt2Total = fig('labourOt2Hours') * labourRate * fig('labourOt2Multiplier');
-    const labourHolidayTotal = fig('labourHolidayHours') * labourRate * fig('labourHolidayMultiplier');
-    const labourSpecialTotal = fig('labourSpecialHours') * fig('labourSpecialRate');
-    const materialsTotal = fig('materialsCost') * (1 + fig('materialsProfitPercent') / 100);
-    const subcontractorTotal = fig('subcontractorCost') * (1 + fig('subcontractorProfitPercent') / 100);
-    const grandTotal = labourTotal + labourOt1Total + labourOt2Total + labourHolidayTotal
-      + labourSpecialTotal + materialsTotal + subcontractorTotal;
+    const labourTotal = cents(fig('labourHours') * labourRate);
+    const labourOt1Total = cents(fig('labourOt1Hours') * labourRate * fig('labourOt1Multiplier'));
+    const labourOt2Total = cents(fig('labourOt2Hours') * labourRate * fig('labourOt2Multiplier'));
+    const labourHolidayTotal = cents(fig('labourHolidayHours') * labourRate * fig('labourHolidayMultiplier'));
+    const labourSpecialTotal = cents(fig('labourSpecialHours') * fig('labourSpecialRate'));
+    const materialsTotal = cents(fig('materialsCost') * (1 + fig('materialsProfitPercent') / 100));
+    const subcontractorTotal = cents(fig('subcontractorCost') * (1 + fig('subcontractorProfitPercent') / 100));
+    const grandTotal = cents(labourTotal + labourOt1Total + labourOt2Total + labourHolidayTotal
+      + labourSpecialTotal + materialsTotal + subcontractorTotal);
 
     return { labourTotal, labourOt1Total, labourOt2Total, labourHolidayTotal, labourSpecialTotal, materialsTotal, subcontractorTotal, grandTotal };
   }, [costingForm, drafts]);

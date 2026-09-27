@@ -15,7 +15,6 @@
 // clock is consulted.
 
 const { makeOfficeFormatter } = require('./officeTime');
-const { roundTo } = require('../shared/round');
 
 const MIN = 60 * 1000;
 const DAY = 24 * 60 * MIN;
@@ -109,7 +108,8 @@ function dayTierTable(blocks) {
   return table;
 }
 
-// entries: [{ start_time, end_time }] (completed only). Returns hours per tier.
+// entries: [{ start_time, end_time }] (completed only). Returns hours per tier,
+// unrounded.
 // The OT/holiday tiers are summed from the minute walk; the normal tier is the
 // exact total minus the others, so the four always sum to the plain logged total.
 // A single completed block is never legitimately longer than this. New blocks are
@@ -179,10 +179,10 @@ function splitHours(entries, { schedule, holidays, timezone }) {
     }
   }
 
-  ot1 = roundTo(ot1, 3);
-  ot2 = roundTo(ot2, 3);
-  holiday = roundTo(holiday, 3);
-  const normalHours = Math.max(0, roundTo(totalHours - ot1 - ot2 - holiday, 3));
+  // Unrounded on purpose: every caller rounds once, to its own places, at the point it
+  // shows or stores a figure. Rounding here as well rounded twice (1.2347 h became 1.235
+  // here, then 1.24 in costing, where rounding once gives 1.23).
+  const normalHours = Math.max(0, totalHours - ot1 - ot2 - holiday);
 
   return { normalHours, ot1Hours: ot1, ot2Hours: ot2, holidayHours: holiday };
 }

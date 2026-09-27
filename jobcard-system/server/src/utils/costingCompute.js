@@ -50,8 +50,13 @@ function computeLiveCosting(jobId, incoming) {
   // Decided per figure, not per request: a save that carries some boxes and not others
   // keeps the stored value for the ones it left out. (Checking only "was anything
   // sent?" made a partial body zero every figure it didn't mention.) The screen sends
-  // every box, so today this only guards a hand-made request or a future partial save.
+  // only the figures it changed, so another admin's saved figures are never overwritten
+  // by this screen's out-of-date copy of them.
   const has = (key) => Object.prototype.hasOwnProperty.call(src, key);
+  // A figure only counts as sent when it is a real, finite number. One too long to fit
+  // (a pasted 400-digit figure reads as Infinity) or junk text is treated as not sent —
+  // the stored value stands — rather than read as 0, or as "use the automatic figure".
+  const sentFigure = (key) => has(key) && Number.isFinite(Number(src[key]));
 
   const ot = readOvertimeSettings();
   const baseline = jobOvertimeBaseline(existing, ot);
@@ -69,12 +74,13 @@ function computeLiveCosting(jobId, incoming) {
   const pickOverride = (incomingKey, existingCol, min = 0) => {
     if (has(incomingKey)) {
       const v = src[incomingKey];
-      return (v == null || v === '') ? null : Math.max(min, Number(v) || 0);
+      if (v == null || v === '') return null;
+      if (sentFigure(incomingKey)) return Math.max(min, Number(v));
     }
     return existing && existing[existingCol] != null ? existing[existingCol] : null;
   };
   const pickNum = (incomingKey, existingCol, dflt) => {
-    if (has(incomingKey)) return Math.max(0, Number(src[incomingKey]) || 0);
+    if (sentFigure(incomingKey)) return Math.max(0, Number(src[incomingKey]));
     return existing ? num(existing[existingCol], dflt) : dflt;
   };
   // Like pickNum but with a non-zero default for an omitted field. Submitted values
@@ -82,7 +88,7 @@ function computeLiveCosting(jobId, incoming) {
   // the client, which snaps a minus sign to 0); a stored value is used as-is, so an
   // old row that already holds a negative margin keeps it until someone edits it.
   const pickRaw = (incomingKey, existingCol, dflt) => {
-    if (has(incomingKey)) return Math.max(0, num(src[incomingKey], dflt));
+    if (sentFigure(incomingKey)) return Math.max(0, Number(src[incomingKey]));
     return existing ? num(existing[existingCol], dflt) : dflt;
   };
   // Free-text note on a manual cost line. Trimmed and length-capped; an empty note is
@@ -117,28 +123,31 @@ function computeLiveCosting(jobId, incoming) {
   const effOt2 = ot2Override == null ? ot2Calc : ot2Override;
   const effHoliday = holidayOverride == null ? holidayCalc : holidayOverride;
 
-  const normalTotal = effNormal * rate;
-  const ot1Total = effOt1 * rate * effOt1Mult;
-  const ot2Total = effOt2 * rate * effOt2Mult;
-  const holidayTotal = effHoliday * rate * baseline.holidayMult;
+  // Every money line is rounded to whole cents where it is worked out, and the grand
+  // total adds up those rounded lines — otherwise plain multiplication stores and audits
+  // figures like 51.74999999999999 for 1.15 h at $45.
+  const normalTotal = roundTo(effNormal * rate, 2);
+  const ot1Total = roundTo(effOt1 * rate * effOt1Mult, 2);
+  const ot2Total = roundTo(effOt2 * rate * effOt2Mult, 2);
+  const holidayTotal = roundTo(effHoliday * rate * baseline.holidayMult, 2);
 
   const specialHours = pickNum('labourSpecialHours', 'labour_special_hours', 0);
   const specialRate = pickNum('labourSpecialRate', 'labour_special_rate', 0);
-  const specialTotal = specialHours * specialRate;
+  const specialTotal = roundTo(specialHours * specialRate, 2);
   const specialDescription = pickText('labourSpecialDescription', 'labour_special_description');
 
   const materialsCost = pickNum('materialsCost', 'materials_cost', 0);
   const materialsProfit = pickRaw('materialsProfitPercent', 'materials_profit_percent', COSTING_DEFAULTS.materialsProfitPercent);
-  const materialsTotal = materialsCost * (1 + materialsProfit / 100);
+  const materialsTotal = roundTo(materialsCost * (1 + materialsProfit / 100), 2);
   const materialsDescription = pickText('materialsDescription', 'materials_description');
 
   const subCost = pickNum('subcontractorCost', 'subcontractor_cost', 0);
   const subProfit = pickRaw('subcontractorProfitPercent', 'subcontractor_profit_percent', COSTING_DEFAULTS.subcontractorProfitPercent);
-  const subTotal = subCost * (1 + subProfit / 100);
+  const subTotal = roundTo(subCost * (1 + subProfit / 100), 2);
   const subDescription = pickText('subcontractorDescription', 'subcontractor_description');
 
-  const grandTotal =
-    normalTotal + ot1Total + ot2Total + holidayTotal + specialTotal + materialsTotal + subTotal;
+  const grandTotal = roundTo(
+    normalTotal + ot1Total + ot2Total + holidayTotal + specialTotal + materialsTotal + subTotal, 2);
 
   const row = {
     id: (existing && existing.id) || src.id || `costing:${uuidv4()}`,
