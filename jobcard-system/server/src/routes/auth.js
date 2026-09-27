@@ -6,8 +6,8 @@ const rateLimit = require('express-rate-limit');
 
 const config = require('../config');
 const logger = require('../utils/logger');
-const { authenticate, requireManagement } = require('../middleware/auth');
-const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences } = require('../middleware/validation');
+const { authenticate, requireManagement, ALL_ROLES } = require('../middleware/auth');
+const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences, PIN_REGEX, PIN_MESSAGE } = require('../middleware/validation');
 const { db, userQueries, jobNoteQueries, recordHistory, getSettings } = require('../db/database');
 const { diffFields } = require('../utils/historyChanges');
 const { isViaTunnel, clientIp } = require('../utils/homeAccess');
@@ -415,7 +415,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     if (role && !isAdmin && !isManager) {
       return res.status(403).json({ error: 'Only admins or managers can change roles' });
     }
-    if (role && !['admin', 'manager', 'user'].includes(role)) {
+    if (role && !ALL_ROLES.includes(role)) {
       return res.status(400).json({ error: 'Role must be "admin", "manager" or "user"' });
     }
     // A manager can never promote anyone to admin — that would let them grant
@@ -455,8 +455,8 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
 
     // Validate password before any DB writes
     if (password) {
-      if (!/^\d{4}$/.test(password)) {
-        return res.status(400).json({ error: 'Password must be exactly 4 digits' });
+      if (!PIN_REGEX.test(password)) {
+        return res.status(400).json({ error: PIN_MESSAGE });
       }
     }
 
@@ -582,8 +582,8 @@ router.put('/change-password', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Current password and new password are required' });
     }
 
-    if (!/^\d{4}$/.test(newPassword)) {
-      return res.status(400).json({ error: 'New password must be exactly 4 digits' });
+    if (!PIN_REGEX.test(newPassword)) {
+      return res.status(400).json({ error: PIN_MESSAGE });
     }
 
     const user = userQueries.getById.get(req.user.userId);

@@ -22,6 +22,8 @@ export function capitalizeFirst(str) {
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
+// Mirrors PIN_REGEX/PIN_MESSAGE in server/src/middleware/validation.js — client
+// and server code can't share a module here, so the two are kept in step by hand.
 export function validatePassword(password) {
   if (!/^\d{4}$/.test(password)) return 'Password must be exactly 4 digits';
   return null;
