@@ -23,7 +23,10 @@ import './JobPaperworkHub.css';
 // a ticked selection into one combined packet to print or save. Available to every
 // user (workers included), so it lives on a header button, not an admin-only tab.
 
-function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, attachmentWarnings = null, parts = [] }, ref) {
+// `locked` is an invoiced (closed) job: its paperwork can still be viewed, printed and
+// saved as a packet, but nothing can be added, re-assigned or deleted until it is
+// unarchived — the server refuses those writes (closedJobGuard), so they aren't offered.
+function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, attachmentWarnings = null, parts = [], locked = false }, ref) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState('hub'); // 'hub' | 'camera'
   const [cameraCategory, setCameraCategory] = useState(null);
@@ -275,7 +278,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
     // The "For:" picker (which part a file belongs to) only makes sense for the two
     // folders that drive the missing-attachment warning, and only if the job has
     // saved parts to choose from.
-    const showOwnerPicker = (cat === 'job-files' || cat === 'customer-property-files') && assignableParts.length > 0;
+    const showOwnerPicker = !locked && (cat === 'job-files' || cat === 'customer-property-files') && assignableParts.length > 0;
     const targeted = attachTarget && attachTarget.category === cat;
     return (
       <div className={`hub-group${targeted ? ' hub-group--targeted' : ''}`} key={cat}>
@@ -300,12 +303,16 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
             </span>
           )}
           <span className="hub-group-spacer" />
-          <button type="button" className="hub-pillbtn" onClick={() => pickFiles(cat)} disabled={files.uploading} title="Add a file">
-            <Upload size={14} /> Add
-          </button>
-          <button type="button" className="hub-pillbtn" onClick={() => openCamera(cat)} title="Take a photo">
-            <Camera size={14} /> Photo
-          </button>
+          {!locked && (
+            <>
+              <button type="button" className="hub-pillbtn" onClick={() => pickFiles(cat)} disabled={files.uploading} title="Add a file">
+                <Upload size={14} /> Add
+              </button>
+              <button type="button" className="hub-pillbtn" onClick={() => openCamera(cat)} title="Take a photo">
+                <Camera size={14} /> Photo
+              </button>
+            </>
+          )}
         </div>
         <div className="hub-card">
           <ul className="hub-file-list">
@@ -328,7 +335,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
                 currentItemId={f.itemId}
                 assigning={files.assigningKeys.has(`${cat}/${f.name}`)}
                 onAssign={(itemId) => handleAssign(cat, f.name, itemId)}
-                canDelete={canDelete}
+                canDelete={canDelete && !locked}
                 deleting={files.deletingKeys.has(`${cat}/${f.name}`)}
                 onDelete={() => handleDelete(cat, f.name)}
               />
@@ -336,7 +343,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
           </ul>
           {loading && <div className="hub-loading"><div className="hub-loading-bar" /></div>}
           {!loading && list.length === 0 && !isJobFiles && (
-            <p className="hub-empty">Nothing here yet — use Add or Photo above</p>
+            <p className="hub-empty">{locked ? 'Nothing here' : 'Nothing here yet — use Add or Photo above'}</p>
           )}
         </div>
       </div>

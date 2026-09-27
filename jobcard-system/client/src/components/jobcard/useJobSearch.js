@@ -2,65 +2,59 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 
+// At most this many matches show in the dropdown — a person picking a previous
+// job is scanning a short list, not browsing every job that ever matched.
+const MAX_MATCHES = 10;
+
 export function useJobSearch({ excludeJobNumber } = {}) {
   const [focused, setFocused] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [matches, setMatches] = useState([]);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [loadVersion, setLoadVersion] = useState(0);
   const containerRef = useRef(null);
   const blurTimeoutRef = useRef(null);
-
-  const allJobsRef = useRef([]);
-  const lastLoadedAtRef = useRef(0);
-  const CACHE_TTL_MS = 30 * 1000;
-
-  const loadAllJobs = useCallback(async () => {
-    if (Date.now() - lastLoadedAtRef.current < CACHE_TTL_MS) return;
-    try {
-      // Invoicing archives a job, so a repeat job's most recent run is very
-      // often exactly the one this used to leave out — both lists are loaded
-      // and merged rather than just the active one.
-      const [active, archived] = await Promise.all([
-        api.getJobcards(),
-        api.getJobcards({ archived: true })
-      ]);
-      allJobsRef.current = [...(active || []), ...(archived || [])];
-      lastLoadedAtRef.current = Date.now();
-      setLoadVersion(v => v + 1);
-    } catch (err) {
-      // One message, replaced rather than stacked: focusing this box repeatedly
-      // while the server is away would otherwise pile up a copy each time.
-      toast.error('Could not load the job list to search. Type the job number in full instead.', { id: 'job-search-load-failed' });
-    }
-  }, []);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 200);
     return () => clearTimeout(timer);
   }, [query]);
 
+  // Search-as-you-type against the same jobs search the rest of the app uses —
+  // at most MAX_MATCHES results across active AND invoiced (archived) jobs,
+  // matching on job number and description (the server also matches company
+  // name for management, and never sends company/contact data to anyone else).
+  // Replaces the old behaviour of loading every active and archived job on
+  // focus into a 30s browser-side cache and filtering it there.
   useEffect(() => {
     if (!focused) return;
+    const id = ++requestIdRef.current;
 
-    const search = debouncedQuery.trim().toLowerCase();
-    const all = allJobsRef.current.filter(j => j.jobNumber !== excludeJobNumber);
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await api.search({
+          scope: 'jobs',
+          q: debouncedQuery.trim() || undefined,
+          includeArchived: 'true'
+        });
+        if (cancelled || id !== requestIdRef.current) return;
+        const results = (data?.results || [])
+          .filter(j => j.jobNumber !== excludeJobNumber)
+          .slice(0, MAX_MATCHES);
+        setMatches(results);
+        setShowDropdown(results.length > 0);
+      } catch (err) {
+        if (cancelled || id !== requestIdRef.current) return;
+        // One message, replaced rather than stacked: focusing this box repeatedly
+        // while the server is away would otherwise pile up a copy each time.
+        toast.error('Could not search the job list. Type the job number in full instead.', { id: 'job-search-load-failed' });
+      }
+    })();
 
-    if (!search) {
-      setMatches(all.slice(0, 10));
-      setShowDropdown(all.length > 0);
-      return;
-    }
-
-    const filtered = all.filter(j =>
-      (j.jobNumber || '').toLowerCase().includes(search) ||
-      (j.companyName || '').toLowerCase().includes(search) ||
-      (j.description || '').toLowerCase().includes(search)
-    ).slice(0, 10);
-    setMatches(filtered);
-    setShowDropdown(filtered.length > 0);
-  }, [focused, debouncedQuery, excludeJobNumber, loadVersion]);
+    return () => { cancelled = true; };
+  }, [focused, debouncedQuery, excludeJobNumber]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -79,8 +73,7 @@ export function useJobSearch({ excludeJobNumber } = {}) {
       blurTimeoutRef.current = null;
     }
     setFocused(true);
-    loadAllJobs();
-  }, [loadAllJobs]);
+  }, []);
 
   const handleBlur = useCallback(() => {
     blurTimeoutRef.current = setTimeout(() => {

@@ -9,13 +9,17 @@ export default function NotesSection({
   loading,
   loadError,
   onRetry,
-  canManage
+  canManage,
+  // An invoiced (closed) job: comments can be read but not added or deleted until it
+  // is unarchived (the server refuses both).
+  locked = false
 }) {
   return (
     <div className="form-section">
       <h3 className="form-section-title">Job Comments</h3>
 
       {/* Add note form */}
+      {!locked && (
       <div className="notes-add">
         <textarea
           aria-label="Add a comment"
@@ -38,6 +42,7 @@ export default function NotesSection({
           Add Comment
         </button>
       </div>
+      )}
 
       {/* Notes list */}
       {loadError ? (
@@ -65,7 +70,7 @@ export default function NotesSection({
                 <span className="note-time">
                   {formatDate(note.createdAt)} {formatTime(note.createdAt, { hour: '2-digit', minute: '2-digit' })}
                 </span>
-                {canManage && (
+                {canManage && !locked && (
                   <button
                     type="button"
                     className="btn btn-danger btn-sm note-delete"

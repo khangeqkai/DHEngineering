@@ -5,8 +5,8 @@ import { useCosting } from './useCosting';
 
 // Everything the job screen needs to run its pricing tab, in one place: fetching the
 // job's stored pricing once the Costing tab is actually opened (see the load effect
-// below), and the two moments that save straight away rather than waiting out the pricing
-// screen's own countdown — leaving the tab, and closing the job.
+// below), and the two moments that save it besides leaving a box or pressing Enter —
+// leaving the tab, and closing the job.
 //
 // Wraps useCosting, which owns the figures themselves, and hands back its whole API
 // plus the load state the pricing tab needs.
@@ -89,8 +89,8 @@ export function useJobCardCosting({
     }
   });
 
-  // Pricing saves itself a moment after each edit. The two paths below don't wait for
-  // that countdown. Held in a ref so they don't re-run (and re-save) on every render.
+  // Pricing saves itself when a box is left. The two paths below cover leaving with the
+  // cursor still in a box. Held in a ref so they don't re-run (and re-save) on every render.
   const flushRef = useRef(null);
   flushRef.current = costingHook.flushCosting;
 

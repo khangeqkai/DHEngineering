@@ -57,6 +57,11 @@ export function getDefaultFormData() {
   return {
     jobNumber: '',
     status: 'OPEN',
+    // Whether the job is invoiced and closed — the one flag jobLock.js's
+    // isJobClosed() reads, the same one the server's closedJobGuard keys on. A
+    // brand-new job is never closed; setFormDataFromJobCard (useJobCardForm.js)
+    // carries the loaded job's real value once one exists.
+    archived: false,
     companyId: '',
     contactId: '',
     contactName: '',
@@ -190,7 +195,18 @@ export function buildItemPayload(item) {
 // Build the job-card save payload the server expects from the open form. Customer
 // details are only sent on a brand-new job (they're frozen and read-only once a job
 // exists, and the server ignores them on edit anyway).
-export function buildJobcardPayload({ formData, contactFormData, assignees, validItems, canManage, isEdit, companyId, contactId }) {
+export function buildJobcardPayload({
+  formData, contactFormData, assignees, validItems, canManage, isEdit, companyId, contactId,
+  // Set only when the customer was picked from the autocomplete (not typed fresh) —
+  // detailChanges (useContactSearch.js) names which of their stored details were
+  // edited for this job, old -> new. With nobody picked, every field travels, same
+  // as before. With somebody picked, only a field actually changed for this job is
+  // sent; the rest are left out entirely so the server copies them from the saved
+  // contact as-is (validateJobcardContactFields / POST /jobcards, server S3) —
+  // picking a saved person is not a re-check of their stored phone/email.
+  pickedPerson = null,
+  detailChanges = {}
+}) {
   return {
     status: formData.status,
     // The customer is settled once, when the job is created. The company name
@@ -199,9 +215,14 @@ export function buildJobcardPayload({ formData, contactFormData, assignees, vali
     ...(canManage && !isEdit && {
       companyId,
       contactId,
-      contactName: contactFormData.contactName,
-      contactPhone: contactFormData.phone,
-      contactEmail: contactFormData.email,
+      // All three trimmed the same way before they travel — a pasted trailing
+      // space on the phone or the name would otherwise sit in what's stored even
+      // though the server's own optionalString check trims contactName itself;
+      // optionalPhone does not trim, and optionalEmail's isEmail() check rejects
+      // a trailing space outright, so email in particular needs this client-side.
+      ...((!pickedPerson || detailChanges.contactName) && { contactName: contactFormData.contactName.trim() }),
+      ...((!pickedPerson || detailChanges.phone) && { contactPhone: contactFormData.phone.trim() }),
+      ...((!pickedPerson || detailChanges.email) && { contactEmail: (contactFormData.email || '').trim() }),
     }),
     qualityLevel: formData.qualityLevel,
     qaLevelId: formData.qaLevelId || null,

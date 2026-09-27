@@ -1,12 +1,18 @@
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
+import { isJobClosedError } from '../../utils/jobLock';
 
 // onChange fires whenever the comment thread gains or loses a comment, handing
 // over the job's newest remaining comment (or null when the last one is gone),
 // so a list showing that comment can patch the one row instead of re-fetching
 // every job.
-export function useJobNotes(jobcardId, showConfirm, onChange) {
+//
+// onJobClosed (optional) fires instead of the ordinary failure toast when a post
+// or delete is refused because the job was invoiced and archived from another PC
+// while this screen still had it open (JobCardModal.jsx) — it shows the shared
+// sentence and reloads the job so the screen catches up.
+export function useJobNotes(jobcardId, showConfirm, onChange, onJobClosed) {
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,11 +51,12 @@ export function useJobNotes(jobcardId, showConfirm, onChange) {
       const list = await loadNotes();
       if (list) onChange?.(latestOf(list));
     } catch (err) {
-      toast.error(err.message || 'Failed to add note');
+      if (isJobClosedError(err)) onJobClosed?.();
+      else toast.error(err.message || 'Failed to add note');
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, newNote, loadNotes, onChange]);
+  }, [jobcardId, newNote, loadNotes, onChange, onJobClosed]);
 
   const deleteNote = useCallback(async (noteId) => {
     // Deleting a comment is permanent, so confirm first (naming the author when
@@ -71,11 +78,12 @@ export function useJobNotes(jobcardId, showConfirm, onChange) {
       const list = await loadNotes();
       if (list) onChange?.(latestOf(list));
     } catch (err) {
-      toast.error(err.message || 'Failed to delete note');
+      if (isJobClosedError(err)) onJobClosed?.();
+      else toast.error(err.message || 'Failed to delete note');
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, loadNotes, notes, showConfirm, onChange]);
+  }, [jobcardId, loadNotes, notes, showConfirm, onChange, onJobClosed]);
 
   const resetNotes = useCallback(() => {
     setNotes([]);

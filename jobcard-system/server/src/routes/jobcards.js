@@ -364,18 +364,10 @@ router.patch('/:id/status', authenticate, (req, res) => {
       return res.status(403).json({ error: 'Only management can set that status' });
     }
 
-    // A filed-away (archived) job is locked: refuse any status change before any
-    // write. Re-opening goes through the management-only unarchive action, which
-    // un-files the job and resets its status back to OPEN. We key off the
-    // filed-away flag alone — invoicing always files a job away, and unarchive
-    // clears both the flag and the INVOICED status, so once un-filed the job
-    // changes status normally.
-    if (existing.archived === 1) {
-      return res.status(409).json({
-        error: 'This job is invoiced and filed away. A manager must un-file it before its status can change.'
-      });
-    }
-
+    // Re-opening goes through the management-only unarchive action, which un-files
+    // the job and resets its status back to OPEN. An already-archived job never
+    // reaches this line: closedJobGuard (mounted ahead of every /:id route) has
+    // already refused any write to it except the allow-listed ones.
     const isInvoicingTransition = status === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
 
     // A running timer, or a just-stopped one whose form isn't saved yet, can't be

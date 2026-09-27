@@ -292,12 +292,16 @@ export async function exportActivityLog(activities) {
 
 // ── Job Cards — shared multi-sheet builder ───────────────────────────────────
 
-async function fetchInBatches(ids, fetcher, batchSize = 5) {
+// onBatchDone(doneCount, total) fires after each batch lands, so a caller can
+// step its progress message through "n of N" instead of one static line for
+// however long the whole stage takes.
+async function fetchInBatches(ids, fetcher, batchSize = 5, onBatchDone) {
   const results = [];
   for (let i = 0; i < ids.length; i += batchSize) {
     const batch = ids.slice(i, i + batchSize);
     const batchResults = await Promise.all(batch.map(fetcher));
     results.push(...batchResults);
+    onBatchDone?.(results.length, ids.length);
   }
   return results;
 }
@@ -320,7 +324,9 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
   // missing.
   onProgress?.('Fetching job card details...');
   const fullCards = await fetchInBatches(ids, id =>
-    api.getJobcard(id).catch(() => { failedJobIds.add(id); return null; })
+    api.getJobcard(id).catch(() => { failedJobIds.add(id); return null; }),
+    5,
+    (done, total) => onProgress?.(`Fetching job card details... (${done} of ${total})`)
   );
   const fullCardMap = {};
   for (const fc of fullCards) {
@@ -361,7 +367,9 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
     api.getTimeEntries(id).then(entries => ({ id, entries })).catch(() => {
       failedJobIds.add(id);
       return { id, entries: [] };
-    })
+    }),
+    5,
+    (done, total) => onProgress?.(`Fetching time entries... (${done} of ${total})`)
   );
 
   // Costing is admin-only (the endpoint refuses non-admins). Skip the fetch and the
@@ -374,7 +382,9 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
       api.getCosting(id).then(costing => ({ id, costing })).catch(() => {
         failedJobIds.add(id);
         return { id, costing: null };
-      })
+      }),
+      5,
+      (done, total) => onProgress?.(`Fetching costing... (${done} of ${total})`)
     );
   }
 
@@ -383,7 +393,9 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
     api.getJobNotes(id).then(notes => ({ id, notes })).catch(() => {
       failedJobIds.add(id);
       return { id, notes: [] };
-    })
+    }),
+    5,
+    (done, total) => onProgress?.(`Fetching notes... (${done} of ${total})`)
   );
 
   const jobLookup = {};

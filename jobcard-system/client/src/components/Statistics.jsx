@@ -34,7 +34,12 @@ export default function Statistics() {
   const [activeTab, setActiveTab] = useState('overview');
   const [exporting, setExporting] = useState(false);
   const reqIdRef = useRef(0);
-  const { setFieldErrors, clearFieldError, errorFor } = useFieldErrors();
+  // One mark covers the pair of date boxes together — its value is both dates as a
+  // pair, so editing either one moves the mark off whatever text it was raised
+  // against.
+  const { setFieldErrors, errorFor } = useFieldErrors(
+    (name) => (name === 'customRange' ? [customStartDate, customEndDate] : undefined)
+  );
 
   useEffect(() => {
     fetchStatistics();
@@ -123,9 +128,9 @@ export default function Statistics() {
         preset={preset}
         setPreset={setPreset}
         customStartDate={customStartDate}
-        setCustomStartDate={(v) => { clearFieldError('customRange'); setCustomStartDate(v); }}
+        setCustomStartDate={setCustomStartDate}
         customEndDate={customEndDate}
-        setCustomEndDate={(v) => { clearFieldError('customRange'); setCustomEndDate(v); }}
+        setCustomEndDate={setCustomEndDate}
         customRangeError={errorFor('customRange')}
         groupBy={groupBy}
         setGroupBy={setGroupBy}

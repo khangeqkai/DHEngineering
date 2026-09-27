@@ -2,14 +2,16 @@
 // Kept beside jobcard-mutations.js the same way backup-helpers.js sits by settings.js.
 
 const { userQueries } = require('../db/database');
-const { parseTreatments } = require('./jobcard-helpers');
+// Tag codes resolve to names through the printout's own helpers, so the trail and
+// the job card never disagree on what a stored code means.
+const { parseTreatments, tagName, friendlyTagList } = require('./jobcard-helpers');
 
 // Render a line item's treatments as a compact "Treatment→Supplier" string for
 // the audit log. Shared by create (starting items) and update (item changes).
 function treatmentsToText(treatments) {
   const arr = Array.isArray(treatments) ? treatments : parseTreatments(treatments);
   return arr.map(t => {
-    return `${t.value}→${t.supplierName || t.supplierId || '(no supplier)'}`;
+    return `${tagName('treatment', t.value)}→${t.supplierName || t.supplierId || '(no supplier)'}`;
   }).join(', ');
 }
 
@@ -24,10 +26,12 @@ function describePart(description, fallback) {
 }
 
 function itemSummary(qty, description, jobType, material, treatments, drawingsType, customerProperty) {
+  const jobTypeName = jobType ? tagName('job_type', jobType) : '';
+  const materialName = material ? tagName('material', material) : '';
   const tStr = treatmentsToText(treatments);
-  const draw = drawingsType ? ` {draw: ${drawingsType}}` : '';
-  const prop = customerProperty ? ` {prop: ${customerProperty}}` : '';
-  return `${qty || ''}x ${description}${jobType ? ' <' + jobType + '>' : ''}${material ? ' (' + material + ')' : ''}${tStr ? ' [' + tStr + ']' : ''}${draw}${prop}`;
+  const draw = drawingsType ? ` {draw: ${friendlyTagList(drawingsType, 'drawings')}}` : '';
+  const prop = customerProperty ? ` {prop: ${friendlyTagList(customerProperty, 'customer_property')}}` : '';
+  return `${qty || ''}x ${description}${jobTypeName ? ' <' + jobTypeName + '>' : ''}${materialName ? ' (' + materialName + ')' : ''}${tStr ? ' [' + tStr + ']' : ''}${draw}${prop}`;
 }
 
 // Resolve a list of assignee user IDs to a comma-separated display name string.

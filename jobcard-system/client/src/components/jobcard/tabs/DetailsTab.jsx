@@ -6,6 +6,7 @@ import ItemsTab from './ItemsTab';
 import DetailsReadOnlyView from './DetailsReadOnlyView';
 import NotesSection from './NotesSection';
 import ToggleTiles from '../../common/ToggleTiles';
+import FieldError from '../../common/FieldError';
 
 export default function DetailsTab({
   isEdit,
@@ -31,6 +32,9 @@ export default function DetailsTab({
   fieldFocused,
   handleFieldFocus,
   handleFieldBlur,
+  contactGroupClass = () => 'form-group',
+  contactErrorFor = () => null,
+  contactErrorProps = (name) => ({ id: `${name}-error` }),
   employees,
   assignees,
   toggleAssignee,
@@ -40,7 +44,6 @@ export default function DetailsTab({
   removeLineItem,
   onItemFieldChange,
   onItemFieldBlur,
-  onItemFieldType,
   itemErrorFor,
   suppliers,
   onSuppliersChanged,
@@ -76,9 +79,18 @@ export default function DetailsTab({
   timerLoading,
   onStartTimer,
   onStopTimer,
-  currentUserId
+  currentUserId,
+  // True once the job is invoiced and closed (jobLock.js's isJobClosed, worked
+  // out once in JobCardModal.jsx off the job's own archived flag — the one
+  // shared "can this job still be changed?" test). Locks the whole of this
+  // view below, for every role, including management.
+  jobClosed = false
 }) {
   const readOnly = isEdit && !canManage;
+  // Only ever read in the management view below (the worker view's own tiles are
+  // always readOnly, hardcoded in DetailsReadOnlyView) — locked once the job is
+  // closed, same as the rest of that view (see jc-lock-fieldset below).
+  const assigneesLocked = isEdit && jobClosed;
 
   // An existing job writes each of these fields the moment it changes (or, for the
   // reference boxes, the moment it's left) — a brand-new job has nothing to write
@@ -190,6 +202,7 @@ export default function DetailsTab({
             loadError={notesLoadError}
             onRetry={onRetryNotes}
             canManage={canManage}
+            locked={jobClosed}
           />
         )}
       </>
@@ -202,6 +215,12 @@ export default function DetailsTab({
   };
 
   return (
+    // A closed job locks every field, part, worker and comment box below for
+    // management too (workers already get the read-only view above) — a plain
+    // <fieldset disabled> refuses interaction with everything inside it, native
+    // controls and nested components alike, without threading a lock prop
+    // through each one. See .jc-lock-fieldset in JobCardModal.css.
+    <fieldset className="jc-lock-fieldset" disabled={jobClosed}>
     <div className="modal-form-grid">
       {/* Customer — frozen after creation: picked on create, read-only on edit (management only) */}
       {canManage && isEdit && (
@@ -316,7 +335,7 @@ export default function DetailsTab({
                 <span className="field-hint">Not on the list — it will be added as a new customer.</span>
               )}
             </div>
-            <div className="form-group">
+            <div className={selectedCompany && people.length > 0 ? 'form-group' : contactGroupClass('contactName')}>
               <label htmlFor="jc-contact">Contact</label>
               {selectedCompany && people.length > 0 ? (
                 <select
@@ -330,19 +349,24 @@ export default function DetailsTab({
                   ))}
                 </select>
               ) : (
-                <input
-                  id="jc-contact"
-                  type="text"
-                  value={contactFormData.contactName}
-                  onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
-                  onBlur={titleCaseBlur('contactName', handleContactFieldChange)}
-                />
+                <>
+                  <input
+                    id="jc-contact"
+                    type="text"
+                    value={contactFormData.contactName}
+                    onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
+                    onBlur={titleCaseBlur('contactName', handleContactFieldChange)}
+                    aria-invalid={contactErrorFor('contactName') ? true : undefined}
+                    aria-describedby={contactErrorFor('contactName') ? contactErrorProps('contactName').id : undefined}
+                  />
+                  <FieldError {...contactErrorProps('contactName')} message={contactErrorFor('contactName')} />
+                </>
               )}
             </div>
           </div>
           {selectedCompany && people.length > 0 && !contactFormData.contactId && (
             <div className="form-row">
-              <div className="form-group">
+              <div className={contactGroupClass('contactName')}>
                 <label htmlFor="jc-new-contact-name">New contact name</label>
                 <input
                   id="jc-new-contact-name"
@@ -350,29 +374,43 @@ export default function DetailsTab({
                   value={contactFormData.contactName}
                   onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
                   onBlur={titleCaseBlur('contactName', handleContactFieldChange)}
+                  aria-invalid={contactErrorFor('contactName') ? true : undefined}
+                  aria-describedby={contactErrorFor('contactName') ? contactErrorProps('contactName').id : undefined}
                 />
                 <span className="field-hint">They'll be added under {selectedCompany.name}.</span>
+                <FieldError {...contactErrorProps('contactName')} message={contactErrorFor('contactName')} />
               </div>
             </div>
           )}
           <div className="form-row">
-            <div className="form-group">
+            <div className={contactGroupClass('contactPhone')}>
               <label htmlFor="jc-phone">Phone</label>
               <input
                 id="jc-phone"
                 type="tel"
                 value={contactFormData.phone}
                 onChange={(e) => handleContactFieldChange('phone', e.target.value)}
+                aria-invalid={contactErrorFor('contactPhone') ? true : undefined}
+                aria-describedby={contactErrorFor('contactPhone') ? contactErrorProps('contactPhone').id : undefined}
               />
+              <FieldError {...contactErrorProps('contactPhone')} message={contactErrorFor('contactPhone')} />
             </div>
-            <div className="form-group">
+            <div className={contactGroupClass('contactEmail')}>
               <label htmlFor="jc-email">Email</label>
               <input
                 id="jc-email"
-                type="email"
+                // Plain text with an email keyboard: type="email" would let the
+                // browser's own bubble block Create before a bad address ever
+                // reaches the server to be marked on this box.
+                type="text"
+                inputMode="email"
+                autoComplete="email"
                 value={contactFormData.email}
                 onChange={(e) => handleContactFieldChange('email', e.target.value)}
+                aria-invalid={contactErrorFor('contactEmail') ? true : undefined}
+                aria-describedby={contactErrorFor('contactEmail') ? contactErrorProps('contactEmail').id : undefined}
               />
+              <FieldError {...contactErrorProps('contactEmail')} message={contactErrorFor('contactEmail')} />
             </div>
           </div>
         </div>
@@ -387,7 +425,6 @@ export default function DetailsTab({
         removeLineItem={removeLineItem}
         onItemFieldChange={onItemFieldChange}
         onItemFieldBlur={onItemFieldBlur}
-        onItemFieldType={onItemFieldType}
         itemErrorFor={itemErrorFor}
         suppliers={suppliers}
         onSuppliersChanged={onSuppliersChanged}
@@ -573,8 +610,12 @@ export default function DetailsTab({
       {/* Assignees */}
       <div className="form-section">
         <h3 className="form-section-title">Assignees</h3>
+        {assigneesLocked && (
+          <span className="field-hint">This job is invoiced and closed. Its workers can't be changed.</span>
+        )}
         <ToggleTiles
           ariaLabel="Assignees"
+          readOnly={assigneesLocked}
           minTileWidth={130}
           // employees is the active list only (loaded by the modal that owns
           // this screen) — a worker archived after being put on this job would
@@ -612,8 +653,10 @@ export default function DetailsTab({
           loadError={notesLoadError}
           onRetry={onRetryNotes}
           canManage={canManage}
+          locked={jobClosed}
         />
       )}
     </div>
+    </fieldset>
   );
 }

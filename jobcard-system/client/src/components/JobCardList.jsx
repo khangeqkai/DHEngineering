@@ -343,7 +343,7 @@ export default function JobCardList() {
         card.jobNumber?.toLowerCase().includes(lowerSearch) ||
         (canManage && card.contactName?.toLowerCase().includes(lowerSearch)) ||
         (canManage && card.companyName?.toLowerCase().includes(lowerSearch)) ||
-        (canManage && card.assignees?.some(a => a.userName?.toLowerCase().includes(lowerSearch))) ||
+        card.assignees?.some(a => a.userName?.toLowerCase().includes(lowerSearch)) ||
         card.description?.toLowerCase().includes(lowerSearch);
       return matchesFilter && matchesMine && matchesSearch;
     });
@@ -480,8 +480,8 @@ export default function JobCardList() {
         </label>
         {canManage && (
           <ExportButton
-            onExportView={() => displayedCards.length ? exportJobCardList(displayedCards, undefined, isAdmin) : false}
-            onExportAll={() => exportJobCardsFull(undefined, isAdmin)}
+            onExportView={(onProgress) => displayedCards.length ? exportJobCardList(displayedCards, onProgress, isAdmin) : false}
+            onExportAll={(onProgress) => exportJobCardsFull(onProgress, isAdmin)}
           />
         )}
         {!showArchived && canManage && (

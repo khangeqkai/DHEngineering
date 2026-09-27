@@ -9,7 +9,7 @@ const blankPerson = () => ({ contactName: '', phone: '', email: '' });
  * where a Jane who leaves is retired and a Bob who replaces her is added — the
  * company, and everything filed under it, stays put.
  */
-export default function CompanyPeople({ people, saving, pendingId, onCreate, onUpdate, onArchive, onRestore }) {
+export default function CompanyPeople({ people, saving, pendingId, onCreate, onUpdate, onArchive, onRestore, companyArchived }) {
   const [editingId, setEditingId] = useState(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(blankPerson());
@@ -74,12 +74,16 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
             lost the section structure for anyone moving by heading. The styling
             rule in App.css follows it to h2, so the look is unchanged. */}
         <h2>Contacts</h2>
-        {!adding && (
+        {!adding && !companyArchived && (
           <button type="button" className="btn btn-secondary btn-sm" onClick={startAdd}>
             <Plus size={14} /> Add person
           </button>
         )}
       </div>
+
+      {companyArchived && (
+        <p className="field-hint">This customer is archived. Restore it before adding people.</p>
+      )}
 
       {adding && editor}
 

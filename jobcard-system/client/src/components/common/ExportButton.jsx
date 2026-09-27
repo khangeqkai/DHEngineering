@@ -29,10 +29,13 @@ export default function ExportButton({ onExportView, onExportAll, viewLabel = 'E
     setOpen(false);
     setLoading(true);
     // A loading toast shows for the length of the export, not just after it finishes,
-    // and is then resolved into whichever outcome actually happened.
+    // and is then resolved into whichever outcome actually happened. Updated in place
+    // (same id) as the export moves through its stages, rather than sitting on one
+    // static "Exporting…" for however long it takes.
     const toastId = toast.loading('Exporting…');
+    const onProgress = (message) => toast.loading(message, { id: toastId });
     try {
-      const result = await exportFn();
+      const result = await exportFn(onProgress);
       if (result === false) {
         toast.error('No data to export', { id: toastId });
       } else if (result === 'canceled') {

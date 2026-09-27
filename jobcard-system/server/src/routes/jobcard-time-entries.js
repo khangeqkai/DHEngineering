@@ -18,7 +18,6 @@ const {
   toBoolFlag,
   wholeQty,
   findEntryForJob,
-  refuseIfArchived,
   checkCriticalInspection,
   toCamelCase
 } = require('../utils/timeEntryHelpers');
@@ -55,8 +54,6 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
   try {
     const { id } = req.params;
     const { itemId, workerId } = req.body;
-
-    if (refuseIfArchived(res, id)) return;
 
     // Decide whose timer this is. Normally it's the caller's own. An admin may
     // start a timer FOR another worker by naming them (workerId) — e.g. setting
@@ -223,8 +220,6 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
     const { id } = req.params;
     const data = req.body;
 
-    if (refuseIfArchived(res, id)) return;
-
     let startTime, endTime;
     try {
       startTime = normalizeTime(data.startTime);
@@ -355,8 +350,6 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
   try {
     const { id, entryId } = req.params;
     const data = req.body;
-
-    if (refuseIfArchived(res, id)) return;
 
     const existing = findEntryForJob(res, id, entryId);
     if (!existing) return;
@@ -583,8 +576,6 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
 router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (req, res) => {
   try {
     const { id, entryId } = req.params;
-
-    if (refuseIfArchived(res, id)) return;
 
     const existing = findEntryForJob(res, id, entryId);
     if (!existing) return;

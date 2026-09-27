@@ -114,6 +114,14 @@ const JUDGEMENT_RULES = [
     finding: 'Database-style naming has leaked past the conversion boundary. JavaScript is camelCase throughout.'
   },
   {
+    id: 'timed-save',
+    applies: (f) => isClient(f) && isCode(f),
+    question: 'Does this change make something save to the server on a timer or while the person is still typing — a setTimeout/setInterval/debounce/idle countdown that sends a save, or a save sent from a typed box on each keystroke?',
+    yes: 'A write fires after a delay or on a keystroke, instead of when the person leaves the box or picks an option.',
+    no: 'Saves fire only when a box is left, an option is picked, or a Save button is pressed; or nothing here saves.',
+    finding: 'Saves on a timer or mid-typing. A typed box saves when it is left; a tick box or dropdown saves when picked; nothing saves on a countdown.'
+  },
+  {
     id: 'costing-touched',
     applies: (f) => inApp(f) && isCode(f),
     question: 'Does this change affect how money is calculated, stored, displayed or who can see it — labour rates, overtime tiers, materials, totals, invoicing, or access to costing?',

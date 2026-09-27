@@ -94,15 +94,15 @@ export function useLabourRates() {
 
   const [timezone, setTimezoneState] = useState('');
 
-  const { setFieldErrors, clearFieldError, errorFor } = useFieldErrors();
+  const { setFieldErrors, errorFor } = useFieldErrors((name) => ({
+    defaultRate, ot1Mult, ot2Mult, holidayMult, timezone
+  }[name]));
 
-  // Each setter clears that field's submit-time error mark the moment the user
-  // changes the value again — same shape as useTimeEntries' handleTimeEntryChange.
-  const setDefaultRate = useCallback((v) => { clearFieldError('defaultRate'); setDefaultRateState(v); }, [clearFieldError]);
-  const setOt1Mult = useCallback((v) => { clearFieldError('ot1Mult'); setOt1MultState(v); }, [clearFieldError]);
-  const setOt2Mult = useCallback((v) => { clearFieldError('ot2Mult'); setOt2MultState(v); }, [clearFieldError]);
-  const setHolidayMult = useCallback((v) => { clearFieldError('holidayMult'); setHolidayMultState(v); }, [clearFieldError]);
-  const setTimezone = useCallback((v) => { clearFieldError('timezone'); setTimezoneState(v); }, [clearFieldError]);
+  const setDefaultRate = useCallback((v) => setDefaultRateState(v), []);
+  const setOt1Mult = useCallback((v) => setOt1MultState(v), []);
+  const setOt2Mult = useCallback((v) => setOt2MultState(v), []);
+  const setHolidayMult = useCallback((v) => setHolidayMultState(v), []);
+  const setTimezone = useCallback((v) => setTimezoneState(v), []);
 
   const [savingDefaultRate, setSavingDefaultRate] = useState(false);
   const [savingSchedule, setSavingSchedule] = useState(false);

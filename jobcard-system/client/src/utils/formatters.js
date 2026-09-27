@@ -1,3 +1,5 @@
+import { STATUS_LABELS, PRIORITY_LABELS } from '../components/JobCardList.constants';
+
 export function toTitleCase(str) {
   if (!str) return str;
   const titled = str.trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -75,6 +77,14 @@ export function formatTime(value, options) {
 // flags. These read better as Yes/No in the change list.
 const YES_NO_FIELDS = new Set(['isRepeatJob', 'is_repeat_job', 'repeatJob']);
 
+// A job's status and priority are stored in the trail as their internal codes
+// (e.g. "AWAITING_MATERIAL", "SAME_DAY") — the same codes the job list's status
+// badge and priority chip translate through these two maps. The `status` field
+// name is also used for plain Active/Archived entries (archiving a customer,
+// supplier, machine, user, tag); those values simply aren't keys in
+// STATUS_LABELS, so they fall through to the raw text unchanged.
+const STATUS_OR_PRIORITY_FIELDS = new Set(['status', 'priority']);
+
 // Render a single from/to history value for display. Returns a string for real
 // values, or null for empty (so callers can substitute '(empty)').
 export function formatHistoryValue(field, value) {
@@ -82,6 +92,11 @@ export function formatHistoryValue(field, value) {
   if (YES_NO_FIELDS.has(field)) {
     if (value === 1 || value === '1' || value === true || value === 'true') return 'Yes';
     if (value === 0 || value === '0' || value === false || value === 'false') return 'No';
+  }
+  if (STATUS_OR_PRIORITY_FIELDS.has(field)) {
+    const labels = field === 'status' ? STATUS_LABELS : PRIORITY_LABELS;
+    const known = labels[value];
+    if (known) return known;
   }
   return String(value);
 }

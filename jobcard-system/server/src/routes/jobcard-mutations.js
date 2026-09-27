@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { createJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireManagement } = require('../middleware/auth');
-const { validateJobcardEnums, validateJobcardDescriptionRequired, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions, validateItemQuantities } = require('../middleware/validation');
+const { validateJobcardEnums, validateJobcardDescriptionRequired, validateJobcardContactFields, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions, validateItemQuantities } = require('../middleware/validation');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -25,7 +25,7 @@ const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
 
 const router = express.Router();
 
-router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequired, ...validateJobcardEnums, async (req, res) => {
+router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequired, ...validateJobcardEnums, ...validateJobcardContactFields, async (req, res) => {
   try {
     const data = req.body;
 
@@ -96,6 +96,15 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
       if (contact.archived) {
         return res.status(400).json({ error: 'That contact person has been archived. Restore them or pick someone else.' });
       }
+
+      // Picking a saved person copies their stored phone/email as-is, no re-check —
+      // only details actually typed for this job are validated. A field the client
+      // left out of the body (undefined) is filled from the saved record; a field
+      // present in the body (even '') is what was typed for this job and is stored
+      // exactly as sent, already validated by validateJobcardContactFields.
+      if (data.contactName === undefined) data.contactName = contact.contact_name || null;
+      if (data.contactPhone === undefined) data.contactPhone = contact.phone || null;
+      if (data.contactEmail === undefined) data.contactEmail = contact.email || null;
     }
 
     const id = `jobcard:${uuidv4()}`;
@@ -293,14 +302,10 @@ router.put('/:id', authenticate, requireManagement, ...validateJobcardEnums, asy
       return res.status(404).json({ error: 'Job card not found' });
     }
 
-    // A filed-away (archived) job is locked: refuse a status change here too, so
-    // even an admin can't recreate the filed-away-but-open state by editing.
-    // Editing other fields on an archived job is still allowed, and once a job is
-    // un-filed (archived cleared, status reset to OPEN) status edits work normally.
-    if (data.status !== undefined && data.status !== existing.status &&
-        existing.archived === 1) {
-      return res.status(409).json({ error: 'This job is invoiced and filed away. Un-file it before changing its status.' });
-    }
+    // An already-archived job never reaches this line: closedJobGuard (mounted
+    // ahead of every /:id route) has already refused any write to it except the
+    // allow-listed ones, so nothing on a filed-away job — including its status —
+    // can change until it is unarchived.
 
     // Validate a changed QA level BEFORE touching the database, so an invalid
     // selection can't leave a half-applied update committed.

@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { isJobClosedError } from '../../utils/jobLock';
 
 // A `run()` a caller resolves with this instead of its usual result to mean
 // "nothing was stored by this attempt, so there is nothing to count as
@@ -46,7 +47,7 @@ export const NOT_LANDED = Symbol('notLanded');
  * moment its own turn starts — which is also the moment any stale 'failed' from
  * the write ahead of it gets overwritten, correctly, back to 'inFlight'.
  */
-export function useSaveQueue(jobCardId) {
+export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
   const jobCardIdRef = useRef(jobCardId);
   jobCardIdRef.current = jobCardId;
 
@@ -128,11 +129,23 @@ export function useSaveQueue(jobCardId) {
         (err) => {
           if (isCurrent()) {
             setEntry(key, { label, state: 'failed' });
-            // Never re-sent automatically — house rule. This only flags the key
-            // and waits on the caller to enqueue it again (typically the user
-            // editing it again). A stable id per key means a repeat failure
-            // replaces the toast instead of stacking a new one on top of it.
-            toast.error(err?.message || `Couldn't save ${label}`, { id: `save-queue-${key}` });
+            // The job was invoiced and archived from another PC while this screen
+            // still had it open — the write was already on its way when that
+            // happened, so it reaches the server as any other write would and is
+            // refused the same way (closedJobGuard). onJobClosed (JobCardModal.jsx)
+            // is the one place that shows the shared sentence and reloads the job
+            // so the screen catches up and goes read-only, instead of leaving
+            // every other box on screen still offering edits that would only fail
+            // the same way.
+            if (isJobClosedError(err)) {
+              onJobClosed?.();
+            } else {
+              // Never re-sent automatically — house rule. This only flags the key
+              // and waits on the caller to enqueue it again (typically the user
+              // editing it again). A stable id per key means a repeat failure
+              // replaces the toast instead of stacking a new one on top of it.
+              toast.error(err?.message || `Couldn't save ${label}`, { id: `save-queue-${key}` });
+            }
           }
           throw err;
         }

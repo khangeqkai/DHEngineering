@@ -7,6 +7,33 @@ import { showFormErrors } from './jobCardPrompts';
 import { resolveJobContactId } from './jobCardContact';
 import { warningToastIcon } from '../common/toastIcons';
 
+// A 400's fields (validation.js's handleValidationErrors, S4) name whichever route
+// actually rejected the request — POST /jobcards itself (contactName / contactPhone /
+// contactEmail) or one of the contact routes resolveJobContactId calls first,
+// "Update contact" / "Add as new person" (contactName / phone / email). Both land on
+// the same three boxes in DetailsTab.jsx, so both spellings are normalised to the
+// box's own key here rather than the caller having to know which route it was.
+const CONTACT_FIELD_TO_BOX = {
+  contactName: 'contactName',
+  contactPhone: 'contactPhone',
+  phone: 'contactPhone',
+  contactEmail: 'contactEmail',
+  email: 'contactEmail'
+};
+
+// Picks the contact-box errors out of a 400's `fields` array, or null when there
+// aren't any (a validation failure on something else, or no `fields` at all —
+// an older server response, or a failure that was never a validation 400).
+function contactFieldErrorsFrom(fields) {
+  if (!Array.isArray(fields)) return null;
+  const out = {};
+  for (const { field, message } of fields) {
+    const box = CONTACT_FIELD_TO_BOX[field];
+    if (box) out[box] = message;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 /**
  * The job card's Save — create only. An existing job has no Save button any more:
  * the details fields, the parts list and the people list each write themselves the
@@ -22,7 +49,11 @@ export function useJobCardSave({
   showConfirm,
   onSuccess,
   onClose,
-  setAttachmentWarnings
+  setAttachmentWarnings,
+  // Marks a contact box (JobCardModal.jsx's own useFieldErrors instance) instead of
+  // a pop-up when a 400 names contactName/contactPhone/contactEmail — see
+  // contactFieldErrorsFrom above.
+  onContactFieldErrors
 }) {
   const [saving, setSaving] = useState(false);
 
@@ -72,7 +103,9 @@ export function useJobCardSave({
         canManage,
         isEdit,
         companyId: customer.companyId,
-        contactId: customer.contactId
+        contactId: customer.contactId,
+        pickedPerson: contactHook.pickedPerson,
+        detailChanges: contactHook.detailChanges
       });
 
       const result = await api.createJobcard(jobcardData);
@@ -92,11 +125,20 @@ export function useJobCardSave({
       setAttachmentWarnings(result?.attachmentWarnings || null);
       onClose();
     } catch (err) {
-      toast.error(err.message || 'Failed to save job card');
+      const contactErrors = contactFieldErrorsFrom(err.data?.fields);
+      if (contactErrors) {
+        onContactFieldErrors?.(contactErrors);
+        // Anything refused alongside the contact boxes that has no box of its own still
+        // has to be said, or it would vanish behind the marked boxes.
+        const others = err.data.fields.filter(f => !CONTACT_FIELD_TO_BOX[f.field]).map(f => f.message);
+        if (others.length > 0) toast.error(others.join('. '), { id: 'job-create-failed' });
+      } else {
+        toast.error(err.message || 'Failed to save job card');
+      }
     } finally {
       setSaving(false);
     }
-  }, [canManage, isEdit, formHook, contactHook, showConfirm, onSuccess, onClose, setAttachmentWarnings]);
+  }, [canManage, isEdit, formHook, contactHook, showConfirm, onSuccess, onClose, setAttachmentWarnings, onContactFieldErrors]);
 
   return { saving, handleSubmit };
 }

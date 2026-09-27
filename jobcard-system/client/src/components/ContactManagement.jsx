@@ -305,6 +305,7 @@ export default function ContactManagement() {
               onUpdate={updatePerson}
               onArchive={archivePerson}
               onRestore={restorePerson}
+              companyArchived={!!editingCompany.archived}
             />
           ) : (
             <p className="field-note">Save the customer first, then add the people you deal with there.</p>

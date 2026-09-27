@@ -21,7 +21,9 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
     notes: ''
   });
   const [saving, setSaving] = useState(false);
-  const { setFieldErrors, clearFieldError, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors();
+  const { setFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
+    (name) => (name === 'supplierName' ? form.name : undefined)
+  );
 
   const set = (field, val) => setForm(prev => ({ ...prev, [field]: val }));
 
@@ -77,7 +79,7 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
             value={form.name}
             autoFocus
             required
-            onChange={(e) => { clearFieldError('supplierName'); set('name', e.target.value); }}
+            onChange={(e) => set('name', e.target.value)}
             onBlur={formatOnBlur('name', toTitleCase)}
           />
           <FieldError {...errorProps('supplierName')} message={errorFor('supplierName')} />

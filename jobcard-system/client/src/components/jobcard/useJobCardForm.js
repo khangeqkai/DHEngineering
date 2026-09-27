@@ -4,6 +4,8 @@ import { getDefaultFormData, mapLineItemFromApi, buildItemPayload } from './mapp
 import { isSavedLineItem } from './jobCardValidation.mjs';
 import { lineItemHasContent } from './closeReasons';
 import { useSaveQueue } from './useSaveQueue';
+import { isJobClosed } from '../../utils/jobLock';
+import { useFieldErrors } from '../../hooks/useFieldErrors';
 
 const makeEmptyLineItem = (itemNumber = 1) => ({
   id: Date.now() + Math.random(),
@@ -23,8 +25,11 @@ const makeEmptyLineItem = (itemNumber = 1) => ({
 //
 // Status is deliberately left out: choosing a new status sends itself straight
 // away, and the server also nudges it on its own when work starts or finishes.
+// archived is left out for the same reason — it isn't a box anyone edits, it's
+// set by the server the moment a job is invoiced (and cleared by unarchiving),
+// so it must never make the amber "unsaved" ring light up on its own.
 const snapshotForm = (formData) => {
-  const { status, ...rest } = formData;
+  const { status, archived, ...rest } = formData;
   return JSON.stringify(rest);
 };
 const snapshotAssignees = (assignees) =>
@@ -72,11 +77,11 @@ const pristineSaved = () => ({
  * (useJobCardInstantSaves.js), so every instant write on the card shares the one
  * record instead of each area keeping its own.
  */
-export function useJobCardForm(jobCardId, { onInstantSave } = {}) {
+export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed } = {}) {
   // Core form data
   const [formData, setFormData] = useState(getDefaultFormData());
   const [jobNumber, setJobNumber] = useState('');
-  const saveQueue = useSaveQueue(jobCardId);
+  const saveQueue = useSaveQueue(jobCardId, { onJobClosed });
 
   // Related data (locally managed for create mode, from API for edit mode)
   const [assignees, setAssignees] = useState([]);
@@ -100,7 +105,17 @@ export function useJobCardForm(jobCardId, { onInstantSave } = {}) {
   // (useUnsavedGuard.js, via closeReasons.js) can see it — JobIdentityStrip
   // unmounts on every close (JobCardModal returns null rather than hiding it), so
   // resetForm below clears this the same way a fresh mount would have.
-  const [descriptionError, setDescriptionError] = useState(null);
+  // The description box's mark follows the text it was raised against, like every
+  // other mark in the app (hooks/useFieldErrors.js) — typing, a reset or a reply that
+  // changes the box takes it away without anyone having to clear it by hand.
+  const descriptionMarks = useFieldErrors(() => formData.description);
+  const descriptionError = descriptionMarks.fieldErrors.description ?? null;
+  const { setFieldErrors: setDescriptionMarks, clearAll: clearDescriptionMark } = descriptionMarks;
+  // Marks the box against the exact text judged — the tidied value may not have
+  // reached formData yet when the leave-time check runs.
+  const markDescription = useCallback((message, judgedText) => {
+    setDescriptionMarks({ description: message }, { description: judgedText });
+  }, [setDescriptionMarks]);
   // Assigned during render rather than in an effect, so toggleAssignee below always
   // reads the people list and the open job as they stand right now, not one commit
   // behind: assigneesRef decides the next tap's direction without listing
@@ -233,6 +248,12 @@ export function useJobCardForm(jobCardId, { onInstantSave } = {}) {
   // unsaved ring correctly flags it — writes are never re-sent automatically, so it
   // waits on the user to retry.
   const toggleAssignee = useCallback((employee) => {
+    // A closed (invoiced) job is locked — its workers are shown read-only
+    // everywhere this renders (the job screen's tiles, the job list's avatars),
+    // so nothing should ever call this for one. Refused here too, so a caller
+    // that slips through anyway can't queue a write the server would refuse
+    // regardless (jobLock.js's isJobClosed — the one shared test).
+    if (isJobClosed(formData)) return;
     const workerId = employee.id;
     const willAssign = !assigneesRef.current.some(a => a.userId === workerId);
 
@@ -263,7 +284,7 @@ export function useJobCardForm(jobCardId, { onInstantSave } = {}) {
             : snapshotAssignees(JSON.parse(prev.assignees).filter(id => id !== workerId).map(id => ({ userId: id })))
         }));
       }), { label });
-  }, [onInstantSave, saveQueue]);
+  }, [onInstantSave, saveQueue, formData.status]);
 
   // Moves one field's baseline forward after an instant-save write succeeds (see
   // useInstantSave.js) — the same idea as toggleAssignee moving the assignees
@@ -344,6 +365,7 @@ export function useJobCardForm(jobCardId, { onInstantSave } = {}) {
     const loadedForm = {
       jobNumber: loadedJobNumber,
       status: jobcardData.status || 'OPEN',
+      archived: Boolean(jobcardData.archived),
       companyId: jobcardData.companyId || '',
       contactId: jobcardData.contactId || '',
       contactName: jobcardData.contactName || '',
@@ -399,7 +421,7 @@ export function useJobCardForm(jobCardId, { onInstantSave } = {}) {
     setJobNumber('');
     setAssignees([]);
     setLineItems([makeEmptyLineItem(1)]);
-    setDescriptionError(null);
+    clearDescriptionMark(); // new form session
     // Back to the pristine baseline, same as the hook's own initial state, so a
     // second new card starts clean exactly like the first one did.
     setSaved(pristineSaved());
@@ -447,7 +469,7 @@ export function useJobCardForm(jobCardId, { onInstantSave } = {}) {
     savedItemFields,
     resetForm,
     descriptionError,
-    setDescriptionError,
+    markDescription,
     // True once a loaded job has edits that haven't reached the job yet — a failed
     // write, a required box left empty, or a part row still waiting on its own
     // create/update/delete. See the header comment on isDirty in

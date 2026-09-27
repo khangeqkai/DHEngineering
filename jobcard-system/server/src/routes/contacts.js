@@ -24,6 +24,9 @@ router.post('/', requireManagement, validateCreateContact, (req, res) => {
     if (!company) {
       return res.status(400).json({ error: 'Pick a company for this person first' });
     }
+    if (company.archived) {
+      return res.status(409).json({ error: 'That customer is archived. Restore it before adding people.' });
+    }
 
     const id = uuidv4();
     contactQueries.create.run(id, companyId, contactName || null, phone || null, email || null);

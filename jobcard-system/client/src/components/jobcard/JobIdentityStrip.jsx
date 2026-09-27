@@ -11,6 +11,7 @@ import { confirmInvoiceAnyway } from './jobCardPrompts';
 import { summarizeFieldStates, INSTANT_SAVE_STATUS_TEXT } from './useInstantSave';
 import { jobFieldMessage } from './fieldRules.mjs';
 import FieldError from '../common/FieldError';
+import { isJobClosedError } from '../../utils/jobLock';
 
 const PRIORITY_VALUES = PRIORITY_OPTIONS.map(p => p.value);
 
@@ -28,12 +29,25 @@ export default function JobIdentityStrip({
   showConfirm,
   onSuccess,
   costingDirty = false,
+  // True while any pricing box sits red (invalid, unsent) — independent of costingDirty,
+  // which only tracks committed figures waiting on a save. invalidCostingField names the
+  // first one; revealCosting switches the job screen to the Costing tab and scrolls that
+  // field into view (a no-op field name is fine — it just won't find anything to scroll to).
+  costingInvalid = false,
+  invalidCostingField = null,
+  revealCosting,
   canSeeTotal = false,
   saveCosting,
   fetchCurrentTotal,
   descriptionError = null,
-  setDescriptionError,
-  whenPartSavesSettled
+  markDescription,
+  whenPartSavesSettled,
+  // The job was invoiced and archived from another PC while this screen still had
+  // it open — this status write reaches the server after that and is refused the
+  // same way any other write against a closed job is (closedJobGuard). Fires
+  // instead of the ordinary failure toast; shows the shared sentence and reloads
+  // the job so the screen catches up.
+  onJobClosed
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
@@ -199,6 +213,18 @@ export default function JobIdentityStrip({
       return;
     }
     if (newStatus === 'INVOICED') {
+      // A red pricing box is refused outright, before anything else about invoicing is
+      // even asked — the job is never billed on a figure the admin didn't mean, and
+      // there's no "discard" offered here the way closing the job offers one: the admin
+      // has to actually fix it. By the time this click handler runs, whatever box the
+      // cursor was last in has already been blurred (clicking anywhere else always blurs
+      // the previously focused box first), so costingInvalid already reflects every box
+      // on the sheet, typed-in or not.
+      if (costingInvalid) {
+        toast.error('Fix the red pricing figure before invoicing.', { id: 'invoice-costing-invalid' });
+        revealCosting?.(invalidCostingField);
+        return;
+      }
       // Invoicing files the job away, so the figure in this question has to be the figure
       // that actually gets billed. Unsaved pricing edits are therefore sent FIRST, before
       // the question is asked, rather than after it is answered. The on-screen total can't
@@ -280,10 +306,14 @@ export default function JobIdentityStrip({
           await api.updateJobcardStatus(jobCardId, newStatus, true);
           applyLocally();
         } catch (e2) {
-          toast.error(e2.message || 'Failed to update status', { id: 'status-update-failed' });
+          if (isJobClosedError(e2)) onJobClosed?.();
+          else toast.error(e2.message || 'Failed to update status', { id: 'status-update-failed' });
         }
         return;
       }
+      // The job was invoiced and archived from another PC while this screen still
+      // had it open — this pick reached the server after that.
+      if (isJobClosedError(err)) { onJobClosed?.(); return; }
       toast.error(err.message || 'Failed to update status', { id: 'status-update-failed' });
     }
   };
@@ -377,10 +407,7 @@ export default function JobIdentityStrip({
                 aria-invalid={descriptionError ? true : undefined}
                 aria-describedby={descriptionError ? 'jc-description-error' : undefined}
                 value={description}
-                onChange={(e) => {
-                  setField('description', e.target.value);
-                  if (descriptionError && e.target.value.trim()) setDescriptionError(null);
-                }}
+                onChange={(e) => setField('description', e.target.value)}
                 onBlur={(e) => {
                   // The tidy-up and the write are one action: capitalizeFirst runs
                   // first, and the tidied value — not what was actually typed — is
@@ -396,11 +423,11 @@ export default function JobIdentityStrip({
                   const message = jobFieldMessage('description', formatted);
                   if (message) {
                     // Emptied: mark the field, send nothing, leave the stored
-                    // description alone. Typing a real one clears the mark above.
-                    setDescriptionError(message);
+                    // description alone. The mark goes by itself once the box
+                    // holds anything else (hooks/useFieldErrors.js).
+                    markDescription(message, formatted);
                     return;
                   }
-                  setDescriptionError(null);
                   // Always calls saveField, even when nothing changed — see its
                   // own baseline comment (useInstantSave.js): that's what lets it
                   // drop a stale failure left over from reverting the box back to

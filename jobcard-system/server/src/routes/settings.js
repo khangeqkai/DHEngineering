@@ -11,8 +11,7 @@ const config = require('../config');
 const { lanIpv4s } = require('../utils/netHost');
 const homeAccess = require('./settings-home-access');
 const { recordHistory } = require('../db/helpers');
-const { normalizeStoredTimestamps } = require('../db/normalizeTimestamps');
-const { foldGoodPiecesToWhole, renameLegacyPrintTrail, PRINT_NAMING_CUTOVER_KEY } = require('../db/init');
+const { runStartupConversions, PRINT_NAMING_CUTOVER_KEY } = require('../db/init');
 const { splitCustomersInBackup } = require('../db/splitCustomers');
 const { setMaintenance } = require('../middleware/maintenance');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
@@ -506,33 +505,19 @@ router.post('/import-backup', requireAdmin, [
             db.settingsQueries.upsert.run(PRINT_NAMING_CUTOVER_KEY, keptPrintCutover);
           }
 
-          // A backup taken before timestamps moved to ISO-8601 UTC carries the old
-          // time-zone-less shape, which would display shifted by the UTC offset. Fold
-          // the restored rows into the current shape here rather than waiting for the
-          // next restart. Tidy-up only: a failure here must never throw away a restore
-          // whose records already loaded correctly (the next boot converts them anyway),
-          // so it is caught the same way the startup call is.
+          // A restore must end in exactly the state a fresh restart would produce, so
+          // run the SAME full conversion pass a boot runs — timestamp normalisation,
+          // then every migration in runMigrations() (whole-hour schedule snap, good-piece
+          // folding, the print-trail rename bounded by the cutover just kept above, and
+          // everything else in that list) — rather than hand-picking a subset here. A
+          // conversion missing from a hand-picked list is exactly how the overtime-hours
+          // migration was left out of a restore in the first place. Tidy-up only: a
+          // failure here must never throw away a restore whose records already loaded
+          // correctly (the next boot runs the same pass again and retries).
           try {
-            normalizeStoredTimestamps();
-          } catch (tsErr) {
-            logger.error({ err: tsErr }, 'Backup restore: failed to convert stored timestamps to ISO-8601 UTC (records restored; next restart will retry)');
-          }
-          // Same for good-piece counts: a backup from before the whole-number rule can
-          // carry "2.5", which reads Done on the part but In Progress on the job.
-          try {
-            foldGoodPiecesToWhole();
-          } catch (qtyErr) {
-            logger.error({ err: qtyErr }, 'Backup restore: failed to fold good-piece counts to whole numbers (records restored; next restart will retry)');
-          }
-          // And for the print trail: a backup from before the confirmation step calls a
-          // preview, and a mere bundle build, a print. Rename the restored entries now
-          // rather than leaving the trail wrong until someone restarts — on an always-on
-          // machine that can be days. Bounded by the cutover kept above, so entries
-          // recorded as real prints on this install are never touched.
-          try {
-            renameLegacyPrintTrail();
-          } catch (printErr) {
-            logger.error({ err: printErr }, 'Backup restore: failed to rename pre-cutover print trail entries (records restored; next restart will retry)');
+            runStartupConversions();
+          } catch (convErr) {
+            logger.error({ err: convErr }, 'Backup restore: startup conversion pass failed (records restored; next restart will retry)');
           }
         });
 

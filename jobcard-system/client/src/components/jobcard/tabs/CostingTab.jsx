@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Info } from 'lucide-react';
 import CostingBreakdown from './CostingBreakdown';
-import { capitalizeFirst } from '../../../utils/formatters';
+import FieldError from '../../common/FieldError';
 
 // Format a number as Australian currency with thousands separators.
 const money = (n) =>
@@ -23,13 +23,16 @@ const REVERT_FORMAT = {
 };
 
 // What the line beside the grand total says while the screen saves itself. There is no
-// Save button: an edit saves about a second after the last keystroke, or straight away
-// on Enter / leaving the screen.
+// Save button: an edit saves on leaving the box or on Enter. 'invalid' overrides every
+// other state — see costingSaveState in useCosting.js — because there's nothing to
+// report about the rest of the sheet's save progress while one figure on it isn't even
+// a valid number yet.
 const SAVE_STATUS = {
   pending: { text: 'Unsaved…', className: 'costing-save-status--pending' },
   saving: { text: 'Saving…', className: 'costing-save-status--saving' },
   saved: { text: 'Saved', className: 'costing-save-status--saved' },
-  error: { text: 'Not saved', className: 'costing-save-status--error' }
+  error: { text: 'Not saved', className: 'costing-save-status--error' },
+  invalid: { text: 'Not saved — fix the red box', className: 'costing-save-status--invalid' }
 };
 
 export default function CostingTab({
@@ -44,6 +47,9 @@ export default function CostingTab({
   onFlushCosting,
   onBoxBlur,
   onRevertField,
+  costingFieldError = () => null,
+  costingFieldProps = (name) => ({ id: name }),
+  costingErrorProps = () => ({}),
   loaded = true,
   loadFailed = false,
   onRetryLoad,
@@ -54,15 +60,6 @@ export default function CostingTab({
   // The info panel under the header: what the job has actually used, part by part.
   // Read-only, closed by default, and folded away again by the same button.
   const [showBreakdown, setShowBreakdown] = useState(false);
-  // The two overtime multiplier boxes are text fields (not number boxes) so they can
-  // sit in the column at a fixed two decimals — ×2.00, not ×2 — since a number box
-  // always strips a trailing zero. While a box is focused we show the raw keystrokes
-  // (held in `multEditing`) so typing "2.5" isn't reformatted mid-entry; the moment it
-  // loses focus it snaps back to the two-decimal display. The value itself still commits
-  // live through the normal change handler, so the amount updates as you type.
-  // Declared up here, ahead of the not-yet-loaded return below, so the same hooks run
-  // on every render of this screen.
-  const [multEditing, setMultEditing] = useState(null); // { name, value } | null
 
   // Until the job's stored pricing arrives, show a plain message rather than a sheet of
   // zeros. A zero sheet reads as real figures, and this screen saves itself — one
@@ -99,17 +96,11 @@ export default function CostingTab({
   // 120100). Applies to every money/hours box below.
   const selectOnFocus = (e) => e.target.select();
 
-  // Tidy a cost note when the field is left, matching the rest of the app's text fields.
-  const capitalizeOnBlur = (e) => {
-    const formatted = capitalizeFirst(e.target.value);
-    if (formatted !== e.target.value) {
-      handleCostingChange({ target: { name: e.target.name, value: formatted } });
-    }
-  };
-
   // The "what this cost covers" note that sits under each manual cost line. Called as a
   // plain function (not a component) so React keeps the input stable and typing never
-  // loses focus — same reason as the tier rows below.
+  // loses focus — same reason as the tier rows below. Its capitalise-on-leave tidy now
+  // runs in commitBox (useCosting.js) itself, the same moment it commits — no onBlur of
+  // its own, so it goes through the sheet's one bubbling blur handler like every other box.
   const costNote = (name, placeholder) => (
     <div className="ledger-note">
       <label htmlFor={name}>What this covers</label>
@@ -119,7 +110,6 @@ export default function CostingTab({
         name={name}
         value={costingForm[name] || ''}
         onChange={handleCostingChange}
-        onBlur={capitalizeOnBlur}
         placeholder={placeholder}
         maxLength={300}
       />
@@ -152,17 +142,12 @@ export default function CostingTab({
     );
   };
 
-  const multDisplay = (t) =>
-    multEditing && multEditing.name === t.multName ? multEditing.value : mult(t.multiplier);
-  const onMultFocus = (t) => (e) => {
-    setMultEditing({ name: t.multName, value: String(t.multiplier) });
-    e.target.select();
-  };
-  const onMultChange = (e) => {
-    setMultEditing({ name: e.target.name, value: e.target.value });
-    handleCostingChange(e);
-  };
-  const onMultBlur = () => setMultEditing(null);
+  // A field still being typed in (or left typed-in and invalid — a red box KEEPS its
+  // draft, see commitBox in useCosting.js) is always a string; a committed figure is
+  // always a number. That's reason enough on its own to show it raw rather than
+  // reformatted to two decimals — reformatting an invalid "abc" or "-1" to "0.00" the
+  // moment the box loses focus would hide exactly the text the red box exists to show.
+  const multDisplay = (t) => (typeof costingForm[t.multName] === 'string' ? costingForm[t.multName] : mult(t.multiplier));
 
   // The four labour tiers, split by WHEN the work happened. The base rate is set
   // once (above the table) and each tier's rate derives from it via its multiplier.
@@ -219,6 +204,8 @@ export default function CostingTab({
   const tierRow = (t) => {
     const derivedRate = baseRate * (Number(t.multiplier) || 0);
     const rowEdited = t.overridden || t.multOverridden;
+    const multError = t.multName ? costingFieldError(t.multName) : null;
+    const hoursError = costingFieldError(t.hoursName);
     return (
       <div className={`tier-row${t.overridden ? ' tier-row--edited' : ''}`} key={t.hoursName}>
         <span className="tier-when">
@@ -229,7 +216,7 @@ export default function CostingTab({
           {t.multName ? (
             // Overtime rows: the multiplier is a job-editable box (typing overrides
             // the company setting for this job only), with a snap-back link below.
-            <span className={`tier-mult-editable${t.multOverridden ? ' tier-mult-editable--edited' : ''}`}>
+            <span className={`tier-mult-editable${t.multOverridden ? ' tier-mult-editable--edited' : ''}${multError ? ' field-error' : ''}`}>
               <span className="tier-mult-box">
                 ×
                 <input
@@ -237,10 +224,10 @@ export default function CostingTab({
                   inputMode="decimal"
                   name={t.multName}
                   value={multDisplay(t)}
-                  onChange={onMultChange}
-                  onFocus={onMultFocus(t)}
-                  onBlur={onMultBlur}
+                  onChange={handleCostingChange}
+                  onFocus={selectOnFocus}
                   aria-label={`${t.label} multiplier`}
+                  {...costingFieldProps(t.multName)}
                 />
               </span>
               {t.multOverridden && (
@@ -253,6 +240,7 @@ export default function CostingTab({
                   standard ×{mult(t.multCalculated)}
                 </button>
               )}
+              <FieldError message={multError} {...costingErrorProps(t.multName)} />
             </span>
           ) : (
             // Fixed-multiplier rows (normal, public holiday): the same box shape as the
@@ -263,16 +251,16 @@ export default function CostingTab({
             </span>
           )}
         </span>
-        <span className="tier-hours-cell">
+        <span className={`tier-hours-cell${hoursError ? ' field-error' : ''}`}>
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             name={t.hoursName}
             value={t.hoursValue}
             onChange={handleCostingChange}
             onFocus={selectOnFocus}
-            min="0"
-            step="0.01"
             aria-label={`${t.label} hours`}
+            {...costingFieldProps(t.hoursName)}
           />
           {t.overridden && (
             <button
@@ -284,6 +272,7 @@ export default function CostingTab({
               logged {Number(t.calculated) || 0}
             </button>
           )}
+          <FieldError message={hoursError} {...costingErrorProps(t.hoursName)} />
         </span>
         <span className="tier-rate">{money(derivedRate)}</span>
         <span className="tier-amount">{money(t.total)}</span>
@@ -293,24 +282,26 @@ export default function CostingTab({
 
   const status = SAVE_STATUS[saveState];
 
-  // Enter anywhere in the sheet saves straight away instead of waiting out the
-  // save countdown. The surrounding job form already swallows Enter, so nothing else
-  // fires off the same keypress.
+  // Enter anywhere in the sheet saves straight away, without leaving the box. The
+  // surrounding job form already swallows Enter, so nothing else fires off the same
+  // keypress. Enter commits exactly the box the cursor is in — the same commitBox that
+  // blur below reaches — and leaves the cursor where it was, unlike blur.
   const saveOnEnter = (e) => {
-    if (e.key === 'Enter') onFlushCosting?.();
+    if (e.key !== 'Enter') return;
+    const tag = e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') onBoxBlur?.(e.target.name);
   };
 
-  // Clicking or tabbing out of a box sends it straight away, the same as every other box
-  // on the job screen. Blur bubbles in React, so one handler on the sheet covers all ten
-  // boxes rather than ten separate onBlur props — two of which already carry their own
-  // (the cost notes' title-casing, the multiplier's editing state), and stacking a second
-  // handler on those would have meant the two firing in an order that isn't written down
-  // anywhere. Guarded to real boxes: the sheet also holds buttons and links, and leaving
-  // one of those is not the end of an edit. useCosting.js decides whether there is
-  // actually anything to send.
+  // Leaving a box (Tab, click-away, Escape-then-close, switching tab) commits it, the
+  // same as every other box on the job screen. Blur bubbles in React, so one handler on
+  // the sheet covers every box rather than one onBlur prop per box, and no box carries
+  // its own onBlur for a second handler to race. Guarded to real boxes: the sheet also holds buttons
+  // and links, and leaving one of those is not the end of an edit. onBoxBlur IS commitBox
+  // (useCosting.js) — a box that's valid but unchanged commits with nothing sent; one
+  // that's invalid stays a draft, marked red, and sends nothing either.
   const saveOnLeavingBox = (e) => {
     const tag = e.target.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA') onBoxBlur?.();
+    if (tag === 'INPUT' || tag === 'TEXTAREA') onBoxBlur?.(e.target.name);
   };
 
   return (
@@ -365,17 +356,16 @@ export default function CostingTab({
 
           <div className="labour-rate-row">
             <label htmlFor="labourRate" className="labour-rate-label">Base rate</label>
-            <div className="ledger-affix ledger-affix--prefix labour-rate-field">
+            <div className={`ledger-affix ledger-affix--prefix labour-rate-field${costingFieldError('labourRate') ? ' field-error' : ''}`}>
               <span className="ledger-affix-mark">$</span>
               <input
-                id="labourRate"
-                type="number"
+                type="text"
+                inputMode="decimal"
                 name="labourRate"
                 value={costingForm.labourRate}
                 onChange={handleCostingChange}
                 onFocus={selectOnFocus}
-                min="0"
-                step="0.01"
+                {...costingFieldProps('labourRate')}
               />
             </div>
             <span className="labour-rate-unit">/ hr</span>
@@ -391,6 +381,7 @@ export default function CostingTab({
                 </>
               )}
             </span>
+            <FieldError message={costingFieldError('labourRate')} {...costingErrorProps('labourRate')} />
           </div>
 
           <div className="tier-table" role="table" aria-label="Labour by when it was worked">
@@ -421,19 +412,21 @@ export default function CostingTab({
           {/* Special labour — hours × rate, both entered by hand */}
           <div className="ledger-line">
             <span className="ledger-cat">Special labour</span>
-            <div className="ledger-field">
+            <div className={costingFieldError('labourSpecialHours') ? 'ledger-field field-error' : 'ledger-field'}>
               <label htmlFor="labourSpecialHours">Hours</label>
-              <input id="labourSpecialHours" type="number" name="labourSpecialHours" value={costingForm.labourSpecialHours} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
+              <input type="text" inputMode="decimal" name="labourSpecialHours" value={costingForm.labourSpecialHours} onChange={handleCostingChange} onFocus={selectOnFocus} {...costingFieldProps('labourSpecialHours')} />
               {revertControl('labourSpecialHours')}
+              <FieldError message={costingFieldError('labourSpecialHours')} {...costingErrorProps('labourSpecialHours')} />
             </div>
             <span className="ledger-op">×</span>
-            <div className="ledger-field">
+            <div className={costingFieldError('labourSpecialRate') ? 'ledger-field field-error' : 'ledger-field'}>
               <label htmlFor="labourSpecialRate">Rate / hr</label>
               <div className="ledger-affix ledger-affix--prefix">
                 <span className="ledger-affix-mark">$</span>
-                <input id="labourSpecialRate" type="number" name="labourSpecialRate" value={costingForm.labourSpecialRate} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
+                <input type="text" inputMode="decimal" name="labourSpecialRate" value={costingForm.labourSpecialRate} onChange={handleCostingChange} onFocus={selectOnFocus} {...costingFieldProps('labourSpecialRate')} />
               </div>
               {revertControl('labourSpecialRate')}
+              <FieldError message={costingFieldError('labourSpecialRate')} {...costingErrorProps('labourSpecialRate')} />
             </div>
             <span className="ledger-eq">=</span>
             <span className="ledger-total">{money(totals.labourSpecialTotal)}</span>
@@ -443,22 +436,24 @@ export default function CostingTab({
           {/* Materials — cost + margin % */}
           <div className="ledger-line">
             <span className="ledger-cat">Materials</span>
-            <div className="ledger-field">
+            <div className={costingFieldError('materialsCost') ? 'ledger-field field-error' : 'ledger-field'}>
               <label htmlFor="materialsCost">Cost</label>
               <div className="ledger-affix ledger-affix--prefix">
                 <span className="ledger-affix-mark">$</span>
-                <input id="materialsCost" type="number" name="materialsCost" value={costingForm.materialsCost} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
+                <input type="text" inputMode="decimal" name="materialsCost" value={costingForm.materialsCost} onChange={handleCostingChange} onFocus={selectOnFocus} {...costingFieldProps('materialsCost')} />
               </div>
               {revertControl('materialsCost')}
+              <FieldError message={costingFieldError('materialsCost')} {...costingErrorProps('materialsCost')} />
             </div>
             <span className="ledger-op">+</span>
-            <div className="ledger-field">
+            <div className={costingFieldError('materialsProfitPercent') ? 'ledger-field field-error' : 'ledger-field'}>
               <label htmlFor="materialsProfitPercent">Margin</label>
               <div className="ledger-affix ledger-affix--suffix">
-                <input id="materialsProfitPercent" type="number" name="materialsProfitPercent" value={costingForm.materialsProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" />
+                <input type="text" inputMode="decimal" name="materialsProfitPercent" value={costingForm.materialsProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} {...costingFieldProps('materialsProfitPercent')} />
                 <span className="ledger-affix-mark">%</span>
               </div>
               {revertControl('materialsProfitPercent')}
+              <FieldError message={costingFieldError('materialsProfitPercent')} {...costingErrorProps('materialsProfitPercent')} />
             </div>
             <span className="ledger-eq">=</span>
             <span className="ledger-total">{money(totals.materialsTotal)}</span>
@@ -468,22 +463,24 @@ export default function CostingTab({
           {/* Subcontractor — cost + margin % */}
           <div className="ledger-line">
             <span className="ledger-cat">Subcontractor</span>
-            <div className="ledger-field">
+            <div className={costingFieldError('subcontractorCost') ? 'ledger-field field-error' : 'ledger-field'}>
               <label htmlFor="subcontractorCost">Cost</label>
               <div className="ledger-affix ledger-affix--prefix">
                 <span className="ledger-affix-mark">$</span>
-                <input id="subcontractorCost" type="number" name="subcontractorCost" value={costingForm.subcontractorCost} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" step="0.01" />
+                <input type="text" inputMode="decimal" name="subcontractorCost" value={costingForm.subcontractorCost} onChange={handleCostingChange} onFocus={selectOnFocus} {...costingFieldProps('subcontractorCost')} />
               </div>
               {revertControl('subcontractorCost')}
+              <FieldError message={costingFieldError('subcontractorCost')} {...costingErrorProps('subcontractorCost')} />
             </div>
             <span className="ledger-op">+</span>
-            <div className="ledger-field">
+            <div className={costingFieldError('subcontractorProfitPercent') ? 'ledger-field field-error' : 'ledger-field'}>
               <label htmlFor="subcontractorProfitPercent">Margin</label>
               <div className="ledger-affix ledger-affix--suffix">
-                <input id="subcontractorProfitPercent" type="number" name="subcontractorProfitPercent" value={costingForm.subcontractorProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} min="0" />
+                <input type="text" inputMode="decimal" name="subcontractorProfitPercent" value={costingForm.subcontractorProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} {...costingFieldProps('subcontractorProfitPercent')} />
                 <span className="ledger-affix-mark">%</span>
               </div>
               {revertControl('subcontractorProfitPercent')}
+              <FieldError message={costingFieldError('subcontractorProfitPercent')} {...costingErrorProps('subcontractorProfitPercent')} />
             </div>
             <span className="ledger-eq">=</span>
             <span className="ledger-total">{money(totals.subcontractorTotal)}</span>

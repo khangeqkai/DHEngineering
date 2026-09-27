@@ -40,6 +40,10 @@ function validateSchedule(input) {
       if (!/^\d{2}:\d{2}$/.test(b.start)) return `Schedule day "${day}" has an invalid start time`;
       const [h, m] = b.start.split(':').map(Number);
       if (h > 23 || m > 59) return `Schedule day "${day}" has an out-of-range start time`;
+      // Every overtime tier switches on the hour. Sub-hour boundaries can't be
+      // set here or restored from a backup — see scheduleToWholeHours (init.js),
+      // the one-time conversion that already snaps existing data to whole hours.
+      if (m !== 0) return `Schedule day "${day}" block times must be on the hour (minutes "00")`;
       if (prev !== null && b.start <= prev) return `Schedule day "${day}" blocks must be in increasing time order`;
       if (!SCHEDULE_TIERS.includes(b.tier)) return `Schedule day "${day}" has an invalid tier`;
       prev = b.start;

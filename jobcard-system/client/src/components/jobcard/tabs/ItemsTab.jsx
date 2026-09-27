@@ -53,7 +53,6 @@ export default function ItemsTab({
   removeLineItem,
   onItemFieldChange,
   onItemFieldBlur,
-  onItemFieldType,
   itemErrorFor,
   suppliers = [],
   onSuppliersChanged,
@@ -220,7 +219,6 @@ export default function ItemsTab({
               removeLineItem={removeLineItem}
               onFieldChange={handleFieldChange}
               onFieldBlur={onItemFieldBlur}
-              onFieldType={onItemFieldType}
               fieldError={fieldError}
               onSuppliersChanged={onSuppliersChanged}
               onAttachItemFile={onAttachItemFile}
@@ -273,7 +271,6 @@ const LineItemCard = memo(function LineItemCard({
   removeLineItem,
   onFieldChange,
   onFieldBlur,
-  onFieldType,
   fieldError,
   onSuppliersChanged,
   onAttachItemFile,
@@ -335,14 +332,12 @@ const LineItemCard = memo(function LineItemCard({
           ) : (
             <input
               id={fieldErrorKey(item.id, 'qty')}
-              type="number"
-              min="1"
-              step="1"
+              type="text"
+              inputMode="numeric"
               value={item.qty}
               onChange={(e) => {
                 const digits = e.target.value.replace(/[^\d]/g, '');
                 updateLineItem(item.id, 'qty', digits);
-                onFieldType?.(item.id, 'qty', digits);
               }}
               onBlur={(e) => onFieldBlur?.(item, 'qty', e.target.value.replace(/[^\d]/g, ''))}
               placeholder="Qty"
@@ -361,10 +356,7 @@ const LineItemCard = memo(function LineItemCard({
               id={fieldErrorKey(item.id, 'description')}
               type="text"
               value={item.description}
-              onChange={(e) => {
-                updateLineItem(item.id, 'description', e.target.value);
-                onFieldType?.(item.id, 'description', e.target.value);
-              }}
+              onChange={(e) => updateLineItem(item.id, 'description', e.target.value)}
               onBlur={(e) => {
                 const formatted = capitalizeFirst(e.target.value);
                 if (formatted !== e.target.value) {

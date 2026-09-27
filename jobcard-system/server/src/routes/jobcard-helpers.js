@@ -536,4 +536,4 @@ function createRelatedRecords(jobcardId, data) {
 // utils/qaTemplateProvisioning.js — extracted out of this file (a straight
 // lift, no behaviour change) because it was getting long.
 
-module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, buildJobCardView, computeAttachmentWarnings };
+module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, buildJobCardView, computeAttachmentWarnings, tagName, friendlyTagList };

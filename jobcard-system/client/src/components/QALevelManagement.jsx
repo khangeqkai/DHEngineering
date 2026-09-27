@@ -24,7 +24,11 @@ export default function QALevelManagement() {
   const cancelRenameRef = useRef(false);
   const [uploadingTemplate, setUploadingTemplate] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
-  const { setFieldErrors, clearFieldError, clearAll: clearFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors();
+  // 'name' -> the new-level form's own box; 'renameName' -> the inline rename box
+  // (editingNameValue), which only exists while a row is being renamed.
+  const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
+    (name) => (name === 'renameName' ? editingNameValue : formData.name)
+  );
 
   const loadData = useCallback(async () => {
     try {
@@ -45,7 +49,7 @@ export default function QALevelManagement() {
   const resetForm = () => {
     setFormData({ name: '' });
     setShowForm(false);
-    clearFieldErrors();
+    resetFieldErrors();
   };
 
   // The pop-up is now create-only — renaming happens inline on each row's title.
@@ -71,7 +75,6 @@ export default function QALevelManagement() {
   };
 
   const startRename = (level) => {
-    clearFieldError('renameName');
     setEditingNameId(level.id);
     setEditingNameValue(level.name);
   };
@@ -240,11 +243,11 @@ export default function QALevelManagement() {
                         {...fieldProps('renameName')}
                         value={editingNameValue}
                         autoFocus
-                        onChange={(e) => { clearFieldError('renameName'); setEditingNameValue(e.target.value); }}
+                        onChange={(e) => setEditingNameValue(e.target.value)}
                         onBlur={() => commitRename(level)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
-                          else if (e.key === 'Escape') { e.preventDefault(); cancelRenameRef.current = true; clearFieldError('renameName'); setEditingNameId(null); }
+                          else if (e.key === 'Escape') { e.preventDefault(); cancelRenameRef.current = true; setEditingNameId(null); }
                         }}
                       />
                       <FieldError {...errorProps('renameName')} message={errorFor('renameName')} />
@@ -352,7 +355,7 @@ export default function QALevelManagement() {
                 // bubble on submit, on top of the custom FieldError message below —
                 // aria-required gives the same assistive-tech signal without that.
                 aria-required="true"
-                onChange={(e) => { clearFieldError('name'); setFormData(prev => ({ ...prev, name: e.target.value })); }}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                 onBlur={(e) => {
                   const f = toTitleCase(e.target.value);
                   if (f !== e.target.value) setFormData(prev => ({ ...prev, name: f }));

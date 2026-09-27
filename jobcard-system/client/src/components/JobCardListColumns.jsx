@@ -9,6 +9,7 @@ import {
 } from './JobCardList.constants';
 import { canChangeStatus, getSettableStatusValues } from './jobcard/constants';
 import { formatDate, formatDateTime } from '../utils/formatters';
+import { isJobClosed } from '../utils/jobLock';
 
 export function getJobCardColumns({
   user,
@@ -159,6 +160,27 @@ export function getJobCardColumns({
           );
         })() : '-';
 
+        // Mirrors the status column's own rule: once a job is invoiced it's
+        // archived and closed — its workers are shown, but there's nothing here
+        // to click. Tests the row's own flag (jobLock.js's isJobClosed), not the
+        // "Show Archived" view toggle — a row can be archived while the list
+        // isn't filtered to archived-only (a search result, for one), and the
+        // toggle being on says nothing about any one row already on screen.
+        if (isJobClosed(card)) {
+          return (
+            <td key="assignedTo" className="assignee-cell">
+              <span
+                className="assignee-trigger assignee-trigger--readonly"
+                title={card.assignees?.length
+                  ? card.assignees.map(a => a.userName).filter(Boolean).join(', ')
+                  : 'This job is invoiced and closed. Its workers can\'t be changed.'}
+              >
+                {renderAvatars()}
+              </span>
+            </td>
+          );
+        }
+
         return (
           <td key="assignedTo" className="assignee-cell">
             <div className="status-popover-wrapper" ref={assignPopoverId === card.id ? assignPopoverRef : null}>
@@ -216,15 +238,18 @@ export function getJobCardColumns({
       renderCell: (card) => {
         // Mirrors the rule in JobIdentityStrip.jsx: a non-management user only gets
         // the popover while the job is still somewhere they're allowed to act from.
-        // Once it's moved on (or the row is archived), the badge is plain text, not
-        // a button — nothing to click, nothing to offer.
-        const changeable = !showArchived && canChangeStatus(canManage, card.status);
+        // Once it's moved on (or the row is closed), the badge is plain text, not
+        // a button — nothing to click, nothing to offer. Tests the row's own
+        // archived flag (jobLock.js's isJobClosed) rather than the "Show Archived"
+        // view toggle — see the assignee column's own comment above.
+        const rowClosed = isJobClosed(card);
+        const changeable = !rowClosed && canChangeStatus(canManage, card.status);
         if (!changeable) {
           return (
             <td key="status">
               <span
                 className={`badge ${getStatusBadgeClass(card.status)}`}
-                title={!showArchived && !canManage ? 'Only management can change this status' : undefined}
+                title={!rowClosed && !canManage ? 'Only management can change this status' : undefined}
               >
                 {STATUS_LABELS[card.status] || card.status}
               </span>

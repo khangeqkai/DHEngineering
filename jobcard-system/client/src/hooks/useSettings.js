@@ -22,13 +22,14 @@ export function useSettings() {
     return localStorage.getItem('darkMode') === 'true';
   });
 
-  const { setFieldErrors, clearFieldError, errorFor } = useFieldErrors();
-
   const [jobFoldersBase, setJobFoldersBase] = useState('');
   // Kept as a string, not a number, so the box can hold "" or a partial digit while
   // the user is typing — clamping every keystroke made 6 unkeyable (it kept
   // snapping back to 1 before the second digit landed). Range is checked on save.
   const [inactivityTimeout, setInactivityTimeoutState] = useState('5');
+  const { setFieldErrors, errorFor } = useFieldErrors(
+    (name) => (name === 'inactivityTimeout' ? inactivityTimeout : undefined)
+  );
   const [jobNumberPrefix, setJobNumberPrefix] = useState('');
   const [jobNumberNext, setJobNumberNext] = useState('');
   const [savingJobFolders, setSavingJobFolders] = useState(false);
@@ -49,12 +50,7 @@ export function useSettings() {
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [pendingImportPath, setPendingImportPath] = useState(null);
 
-  // Clears this field's submit-time error mark the moment the user types again,
-  // same shape as useLabourRates' per-field setters.
-  const setInactivityTimeout = useCallback((v) => {
-    clearFieldError('inactivityTimeout');
-    setInactivityTimeoutState(v);
-  }, [clearFieldError]);
+  const setInactivityTimeout = useCallback((v) => setInactivityTimeoutState(v), []);
 
   const loadSettings = useCallback(async () => {
     if (!canManage) {

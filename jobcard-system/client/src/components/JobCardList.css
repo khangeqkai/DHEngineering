@@ -638,6 +638,16 @@
   opacity: 0.85;
 }
 
+/* An archived/invoiced job's workers are shown but not clickable — same look,
+   nothing to press. Mirrors the status badge's own read-only rule. */
+.assignee-trigger--readonly {
+  cursor: default;
+}
+
+.assignee-trigger--readonly:hover {
+  opacity: 1;
+}
+
 .status-popover {
   position: absolute;
   top: calc(100% + 4px);

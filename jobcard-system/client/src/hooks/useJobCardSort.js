@@ -17,7 +17,14 @@ export const SORT_VALUE_GETTERS = {
   jobNumber: (c) => c.jobNumber || '',
   company: (c) => (c.companyName || '').toLowerCase(),
   customer: (c) => (c.contactName || '').toLowerCase(),
-  assignedTo: (c) => (c.assignees?.[0]?.userName || '').toLowerCase(),
+  // All assignee names, lower-cased and alphabetised then joined — so jobs
+  // showing the same people sort together regardless of who was added first.
+  // An unassigned job keeps sorting as the empty string it always has.
+  assignedTo: (c) => (c.assignees || [])
+    .map(a => (a.userName || '').toLowerCase())
+    .filter(Boolean)
+    .sort()
+    .join(', '),
   status: (c) => STATUS_SORT_ORDER[c.status] ?? 999,
   priority: (c) => PRIORITY_SORT_ORDER[c.priority] ?? 0,
   print: (c) => (c.printedAt ? 1 : 0),

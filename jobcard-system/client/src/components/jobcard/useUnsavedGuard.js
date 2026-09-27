@@ -27,10 +27,14 @@ import { describeAtRisk, describeSafe, describeSafeAsSecondLine } from './closeR
 // flush — they just make the screen disappear — so the two effects below that guard
 // against those need a wider question still: hasWorkToLose, which folds costingDirty in
 // alongside hasUnsavedWork.
-export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNote, stopFormOpen, costingDirty = false, showConfirm, onClose, isEdit = false, closeReasons = { safe: [], atRisk: [] }, revealDetails }) {
+export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNote, stopFormOpen, costingDirty = false, costingUnsettled = false, showConfirm, onClose, isEdit = false, closeReasons = { safe: [], atRisk: [] }, revealDetails }) {
   const { registerUnsavedWork } = useAuth();
   const hasUnsavedWork = isDirty || hasUnpostedNote || stopFormOpen;
-  const hasWorkToLose = hasUnsavedWork || costingDirty;
+  // A page refresh and the inactivity sign-out both skip the close question and its
+  // own pricing flush (see useJobCardCosting.js), so they need to know about a box
+  // still being typed in or sitting red too — not just a committed figure waiting on
+  // a save (costingDirty) — or a draft or an invalid figure would vanish in silence.
+  const hasWorkToLose = hasUnsavedWork || costingDirty || costingUnsettled;
 
   // Escape and the header X both close through this (it is wired as BottomSheet's
   // onClose), so the "are you sure" question lives in one place rather than at each

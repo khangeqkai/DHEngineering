@@ -39,6 +39,8 @@ const searchRoutes = require('./src/routes/search');
 const statisticsRoutes = require('./src/routes/statistics');
 const { initializeDatabase } = require('./src/db/init');
 const { maintenanceGuard } = require('./src/middleware/maintenance');
+const { authenticate } = require('./src/middleware/auth');
+const { closedJobGuard } = require('./src/middleware/closedJob');
 const { verifyPdfEngine, getPdfEngineStatus } = require('./src/utils/pdfEngine');
 const { isViaTunnel } = require('./src/utils/homeAccess');
 
@@ -88,6 +90,12 @@ app.use('/api', (req, res, next) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/hardware', hardwareRoutes);
+// One lock for a closed (invoiced/archived) job, ahead of every job route so a
+// route added later is locked by default. `authenticate` runs here too (it has
+// no side effects — no session touch, no counter, no history — so running it
+// twice on one request is harmless) rather than let an anonymous caller learn
+// a job is archived before its own route checks who's asking.
+app.use('/api/jobcards/:id', authenticate, closedJobGuard);
 // Mount sub-routes before main jobcards route for proper matching
 app.use('/api/jobcards', jobcardTimeEntriesRoutes);
 app.use('/api/jobcards', jobcardCostingRoutes);

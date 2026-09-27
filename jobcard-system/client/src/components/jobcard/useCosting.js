@@ -2,13 +2,16 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { getDefaultCostingForm } from './mappers';
-import { warningToastIcon } from '../common/toastIcons';
+import { capitalizeFirst } from '../../utils/formatters';
+import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
 
 // Which override flag each hand-editable box drives. Note the normal tier's hours flag
 // is `labourHoursOverridden` (with "Hours"), while the OT/holiday tiers drop it — so this
 // map is the single source of truth rather than deriving the name from the tier key.
 // The two overtime multipliers follow the same pattern: typing in the box marks the
-// job as owning its own multiplier instead of following the company setting.
+// job as owning its own multiplier instead of following the company setting. It also
+// doubles as "is this box an override box at all" — every numeric box on the sheet that
+// ISN'T a key here is a plain box (see commitBox and parsedDraftValue below).
 const OVERRIDE_FLAG = {
   labourHours: 'labourHoursOverridden',
   labourOt1Hours: 'labourOt1Overridden',
@@ -20,29 +23,29 @@ const OVERRIDE_FLAG = {
 
 // The lowest value each box accepts, matching the server's clamps exactly so the
 // on-screen totals always equal what a save will store. The two overtime multipliers
-// floor at ×1 (below 1 would undercharge overtime — the server refuses it), so
-// a typed 0.5 snaps to ×1 instead of silently pricing that tier at ×0. (A CLEARED box
-// is different: it drops the hand-edit and follows the logged / company figure.)
-// Everything else floors at 0.
+// floor at ×1 (below 1 would undercharge overtime — the server refuses it). Everything
+// else floors at 0. A box below its floor is refused outright now (see commitBox) —
+// there is no more silent snapping.
 const FIELD_MIN = {
   labourOt1Multiplier: 1,
   labourOt2Multiplier: 1
 };
 
 // The free-text notes on the three manual cost lines. Everything else on this screen is
-// a number, so the change handler runs values through parseFloat — these must skip that
-// or every letter typed would be thrown away.
+// a number, so commitBox runs these through capitalizeFirst instead of the numeric checks.
 const TEXT_FIELDS = new Set([
   'labourSpecialDescription',
   'materialsDescription',
   'subcontractorDescription'
 ]);
 
-// How long the screen waits after the last edit before saving itself. This is the
-// backstop, not the usual path — leaving a box sends it straight away — so the countdown
-// only runs out for a figure typed and then left alone with the cursor still in the box:
-// long enough not to fire mid-figure, short enough that such a figure is never lost.
-const AUTOSAVE_DELAY = 1000;
+// A plain decimal, deliberately allowing a leading "-": a negative figure is still A
+// NUMBER as far as this pattern is concerned, so it reaches the floor check below and
+// reads "Can't be negative."/"Can't be below ×1." rather than the less helpful
+// "Enter a number." — only genuine junk ("abc", a lone "-" or ".") fails to match.
+const NUMERIC_PATTERN = /^-?\d+(\.\d+)?$|^-?\.\d+$/;
+
+const floorMessage = (min) => (min >= 1 ? "Can't be below ×1." : "Can't be negative.");
 
 // The on-screen form built from a loaded costing row — used when the pricing first loads,
 // and again when a save's reply carries the stored figures back.
@@ -81,19 +84,48 @@ function formFromCosting(c) {
   };
 }
 
+// What a box currently being typed in (a draft, not yet committed) is worth for the
+// LIVE totals only — never sent. A blank plain box prices at 0; a blank override box
+// prices at its calculated figure, exactly like the committed form does once the box is
+// actually left; anything that doesn't parse as a number prices at 0 rather than NaN-ing
+// the whole total while someone is still mid-keystroke.
+function parsedDraftValue(name, text, committedForm) {
+  const trimmed = text.trim();
+  if (trimmed === '') {
+    return OVERRIDE_FLAG[name] ? (committedForm[`${name}Calculated`] ?? 0) : 0;
+  }
+  const n = parseFloat(trimmed);
+  return Number.isFinite(n) ? n : 0;
+}
+
 // An invoiced job's pricing saves itself exactly like any other job's — see the note on
 // runSave below for why there is no question in front of it any more.
 export function useCosting(jobCardId, {
   costing: loadedCosting,
   updateCosting
 } = {}) {
+  // The committed figures — numbers and flags, exactly as they'll be sent. The only
+  // thing a save ever reads. Never holds a box's half-typed text; see `drafts` below.
   const [costingForm, setCostingForm] = useState(getDefaultCostingForm());
+  // What's being typed right now, keyed by field name, for every box on the sheet —
+  // number boxes and the three description boxes alike. A field with no entry here shows
+  // its committed figure; one with an entry shows exactly what's been typed, however
+  // half-formed. Nothing here is ever sent — see commitBox, the only place a draft turns
+  // into a committed figure (or is found wanting and stays a draft, marked red).
+  const [drafts, setDrafts] = useState({});
+  // A box's shown value is its draft if one exists, else its committed figure —
+  // exactly what shownCostingForm (below) renders, read here directly off drafts/
+  // costingForm rather than waiting for that merged object to be built.
+  const { fieldErrors, setFieldErrors, clearAll: clearAllFieldErrors, fieldProps, errorProps } = useFieldErrors(
+    (name) => (name in drafts ? drafts[name] : costingForm[name])
+  );
   const [savingCosting, setSavingCosting] = useState(false);
   // True when the pricing screen has hand edits that haven't been saved yet. Used to
   // warn/save before invoicing so unsaved edits aren't lost when the job is filed away.
   const [costingDirty, setCostingDirty] = useState(false);
   // What the status line beside the grand total shows, in place of the old Save button:
-  // 'idle' | 'pending' (edited, save due) | 'saving' | 'saved' | 'error'.
+  // 'idle' | 'pending' (edited, save due) | 'saving' | 'saved' | 'error'. A box sitting
+  // red overrides all of these on the way out — see costingSaveState in the return below.
   const [saveState, setSaveState] = useState('idle');
   // How many of this screen's writes the server has confirmed during this opening —
   // the pricing half of the job window's "that reached the job" green, counted the same
@@ -103,8 +135,8 @@ export function useCosting(jobCardId, {
   // never happened. Reset with the rest of the screen on open, so it only ever counts
   // this job's landings.
   const [landedCount, setLandedCount] = useState(0);
-  // A failed save stops the countdown re-arming itself, so a server that's down gets one
-  // attempt per typing burst instead of one every second. Cleared by the next edit or by
+  // A failed save stops leaving a box from retrying, so a server that's down gets one
+  // attempt per edit instead of one per box tabbed across. Cleared by the next edit or by
   // the "try again" link.
   const [autoSavePaused, setAutoSavePaused] = useState(false);
 
@@ -143,7 +175,11 @@ export function useCosting(jobCardId, {
       setCostingDirty(false);
       setSaveState('idle');
       setCostingForm(formFromCosting(loadedCosting));
+      setDrafts({});
+      clearAllFieldErrors();
     }
+    // clearAllFieldErrors is stable (useCallback with no deps in useFieldErrors)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedCosting]);
 
   // Every hand edit marks the screen as owing a save and restarts the save timer.
@@ -154,50 +190,18 @@ export function useCosting(jobCardId, {
     setAutoSavePaused(false);
   }, []);
 
-  // Typing in a tier's hours or multiplier box marks it as a manual override, so the
-  // auto figure stops driving it (and a later timer/settings refresh won't overwrite it).
+  // Every keystroke in any box — number or text — just records what's being typed.
+  // Nothing else happens here: no parsing, no clamping, no toast, no save. commitBox
+  // (below) is the only place a draft is ever judged.
   const handleCostingChange = useCallback((e) => {
     const { name, value } = e.target;
-    if (TEXT_FIELDS.has(name)) {
-      markEdited();
-      setCostingForm(prev => ({ ...prev, [name]: value }));
-      return;
-    }
-    const flag = OVERRIDE_FLAG[name];
-    const min = FIELD_MIN[name] ?? 0;
-    const typed = parseFloat(value);
-    // A cleared override box means "go back to the logged / company figure", not "0 by
-    // hand". Leave it blank on screen and drop the hand-edit: the save then sends no
-    // override, and the reply fills the box with the logged figure. Typing 0 still means 0.
-    if (flag && !Number.isFinite(typed)) {
-      markEdited();
-      setCostingForm(prev => ({ ...prev, [name]: '', [flag]: false }));
-      return;
-    }
-    // A value below the floor is snapped up, but never silently — say why the typed
-    // figure vanished. A cleared box (NaN) isn't an attempt at a low value, so no nag;
-    // the fixed toast id keeps repeated keystrokes updating one message, not stacking.
-    if (Number.isFinite(typed) && typed < min) {
-      toast(
-        min >= 1
-          ? `Overtime multipliers can't go below ×1 — snapped to ×1`
-          : `Costing figures can't be negative — snapped to 0`,
-        { id: 'costing-min-clamp', icon: warningToastIcon }
-      );
-    }
-    markEdited();
-    setCostingForm(prev => ({
-      ...prev,
-      [name]: Math.max(min, typed || 0),
-      ...(flag ? { [flag]: true } : {})
-    }));
-  }, [markEdited]);
+    setDrafts(prev => ({ ...prev, [name]: value }));
+  }, []);
 
-  // Save now rather than on the countdown — carried out ONE RENDER from now. Asked for
+  // Save now — carried out ONE RENDER from now. Asked for
   // by every figure changed by PRESSING A LINK rather than by typing (a tier's "reset to
   // logged", an overtime multiplier's "standard ×N", "use company default", "put it back",
-  // "Reset all to auto"), which has no box for the user to leave, and by the blur path
-  // below.
+  // "Reset all to auto"), which has no box for the user to leave, and by commitBox below.
   //
   // It is a request rather than a call because the save has to read the figures as they
   // are AFTER the change it belongs to, and the handler asking for it cannot: the new
@@ -230,12 +234,110 @@ export function useCosting(jobCardId, {
     }
   }, []);
 
+  // The single place a draft becomes a committed figure — or is found wanting and stays
+  // a draft, marked red. Called by a box's blur (which already covers Tab, click-away,
+  // Escape-then-close, tab switch) and by Enter; both go through the same function so
+  // there is exactly one moment a typed box is judged. Returns { ok } so a caller that
+  // needs to know whether the box actually cleared (flushCosting, guardLeaveCosting) can
+  // tell without waiting on the field-error state to re-render.
+  const commitBox = useCallback((name) => {
+    if (!(name in drafts)) return { ok: true }; // nothing being typed here — nothing to do
+
+    const raw = drafts[name];
+
+    if (TEXT_FIELDS.has(name)) {
+      const formatted = capitalizeFirst(raw);
+      setDrafts(prev => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+      if (formatted !== costingForm[name]) {
+        markEdited();
+        setCostingForm(prev => ({ ...prev, [name]: formatted }));
+        requestImmediateSave();
+      }
+      return { ok: true };
+    }
+
+    const flag = OVERRIDE_FLAG[name];
+    const min = FIELD_MIN[name] ?? 0;
+    const trimmed = raw.trim();
+
+    // Blank: a plain box commits to 0; an override box drops the hand figure and
+    // follows the logged/company figure instead — never a typed 0 either way, just
+    // nothing typed at all.
+    if (trimmed === '') {
+      setDrafts(prev => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+      if (flag) {
+        const calcVal = costingForm[`${name}Calculated`] ?? 0;
+        if (costingForm[name] !== calcVal || costingForm[flag] !== false) {
+          markEdited();
+          setCostingForm(prev => ({ ...prev, [name]: calcVal, [flag]: false }));
+          requestImmediateSave();
+        }
+      } else if (costingForm[name] !== 0) {
+        markEdited();
+        setCostingForm(prev => ({ ...prev, [name]: 0 }));
+        requestImmediateSave();
+      }
+      return { ok: true };
+    }
+
+    // Not blank: it has to actually be a number, and clear the floor, or it stays a
+    // draft — keep the typed text, mark it red, send nothing.
+    if (!NUMERIC_PATTERN.test(trimmed)) {
+      setFieldErrors({ [name]: 'Enter a number.' }, { [name]: raw });
+      return { ok: false };
+    }
+    const parsed = parseFloat(trimmed);
+    if (parsed < min) {
+      setFieldErrors({ [name]: floorMessage(min) }, { [name]: raw });
+      return { ok: false };
+    }
+
+    // Valid — commit it, but only actually save when it changed. Leaving a box that was
+    // typed in and then put back exactly as it was is not an edit.
+    setDrafts(prev => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+    const changed = costingForm[name] !== parsed || (flag ? costingForm[flag] !== true : false);
+    if (changed) {
+      markEdited();
+      setCostingForm(prev => ({ ...prev, [name]: parsed, ...(flag ? { [flag]: true } : {}) }));
+      requestImmediateSave();
+    }
+    return { ok: true };
+  }, [drafts, costingForm, markEdited, requestImmediateSave, setFieldErrors]);
+
+  // Drop every box's typed text and the errors that go with them, without committing
+  // anything — used when the person answers "discard" to the red-box question on close
+  // or on leaving the tab. Every box then falls back to showing its last committed
+  // (i.e. last saved) figure, exactly as if nothing had been typed this visit.
+  const discardCostingDrafts = useCallback(() => {
+    setDrafts({});
+    clearAllFieldErrors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Drop a tier's manual override and snap its hours back to the auto-tallied figure.
   // tier is '' (normal), 'Ot1', 'Ot2', or 'Holiday'.
   const resetTierHours = useCallback((tier = '') => {
     const hoursKey = `labour${tier}Hours`;
     const calcKey = `labour${tier}HoursCalculated`;
     const flagKey = OVERRIDE_FLAG[hoursKey];
+    setDrafts(prev => {
+      if (!(hoursKey in prev)) return prev;
+      const next = { ...prev };
+      delete next[hoursKey];
+      return next;
+    });
     markEdited();
     setCostingForm(prev => ({
       ...prev,
@@ -251,6 +353,12 @@ export function useCosting(jobCardId, {
     const multKey = `labour${tier}Multiplier`;
     const calcKey = `labour${tier}MultiplierCalculated`;
     const flagKey = OVERRIDE_FLAG[multKey];
+    setDrafts(prev => {
+      if (!(multKey in prev)) return prev;
+      const next = { ...prev };
+      delete next[multKey];
+      return next;
+    });
     markEdited();
     setCostingForm(prev => ({
       ...prev,
@@ -263,35 +371,58 @@ export function useCosting(jobCardId, {
   // Fill the base rate with the current company default — a one-tap convenience. It's a
   // plain value set (the job still owns its rate); nothing "follows" the default after.
   const useDefaultRate = useCallback(() => {
+    setDrafts(prev => {
+      if (!('labourRate' in prev)) return prev;
+      const next = { ...prev };
+      delete next.labourRate;
+      return next;
+    });
     markEdited();
     setCostingForm(prev => ({ ...prev, labourRate: prev.labourDefaultRate }));
     requestImmediateSave();
   }, [markEdited, requestImmediateSave]);
 
-  // The "opened at $X · put it back" link beside each manual money box. It goes through
-  // here rather than calling handleCostingChange directly from the sheet, so that pressing
-  // it saves straight away like the other links — typing into the same box must not.
+  // The "opened at $X · put it back" link beside each manual money box. It sets the
+  // committed value directly (dropping that box's draft and error, if any) and saves
+  // straight away like the other links — typing into the same box must not.
   const revertField = useCallback((name, value) => {
-    handleCostingChange({ target: { name, value } });
+    const parsed = parseFloat(value);
+    setDrafts(prev => {
+      if (!(name in prev)) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+    markEdited();
+    setCostingForm(prev => ({ ...prev, [name]: Number.isFinite(parsed) ? parsed : 0 }));
     requestImmediateSave();
-  }, [handleCostingChange, requestImmediateSave]);
+  }, [markEdited, requestImmediateSave]);
 
-  const calculateCostingTotals = useCallback(() => {
-    // A cleared override box ('') is "follow the logged / company figure", so the totals
-    // price it at that figure — not at 0 — while the box sits blank waiting for the reply.
-    const fig = (k) => costingForm[k] === '' ? (costingForm[`${k}Calculated`] || 0) : costingForm[k];
-    const labourTotal = fig('labourHours') * costingForm.labourRate;
-    const labourOt1Total = fig('labourOt1Hours') * costingForm.labourRate * fig('labourOt1Multiplier');
-    const labourOt2Total = fig('labourOt2Hours') * costingForm.labourRate * fig('labourOt2Multiplier');
-    const labourHolidayTotal = fig('labourHolidayHours') * costingForm.labourRate * costingForm.labourHolidayMultiplier;
-    const labourSpecialTotal = costingForm.labourSpecialHours * costingForm.labourSpecialRate;
-    const materialsTotal = costingForm.materialsCost * (1 + costingForm.materialsProfitPercent / 100);
-    const subcontractorTotal = costingForm.subcontractorCost * (1 + costingForm.subcontractorProfitPercent / 100);
+  // The figures actually priced right now. With no form argument, that's the committed
+  // figures overlaid with every box currently being typed in (parsed per the rules in
+  // parsedDraftValue) — what the sheet's own totals and the header running total show
+  // live, updating on every keystroke without sending anything. Callers that already
+  // have the exact committed form to price (runSave, sending only what was just
+  // committed) pass it explicitly and get no draft overlay at all.
+  const calculateCostingTotals = useCallback((form) => {
+    const fig = (name) => {
+      if (form) return form[name];
+      if (name in drafts) return parsedDraftValue(name, drafts[name], costingForm);
+      return costingForm[name];
+    };
+    const labourRate = fig('labourRate');
+    const labourTotal = fig('labourHours') * labourRate;
+    const labourOt1Total = fig('labourOt1Hours') * labourRate * fig('labourOt1Multiplier');
+    const labourOt2Total = fig('labourOt2Hours') * labourRate * fig('labourOt2Multiplier');
+    const labourHolidayTotal = fig('labourHolidayHours') * labourRate * fig('labourHolidayMultiplier');
+    const labourSpecialTotal = fig('labourSpecialHours') * fig('labourSpecialRate');
+    const materialsTotal = fig('materialsCost') * (1 + fig('materialsProfitPercent') / 100);
+    const subcontractorTotal = fig('subcontractorCost') * (1 + fig('subcontractorProfitPercent') / 100);
     const grandTotal = labourTotal + labourOt1Total + labourOt2Total + labourHolidayTotal
       + labourSpecialTotal + materialsTotal + subcontractorTotal;
 
     return { labourTotal, labourOt1Total, labourOt2Total, labourHolidayTotal, labourSpecialTotal, materialsTotal, subcontractorTotal, grandTotal };
-  }, [costingForm]);
+  }, [costingForm, drafts]);
 
   // Send the current figures. Returns true when they're safely stored and false when the
   // save failed. Callers that gate an irreversible step on the save (invoicing files the
@@ -313,29 +444,30 @@ export function useCosting(jobCardId, {
     if (!loadedRef.current) {
       setSaveState('error');
       setAutoSavePaused(true);
-      toast.error("This job's pricing hasn't loaded — reopen the pricing screen before making changes.", { id: 'costing-not-loaded' });
+      toastNotLoaded();
       return false;
     }
 
+    const form = costingForm;
     const seq = editSeq.current;
     // What this save covers, for flushCosting to compare against — see there.
     inFlightSeq.current = seq;
     setSavingCosting(true);
     setSaveState('saving');
     try {
-      const totals = calculateCostingTotals();
+      const totals = calculateCostingTotals(form);
       const costingData = {
-        ...costingForm,
+        ...form,
         // Send each tier's manual hours only when overridden; null tells the server to
         // use its auto tally. The server recomputes every total from these + settings.
-        labourHoursOverride: costingForm.labourHoursOverridden ? costingForm.labourHours : null,
-        labourOt1Override: costingForm.labourOt1Overridden ? costingForm.labourOt1Hours : null,
-        labourOt2Override: costingForm.labourOt2Overridden ? costingForm.labourOt2Hours : null,
-        labourHolidayOverride: costingForm.labourHolidayOverridden ? costingForm.labourHolidayHours : null,
+        labourHoursOverride: form.labourHoursOverridden ? form.labourHours : null,
+        labourOt1Override: form.labourOt1Overridden ? form.labourOt1Hours : null,
+        labourOt2Override: form.labourOt2Overridden ? form.labourOt2Hours : null,
+        labourHolidayOverride: form.labourHolidayOverridden ? form.labourHolidayHours : null,
         // Same deal for the two overtime multipliers: a hand-typed figure travels as
         // the override, null tells the server to follow the company setting.
-        labourOt1MultiplierOverride: costingForm.labourOt1MultiplierOverridden ? costingForm.labourOt1Multiplier : null,
-        labourOt2MultiplierOverride: costingForm.labourOt2MultiplierOverridden ? costingForm.labourOt2Multiplier : null,
+        labourOt1MultiplierOverride: form.labourOt1MultiplierOverridden ? form.labourOt1Multiplier : null,
+        labourOt2MultiplierOverride: form.labourOt2MultiplierOverridden ? form.labourOt2Multiplier : null,
         labourTotal: totals.labourTotal,
         labourOt1Total: totals.labourOt1Total,
         labourOt2Total: totals.labourOt2Total,
@@ -351,8 +483,8 @@ export function useCosting(jobCardId, {
       }
       const stored = await updateCosting(costingData);
       // Only call it saved when nothing was typed while the request was in flight —
-      // otherwise those later keystrokes would look stored without ever being sent.
-      // Leaving it dirty re-arms the save timer as soon as this save finishes.
+      // otherwise those later keystrokes would look stored without ever having been sent.
+      // Left dirty, they go out with the next box left, Enter, or flush.
       // The job must also still be the one on screen: a save that started as a job was
       // closed can land after the next job has opened, and its figures would otherwise
       // be adopted onto that job.
@@ -360,15 +492,20 @@ export function useCosting(jobCardId, {
         // Adopt what the server actually stored. It folds in any time logged since the
         // screen loaded, so its totals can be higher than the ones worked out here —
         // without this the grand total on screen quietly drifts from the billed one.
-        // Safe to replace every box: nothing was typed while the save was in flight.
+        // Safe to replace every box — nothing was typed anywhere while this save was in
+        // flight (a box someone started typing in during the wait would still carry a
+        // draft, which display already overlays on top of whatever this puts in below).
         if (stored) {
           loadedRef.current = stored;
           setCostingForm(prev => {
             const next = formFromCosting(stored);
-            // Keep the notes exactly as they are in the boxes. The server trims them for
-            // storage, so swapping the stored copy back in mid-sentence would eat the
-            // space just typed before the next word ("Weekend " → "Weekendshift").
-            for (const field of TEXT_FIELDS) next[field] = prev[field];
+            // Keep the notes exactly as they are in the boxes when nothing was typed in
+            // them (there is no draft to preserve instead) — the server trims them for
+            // storage, and swapping the trimmed copy back in would only ever differ by
+            // that trim, never by wording, since nothing was typed meanwhile.
+            for (const field of TEXT_FIELDS) {
+              if (!(field in drafts)) next[field] = prev[field];
+            }
             return next;
           });
         }
@@ -380,15 +517,13 @@ export function useCosting(jobCardId, {
     } catch (err) {
       setSaveState('error');
       setAutoSavePaused(true);
-      // Stable id: an unreachable server keeps retrying the auto-save and would
-      // otherwise stack one identical toast per failed attempt.
-      toast.error(err.message || 'Failed to save costing', { id: 'save-costing-failed' });
+      toastSaveFailed(err);
       return false;
     } finally {
       inFlightSeq.current = null;
       setSavingCosting(false);
     }
-  }, [jobCardId, costingForm, calculateCostingTotals, updateCosting]);
+  }, [jobCardId, costingForm, calculateCostingTotals, updateCosting, drafts]);
 
   // Read by the queue below so a save that waits its turn sends the figures as they are
   // when it finally runs, not as they were when it was asked for.
@@ -412,20 +547,11 @@ export function useCosting(jobCardId, {
     return tracked;
   }, []);
 
-  // Held in a ref so the save timer below can fire the newest save without listing it as
-  // a dependency — the job screen re-renders every second while a timer runs, and a
-  // dependency that changes identity each render would restart the timer forever.
+  // Held in a ref so the effect below and flushCosting fire the newest save without
+  // listing it as a dependency — the job screen re-renders every second while a timer
+  // runs, and a dependency that changes identity each render would re-fire them.
   const saveNowRef = useRef(saveNow);
   saveNowRef.current = saveNow;
-
-  // The auto-save itself: every edit restarts a short countdown, so a burst of typing
-  // (or tabbing across boxes) lands as one save. Nothing overlaps an in-flight save —
-  // when that finishes, an edit made during it re-arms this.
-  useEffect(() => {
-    if (!costingDirty || savingCosting || autoSavePaused) return undefined;
-    const timerId = setTimeout(() => { saveNowRef.current(); }, AUTOSAVE_DELAY);
-    return () => clearTimeout(timerId);
-  }, [costingForm, costingDirty, savingCosting, autoSavePaused]);
 
   // Carries out a requested save one render after it was asked for, so it sends the
   // figures that change produced rather than the ones it replaced. See
@@ -438,48 +564,98 @@ export function useCosting(jobCardId, {
     if (waiting) saved.then(waiting.settle, () => waiting.settle(false));
   }, [immediateSaveSeq]);
 
-  // Save right now instead of waiting out the countdown — used by Enter, by leaving the
-  // pricing screen, and by closing the job.
+  // Held in refs so flushCosting and guardLeaveCosting (both stable-ish callbacks used
+  // from effects and event handlers elsewhere) always commit against the CURRENT set of
+  // drafts and errors rather than whatever was on screen when they were created.
+  const draftsRef = useRef(drafts);
+  draftsRef.current = drafts;
+  const commitBoxRef = useRef(commitBox);
+  commitBoxRef.current = commitBox;
+
+  // Commit every box still being typed in — leaving the tab, closing the job and
+  // invoicing are all "leave every box at once". Each one either lands (valid) or stays
+  // a draft, marked red (invalid); nothing is ever discarded here. Returns the name of
+  // the first box that stayed red, or null when everything committed cleanly.
+  const commitAllBoxes = useCallback(() => {
+    let firstInvalid = null;
+    for (const name of Object.keys(draftsRef.current)) {
+      const result = commitBoxRef.current(name);
+      if (!result.ok && !firstInvalid) firstInvalid = name;
+    }
+    return firstInvalid;
+  }, []);
+
+  // Save right now — used by leaving the tab, and by closing the job.
   //
   // A save already carrying every edit made so far counts as done for this purpose:
-  // leaving the pricing screen with the cursor still in a box fires the blur save a
+  // leaving the pricing screen with the cursor still in a box fires the blur commit a
   // moment before this runs, and the sheet goes on reading as dirty until that reply
   // lands. Waiting on it beats sending the same figures again — the second trip stores
   // nothing new, but it is a wasted round trip on every tab-away and it counts as another
   // confirmed save for the job window's green frame. Anything typed since that save
   // started is a real difference, so that case still queues a fresh save behind it.
+  //
+  // Committing every open box first (commitAllBoxes) means this can also be asked while
+  // the cursor is still in a box — a red one stays red and this refuses to save, naming
+  // which field, rather than silently sending the committed figures around it.
   const flushCosting = useCallback(async () => {
-    if (!costingDirty) return true;
-    if (inFlight.current && inFlightSeq.current === editSeq.current) return inFlight.current;
-    setAutoSavePaused(false);
-    // A save already ASKED FOR counts the same way: it is deliberately waiting a render
-    // so it can read the figures the box that was just left produced on its way out,
-    // which is exactly what this needs stored. Starting a second one here would send the
-    // untidied figures and queue the requested save behind it for nothing.
-    if (pendingImmediate.current) return pendingImmediate.current.promise;
-    return saveNowRef.current();
-  }, [costingDirty]);
+    const invalidField = commitAllBoxes();
+    if (invalidField) return { ok: false, invalid: true, field: invalidField };
 
-  // Clicking or tabbing out of a box sends it straight away, so a price behaves like
-  // every other box on the job screen rather than sitting out a countdown the person
-  // can't see. The countdown above stays as the backstop for a figure typed and then
-  // left alone — money is worth keeping that safety net even though the job's own
-  // fields don't have one.
+    // commitAllBoxes may just have queued a save of its own (requestImmediateSave, for
+    // any box that actually changed) — that's checked FIRST and is the authoritative
+    // signal here. `costingDirty` is still whatever it was before this synchronous pass;
+    // the setCostingDirty(true) a fresh commit just queued hasn't been applied to this
+    // closure yet, so reading it here would miss a save that was just asked for and
+    // return "done" a render before it actually goes out.
+    if (pendingImmediate.current) {
+      const ok = await pendingImmediate.current.promise;
+      return { ok };
+    }
+    if (!costingDirty) return { ok: true };
+    if (inFlight.current && inFlightSeq.current === editSeq.current) {
+      const ok = await inFlight.current;
+      return { ok };
+    }
+    setAutoSavePaused(false);
+    const ok = await saveNowRef.current();
+    return { ok };
+  }, [costingDirty, commitAllBoxes]);
+
+  // Leaving the Costing tab, or trying to close the job, while a box is still red: ask
+  // whether to go fix it or throw the typed text away. Resolves `{ proceed, field }` —
+  // proceed true when it's safe to go on (either nothing was wrong, or the person chose
+  // to discard); false means stay put, and field names the box to bring into view. field
+  // is returned rather than left for the caller to re-read off costingHook, because
+  // firstInvalidCostingField is derived from React state that hasn't re-rendered yet by
+  // the time this resolves — the field name commitAllBoxes actually found is the only
+  // reliable one in this same async breath.
   //
-  // Unlike flushCosting this does NOT lift autoSavePaused: a failed save means the
-  // server is refusing, and tabbing across the sheet's boxes would otherwise fire one
-  // doomed retry per box. The pause lifts on the next real edit (markEdited) or on the
-  // "try again" link, which is what it has always done.
-  //
-  // It goes through requestImmediateSave rather than saving on the spot because a box can
-  // change its own value on the way out — the cost notes capitalise themselves as they
-  // are left — and that tidied wording is still a queued state update while this runs.
-  // Saving here sent the untidied one and then marked the sheet clean, so what the person
-  // was looking at was never stored and came back untidied on the next opening.
-  const saveOnBoxBlur = useCallback(() => {
-    if (!costingDirty || autoSavePaused) return;
-    requestImmediateSave();
-  }, [costingDirty, autoSavePaused, requestImmediateSave]);
+  // showConfirm is optional: callers that can't supply one (this hook is used before the
+  // job screen wires it in) get the safer default of staying put rather than losing a
+  // typed figure with no way to ask about it.
+  const guardLeaveCosting = useCallback(async (showConfirm) => {
+    const invalidField = commitAllBoxes();
+    if (!invalidField) return { proceed: true, field: null };
+
+    if (!showConfirm) {
+      requestAnimationFrame(() => scrollFieldIntoView(invalidField));
+      return { proceed: false, field: invalidField };
+    }
+    const discard = await showConfirm({
+      title: 'Pricing not saved',
+      message: "This pricing figure isn't saved — fix it or discard it?",
+      confirmLabel: 'Discard',
+      cancelLabel: 'Fix it',
+      confirmVariant: 'danger'
+    });
+    if (!discard) {
+      requestAnimationFrame(() => scrollFieldIntoView(invalidField));
+      return { proceed: false, field: invalidField };
+    }
+    discardCostingDrafts();
+    return { proceed: true, field: null };
+  }, [commitAllBoxes, discardCostingDrafts]);
 
   // Used by the invoicing paths, which run their own "this will archive the job / your
   // unsaved pricing will be billed" prompt before calling it.
@@ -530,7 +706,7 @@ export function useCosting(jobCardId, {
       }
     } catch (err) {
       if (jobCardIdRef.current !== calledForJobId || refreshSeq.current !== seq) return;
-      toast.error(err.message || 'Failed to refresh costing hours');
+      toastRefreshFailed(err);
     }
   }, [jobCardId]);
 
@@ -545,6 +721,9 @@ export function useCosting(jobCardId, {
     // adopted onto the freshly blanked form (which would file blank notes as loaded).
     editSeq.current += 1;
     setCostingForm(getDefaultCostingForm());
+    setDrafts({});
+    clearAllFieldErrors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // The manual money lines (materials, subcontractor, special labour) have no
@@ -557,14 +736,42 @@ export function useCosting(jobCardId, {
   // opened with, even once later autosaves have moved the actually-stored value past it.
   const openedAt = openingRef.current ? formFromCosting(openingRef.current) : null;
 
+  // What the sheet actually renders: every committed figure, with any box currently
+  // being typed in showing its draft text instead. Built here so every caller (the tab,
+  // the totals, the save) reads one already-merged form rather than each doing its own
+  // overlay.
+  const shownCostingForm = { ...costingForm };
+  for (const [name, text] of Object.entries(drafts)) shownCostingForm[name] = text;
+
+  const costingInvalid = Object.keys(fieldErrors).length > 0;
+  const firstInvalidCostingField = costingInvalid ? Object.keys(fieldErrors)[0] : null;
+  // Any box currently being typed in — including a red one, which is still a draft, just
+  // one that hasn't committed yet. Distinct from costingDirty (P4.1 keeps that meaning
+  // "committed figures not yet stored"): typing "50" into a box that already read 50
+  // leaves a draft here with costingDirty still false. The window-refresh/close-tab
+  // warning (useUnsavedGuard.js) needs this too — a draft is exactly the kind of typed,
+  // unsaved work that guard exists to catch, and today it only reads costingDirty.
+  const costingHasDraft = Object.keys(drafts).length > 0;
+
   return {
-    costingForm,
-    costingSaveState: saveState,
+    costingForm: shownCostingForm,
+    // A red box overrides the ordinary idle/pending/saving/saved/error progression —
+    // there is nothing to report about the rest of the sheet's save state while one
+    // figure on it isn't even valid yet.
+    costingSaveState: costingInvalid ? 'invalid' : saveState,
     costingDirty,
+    costingInvalid,
+    firstInvalidCostingField,
+    costingHasDraft,
     costingLandedCount: landedCount,
     openedAt,
     flushCosting,
-    saveOnBoxBlur,
+    guardLeaveCosting,
+    discardCostingDrafts,
+    // Kept under its old name — every caller (CostingTab's blur bubbling, Enter handler)
+    // already reaches it this way, and it now IS commitBox: a box saves by committing,
+    // there is no separate "just send whatever's already committed" blur behaviour left.
+    saveOnBoxBlur: commitBox,
     revertField,
     handleCostingChange,
     resetTierHours,
@@ -573,6 +780,21 @@ export function useCosting(jobCardId, {
     calculateCostingTotals,
     handleSaveCosting,
     refreshCosting,
-    resetCosting
+    resetCosting,
+    costingFieldError: (name) => fieldErrors[name] || null,
+    costingFieldProps: fieldProps,
+    costingErrorProps: errorProps
   };
+}
+
+// Split out so runSave (already long) reads as a list of steps rather than a wall of
+// toast wording.
+function toastNotLoaded() {
+  toast.error("This job's pricing hasn't loaded — reopen the pricing screen before making changes.", { id: 'costing-not-loaded' });
+}
+function toastSaveFailed(err) {
+  toast.error(err.message || 'Failed to save costing', { id: 'save-costing-failed' });
+}
+function toastRefreshFailed(err) {
+  toast.error(err.message || 'Failed to refresh costing hours');
 }

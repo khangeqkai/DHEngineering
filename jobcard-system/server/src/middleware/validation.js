@@ -42,10 +42,15 @@ function getTagValues(category) {
 function handleValidationErrors(req, res, next) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    const messages = errors.array().map(err => err.msg);
+    const errArray = errors.array();
+    const messages = errArray.map(err => err.msg);
     return res.status(400).json({
       error: 'Validation failed',
-      details: messages
+      details: messages,
+      // Which field each message belongs to, so a screen can mark the box itself
+      // instead of only popping up the message. express-validator 7 names it
+      // `path` (an older major would call it `param`) — use whichever exists.
+      fields: errArray.map(err => ({ field: err.path !== undefined ? err.path : err.param, message: err.msg }))
     });
   }
   next();
@@ -214,6 +219,15 @@ const validateCreateUser = [
   handleValidationErrors
 ];
 
+// PUT /auth/users/:id — same field shape as create, but every field is optional
+// since an update may touch just one of them (password's own 4-digit check and
+// role's own enum check already live inline in the route).
+const validateUpdateUser = [
+  optionalString('name', 'Name', 100),
+  optionalEmail('email'),
+  handleValidationErrors
+];
+
 // POST /companies — a customer is just its name (plus optional address/notes).
 const validateCreateCompany = [
   requiredString('name', 'Company name'),
@@ -363,6 +377,21 @@ const validateJobcardEnums = [
     .withMessage('Quality level must be a string'),
   // drawings + customer property are now per-line-item (see validateItemDrawings /
   // validateItemCustomerProperty), so they are no longer validated at job level.
+  handleValidationErrors
+];
+
+// POST /jobcards only — a new job may carry a typed-in contact name/phone/email
+// (the person hasn't been saved as a real contact yet). Mirrors validateCreateContact's
+// checks for the same three fields. Never applied to PUT — an existing job's
+// contact fields are not editable that way.
+//
+// Picking a saved person copies their stored phone/email as-is, no re-check (see
+// jobcard-mutations.js) — this chain only ever checks whatever the body actually
+// carries, i.e. what was typed for this job.
+const validateJobcardContactFields = [
+  optionalString('contactName', 'Contact name', 200),
+  optionalEmail('contactEmail'),
+  optionalPhone('contactPhone'),
   handleValidationErrors
 ];
 
@@ -708,6 +737,7 @@ module.exports = {
   // Pre-built validation arrays
   validateLogin,
   validateCreateUser,
+  validateUpdateUser,
   validateUpdatePreferences,
   validateCreateCompany,
   validateUpdateCompany,
@@ -717,6 +747,7 @@ module.exports = {
   validateUpdateSupplier,
   validateJobcardListQuery,
   validateJobcardEnums,
+  validateJobcardContactFields,
   validateJobcardDescriptionRequired,
   validateStartTimer,
   validateManualTimeEntry,

@@ -44,6 +44,22 @@ function scheduleDayToWholeHours(day) {
   return blocks;
 }
 
+// Snap a whole weekly schedule to whole-hour block starts. Used by the one-time
+// startup conversion and by backup restore, so a restored backup can never bring
+// sub-hour boundaries back. `changed` is false when nothing needed snapping.
+const SCHEDULE_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+function scheduleToWholeHours(sched) {
+  const schedule = {};
+  let changed = false;
+  for (const d of SCHEDULE_DAYS) {
+    const before = sched?.[d];
+    const after = scheduleDayToWholeHours(before);
+    schedule[d] = after;
+    if (JSON.stringify(after) !== JSON.stringify(before)) changed = true;
+  }
+  return { schedule, changed };
+}
+
 // Run database migrations for existing databases
 // Good pieces on a work block are stored as whole numbers (see wholeQty in
 // timeEntryHelpers). Fold anything saved before that rule into the same shape wholeQty
@@ -198,31 +214,54 @@ function runMigrations() {
   // superseded by idx_history_user_created (user_id, created_at) and
   // idx_history_entity_created (entity_type, entity_id, created_at) in schema.js, which
   // cover the same lookups plus their ORDER BY created_at. Drop the old ones from an
-  // existing database — naturally idempotent, no settings flag needed.
-  db.exec('DROP INDEX IF EXISTS idx_history_user');
-  db.exec('DROP INDEX IF EXISTS idx_history_entity');
+  // existing database — naturally idempotent, no settings flag needed. Each conversion
+  // below catches its own error so one failing block can never abort the rest — this
+  // matters as much on a normal boot as at the end of a backup restore.
+  try {
+    db.exec('DROP INDEX IF EXISTS idx_history_user');
+    db.exec('DROP INDEX IF EXISTS idx_history_entity');
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to drop superseded history indexes');
+  }
 
   // One-shot wipe of legacy time_entries (Task 6 — per-item timer rewrite).
   // CSV item_number rows can't be mapped onto the new per-item shape, so this
   // conversion clears them rather than folding them; it runs once (guarded by
   // the settings flag below) and is a no-op thereafter.
-  const wipeFlagKey = 'time_entries_per_item_wiped_at';
-  const flag = db.prepare('SELECT value FROM settings WHERE key = ?').get(wipeFlagKey);
-  if (!flag) {
-    const result = db.prepare('DELETE FROM time_entries').run();
-    settingsQueries.upsert.run(wipeFlagKey, new Date().toISOString());
-    logger.info({ deleted: result.changes }, 'Migration: Wiped legacy time_entries for per-item timer');
+  try {
+    const wipeFlagKey = 'time_entries_per_item_wiped_at';
+    const flag = db.prepare('SELECT value FROM settings WHERE key = ?').get(wipeFlagKey);
+    if (!flag) {
+      const result = db.prepare('DELETE FROM time_entries').run();
+      settingsQueries.upsert.run(wipeFlagKey, new Date().toISOString());
+      logger.info({ deleted: result.changes }, 'Migration: Wiped legacy time_entries for per-item timer');
+    }
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to wipe legacy time_entries for per-item timer');
   }
 
-  foldGoodPiecesToWhole();
-  cleanUpDuplicateItemNumbering();
+  try {
+    foldGoodPiecesToWhole();
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to fold good-piece counts to whole numbers');
+  }
+
+  try {
+    cleanUpDuplicateItemNumbering();
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to clean up duplicate item numbering');
+  }
 
   // Clearing a job's due date used to save an empty string instead of "no date",
   // which a due-before search reads as earlier than every real day. Fold those
   // into NULL. Naturally idempotent (a second run finds none).
-  const clearedDueDates = db.prepare("UPDATE jobcards SET due_date = NULL WHERE due_date = ''").run();
-  if (clearedDueDates.changes > 0) {
-    logger.info({ fixed: clearedDueDates.changes }, 'Migration: Stored cleared due dates as no date');
+  try {
+    const clearedDueDates = db.prepare("UPDATE jobcards SET due_date = NULL WHERE due_date = ''").run();
+    if (clearedDueDates.changes > 0) {
+      logger.info({ fixed: clearedDueDates.changes }, 'Migration: Stored cleared due dates as no date');
+    }
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to store cleared due dates as no date');
   }
 
   // A quality level's form file on disk IS the record, so two records naming the same file
@@ -230,13 +269,17 @@ function runMigrations() {
   // refuses to save. Uploading a duplicate name is now refused, but existing databases may
   // already hold such pairs — keep the newest of each and drop the rest. Naturally
   // idempotent (a second run finds no duplicates).
-  const dedupedTemplates = db.prepare(`
-    DELETE FROM qa_level_templates WHERE rowid NOT IN (
-      SELECT MAX(rowid) FROM qa_level_templates GROUP BY qa_level_id, file_name
-    )
-  `).run();
-  if (dedupedTemplates.changes > 0) {
-    logger.info({ removed: dedupedTemplates.changes }, 'Migration: Removed duplicate QA form records sharing one file');
+  try {
+    const dedupedTemplates = db.prepare(`
+      DELETE FROM qa_level_templates WHERE rowid NOT IN (
+        SELECT MAX(rowid) FROM qa_level_templates GROUP BY qa_level_id, file_name
+      )
+    `).run();
+    if (dedupedTemplates.changes > 0) {
+      logger.info({ removed: dedupedTemplates.changes }, 'Migration: Removed duplicate QA form records sharing one file');
+    }
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to remove duplicate QA form records');
   }
 
   // Special labour changed from an auto-tally of "special"-marked time blocks into a
@@ -246,14 +289,18 @@ function runMigrations() {
   // hours/total ONCE (guarded by a settings flag) so the new manual line starts empty;
   // the rate an admin previously typed is left intact. Never re-runs, so it can't wipe
   // hours an admin enters later.
-  const specialResetKey = 'special_labour_manual_reset_at';
-  const specialFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(specialResetKey);
-  if (!specialFlag) {
-    const reset = db.prepare(
-      'UPDATE job_costings SET labour_special_hours = 0, labour_special_total = 0'
-    ).run();
-    settingsQueries.upsert.run(specialResetKey, new Date().toISOString());
-    logger.info({ updated: reset.changes }, 'Migration: Reset stored special-labour hours for manual entry');
+  try {
+    const specialResetKey = 'special_labour_manual_reset_at';
+    const specialFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(specialResetKey);
+    if (!specialFlag) {
+      const reset = db.prepare(
+        'UPDATE job_costings SET labour_special_hours = 0, labour_special_total = 0'
+      ).run();
+      settingsQueries.upsert.run(specialResetKey, new Date().toISOString());
+      logger.info({ updated: reset.changes }, 'Migration: Reset stored special-labour hours for manual entry');
+    }
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to reset stored special-labour hours');
   }
 
   // Overtime tiers changed what a hand-typed labour-hours override means. Before, the
@@ -265,26 +312,34 @@ function runMigrations() {
   // so they fall back to the new auto-split; already-invoiced jobs are left untouched so a
   // billed total never moves on its own. Never re-runs, so it can't wipe an override an
   // admin types later.
-  const otOverrideResetKey = 'labour_hours_override_reset_at';
-  const otOverrideFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(otOverrideResetKey);
-  if (!otOverrideFlag) {
-    const reset = db.prepare(
-      `UPDATE job_costings SET labour_hours_override = NULL
-       WHERE jobcard_id IN (SELECT id FROM jobcards WHERE archived = 0)`
-    ).run();
-    settingsQueries.upsert.run(otOverrideResetKey, new Date().toISOString());
-    logger.info({ updated: reset.changes }, 'Migration: Cleared stale labour-hours overrides for overtime split');
+  try {
+    const otOverrideResetKey = 'labour_hours_override_reset_at';
+    const otOverrideFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(otOverrideResetKey);
+    if (!otOverrideFlag) {
+      const reset = db.prepare(
+        `UPDATE job_costings SET labour_hours_override = NULL
+         WHERE jobcard_id IN (SELECT id FROM jobcards WHERE archived = 0)`
+      ).run();
+      settingsQueries.upsert.run(otOverrideResetKey, new Date().toISOString());
+      logger.info({ updated: reset.changes }, 'Migration: Cleared stale labour-hours overrides for overtime split');
+    }
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to clear stale labour-hours overrides');
   }
 
   // The 'TREATMENT' and 'ON_HOLD' statuses were removed and folded into
   // 'AWAITING_MATERIAL' (relabelled "Material/Treatment"). Convert any job still
   // parked on the old values so they display, sort, and save normally — otherwise
   // editing such a job would fail status validation.
-  const foldStatuses = db.prepare(
-    "UPDATE jobcards SET status = 'AWAITING_MATERIAL' WHERE status IN ('TREATMENT', 'ON_HOLD')"
-  ).run();
-  if (foldStatuses.changes > 0) {
-    logger.info({ moved: foldStatuses.changes }, "Migration: Folded TREATMENT/ON_HOLD jobs into AWAITING_MATERIAL");
+  try {
+    const foldStatuses = db.prepare(
+      "UPDATE jobcards SET status = 'AWAITING_MATERIAL' WHERE status IN ('TREATMENT', 'ON_HOLD')"
+    ).run();
+    if (foldStatuses.changes > 0) {
+      logger.info({ moved: foldStatuses.changes }, "Migration: Folded TREATMENT/ON_HOLD jobs into AWAITING_MATERIAL");
+    }
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to fold TREATMENT/ON_HOLD jobs into AWAITING_MATERIAL');
   }
 
   // The weekly overtime schedule is now edited on an hour-by-hour paint grid. The old
@@ -294,31 +349,26 @@ function runMigrations() {
   // stored day to whole-hour boundaries ONCE (guarded by a settings flag) so what's shown
   // matches what's billed. Whole-hour schedules are unchanged, so this is a no-op for
   // them and never re-runs. Uses the same cycle semantics as the editor/splitter.
-  const scheduleSnapKey = 'labour_schedule_whole_hours_at';
-  const scheduleSnapFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(scheduleSnapKey);
-  if (!scheduleSnapFlag) {
-    try {
-      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('labour_schedule');
-      if (row && row.value) {
-        const sched = JSON.parse(row.value);
-        const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-        const out = {};
-        let changed = false;
-        for (const d of days) {
-          const before = sched?.[d];
-          const after = scheduleDayToWholeHours(before);
-          out[d] = after;
-          if (JSON.stringify(after) !== JSON.stringify(before)) changed = true;
+  try {
+    const scheduleSnapKey = 'labour_schedule_whole_hours_at';
+    const scheduleSnapFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(scheduleSnapKey);
+    if (!scheduleSnapFlag) {
+      try {
+        const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('labour_schedule');
+        if (row && row.value) {
+          const { schedule: out, changed } = scheduleToWholeHours(JSON.parse(row.value));
+          if (changed) {
+            db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(JSON.stringify(out), 'labour_schedule');
+            logger.info('Migration: Snapped labour schedule block starts to whole hours');
+          }
         }
-        if (changed) {
-          db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(JSON.stringify(out), 'labour_schedule');
-          logger.info('Migration: Snapped labour schedule block starts to whole hours');
-        }
+      } catch (err) {
+        logger.error({ err }, 'Migration: Failed to snap labour schedule to whole hours');
       }
-    } catch (err) {
-      logger.error({ err }, 'Migration: Failed to snap labour schedule to whole hours');
+      settingsQueries.upsert.run(scheduleSnapKey, new Date().toISOString());
     }
-    settingsQueries.upsert.run(scheduleSnapKey, new Date().toISOString());
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to run the labour schedule whole-hours snap');
   }
 
   // Old jobs invoiced before per-job rule ownership may have no costing row at all.
@@ -334,42 +384,50 @@ function runMigrations() {
   // every boot until it succeeds, instead of being marked "done" despite failing. A
   // stored `archived_costing_backfill_at` row from an older version of this migration
   // is harmless and left alone; nothing reads it any more.
-  const rowless = db.prepare(
-    'SELECT id FROM jobcards WHERE archived = 1 AND id NOT IN (SELECT jobcard_id FROM job_costings)'
-  ).all();
-  let stamped = 0;
-  for (const { id } of rowless) {
-    try {
-      persistCosting(computeLiveCosting(id, null));
-      stamped++;
-    } catch (err) {
-      logger.error({ err, jobcardId: id }, 'Migration: Failed to backfill costing row for archived job');
+  try {
+    const rowless = db.prepare(
+      'SELECT id FROM jobcards WHERE archived = 1 AND id NOT IN (SELECT jobcard_id FROM job_costings)'
+    ).all();
+    let stamped = 0;
+    for (const { id } of rowless) {
+      try {
+        persistCosting(computeLiveCosting(id, null));
+        stamped++;
+      } catch (err) {
+        logger.error({ err, jobcardId: id }, 'Migration: Failed to backfill costing row for archived job');
+      }
     }
-  }
-  if (stamped > 0) {
-    logger.info({ stamped }, 'Migration: Backfilled costing rows for archived jobs');
+    if (stamped > 0) {
+      logger.info({ stamped }, 'Migration: Backfilled costing rows for archived jobs');
+    }
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to run the archived-job costing backfill');
   }
 
   // Seed the Victorian (VIC) 2026 public holidays onto existing databases that never
   // had a holiday list. Runs ONCE (guarded) and only fills the list when it is still
   // empty, so an admin who already added or cleared their own holidays is never
   // overwritten. New installs get the same list from the default-settings block above.
-  const vicHolidaysKey = 'vic_2026_holidays_seeded_at';
-  const vicHolidaysFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(vicHolidaysKey);
-  if (!vicHolidaysFlag) {
-    try {
-      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('labour_public_holidays');
-      let current = [];
-      try { current = JSON.parse(row && row.value ? row.value : '[]'); } catch { current = []; }
-      const isEmpty = !Array.isArray(current) || current.length === 0;
-      if (isEmpty) {
-        settingsQueries.upsert.run('labour_public_holidays', JSON.stringify(DEFAULT_VIC_PUBLIC_HOLIDAYS_2026));
-        logger.info('Migration: Seeded Victorian 2026 public holidays');
+  try {
+    const vicHolidaysKey = 'vic_2026_holidays_seeded_at';
+    const vicHolidaysFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(vicHolidaysKey);
+    if (!vicHolidaysFlag) {
+      try {
+        const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('labour_public_holidays');
+        let current = [];
+        try { current = JSON.parse(row && row.value ? row.value : '[]'); } catch { current = []; }
+        const isEmpty = !Array.isArray(current) || current.length === 0;
+        if (isEmpty) {
+          settingsQueries.upsert.run('labour_public_holidays', JSON.stringify(DEFAULT_VIC_PUBLIC_HOLIDAYS_2026));
+          logger.info('Migration: Seeded Victorian 2026 public holidays');
+        }
+        settingsQueries.upsert.run(vicHolidaysKey, new Date().toISOString());
+      } catch (err) {
+        logger.error({ err }, 'Migration: Failed to seed Victorian public holidays');
       }
-      settingsQueries.upsert.run(vicHolidaysKey, new Date().toISOString());
-    } catch (err) {
-      logger.error({ err }, 'Migration: Failed to seed Victorian public holidays');
     }
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to run the Victorian public holidays seed');
   }
 
   // Per-job overtime-rule ownership. Overtime rules (schedule, holidays, timezone, base
@@ -380,43 +438,47 @@ function runMigrations() {
   // available), so from then on the job owns them and a later settings change never moves
   // it. This runs ONCE (guarded) and is idempotent (a row that already has rules is
   // skipped). Every job created afterwards owns its rules from creation.
-  const otOwnershipKey = 'overtime_ownership_at';
-  const otOwnershipFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(otOwnershipKey);
-  if (!otOwnershipFlag) {
-    try {
-      const getS = (k) => {
-        const r = db.prepare('SELECT value FROM settings WHERE key = ?').get(k);
-        return r ? r.value : null;
-      };
-      const params = {
-        schedule: getS('labour_schedule'),
-        holidays: getS('labour_public_holidays'),
-        timezone: getS('timezone') || 'UTC',
-        ot1: Number(getS('labour_ot1_multiplier')) || 1.5,
-        ot2: Number(getS('labour_ot2_multiplier')) || 2,
-        hol: Number(getS('labour_holiday_multiplier')) || 2.5
-      };
-      const stampRules = db.prepare(
-        `UPDATE job_costings SET
-           labour_schedule = @schedule,
-           labour_public_holidays = @holidays,
-           labour_timezone = @timezone,
-           labour_base_ot1_multiplier = @ot1,
-           labour_base_ot2_multiplier = @ot2,
-           labour_base_holiday_multiplier = @hol
-         WHERE labour_schedule IS NULL`
-      ).run(params);
-      logger.info(
-        { stamped: stampRules.changes },
-        'Migration: Captured per-job overtime rules onto existing costing rows'
-      );
-      // Mark done only after the capture actually succeeded, so a failure retries on the
-      // next boot instead of leaving old rows on live settings. The UPDATE only touches
-      // un-captured rows, so a retry is a safe no-op for rows already stamped.
-      settingsQueries.upsert.run(otOwnershipKey, new Date().toISOString());
-    } catch (err) {
-      logger.error({ err }, 'Migration: Failed to capture per-job overtime rules');
+  try {
+    const otOwnershipKey = 'overtime_ownership_at';
+    const otOwnershipFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(otOwnershipKey);
+    if (!otOwnershipFlag) {
+      try {
+        const getS = (k) => {
+          const r = db.prepare('SELECT value FROM settings WHERE key = ?').get(k);
+          return r ? r.value : null;
+        };
+        const params = {
+          schedule: getS('labour_schedule'),
+          holidays: getS('labour_public_holidays'),
+          timezone: getS('timezone') || 'UTC',
+          ot1: Number(getS('labour_ot1_multiplier')) || 1.5,
+          ot2: Number(getS('labour_ot2_multiplier')) || 2,
+          hol: Number(getS('labour_holiday_multiplier')) || 2.5
+        };
+        const stampRules = db.prepare(
+          `UPDATE job_costings SET
+             labour_schedule = @schedule,
+             labour_public_holidays = @holidays,
+             labour_timezone = @timezone,
+             labour_base_ot1_multiplier = @ot1,
+             labour_base_ot2_multiplier = @ot2,
+             labour_base_holiday_multiplier = @hol
+           WHERE labour_schedule IS NULL`
+        ).run(params);
+        logger.info(
+          { stamped: stampRules.changes },
+          'Migration: Captured per-job overtime rules onto existing costing rows'
+        );
+        // Mark done only after the capture actually succeeded, so a failure retries on the
+        // next boot instead of leaving old rows on live settings. The UPDATE only touches
+        // un-captured rows, so a retry is a safe no-op for rows already stamped.
+        settingsQueries.upsert.run(otOwnershipKey, new Date().toISOString());
+      } catch (err) {
+        logger.error({ err }, 'Migration: Failed to capture per-job overtime rules');
+      }
     }
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to run the per-job overtime-rule ownership capture');
   }
 
   // A trail label isn't worth refusing to boot over, so a failure here is logged and the
@@ -454,9 +516,13 @@ function checkInterruptedRestore() {
   }
 }
 
-async function initializeDatabase() {
-  logger.info('Initializing database...');
-
+// Every one-time data conversion a database needs to be in the shape the rest of the
+// app assumes: the timestamp normalisation, then every migration in runMigrations().
+// This is the WHOLE conversion pass — a backup restore calls this same function
+// (settings.js) rather than hand-picking which conversions to re-run, so a restore
+// always ends in exactly the state a fresh restart would produce. A conversion
+// missing from a hand-picked list is exactly how the overtime-hours bug happened.
+function runStartupConversions() {
   // Fold any timestamp still stored in an old time-zone-less shape into ISO-8601 UTC, so
   // a stored moment always reads back as the instant it was recorded (see
   // normalizeTimestamps.js). Runs FIRST, before the migrations below, because some of
@@ -473,6 +539,12 @@ async function initializeDatabase() {
 
   // Run migrations for existing databases
   runMigrations();
+}
+
+async function initializeDatabase() {
+  logger.info('Initializing database...');
+
+  runStartupConversions();
 
   // Warn if a previous restore was left half-finished
   checkInterruptedRestore();
@@ -533,4 +605,4 @@ async function initializeDatabase() {
   logger.info('Database initialization complete');
 }
 
-module.exports = { initializeDatabase, foldGoodPiecesToWhole, cleanUpDuplicateItemNumbering, renameLegacyPrintTrail, PRINT_NAMING_CUTOVER_KEY };
+module.exports = { initializeDatabase, runStartupConversions, PRINT_NAMING_CUTOVER_KEY };

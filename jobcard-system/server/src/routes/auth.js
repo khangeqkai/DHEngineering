@@ -7,7 +7,7 @@ const rateLimit = require('express-rate-limit');
 const config = require('../config');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
-const { validateLogin, validateCreateUser, validateUpdatePreferences } = require('../middleware/validation');
+const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences } = require('../middleware/validation');
 const { db, userQueries, jobNoteQueries, recordHistory, getSettings } = require('../db/database');
 const { isViaTunnel, clientIp } = require('../utils/homeAccess');
 
@@ -30,12 +30,19 @@ const cooldownMsForCount = (count) => {
   return 300 * 1000;
 };
 
+// True once an IP's record has gone a full window with no new failure — the only
+// point a record may be dropped. A record still inside its window keeps its count
+// even when its current cooldown has passed, or the escalating wait would reset.
+// Shared by the rate-limit check and the periodic sweep below, so the two can never
+// disagree about what counts as "expired".
+const isLoginFailureExpired = (record, now) => (now - record.lastFailure) > LOGIN_WINDOW_MS;
+
 const checkLoginRateLimit = (ip) => {
   const now = Date.now();
   let record = loginFailures.get(ip);
 
   // Reset if window expired (15 min of no failures)
-  if (record && (now - record.lastFailure) > LOGIN_WINDOW_MS) {
+  if (record && isLoginFailureExpired(record, now)) {
     loginFailures.delete(ip);
     record = null;
   }
@@ -54,6 +61,24 @@ const checkLoginRateLimit = (ip) => {
 
   return null; // cooldown passed, allowed
 };
+
+// The map above is never read except by IP, so a record whose window (and any
+// cooldown) has fully passed just sits there forever otherwise — on a server that
+// stays up for weeks, that's an entry per distinct IP that has ever mistyped a PIN,
+// never freed. Sweep it out periodically using the exact same expiry test the rate
+// limiter itself uses, so this can never delete a record still counting failures. Unref'd so
+// the timer never keeps the process alive on its own.
+const LOGIN_FAILURE_SWEEP_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+const sweepLoginFailures = () => {
+  const now = Date.now();
+  for (const [ip, record] of loginFailures) {
+    if (isLoginFailureExpired(record, now)) {
+      loginFailures.delete(ip);
+    }
+  }
+};
+const loginFailureSweepTimer = setInterval(sweepLoginFailures, LOGIN_FAILURE_SWEEP_INTERVAL_MS);
+loginFailureSweepTimer.unref();
 
 const recordLoginFailure = (ip) => {
   const now = Date.now();
@@ -361,8 +386,12 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
   }
 });
 
-// Update user (admin/manager, or self for limited fields; admin accounts stay admin-only)
-router.put('/users/:id', authenticate, async (req, res) => {
+// Update user (admin or manager only — a worker can never rename/re-email their
+// own or anyone else's account here; admin accounts stay admin-only below).
+// Renaming/changing email is management-only, so nothing on this route is left
+// for a non-management caller to do to their own account — requireManagement
+// gates the whole thing rather than leaving a self-only branch with no purpose.
+router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, async (req, res) => {
   try {
     const { id } = req.params;
     const { password, role, name, email } = req.body;
@@ -371,10 +400,6 @@ router.put('/users/:id', authenticate, async (req, res) => {
     const isAdmin = req.user.role === 'admin';
     const isManager = req.user.role === 'manager';
     const isSelf = req.user.userId === id;
-
-    if (!isAdmin && !isManager && !isSelf) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
-    }
 
     // Changing your OWN PIN always goes through PUT /auth/change-password, which
     // asks for the current one first. Allowing it here would let anyone who walks

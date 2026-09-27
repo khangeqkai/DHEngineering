@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { getDefaultTimeEntryForm, isoToLocalInput, localInputToIso } from './mappers';
 import { formatDate } from '../../utils/formatters';
 import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
+import { isJobClosedError } from '../../utils/jobLock';
 
 // Shown wherever adding, editing or deleting recorded time is refused because
 // the job is invoiced — one stable id so repeated attempts replace the same
@@ -10,11 +11,13 @@ import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors'
 const INVOICED_LOCK_MESSAGE = 'Reopen the job to change its time';
 const invoicedLockToast = () => toast.error(INVOICED_LOCK_MESSAGE, { id: 'invoiced-time-locked' });
 
-export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, showConfirm, isInvoiced = false }) {
+export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, showConfirm, isInvoiced = false, onJobClosed }) {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
   const [editingTimeEntryId, setEditingTimeEntryId] = useState(null);
   const [timeEntryForm, setTimeEntryForm] = useState(getDefaultTimeEntryForm());
-  const { setFieldErrors, clearFieldError, clearAll: clearFieldErrors, groupClass, errorFor } = useFieldErrors();
+  const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor } = useFieldErrors(
+    (name) => timeEntryForm[name]
+  );
 
   // The stored start/finish this form opened with, and whether the user has
   // actually touched each one since. A datetime-local input only carries
@@ -33,10 +36,10 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     });
     setEditingTimeEntryId(null);
     setShowTimeEntryForm(false);
-    clearFieldErrors();
+    resetFieldErrors();
     originalTimesRef.current = { startTime: null, endTime: null };
     touchedTimesRef.current = { startTime: true, endTime: true };
-  }, [clearFieldErrors]);
+  }, [resetFieldErrors]);
 
   const handleTimeEntryChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
@@ -48,12 +51,11 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     if (name === 'startTime' || name === 'endTime') {
       touchedTimesRef.current = { ...touchedTimesRef.current, [name]: true };
     }
-    clearFieldError(name);
     setTimeEntryForm(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : clean
     }));
-  }, [clearFieldError]);
+  }, []);
 
   const handleAddTimeEntry = useCallback((itemId = '') => {
     if (isInvoiced) {
@@ -74,7 +76,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       invoicedLockToast();
       return;
     }
-    clearFieldErrors();
+    resetFieldErrors();
     setEditingTimeEntryId(entry.id);
     setTimeEntryForm({
       workerId: entry.userId || '',
@@ -98,7 +100,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     originalTimesRef.current = { startTime: entry.startTime || null, endTime: entry.endTime || null };
     touchedTimesRef.current = { startTime: false, endTime: false };
     setShowTimeEntryForm(true);
-  }, [clearFieldErrors, isInvoiced]);
+  }, [resetFieldErrors, isInvoiced]);
 
   const handleSaveTimeEntry = useCallback(async () => {
     if (!jobCardId) return;
@@ -172,9 +174,10 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
 
       resetTimeEntryForm();
     } catch (err) {
-      toast.error(err.message || 'Failed to save time entry');
+      if (isJobClosedError(err)) onJobClosed?.();
+      else toast.error(err.message || 'Failed to save time entry');
     }
-  }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry, isInvoiced, setFieldErrors]);
+  }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry, isInvoiced, setFieldErrors, onJobClosed]);
 
   const handleDeleteTimeEntry = useCallback(async (entry) => {
     if (!jobCardId) return;
@@ -206,9 +209,10 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     try {
       await deleteTimeEntry(entry.id);
     } catch (err) {
-      toast.error(err.message || 'Failed to delete time entry');
+      if (isJobClosedError(err)) onJobClosed?.();
+      else toast.error(err.message || 'Failed to delete time entry');
     }
-  }, [jobCardId, deleteTimeEntry, showConfirm, isInvoiced]);
+  }, [jobCardId, deleteTimeEntry, showConfirm, isInvoiced, onJobClosed]);
 
   const resetTimeEntries = useCallback(() => {
     resetTimeEntryForm();

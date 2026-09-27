@@ -2494,6 +2494,18 @@
   color: var(--danger-ink);
 }
 
+/* A box sitting red overrides every other save state — see costingSaveState in
+   useCosting.js. Same ink as --error; it's a distinct state, not a different colour. */
+.costing-save-status--invalid {
+  color: var(--danger-ink);
+}
+
+/* The rate row is a wrapping flex row (label · box · unit · hint); its error message
+   needs to claim the whole row rather than squeeze in next to the hint. */
+.labour-rate-row .field-error-message {
+  flex-basis: 100%;
+}
+
 /* Shared save status for the details fields (identity strip, Details tab) — same
    idea as the costing sheet's status above, just for fields that save themselves
    one at a time instead of the whole pricing sheet together. */
@@ -3682,4 +3694,36 @@
    layer — dividing by 1 is a no-op, so that calc() stays correct with nothing left to undo. */
 .jc-zoom-root {
   --jc-zoom: 1;
+}
+
+/* =============================================
+   A closed (invoiced/archived) job — root-cause-fixes-2026-09-27.md, Group C, C1.
+   ============================================= */
+
+/* One line at the top of the job screen once a job is invoiced and closed — the
+   words say what the whole screen's read-only state already shows. Same subtle
+   tint the "over quantity" heads-up on a line item uses (color-mix at 5% over the
+   surface), amber ink for the text so it clears contrast on both themes. */
+.jc-closed-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-inline);
+  padding: var(--pad-cell);
+  margin-bottom: var(--gap-group);
+  background: color-mix(in srgb, var(--warning-color) 8%, var(--surface-elevated));
+  border-left: 3px solid var(--warning-color);
+  color: var(--warning-ink);
+  font-size: var(--text-sm);
+}
+
+/* Wraps the whole of the Details tab's management view, and the whole of the
+   Costing tab, on a closed job — a plain <fieldset disabled> already refuses to
+   let the user interact with anything inside it (every input/select/textarea/
+   button, however deep), which is exactly "read-only" for free. display: contents
+   means the fieldset itself never becomes a box, so it can't disturb the grid/flex
+   layout it's dropped into, and the reset below strips its default border, margin
+   and padding — it should draw exactly like the plain <div> it replaces. */
+.jc-lock-fieldset {
+  all: unset;
+  display: contents;
 }

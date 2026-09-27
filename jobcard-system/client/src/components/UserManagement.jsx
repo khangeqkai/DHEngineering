@@ -43,7 +43,9 @@ export default function UserManagement() {
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [showActivityLog, setShowActivityLog] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
-  const { setFieldErrors, clearFieldError, clearAll: clearFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors();
+  const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
+    (name) => formData[name]
+  );
   const editingSelf = Boolean(editingUser && editingUser.id === currentUser?.id);
 
   useEffect(() => {
@@ -124,7 +126,7 @@ export default function UserManagement() {
   };
 
   const handleEdit = (user) => {
-    clearFieldErrors();
+    resetFieldErrors();
     setEditingUser(user);
     setFormData({
       username: user.username,
@@ -184,7 +186,7 @@ export default function UserManagement() {
       email: '',
       role: 'user'
     });
-    clearFieldErrors();
+    resetFieldErrors();
   };
 
 
@@ -252,7 +254,6 @@ export default function UserManagement() {
                       {...fieldProps('password')}
                       value={formData.password}
                       onChange={(e) => {
-                        clearFieldError('password');
                         setFormData({ ...formData, password: e.target.value.replace(/\D/g, '').slice(0, 4) });
                       }}
                       placeholder="4-digit PIN"
@@ -272,7 +273,6 @@ export default function UserManagement() {
                   {...fieldProps('name')}
                   value={formData.name}
                   onChange={(e) => {
-                    clearFieldError('name');
                     setFormData({ ...formData, name: e.target.value });
                   }}
                   onBlur={(e) => {

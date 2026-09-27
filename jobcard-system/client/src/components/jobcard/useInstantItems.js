@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { buildItemPayload, mapLineItemFromApi } from './mappers';
 import { isSavedLineItem } from './jobCardValidation.mjs';
-import { itemFieldMessage, REQUIRED_ITEM_FIELDS, isItemRowComplete } from './fieldRules.mjs';
+import { itemFieldMessage, isItemRowComplete } from './fieldRules.mjs';
 import { useFieldErrors } from '../../hooks/useFieldErrors';
 import { NOT_LANDED } from './useSaveQueue';
 
@@ -72,7 +72,25 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
   const savedItemFieldsRef = useRef(savedItemFields);
   savedItemFieldsRef.current = savedItemFields;
 
-  const { fieldErrors, setFieldErrors, clearFieldError, clearAll, errorFor } = useFieldErrors();
+  // A row that's been removed can never match whatever text its mark was raised
+  // against — a stale mark for a deleted row must always read as "not live" (a
+  // row that no longer exists has nothing left to mark), so this sentinel stands
+  // in for its fields instead of undefined/'' , which same() would still treat as
+  // matching another empty value and leave the mark showing.
+  const REMOVED_ITEM_FIELD = useRef({}).current;
+  // A mark's name is fieldErrorKey(itemId, field) — split it back apart and read
+  // that part's current field value straight off the live rows, so a mark clears
+  // itself the moment the box's content actually changes, however it changed
+  // (typing, a row's create/update reply reconciling it, the row being removed).
+  const valueOfItemField = useCallback((key) => {
+    const sep = key.indexOf('|');
+    if (sep === -1) return undefined;
+    const itemId = key.slice(0, sep);
+    const field = key.slice(sep + 1);
+    const item = lineItemsRef.current.find(it => it.id === itemId);
+    return item ? item[field] : REMOVED_ITEM_FIELD;
+  }, [REMOVED_ITEM_FIELD]);
+  const { fieldErrors, setFieldErrors, clearAll, errorFor } = useFieldErrors(valueOfItemField);
 
   // Guards a real row's delete against a fast double-click sending two DELETEs for
   // the same line — the second would only 404 once the first has already removed it.
@@ -304,12 +322,15 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     if (message) {
       // Emptied a required box: mark it, send nothing, leave the stored value
       // alone. Picking a real value again is what clears the mark and writes.
-      setFieldErrors({ [key]: message });
+      // Raised against `value` explicitly — the row state this closes over
+      // (lineItemsRef) hasn't caught up with this same keystroke yet, so
+      // valueOf's own read would still answer with the field's previous
+      // content.
+      setFieldErrors({ [key]: message }, { [key]: value });
       return;
     }
-    clearFieldError(key);
     writeItemField(item.id, field, value);
-  }, [createItemFromRow, writeItemField, setFieldErrors, clearFieldError]);
+  }, [createItemFromRow, writeItemField, setFieldErrors]);
 
   // Text and number boxes: called from onBlur, after any blur-formatting has run.
   const commitItemFieldBlur = useCallback((item, field, value) => {
@@ -324,10 +345,12 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     const key = fieldErrorKey(item.id, field);
     const message = itemFieldMessage(field, value);
     if (message) {
-      setFieldErrors({ [key]: message });
+      // Same reasoning as handleItemFieldChange above — raise it against the
+      // value this blur actually carries, not whatever lineItemsRef still
+      // shows.
+      setFieldErrors({ [key]: message }, { [key]: value });
       return;
     }
-    clearFieldError(key);
     const base = savedItemFieldsRef.current[item.id];
     // Same "back to stored, nothing to send" shortcut as useInstantSave.js's
     // saveField, and the same reason it must stand aside while a write for this
@@ -344,16 +367,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
       return;
     }
     writeItemField(item.id, field, value);
-  }, [createItemFromRow, writeItemField, setFieldErrors, clearFieldError, saveQueue]);
-
-  // Clears a box's mark the moment it holds a value itemFieldMessage would
-  // accept, ahead of its blur/write — the same live-clear the job description
-  // field already does (JobIdentityStrip.jsx). Covers description's non-blank
-  // rule and qty's whole-number rule in one, and is a no-op when nothing is
-  // marked (useFieldErrors.js) or the field isn't a required one.
-  const clearItemFieldErrorOnType = useCallback((itemId, field, value) => {
-    if (!itemFieldMessage(field, value)) clearFieldError(fieldErrorKey(itemId, field));
-  }, [clearFieldError]);
+  }, [createItemFromRow, writeItemField, setFieldErrors, saveQueue]);
 
   const itemErrorFor = useCallback((itemId, field) => errorFor(fieldErrorKey(itemId, field)), [errorFor]);
 
@@ -402,8 +416,9 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
           if (reply?.jobStatus !== undefined) onJobStatusChange?.(reply.jobStatus);
         }
         onItemRemoved?.(item.id);
-        // Nothing left to mark on a row that no longer exists.
-        for (const field of REQUIRED_ITEM_FIELDS) clearFieldError(fieldErrorKey(item.id, field));
+        // Nothing left to mark on a row that no longer exists — valueOfItemField
+        // reads it as removed the moment lineItemsRef catches up, which drops
+        // its marks without anything explicit here.
       })
       .catch(err => {
         removingRef.current.delete(item.id);
@@ -417,7 +432,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
         toast.error(err.message || "Couldn't remove that part", { id: `item-remove-${item.id}` });
         return NOT_LANDED;
       }), { label });
-  }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, clearFieldError, saveQueue, onJobStatusChange]);
+  }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, saveQueue, onJobStatusChange]);
 
   // JobCardModal returns null when closed rather than unmounting, so these marks
   // outlive a close. Without clearing them, a box left empty on one job would keep
@@ -430,7 +445,6 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     resetItemErrors,
     handleItemFieldChange,
     commitItemFieldBlur,
-    clearItemFieldErrorOnType,
     itemErrorFor,
     removeItem,
     // Raw required-box marks (fieldErrorKey -> message), for closeReasons.js to

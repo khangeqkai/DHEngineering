@@ -9,6 +9,8 @@ import { isManagement } from '../../utils/roles';
 import { todayIsoDate } from '../../utils/formatters';
 import { isJobOverdue } from '../JobCardList.constants';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
+import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
+import { isJobClosed, JOB_CLOSED_MESSAGE } from '../../utils/jobLock';
 import './JobCardModal.css';
 import { useJobCardCosting } from './useJobCardCosting';
 import { useTimeEntries } from './useTimeEntries';
@@ -48,11 +50,28 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // An instant write never touches the list behind this modal — useJobCardCloseGuard.js.
   const { flagInstantSave, closeAndRefresh } = useJobCardListRefresh({ isOpen, isEdit, onSuccess, onClose });
   const contactHook = useContactSearch();
+  // The job was invoiced and archived from another PC while this screen still had it
+  // open: a write already on its way reaches the server after that and is refused
+  // (closedJobGuard, server/src/middleware/closedJob.js) with a 409 carrying
+  // code: 'JOB_CLOSED'. Every write path that can hit this — the save queue (fields,
+  // parts, workers), comments, the status control, and manual time entries — calls
+  // this the moment it sees that code: one shared sentence, and a reload so the
+  // screen catches up to the closed job and renders read-only (see the jobClosed
+  // guards below) instead of going on offering edits that would only fail the same
+  // way. Held in a ref because loadJobCard (defined further down, after formHook)
+  // isn't in scope yet where this is handed to useJobCardForm/useJobNotes below —
+  // the ref is filled in once it is, and nothing calls this before the job has
+  // loaded once, so it's always populated by the time it matters.
+  const reloadOnJobClosedRef = useRef(null);
+  const handleJobClosedWrite = useCallback(() => {
+    toast.error(JOB_CLOSED_MESSAGE, { id: 'job-closed' });
+    reloadOnJobClosedRef.current?.();
+  }, []);
   // formHook also owns the one save queue for this open job card (Contract A) —
   // formHook.saveQueue — that every instant write (a field, a part, a worker)
   // routes through, so what's queued, in flight or failed is one recorded fact
   // instead of three separate hand-rolled promise-chain registries.
-  const formHook = useJobCardForm(jobCardId, { onInstantSave: flagInstantSave });
+  const formHook = useJobCardForm(jobCardId, { onInstantSave: flagInstantSave, onJobClosed: handleJobClosedWrite });
   // The details fields and the parts list save themselves through these (see
   // useJobCardInstantSaves.js). A part write's reply also refreshes the file
   // notes here (Contract B) — setAttachmentWarnings is the one landing point,
@@ -78,7 +97,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (!isOpen) cancelConfirms();
   }, [isOpen, cancelConfirms]);
 
-  const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm, onNotesChange);
+  const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm, onNotesChange, handleJobClosedWrite);
   // Pricing: the on-open load and the save-on-the-way-out paths all live in this hook —
   // see useJobCardCosting.js.
   const costingHook = useJobCardCosting({ isOpen, isEdit, isAdmin, jobCardId, activeTab });
@@ -192,6 +211,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       if (currentLoadRef.current === jobCardId) setLoading(false);
     }
   }, [isEdit, jobCardId, setFormDataFromJobCard, setContactFromJobCard, loadNotes, onClose]);
+  reloadOnJobClosedRef.current = loadJobCard;
 
   // Re-read just the "declared but no file" flags after a file is added, so the
   // per-item hints and the QA-forms note clear without reopening the job.
@@ -248,10 +268,15 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // can tell a reply that's still for the open job apart from a stale one.
   const currentJobIdRef = useRef(jobCardId);
   currentJobIdRef.current = jobCardId;
-  // An invoiced job's time is locked server-side; kept here (rather than reading
-  // formHook.formData.status inline below) so both the timer actions and the
-  // manual add/edit form agree on exactly the same test.
-  const isInvoiced = formHook.formData.status === 'INVOICED';
+  // A closed (invoiced) job's time is locked server-side; kept here (rather than
+  // reading formHook.formData inline below) so both the timer actions and the
+  // manual add/edit form agree on exactly the same test — jobLock.js's
+  // isJobClosed, the one shared "can this job still be changed?" test.
+  const isInvoiced = isJobClosed(formHook.formData);
+  // Everything else on the job screen that locks once the job is closed reads
+  // this instead of re-deriving it — see DetailsTab.jsx, CostingTab (below) and
+  // the top-of-screen banner.
+  const jobClosed = isInvoiced;
   // Starting/stopping a timer, the stop-timer form and the manual add/edit form —
   // pulled into its own hook (useJobCardTimerActions.js) purely to keep this file
   // from growing further; every dependency here is something this component
@@ -341,11 +366,36 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const selectPerson = (personId) => contactHook.selectPerson(personId, formHook.setFormData);
   const handleContactFieldChange = (field, value) => contactHook.handleContactFieldChange(field, value, formHook.setFormData);
 
+  // Marks a contact box instead of a pop-up when Create (or the "Update contact" /
+  // "Add as new person" prompt it can run first) comes back with a 400 naming
+  // contactName/contactPhone/contactEmail — see useJobCardSave.js's
+  // contactFieldErrorsFrom. Declared before useJobCardSave so its callback can
+  // close over it.
+  const contactFieldErrors = useFieldErrors((name) => {
+    if (name === 'contactName') return contactHook.contactFormData.contactName;
+    if (name === 'contactPhone') return contactHook.contactFormData.phone;
+    if (name === 'contactEmail') return contactHook.contactFormData.email;
+    return undefined;
+  });
+  const { clearAll: clearContactFieldErrors } = contactFieldErrors;
+  // This screen stays mounted while closed, so a mark left from the last new job
+  // would otherwise greet the next one.
+  useEffect(() => { clearContactFieldErrors(); }, [isOpen, jobCardId, clearContactFieldErrors]);
+  const handleContactFieldErrors = useCallback((errors) => {
+    contactFieldErrors.setFieldErrors(errors);
+    const order = ['contactName', 'contactPhone', 'contactEmail'];
+    const first = order.find(k => errors[k]);
+    const boxId = { contactName: 'jc-contact', contactPhone: 'jc-phone', contactEmail: 'jc-email' }[first];
+    if (boxId) scrollFieldIntoView(boxId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contactFieldErrors.setFieldErrors]);
+
   // Create-only now (useJobCardSave.js) — an existing job has nothing left for a
   // Save to do; every field, row and worker writes itself the moment it changes.
   const { saving, handleSubmit } = useJobCardSave({
     canManage, isEdit, formHook, contactHook,
-    showConfirm, onSuccess, onClose, setAttachmentWarnings
+    showConfirm, onSuccess, onClose, setAttachmentWarnings,
+    onContactFieldErrors: handleContactFieldErrors
   });
 
   // On a brand-new job the customer is picked through useContactSearch, a hook whose
@@ -370,13 +420,29 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // and the inactivity countdown (useUnsavedGuard.js).
   // Every real close funnels through the onClose handed to it below.
   const showDetailsTab = useCallback(() => setActiveTab('details'), []);
+  // The close-time twin of showDetailsTab, for a red pricing box that can be off screen
+  // on any other tab when the job is asked to close: switch to Costing, then (once it's
+  // rendered) bring the named field into view.
+  const revealCosting = useCallback((fieldName) => {
+    setActiveTab('costing');
+    if (fieldName) requestAnimationFrame(() => scrollFieldIntoView(fieldName));
+  }, []);
+  // Every way of leaving the Costing tab by the person's own action funnels through
+  // here, so a box still sitting red is caught once rather than at each tab button.
+  const handleTabChange = useCallback(async (tab) => {
+    if (activeTab === 'costing' && tab !== 'costing' && isAdmin) {
+      const { proceed } = await costingHook.guardLeaveCosting(showConfirm);
+      if (!proceed) return;
+    }
+    setActiveTab(tab);
+  }, [activeTab, isAdmin, costingHook, showConfirm]);
   const { handleRequestClose } = useJobCardCloseGuard({
     isOpen, isEdit, jobCardId, isAdmin, isDirty,
     formHook, instantItems, saveQueue: formHook.saveQueue, jobNotes, timer, costingHook,
-    saving, showConfirm, onClose: closeAndRefresh, revealDetails: showDetailsTab
+    saving, showConfirm, onClose: closeAndRefresh, revealDetails: showDetailsTab, revealCosting
   });
 
-  // The pricing sheet is admin-only and saves itself on a short countdown, so a figure
+  // The pricing sheet is admin-only and saves itself when a box is left, so a figure
   // can still be on its way (or stopped after a failed attempt) while the rest of the
   // job is settled. Named once here because two different things need it: the header's
   // running total, and the "everything landed" signals below, which must not say
@@ -430,12 +496,16 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       showConfirm={showConfirm}
       onSuccess={onSuccess}
       costingDirty={costingOutstanding}
+      costingInvalid={isAdmin && costingHook.costingInvalid}
+      invalidCostingField={costingHook.firstInvalidCostingField}
+      revealCosting={revealCosting}
       canSeeTotal={isAdmin && isEdit}
       fetchCurrentTotal={costingHook.fetchCurrentTotal}
       saveCosting={costingHook.handleSaveCosting}
       descriptionError={formHook.descriptionError}
-      setDescriptionError={formHook.setDescriptionError}
+      markDescription={formHook.markDescription}
       whenPartSavesSettled={formHook.saveQueue.whenSettled}
+      onJobClosed={handleJobClosedWrite}
     />
   );
 
@@ -468,6 +538,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               onPrinted={onPrinted}
               attachmentWarnings={attachmentWarnings}
               parts={formHook.lineItems}
+              locked={jobClosed}
             />
           ) : null
         }
@@ -485,16 +556,21 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
           <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT' && e.target.type !== 'submit') e.preventDefault(); }} style={{ display: 'contents' }}>
             <BottomSheet.Body>
               <div className="jc-zoom-root">
+              {jobClosed && (
+                <div className="jc-closed-banner" role="status">
+                  This job is invoiced and closed. Unarchive it to make changes.
+                </div>
+              )}
               {isEdit && isAdmin && (
                 <div className="modal-tabs">
-                  <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>
+                  <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => handleTabChange('details')}>
                     Details
                     {jobNotes.notes.length > 0 && <span className="tab-badge">{jobNotes.notes.length}</span>}
                   </button>
                   {/* The bar itself is already admin-only (money and the trail both
                       are), so these two don't re-ask the same question. */}
-                  <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => setActiveTab('costing')}>Costing</button>
-                  <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</button>
+                  <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => handleTabChange('costing')}>Costing</button>
+                  <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => handleTabChange('activity')}>Activity</button>
                 </div>
               )}
 
@@ -502,13 +578,18 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 <DetailsTab
                   isEdit={isEdit}
                   canManage={canManage}
+                  jobClosed={jobClosed}
                   jobCardId={jobCardId}
                   jobNumber={formHook.jobNumber}
                   activeTimer={timer.activeTimer}
                   timerElapsed={timer.elapsed}
                   timerLoading={timer.loading}
-                  onStartTimer={handleStartItemTimer}
-                  onStopTimer={handleStopItemTimer}
+                  // A closed job can never have a timer running against it — invoicing
+                  // is refused while one is — so there is never a live run left to
+                  // stop; hiding both buttons rather than leaving Start live to fail
+                  // with a toast is what jobLock.js's "read-only or hidden" means here.
+                  onStartTimer={jobClosed ? undefined : handleStartItemTimer}
+                  onStopTimer={jobClosed ? undefined : handleStopItemTimer}
                   currentUserId={user?.id}
                   formData={formHook.formData}
                   setFormData={formHook.setFormData}
@@ -529,6 +610,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   fieldFocused={contactHook.fieldFocused}
                   handleFieldFocus={contactHook.handleFieldFocus}
                   handleFieldBlur={contactHook.handleFieldBlur}
+                  contactGroupClass={contactFieldErrors.groupClass}
+                  contactErrorFor={contactFieldErrors.errorFor}
+                  contactErrorProps={contactFieldErrors.errorProps}
                   employees={employees || []}
                   assignees={formHook.assignees}
                   toggleAssignee={formHook.toggleAssignee}
@@ -538,12 +622,11 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   removeLineItem={instantItems.removeItem}
                   onItemFieldChange={instantItems.handleItemFieldChange}
                   onItemFieldBlur={instantItems.commitItemFieldBlur}
-                  onItemFieldType={instantItems.clearItemFieldErrorOnType}
                   itemErrorFor={instantItems.itemErrorFor}
                   suppliers={suppliers || []}
                   onSuppliersChanged={reloadSuppliers}
                   attachmentWarnings={attachmentWarnings}
-                  onAttachItemFile={isEdit ? handleAttachItemFile : undefined}
+                  onAttachItemFile={isEdit && !jobClosed ? handleAttachItemFile : undefined}
                   qaLevels={qaLevels}
                   notes={jobNotes.notes}
                   newNote={jobNotes.newNote}
@@ -571,6 +654,13 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               )}
 
               {activeTab === 'costing' && isEdit && isAdmin && (
+                // A closed job's pricing is read-only too (C1.3) — wrapped in a plain
+                // <fieldset disabled>, same reasoning as DetailsTab.jsx's management
+                // view, rather than threading a lock through every box useCosting.js
+                // owns. Nothing on this sheet can be dirty or invalid on a closed job
+                // (there's no way to have typed into it since), so there's nothing
+                // left for the tab-switch/close/invoice guards above to catch here.
+                <fieldset className="jc-lock-fieldset" disabled={jobClosed}>
                 <CostingTab
                   costingForm={costingHook.costingForm}
                   openedAt={costingHook.openedAt}
@@ -586,10 +676,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   loaded={costingHook.costingLoaded}
                   loadFailed={costingHook.costingLoadFailed}
                   onRetryLoad={costingHook.retryLoadCosting}
+                  costingFieldError={costingHook.costingFieldError}
+                  costingFieldProps={costingHook.costingFieldProps}
+                  costingErrorProps={costingHook.costingErrorProps}
                   lineItems={formHook.lineItems}
                   timeEntries={timeEntries}
                   machines={machines || []}
                 />
+                </fieldset>
               )}
 
               {activeTab === 'activity' && isEdit && isAdmin && (
