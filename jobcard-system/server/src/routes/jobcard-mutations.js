@@ -15,13 +15,12 @@ const {
   getSettings,
   recordHistory
 } = require('../db/database');
-const { formatJobcard, buildChanges, createRelatedRecords, buildQaFillData, computeAttachmentWarnings } = require('./jobcard-helpers');
+const { formatJobcard, buildChanges, createRelatedRecords, buildQaFillData, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
 const { copyQaTemplatesForJob, verifyQaTemplatesAvailable } = require('../utils/qaTemplateProvisioning');
 const { itemSummary, describePart, assigneeNames, buildQaTemplateWarning } = require('./jobcard-audit-text');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
 const { db } = require('../db/connection');
-const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
 
 const router = express.Router();
 
@@ -345,33 +344,21 @@ router.put('/:id', authenticate, requireManagement, ...validateJobcardEnums, asy
     const changes = buildChanges(existing, data);
 
     const newStatus = data.status !== undefined ? data.status : existing.status;
-    const shouldArchive = newStatus === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
-    const invoicedDate = shouldArchive ? new Date().toISOString() : null;
 
-    // A running timer, or a just-stopped one whose form isn't saved yet, can't be
-    // confirmed away like a missing attachment can — refuse before any write, and
-    // before the soft attachment checkpoint below.
-    const timeBlock = shouldArchive ? invoiceBlockedByTime(id) : null;
-    if (timeBlock) {
-      return res.status(409).json({ error: timeBlock });
+    // Shared invoicing step (see jobcard-helpers.js) — the hard running-timer
+    // refusal and the soft missing-attachments checkpoint, both before any
+    // write. Parts and their attachments are never part of this route any more
+    // (see jobcard-items.js and the files routes), so the attachment check
+    // always reads the job's current, already-saved items.
+    const invoicing = checkInvoicing(existing, newStatus, newQaLevelId, data.confirmMissingAttachments);
+    if (invoicing.refusal) {
+      return res.status(invoicing.refusal.status).json(invoicing.refusal.body);
     }
-
-    // Soft close-out checkpoint: when this update would invoice (and archive) the
-    // job but files were declared and never attached, stop before any write and
-    // report the gaps — unless the caller already confirmed "invoice anyway".
-    // Parts and their attachments are never part of this route any more (see
-    // jobcard-items.js and the files routes), so this always reads the job's
-    // current, already-saved items.
-    if (shouldArchive && data.confirmMissingAttachments !== true) {
-      const itemsForCheck = jobItemQueries.getByJobcard.all(id);
-      const warnings = computeAttachmentWarnings(id, itemsForCheck, newQaLevelId, true);
-      if (warnings.hasAny) {
-        return res.status(409).json({ error: 'MISSING_ATTACHMENTS', attachmentWarnings: warnings });
-      }
-    }
+    const { shouldArchive, invoicedDate } = invoicing;
 
     // All database writes happen in one transaction: either the status/field
     // update lands, or none of it does.
+    let invoicingChanges = {};
     const applyUpdate = db.transaction(() => {
       jobcardQueries.update.run(
         existing.card_type,
@@ -398,9 +385,7 @@ router.put('/:id', authenticate, requireManagement, ...validateJobcardEnums, asy
         id
       );
 
-      if (shouldArchive) {
-        jobcardQueries.archive.run(invoicedDate, req.user.userId, id);
-      }
+      invoicingChanges = applyInvoicingArchive(shouldArchive, invoicedDate, req.user.userId, id);
     });
     applyUpdate();
 
@@ -419,10 +404,7 @@ router.put('/:id', authenticate, requireManagement, ...validateJobcardEnums, asy
       }
     }
 
-    if (shouldArchive) {
-      changes.archived = { from: false, to: true };
-      changes.invoicedDate = { from: null, to: invoicedDate };
-    }
+    Object.assign(changes, invoicingChanges);
 
     // QA template copy is a disk operation, kept outside the database transaction.
     let qaResult = null;
