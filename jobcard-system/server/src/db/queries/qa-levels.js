@@ -4,7 +4,6 @@ const { db } = require('../connection');
 const qaLevelQueries = {
   getAll: db.prepare('SELECT * FROM qa_levels ORDER BY name ASC'),
   getById: db.prepare('SELECT * FROM qa_levels WHERE id = ?'),
-  getByNameLower: db.prepare('SELECT * FROM qa_levels WHERE name_lower = ?'),
 
   create: db.prepare(`
     INSERT INTO qa_levels (id, name, name_lower, is_active, requires_returned_form, created_at, updated_at)

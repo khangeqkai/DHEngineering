@@ -24,6 +24,8 @@ const {
 } = require('../db/database');
 const { db } = require('../db/connection');
 const { findOr404 } = require('../utils/findOr404');
+const { findNameClash } = require('./name-conflict');
+const { sameName } = require('../shared/names');
 
 const router = express.Router();
 
@@ -113,8 +115,9 @@ router.post('/',
       const nameLower = name.trim().toLowerCase();
       const requiresReturnedForm = req.body.requiresReturnedForm ? 1 : 0;
 
-      // Check for duplicate name
-      const existing = qaLevelQueries.getByNameLower.get(nameLower);
+      // Check for duplicate name (capitals and repeated spaces ignored — the shared
+      // sameName rule, so "High  Risk" can't sit beside "High Risk")
+      const existing = findNameClash(qaLevelQueries.getAll.all(), name);
       if (existing) {
         return res.status(400).json({ error: 'A QA level with this name already exists' });
       }
@@ -162,9 +165,11 @@ router.put('/:id',
 
       const nameLower = name.trim().toLowerCase();
 
-      // Check for duplicate name (different record)
-      const duplicate = qaLevelQueries.getByNameLower.get(nameLower);
-      if (duplicate && duplicate.id !== id) {
+      // Check for duplicate name (different record), by the same rule as create.
+      // Only when the name really changes, so a level that already sits beside a
+      // spacing-only twin from before this rule can still have its switch edited.
+      const duplicate = sameName(name, existing.name) ? null : findNameClash(qaLevelQueries.getAll.all(), name, id);
+      if (duplicate) {
         return res.status(400).json({ error: 'A QA level with this name already exists' });
       }
 

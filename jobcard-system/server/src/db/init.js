@@ -6,6 +6,7 @@ const logger = require('../utils/logger');
 const {
   db,
   userQueries,
+  machineQueries,
   recordHistory
 } = require('./database');
 const { normalizeStoredTimestamps } = require('./normalizeTimestamps');
@@ -13,6 +14,7 @@ const { DEFAULT_VIC_PUBLIC_HOLIDAYS_2026 } = require('../utils/defaultHolidays')
 const { COSTING_DEFAULTS } = require('../utils/costingDefaults');
 const { DAYS: SCHEDULE_DAYS, DEFAULT_DAY } = require('../shared/overtimeSchedule');
 const { runLegacyMigrations } = require('./legacyMigrations');
+const { hasMachineSeparator } = require('../shared/machineList');
 
 // If a backup restore was interrupted, leftover "__restore_staging" / "__restore_old"
 // folders may sit beside the job folders. Surface this so an admin can review them.
@@ -31,6 +33,26 @@ function checkInterruptedRestore() {
     }
   } catch (err) {
     logger.error({ err }, 'Failed to check for interrupted restore');
+  }
+}
+
+// A machine number holding the comma that separates machines in logged work reads
+// back as two made-up machines. New ones are refused; one saved before that rule is
+// only reported, not rewritten — logged work already stores it and renaming it would
+// strand that work, so an admin should archive it and add a comma-free replacement.
+function checkMachineNumbersWithSeparator() {
+  try {
+    const bad = machineQueries.getAllIncludeInactive.all()
+      .filter((m) => hasMachineSeparator(m.machine_number))
+      .map((m) => m.machine_number);
+    if (bad.length) {
+      logger.warn(
+        { machineNumbers: bad },
+        'Machine numbers containing a comma found — logged work splits them into separate machines. Archive them and add a replacement without a comma.'
+      );
+    }
+  } catch (err) {
+    logger.error({ err }, 'Failed to check machine numbers for commas');
   }
 }
 
@@ -66,6 +88,9 @@ async function initializeDatabase() {
 
   // Warn if a previous restore was left half-finished
   checkInterruptedRestore();
+
+  // Report any machine number that logged work would split in two
+  checkMachineNumbersWithSeparator();
 
   // Check if admin user exists
   const adminUser = userQueries.getByUsername.get('admin');

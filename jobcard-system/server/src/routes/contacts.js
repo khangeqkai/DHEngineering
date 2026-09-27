@@ -89,7 +89,8 @@ router.post('/:id/archive', requireManagement, (req, res) => {
     isArchived: (row) => Boolean(row.archived),
     archive: true,
     write: (row) => contactQueries.archive.run(row.id),
-    respond: (row) => toApiFormat(row)
+    respond: (row) => toApiFormat(row),
+    snapshot: (row) => ({ companyName: row.company_name, contactName: row.contact_name })
   });
 });
 
@@ -103,7 +104,8 @@ router.post('/:id/unarchive', requireManagement, (req, res) => {
     isArchived: (row) => Boolean(row.archived),
     archive: false,
     write: (row) => contactQueries.unarchive.run(row.id),
-    respond: (row) => toApiFormat(row)
+    respond: (row) => toApiFormat(row),
+    snapshot: (row) => ({ companyName: row.company_name, contactName: row.contact_name })
   });
 });
 

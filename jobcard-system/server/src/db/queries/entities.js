@@ -37,10 +37,10 @@ const userQueries = {
     WHERE id = ?
   `),
 
-  // Live per-request auth state. Role is read here rather than from the token,
-  // because a token is a snapshot taken at sign-in and roles change while
-  // people are signed in.
-  getAuthState: db.prepare('SELECT session_token AS sessionToken, active, role FROM users WHERE id = ?'),
+  // Live per-request auth state. Role and name are read here rather than from the
+  // token, because a token is a snapshot taken at sign-in and roles change — and
+  // people are renamed — while they are signed in.
+  getAuthState: db.prepare('SELECT session_token AS sessionToken, active, role, username, name FROM users WHERE id = ?'),
 
   updateJobcardColumnOrder: db.prepare(`
     UPDATE users SET jobcard_column_order = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
@@ -66,10 +66,10 @@ const companyQueries = {
   getAll: db.prepare('SELECT * FROM companies WHERE archived = 0 ORDER BY name ASC'),
   getAllIncludeArchived: db.prepare('SELECT * FROM companies ORDER BY archived ASC, name ASC'),
 
-  // Company names are unique (case-insensitive) so two customers can never share
-  // a name — which would make their job folders ambiguous on disk. Matches
-  // archived customers too, since an archived customer still owns its folder.
-  getByName: db.prepare('SELECT * FROM companies WHERE name = ? COLLATE NOCASE'),
+  // Company names are unique (capitals and repeated spaces ignored — the shared
+  // sameName rule, checked in the route over getAllIncludeArchived, since SQL can't
+  // collapse spaces) so two customers can never share a name — which would make
+  // their job folders ambiguous on disk. Archived customers count too.
 
   create: db.prepare(`
     INSERT INTO companies (id, name, address, notes, created_at, updated_at)
@@ -121,10 +121,8 @@ const supplierQueries = {
   getAll: db.prepare('SELECT * FROM suppliers WHERE active = 1 ORDER BY name ASC'),
   getAllIncludeInactive: db.prepare('SELECT * FROM suppliers ORDER BY name ASC'),
 
-  // Supplier names are unique (case-insensitive), mirroring companyQueries.getByName.
-  // Matches archived (inactive) suppliers too, so the create/update routes can tell
-  // the caller to restore the archived one instead of leaving them at a dead end.
-  getByName: db.prepare('SELECT * FROM suppliers WHERE name = ? COLLATE NOCASE'),
+  // Supplier names are unique by the same rule as companies, checked in the route
+  // over getAllIncludeInactive so an archived match can point at restoring it.
 
   create: db.prepare(`
     INSERT INTO suppliers (id, name, contact_name, contact_phone, contact_email, address, approved, notes, created_at, updated_at)
@@ -203,8 +201,8 @@ const tagQueries = {
     VALUES (?, ?)
   `),
 
-  clearSupplierTags: db.prepare(`
-    DELETE FROM supplier_service_tags WHERE supplier_id = ?
+  removeFromSupplier: db.prepare(`
+    DELETE FROM supplier_service_tags WHERE supplier_id = ? AND service_tag_id = ?
   `)
 };
 
@@ -215,7 +213,7 @@ const machineQueries = {
   getAllIncludeInactive: db.prepare('SELECT * FROM machines ORDER BY machine_number ASC'),
   // Uniqueness only matters among active machines: an archived machine keeps its
   // number for history, but that number is free to reuse on a new active machine.
-  // Case-insensitive so "cnc-01" and "CNC-01" collide (mirrors companyQueries.getByName).
+  // Case-insensitive so "cnc-01" and "CNC-01" collide (the same capitals rule as customer names).
   getActiveByNumber: db.prepare('SELECT * FROM machines WHERE machine_number = ? COLLATE NOCASE AND active = 1'),
 
   create: db.prepare(`

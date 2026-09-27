@@ -24,7 +24,10 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
 
   const submit = async (e) => {
     e.preventDefault();
-    const ok = adding ? await onCreate(form) : await onUpdate(editingId, form);
+    // The name box only tidies itself on blur — Enter from inside it submits
+    // without that blur, so the same tidy-up is applied here too.
+    const person = { ...form, contactName: toTitleCase(form.contactName) };
+    const ok = adding ? await onCreate(person) : await onUpdate(editingId, person);
     if (ok) cancel();
   };
 

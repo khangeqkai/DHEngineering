@@ -108,6 +108,8 @@ const CONTACT_COLS = [
   { label: 'Phone', value: r => r.phone },
   { label: 'Email', value: r => r.email },
   { label: 'Address', value: r => r.address },
+  // Whether the customer is archived (shown with "Show archived" ticked).
+  { label: 'Status', value: r => r.archived ? 'Archived' : 'Active' },
   { label: 'Notes', value: r => r.notes },
 ];
 

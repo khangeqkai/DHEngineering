@@ -16,10 +16,16 @@ const { recordHistory, actorName } = require('../db/database');
 //   archive: boolean,     // true = archive, false = restore
 //   write: (row) => void, // the prepared statement(s) + any side effect (e.g. user session kill)
 //   respond: (row) => body, // the success body the route sends today
-//   snapshot?: (row) => object
+//   snapshot: (row) => object // required — names the record in the trail entry
 // }
 function setArchived(req, res, spec) {
   const { entityType, archive } = spec;
+  // The trail entry's only change is "status Active → Archived", so without a
+  // snapshot the activity log can't say WHICH record was archived. Every caller
+  // must name it; a missing one is a coding mistake, refused before anything runs.
+  if (typeof spec.snapshot !== 'function') {
+    throw new Error(`setArchived(${entityType}): a snapshot naming the record is required`);
+  }
   const verb = archive ? 'archive' : 'restore';
   try {
     const row = spec.load();
@@ -44,7 +50,7 @@ function setArchived(req, res, spec) {
       req.user.userId,
       actorName(req),
       { status: archive ? { from: 'Active', to: 'Archived' } : { from: 'Archived', to: 'Active' } },
-      spec.snapshot ? spec.snapshot(row) : undefined
+      spec.snapshot(row)
     );
 
     res.json(spec.respond(freshRow));

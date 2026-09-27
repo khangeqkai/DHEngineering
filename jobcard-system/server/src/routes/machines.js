@@ -60,7 +60,8 @@ router.post('/', requireManagement, validateCreateMachine, (req, res) => {
     const created = toResponseFormat(machine);
     recordHistory('machine', id, 'create', req.user.userId, actorName(req), {
       machineNumber: { from: null, to: created.machineNumber },
-      name: { from: null, to: created.name }
+      name: { from: null, to: created.name },
+      ...(created.description ? { description: { from: null, to: created.description } } : {})
     });
 
     res.status(201).json(toResponseFormat(machine));
@@ -107,7 +108,11 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
       }
     }
 
-    machineQueries.update.run(machineNumber, name || '', description || '', id);
+    // A description left out of the request keeps the stored one — only a sent
+    // value (blank included) replaces it, so a caller that doesn't carry the field
+    // can't erase it.
+    const nextDescription = description === undefined ? (existing.description || '') : (description || '');
+    machineQueries.update.run(machineNumber, name || '', nextDescription, id);
 
     const machine = machineQueries.getById.get(id);
 
@@ -115,7 +120,7 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
     const changes = diffFields(existing, [
       ['machine_number', 'machineNumber', machineNumber],
       ['name', 'name', name || ''],
-      ['description', 'description', description || ''],
+      ['description', 'description', nextDescription],
     ]);
 
     if (Object.keys(changes).length > 0) {

@@ -54,6 +54,19 @@ _None yet._
 - Refresh / Trend View loaded a backwards or half-empty custom range: the check runs on every load; the server refuses start after end.
 - Quiet months were missing from the trends: preset ranges fill every period from the range start; All Time/custom from the first period with data.
 - Rejected: custom range ending in year 9999 shows zeros (not a real use).
+### Round 5 — management pages
+- A machine number containing a comma split into two invented machines: commas are refused in machine numbers (rule read from the shared machine-list file).
+- Editing a machine wiped its description: the Equipment form has a Description box; an update without one leaves it alone.
+- Saving a supplier from an old page removed services linked meanwhile from a job: the page sends only ticked/unticked services; the server applies just those.
+- A renamed user who stayed signed in kept writing comments/trail under the old name: the name is read fresh on every request.
+- Options differing only in symbols/decimals/accents ("M6 x 1.0" vs "M6 x 10") were treated as one: a code match counts only when the names match too; otherwise refused with a message.
+- The Customers activity log didn't name what was archived/restored.
+- Customer export listed retired contact people as current.
+- Enter saved names without the usual tidy-up on Suppliers, Users, QA Levels and customer-person forms: the tidy-up is applied on save as well.
+- A capitals-only rename of a customer or QA level never renamed its folder on Windows.
+- Adding an existing service under "+ Other" showed it twice and logged a false change.
+- Rejected: customer panel flipping to "Add New Customer" when someone else archives the open customer.
+- Carried to round 6 (confirmed, not yet fixed): field mistakes as pop-ups on Users/Suppliers/customer-person forms; QA "Upload PDF Template" not keyboard-reachable; Escape in QA rename box discards the name; archived-username message; very long customer name whose folder can't be made.
 
 ## Rounds
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
@@ -62,3 +75,4 @@ _None yet._
 | 2 | Job details + parts | 16 | 9 | 9 | 0 |
 | 3 | Database, backup, settings | 13 | 8 | 8 | 0 |
 | 4 | Workshop Statistics | 13 | 7 | 5 | 1 |
+| 5 | Management pages | 26 | 15 | 10 (5 carried) | 0 |

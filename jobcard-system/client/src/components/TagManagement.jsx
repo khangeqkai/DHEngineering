@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
-import { toTitleCase } from '../utils/formatters';
+import { toTitleCase, capitalizeFirst } from '../utils/formatters';
 import { Plus, Edit2, Save, Archive, ArchiveRestore } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { tagActions } from '../hooks/useTags';
+import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
+import FieldError from './common/FieldError';
+import { hasMachineSeparator, MACHINE_SEPARATOR_MESSAGE } from '../../../server/src/shared/machineList';
 import './TagManagement.css';
 
 const CATEGORY_INFO = {
@@ -40,10 +43,13 @@ export default function TagManagement() {
   // Shared form state
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [formData, setFormData] = useState({ name: '', machineNumber: '' });
+  const [formData, setFormData] = useState({ name: '', machineNumber: '', description: '' });
   const [formCategory, setFormCategory] = useState('treatment');
   const [saving, setSaving] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
+  const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
+    (name) => formData[name]
+  );
 
   const isFormEquipment = formCategory === 'equipment';
 
@@ -82,32 +88,42 @@ export default function TagManagement() {
   const resetForm = () => {
     setShowForm(false);
     setEditingItem(null);
-    setFormData({ name: '', machineNumber: '' });
+    setFormData({ name: '', machineNumber: '', description: '' });
+    resetFieldErrors();
   };
 
   const openAddForm = () => {
+    resetFieldErrors();
     setEditingItem(null);
-    setFormData({ name: '', machineNumber: '' });
+    setFormData({ name: '', machineNumber: '', description: '' });
     setFormCategory(selectedCategory);
     setShowForm(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
     // Each field only tidies itself on blur — hitting Enter from inside the box
     // submits the form directly and never fires that blur, so the same formatting
     // is applied here too before anything goes out.
     const machineNumber = formData.machineNumber.toUpperCase().trim();
     const name = toTitleCase(formData.name.trim());
+    const description = capitalizeFirst(formData.description.trim());
+    // The comma separates machines in logged work, so a number holding one would
+    // read back as two machines — the server refuses it with the same shared rule.
+    if (isFormEquipment && hasMachineSeparator(machineNumber)) {
+      setFieldErrors({ machineNumber: MACHINE_SEPARATOR_MESSAGE }, { machineNumber: formData.machineNumber });
+      scrollFieldIntoView('machineNumber');
+      return;
+    }
+    setSaving(true);
     try {
       if (isFormEquipment) {
         if (!machineNumber) return;
         if (editingItem) {
-          await api.updateMachine(editingItem.id, { machineNumber, name });
+          await api.updateMachine(editingItem.id, { machineNumber, name, description });
           toast.success('Machine updated');
         } else {
-          await api.createMachine({ machineNumber, name });
+          await api.createMachine({ machineNumber, name, description });
           toast.success('Machine created');
         }
         await loadMachines();
@@ -126,7 +142,14 @@ export default function TagManagement() {
       }
       resetForm();
     } catch (err) {
-      toast.error(err.message || 'Failed to save');
+      // The server's comma refusal belongs to the number box — mark it there.
+      const numberError = isFormEquipment && (err.data?.fields || []).find(f => f.field === 'machineNumber');
+      if (numberError) {
+        setFieldErrors({ machineNumber: numberError.message }, { machineNumber: formData.machineNumber });
+        scrollFieldIntoView('machineNumber');
+      } else {
+        toast.error(err.message || 'Failed to save');
+      }
     } finally {
       setSaving(false);
     }
@@ -134,8 +157,9 @@ export default function TagManagement() {
 
   // --- Tag actions ---
   const handleEditTag = (tag) => {
+    resetFieldErrors();
     setEditingItem(tag);
-    setFormData({ name: tag.name, machineNumber: '' });
+    setFormData({ name: tag.name, machineNumber: '', description: '' });
     setFormCategory(selectedCategory);
     setShowForm(true);
   };
@@ -165,8 +189,9 @@ export default function TagManagement() {
 
   // --- Equipment actions ---
   const handleEditMachine = (m) => {
+    resetFieldErrors();
     setEditingItem(m);
-    setFormData({ name: m.name || '', machineNumber: m.machineNumber || '' });
+    setFormData({ name: m.name || '', machineNumber: m.machineNumber || '', description: m.description || '' });
     setFormCategory('equipment');
     setShowForm(true);
   };
@@ -236,13 +261,15 @@ export default function TagManagement() {
             </div>
 
             {isFormEquipment ? (
+              <>
               <div className="form-row">
-                <div className="form-group">
+                <div className={groupClass('machineNumber')}>
                   <label htmlFor="machineNumber">Machine Number *</label>
-                  <input type="text" id="machineNumber" value={formData.machineNumber}
+                  <input type="text" {...fieldProps('machineNumber')} value={formData.machineNumber}
                     onChange={(e) => setFormData(prev => ({ ...prev, machineNumber: e.target.value }))}
                     onBlur={(e) => { const f = e.target.value.toUpperCase().trim(); if (f !== e.target.value) setFormData(prev => ({ ...prev, machineNumber: f })); }}
                     placeholder="e.g. M1, LATHE-01..." required autoFocus />
+                  <FieldError {...errorProps('machineNumber')} message={errorFor('machineNumber')} />
                 </div>
                 <div className="form-group">
                   <label htmlFor="machineName">Name</label>
@@ -252,6 +279,14 @@ export default function TagManagement() {
                     placeholder="Machine name..." />
                 </div>
               </div>
+              <div className="form-group">
+                <label htmlFor="machineDescription">Description</label>
+                <input type="text" id="machineDescription" value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onBlur={(e) => { const f = capitalizeFirst(e.target.value); if (f !== e.target.value) setFormData(prev => ({ ...prev, description: f })); }}
+                  placeholder="e.g. CNC vertical machining centre..." />
+              </div>
+              </>
             ) : (
               <div className="form-group">
                 <label htmlFor="tagName">Tag Name *</label>

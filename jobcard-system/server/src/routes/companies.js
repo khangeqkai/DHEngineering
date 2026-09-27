@@ -9,7 +9,8 @@ const { ensureCompanyFolder, renameCompanyFolder } = require('../utils/folderCre
 const { toCompanyApi: toApiFormat, toContactApi } = require('./customer-format');
 const { setArchived } = require('../utils/archiveToggle');
 const { findOr404 } = require('../utils/findOr404');
-const { nameConflictOr409 } = require('./name-conflict');
+const { nameConflictOr409, findNameClash } = require('./name-conflict');
+const { sameName } = require('../shared/names');
 
 const router = express.Router();
 
@@ -49,10 +50,10 @@ router.post('/', requireManagement, validateCreateCompany, (req, res) => {
   try {
     const { name, address, notes } = req.body;
 
-    // Company names must be unique (case-insensitive) so each customer maps to
-    // exactly one folder on disk. An archived customer still owns its name, so
-    // tell the admin to restore it rather than leaving them at a dead end.
-    const existing = companyQueries.getByName.get(name);
+    // Company names must be unique (capitals and repeated spaces ignored) so each
+    // customer maps to exactly one folder on disk. An archived customer still owns
+    // its name, so tell the admin to restore it rather than leaving them at a dead end.
+    const existing = findNameClash(companyQueries.getAllIncludeArchived.all(), name);
     if (nameConflictOr409(res, existing, null, { entityLabel: 'customer', nameLabel: 'company name', isArchived: (row) => Boolean(row.archived) })) {
       return;
     }
@@ -85,7 +86,10 @@ router.put('/:id', requireManagement, validateUpdateCompany, (req, res) => {
     const existing = findOr404(res, companyQueries.getById.get(id), 'Company not found');
     if (!existing) return;
 
-    const dupe = companyQueries.getByName.get(name);
+    // Only checked when the name really changes: an older database may hold two
+    // customers whose names differ only in spacing, and editing either one's
+    // address must not be refused over it.
+    const dupe = sameName(name, existing.name) ? null : findNameClash(companyQueries.getAllIncludeArchived.all(), name, id);
     if (nameConflictOr409(res, dupe, id, { entityLabel: 'customer', nameLabel: 'company name', isArchived: (row) => Boolean(row.archived) })) {
       return;
     }
@@ -129,7 +133,8 @@ router.post('/:id/archive', requireManagement, (req, res) => {
     isArchived: (row) => Boolean(row.archived),
     archive: true,
     write: (row) => companyQueries.archive.run(row.id),
-    respond: (row) => toApiFormat(row)
+    respond: (row) => toApiFormat(row),
+    snapshot: (row) => ({ name: row.name })
   });
 });
 
@@ -143,7 +148,8 @@ router.post('/:id/unarchive', requireManagement, (req, res) => {
     isArchived: (row) => Boolean(row.archived),
     archive: false,
     write: (row) => companyQueries.unarchive.run(row.id),
-    respond: (row) => toApiFormat(row)
+    respond: (row) => toApiFormat(row),
+    snapshot: (row) => ({ name: row.name })
   });
 });
 

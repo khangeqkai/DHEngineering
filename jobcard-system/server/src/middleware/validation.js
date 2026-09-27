@@ -7,6 +7,9 @@ const { isCalendarDate } = require('../shared/calendarDate');
 // change own password) import PIN_REGEX/PIN_MESSAGE from here, and the client
 // (client/src/utils/formatters.js) reads the same shared file directly.
 const { PIN_REGEX, PIN_MESSAGE } = require('../shared/pin');
+// A machine number may not hold the separator the stored list of logged machines is
+// split on — read from the one shared copy of that split.
+const { hasMachineSeparator, MACHINE_SEPARATOR_MESSAGE } = require('../shared/machineList');
 
 /**
  * Middleware to handle validation errors
@@ -228,17 +231,24 @@ const validateUpdateSupplier = [
   handleValidationErrors
 ];
 
-// POST /machines — a machine is its number (required, non-blank); name and
-// description are optional free text, unvalidated here (as before). Mirrors
-// validateCreateSupplier.
+// POST /machines — a machine is its number (required, non-blank, and free of the
+// comma that separates machines in logged work — otherwise "CNC,01" reads back as
+// two machines); name and description are optional free text, unvalidated here (as
+// before). Mirrors validateCreateSupplier.
+function machineNumberRule() {
+  return requiredString('machineNumber', 'Machine number')
+    .custom((value) => !hasMachineSeparator(value))
+    .withMessage(MACHINE_SEPARATOR_MESSAGE);
+}
+
 const validateCreateMachine = [
-  requiredString('machineNumber', 'Machine number'),
+  machineNumberRule(),
   handleValidationErrors
 ];
 
 // PUT /machines/:id
 const validateUpdateMachine = [
-  requiredString('machineNumber', 'Machine number'),
+  machineNumberRule(),
   handleValidationErrors
 ];
 

@@ -37,11 +37,13 @@ function authenticate(req, res, next) {
 
     // Build req.user explicitly so a role can never arrive from the token: the
     // role comes from the row just read, so a demotion applies on the very next
-    // request instead of at next sign-in. sessionToken is consumed above only.
+    // request instead of at next sign-in. The name comes from the same row, so a
+    // rename shows on every comment and trail entry straight away rather than
+    // after the person next signs in. sessionToken is consumed above only.
     req.user = {
       userId: decoded.userId,
-      username: decoded.username,
-      name: decoded.name,
+      username: row.username,
+      name: row.name,
       role: row.role
     };
     next();

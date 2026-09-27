@@ -6,10 +6,22 @@ const { tagQueries, recordHistory, actorName } = require('../db/database');
 const { setArchived } = require('../utils/archiveToggle');
 const { nameToValue } = require('../utils/tagSlug');
 const { findOr404 } = require('../utils/findOr404');
+const { sameName } = require('../shared/names');
 
 const router = express.Router();
 
 const VALID_CATEGORIES = ['treatment', 'customer_property', 'drawings', 'job_type', 'material'];
+
+// The stored code drops decimal points, fractions, accents and other symbols, so two
+// really different names can share one code ("M6 x 1.0" / "M6 x 10" both become
+// M6_X_10). A code match only means "the same option" when the names are also the
+// same (capitals and spacing ignored); otherwise the new name is refused, naming the
+// option that already holds the code, rather than silently handing that one back.
+function codeClashMessage(typedName, holder) {
+  return holder.archived
+    ? `"${typedName}" would be stored the same as the retired option "${holder.name}". Use a name that differs in its letters or numbers, or turn on "Show archived" and restore that one.`
+    : `"${typedName}" would be stored the same as the existing option "${holder.name}". Use a name that differs in its letters or numbers.`;
+}
 
 function formatTag(t) {
   return {
@@ -104,12 +116,16 @@ router.post('/', requireManagement, (req, res) => {
       return res.status(400).json({ error: 'Tag name must include at least one letter or number' });
     }
 
-    // Check if tag already exists in this category. Creating is idempotent: a name
-    // that maps to an existing option just returns that option instead of erroring,
-    // so "add on the spot" never makes a duplicate. An archived match is brought
-    // back (with the freshly typed name); an active match is returned as-is. Either
-    // way we return 200 (a genuinely new tag returns 201 below).
+    // Check if tag already exists in this category. Creating is idempotent: the same
+    // name (capitals and spacing ignored) as an existing option just returns that
+    // option instead of erroring, so "add on the spot" never makes a duplicate. An
+    // archived match is brought back (with the freshly typed name); an active match
+    // is returned as-is. Either way we return 200 (a genuinely new tag returns 201
+    // below). A different name that only shares the code is refused.
     const existing = tagQueries.getByValue.get(category, value);
+    if (existing && !sameName(existing.name, trimmedName)) {
+      return res.status(400).json({ error: codeClashMessage(trimmedName, existing) });
+    }
     if (existing) {
       if (existing.archived) {
         tagQueries.update.run(trimmedName, value, existing.id);
@@ -172,18 +188,23 @@ router.put('/:id', requireManagement, (req, res) => {
     // "already exists" error they can't see or resolve.
     const duplicate = tagQueries.getByValue.get(existing.category, value);
     if (duplicate && duplicate.id !== id) {
+      if (!sameName(duplicate.name, trimmedName)) {
+        return res.status(400).json({ error: codeClashMessage(trimmedName, duplicate) });
+      }
       if (duplicate.archived) {
         return res.status(400).json({
           error: `A retired option named "${duplicate.name}" already uses this name. Turn on "Show archived" and restore it instead of renaming.`
         });
       }
-      return res.status(400).json({ error: 'Another tag with this name already exists in this category' });
+      return res.status(400).json({ error: `Another option, "${duplicate.name}", already has this name in this category` });
     }
 
     // Jobs reference an option by its value, which is derived from the name.
     // A rename that changes the value would strand it on jobs already using it,
-    // so block that — but allow display-only tweaks that map to the same value.
-    if (value !== existing.value) {
+    // and one that keeps the value but really changes the name ("M6 x 1.0" →
+    // "M6 x 10") would relabel every job using it — so block both while jobs use
+    // it, allowing only capitals/spacing tweaks of the same name.
+    if (value !== existing.value || !sameName(trimmedName, existing.name)) {
       const usageQuery = USAGE_COUNT_BY_CATEGORY[existing.category];
       const usage = usageQuery ? usageQuery.get(existing.value) : { count: 0 };
       if (usage.count > 0) {
@@ -223,7 +244,8 @@ router.delete('/:id', requireManagement, (req, res) => {
     isArchived: (row) => Boolean(row.archived),
     archive: true,
     write: (row) => tagQueries.archive.run(row.id),
-    respond: () => ({ success: true })
+    respond: () => ({ success: true }),
+    snapshot: (row) => ({ name: row.name })
   });
 });
 
@@ -237,7 +259,8 @@ router.post('/:id/activate', requireManagement, (req, res) => {
     isArchived: (row) => Boolean(row.archived),
     archive: false,
     write: (row) => tagQueries.unarchive.run(row.id),
-    respond: (row) => formatTag(row)
+    respond: (row) => formatTag(row),
+    snapshot: (row) => ({ name: row.name })
   });
 });
 

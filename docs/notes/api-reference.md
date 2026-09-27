@@ -16,6 +16,8 @@ Every non-GET/HEAD/OPTIONS request under `/api/jobcards/:id` is checked by `clos
 
 ## Suppliers
 
+`PUT /suppliers/:id` never takes a supplier's whole service list. It takes `addServiceTagIds` / `removeServiceTagIds` — what the person ticked on and off compared with what their form opened with — and applies only those (an id in both lists cancels out; adding one already linked or removing one not linked is a no-op; repeats are dropped; an unknown service id → 404). A whole list from an older copy used to clear and re-add every link, undoing a service linked meanwhile from a job screen. `POST /suppliers` still takes `serviceTagIds` (a new supplier has nothing to undo), repeats dropped. The Suppliers page reloads the supplier fresh (`GET /suppliers/:id`) when its form opens.
+
 `POST /suppliers/:id/service-tags` (management) with `{ tagId }` adds one treatment tag to a supplier and changes nothing else — the job screen's part supplier picker uses it instead of the full-record `PUT /suppliers/:id`, which would overwrite every contact field from the job screen's copy. Missing supplier or a tag that isn't a treatment → 404; already linked → 200 with the supplier, nothing written and no trail entry; otherwise one `update` trail entry with `serviceTags { from, to }`.
 
 ## Statistics

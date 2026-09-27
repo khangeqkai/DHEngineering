@@ -88,12 +88,28 @@ export default function SupplierManagement() {
     e.preventDefault();
     setSaving(true);
 
+    // Each name box only tidies itself on blur — Enter from inside the box submits
+    // without that blur, so the same tidy-up is applied here before anything goes out.
+    const { serviceTagIds, ...fields } = formData;
+    const tidied = {
+      ...fields,
+      name: toTitleCase(fields.name),
+      contactName: toTitleCase(fields.contactName)
+    };
+
     try {
       if (editingSupplier) {
-        await api.updateSupplier(editingSupplier.id, formData);
+        // Send only the services ticked on or off since the form opened, never the
+        // whole list — a service linked meanwhile from a job screen is left alone.
+        const openedIds = (editingSupplier.serviceTags || []).map(t => t.id);
+        await api.updateSupplier(editingSupplier.id, {
+          ...tidied,
+          addServiceTagIds: serviceTagIds.filter(id => !openedIds.includes(id)),
+          removeServiceTagIds: openedIds.filter(id => !serviceTagIds.includes(id))
+        });
         toast.success('Supplier updated');
       } else {
-        await api.createSupplier(formData);
+        await api.createSupplier({ ...tidied, serviceTagIds });
         toast.success('Supplier created');
       }
       await loadData();
@@ -106,8 +122,17 @@ export default function SupplierManagement() {
     }
   };
 
-  const handleEdit = (supplier) => {
+  const handleEdit = async (listed) => {
     loadServiceTags();
+    // Open from a fresh copy: the list may be older than a service linked since from
+    // a job screen, and the form's ticks are judged against what it opened with.
+    let supplier = listed;
+    try {
+      supplier = await api.getSupplier(listed.id);
+    } catch (err) {
+      // Non-fatal: the save only sends the person's own ticks, so the listed copy
+      // can't undo anything linked meanwhile.
+    }
     setEditingSupplier(supplier);
     setFormData({
       name: supplier.name || '',
@@ -167,14 +192,18 @@ export default function SupplierManagement() {
   };
 
   const handleAddCustomTag = async () => {
-    if (!customTagName.trim()) return;
+    // Enter adds without leaving the box, so tidy here as the blur would have.
+    const name = toTitleCase(customTagName);
+    if (!name) return;
 
     try {
-      const newTag = await tagActions.create({ category: 'treatment', name: customTagName.trim() });
-      setServiceTags(prev => [...prev, newTag]);
+      // Creating is idempotent: a name that is already a service hands that service
+      // back, so it is only added to the lists when it isn't there already.
+      const newTag = await tagActions.create({ category: 'treatment', name });
+      setServiceTags(prev => (prev.some(t => t.id === newTag.id) ? prev : [...prev, newTag]));
       setFormData(prev => ({
         ...prev,
-        serviceTagIds: [...prev.serviceTagIds, newTag.id]
+        serviceTagIds: prev.serviceTagIds.includes(newTag.id) ? prev.serviceTagIds : [...prev.serviceTagIds, newTag.id]
       }));
       setCustomTagName('');
       setShowCustomTagInput(false);

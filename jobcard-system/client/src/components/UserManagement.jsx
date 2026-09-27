@@ -91,10 +91,14 @@ export default function UserManagement() {
 
     setSaving(true);
 
+    // The display name only tidies itself on blur — Enter from inside the box
+    // submits without that blur, so the same tidy-up is applied here too.
+    const payload = { ...formData, name: toTitleCase(formData.name) };
+
     try {
       let ownNewRole = null;
       if (editingUser) {
-        const updated = await api.updateUser(editingUser.id, formData);
+        const updated = await api.updateUser(editingUser.id, payload);
         // Changing your own access level takes effect immediately, so adopt it
         // rather than carrying on as the role you no longer have.
         if (updated.id === currentUser?.id && updated.role !== currentUser?.role) {
@@ -103,7 +107,7 @@ export default function UserManagement() {
           toast.success('Your own access level changed. Some screens are no longer available to you.');
         }
       } else {
-        await api.createUser(formData);
+        await api.createUser(payload);
       }
 
       // Demoting yourself out of management puts this page out of reach: the

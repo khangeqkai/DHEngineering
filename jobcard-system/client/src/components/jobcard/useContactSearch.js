@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { useSuggestionLifecycle } from './useSuggestionLifecycle';
+import { nameMatchKey, sameName } from '../../../../server/src/shared/names';
 
 /**
  * Blank customer details for a job with nothing picked yet.
@@ -126,14 +127,13 @@ export function useContactSearch() {
   }, []);
 
   // The one loaded customer whose name is exactly this text (ignoring capitals and
-  // surrounding spaces), or null. The server refuses a new customer by that same
-  // rule, so a name typed out in full without clicking its row is that customer,
-  // not a new one — otherwise the screen offered to add it and the save then
-  // failed as a duplicate. The loaded list holds active customers only.
+  // spaces — the shared sameName rule), or null. The server refuses a new customer
+  // by that same rule, so a name typed out in full without clicking its row is that
+  // customer, not a new one — otherwise the screen offered to add it and the save
+  // then failed as a duplicate. The loaded list holds active customers only.
   const findExactCompany = useCallback((name) => {
-    const typed = (name || '').trim().toLowerCase();
-    if (!typed) return null;
-    const hits = companies.filter(c => (c.name || '').trim().toLowerCase() === typed);
+    if (!nameMatchKey(name)) return null;
+    const hits = companies.filter(c => sameName(c.name, name));
     return hits.length === 1 ? hits[0] : null;
   }, [companies]);
 

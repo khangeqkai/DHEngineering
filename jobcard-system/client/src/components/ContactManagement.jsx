@@ -17,6 +17,11 @@ import './ContactManagement.css';
 
 const blankCompany = () => ({ name: '', address: '', notes: '' });
 
+// The people still working at a customer. The page also holds retired people (so
+// they can be restored), but the Contacts column and the export only ever list
+// these — a person who has left must not read as a current contact.
+const livePeople = (company) => (company.people || []).filter(p => !p.archived);
+
 export default function ContactManagement() {
   const [companies, setCompanies] = useState([]);
   // What the table is actually showing right now (after its own search box has
@@ -206,12 +211,15 @@ export default function ContactManagement() {
   };
 
   // The spreadsheet stays one row per person, carrying their company alongside.
-  // Built from what the table currently shows, so a search filters the export too.
-  const exportRows = visibleCompanies.flatMap(c => (
-    (c.people || []).length
-      ? c.people.map(p => ({ companyName: c.name, contactName: p.contactName, phone: p.phone, email: p.email, address: c.address, notes: c.notes }))
-      : [{ companyName: c.name, contactName: '', phone: '', email: '', address: c.address, notes: c.notes }]
-  ));
+  // Built from what the table currently shows, so a search filters the export too,
+  // and — like the Contacts column — from live people only.
+  const exportRows = visibleCompanies.flatMap(c => {
+    const people = livePeople(c);
+    const company = { companyName: c.name, address: c.address, notes: c.notes, archived: c.archived };
+    return people.length
+      ? people.map(p => ({ ...company, contactName: p.contactName, phone: p.phone, email: p.email }))
+      : [{ ...company, contactName: '', phone: '', email: '' }];
+  });
 
   return (
     <div className="contact-management page-contacts page-scroll-layout page-enter">
@@ -338,7 +346,7 @@ export default function ContactManagement() {
                 key: 'people',
                 label: 'Contacts',
                 render: (_, row) => {
-                  const live = (row.people || []).filter(p => !p.archived);
+                  const live = livePeople(row);
                   if (live.length === 0) return <span className="text-muted">None</span>;
                   return live.map(p => p.contactName || 'Unnamed').join(', ');
                 }

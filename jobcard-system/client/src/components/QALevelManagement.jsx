@@ -64,7 +64,9 @@ export default function QALevelManagement() {
 
     setSaving(true);
     try {
-      await api.createQaLevel(formData);
+      // The name only tidies itself on blur — Enter from inside the box submits
+      // without that blur, so the same tidy-up is applied here too.
+      await api.createQaLevel({ ...formData, name: toTitleCase(formData.name) });
       toast.success('QA level created');
       await loadData();
       resetForm();

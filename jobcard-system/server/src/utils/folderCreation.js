@@ -185,7 +185,12 @@ function renameCodedFolder(basePath, id, newName, kind) {
     if (!isWithinBase(basePath, target)) return;
     if (path.resolve(current) === path.resolve(target)) return; // already correct
 
-    if (fs.existsSync(target)) {
+    // A capitals-only rename ("acme [code]" → "Acme [code]"): on Windows, where
+    // names ignore capitals, the disk reports the target as existing because it IS
+    // this folder. That is not another folder, so go ahead — Windows renames a
+    // folder to a capitals-only variant of its own name without complaint.
+    const capitalsOnly = path.resolve(current).toLowerCase() === path.resolve(target).toLowerCase();
+    if (!capitalsOnly && fs.existsSync(target)) {
       // Can't happen with a unique code, but never clobber another folder if it does.
       logger.warn({ id, target }, `${kind} rename target exists; keeping current folder`);
       return;

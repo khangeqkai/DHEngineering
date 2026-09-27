@@ -8,7 +8,8 @@ const { diffFields } = require('../utils/historyChanges');
 const { setArchived } = require('../utils/archiveToggle');
 const { supplierContactFields } = require('./supplier-helpers');
 const { findOr404 } = require('../utils/findOr404');
-const { nameConflictOr409 } = require('./name-conflict');
+const { nameConflictOr409, findNameClash } = require('./name-conflict');
+const { sameName } = require('../shared/names');
 
 const router = express.Router();
 
@@ -38,6 +39,12 @@ function renameSupplierOnParts(supplierId, newName) {
       jobItemQueries.updateTreatments.run(JSON.stringify(treatments), row.id);
     }
   }
+}
+
+// A list of service ids from a request, repeats and non-strings dropped. Anything
+// that isn't an array reads as no ids.
+function uniqueIds(list) {
+  return Array.isArray(list) ? [...new Set(list.filter(tid => typeof tid === 'string'))] : [];
 }
 
 // All routes require authentication
@@ -107,9 +114,10 @@ router.post('/', requireManagement, validateCreateSupplier, (req, res) => {
   try {
     const { name, contactName, contactPhone, contactEmail, address, notes, serviceTagIds } = req.body;
 
-    // Supplier names are unique (case-insensitive), same reasoning as companies —
-    // an archived supplier still owns its name, so point the caller at restoring it.
-    const existingByName = supplierQueries.getByName.get(name);
+    // Supplier names are unique (capitals and repeated spaces ignored), same
+    // reasoning as companies — an archived supplier still owns its name, so point
+    // the caller at restoring it.
+    const existingByName = findNameClash(supplierQueries.getAllIncludeInactive.all(), name);
     if (nameConflictOr409(res, existingByName, null, { entityLabel: 'supplier', nameLabel: 'name', isArchived: (row) => row.active === 0 })) {
       return;
     }
@@ -131,10 +139,8 @@ router.post('/', requireManagement, validateCreateSupplier, (req, res) => {
         notes || null
       );
 
-      if (Array.isArray(serviceTagIds)) {
-        for (const tagId of serviceTagIds) {
-          tagQueries.addToSupplier.run(id, tagId);
-        }
+      for (const tagId of uniqueIds(serviceTagIds)) {
+        tagQueries.addToSupplier.run(id, tagId);
       }
     })();
 
@@ -156,24 +162,38 @@ router.post('/', requireManagement, validateCreateSupplier, (req, res) => {
 router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
   try {
     const { id } = req.params;
-    const { name, contactName, contactPhone, contactEmail, address, notes, serviceTagIds } = req.body;
+    // Services come as the changes the person made — ticked on (addServiceTagIds) and
+    // ticked off (removeServiceTagIds) compared with what their form opened with —
+    // never as a whole list. A whole list from a copy older than a service linked
+    // meanwhile (the job screen links them in the background) would quietly undo it.
+    const { name, contactName, contactPhone, contactEmail, address, notes, addServiceTagIds, removeServiceTagIds } = req.body;
 
     const existing = findOr404(res, supplierQueries.getById.get(id), 'Supplier not found');
     if (!existing) return;
 
-    // Case-insensitive match, same as companies. Only checked when the name actually
-    // changes: a database from before this check may already hold two suppliers with
-    // one name, and editing either one's phone must not be refused over it.
-    const nameChanged = String(name).toLowerCase() !== String(existing.name || '').toLowerCase();
-    const dupe = nameChanged ? supplierQueries.getByName.get(name) : null;
+    // Same name rule as companies. Only checked when the name actually changes: a
+    // database from before this check may already hold two suppliers with one name,
+    // and editing either one's phone must not be refused over it.
+    const nameChanged = !sameName(name, existing.name);
+    const dupe = nameChanged ? findNameClash(supplierQueries.getAllIncludeInactive.all(), name, id) : null;
     if (nameConflictOr409(res, dupe, id, { entityLabel: 'supplier', nameLabel: 'name', isArchived: (row) => row.active === 0 })) {
       return;
     }
 
-    // Track changes for audit
+    // Only ticks that change something count: an id both added and removed cancels
+    // out, adding one already linked or removing one not linked is a no-op.
     const oldTags = tagQueries.getForSupplier.all(id) || [];
-    const oldTagIds = oldTags.map(t => t.id).sort().join(',');
-    const newTagIds = Array.isArray(serviceTagIds) ? [...serviceTagIds].sort().join(',') : oldTagIds;
+    const oldTagIds = new Set(oldTags.map(t => t.id));
+    const addRequested = new Set(uniqueIds(addServiceTagIds));
+    const removeRequested = new Set(uniqueIds(removeServiceTagIds));
+    const addIds = [...addRequested].filter(tid => !removeRequested.has(tid) && !oldTagIds.has(tid));
+    const dropIds = [...removeRequested].filter(tid => !addRequested.has(tid) && oldTagIds.has(tid));
+    const allTags = tagQueries.getByCategoryIncludeArchived.all('treatment') || [];
+    if (addIds.some(tid => !allTags.some(t => t.id === tid))) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    // Track changes for audit
     const changes = diffFields(existing, [
       ['name', 'name', name],
       ['contact_name', 'contactName', contactName || null],
@@ -182,18 +202,17 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
       ['address', 'address', address || null],
       ['notes', 'notes', notes || null],
     ]);
-    if (newTagIds !== oldTagIds) {
-      const oldTagNames = oldTags.map(t => t.name).sort().join(', ') || null;
-      const allTags = tagQueries.getByCategoryIncludeArchived.all('treatment') || [];
-      const newTagNames = Array.isArray(serviceTagIds)
-        ? serviceTagIds.map(tid => { const t = allTags.find(at => at.id === tid); return t ? t.name : tid; }).sort().join(', ') || null
-        : oldTagNames;
-      changes.serviceTags = { from: oldTagNames, to: newTagNames };
+    if (addIds.length > 0 || dropIds.length > 0) {
+      const names = (list) => list.map(t => t.name).sort().join(', ') || null;
+      const newTags = [
+        ...oldTags.filter(t => !dropIds.includes(t.id)),
+        ...addIds.map(tid => allTags.find(t => t.id === tid))
+      ];
+      changes.serviceTags = { from: names(oldTags), to: names(newTags) };
     }
 
-    // Same all-or-nothing rule as create. The tags are cleared before being
-    // re-added, so a bad tag id part-way through would otherwise leave the
-    // supplier with NO service tags at all.
+    // Same all-or-nothing rule as create: the supplier row and its service changes
+    // land together or not at all.
     db.transaction(() => {
       supplierQueries.update.run(
         name,
@@ -205,12 +224,12 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
         id
       );
 
-      // Update service tags (clear and re-add)
-      if (Array.isArray(serviceTagIds)) {
-        tagQueries.clearSupplierTags.run(id);
-        for (const tagId of serviceTagIds) {
-          tagQueries.addToSupplier.run(id, tagId);
-        }
+      // Apply only the person's own ticks and unticks
+      for (const tagId of dropIds) {
+        tagQueries.removeFromSupplier.run(id, tagId);
+      }
+      for (const tagId of addIds) {
+        tagQueries.addToSupplier.run(id, tagId);
       }
 
       // The rename must reach every part already carrying this supplier's name,
