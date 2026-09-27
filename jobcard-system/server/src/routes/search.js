@@ -44,6 +44,18 @@ function likeTerm(raw) {
   return `%${escapeLikeChars(raw)}%`;
 }
 
+// The job search fields, and the "workers can't search by customer/contact details"
+// restriction, in one place — used by both the quick ("all") search and the full
+// jobs search, so the two can never drift apart. `like` is the already-wildcarded
+// search term; returns the WHERE fragment and its matching params in order.
+function jobSearchMatch(canManage, like) {
+  const sql = canManage
+    ? "(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\' OR j.company_name LIKE ? ESCAPE '\\' OR j.contact_name LIKE ? ESCAPE '\\' OR j.po_number LIKE ? ESCAPE '\\')"
+    : "(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\')";
+  const params = canManage ? [like, like, like, like, like] : [like, like];
+  return { sql, params };
+}
+
 // --- Formatters (snake_case → camelCase) ---
 
 function formatJob(row, assignees, canManage) {
@@ -161,11 +173,8 @@ function searchAll(req, res, canManage) {
   // the dedicated Jobs search. The combined view has its own "include archived"
   // toggle that flips this, and that choice is carried through on "see all".
   const includeArchived = req.query.includeArchived === 'true';
-  const jobMatch = canManage
-    ? "(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\' OR j.company_name LIKE ? ESCAPE '\\' OR j.contact_name LIKE ? ESCAPE '\\' OR j.po_number LIKE ? ESCAPE '\\')"
-    : "(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\')";
+  const { sql: jobMatch, params: jobParams } = jobSearchMatch(canManage, like);
   const jobWhere = includeArchived ? jobMatch : `${jobMatch} AND j.archived = 0`;
-  const jobParams = canManage ? [like, like, like, like, like] : [like, like];
   const jobFrom = 'FROM jobcards j';
 
   const jobCount = db.prepare(`SELECT COUNT(*) as count ${jobFrom} WHERE ${jobWhere}`).get(...jobParams).count;
@@ -216,13 +225,9 @@ function searchJobs(req, res, canManage) {
 
   if (q) {
     const like = likeTerm(q.trim());
-    if (canManage) {
-      conditions.push("(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\' OR j.company_name LIKE ? ESCAPE '\\' OR j.contact_name LIKE ? ESCAPE '\\' OR j.po_number LIKE ? ESCAPE '\\')");
-      params.push(like, like, like, like, like);
-    } else {
-      conditions.push("(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\')");
-      params.push(like, like);
-    }
+    const { sql, params: matchParams } = jobSearchMatch(canManage, like);
+    conditions.push(sql);
+    params.push(...matchParams);
   }
   if (status) {
     const arr = status.split(',').filter(Boolean);

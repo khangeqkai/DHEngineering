@@ -1,4 +1,4 @@
-const { db } = require('../db/connection');
+const { getSettings } = require('../db/database');
 
 // Stored moments are UTC instants; the people using the app think in the office's own
 // wall clock. Anything that has to cross between the two — converting a legacy wall-clock
@@ -10,13 +10,29 @@ const { db } = require('../db/connection');
 function officeTimeZone() {
   const own = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   try {
-    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('timezone');
-    const zone = row && row.value;
+    const zone = getSettings().timezone;
     if (!zone) return own;
     new Intl.DateTimeFormat('en-CA', { timeZone: zone }); // throws on an unknown zone
     return zone;
   } catch {
     return own;
+  }
+}
+
+// A formatter reading an instant on the office clock down to the minute, with the
+// weekday attached — used wherever a stored moment has to be classified against a
+// local calendar day or a weekly schedule. Falls back to UTC if the zone is missing
+// or not recognised, so a bad setting can't throw partway through a report.
+function makeOfficeFormatter(timeZone) {
+  const opts = {
+    hour12: false, weekday: 'short',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit'
+  };
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: timeZone || 'UTC', ...opts });
+  } catch {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', ...opts });
   }
 }
 
@@ -69,4 +85,4 @@ function officeDayEnd(date, timeZone = officeTimeZone()) {
   return wallClockToIso(`${date}T23:59:59.999`, timeZone);
 }
 
-module.exports = { officeTimeZone, wallClockToIso, officeDayStart, officeDayEnd };
+module.exports = { officeTimeZone, makeOfficeFormatter, wallClockToIso, officeDayStart, officeDayEnd };
