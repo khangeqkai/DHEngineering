@@ -39,9 +39,24 @@ export async function saveWorkbook(wb, defaultName) {
 
 // ── Sheet builder helpers ────────────────────────────────────────────────────
 
+// A spreadsheet cell holds at most 32,767 characters, and the xlsx writer throws
+// on anything longer — which lost the whole export over one job's long comment
+// thread. Every text cell of every export passes through here, so a too-long
+// value is cut short (and says so) instead.
+const MAX_CELL_CHARS = 32767;
+const CUT_MARKER = '… (cut short)';
+
+function fitCell(value) {
+  if (typeof value !== 'string' || value.length <= MAX_CELL_CHARS) return value;
+  let kept = value.slice(0, MAX_CELL_CHARS - CUT_MARKER.length);
+  // Don't leave half of a two-part character (an emoji) dangling at the cut.
+  if (/[\uD800-\uDBFF]$/.test(kept)) kept = kept.slice(0, -1);
+  return kept + CUT_MARKER;
+}
+
 export function buildSheet(XLSX, rows, columns) {
   const header = columns.map(c => c.label);
-  const data = rows.map(row => columns.map(c => c.value(row)));
+  const data = rows.map(row => columns.map(c => fitCell(c.value(row))));
   const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
 
   // Auto-width based on content

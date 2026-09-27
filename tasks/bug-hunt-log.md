@@ -14,6 +14,8 @@ Every agent in the hunt reads this file first. It is the memory between rounds.
 ## Waiting for the owner (design decisions)
 - **R4 — Reused machine numbers.** When a machine is archived and its number given to another machine (new, or renumbered), Workshop Statistics credits all past hours under that number to the machine that holds it now; the retired machine vanishes from the Machines tab. A proper fix needs the app to remember *when* each machine took its number (a new stored date, filled for existing machines at start-up), then credit each piece of work to whichever machine held the number at that time. A first attempt using the machine's "added" date was wrong for renumbered machines and was reverted. Proposal: add that stored date. Only matters if machine numbers are ever reused.
 - **R6 — Customer name on pre-filled quality forms.** Workers are not meant to see customer names, but quality forms come pre-filled with the customer's company name and workers open and print them. Options: (1) allow it and write it down as an exception, since workers handle these forms anyway; (2) never pre-fill the customer box; (3) office copy filled, worker copy blank.
+- **R8 — Quality forms are frozen when the level is set.** Pre-filled forms are copied once (on job create / level change); later parts, due date, PO changes and the "date" box never update. Options: (1) fill forms fresh at print/view time and stop keeping pre-filled copies; (2) keep copies but refill on every job change; (3) accept it, drop the auto date box, add a "Refresh forms" button.
+- **R8 — Old level's forms stay after a level change.** The old level's blank forms stay in the job and print by default, and a form handed back under the old level counts as returned for the new level (so the job can be invoiced). Proposal: on a level change remove the old untouched blanks (never returned forms), move old returned forms to an "Earlier level" sub-folder, and count a returned form only for the level it was returned under.
 
 ## Decided — leave alone
 _None yet._
@@ -95,6 +97,17 @@ _None yet._
 - Escape in a QA level's rename box saves like Enter.
 - Creating a user with an archived account's username says to restore it from the archive (shared name-clash reply, marks the username box; duplicate names on Customers/Suppliers now mark the box too).
 - Customer and QA level names capped at 150 characters (folder names stay under the OS limit); unchanged longer names still save.
+### Round 8 — files, printing, quality forms, Excel
+- Picked-file upload failures hid the reason: each failed file shows the server's reason; over-long stored names are capped.
+- An unreachable job-folders drive looked like "no files" everywhere (every part flagged missing, re-upload prompts): one shared reachability check; file routes say the location can't be reached; warnings stand down.
+- Excel export failed outright when one cell exceeded the spreadsheet text limit: over-long cells are trimmed with a marker.
+- File names with two dots in a row were refused and could break the whole print packet.
+- The quality-form copy warning showed a raw system error with the folder path.
+- The Files panel stacked three identical pop-ups when job folders weren't set.
+- Quality-form template upload showed no loading message.
+- Tying a file to a part stripped the person's own bracketed text from its name.
+- TIFF scans showed a broken thumbnail and blank preview.
+- Rejected: Files button not showing a file count (not a bug).
 
 ## Rounds
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
@@ -106,3 +119,4 @@ _None yet._
 | 5 | Management pages | 26 | 15 | 10 (5 carried) | 0 |
 | 6 | Sign-in + permissions | 20 | 9 (+5 carried) | 10 | 1 |
 | 7 | Timers, logged work, status | 13 | 11 | 10 | 0 |
+| 8 | Files, printing, QA forms, Excel | 21 | 11 | 9 | 2 |

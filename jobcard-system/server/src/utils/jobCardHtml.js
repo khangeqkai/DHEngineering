@@ -91,6 +91,15 @@ const CSS = `
 // card must read the same numbers as the job screen, so the caller below
 // passes each item's own `position` (buildJobCardView states it, once, for
 // every consumer) straight through.
+// What a declared drawing / customer property with no file shows: a red
+// "Missing" — unless the job-folders location couldn't be reached, in which case
+// nothing is known about the files and the card must not claim they're missing.
+function noFileMark(it) {
+  return it.filesUnreachable
+    ? `<div class="file">Files not checked (folders unreachable)</div>`
+    : `<div class="file missing">Missing</div>`;
+}
+
 function renderItem(it, displayNumber) {
   let drawings;
   if (it.drawingsIsNa) {
@@ -100,7 +109,7 @@ function renderItem(it, displayNumber) {
     // every matching file listed, or a red "Missing" when none are on disk yet.
     const files = (it.drawingFiles && it.drawingFiles.length)
       ? it.drawingFiles.map(f => `<div class="file">${esc(f)}</div>`).join('')
-      : `<div class="file missing">Missing</div>`;
+      : noFileMark(it);
     drawings = `<div class="val">${esc(it.drawings)}${files}</div>`;
   }
   let property;
@@ -111,7 +120,7 @@ function renderItem(it, displayNumber) {
     // every matching file listed, or a red "Missing" when none are on disk yet.
     const propFiles = (it.propertyFiles && it.propertyFiles.length)
       ? it.propertyFiles.map(f => `<div class="file">${esc(f)}</div>`).join('')
-      : `<div class="file missing">Missing</div>`;
+      : noFileMark(it);
     property = `<div class="val">${esc(it.customerProperty)}${propFiles}</div>`;
   }
   return `

@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp');
 
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
@@ -12,8 +13,8 @@ const {
   recordHistory,
   actorName
 } = require('../db/database');
-const { sanitizeFolderName, isWithinBase, resolveCompanyFolder, idSlug } = require('../utils/folderCreation');
-const { decodeBase64Strict, assertMatchesExtension } = require('../utils/fileValidation');
+const { sanitizeFolderName, isWithinBase, isBaseReachable, JOB_FOLDERS_UNREACHABLE, resolveCompanyFolder, idSlug } = require('../utils/folderCreation');
+const { decodeBase64Strict, assertMatchesExtension, isPlainFileName } = require('../utils/fileValidation');
 const { handleValidationErrors } = require('../middleware/validation');
 const { describePart } = require('./jobcard-audit-text');
 const { body, param } = require('express-validator');
@@ -70,6 +71,13 @@ function resolveJobFolder(jobcardId) {
   }
 
   const base = basePath.trim();
+  // An offline drive or share must not read as "this job has no files yet" —
+  // every declared drawing would then show missing, and an upload would
+  // recreate the base as an empty local folder. `unreachable` lets callers that
+  // don't send the reply themselves tell this apart from the other refusals.
+  if (!isBaseReachable(base)) {
+    return { error: JOB_FOLDERS_UNREACHABLE, status: 503, unreachable: true };
+  }
   // The customer's current name wins over the name frozen onto the job, so a job
   // saved under the old name still resolves to the folder as it stands today.
   const companyId = jobcard.company_id || null;
@@ -143,6 +151,16 @@ function partFileCode(itemId) {
   return slug ? `p${slug}` : null;
 }
 
+// The only two tags the app ever writes onto a stored file name: a part's
+// "p{code}" (the part's uuid reduced to 32 hex digits by idSlug) or a whole-job
+// file's 14-digit timestamp. Anything else in trailing brackets — "[Rev C]" on a
+// file copied into the folder by hand — is part of the person's own name and must
+// never be stripped from display or lost when the file is re-tagged.
+const STORAGE_TAG = '(p[0-9a-f]{32}|\\d{14})';
+// That tag (plus any " (n)" clash suffix) at the very end of a base name.
+const TRAILING_STORAGE_TAG = new RegExp(`\\[${STORAGE_TAG}\\](?: \\(\\d+\\))?$`);
+const TRAILING_STORAGE_TAG_WITH_SPACE = new RegExp(` ${TRAILING_STORAGE_TAG.source}`);
+
 /**
  * Strip the trailing " [code]" tag (and any " (n)" clash suffix) that the upload
  * route bakes onto a stored filename, returning the clean human-readable name the
@@ -152,7 +170,7 @@ function partFileCode(itemId) {
 function stripStorageTag(name) {
   const ext = path.extname(name);
   const base = name.slice(0, name.length - ext.length);
-  return `${base.replace(/ \[[^\]]+\](?: \(\d+\))?$/, '')}${ext}`;
+  return `${base.replace(TRAILING_STORAGE_TAG_WITH_SPACE, '')}${ext}`;
 }
 
 /**
@@ -163,7 +181,7 @@ function stripStorageTag(name) {
 function currentFileTag(name) {
   const ext = path.extname(name);
   const base = name.slice(0, name.length - ext.length);
-  const m = base.match(/\[([^\]]+)\](?: \(\d+\))?$/);
+  const m = base.match(TRAILING_STORAGE_TAG);
   return m ? m[1] : null;
 }
 
@@ -203,6 +221,11 @@ function resolveFileOwners(jobcardId, files) {
   });
 }
 
+// A file name may be at most 255 characters (255 bytes on some systems), and the
+// tag, a clash suffix and the extension add up to ~50 more, so the human part of
+// the name is cut to this many bytes.
+const MAX_STORED_BASE_BYTES = 200;
+
 /**
  * Build a unique on-disk filename. The identifying code rides at the END of the
  * name, in square brackets, so the human-readable name leads — matching the
@@ -224,7 +247,15 @@ function buildStorageFilename(folderPath, displayName, partCode) {
   // typed by whoever scanned/renamed the file and isn't otherwise checked.
   // The extension itself was already validated against ALLOWED_FILE_EXTENSIONS, so
   // it's kept as-is and only the base is sanitized.
-  const base = sanitizeFolderName(path.basename(displayName, ext)) || 'file';
+  // An over-long base is cut here (by whole characters, so an accented letter
+  // or emoji is never split) rather than failing the write with a bare
+  // "Failed to upload file".
+  let base = '';
+  for (const ch of sanitizeFolderName(path.basename(displayName, ext))) {
+    if (Buffer.byteLength(base + ch) > MAX_STORED_BASE_BYTES) break;
+    base += ch;
+  }
+  base = base.trim() || 'file';
   const tag = partCode || new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
   let candidate = `${base} [${tag}]${ext}`;
   let counter = 1;
@@ -291,7 +322,10 @@ function listFolderFiles(folderPath) {
 // resolving the job folder a single time (the customer-area lookup is the
 // expensive part, so we don't repeat it per category). Returns a map of
 // category → filenames; categories whose folder is missing/empty, or any job
-// that can't be resolved, come back as empty arrays. Used by the
+// that can't be resolved, come back as empty arrays. Returns null instead when
+// the job-folders location itself can't be reached (an offline drive or share):
+// then nothing is known about the files, and callers must not report any of
+// them as missing. Used by the
 // attachment-warnings detector to tell whether a declared drawing / customer
 // property / returned QA form actually has a file.
 function listCategoryFileNames(jobcardId, categories) {
@@ -299,6 +333,7 @@ function listCategoryFileNames(jobcardId, categories) {
   const empty = Object.fromEntries(wanted.map(c => [c, []]));
 
   const jobRes = resolveJobFolder(jobcardId);
+  if (jobRes.unreachable) return null;
   if (jobRes.error) return empty;
 
   const out = {};
@@ -324,7 +359,7 @@ const validateFilenameParam = [
   param('filename')
     .isString().trim().notEmpty().withMessage('Filename required')
     .custom(value => {
-      if (value.includes('/') || value.includes('\\') || value.includes('..')) {
+      if (!isPlainFileName(value)) {
         throw new Error('Filename must not contain path separators');
       }
       return true;
@@ -336,7 +371,7 @@ const validateUploadBody = [
   body('filename')
     .isString().trim().notEmpty().withMessage('Filename is required')
     .custom((value) => {
-      if (value.includes('/') || value.includes('\\') || value.includes('..')) {
+      if (!isPlainFileName(value)) {
         throw new Error('Filename must not contain path separators');
       }
       const ext = path.extname(value).toLowerCase();
@@ -380,7 +415,13 @@ router.get('/:id/files/:category', authenticate, validateCategory, (req, res) =>
 });
 
 // ─── Read a single file (returns base64) ───
-router.get('/:id/files/:category/:filename', authenticate, validateCategory, validateFilenameParam, (req, res) => {
+// A TIFF is an accepted upload (scanners produce them) but the app's built-in
+// browser can't draw one, so its thumbnail and viewer came up blank. It is
+// converted to PNG here — the one route both read from — the same way the
+// print packet already converts images through sharp. The file on disk is untouched.
+const BROWSER_UNREADABLE_IMAGE_EXT = new Set(['.tif', '.tiff']);
+
+router.get('/:id/files/:category/:filename', authenticate, validateCategory, validateFilenameParam, async (req, res) => {
   try {
     const { id, category, filename } = req.params;
     const folderRes = resolveCategoryFolder(id, category);
@@ -396,6 +437,10 @@ router.get('/:id/files/:category/:filename', authenticate, validateCategory, val
 
     const ext = path.extname(filename).toLowerCase();
     const fileData = fs.readFileSync(filePath);
+    if (BROWSER_UNREADABLE_IMAGE_EXT.has(ext)) {
+      const png = await sharp(fileData).rotate().png().toBuffer();
+      return res.json({ name: filename, mimeType: 'image/png', data: png.toString('base64') });
+    }
     res.json({
       name: filename,
       mimeType: MIME_TYPES[ext] || 'application/octet-stream',

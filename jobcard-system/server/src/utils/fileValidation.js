@@ -73,4 +73,21 @@ function assertMatchesExtension(buffer, filename) {
   }
 }
 
-module.exports = { decodeBase64Strict, assertMatchesExtension };
+/**
+ * Whether a file name sent in a request is a single, plain name inside its
+ * folder: not empty, no path separator, not "." or ".." on its own, and no
+ * control characters. Two dots INSIDE a name ("Rev..C.pdf") are fine — without
+ * a separator they can't climb out of the folder, and the listing shows such
+ * files (copied in by hand), so refusing them made View/Delete/assign and the
+ * all-ticked print packet fail. The real traversal protection stays where it
+ * always was: every route also checks the joined path is still within the
+ * folder (isWithinBase), and the packet matches names against the live listing.
+ * One rule for every route that takes a stored file name.
+ */
+function isPlainFileName(name) {
+  if (typeof name !== 'string' || !name) return false;
+  if (name === '.' || name === '..') return false;
+  return !/[/\\\x00-\x1f\x7f]/.test(name);
+}
+
+module.exports = { decodeBase64Strict, assertMatchesExtension, isPlainFileName };

@@ -124,7 +124,10 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
       setCounts(prev => ({ ...prev, [category]: (list || []).length }));
       loadThumbnails(list, category);
     } catch (err) {
-      toast.error(err.message || 'Failed to load files');
+      // All three folders load at once when the Files panel opens, and they fail
+      // together for the same reason (storage not set up, drive offline) — one
+      // id per job so the three messages replace each other instead of stacking.
+      toast.error(err.message || 'Failed to load files', { id: `files-load-${jobcardId}` });
       setFilesByCategory(prev => ({ ...prev, [category]: [] }));
     } finally {
       setLoadingByCategory(prev => ({ ...prev, [category]: false }));
@@ -162,7 +165,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
             if (saved > 0) refreshCount(category);
             return;
           }
-          failed.push(file.name);
+          failed.push({ name: file.name, message: err.message });
         }
       }
       if (saved > 0) {
@@ -171,7 +174,13 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
       } else {
         toast.dismiss(toastId);
       }
-      if (failed.length) toast.error(`Failed to upload: ${failed.join(', ')}`);
+      // Name each failed file with the server's reason ("doesn't look like a
+      // PDF", "that part was removed…") — the same as saving photos does — so
+      // the user isn't left retrying something that can never work.
+      if (failed.length) {
+        const lines = failed.map(f => `${f.name}: ${f.message || "couldn't be uploaded, try again in a moment."}`);
+        toast.error(`Failed to upload — ${lines.join('; ')}`);
+      }
     } finally {
       setUploading(false);
       if (onDone) onDone();

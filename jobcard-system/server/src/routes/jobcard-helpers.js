@@ -86,7 +86,10 @@ function itemFileDisplayNames(names, itemId) {
 //   - customer property declared but no file named for that part in Customer Property
 //   - a QA level set but no returned (timestamp-named) form in QA Forms
 // Items may be DB rows (snake_case) or formatted/request items (camelCase).
-// No-ops safely (hasAny:false) when job-folders storage isn't configured.
+// No-ops safely (hasAny:false) when job-folders storage isn't configured, and
+// the same when the storage location can't be reached (drive or share offline)
+// — then nothing is known about the files, so nothing is flagged; that result
+// also carries `filesUnreachable: true`.
 function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null) {
   const { listCategoryFileNames, partFileCode } = require('./jobcard-files');
   const settings = getSettings();
@@ -131,6 +134,9 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null) {
   if (anyProperty) categories.push('customer-property-files');
   if (needsQa) categories.push('qa-form-files');
   const fileNames = listCategoryFileNames(jobcardId, categories);
+  if (!fileNames) {
+    return { items: [], missingQaForms: false, hasAny: false, attachedByItem: {}, filesUnreachable: true };
+  }
   const jobFileNames = fileNames['job-files'] || [];
   const customerPropertyNames = fileNames['customer-property-files'] || [];
 
@@ -211,14 +217,18 @@ function checkInvoicing(existing, newStatus, qaLevelId, confirmMissingAttachment
 
   // Soft close-out checkpoint: stop before any write and report the gaps
   // instead of writing — unless the caller already confirmed "invoice anyway".
+  // When the job declared files but the storage location can't be reached,
+  // nothing is known either way, so it still stops and asks (FILES_UNREACHABLE)
+  // rather than letting an unchecked job be invoiced and archived silently.
   if (confirmMissingAttachments !== true) {
     const items = jobItemQueries.getByJobcard.all(existing.id);
     const warnings = computeAttachmentWarnings(existing.id, items, qaLevelId);
-    if (warnings.hasAny) {
+    if (warnings.hasAny || warnings.filesUnreachable) {
+      const error = warnings.filesUnreachable ? 'FILES_UNREACHABLE' : 'MISSING_ATTACHMENTS';
       return {
         shouldArchive,
         invoicedDate: null,
-        refusal: { status: 409, body: { error: 'MISSING_ATTACHMENTS', attachmentWarnings: warnings } }
+        refusal: { status: 409, body: { error, attachmentWarnings: warnings } }
       };
     }
   }
@@ -485,9 +495,13 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
   // Read the Job Files and Customer Property folders once so each part's drawing
   // and customer-property field can show the actual file(s) attached to it (or
   // flag a missing one). Empty when storage isn't set up or a folder is missing —
-  // in which case every declared drawing / property shows missing.
+  // in which case every declared drawing / property shows missing. When the
+  // storage location can't be reached at all nothing is known, so the card says
+  // the files couldn't be checked instead of calling them missing.
   const { listCategoryFileNames } = require('./jobcard-files');
-  const folderNames = listCategoryFileNames(jobcardId, ['job-files', 'customer-property-files']);
+  const listing = listCategoryFileNames(jobcardId, ['job-files', 'customer-property-files']);
+  const filesUnreachable = listing === null;
+  const folderNames = listing || {};
   const jobFileNames = folderNames['job-files'] || [];
   const customerPropertyNames = folderNames['customer-property-files'] || [];
 
@@ -503,7 +517,7 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
     // For a declared drawing, find the file(s) attached to this exact part and
     // show their human-readable names; "missing" when none are on disk yet.
     const drawingFiles = drawingsIsNa ? [] : itemFileDisplayNames(jobFileNames, r.id);
-    const drawingsMissing = !drawingsIsNa && drawingFiles.length === 0;
+    const drawingsMissing = !filesUnreachable && !drawingsIsNa && drawingFiles.length === 0;
     const treatments = parseTreatments(r.treatments).map(t => {
       const name = tagName('treatment', t.value);
       return t.supplierName ? `${name} - ${t.supplierName}` : name;
@@ -518,7 +532,7 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
     // For declared customer property, list the file(s) attached to this exact part
     // (or flag "missing"), the same way drawings does.
     const propertyFiles = customerPropertyIsNa ? [] : itemFileDisplayNames(customerPropertyNames, r.id);
-    const customerPropertyMissing = !customerPropertyIsNa && propertyFiles.length === 0;
+    const customerPropertyMissing = !filesUnreachable && !customerPropertyIsNa && propertyFiles.length === 0;
     return {
       number: r.item_number,
       position: idx + 1,
@@ -534,7 +548,8 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
       customerProperty,
       customerPropertyIsNa,
       propertyFiles,
-      customerPropertyMissing
+      customerPropertyMissing,
+      filesUnreachable
     };
   });
 

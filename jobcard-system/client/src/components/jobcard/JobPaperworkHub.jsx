@@ -10,7 +10,7 @@ import { useJobFiles, CATEGORY_LABELS, ACCEPT_ATTR } from './useJobFiles';
 import { usePacketPrint } from './usePacketPrint';
 import HubFileRow from './HubFileRow';
 import HubCameraView from './HubCameraView';
-import { ORDER, MAX_PACKET_FILES, keyOf, cleanQaName, fileKindLabel, PickCircle } from './paperworkHubHelpers';
+import { ORDER, MAX_PACKET_FILES, keyOf, fileKindLabel, PickCircle } from './paperworkHubHelpers';
 import { usePaperworkSelection } from './usePaperworkSelection';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -322,7 +322,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
             {!loading && list.map(f => (
               <HubFileRow
                 key={f.name}
-                nameText={cat === 'qa-form-files' ? cleanQaName(f.name) : (f.displayName || f.name)}
+                nameText={f.displayName || f.name}
                 subText={fileKindLabel(f)}
                 isImage={f.mimeType?.startsWith('image/')}
                 thumb={files.thumbnails.get(`${cat}/${f.name}`)}

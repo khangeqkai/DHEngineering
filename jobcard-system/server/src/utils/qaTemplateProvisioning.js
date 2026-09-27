@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const logger = require('./logger');
-const { sanitizeFolderName, isWithinBase, findQaLevelFolder, ensureCompanyFolder, resolveCompanyFolder } = require('./folderCreation');
+const { sanitizeFolderName, isWithinBase, isBaseReachable, findQaLevelFolder, ensureCompanyFolder, resolveCompanyFolder } = require('./folderCreation');
 const { fillPdfTemplate } = require('./pdfFiller');
 const { qaLevelQueries, qaLevelTemplateQueries, getSettings } = require('../db/database');
 const { officeDateString } = require('./officeTime');
@@ -14,6 +14,26 @@ const { formatDayAu } = require('../shared/calendarDate');
 // because that file was getting long — this module only owns the
 // disk/PDF side of QA provisioning; jobcard-helpers.js still owns everything
 // about shaping a job card's own data.
+
+/**
+ * The plain reason a form couldn't be copied, shown to whoever saved the job.
+ * The system's own error text carries the full source and destination paths —
+ * the job-folders location, which a manager is never shown — so it goes to the
+ * log only, and the person gets a fixed sentence picked by the error's kind.
+ */
+function plainCopyReason(err) {
+  switch (err && err.code) {
+    case 'EBUSY':
+    case 'EPERM':
+      return 'it may be open on another computer';
+    case 'EACCES':
+      return "the folder can't be written to";
+    case 'ENOSPC':
+      return 'the drive is full';
+    default:
+      return "it couldn't be written to the job's folder";
+  }
+}
 
 /**
  * Copy a QA level's template PDFs into the job's QA Forms folder, filling
@@ -51,6 +71,17 @@ async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
     }
 
     const base = basePath.trim();
+    // An offline drive or share is reported as such — and checked before the
+    // company folder below is created, which would otherwise rebuild the missing
+    // base as an empty local folder.
+    if (!isBaseReachable(base)) {
+      return {
+        totalTemplates,
+        succeeded: 0,
+        failed: [{ fileName: '*', reason: "the job folders location can't be reached" }],
+        skipped: false
+      };
+    }
     // Locate the customer's company folder by permanent company id (created if
     // needed) so QA forms land in the same folder the job's files resolve to —
     // even after a company-name change. Jobs with no company fall back to the
@@ -122,7 +153,7 @@ async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
               succeeded += 1;
             } catch (copyErr) {
               logger.error({ err: copyErr, srcPath, destPath }, 'Failed to copy QA template');
-              failed.push({ fileName: tmpl.file_name, reason: copyErr.message || String(copyErr) });
+              failed.push({ fileName: tmpl.file_name, reason: plainCopyReason(copyErr) });
             }
           })
       );
@@ -136,7 +167,7 @@ async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
     return {
       totalTemplates,
       succeeded: 0,
-      failed: [{ fileName: '*', reason: err.message || String(err) }],
+      failed: [{ fileName: '*', reason: plainCopyReason(err) }],
       skipped: false
     };
   }
@@ -168,6 +199,14 @@ function verifyQaTemplatesAvailable(qaLevelId) {
   const settings = getSettings();
   const basePath = settings.job_folders_base;
   if (!basePath || !basePath.trim()) return { ok: true };
+  // An offline drive or share is not a missing folder — don't send the admin off
+  // to re-upload forms that are still there.
+  if (!isBaseReachable(basePath.trim())) {
+    return {
+      ok: false,
+      reason: "The job folders location can't be reached right now, so the quality forms can't be copied onto this job. Check the drive or network connection, then try again."
+    };
+  }
 
   const qaLevelsBase = path.join(basePath.trim(), 'QA Levels');
   const levelFolder = findQaLevelFolder(qaLevelsBase, level.id);

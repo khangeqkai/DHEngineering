@@ -57,6 +57,26 @@ function getBasePath() {
   }
 }
 
+// The plain message every file route gives when the base below can't be reached.
+const JOB_FOLDERS_UNREACHABLE = "The job folders location can't be reached right now. Check the drive or network connection, then try again.";
+
+/**
+ * Whether the configured job-folders base can be reached right now. Settings
+ * refuses to save a base that doesn't exist, so a base that has gone missing
+ * since means the drive or network share is offline — which is NOT the same as
+ * "this job's folder doesn't exist yet". Callers check this once before trusting
+ * any path under the base, so an offline drive is reported as offline instead of
+ * reading as "no files" (and every declared drawing flagging as missing), and so
+ * a write never recreates the base as an empty local folder.
+ */
+function isBaseReachable(basePath) {
+  try {
+    return fs.statSync(basePath).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 // A folder's owning record (a company, or a QA level) is identified by a short
 // code embedded at the END of the folder name, in square brackets — e.g.
 // "Rio Tinto Iron Ore [550e8400]". Because the code is part of the name, a
@@ -397,6 +417,8 @@ function deleteJobCardFolders(companyId, companyName, jobNumber) {
 module.exports = {
   sanitizeFolderName,
   isWithinBase,
+  isBaseReachable,
+  JOB_FOLDERS_UNREACHABLE,
   idSlug,
   resolveCompanyFolder,
   ensureCompanyFolder,

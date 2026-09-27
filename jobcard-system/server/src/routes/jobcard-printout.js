@@ -10,6 +10,7 @@ const { buildJobCardView } = require('./jobcard-helpers');
 const { renderJobCardHtml } = require('../utils/jobCardHtml');
 const { resolveCategoryFolder, listCategoryFileNames } = require('./jobcard-files');
 const { isWithinBase } = require('../utils/folderCreation');
+const { isPlainFileName } = require('../utils/fileValidation');
 const { buildPacketPdf } = require('../utils/pdfPacket');
 const { renderHtmlToPdf } = require('../utils/htmlToPdf');
 const { jobcardQueries, recordHistory, actorName } = require('../db/database');
@@ -76,7 +77,7 @@ const validatePacket = [
   body('items').isArray({ max: MAX_PRINT_FILES }).withMessage('Too many items'),
   body('items.*.category').isString().notEmpty(),
   body('items.*.filename').isString().notEmpty().custom((v) => {
-    if (v.includes('/') || v.includes('\\') || v.includes('..')) {
+    if (!isPlainFileName(v)) {
       throw new Error('Invalid filename');
     }
     return true;
@@ -97,7 +98,9 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
     // Verify every requested name against the live folder listing — a name that
     // isn't actually in the folder is rejected (blocks traversal and guessing).
     const categories = [...new Set(items.map(i => i.category))];
-    const listing = listCategoryFileNames(id, categories);
+    // (null — the storage location offline — leaves nothing allowed; the folder
+    // resolve just below then answers with the plain "can't be reached" reply.)
+    const listing = listCategoryFileNames(id, categories) || {};
 
     // Resolve each category folder once (the company lookup is the costly part).
     const folderByCategory = {};

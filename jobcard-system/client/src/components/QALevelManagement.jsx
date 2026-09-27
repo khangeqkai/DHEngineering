@@ -186,6 +186,9 @@ export default function QALevelManagement() {
     }
 
     setUploadingTemplate(true);
+    // Reading and sending a large PDF takes a noticeable moment — say so while it
+    // runs, then turn the same message into the result.
+    const toastId = toast.loading('Uploading template…');
     try {
       const fileData = await readFileAsBase64(file);
 
@@ -195,10 +198,10 @@ export default function QALevelManagement() {
         fileData
       });
 
-      toast.success('Template uploaded');
+      toast.success('Template uploaded', { id: toastId });
       await loadData();
     } catch (err) {
-      toast.error(err.message || 'Failed to upload template');
+      toast.error(err.message || 'Failed to upload template', { id: toastId });
     } finally {
       setUploadingTemplate(false);
       input.value = '';

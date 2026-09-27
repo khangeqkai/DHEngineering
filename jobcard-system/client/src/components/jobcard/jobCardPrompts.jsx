@@ -22,8 +22,20 @@ export function showFormErrors(errors) {
 
 // The "this job declared files it doesn't have — invoice anyway?" confirm. Shared by
 // the job card save (JobCardModal) and the header status dropdown (JobIdentityStrip)
-// so both speak the same words. Returns true if the user chose to invoice anyway.
+// so both speak the same words. Also asks, in its own words, when the job's files
+// couldn't be checked at all. Returns true if the user chose to invoice anyway.
 export async function confirmInvoiceAnyway(warnings, showConfirm) {
+  // The storage location couldn't be reached, so nothing is known about the
+  // job's files — say that, rather than showing an empty list of gaps.
+  if (warnings?.filesUnreachable) {
+    return !!(await showConfirm?.({
+      title: 'Files not checked',
+      message: "This job's files couldn't be checked because the job folders location can't be reached right now. Invoice anyway?",
+      confirmLabel: 'Invoice anyway',
+      cancelLabel: 'Go back',
+      confirmVariant: 'warning'
+    }));
+  }
   const gaps = describeAttachmentGaps(warnings);
   return !!(await showConfirm?.({
     title: 'Files not attached',
