@@ -2,6 +2,8 @@ const { body, query, validationResult } = require('express-validator');
 const jobStatuses = require('../shared/jobStatuses.json');
 const { ALL_ROLES } = require('./auth');
 const { isCalendarDate } = require('../shared/calendarDate');
+// The cap on a customer's or quality level's name (it becomes a folder on disk).
+const { FOLDER_NAME_MAX } = require('../shared/names');
 // The PIN rule ("exactly 4 numeric digits") and its wording, read from the one
 // shared copy — routes/auth.js's own inline password checks (update user,
 // change own password) import PIN_REGEX/PIN_MESSAGE from here, and the client
@@ -51,6 +53,29 @@ function requiredString(field, label) {
     .isLength({ min: 1 })
     .withMessage(`${label} cannot be empty`);
 }
+
+/**
+ * Name-length cap for anything whose name becomes a folder on disk.
+ * Only what is sent is checked: on an edit, a name identical to the stored one
+ * passes even if it is longer (an older record, or a switch flipped on a row
+ * without touching its name), so a record saved before the cap still edits.
+ * @param {string} field - Field name
+ * @param {string} label - Human-readable label
+ * @param {(req) => string|undefined} [storedNameOf] - the record's current name, on an edit
+ */
+function folderNameLength(field, label, storedNameOf) {
+  return body(field)
+    .custom((value, { req }) => {
+      if (typeof value !== 'string' || value.trim().length <= FOLDER_NAME_MAX) return true;
+      const stored = storedNameOf ? storedNameOf(req) : undefined;
+      return typeof stored === 'string' && stored.trim() === value.trim();
+    })
+    .withMessage(`${label} cannot exceed ${FOLDER_NAME_MAX} characters`);
+}
+
+// Looked up lazily so this file doesn't load the database just by being required.
+const storedCompanyName = (req) => require('../db/database').companyQueries.getById.get(req.params.id)?.name;
+const storedQaLevelName = (req) => require('../db/database').qaLevelQueries.getById.get(req.params.id)?.name;
 
 /**
  * Optional email field validator
@@ -200,6 +225,7 @@ const validateUpdateUser = [
 // POST /companies — a customer is just its name (plus optional address/notes).
 const validateCreateCompany = [
   requiredString('name', 'Company name'),
+  folderNameLength('name', 'Company name'),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
   handleValidationErrors
@@ -208,8 +234,23 @@ const validateCreateCompany = [
 // PUT /companies/:id
 const validateUpdateCompany = [
   requiredString('name', 'Company name'),
+  folderNameLength('name', 'Company name', storedCompanyName),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
+  handleValidationErrors
+];
+
+// POST /qa-levels
+const validateCreateQaLevel = [
+  requiredString('name', 'Name'),
+  folderNameLength('name', 'Name'),
+  handleValidationErrors
+];
+
+// PUT /qa-levels/:id
+const validateUpdateQaLevel = [
+  requiredString('name', 'Name'),
+  folderNameLength('name', 'Name', storedQaLevelName),
   handleValidationErrors
 ];
 
@@ -495,6 +536,8 @@ module.exports = {
   validateUpdatePreferences,
   validateCreateCompany,
   validateUpdateCompany,
+  validateCreateQaLevel,
+  validateUpdateQaLevel,
   validateCreateContact,
   validateUpdateContact,
   validateCreateSupplier,

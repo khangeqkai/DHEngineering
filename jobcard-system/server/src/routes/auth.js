@@ -14,6 +14,7 @@ const { isViaTunnel, clientIp } = require('../utils/homeAccess');
 const { setArchived } = require('../utils/archiveToggle');
 const { findOr404 } = require('../utils/findOr404');
 const { createPinAttemptLimiter } = require('../utils/pinAttempts');
+const { nameConflictOr409 } = require('./name-conflict');
 
 const router = express.Router();
 
@@ -274,10 +275,11 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
       return res.status(403).json({ error: 'Only admins can create admin accounts' });
     }
 
-    // Check if username exists
+    // Usernames are unique, archived accounts included — an archived match is
+    // pointed at "restore it" rather than a flat "already exists".
     const existing = userQueries.getByUsername.get(username);
-    if (existing) {
-      return res.status(400).json({ error: 'Username already exists' });
+    if (nameConflictOr409(res, existing, null, { entityLabel: 'user', nameLabel: 'username', field: 'username', isArchived: (row) => !row.active })) {
+      return;
     }
 
     // Create user

@@ -90,6 +90,11 @@ _None yet._
 - Saving the manual edit form overwrote pieces/machines/notes saved on the block meanwhile: only changed fields are sent.
 - The overtime split gave up to a minute per tier change to the earlier rate when a block started mid-minute.
 - "Timer stopped" notice used a typed emoji and always blamed an admin.
+### Carried items cleared (between rounds 7 and 8)
+- Equipment checks comments box now capitalises on leave.
+- Escape in a QA level's rename box saves like Enter.
+- Creating a user with an archived account's username says to restore it from the archive (shared name-clash reply, marks the username box; duplicate names on Customers/Suppliers now mark the box too).
+- Customer and QA level names capped at 150 characters (folder names stay under the OS limit); unchanged longer names still save.
 
 ## Rounds
 | # | Area | Found | Confirmed | Fixed | Sent to owner |

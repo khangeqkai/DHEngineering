@@ -470,6 +470,10 @@ export default function StopTimerForm({
                           placeholder="Comments (optional)"
                           value={entryForm.equipmentChecksComments || ''}
                           onChange={(e) => onFieldChange('equipmentChecksComments', e.target.value)}
+                          onBlur={(e) => {
+                            const formatted = capitalizeFirst(e.target.value);
+                            if (formatted !== e.target.value) onFieldChange('equipmentChecksComments', formatted);
+                          }}
                         />
                       )}
                     </div>

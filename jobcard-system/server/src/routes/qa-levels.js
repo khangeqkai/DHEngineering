@@ -5,7 +5,7 @@ const path = require('path');
 
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
-const { requiredString, handleValidationErrors } = require('../middleware/validation');
+const { validateCreateQaLevel, validateUpdateQaLevel } = require('../middleware/validation');
 const {
   sanitizeFolderName,
   isWithinBase,
@@ -107,8 +107,7 @@ router.get('/:id', authenticate, requireManagement, (req, res) => {
 router.post('/',
   authenticate,
   requireManagement,
-  requiredString('name', 'Name'),
-  handleValidationErrors,
+  validateCreateQaLevel,
   (req, res) => {
     try {
       const { name } = req.body;
@@ -153,8 +152,7 @@ router.post('/',
 router.put('/:id',
   authenticate,
   requireManagement,
-  requiredString('name', 'Name'),
-  handleValidationErrors,
+  validateUpdateQaLevel,
   (req, res) => {
     try {
       const { id } = req.params;

@@ -209,6 +209,12 @@ export default function TimeEntryForm({
             placeholder="Equipment checks comments (optional)"
             value={timeEntryForm.equipmentChecksComments}
             onChange={handleTimeEntryChange}
+            onBlur={(e) => {
+              const formatted = capitalizeFirst(e.target.value);
+              if (formatted !== e.target.value) {
+                handleTimeEntryChange({ target: { name: 'equipmentChecksComments', value: formatted } });
+              }
+            }}
           />
         </div>
       )}

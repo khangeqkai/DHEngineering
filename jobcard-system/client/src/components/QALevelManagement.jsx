@@ -8,10 +8,14 @@ import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useManagedListPage } from '../hooks/useManagedListPage';
-import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
+import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
 import FieldError from './common/FieldError';
 import { readFileAsBase64 } from '../utils/fileData';
 import { MAX_UPLOAD_BYTES } from '../../../server/src/shared/jobFiles';
+import { FOLDER_NAME_MAX } from '../../../server/src/shared/names';
+
+// Which box on the new-level form each field named in a server refusal belongs to.
+const QA_FORM_BOXES = { name: 'name' };
 
 export default function QALevelManagement() {
   const [levels, setLevels] = useState([]);
@@ -25,9 +29,6 @@ export default function QALevelManagement() {
   const [togglingId, setTogglingId] = useState(null);
   const [editingNameId, setEditingNameId] = useState(null);
   const [editingNameValue, setEditingNameValue] = useState('');
-  // Set right before we close an inline rename on Escape, so the blur that follows
-  // the input being removed doesn't also try to save.
-  const cancelRenameRef = useRef(false);
   const [uploadingTemplate, setUploadingTemplate] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   // 'name' -> the new-level form's own box; 'renameName' -> the inline rename box
@@ -61,6 +62,13 @@ export default function QALevelManagement() {
       scrollFieldIntoView('name');
       return;
     }
+    // The name becomes the level's folder on disk, so it has a length cap (the
+    // server applies the same one).
+    if (formData.name.trim().length > FOLDER_NAME_MAX) {
+      setFieldErrors({ name: `Name cannot exceed ${FOLDER_NAME_MAX} characters` });
+      scrollFieldIntoView('name');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -71,7 +79,7 @@ export default function QALevelManagement() {
       await loadData();
       resetForm();
     } catch (err) {
-      toast.error(err.message || 'Failed to save QA level');
+      showSaveRefusal(err, { boxFor: QA_FORM_BOXES, setFieldErrors, fallback: 'Failed to save QA level' });
     } finally {
       setSaving(false);
     }
@@ -85,11 +93,6 @@ export default function QALevelManagement() {
   // Save an inline rename (called from the title field's blur / Enter). Sends only the
   // name so the level's "requires returned form" switch is left exactly as it was.
   const commitRename = async (level) => {
-    if (cancelRenameRef.current) {
-      cancelRenameRef.current = false;
-      setEditingNameId(null);
-      return;
-    }
     const name = toTitleCase(editingNameValue.trim());
     if (!name) {
       // Keep the row in edit mode so the mark has somewhere to show, rather than
@@ -98,6 +101,12 @@ export default function QALevelManagement() {
       // helper focuses the field, which would bounce the caret straight back in
       // and trap it. The row is already on screen, so the mark is enough.
       setFieldErrors({ renameName: 'Name is required' });
+      return;
+    }
+    // Same cap as the new-level form; a level already saved with a longer name
+    // passes as long as the name is left as it was.
+    if (name.length > FOLDER_NAME_MAX && name !== level.name) {
+      setFieldErrors({ renameName: `Name cannot exceed ${FOLDER_NAME_MAX} characters` });
       return;
     }
     setEditingNameId(null);
@@ -258,8 +267,9 @@ export default function QALevelManagement() {
                         onChange={(e) => setEditingNameValue(e.target.value)}
                         onBlur={() => commitRename(level)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
-                          else if (e.key === 'Escape') { e.preventDefault(); cancelRenameRef.current = true; setEditingNameId(null); }
+                          // Enter and Escape both just leave the box, so the one
+                          // save-on-leave step (commitRename on blur) runs either way.
+                          if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.currentTarget.blur(); }
                         }}
                       />
                       <FieldError {...errorProps('renameName')} message={errorFor('renameName')} />

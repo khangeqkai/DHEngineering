@@ -15,6 +15,7 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useManagedListPage } from '../hooks/useManagedListPage';
 import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
 import FieldError from './common/FieldError';
+import { FOLDER_NAME_MAX } from '../../../server/src/shared/names';
 import './ContactManagement.css';
 
 const blankCompany = () => ({ name: '', address: '', notes: '' });
@@ -87,6 +88,15 @@ export default function ContactManagement() {
     e.preventDefault();
     if (!formData.name.trim()) {
       setFieldErrors({ companyName: 'Please enter the company name' });
+      scrollFieldIntoView('companyName');
+      return;
+    }
+    // The name becomes the customer's folder on disk, so it has a length cap (the
+    // server applies the same one). A customer already saved with a longer name can
+    // still be edited as long as the name itself is left alone.
+    const trimmedName = formData.name.trim();
+    if (trimmedName.length > FOLDER_NAME_MAX && trimmedName !== (editingCompany?.name || '').trim()) {
+      setFieldErrors({ companyName: `Company name cannot exceed ${FOLDER_NAME_MAX} characters` });
       scrollFieldIntoView('companyName');
       return;
     }
