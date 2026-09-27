@@ -108,6 +108,17 @@ _None yet._
 - Tying a file to a part stripped the person's own bracketed text from its name.
 - TIFF scans showed a broken thumbnail and blank preview.
 - Rejected: Files button not showing a file count (not a bug).
+### Round 9 — job list, search, comments, activity record
+- Invoicing from the job screen didn't lock it, and the header stayed editable on every closed job: the status reply is passed back and the header checks the closed state.
+- Activity screens and export showed stored moments as raw UTC text (wrong hour, often wrong day): the one trail-value formatter renders moments and calendar days; the export uses it.
+- Activity entries didn't name their job and searching a job number missed most activity: the job number is joined in (deleted jobs fall back to their recorded number); one shared activity match clause.
+- Search > Activity "Field Changed" offered names nothing records; no settings filter.
+- Picking a job's current status wrote a false "X → X" change.
+- Last Edited on the job list didn't move when parts or workers changed.
+- Activity search couldn't find text with a double quote (inch marks).
+- The job list's "Invoiced" filter in the active view could never show anything.
+- The job list kept a stale row after a refused delete/unarchive.
+- Opening a deleted job from Search > Activity said "Failed to load… try again".
 
 ## Rounds
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
@@ -120,3 +131,4 @@ _None yet._
 | 6 | Sign-in + permissions | 20 | 9 (+5 carried) | 10 | 1 |
 | 7 | Timers, logged work, status | 13 | 11 | 10 | 0 |
 | 8 | Files, printing, QA forms, Excel | 21 | 11 | 9 | 2 |
+| 9 | Job list, search, activity | 19 | 12 | 10 (2 carried) | 0 |

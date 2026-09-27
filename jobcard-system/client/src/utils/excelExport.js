@@ -1,4 +1,4 @@
-import { formatDate as fmtDate, formatDateTime as fmtDateTime, todayIsoDate } from './formatters';
+import { formatDate as fmtDate, formatDateTime as fmtDateTime, todayIsoDate, formatHistoryValue } from './formatters';
 import { roundTo } from '../../../server/src/shared/round';
 import { STATUS_LABELS, PRIORITY_LABELS } from '../components/JobCardList.constants';
 // Tag labels are now dynamic (DB-driven). For exports, convert values to readable labels.
@@ -105,11 +105,14 @@ export function labelFromMap(map, value) {
   return map.get(value) || valueToLabel(value);
 }
 
+// Each side goes through formatHistoryValue, the same rule the Activity screens use,
+// so a stored moment reads on the local clock and a status code as its label here too.
 export function formatChangesText(changes) {
   if (!changes || typeof changes !== 'object') return '';
   return Object.entries(changes).map(([field, val]) => {
     if (val && typeof val === 'object' && ('from' in val || 'to' in val)) {
-      return `${field}: ${val.from ?? ''} → ${val.to ?? ''}`;
+      const side = (v) => formatHistoryValue(field, v) ?? '(empty)';
+      return `${field}: ${side(val.from)} → ${side(val.to)}`;
     }
     return `${field}: ${JSON.stringify(val)}`;
   }).join('; ');
@@ -154,6 +157,8 @@ const ACTIVITY_COLS = [
   { label: 'Action', value: r => r.action },
   { label: 'Entity Type', value: r => r.entityType },
   { label: 'Entity ID', value: r => r.entityId },
+  // A job's entries name the job; the trail itself stores only its internal id.
+  { label: 'Job Number', value: r => r.jobNumber ?? '' },
   { label: 'Changes', value: r => formatChangesText(r.changes) },
 ];
 

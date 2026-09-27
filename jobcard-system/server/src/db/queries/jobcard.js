@@ -99,6 +99,14 @@ const jobcardQueries = {
     WHERE id = ?
   `),
 
+  // Stamps the job's "Last Edited" (who/when) for an edit saved through its own
+  // route rather than the job row's update — a part added/changed/removed, a worker
+  // put on or taken off. Called only when something actually changed.
+  touch: db.prepare(`
+    UPDATE jobcards SET updated_by = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    WHERE id = ?
+  `),
+
   archive: db.prepare(`
     UPDATE jobcards SET archived = 1, invoiced_date = ?, updated_by = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?

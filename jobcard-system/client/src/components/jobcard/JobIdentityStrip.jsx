@@ -11,6 +11,7 @@ import { changeJobStatus } from './changeJobStatus';
 import { summarizeFieldStates, INSTANT_SAVE_STATUS_TEXT } from './useInstantSave';
 import { jobFieldMessage } from './fieldRules.mjs';
 import FieldError from '../common/FieldError';
+import { isJobClosed } from '../../utils/jobLock';
 
 const PRIORITY_VALUES = PRIORITY_OPTIONS.map(p => p.value);
 
@@ -46,7 +47,10 @@ export default function JobIdentityStrip({
   // same way any other write against a closed job is (closedJobGuard). Fires
   // instead of the ordinary failure toast; shows the shared sentence and reloads
   // the job so the screen catches up.
-  onJobClosed
+  onJobClosed,
+  // Re-reads the whole job. A status change that closes the job (invoicing
+  // archives it) calls this, so the screen picks up the archived flag and locks.
+  onReload
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
@@ -126,7 +130,10 @@ export default function JobIdentityStrip({
     items[next].focus();
   };
 
-  const editable = canManage;
+  // A closed (invoiced, archived) job's header is plain text, like a worker's view:
+  // the strip sits outside the screen's lock fieldsets, so it checks for itself.
+  const jobClosed = isJobClosed(formData);
+  const editable = canManage && !jobClosed;
   const priority = formData.priority || 'NONE';
   const description = formData.description || '';
   // A job must have a description. With no Save button to refuse, clearing the box
@@ -281,9 +288,11 @@ export default function JobIdentityStrip({
         // race. Never rejects, so a part save failing doesn't block the status change —
         // see useSaveQueue.js's whenSettled.
         beforeSend: whenPartSavesSettled,
-        onApplied: async () => {
-          setField('status', newStatus);
+        onApplied: async (updated) => {
+          setField('status', updated?.status ?? newStatus);
           onSuccess?.();
+          // Invoicing archived the job — reload so every part of the screen locks.
+          if (isJobClosed(updated)) await onReload?.();
         },
         // The job was invoiced and archived from another PC while this screen still
         // had it open — this pick reached the server after that.
@@ -415,14 +424,16 @@ export default function JobIdentityStrip({
 
           <div
             className={statusClass}
-            title={!statusChangeable ? 'Only management can change this status' : undefined}
+            title={jobClosed
+              ? 'This job is invoiced and closed. Unarchive it to change its status.'
+              : !statusChangeable ? 'Only management can change this status' : undefined}
           >
             <span className="jc-strip-status-dot" aria-hidden="true" />
             <select
               className="jc-strip-status-select"
               value={status}
               onChange={(e) => handleStatusChange(e.target.value)}
-              disabled={statusBusy || !statusChangeable}
+              disabled={statusBusy || !statusChangeable || jobClosed}
               aria-label="Status"
             >
               {statusOptions.map(opt => (

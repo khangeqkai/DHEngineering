@@ -48,8 +48,11 @@ export async function changeJobStatus({
     await beforeSend?.();
 
     const send = async (confirmMissingAttachments) => {
-      await api.updateJobcardStatus(jobId, newStatus, confirmMissingAttachments);
-      await onApplied?.();
+      // onApplied gets the server's reply — the job as it now stands. Invoicing
+      // archives the job server-side, and a caller that applies the change locally
+      // needs that archived flag to lock itself (JobIdentityStrip).
+      const updated = await api.updateJobcardStatus(jobId, newStatus, confirmMissingAttachments);
+      await onApplied?.(updated);
       toast.success(`Status updated to ${STATUS_LABELS[newStatus]}`);
     };
 

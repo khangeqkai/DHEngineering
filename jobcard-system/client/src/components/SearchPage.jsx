@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { Search, X, ChevronLeft, ChevronRight, Briefcase, Users as UsersIcon, Clock, Timer, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { isManagement, can } from '../utils/roles';
@@ -13,13 +14,15 @@ import { formatHistoryValue } from '../utils/formatters';
 import { statusToken, priorityToken, PRIORITY_LABELS, STATUS_LABELS } from './JobCardList.constants';
 import { STATUS_OPTIONS, PRIORITY_OPTIONS } from './jobcard/constants';
 import { actionColor, ACTION_NAMES } from '../utils/activityColors';
+import { JOB_DELETED_MESSAGE, JOB_DELETED_TOAST_ID } from '../utils/jobLock';
 import './SearchPage.css';
 
 // Both lists come from the job screen, so every chip can match and every stored value
 // has a chip — adding a status or priority there gives it a search chip for free.
 const STATUSES = STATUS_OPTIONS.map(s => s.value);
 const PRIORITIES = PRIORITY_OPTIONS.map(p => p.value);
-const ENTITY_TYPES = ['jobcard', 'company', 'contact', 'supplier', 'user', 'machine', 'auth', 'tag', 'qa_level', 'system'];
+// Every entity type a recordHistory() call writes — a new one must be added here.
+const ENTITY_TYPES = ['jobcard', 'company', 'contact', 'supplier', 'user', 'machine', 'auth', 'tag', 'qa_level', 'settings', 'system'];
 const SCOPES = [
   { key: 'all', label: 'All', icon: Search },
   { key: 'jobs', label: 'Jobs', icon: Briefcase },
@@ -147,6 +150,12 @@ export default function SearchPage() {
 
   const navigateActivity = useCallback((row) => {
     if (row.entityType === 'jobcard') {
+      // A delete entry's job is gone — say so rather than open a screen that can only
+      // fail. An entry of a job deleted since is caught by the job screen's own 404.
+      if (row.action === 'delete') {
+        toast.error(JOB_DELETED_MESSAGE, { id: JOB_DELETED_TOAST_ID });
+        return;
+      }
       const tab = ACTION_TO_TAB[row.action] || (row.action === 'create' || row.action === 'update' ? 'details' : 'activity');
       openJobModal(row.entityId, canManage ? tab : null);
     } else if (row.entityType === 'contact' || row.entityType === 'company') {
@@ -232,7 +241,7 @@ export default function SearchPage() {
     {
       key: 'entityId', label: 'Details', render: (v, row) => (
         <>
-          <code className="search-entity-id">{v}</code>
+          {row.jobNumber ? <strong>Job {row.jobNumber}</strong> : <code className="search-entity-id">{v}</code>}
           {row.changes && <div className="search-changes">{Object.entries(row.changes).map(([f, c]) => (
             <div key={f} className="search-change-line">
               <strong>{fmt(f)}:</strong>{' '}
@@ -462,7 +471,7 @@ export default function SearchPage() {
                       <strong>{a.userName || 'System'}</strong>
                       <ActionBadge action={a.action} />
                       <span>{fmt(a.entityType)}</span>
-                      <code className="search-entity-id">{a.entityId}</code>
+                      {a.jobNumber ? <strong>Job {a.jobNumber}</strong> : <code className="search-entity-id">{a.entityId}</code>}
                     </button>
                   ))}
                 </div>

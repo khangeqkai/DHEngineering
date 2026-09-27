@@ -1,5 +1,6 @@
 import { STATUS_LABELS, PRIORITY_LABELS } from '../components/JobCardList.constants';
 import { isValidPin, PIN_MESSAGE } from '../../../server/src/shared/pin';
+import { isCalendarDate } from '../../../server/src/shared/calendarDate';
 
 export function toTitleCase(str) {
   if (!str) return str;
@@ -100,8 +101,15 @@ const YES_NO_FIELDS = new Set(['isRepeatJob', 'is_repeat_job', 'repeatJob']);
 // STATUS_LABELS, so they fall through to the raw text unchanged.
 const STATUS_OR_PRIORITY_FIELDS = new Set(['status', 'priority']);
 
+// The app's one stored-moment shape (every stored moment is UTC ISO-8601 — see
+// docs/notes/dates-and-timezones.md). The trail carries these as timer starts/stops,
+// work-block times, the invoiced date and print/preview stamps; shown raw they read
+// as UTC, the wrong hour and often the wrong day.
+const STORED_MOMENT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z$/;
+
 // Render a single from/to history value for display. Returns a string for real
-// values, or null for empty (so callers can substitute '(empty)').
+// values, or null for empty (so callers can substitute '(empty)'). A stored moment
+// is shown on the local clock, a bare calendar day (a due date) as an Australian day.
 export function formatHistoryValue(field, value) {
   if (value === null || value === undefined || value === '') return null;
   if (YES_NO_FIELDS.has(field)) {
@@ -112,6 +120,10 @@ export function formatHistoryValue(field, value) {
     const labels = field === 'status' ? STATUS_LABELS : PRIORITY_LABELS;
     const known = labels[value];
     if (known) return known;
+  }
+  if (typeof value === 'string') {
+    if (STORED_MOMENT.test(value)) return formatDateTime(value);
+    if (isCalendarDate(value)) return formatDate(value);
   }
   return String(value);
 }

@@ -10,7 +10,7 @@ import { todayIsoDate } from '../../utils/formatters';
 import { isJobOverdue } from '../JobCardList.constants';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
-import { isJobClosed, JOB_CLOSED_MESSAGE } from '../../utils/jobLock';
+import { isJobClosed, JOB_CLOSED_MESSAGE, JOB_DELETED_MESSAGE, JOB_DELETED_TOAST_ID } from '../../utils/jobLock';
 import './JobCardModal.css';
 import { useJobCardCosting } from './useJobCardCosting';
 import { useTimeEntries } from './useTimeEntries';
@@ -148,7 +148,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       // opens never touch pricing at all.
     } catch (err) {
       if (currentLoadRef.current !== jobCardId) return;  // stale failure for a closed job — don't disturb the current one
-      toast.error('Failed to load job card. Please try again.');
+      // A 404 means the job was deleted (from another PC, or this screen was opened
+      // from a stale row or activity entry) — trying again can never work.
+      if (err.status === 404) toast.error(JOB_DELETED_MESSAGE, { id: JOB_DELETED_TOAST_ID });
+      else toast.error('Failed to load job card. Please try again.');
       onClose();
     } finally {
       if (currentLoadRef.current === jobCardId) setLoading(false);
@@ -461,6 +464,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       markDescription={formHook.markDescription}
       whenPartSavesSettled={formHook.saveQueue.whenSettled}
       onJobClosed={handleJobClosedWrite}
+      onReload={loadJobCard}
     />
   );
 

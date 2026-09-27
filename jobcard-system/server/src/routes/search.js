@@ -1,7 +1,7 @@
 const express = require('express');
 const { db } = require('../db/connection');
 const { authenticate, isManagement, can } = require('../middleware/auth');
-const { getAssigneesForJobcards } = require('../db/database');
+const { getAssigneesForJobcards, HISTORY_JOB_NUMBER_SQL } = require('../db/database');
 const { officeTimeZone, officeDayStart, officeDayEnd } = require('../utils/officeTime');
 const { customerFields } = require('./jobcard-helpers');
 const { supplierContactFields } = require('./supplier-helpers');
@@ -59,6 +59,25 @@ function jobSearchMatch(canManage, like) {
   return { sql, params };
 }
 
+// The activity text match, in one place — used by both the quick ("all") search and
+// the full activity search. Matches who did it, the entity's id, the job number the
+// entry belongs to (HISTORY_JOB_NUMBER_SQL — the trail itself stores only the job's
+// id), and the recorded changes. The changes column is JSON text, where a typed
+// double quote (an inch mark) or backslash is stored escaped, so the changes are
+// matched against the typed text encoded the same way as well as the raw text.
+// Rows are read as `h`. `q` is the trimmed typed text.
+function activitySearchMatch(q) {
+  const like = likeTerm(q);
+  const jsonLike = likeTerm(JSON.stringify(q).slice(1, -1));
+  return {
+    sql: `(h.user_name LIKE ? ESCAPE '\\' OR h.entity_id LIKE ? ESCAPE '\\' OR h.changes LIKE ? ESCAPE '\\' OR h.changes LIKE ? ESCAPE '\\' OR ${HISTORY_JOB_NUMBER_SQL} LIKE ? ESCAPE '\\')`,
+    params: [like, like, like, jsonLike, like]
+  };
+}
+
+// Activity rows carry the job number they belong to (null for anything not a job).
+const ACTIVITY_SELECT = `SELECT h.*, ${HISTORY_JOB_NUMBER_SQL} AS job_number FROM history h`;
+
 // --- Formatters (snake_case → camelCase) ---
 
 function formatJob(row, assignees, canManage) {
@@ -113,6 +132,7 @@ function formatActivity(row) {
     action: row.action,
     entityType: row.entity_type,
     entityId: row.entity_id,
+    jobNumber: row.job_number ?? null,
     changes,
     createdAt: row.created_at
   };
@@ -212,10 +232,10 @@ function searchAll(req, res, canManage) {
   // Activity — admin only (the history trail carries pricing changes, which managers
   // are barred from seeing), so it sits outside the management block above.
   if (can(req.user.role, 'activityTrail')) {
-    const hWhere = "(user_name LIKE ? ESCAPE '\\' OR entity_id LIKE ? ESCAPE '\\' OR changes LIKE ? ESCAPE '\\')";
+    const { sql: hWhere, params: hParams } = activitySearchMatch(q);
     groups.activity = {
-      count: db.prepare(`SELECT COUNT(*) as count FROM history WHERE ${hWhere}`).get(like, like, like).count,
-      results: db.prepare(`SELECT * FROM history WHERE ${hWhere} ORDER BY created_at DESC LIMIT ?`).all(like, like, like, PREVIEW_LIMIT).map(formatActivity)
+      count: db.prepare(`SELECT COUNT(*) as count FROM history h WHERE ${hWhere}`).get(...hParams).count,
+      results: db.prepare(`${ACTIVITY_SELECT} WHERE ${hWhere} ORDER BY h.created_at DESC LIMIT ?`).all(...hParams, PREVIEW_LIMIT).map(formatActivity)
     };
   }
 
@@ -347,29 +367,38 @@ function searchActivity(req, res) {
   const params = [];
 
   if (q) {
-    const like = likeTerm(q.trim());
-    conditions.push("(user_name LIKE ? ESCAPE '\\' OR entity_id LIKE ? ESCAPE '\\' OR changes LIKE ? ESCAPE '\\')");
-    params.push(like, like, like);
+    const { sql, params: matchParams } = activitySearchMatch(q.trim());
+    conditions.push(sql);
+    params.push(...matchParams);
   }
-  if (userId) { conditions.push('user_id = ?'); params.push(userId); }
+  if (userId) { conditions.push('h.user_id = ?'); params.push(userId); }
   if (action) {
     const arr = action.split(',').filter(Boolean);
-    if (arr.length) { conditions.push(`action IN (${arr.map(() => '?').join(',')})`); params.push(...arr); }
+    if (arr.length) { conditions.push(`h.action IN (${arr.map(() => '?').join(',')})`); params.push(...arr); }
   }
-  if (entityType) { conditions.push('entity_type = ?'); params.push(entityType); }
+  if (entityType) { conditions.push('h.entity_type = ?'); params.push(entityType); }
   if (field) {
-    // This is a precise field-name match, so escape LIKE metacharacters
-    // (% and _) the admin might type — otherwise they widen the match.
-    const escaped = escapeLikeChars(field);
-    conditions.push("changes LIKE ? ESCAPE '\\'");
-    params.push(`%"${escaped}"%`);
+    // A precise match on the names of the recorded changes (the keys of the changes
+    // object), never on their values. A name ending in '*' matches every recorded
+    // name starting with the rest — a part's edits are recorded under per-part names
+    // ("part 2 · Bracket", "part … added"), so "part *" finds them all. LIKE
+    // metacharacters (% and _) in the name are escaped so they can't widen the match.
+    const prefix = field.endsWith('*');
+    const name = prefix ? field.slice(0, -1) : field;
+    if (prefix) {
+      conditions.push("EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(h.changes) THEN h.changes END) WHERE json_each.key LIKE ? ESCAPE '\\')");
+      params.push(`${escapeLikeChars(name)}%`);
+    } else {
+      conditions.push('EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(h.changes) THEN h.changes END) WHERE json_each.key = ?)');
+      params.push(name);
+    }
   }
-  pushMomentRange(conditions, params, 'created_at', dateFrom, dateTo);
+  pushMomentRange(conditions, params, 'h.created_at', dateFrom, dateTo);
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-  const total = db.prepare(`SELECT COUNT(*) as count FROM history ${where}`).get(...params).count;
+  const total = db.prepare(`SELECT COUNT(*) as count FROM history h ${where}`).get(...params).count;
   const offset = (page - 1) * PAGE_SIZE;
-  const rows = db.prepare(`SELECT * FROM history ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(...params, PAGE_SIZE, offset);
+  const rows = db.prepare(`${ACTIVITY_SELECT} ${where} ORDER BY h.created_at DESC LIMIT ? OFFSET ?`).all(...params, PAGE_SIZE, offset);
 
   res.json({ results: rows.map(formatActivity), total, page, totalPages: Math.ceil(total / PAGE_SIZE) });
 }

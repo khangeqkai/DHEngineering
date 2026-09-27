@@ -116,6 +116,7 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
         serializeTreatments(item.treatments),
         item.drawingsType || null, item.customerProperty || null
       );
+      jobcardQueries.touch.run(req.user.userId, id);
     });
     addItem();
 
@@ -182,18 +183,22 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
       return res.status(400).json({ error: validationError });
     }
 
-    // This route never moves a part — the stored position number is passed straight through.
-    jobItemQueries.updateById.run(
-      stored.item_number,
-      partQtyText(merged.qty), merged.description,
-      merged.jobType || null, merged.material || null,
-      serializeTreatments(merged.treatments),
-      merged.drawingsType || null, merged.customerProperty || null,
-      itemId
-    );
-
     const beforeSummary = itemSummary(stored.qty, stored.description, stored.job_type, stored.material, stored.treatments, stored.drawings_type, stored.customer_property);
     const afterSummary = itemSummary(merged.qty, merged.description, merged.jobType, merged.material, merged.treatments, merged.drawingsType, merged.customerProperty);
+
+    // This route never moves a part — the stored position number is passed straight through.
+    // The job's "Last Edited" moves only when the part actually changed.
+    db.transaction(() => {
+      jobItemQueries.updateById.run(
+        stored.item_number,
+        partQtyText(merged.qty), merged.description,
+        merged.jobType || null, merged.material || null,
+        serializeTreatments(merged.treatments),
+        merged.drawingsType || null, merged.customerProperty || null,
+        itemId
+      );
+      if (beforeSummary !== afterSummary) jobcardQueries.touch.run(req.user.userId, id);
+    })();
 
     // A changed quantity (or a line no longer matching what's been made) changes
     // completion, so recompute the job's status and fold any change into this
@@ -257,7 +262,10 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
     // survivors. Gaps are expected and fine; the number shown on screen is
     // worked out by the client from a part's position in the ordered list it
     // draws, never predicted or recomputed here.
-    jobItemQueries.deleteById.run(itemId);
+    db.transaction(() => {
+      jobItemQueries.deleteById.run(itemId);
+      jobcardQueries.touch.run(req.user.userId, id);
+    })();
 
     // Removing a part changes what completion needs (one fewer line to satisfy),
     // so recompute the job's status and fold any change into this delete's own

@@ -1,10 +1,14 @@
 // Each value must be byte-exact with a key written into history.changes by the
-// server's recordHistory() calls — the activity-log search matches with
-// LIKE %"value"% against the JSON column.
+// server's recordHistory() calls — the activity search matches it against the names
+// of the recorded changes (routes/search.js). A value ending in '*' matches every
+// recorded name starting with the rest: a part's edits are recorded under per-part
+// names ("part … added", "part …"), so they are found through "part *".
+// This list is a hand-kept copy of what the server records: a new key recorded by a
+// recordHistory() call must be added here, and a key no call writes any more removed,
+// or the picker offers names that never match (as itemNumber/companyId once did).
 export const ACTIVITY_FIELDS = [
   { value: 'status', label: 'Status' },
   { value: 'qualityLevel', label: 'Quality Level' },
-  { value: 'qaLevelId', label: 'QA Level ID' },
   { value: 'priority', label: 'Priority' },
   { value: 'dueDate', label: 'Due Date' },
   { value: 'description', label: 'Description' },
@@ -12,12 +16,8 @@ export const ACTIVITY_FIELDS = [
   { value: 'quoteReference', label: 'Quote Reference' },
   { value: 'isRepeatJob', label: 'Repeat Job' },
   { value: 'repeatJobReference', label: 'Repeat Job Reference' },
-  { value: 'companyId', label: 'Customer (ID)' },
-  { value: 'contactId', label: 'Contact (ID)' },
   { value: 'contactName', label: 'Contact Name' },
   { value: 'companyName', label: 'Company Name' },
-  { value: 'contactPhone', label: 'Contact Phone' },
-  { value: 'contactEmail', label: 'Contact Email' },
   { value: 'jobNumber', label: 'Job Number' },
   { value: 'archived', label: 'Archived' },
   { value: 'invoicedDate', label: 'Invoiced Date' },
@@ -38,7 +38,10 @@ export const ACTIVITY_FIELDS = [
   { value: 'grandTotal', label: 'Grand Total' },
   { value: 'timer', label: 'Timer' },
   { value: 'timeEntryId', label: 'Time Entry ID' },
-  { value: 'itemNumber', label: 'Part Number' },
+  { value: 'part *', label: 'Parts (added, changed, removed)' },
+  { value: 'item', label: 'Part Worked On' },
+  { value: 'worker', label: 'Worker' },
+  { value: 'file', label: 'File' },
   { value: 'machineNumber', label: 'Machine Number' },
   { value: 'qty', label: 'Quantity' },
   { value: 'startTime', label: 'Start Time' },

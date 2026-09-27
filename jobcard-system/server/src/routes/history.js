@@ -38,6 +38,8 @@ router.get('/', authenticate, requirePermission('activityTrail'), (req, res) => 
       id: h.id,
       entityType: h.entity_type,
       entityId: h.entity_id,
+      // A job's entries also name the job (HISTORY_JOB_NUMBER_SQL) — null otherwise.
+      jobNumber: h.job_number ?? null,
       action: h.action,
       userId: h.user_id,
       userName: h.user_name,
@@ -61,6 +63,8 @@ router.get('/user/:userId', authenticate, requirePermission('activityTrail'), (r
       id: h.id,
       entityType: h.entity_type,
       entityId: h.entity_id,
+      // A job's entries also name the job (HISTORY_JOB_NUMBER_SQL) — null otherwise.
+      jobNumber: h.job_number ?? null,
       action: h.action,
       userId: h.user_id,
       userName: h.user_name,

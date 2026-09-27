@@ -131,14 +131,19 @@ export default function ActivityLog() {
                 render: (val, row) => (
                   <>
                     <div style={{ fontSize: '0.875rem' }}>
-                      <code style={{
-                        fontSize: '0.7rem',
-                        background: 'var(--background)',
-                        padding: '0.125rem 0.375rem',
-                        borderRadius: '0.25rem'
-                      }}>
-                        {val}
-                      </code>
+                      {/* A job's entry names the job; anything else keeps its id. */}
+                      {row.jobNumber ? (
+                        <strong>Job {row.jobNumber}</strong>
+                      ) : (
+                        <code style={{
+                          fontSize: '0.7rem',
+                          background: 'var(--background)',
+                          padding: '0.125rem 0.375rem',
+                          borderRadius: '0.25rem'
+                        }}>
+                          {val}
+                        </code>
+                      )}
                     </div>
                     {formatChanges(row.changes)}
                   </>
@@ -148,7 +153,7 @@ export default function ActivityLog() {
             data={activities}
             loading={loading}
             searchable
-            searchKeys={['userName', 'action', 'entityType', 'entityId']}
+            searchKeys={['userName', 'action', 'entityType', 'entityId', 'jobNumber']}
             searchPlaceholder="Search activity..."
             emptyState={{
               icon: 'activity',

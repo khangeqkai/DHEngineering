@@ -261,7 +261,11 @@ router.put('/:id/assignees/:userId', authenticate, requireManagement, (req, res)
     const assigneeId = `assignee:${uuidv4()}`;
     let inserted = true;
     try {
-      jobAssigneeQueries.create.run(assigneeId, id, userId);
+      // A worker put on the job moves its "Last Edited", in the same write.
+      db.transaction(() => {
+        jobAssigneeQueries.create.run(assigneeId, id, userId);
+        jobcardQueries.touch.run(req.user.userId, id);
+      })();
     } catch (e) {
       if (e && e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
         inserted = false;
@@ -314,7 +318,11 @@ router.delete('/:id/assignees/:userId', authenticate, requireManagement, (req, r
       });
     }
 
-    jobAssigneeQueries.deleteByJobcardAndUser.run(id, userId);
+    // A worker taken off the job moves its "Last Edited", in the same write.
+    db.transaction(() => {
+      jobAssigneeQueries.deleteByJobcardAndUser.run(id, userId);
+      jobcardQueries.touch.run(req.user.userId, id);
+    })();
 
     const after = jobAssigneeQueries.getByJobcard.all(id);
     const fromNames = before.map(a => a.user_name).join(', ') || 'none';
@@ -350,6 +358,19 @@ router.patch('/:id/status', authenticate, (req, res) => {
       return res.status(403).json({ error: 'Only management can set that status' });
     }
 
+    // Picking the status the job already has (a list or screen showing an older
+    // status — a timer started on another PC moves it) is not a change: no write,
+    // no "Last Edited" stamp and no from === to trail entry. The reply is the job
+    // as it stands, so the caller just reflects the current status.
+    const sendJob = () => {
+      const updated = jobcardQueries.getById.get(id);
+      const items = jobItemQueries.getByJobcard.all(id);
+      const response = formatJobcard(updated, items, [], req.user.role);
+      response.attachmentWarnings = computeAttachmentWarnings(id, items, updated.qa_level_id);
+      res.json(response);
+    };
+    if (status === existing.status) return sendJob();
+
     // Re-opening goes through the management-only unarchive action, which un-files
     // the job and resets its status back to OPEN. An already-archived job never
     // reaches this line: closedJobGuard (mounted ahead of every /:id route) has
@@ -379,11 +400,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
 
     recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), changes, null);
 
-    const updated = jobcardQueries.getById.get(id);
-    const items = jobItemQueries.getByJobcard.all(id);
-    const response = formatJobcard(updated, items, [], req.user.role);
-    response.attachmentWarnings = computeAttachmentWarnings(id, items, updated.qa_level_id);
-    res.json(response);
+    sendJob();
   } catch (err) {
     logger.error({ err }, 'Update status error');
     res.status(500).json({ error: 'Failed to update status' });

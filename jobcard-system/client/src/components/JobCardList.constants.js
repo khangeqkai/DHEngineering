@@ -8,6 +8,11 @@ export const STATUS_OPTIONS = [
   { value: 'OVERDUE', label: 'Overdue' }
 ];
 
+// The job list's filter buttons (active view only — the archived view has none).
+// Invoicing always archives a job, so no job in the active view can be Invoiced;
+// that button could only ever show an empty list.
+export const ACTIVE_FILTER_OPTIONS = STATUS_OPTIONS.filter(opt => opt.value !== 'INVOICED');
+
 export const STATUS_LABELS = Object.fromEntries(JOB_STATUS_OPTIONS.map(s => [s.value, s.label]));
 
 // Derived from the one list of priorities the job screen offers, so adding a priority

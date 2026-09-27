@@ -22,3 +22,9 @@ export const JOB_CLOSED_MESSAGE = 'This job is invoiced and closed. Unarchive it
 export function isJobClosedError(err) {
   return err?.status === 409 && err?.data?.code === 'JOB_CLOSED';
 }
+
+// What a person sees when they try to open a job that has since been deleted (a
+// stale list row or search result, or an activity entry for a deleted job) — one
+// sentence, one stable toast id, instead of a "try again" that can never succeed.
+export const JOB_DELETED_MESSAGE = 'This job no longer exists — it was deleted.';
+export const JOB_DELETED_TOAST_ID = 'job-deleted';

@@ -1,5 +1,5 @@
 import { User } from 'lucide-react';
-import { STATUS_OPTIONS } from './JobCardList.constants';
+import { ACTIVE_FILTER_OPTIONS } from './JobCardList.constants';
 
 export default function JobCardListFilters({
   canManage,
@@ -48,7 +48,7 @@ export default function JobCardListFilters({
             <User size={14} /> My Jobs
           </button>
           <div className="filter-buttons">
-            {STATUS_OPTIONS.map((opt) => (
+            {ACTIVE_FILTER_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 className={`btn btn-sm ${filter === opt.value ? 'btn-primary' : 'btn-secondary'}${opt.value === 'OVERDUE' ? ' filter-btn-overdue' : ''}`}

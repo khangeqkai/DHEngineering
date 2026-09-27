@@ -28,7 +28,7 @@ import JobCardListTable from './JobCardListTable';
 import JobCardListPagination from './JobCardListPagination';
 import { getJobCardColumns } from './JobCardListColumns';
 import {
-  STATUS_OPTIONS,
+  ACTIVE_FILTER_OPTIONS,
   PAGE_SIZE,
   isJobOverdue
 } from './JobCardList.constants';
@@ -42,7 +42,7 @@ export default function JobCardList() {
 
   const [filter, setFilter] = useState(() => {
     const paramFilter = searchParams.get('filter');
-    const valid = STATUS_OPTIONS.some(o => o.value === paramFilter);
+    const valid = ACTIVE_FILTER_OPTIONS.some(o => o.value === paramFilter);
     return valid ? paramFilter : 'all';
   });
   const [search, setSearch] = useState('');
@@ -139,10 +139,14 @@ export default function JobCardList() {
           await loadJobcards();
         } catch (e2) {
           toast.error(e2.message || 'Failed to delete job card', { id: 'delete-jobcard-failed' });
+          // A refusal (deleted, invoiced or changed from another PC) means this row
+          // is stale — reload, same as a failed status change does.
+          await loadJobcards();
         }
         return;
       }
       toast.error(err.message || 'Failed to delete job card', { id: 'delete-jobcard-failed' });
+      await loadJobcards();
     }
   };
 
@@ -165,6 +169,8 @@ export default function JobCardList() {
       refreshMissingFiles([id]);
     } catch (err) {
       toast.error(err.message || 'Failed to unarchive job card');
+      // Refused (already unarchived or deleted elsewhere) — the row is stale.
+      await loadJobcards();
     }
   };
 
@@ -218,8 +224,10 @@ export default function JobCardList() {
       // Stable id so a double-tap on the self-assign control replaces the
       // first failure toast instead of stacking a second one on top of it.
       toast.error(err.message || 'Failed to update assignment', { id: 'assignment-update-failed' });
+      // Refused (the job was invoiced or deleted elsewhere) — the row is stale.
+      await loadJobcards();
     }
-  }, [user]);
+  }, [user, loadJobcards]);
 
   // A comment added or deleted in the job screen only changes that job's Latest
   // Comment cell, so patch the one row rather than re-fetching the whole list.

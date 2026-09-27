@@ -1,5 +1,19 @@
 const { db } = require('../connection');
 
+// The job number a trail row belongs to, for a row read as `h`. The trail stores only
+// the job's internal id; the number is looked up when the trail is read, from the job
+// itself or — for a job since deleted — from the number its own delete (or create)
+// entry recorded. NULL for anything that isn't a job. Shared by the Activity Log reads
+// below and the activity search (routes/search.js), which also matches typed text
+// against it, so a job's later status/comment/timer entries are findable by number.
+const HISTORY_JOB_NUMBER_SQL = `(CASE WHEN h.entity_type = 'jobcard' THEN COALESCE(
+  (SELECT jn.job_number FROM jobcards jn WHERE jn.id = h.entity_id),
+  (SELECT COALESCE(json_extract(hj.changes, '$.jobNumber.from'), json_extract(hj.changes, '$.jobNumber.to'))
+     FROM history hj
+    WHERE hj.entity_type = 'jobcard' AND hj.entity_id = h.entity_id AND hj.action IN ('delete', 'create')
+    ORDER BY hj.id DESC LIMIT 1)
+) END)`;
+
 // History queries
 const historyQueries = {
   getByEntity: db.prepare(`
@@ -9,8 +23,8 @@ const historyQueries = {
   `),
 
   getRecent: db.prepare(`
-    SELECT * FROM history
-    ORDER BY created_at DESC, rowid DESC
+    SELECT h.*, ${HISTORY_JOB_NUMBER_SQL} AS job_number FROM history h
+    ORDER BY created_at DESC, h.rowid DESC
     LIMIT ? OFFSET ?
   `),
 
@@ -19,7 +33,7 @@ const historyQueries = {
   // the square of the trail as the offset grows). id is included as a tie-breaker so
   // rows sharing one created_at timestamp are never skipped or doubled across pages.
   getBeforeCursor: db.prepare(`
-    SELECT * FROM history
+    SELECT h.*, ${HISTORY_JOB_NUMBER_SQL} AS job_number FROM history h
     WHERE created_at < ? OR (created_at = ? AND id < ?)
     ORDER BY created_at DESC, id DESC
     LIMIT ?
@@ -36,7 +50,7 @@ const historyQueries = {
   `),
 
   getByUser: db.prepare(`
-    SELECT * FROM history
+    SELECT h.*, ${HISTORY_JOB_NUMBER_SQL} AS job_number FROM history h
     WHERE user_id = ?
     ORDER BY created_at DESC
     LIMIT ?
@@ -63,6 +77,7 @@ const settingsQueries = {
 };
 
 module.exports = {
+  HISTORY_JOB_NUMBER_SQL,
   historyQueries,
   settingsQueries
 };
