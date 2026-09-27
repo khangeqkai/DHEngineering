@@ -12,7 +12,7 @@ Every agent in the hunt reads this file first. It is the memory between rounds.
 - **Anything listed under "Decided — leave alone" or "Fixed" is not re-reported** unless the fix itself is wrong.
 
 ## Waiting for the owner (design decisions)
-_None yet._
+- **R4 — Reused machine numbers.** When a machine is archived and its number given to another machine (new, or renumbered), Workshop Statistics credits all past hours under that number to the machine that holds it now; the retired machine vanishes from the Machines tab. A proper fix needs the app to remember *when* each machine took its number (a new stored date, filled for existing machines at start-up), then credit each piece of work to whichever machine held the number at that time. A first attempt using the machine's "added" date was wrong for renumbered machines and was reverted. Proposal: add that stored date. Only matters if machine numbers are ever reused.
 
 ## Decided — leave alone
 _None yet._
@@ -47,6 +47,13 @@ _None yet._
 - Customers restored from a pre-split backup kept time-zone-less dates.
 - A starting job number over ~15 digits was rounded and then blocked new jobs: refused as too long.
 - The Change PIN form showed field mistakes as pop-ups instead of marking the box.
+### Round 4 — Workshop Statistics
+- Machine codes containing / | ; were split into invented machines, and the renumber guard missed their logged work: statistics use the shared comma-only split.
+- Headline said "No jobs were finished" when finished jobs just had no due date.
+- Machines tab summed already-rounded hours (short runs vanished from "in use"): the server returns totals and shares from unrounded hours; in use/busiest go by run count.
+- Refresh / Trend View loaded a backwards or half-empty custom range: the check runs on every load; the server refuses start after end.
+- Quiet months were missing from the trends: preset ranges fill every period from the range start; All Time/custom from the first period with data.
+- Rejected: custom range ending in year 9999 shows zeros (not a real use).
 
 ## Rounds
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
@@ -54,3 +61,4 @@ _None yet._
 | 1 | Pricing sheet + job screen | 13 | 8 | 8 | 0 |
 | 2 | Job details + parts | 16 | 9 | 9 | 0 |
 | 3 | Database, backup, settings | 13 | 8 | 8 | 0 |
+| 4 | Workshop Statistics | 13 | 7 | 5 | 1 |

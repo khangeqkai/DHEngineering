@@ -42,17 +42,39 @@ export default function Statistics() {
     fetchStatistics();
   }, [preset, groupBy]);
 
+  // The one check on a custom range, run before every load of one — Apply, Refresh,
+  // Retry and a Trend View change alike — so no button can load a range Apply would
+  // refuse. On failure the date boxes are marked and the current figures stay.
+  const customRangeIsValid = () => {
+    if (!customStartDate || !customEndDate) {
+      setFieldErrors({ customRange: 'Please select both start and end dates' });
+      // Land on whichever of the two is actually empty, not always the first.
+      scrollFieldIntoView(customStartDate ? 'customRangeEnd' : 'customRange');
+      return false;
+    }
+    if (!isCalendarDate(customStartDate) || !isCalendarDate(customEndDate)) {
+      setFieldErrors({ customRange: 'Please enter valid dates (YYYY-MM-DD)' });
+      scrollFieldIntoView('customRange');
+      return false;
+    }
+    if (customStartDate > customEndDate) {
+      setFieldErrors({ customRange: 'Start date cannot be after end date' });
+      scrollFieldIntoView('customRange');
+      return false;
+    }
+    return true;
+  };
+
   const fetchStatistics = async () => {
+    if (preset === 'custom' && !customRangeIsValid()) return;
     const currentReqId = ++reqIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const params = { preset, groupBy };
       if (preset === 'custom') {
-        const start = customStartDate || monthStartYmd();
-        const end = customEndDate || todayIsoDate();
-        params.startDate = start;
-        params.endDate = end;
+        params.startDate = customStartDate;
+        params.endDate = customEndDate;
       }
       const res = await api.getStatistics(params);
       if (currentReqId === reqIdRef.current) {
@@ -73,22 +95,6 @@ export default function Statistics() {
 
   const handleApplyCustomRange = (e) => {
     e.preventDefault();
-    if (!customStartDate || !customEndDate) {
-      setFieldErrors({ customRange: 'Please select both start and end dates' });
-      // Land on whichever of the two is actually empty, not always the first.
-      scrollFieldIntoView(customStartDate ? 'customRangeEnd' : 'customRange');
-      return;
-    }
-    if (!isCalendarDate(customStartDate) || !isCalendarDate(customEndDate)) {
-      setFieldErrors({ customRange: 'Please enter valid dates (YYYY-MM-DD)' });
-      scrollFieldIntoView('customRange');
-      return;
-    }
-    if (customStartDate > customEndDate) {
-      setFieldErrors({ customRange: 'Start date cannot be after end date' });
-      scrollFieldIntoView('customRange');
-      return;
-    }
     fetchStatistics();
   };
 
@@ -228,6 +234,7 @@ export default function Statistics() {
           <div className={`stats-tab-panel ${activeTab === 'machines' ? 'tab-active' : 'tab-hidden'}`}>
             <MachinesTab
               machineUtilization={data?.machineUtilization || []}
+              totalMachineHours={summary.totalMachineHours || 0}
               loading={loading}
             />
           </div>

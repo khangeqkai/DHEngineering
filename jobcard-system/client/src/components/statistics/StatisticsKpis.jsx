@@ -16,11 +16,17 @@ export default function StatisticsKpis({ summary = {}, activeWorkersCount = 0, r
   const avgEach = activeWorkersCount > 0 ? Math.round((hours / activeWorkersCount) * 10) / 10 : 0;
   const period = rangeLabel || 'this period';
 
+  // Whether anything was finished is the Jobs Finished count; on-time/late only
+  // covers the finished jobs that had a due date to judge against.
+  const finished = summary.completedJobsCount ?? 0;
+  const noDueDate = finished - rated;
   const verdict = loading
     ? 'Loading…'
-    : rated === 0
+    : finished === 0
       ? `No jobs were finished in ${period}.`
-      : `${onTime} of ${rated} jobs finished on time in ${period}.`;
+      : rated === 0
+        ? `${finished} ${finished === 1 ? 'job was' : 'jobs were'} finished in ${period}; none had a due date to judge against.`
+        : `${onTime} of ${rated} jobs finished on time in ${period}.${noDueDate > 0 ? ` ${noDueDate} more had no due date.` : ''}`;
 
   return (
     <>

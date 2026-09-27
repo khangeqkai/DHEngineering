@@ -5,7 +5,7 @@ const { machineQueries, timeEntryQueries, recordHistory, actorName } = require('
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateCreateMachine, validateUpdateMachine } = require('../middleware/validation');
 const { diffFields } = require('../utils/historyChanges');
-const { parseMachineTokens } = require('./statistics-helpers');
+const { splitMachineCodes } = require('../shared/machineList');
 const { setArchived } = require('../utils/archiveToggle');
 const { findOr404 } = require('../utils/findOr404');
 
@@ -99,7 +99,7 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
       // was added counts: a reused number's older work is a retired machine's.
       const oldKey = String(existing.machine_number).trim().toLowerCase();
       const loggedAgainstOldNumber = timeEntryQueries.getDistinctMachineNumbersSince.all(existing.created_at || '')
-        .some((row) => parseMachineTokens(row.machine_number).some((tok) => tok.toLowerCase() === oldKey));
+        .some((row) => splitMachineCodes(row.machine_number).some((tok) => tok.toLowerCase() === oldKey));
       if (loggedAgainstOldNumber) {
         return res.status(400).json({
           error: 'This machine has logged work; archive it and add a new one instead.'

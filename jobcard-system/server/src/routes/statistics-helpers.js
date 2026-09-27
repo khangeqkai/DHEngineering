@@ -5,6 +5,7 @@ const { roundTo } = require('../shared/round');
 const jobStatuses = require('../shared/jobStatuses.json');
 const logger = require('../utils/logger');
 const { db, getJobCostingOvertimeRowsByJobcardIds } = require('../db/database');
+const { splitMachineCodes } = require('../shared/machineList');
 const { computeLiveCosting, jobOvertimeBaseline } = require('../utils/costingCompute');
 const { can } = require('../middleware/auth');
 
@@ -166,15 +167,6 @@ function getJobFinishDate(job, maxTimeEntryEnd, fmt) {
     return officeDateString(new Date(raw), fmt);
   }
   return raw.slice(0, 10);
-}
-
-// Split multiple machine tokens in a string like "01, 02" or "M1 / M2"
-function parseMachineTokens(machineNumberStr) {
-  if (!machineNumberStr) return [];
-  return String(machineNumberStr)
-    .split(/[,/|;]+/)
-    .map(s => s.trim())
-    .filter(Boolean);
 }
 
 // Split integer parts/scrap across machines without fractional inflation
@@ -552,7 +544,7 @@ function processTimeEntries(inRangeTimeEntries, jobCostingsMap, defaultRules, ac
     w.entriesByJob.get(te.jobcard_id).entries.push({ start_time: te.start_time, end_time: te.end_time });
 
     // Multi-machine splitting with integer part distribution
-    const machineTokens = parseMachineTokens(te.machine_number);
+    const machineTokens = splitMachineCodes(te.machine_number);
     const tokenCount = machineTokens.length;
     if (tokenCount > 0) {
       for (let i = 0; i < tokenCount; i++) {
@@ -615,15 +607,45 @@ function buildWorkerLeaderboard(workerEntriesMap, defaultRules) {
   return workerLeaderboard;
 }
 
-// Format machine utilization
+// Format machine utilization. Every figure the screen shows beside the list — the
+// fleet total and each machine's share of it — comes from the unrounded hours and is
+// rounded once here; a machine's own hours are rounded for display only, so nothing
+// downstream ever adds up already-rounded figures.
 function formatMachineUtilization(machineStatsMap) {
-  return Array.from(machineStatsMap.values())
-    .map(m => ({ ...m, totalHours: roundTo(m.totalHours, 1) }))
-    .sort((a, b) => b.totalHours - a.totalHours);
+  const machines = Array.from(machineStatsMap.values()).sort((a, b) => b.totalHours - a.totalHours);
+  const totalHours = machines.reduce((sum, m) => sum + m.totalHours, 0);
+  return {
+    totalMachineHours: roundTo(totalHours, 1),
+    machineUtilization: machines.map(m => ({
+      ...m,
+      totalHours: roundTo(m.totalHours, 1),
+      sharePercent: totalHours > 0 ? roundTo((m.totalHours / totalHours) * 100, 1) : 0
+    }))
+  };
+}
+
+// The period keys (YYYY-MM or YYYY) from first to last inclusive, so a quiet month or
+// year still gets its own zero row instead of vanishing from the charts.
+function periodKeysBetween(firstKey, lastKey, groupBy) {
+  const keys = [];
+  if (groupBy === 'year') {
+    for (let y = parseInt(firstKey, 10); y <= parseInt(lastKey, 10); y++) keys.push(String(y));
+    return keys;
+  }
+  let y = parseInt(firstKey.slice(0, 4), 10);
+  let m = parseInt(firstKey.slice(5, 7), 10);
+  const endY = parseInt(lastKey.slice(0, 4), 10);
+  const endM = parseInt(lastKey.slice(5, 7), 10);
+  while (y < endY || (y === endY && m <= endM)) {
+    keys.push(`${y}-${pad2(m)}`);
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  return keys;
 }
 
 // ── Trend Buckets (Strictly in range) ──
-function buildPeriodTrends(inRangeJobs, completedInRangeJobs, inRangeTimeEntries, fmt, groupBy) {
+function buildPeriodTrends(inRangeJobs, completedInRangeJobs, inRangeTimeEntries, fmt, groupBy, startDate, endDate, preset) {
   const trendMap = new Map();
   const getPeriodKey = (dStr) => (dStr ? (groupBy === 'year' ? dStr.slice(0, 4) : dStr.slice(0, 7)) : null);
 
@@ -666,6 +688,38 @@ function buildPeriodTrends(inRangeJobs, completedInRangeJobs, inRangeTimeEntries
       b.totalHours += measured.hours;
       if (measured.qty > 0) b.partsProduced += measured.qty;
       b.scrapQty += measured.scrapBin + measured.scrapRecycle;
+    }
+  }
+
+  // Fill the quiet periods so the bars stay a continuous timeline, zeros included.
+  // The fill always stops at the earlier of the range end and the current period, so
+  // a range reaching into the future never shows months that haven't happened yet.
+  // Where it starts depends on the range:
+  //  - a preset (this month, last N months, this/last year) starts at the range
+  //    start, so "Last 6 Months" is always six rows even if only two had any work;
+  //  - All Time and a custom range start at the first period with data (never before
+  //    the range start). All Time has no start of its own, and a custom start typed
+  //    as year 0026 would otherwise build tens of thousands of empty rows and hang
+  //    the Trends tab and the Excel export. With no data at all, nothing is filled.
+  const seenKeys = [...trendMap.keys()].sort();
+  const currentKey = getPeriodKey(officeDateString(new Date(), fmt));
+  const rangeStartKey = startDate ? getPeriodKey(startDate) : null;
+  const rangeEndKey = endDate ? getPeriodKey(endDate) : null;
+  const fillFromRangeStart = preset !== 'all' && preset !== 'custom' && rangeStartKey;
+  let firstKey;
+  if (fillFromRangeStart) {
+    firstKey = rangeStartKey;
+  } else if (seenKeys.length > 0) {
+    firstKey = rangeStartKey && rangeStartKey > seenKeys[0] ? rangeStartKey : seenKeys[0];
+  } else {
+    firstKey = null;
+  }
+  const lastKey = rangeEndKey && rangeEndKey < currentKey ? rangeEndKey : currentKey;
+  if (firstKey && firstKey <= lastKey) {
+    for (const key of periodKeysBetween(firstKey, lastKey, groupBy)) {
+      if (!trendMap.has(key)) {
+        trendMap.set(key, { period: key, jobsCreated: 0, jobsCompleted: 0, onTimeCompleted: 0, lateCompleted: 0, totalHours: 0, partsProduced: 0, scrapQty: 0 });
+      }
     }
   }
 
@@ -752,7 +806,6 @@ module.exports = {
   calculateDateRange,
   daysDiff,
   getJobFinishDate,
-  parseMachineTokens,
   splitIntegerAcrossTokens,
   splitWorkerHoursByJobRules,
   fetchStatsJobs,

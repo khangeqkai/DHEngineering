@@ -36,6 +36,9 @@ router.get('/', (req, res) => {
     const todayStr = officeDateString(new Date(), fmt);
 
     const { startDate, endDate, label: rangeLabel } = calculateDateRange(preset, customStart, customEnd, timezone);
+    if (startDate && endDate && startDate > endDate) {
+      return res.status(400).json({ error: 'Start date cannot be after end date' });
+    }
 
     // The company's own overtime rules, read the one way every other reader does —
     // a malformed stored schedule/holidays blob now falls back to filled-in defaults
@@ -94,8 +97,8 @@ router.get('/', (req, res) => {
     } = processTimeEntries(inRangeTimeEntries, jobCostingsMap, defaultRules, activeMachinesMap, machineStatsMap);
 
     const workerLeaderboard = buildWorkerLeaderboard(workerEntriesMap, defaultRules);
-    const machineUtilization = formatMachineUtilization(machineStatsMap);
-    const periodTrends = buildPeriodTrends(inRangeJobs, completedInRangeJobs, inRangeTimeEntries, fmt, groupBy);
+    const { machineUtilization, totalMachineHours } = formatMachineUtilization(machineStatsMap);
+    const periodTrends = buildPeriodTrends(inRangeJobs, completedInRangeJobs, inRangeTimeEntries, fmt, groupBy, startDate, endDate, preset);
     const customerRankings = buildCustomerRankings(inRangeJobs, completedInRangeJobs, customerHoursMap, fmt, req.user.role);
 
     res.json({
@@ -109,6 +112,7 @@ router.get('/', (req, res) => {
         avgDaysLate: lateJobsCount > 0 ? roundTo(totalDaysLate / lateJobsCount, 1) : 0,
         avgTurnaroundDays: turnaroundCount > 0 ? roundTo(totalTurnaroundDays / turnaroundCount, 1) : 0,
         totalWorkshopHours: roundTo(totalWorkshopHours, 2),
+        totalMachineHours,
         activeJobsCount,
         inProgressJobsCount,
         overdueActiveJobsCount,

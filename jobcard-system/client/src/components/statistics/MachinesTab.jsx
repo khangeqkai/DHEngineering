@@ -16,20 +16,19 @@ const PALETTE = [
   '#64748b'  // Slate
 ];
 
-export default function MachinesTab({ machineUtilization = [], loading = false }) {
+export default function MachinesTab({ machineUtilization = [], totalMachineHours = 0, loading = false }) {
   // A machine keeps one colour everywhere on this page. Keying off the row's
   // position would repaint them every time the table is re-sorted.
   const colourOf = new Map(machineUtilization.map((m, i) => [m.machineNumber, PALETTE[i % PALETTE.length]]));
-  const totalMachineHours = machineUtilization.reduce((sum, m) => sum + (m.totalHours || 0), 0);
+  // The fleet total and each machine's share come worked out from the unrounded
+  // hours; the per-machine hours shown are rounded for display and never re-added.
   const maxMachineHours = machineUtilization.reduce((max, m) => Math.max(max, m.totalHours || 0), 1) || 1;
-  const activeMachinesCount = machineUtilization.filter(m => m.totalHours > 0).length;
-  // A machine with 0 hours logged isn't "busiest" — there's nothing to compare.
-  const topMachine = machineUtilization.length > 0 && machineUtilization[0].totalHours > 0
-    ? machineUtilization[0]
-    : null;
-  const topMachineShare = totalMachineHours > 0 && topMachine
-    ? roundTo((topMachine.totalHours / totalMachineHours) * 100, 1)
-    : 0;
+  const usedMachines = machineUtilization.filter(m => m.sessionCount > 0);
+  const activeMachinesCount = usedMachines.length;
+  // A machine with no runs logged isn't "busiest" — there's nothing to compare.
+  // The list arrives busiest first.
+  const topMachine = usedMachines[0] || null;
+  const topMachineShare = topMachine ? topMachine.sharePercent : 0;
 
   const totalParts = machineUtilization.reduce((sum, m) => sum + (m.partsProduced || 0), 0);
   const totalScrap = machineUtilization.reduce((sum, m) => sum + (m.scrapQty || 0), 0);
@@ -47,7 +46,7 @@ export default function MachinesTab({ machineUtilization = [], loading = false }
             <div className="kpi-icon"><Cpu size={16} /></div>
           </div>
           <div className="kpi-body">
-            <div className="kpi-value">{loading ? <span className="stat-dash">—</span> : `${roundTo(totalMachineHours, 1)}h`}</div>
+            <div className="kpi-value">{loading ? <span className="stat-dash">—</span> : `${totalMachineHours}h`}</div>
           </div>
           <div className="kpi-footer">
             <div className="kpi-stat-row">
@@ -124,11 +123,11 @@ export default function MachinesTab({ machineUtilization = [], loading = false }
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-group)' }}>
               {/* Proportional Fleet Distribution Multi-Segment Bar */}
-              {totalMachineHours > 0 && (
+              {activeMachinesCount > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-tight)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
                     <span>All Machines Together</span>
-                    <span>{totalMachineHours.toFixed(1)} hours in total</span>
+                    <span>{totalMachineHours} hours in total</span>
                   </div>
                   <div style={{
                     width: '100%',
@@ -139,8 +138,8 @@ export default function MachinesTab({ machineUtilization = [], loading = false }
                     background: 'var(--background)',
                     border: '1px solid var(--border-color)'
                   }}>
-                    {machineUtilization.filter(m => m.totalHours > 0).map((m, idx) => {
-                      const sharePct = (m.totalHours / totalMachineHours) * 100;
+                    {usedMachines.map((m) => {
+                      const sharePct = m.sharePercent;
                       const color = colourOf.get(m.machineNumber);
                       return (
                         <div
@@ -160,8 +159,8 @@ export default function MachinesTab({ machineUtilization = [], loading = false }
 
               {/* Individual Machine Horizontal Progress Bars */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-                {machineUtilization.map((m, idx) => {
-                  const sharePct = totalMachineHours > 0 ? (m.totalHours / totalMachineHours) * 100 : 0;
+                {machineUtilization.map((m) => {
+                  const sharePct = m.sharePercent || 0;
                   const relativeBarPct = (m.totalHours / maxMachineHours) * 100;
                   const color = colourOf.get(m.machineNumber);
                   const machinePartsTotal = (m.partsProduced || 0) + (m.scrapQty || 0);
@@ -294,7 +293,7 @@ export default function MachinesTab({ machineUtilization = [], loading = false }
                 label: 'Share Of Hours',
                 sortable: false,
                 render: (_val, row) => {
-                  const sharePct = totalMachineHours > 0 ? ((row.totalHours || 0) / totalMachineHours) * 100 : 0;
+                  const sharePct = row.sharePercent || 0;
                   const color = colourOf.get(row.machineNumber);
                   return (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--gap-tight)', minWidth: '130px' }}>
