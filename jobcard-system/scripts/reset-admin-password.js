@@ -1,36 +1,47 @@
 #!/usr/bin/env node
 
 /**
- * Admin Password Reset Script
+ * Admin PIN Reset Script
  *
- * Resets an admin user's password directly via the SQLite database.
+ * Sets a new 4-digit PIN for an active admin directly in the SQLite database
+ * and ends that admin's current sign-in (same as the in-app PIN reset).
  * Only usable by someone with physical access to the server machine.
  *
  * Usage: npm run reset-password (from jobcard-system/)
+ *
+ * Finds the database the same way the app does: DATA_DIR if set, otherwise the
+ * installed desktop app's data folder (Electron's userData/data, named after
+ * the build's productName) and the run-from-source folder (jobcard-system/data).
+ * If more than one exists, it asks which to change.
  */
 
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const readline = require('readline');
 
-const DB_PATH = path.join(__dirname, '..', 'data', 'jobcard.db');
+// Must match "productName" in client/package.json — Electron names the per-user
+// app-data folder after it, and the packaged app keeps its data in <that>/data.
+const PRODUCT_NAME = 'DH Engineering Job Cards';
 
-if (!fs.existsSync(DB_PATH)) {
-  console.error(`\nError: Database not found at ${DB_PATH}`);
-  console.error('Make sure you run this from the jobcard-system/ directory and the server has been started at least once.\n');
-  process.exit(1);
+function installedDataDir() {
+  const home = os.homedir();
+  if (process.platform === 'win32') {
+    return path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), PRODUCT_NAME, 'data');
+  }
+  if (process.platform === 'darwin') {
+    return path.join(home, 'Library', 'Application Support', PRODUCT_NAME, 'data');
+  }
+  return path.join(process.env.XDG_CONFIG_HOME || path.join(home, '.config'), PRODUCT_NAME, 'data');
 }
 
-const Database = require(path.join(__dirname, '..', 'server', 'node_modules', 'better-sqlite3'));
-const bcrypt = require(path.join(__dirname, '..', 'server', 'node_modules', 'bcryptjs'));
-
-let db;
-try {
-  db = new Database(DB_PATH);
-  db.pragma('foreign_keys = ON');
-} catch (err) {
-  console.error(`\nError: Could not open database: ${err.message}\n`);
-  process.exit(1);
+function candidateDatabases() {
+  if (process.env.DATA_DIR) {
+    return [path.join(process.env.DATA_DIR, 'jobcard.db')];
+  }
+  return [installedDataDir(), path.join(__dirname, '..', 'data')]
+    .map((dir) => path.join(dir, 'jobcard.db'))
+    .filter((file) => fs.existsSync(file));
 }
 
 const rl = readline.createInterface({
@@ -39,9 +50,11 @@ const rl = readline.createInterface({
   terminal: false
 });
 
+let db = null;
+
 function cleanup(code = 0) {
   rl.close();
-  db.close();
+  if (db) db.close();
   process.exit(code);
 }
 
@@ -96,19 +109,62 @@ function askHidden(question) {
 
 function validatePassword(password) {
   if (!/^\d{4}$/.test(password)) {
-    return 'Password must be exactly 4 digits';
+    return 'PIN must be exactly 4 digits';
   }
   return null;
 }
 
-async function main() {
-  console.log('\n=== DH Engineering — Admin Password Reset ===\n');
+async function pickDatabase() {
+  const found = candidateDatabases();
+  if (process.env.DATA_DIR && !fs.existsSync(found[0])) {
+    console.error(`Error: Database not found at ${found[0]} (from DATA_DIR).`);
+    cleanup(1);
+  }
+  if (found.length === 0) {
+    console.error('Error: No database found. Looked in:');
+    console.error(`  ${path.join(installedDataDir(), 'jobcard.db')}`);
+    console.error(`  ${path.join(__dirname, '..', 'data', 'jobcard.db')}`);
+    console.error('Start the app at least once, or set DATA_DIR to the folder holding jobcard.db.\n');
+    cleanup(1);
+  }
+  if (found.length === 1) return found[0];
 
-  // List admin users
-  const admins = db.prepare("SELECT id, username, name FROM users WHERE role = 'admin'").all();
+  console.log('More than one database found:');
+  found.forEach((file, i) => {
+    const modified = fs.statSync(file).mtime.toLocaleString();
+    console.log(`  ${i + 1}. ${file}  (last changed ${modified})`);
+  });
+  const choice = await ask(`Which one does the app use? (1-${found.length}): `);
+  const index = parseInt(choice, 10) - 1;
+  if (isNaN(index) || index < 0 || index >= found.length) {
+    console.error('Invalid selection.');
+    cleanup(1);
+  }
+  return found[index];
+}
+
+async function main() {
+  console.log('\n=== DH Engineering — Admin PIN Reset ===\n');
+  console.log('Close the Job Cards app (and stop the server) before continuing.\n');
+
+  const dbPath = await pickDatabase();
+  console.log(`\nDatabase: ${dbPath}\n`);
+
+  const Database = require(path.join(__dirname, '..', 'server', 'node_modules', 'better-sqlite3'));
+  try {
+    db = new Database(dbPath, { fileMustExist: true });
+    db.pragma('foreign_keys = ON');
+  } catch (err) {
+    console.error(`Error: Could not open database: ${err.message}\n`);
+    cleanup(1);
+  }
+
+  // Only active admins can sign in — an archived one would be refused however
+  // the PIN is set, so it isn't offered.
+  const admins = db.prepare("SELECT id, username, name FROM users WHERE role = 'admin' AND active = 1").all();
 
   if (admins.length === 0) {
-    console.error('No admin users found in the database.');
+    console.error('No active admin users found in this database.');
     cleanup(1);
   }
 
@@ -136,22 +192,27 @@ async function main() {
   }
 
   // Get new password
-  const password = await askHidden('New password: ');
+  const password = await askHidden('New 4-digit PIN: ');
   const error = validatePassword(password);
   if (error) {
     console.error(`\n${error}`);
     cleanup(1);
   }
 
-  const confirm = await askHidden('Confirm password: ');
+  const confirm = await askHidden('Confirm PIN: ');
   if (password !== confirm) {
-    console.error('\nPasswords do not match.');
+    console.error('\nPINs do not match.');
     cleanup(1);
   }
 
   // Hash and update
+  // Clearing session_token ends any sign-in made with the old PIN, exactly as
+  // the in-app PIN reset does (the next request gets SESSION_ENDED).
+  const bcrypt = require(path.join(__dirname, '..', 'server', 'node_modules', 'bcryptjs'));
   const hashedPassword = bcrypt.hashSync(password, 10);
-  db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, selected.id);
+  db.prepare(
+    "UPDATE users SET password = ?, session_token = NULL, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?"
+  ).run(hashedPassword, selected.id);
 
   // Record in history table
   db.prepare(`
@@ -167,8 +228,8 @@ async function main() {
     null
   );
 
-  console.log(`\nPassword reset successfully for "${selected.username}".`);
-  console.log('The user can now log in with the new password.\n');
+  console.log(`\nPIN reset for "${selected.username}" in ${dbPath}.`);
+  console.log('Any sign-in using the old PIN has been ended. They can now sign in with the new PIN.\n');
 
   cleanup(0);
 }

@@ -9,6 +9,15 @@
 // Every "message" function returns a message when the value is not
 // acceptable, else null.
 
+// The name of one part's box — its required-box mark, and its element id.
+// '|' rather than ':' — a persisted row's own id is already "item:<uuid>", so a
+// ':' join would make the two halves ambiguous to split back apart. Shared by
+// useInstantItems.js (the marks), the Create check below it (jobCardValidation.mjs),
+// closeReasons.js (the close question's "which part, which box" builder) and the
+// field elements' own `id` attributes (for scrollFieldIntoView's "Fix it"), so all
+// agree on the same key without a second copy of this format.
+export const fieldErrorKey = (itemId, field) => `${itemId}|${field}`;
+
 // The fields the server requires on a part before it will accept it
 // (validateOneItem, server/src/routes/jobcard-items.js).
 export const REQUIRED_ITEM_FIELDS = ['description', 'qty', 'jobType', 'drawingsType', 'customerProperty'];

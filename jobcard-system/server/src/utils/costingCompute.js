@@ -45,7 +45,21 @@ function jobOvertimeBaseline(existing, ot) {
 // brand-new job on its first compute, or an old pre-feature row), and that first compute
 // writes the captured copy into the row, so from then on the job owns its rules.
 function computeLiveCosting(jobId, incoming) {
-  const existing = jobCostingQueries.getByJobcard.get(jobId) || null;
+  return computeCosting(
+    jobId,
+    jobCostingQueries.getByJobcard.get(jobId) || null,
+    timeEntryQueries.getCompletedByJobcard.all(jobId),
+    readOvertimeSettings(),
+    incoming
+  );
+}
+
+// The working behind computeLiveCosting, from values already read: the job's stored
+// costing row (or null), its completed time blocks, and readOvertimeSettings()'s
+// snapshot. Reads nothing itself, so a caller pricing many jobs at once (Workshop
+// Statistics' invoiced totals) can load every row and block in one read each and
+// still get exactly the figure the pricing sheet shows.
+function computeCosting(jobId, existing, entries, ot, incoming) {
   const src = incoming || {};
   // Decided per figure, not per request: a save that carries some boxes and not others
   // keeps the stored value for the ones it left out. (Checking only "was anything
@@ -58,9 +72,7 @@ function computeLiveCosting(jobId, incoming) {
   // the stored value stands — rather than read as 0, or as "use the automatic figure".
   const sentFigure = (key) => has(key) && Number.isFinite(Number(src[key]));
 
-  const ot = readOvertimeSettings();
   const baseline = jobOvertimeBaseline(existing, ot);
-  const entries = timeEntryQueries.getCompletedByJobcard.all(jobId);
   const split = splitHours(entries, baseline);
 
   const normalCalc = roundTo(split.normalHours, 2);
@@ -268,6 +280,7 @@ function buildCostingResponse(jobId, computed) {
 
 module.exports = {
   computeLiveCosting,
+  computeCosting,
   persistCosting,
   buildCostingResponse,
   jobOvertimeBaseline

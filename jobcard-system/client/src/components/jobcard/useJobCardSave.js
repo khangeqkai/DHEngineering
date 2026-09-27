@@ -41,7 +41,10 @@ export function useJobCardSave({
   // Marks a contact box (JobCardModal.jsx's own useFieldErrors instance) instead of
   // a pop-up when a 400 names contactName/contactPhone/contactEmail — see
   // fieldErrorsFromRefusal in hooks/useFieldErrors.js.
-  onContactFieldErrors
+  onContactFieldErrors,
+  // Marks the boxes Create's own check found at fault (see validateJobCardForm) —
+  // the customer, the description and each part's boxes — and scrolls to the first.
+  onFormMarks
 }) {
   const [saving, setSaving] = useState(false);
 
@@ -54,15 +57,19 @@ export function useJobCardSave({
     if (isEdit) return;
 
     // Validation
-    const { errors, validItems } = validateJobCardForm({
+    const { marks, errors, validItems } = validateJobCardForm({
       canManage,
       formData: formHook.formData,
       contactFormData: contactHook.contactFormData,
       lineItems: formHook.lineItems
     });
 
-    if (errors.length > 0) {
-      showFormErrors(errors);
+    const hasMarks = Object.keys(marks.job).length > 0 || Object.keys(marks.items).length > 0;
+    if (hasMarks || errors.length > 0) {
+      // A failure that belongs to a box marks that box; only what has no box of
+      // its own (no part at all, a supplier with no treatment) is a pop-up.
+      if (hasMarks) onFormMarks?.(marks);
+      if (errors.length > 0) showFormErrors(errors);
       return;
     }
 
@@ -125,7 +132,7 @@ export function useJobCardSave({
     } finally {
       setSaving(false);
     }
-  }, [canManage, isEdit, formHook, contactHook, showConfirm, onSuccess, onClose, setAttachmentWarnings, onContactFieldErrors]);
+  }, [canManage, isEdit, formHook, contactHook, showConfirm, onSuccess, onClose, setAttachmentWarnings, onContactFieldErrors, onFormMarks]);
 
   return { saving, handleSubmit };
 }

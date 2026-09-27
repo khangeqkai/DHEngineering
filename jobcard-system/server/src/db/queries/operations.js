@@ -112,6 +112,13 @@ const timeEntryQueries = {
     FROM time_entries WHERE jobcard_id = ? AND end_time IS NOT NULL
   `),
 
+  // The same for many jobs at once (ids as one JSON array), tagged with their job.
+  getCompletedByJobcardIds: db.prepare(`
+    SELECT jobcard_id, start_time, end_time
+    FROM time_entries
+    WHERE jobcard_id IN (SELECT value FROM json_each(?)) AND end_time IS NOT NULL
+  `),
+
   // Every distinct machine-number string logged from a given moment on.
   // machine_number is free text that can hold several machines at once (e.g.
   // "01, 02"), so it can't be exactly matched or safely rewritten token-by-token
@@ -180,6 +187,13 @@ function getLatestNotesForJobcards(jobcardIds) {
 // Job costing queries
 const jobCostingQueries = {
   getByJobcard: db.prepare('SELECT * FROM job_costings WHERE jobcard_id = ?'),
+
+  // The rows for many jobs in one read — the id list is passed as one JSON array, so
+  // the statement is fixed and the list can be any length. Workshop Statistics prices
+  // every invoiced job in its range with this rather than one read per job.
+  getByJobcardIds: db.prepare(
+    'SELECT * FROM job_costings WHERE jobcard_id IN (SELECT value FROM json_each(?))'
+  ),
 
   // Named parameters (not positional): the row has many value columns, so binding by
   // name removes any chance of a silent column-shift bug when the shape changes.

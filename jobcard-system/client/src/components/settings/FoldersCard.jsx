@@ -1,4 +1,8 @@
+import FieldError from '../common/FieldError';
+
 export default function FoldersCard({ s }) {
+  // A path the save refuses (missing, not a folder, a whole drive) marks the box.
+  const folderError = s.errorFor('jobFoldersBase');
   return (
     <div className="card full-width">
       <div className="card-header">
@@ -13,10 +17,12 @@ export default function FoldersCard({ s }) {
             </div>
           </div>
         </div>
-        <div className="folder-input-group">
+        <div className={folderError ? 'folder-input-group field-error' : 'folder-input-group'}>
           <input
             type="text"
             className="form-control"
+            {...s.fieldProps('jobFoldersBase')}
+            aria-label="Job folders base path"
             value={s.jobFoldersBase}
             onChange={(e) => s.setJobFoldersBase(e.target.value)}
             placeholder="Select or enter job folders base path..."
@@ -38,6 +44,7 @@ export default function FoldersCard({ s }) {
             {s.savingJobFolders ? 'Saving...' : 'Save'}
           </button>
         </div>
+        <FieldError {...s.errorProps('jobFoldersBase')} message={folderError} />
       </div>
     </div>
   );

@@ -168,10 +168,19 @@ function leafExpiringSoon(cert, days) {
   return cert.validity.notAfter <= threshold;
 }
 
+// Written to a temporary name first and renamed into place, so a power cut mid-write
+// leaves the previous file (or none) rather than a truncated one the next start
+// would choke on.
+function writeAtomic(filePath, contents, options) {
+  const tmpPath = `${filePath}.tmp`;
+  fs.writeFileSync(tmpPath, contents, options);
+  fs.renameSync(tmpPath, filePath);
+}
+
 // Private keys are written owner-only. On Windows the POSIX mode is largely
 // cosmetic, so this is best-effort and never fatal.
 function writeSecret(filePath, contents) {
-  fs.writeFileSync(filePath, contents, { mode: 0o600 });
+  writeAtomic(filePath, contents, { mode: 0o600 });
   try {
     fs.chmodSync(filePath, 0o600);
   } catch {
@@ -179,10 +188,20 @@ function writeSecret(filePath, contents) {
   }
 }
 
+// True when a private key is the other half of a certificate — the same public
+// modulus and exponent. A key that doesn't match (or doesn't parse) makes the
+// HTTPS listener throw on every start, so it must count as "no usable leaf".
+function keyMatchesCert(keyPem, cert) {
+  const key = forge.pki.privateKeyFromPem(keyPem);
+  const pub = cert.publicKey;
+  return Boolean(key && pub && pub.n && pub.e && key.n.equals(pub.n) && key.e.equals(pub.e));
+}
+
 /**
  * Ensure a usable CA + leaf exist on disk and return the PEM strings the HTTPS
  * listener needs. Reuses existing files; only re-mints the leaf when the LAN
- * IPs drifted (or the leaf is missing/unreadable). Never re-mints the CA once
+ * IPs drifted (or the leaf is missing/unreadable, or its key is damaged or
+ * doesn't match its certificate). Never re-mints the CA once
  * it exists — installed trust must keep holding.
  */
 function ensureCertificates(dataDir, options = {}) {
@@ -206,7 +225,7 @@ function ensureCertificates(dataDir, options = {}) {
       caKey = ca.key;
       caPem = ca.certPem;
       writeSecret(caKeyPath, ca.keyPem);
-      fs.writeFileSync(caCrtPath, ca.certPem);
+      writeAtomic(caCrtPath, ca.certPem);
       logger.info({ caCrtPath }, 'Generated new local certificate authority');
     } else {
       caPem = fs.readFileSync(caCrtPath, 'utf-8');
@@ -230,6 +249,7 @@ function ensureCertificates(dataDir, options = {}) {
         leafPem = fs.readFileSync(serverCrtPath, 'utf-8');
         leafKeyPem = fs.readFileSync(serverKeyPath, 'utf-8');
         const leafCert = forge.pki.certificateFromPem(leafPem);
+        if (!keyMatchesCert(leafKeyPem, leafCert)) needLeaf = true;
         if (!leafSanCoversIps(leafCert, san.ips)) needLeaf = true;
         if (!leafSanCoversNames(leafCert, extraDns)) needLeaf = true;
         if (leafExpiringSoon(leafCert, LEAF_RENEWAL_WINDOW_DAYS)) needLeaf = true;
@@ -243,7 +263,7 @@ function ensureCertificates(dataDir, options = {}) {
       leafPem = leaf.certPem;
       leafKeyPem = leaf.keyPem;
       writeSecret(serverKeyPath, leafKeyPem);
-      fs.writeFileSync(serverCrtPath, leafPem);
+      writeAtomic(serverCrtPath, leafPem);
       logger.info({ serverCrtPath, dns: san.dns, ips: san.ips }, 'Minted leaf certificate');
     }
 

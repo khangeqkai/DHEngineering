@@ -21,7 +21,7 @@
 // different and I don't know why" (tasks/instant-save-root-causes.md, defect 8).
 import { isSavedLineItem } from './jobCardValidation.mjs';
 import { buildItemPayload } from './mappers';
-import { fieldErrorKey } from './useInstantItems';
+import { fieldErrorKey } from './fieldRules.mjs';
 
 // Human-readable name for a job-level instant-save field — used both here (for a
 // box that's been typed into but not yet sent) and by useInstantSave.js (as the

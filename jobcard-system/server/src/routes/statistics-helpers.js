@@ -4,9 +4,9 @@ const { isCalendarDate } = require('../shared/calendarDate');
 const { roundTo } = require('../shared/round');
 const jobStatuses = require('../shared/jobStatuses.json');
 const logger = require('../utils/logger');
-const { db, getJobCostingOvertimeRowsByJobcardIds } = require('../db/database');
+const { db, getJobCostingOvertimeRowsByJobcardIds, jobCostingQueries, timeEntryQueries } = require('../db/database');
 const { splitMachineCodes } = require('../shared/machineList');
-const { computeLiveCosting, jobOvertimeBaseline } = require('../utils/costingCompute');
+const { computeCosting, jobOvertimeBaseline } = require('../utils/costingCompute');
 const { can } = require('../middleware/auth');
 
 function pad2(n) {
@@ -181,9 +181,18 @@ function splitIntegerAcrossTokens(totalQty, tokenIndex, tokenCount) {
 function splitWorkerHoursByJobRules(entriesByJob, defaultRules) {
   let normalHours = 0, ot1Hours = 0, ot2Hours = 0, holidayHours = 0;
 
+  // Jobs following the same rules object (every job without its own captured copy
+  // shares the company's) are split together — one call per rule set, not per job.
+  // The split is a plain sum over blocks, so pooling them changes no figure.
+  const entriesByRules = new Map();
   for (const [, jobData] of entriesByJob.entries()) {
     const rules = jobData.rules || defaultRules;
-    const split = splitHours(jobData.entries, rules);
+    if (!entriesByRules.has(rules)) entriesByRules.set(rules, []);
+    entriesByRules.get(rules).push(...jobData.entries);
+  }
+
+  for (const [rules, entries] of entriesByRules.entries()) {
+    const split = splitHours(entries, rules);
     normalHours += split.normalHours;
     ot1Hours += split.ot1Hours;
     ot2Hours += split.ot2Hours;
@@ -334,7 +343,8 @@ function fetchInRangeTimeEntries(bufferedStartIso, bufferedEndIso, startDate, en
     const localDate = officeDateString(new Date(te.start_time), fmt);
     if (startDate && localDate < startDate) continue;
     if (endDate && localDate > endDate) continue;
-    inRangeTimeEntries.push({ ...te, localDate });
+    te.localDate = localDate; // a fresh row from the query — tag it rather than copy it
+    inRangeTimeEntries.push(te);
   }
   return inRangeTimeEntries;
 }
@@ -736,7 +746,36 @@ function buildPeriodTrends(inRangeJobs, completedInRangeJobs, inRangeTimeEntries
 }
 
 // ── Customer Rankings (Includes any customer with jobs created, completed, or worked in period) ──
-function buildCustomerRankings(inRangeJobs, completedInRangeJobs, customerHoursMap, fmt, userRole) {
+// Each invoiced job's live grand total, keyed by job id. No invoice-time freeze
+// (docs/notes/time-and-costing.md, "Per-job rule ownership") — the stored grand_total
+// is only refreshed by a pricing-sheet save, so it goes stale the moment logged time
+// changes after invoicing. Recomputing always reproduces the billed number without
+// writing anything. Every costing row and time block is read in one go, then priced
+// with the same working the pricing sheet uses — reading them job by job took seconds
+// on a few years of invoiced work, holding up every other request meanwhile.
+function invoicedTotalsByJob(jobIds, ot) {
+  const totals = new Map();
+  if (jobIds.length === 0) return totals;
+  const idsJson = JSON.stringify(jobIds);
+  const rowsByJob = new Map();
+  for (const row of jobCostingQueries.getByJobcardIds.all(idsJson)) rowsByJob.set(row.jobcard_id, row);
+  const entriesByJob = new Map();
+  for (const te of timeEntryQueries.getCompletedByJobcardIds.all(idsJson)) {
+    if (!entriesByJob.has(te.jobcard_id)) entriesByJob.set(te.jobcard_id, []);
+    entriesByJob.get(te.jobcard_id).push(te);
+  }
+  for (const jobId of jobIds) {
+    try {
+      const computed = computeCosting(jobId, rowsByJob.get(jobId) || null, entriesByJob.get(jobId) || [], ot, null);
+      totals.set(jobId, computed.row.grand_total || 0);
+    } catch (err) {
+      logger.error({ err, jobId }, 'Failed to compute live costing for invoiced total in statistics');
+    }
+  }
+  return totals;
+}
+
+function buildCustomerRankings(inRangeJobs, completedInRangeJobs, customerHoursMap, fmt, userRole, ot) {
   const customerMap = new Map();
   const getOrCreateCustomer = (cName) => {
     if (!customerMap.has(cName)) {
@@ -759,6 +798,10 @@ function buildCustomerRankings(inRangeJobs, completedInRangeJobs, customerHoursM
     if (j.is_repeat_job) c.repeatCount++;
   }
 
+  const invoicedTotals = can(userRole, 'pricing')
+    ? invoicedTotalsByJob(completedInRangeJobs.filter(j => j.status === 'INVOICED').map(j => j.id), ot)
+    : new Map();
+
   for (const j of completedInRangeJobs) {
     const c = getOrCreateCustomer(j.resolved_company_name || j.company_name || 'Unknown');
     c.completedCount++;
@@ -767,17 +810,8 @@ function buildCustomerRankings(inRangeJobs, completedInRangeJobs, customerHoursM
       if (fDate <= j.due_date) c.onTimeCount++;
       else c.lateCount++;
     }
-    if (can(userRole, 'pricing') && j.status === 'INVOICED') {
-      // No invoice-time freeze (docs/notes/time-and-costing.md, "Per-job rule
-      // ownership") — the stored grand_total is only refreshed by a pricing-sheet
-      // save, so it goes stale the moment logged time changes after invoicing.
-      // Recomputing here always reproduces the billed number without writing anything.
-      try {
-        const computed = computeLiveCosting(j.id, null);
-        c.invoicedTotal += computed.row.grand_total || 0;
-      } catch (err) {
-        logger.error({ err, jobId: j.id }, 'Failed to compute live costing for invoiced total in statistics');
-      }
+    if (invoicedTotals.has(j.id)) {
+      c.invoicedTotal += invoicedTotals.get(j.id);
     }
   }
 

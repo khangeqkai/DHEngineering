@@ -387,20 +387,18 @@ export default function JobIdentityStrip({
                   // what gets sent.
                   const formatted = capitalizeFirst(e.target.value);
                   if (formatted !== e.target.value) setField('description', formatted);
-                  // A brand-new job has no instant write to hold back — Create still
-                  // runs the whole-form check, and that pop-up is the only thing
-                  // that should complain about this box. Marking it here too would
-                  // fire both signals for the one mistake (CLAUDE.md house rule), so
-                  // the mark is gated on there being a write to hold back at all.
-                  if (!canWriteInstantly) return;
                   const message = jobFieldMessage('description', formatted);
                   if (message) {
                     // Emptied: mark the field, send nothing, leave the stored
                     // description alone. The mark goes by itself once the box
-                    // holds anything else (hooks/useFieldErrors.js).
+                    // holds anything else (hooks/useFieldErrors.js). On a new job
+                    // this is the same mark Create's own check raises, so the one
+                    // mistake is only ever signalled one way.
                     markDescription(message, formatted);
                     return;
                   }
+                  // A brand-new job has nothing to write to yet — Create sends it.
+                  if (!canWriteInstantly) return;
                   // Always calls saveField, even when nothing changed — see its
                   // own baseline comment (useInstantSave.js): that's what lets it
                   // drop a stale failure left over from reverting the box back to

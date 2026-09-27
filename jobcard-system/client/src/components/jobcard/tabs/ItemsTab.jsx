@@ -11,7 +11,7 @@ import TimeEntryForm from './TimeEntryForm';
 import FieldError from '../../common/FieldError';
 import { itemWarningMap } from '../../../utils/attachmentWarnings';
 import { workBelongsToItem } from '../workMatch.mjs';
-import { fieldErrorKey } from '../useInstantItems';
+import { fieldErrorKey } from '../fieldRules.mjs';
 import { NA_ANSWER } from '../../../../../server/src/shared/lineItemAnswers';
 import { isActiveRecord } from '../../../../../server/src/shared/records';
 

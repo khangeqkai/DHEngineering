@@ -76,7 +76,7 @@ Both ask "Are you sure?" before wiping the existing database.
 | `npm run lan -- --rebuild` | Force a fresh rebuild even if nothing changed (paranoia mode). |
 | `npm run server` | Run the server only, no desktop window. For a headless box. |
 | `npm run build` | Build the app without starting it. |
-| `npm run reset-password` | Reset the admin login back to `admin` / `1234`. |
+| `npm run reset-password` | Forgotten admin PIN: asks for a new 4-digit PIN and sets it in the installed app's database (it shows which database it is changing, and asks if it finds more than one). Close the app first. Any sign-in using the old PIN is ended. |
 | `npm start` | Developer mode — live code reload, but no LAN sharing. |
 
 ---

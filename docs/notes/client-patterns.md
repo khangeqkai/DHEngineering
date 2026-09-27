@@ -46,7 +46,7 @@
 - **A field-error mark belongs to the text it was raised against, not to the field's
   name (`hooks/useFieldErrors.js`).** Every caller passes `useFieldErrors(valueOf)`,
   where `valueOf(name)` reads what the named box holds right now — a per-part mark's
-  name is `fieldErrorKey(itemId, field)` (`useInstantItems.js`), so its `valueOf`
+  name is `fieldErrorKey(itemId, field)` (`fieldRules.mjs`), so its `valueOf`
   splits the key back apart and looks the row up; the pricing sheet's `valueOf`
   reads a box's draft if one exists, else its committed figure. `setFieldErrors`
   records, per name, the message plus the value the box held (or was explicitly
@@ -176,7 +176,12 @@ that still posted a whole-job payload on a timer would reproduce the same bug wi
   whole-payload submit to do; a stray Enter inside the form is stopped from reaching it by an
   unconditional `if (isEdit) return;` at the top of `handleSubmit`, not just a role check. Creating a
   new job is unchanged: one `validateJobCardForm` pass, resolve/create the customer, one
-  `POST /jobcards` carrying the whole form, items and assignees in one shot.
+  `POST /jobcards` carrying the whole form, items and assignees in one shot. That pass returns
+  **marks, not a message list**: the customer box, the description box and each part's own boxes
+  (keyed `fieldErrorKey(item.id, field)`, the same marks a saved part's instant save raises) are
+  marked and the first is scrolled into view; only what has no box — no part at all, a supplier
+  picked with no treatment — is still a pop-up. Blurring an empty description marks it on a new
+  job too, so the one mistake is only ever signalled one way.
 - **The close question now says *why*, not just *that*.** With no Save button, "this job card has
   changes that haven't been saved yet" stopped being one true sentence for every situation — an
   emptied required box has nothing to lose (the stored value stands, nothing was ever sent), while a

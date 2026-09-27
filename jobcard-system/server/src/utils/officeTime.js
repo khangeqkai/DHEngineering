@@ -33,17 +33,75 @@ function officeTimeZone() {
 // weekday attached — used wherever a stored moment has to be classified against a
 // local calendar day or a weekly schedule. Falls back to UTC if the zone is missing
 // or not recognised, so a bad setting can't throw partway through a report.
+// Building one is slow (tens of microseconds) and a formatter never changes, so each
+// zone's is built once and handed out again — the overtime split and the statistics
+// loops ask for one per job, which on a few years of data meant tens of thousands.
+const officeFormatters = new Map();
+
 function makeOfficeFormatter(timeZone) {
+  const zone = timeZone || 'UTC';
+  const cached = officeFormatters.get(zone);
+  if (cached) return cached;
   const opts = {
     hour12: false, weekday: 'short',
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit'
   };
+  let fmt;
   try {
-    return new Intl.DateTimeFormat('en-CA', { timeZone: timeZone || 'UTC', ...opts });
+    fmt = new Intl.DateTimeFormat('en-CA', { timeZone: zone, ...opts });
   } catch {
-    return new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', ...opts });
+    fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', ...opts });
   }
+  officeFormatters.set(zone, fmt);
+  return fmt;
+}
+
+const MINUTE_MS = 60 * 1000;
+// No zone moves its offset twice inside six hours, so a six-hour stretch whose first
+// and last minutes agree holds that one offset throughout.
+const STEADY_STRETCH_MS = 6 * 60 * MINUTE_MS;
+
+// The offset an office formatter reads at one whole minute: the clock reading taken
+// as if it were UTC, minus the instant itself.
+function readOffset(fmt, minute) {
+  const parts = fmt.formatToParts(new Date(minute));
+  const get = (type) => parts.find(p => p.type === type)?.value;
+  let hour = get('hour');
+  if (hour === '24') hour = '00'; // some environments emit 24 at midnight
+  const asIfUtc = Date.UTC(
+    Number(get('year')), Number(get('month')) - 1, Number(get('day')),
+    Number(hour), Number(get('minute'))
+  );
+  return Number.isFinite(asIfUtc) ? asIfUtc - minute : 0;
+}
+
+// Per formatter, each six-hour stretch's offset once it is known to hold throughout
+// (null = a changeover falls inside it, so it is read minute by minute).
+const steadyOffsets = new WeakMap();
+
+// How far a makeOfficeFormatter formatter's zone runs ahead of UTC at an instant,
+// floored to the minute (offsets are whole minutes). Asking Intl is slow, and the
+// statistics page asks for every logged block of several years, so the answer is
+// remembered per six-hour stretch — a few thousand Intl calls for three years of
+// history instead of one or more per block.
+function officeOffsetAt(fmt, instant) {
+  const minute = Math.floor(instant / MINUTE_MS) * MINUTE_MS;
+  let known = steadyOffsets.get(fmt);
+  if (!known) {
+    known = new Map();
+    steadyOffsets.set(fmt, known);
+  }
+  const stretch = Math.floor(minute / STEADY_STRETCH_MS);
+  let offset = known.get(stretch);
+  if (offset === undefined) {
+    const stretchStart = stretch * STEADY_STRETCH_MS;
+    const first = readOffset(fmt, stretchStart);
+    const last = readOffset(fmt, stretchStart + STEADY_STRETCH_MS - MINUTE_MS);
+    offset = first === last ? first : null;
+    known.set(stretch, offset);
+  }
+  return offset === null ? readOffset(fmt, minute) : offset;
 }
 
 // How far the zone runs ahead of UTC at a given instant (DST-correct, via Intl).
@@ -88,9 +146,8 @@ function wallClockToIso(value, timeZone) {
 // so the loop doesn't rebuild one every time; the default builds one for a single call.
 function officeDateString(moment, fmt = makeOfficeFormatter(officeTimeZone())) {
   try {
-    const parts = fmt.formatToParts(moment);
-    const get = (t) => parts.find(p => p.type === t)?.value;
-    return `${get('year')}-${get('month')}-${get('day')}`;
+    const instant = moment.getTime();
+    return new Date(instant + officeOffsetAt(fmt, instant)).toISOString().slice(0, 10);
   } catch {
     return moment.toISOString().slice(0, 10);
   }
@@ -109,5 +166,5 @@ function officeDayEnd(date, timeZone = officeTimeZone()) {
 }
 
 module.exports = {
-  officeTimeZone, isValidTimeZone, makeOfficeFormatter, officeDateString, wallClockToIso, officeDayStart, officeDayEnd
+  officeTimeZone, isValidTimeZone, makeOfficeFormatter, officeOffsetAt, officeDateString, wallClockToIso, officeDayStart, officeDayEnd
 };

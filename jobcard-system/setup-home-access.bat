@@ -16,14 +16,35 @@ if %errorlevel% neq 0 (
 set "EXE=%ProgramFiles%\cloudflared\cloudflared.exe"
 set "URL=https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
 
-REM Step 2: get the tunnel program (skipped if already here).
+REM Step 2: get the tunnel program (skipped if already here). It downloads to a
+REM .part name first and is only moved into place once the whole file arrived:
+REM --fail turns an error page into a failure instead of saving it as the program.
 if not exist "%EXE%" (
   echo Downloading the Cloudflare tunnel program...
   mkdir "%ProgramFiles%\cloudflared" >nul 2>&1
-  curl.exe -L -s -o "%EXE%" "%URL%"
+  del "%EXE%.part" >nul 2>&1
+  curl.exe -L -f -s -S -o "%EXE%.part" "%URL%"
+  if errorlevel 1 (
+    del "%EXE%.part" >nul 2>&1
+    echo Could not download it. Check the internet connection and try again.
+    pause
+    exit /b 1
+  )
+  move /y "%EXE%.part" "%EXE%" >nul
 )
 if not exist "%EXE%" (
   echo Could not download it. Check the internet connection and try again.
+  pause
+  exit /b 1
+)
+
+REM A broken copy left by an earlier run would fail every later run, so make
+REM sure the program actually starts before going on.
+"%EXE%" --version >nul 2>&1
+if errorlevel 1 (
+  del "%EXE%" >nul 2>&1
+  echo The downloaded tunnel program was broken and has been removed.
+  echo Run this again to download it fresh.
   pause
   exit /b 1
 )

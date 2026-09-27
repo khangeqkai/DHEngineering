@@ -13,8 +13,15 @@
 // with no Intl at all. Midnight-spanning entries, block boundaries and daylight saving
 // still come out exactly as before — the only thing that changed is how often the
 // clock is consulted.
+//
+// Nor is the stretch walked a minute at a time: a weekday's tiers are folded into runs
+// (a run lasts until the tier next changes), and each piece of a block that sits on one
+// local day and one offset is laid across those runs in one step. The totals are the
+// same as summing minute by minute, because the tier is constant along a run — but a
+// four-hour block costs a handful of steps instead of 240, which matters when
+// Workshop Statistics splits every block of several years' history in one request.
 
-const { makeOfficeFormatter } = require('./officeTime');
+const { makeOfficeFormatter, officeOffsetAt } = require('./officeTime');
 
 const MIN = 60 * 1000;
 const DAY = 24 * 60 * MIN;
@@ -28,22 +35,6 @@ const HM_OF_MINUTE = Array.from({ length: 1440 }, (_, m) =>
   `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 );
 
-// How far the zone runs ahead of UTC at an instant. Reading the instant on the office
-// clock and then treating that reading as if it were UTC leaves exactly the offset
-// between the two. Offsets are whole minutes, so the instant is floored to the minute.
-function zoneOffsetAt(fmt, instant) {
-  const minute = Math.floor(instant / MIN) * MIN;
-  const parts = fmt.formatToParts(new Date(minute));
-  const get = (type) => parts.find(p => p.type === type)?.value;
-  let hour = get('hour');
-  if (hour === '24') hour = '00'; // some environments emit 24 at midnight
-  const asIfUtc = Date.UTC(
-    Number(get('year')), Number(get('month')) - 1, Number(get('day')),
-    Number(hour), Number(get('minute'))
-  );
-  return Number.isFinite(asIfUtc) ? asIfUtc - minute : 0;
-}
-
 // No zone moves its offset twice inside six hours, so probing that far apart cannot
 // step over a changeover unseen.
 const PROBE_MS = 6 * 60 * MIN;
@@ -52,13 +43,13 @@ const PROBE_MS = 6 * 60 * MIN;
 function offsetSegments(fmt, from, to) {
   const segments = [];
   let segmentStart = from;
-  let segmentOffset = zoneOffsetAt(fmt, from);
+  let segmentOffset = officeOffsetAt(fmt, from);
   let lo = from;
   let loOffset = segmentOffset;
 
   while (lo < to - 1) {
     const hi = Math.min(lo + PROBE_MS, to - 1);
-    const hiOffset = zoneOffsetAt(fmt, hi);
+    const hiOffset = officeOffsetAt(fmt, hi);
 
     if (hiOffset === loOffset) {
       lo = hi;
@@ -70,7 +61,7 @@ function offsetSegments(fmt, from, to) {
     let b = hi;
     while (b - a > MIN) {
       const mid = a + Math.floor((b - a) / 2);
-      if (zoneOffsetAt(fmt, mid) === loOffset) a = mid;
+      if (officeOffsetAt(fmt, mid) === loOffset) a = mid;
       else b = mid;
     }
 
@@ -79,7 +70,7 @@ function offsetSegments(fmt, from, to) {
       segments.push({ start: segmentStart, end: boundary, offset: segmentOffset });
     }
     segmentStart = boundary;
-    segmentOffset = zoneOffsetAt(fmt, b);
+    segmentOffset = officeOffsetAt(fmt, b);
     lo = b;
     loOffset = segmentOffset;
   }
@@ -88,44 +79,72 @@ function offsetSegments(fmt, from, to) {
   return segments;
 }
 
-// A tier for every minute of a weekday, worked out once from that day's blocks. Each
-// block runs from its start until the next block's start; the day is a cycle, so a
-// minute before the earliest block wraps to the LAST block's tier (an evening block
-// carries over past midnight into the small hours). No blocks means every minute is
-// normal.
-function dayTierTable(blocks) {
-  if (!blocks || blocks.length === 0) return null;
-  const table = new Array(1440);
-  for (let m = 0; m < 1440; m++) {
-    const hm = HM_OF_MINUTE[m];
-    let tier = blocks[blocks.length - 1].tier; // wrap: before the first block = last block
-    for (const b of blocks) {
-      if (b.start <= hm) tier = b.tier;
-      else break;
-    }
-    table[m] = tier;
+// The tier a weekday's blocks give one minute ('HH:MM'). Each block runs from its
+// start until the next block's start; the day is a cycle, so a minute before the
+// earliest block wraps to the LAST block's tier (an evening block carries over past
+// midnight into the small hours).
+function tierAt(blocks, hm) {
+  let tier = blocks[blocks.length - 1].tier; // wrap: before the first block = last block
+  for (const b of blocks) {
+    if (b.start <= hm) tier = b.tier;
+    else break;
   }
-  return table;
+  return tier;
+}
+
+// The first minute of the day whose 'HH:MM' is at or past a block's start (1440 if
+// none). HM_OF_MINUTE is in ascending order, so this is a binary search.
+function firstMinuteFrom(start) {
+  let lo = 0;
+  let hi = 1440;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (HM_OF_MINUTE[mid] >= start) hi = mid;
+    else lo = mid + 1;
+  }
+  return lo;
+}
+
+// A weekday's blocks folded into runs of one tier: [{ from, to, tier }] in minutes of
+// the day. A minute's tier can only change where some block starts, so it is read at
+// midnight and at each block's first minute and holds until the next such point.
+// Only non-normal runs are kept, since the normal tier is derived by reconciliation
+// in splitHours. null = an all-normal day (no blocks).
+function dayOvertimeRuns(blocks) {
+  if (!blocks || blocks.length === 0) return null;
+  const points = [...new Set([0, ...blocks.map(b => firstMinuteFrom(b.start))])]
+    .filter(m => m < 1440)
+    .sort((a, b) => a - b);
+  const runs = [];
+  points.forEach((from, i) => {
+    const to = i + 1 < points.length ? points[i + 1] : 1440;
+    const tier = tierAt(blocks, HM_OF_MINUTE[from]);
+    if (tier === 'normal') return;
+    const last = runs[runs.length - 1];
+    if (last && last.to === from && last.tier === tier) last.to = to;
+    else runs.push({ from, to, tier });
+  });
+  return runs;
 }
 
 // entries: [{ start_time, end_time }] (completed only). Returns hours per tier,
 // unrounded.
-// The OT/holiday tiers are summed from the minute walk; the normal tier is the
-// exact total minus the others, so the four always sum to the plain logged total.
+// The OT/holiday tiers are summed across the runs; the normal tier is the exact
+// total minus the others, so the four always sum to the plain logged total.
 // A single completed block is never legitimately longer than this. New blocks are
 // capped far tighter at entry (see the time-entry routes); this is a safety net so a
-// bad legacy row can't make the per-minute walk below run for hundreds of thousands
-// of steps and stall the server on every costing read. An over-long block still
-// counts its full duration, but all at the normal tier (no minute-by-minute split).
+// bad legacy row can't make the split below probe the clock across months and stall
+// the server on every costing read. An over-long block still counts its full
+// duration, but all at the normal tier (no split).
 const MAX_WALK_MS = 60 * 24 * 60 * 60 * 1000; // 60 days
 
 function splitHours(entries, { schedule, holidays, timezone }) {
   const fmt = makeOfficeFormatter(timezone);
   const holidaySet = new Set(Array.isArray(holidays) ? holidays : []);
-  const tierTables = new Map();
-  const tableFor = (weekday) => {
-    if (!tierTables.has(weekday)) tierTables.set(weekday, dayTierTable(schedule?.[weekday]));
-    return tierTables.get(weekday);
+  const runsByDay = new Map();
+  const runsFor = (weekday) => {
+    if (!runsByDay.has(weekday)) runsByDay.set(weekday, dayOvertimeRuns(schedule?.[weekday]));
+    return runsByDay.get(weekday);
   };
 
   let ot1 = 0, ot2 = 0, holiday = 0, totalHours = 0;
@@ -139,48 +158,47 @@ function splitHours(entries, { schedule, holidays, timezone }) {
 
     totalHours += (en - s) / 3600000;
 
-    // Safety net: skip the walk for an implausibly long block. Its hours still land
+    // Safety net: skip the split for an implausibly long block. Its hours still land
     // in the total (and thus in the normal tier via the reconciliation below).
     if (en - s > MAX_WALK_MS) continue;
 
     const segments = offsetSegments(fmt, s, en);
     let segmentIndex = 0;
-    // The local day, and everything that hangs off it, only changes at local midnight
-    // or when the offset moves — so it is worked out then, not every minute.
-    let dayIndex = null;
-    let table = null;
-    let isHoliday = false;
 
-    // Stepped along the clock's own whole minutes, where tier changes fall — not in
-    // 60-second strides from the block's start second, which would bill a step that
-    // straddles a change (16:59:30–17:00:30) wholly at the earlier tier. So the first
-    // step runs only to the next minute boundary, and the last may stop short of one.
+    // One piece per local day per offset stretch: the day (and so its weekday runs
+    // and holiday status) only changes at local midnight or when the offset moves.
     for (let t = s, next; t < en; t = next) {
-      next = Math.min(t - (t % MIN) + MIN, en);
       while (segmentIndex < segments.length - 1 && t >= segments[segmentIndex].end) {
         segmentIndex++;
-        dayIndex = null; // the clock just moved; re-read the day
       }
-      const local = t + segments[segmentIndex].offset;
+      const { offset, end: segmentEnd } = segments[segmentIndex];
+      const local = t + offset;
       const day = Math.floor(local / DAY);
-      if (day !== dayIndex) {
-        dayIndex = day;
-        const midnight = new Date(day * DAY);
-        const ymd = `${midnight.getUTCFullYear()}-${String(midnight.getUTCMonth() + 1).padStart(2, '0')}-${String(midnight.getUTCDate()).padStart(2, '0')}`;
-        isHoliday = holidaySet.has(ymd);
-        table = tableFor(WEEKDAY_KEYS[(((day + 4) % 7) + 7) % 7]);
-      }
+      const nextMidnight = (day + 1) * DAY - offset;
+      next = Math.min(en, segmentEnd, nextMidnight);
 
-      const tier = isHoliday
-        ? 'holiday'
-        : (table ? table[Math.floor((local - day * DAY) / MIN)] : 'normal');
-      // First and last steps may be partial minutes — count only the slice inside the entry.
-      const frac = (next - t) / MIN; // 0..1 of a minute
-      const hrs = frac / 60;
-      if (tier === 'ot1') ot1 += hrs;
-      else if (tier === 'ot2') ot2 += hrs;
-      else if (tier === 'holiday') holiday += hrs;
-      // 'normal' is derived by reconciliation below.
+      const midnight = new Date(day * DAY);
+      const ymd = `${midnight.getUTCFullYear()}-${String(midnight.getUTCMonth() + 1).padStart(2, '0')}-${String(midnight.getUTCDate()).padStart(2, '0')}`;
+      if (holidaySet.has(ymd)) {
+        holiday += (next - t) / 3600000;
+        continue;
+      }
+      const runs = runsFor(WEEKDAY_KEYS[(((day + 4) % 7) + 7) % 7]);
+      if (!runs) continue; // all-normal day
+
+      // The piece as minutes into the local day (fractional at either end), laid
+      // across the day's overtime runs.
+      const a = (local - day * DAY) / MIN;
+      const b = a + (next - t) / MIN;
+      for (const run of runs) {
+        if (run.from >= b) break;
+        const overlap = Math.min(b, run.to) - Math.max(a, run.from);
+        if (overlap <= 0) continue;
+        const hrs = overlap / 60;
+        if (run.tier === 'ot1') ot1 += hrs;
+        else if (run.tier === 'ot2') ot2 += hrs;
+        else if (run.tier === 'holiday') holiday += hrs;
+      }
     }
   }
 

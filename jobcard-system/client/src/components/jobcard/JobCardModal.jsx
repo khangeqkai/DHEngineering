@@ -10,6 +10,7 @@ import { todayIsoDate } from '../../utils/formatters';
 import { isJobOverdue } from '../JobCardList.constants';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
+import { fieldErrorKey } from './fieldRules.mjs';
 import { isJobClosed, JOB_CLOSED_MESSAGE, JOB_DELETED_MESSAGE, JOB_DELETED_TOAST_ID } from '../../utils/jobLock';
 import './JobCardModal.css';
 import { useJobCardCosting } from './useJobCardCosting';
@@ -322,6 +323,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // fieldErrorsFromRefusal (hooks/useFieldErrors.js). Declared before useJobCardSave so its callback can
   // close over it.
   const contactFieldErrors = useFieldErrors((name) => {
+    if (name === 'companyName') return contactHook.contactFormData.companyName;
     if (name === 'contactName') return contactHook.contactFormData.contactName;
     if (name === 'contactPhone') return contactHook.contactFormData.phone;
     if (name === 'contactEmail') return contactHook.contactFormData.email;
@@ -340,12 +342,32 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contactFieldErrors.setFieldErrors]);
 
+  // Create's own check (jobCardValidation.mjs) marks the boxes at fault — the
+  // customer, the description and each part's boxes — and brings the first one, in
+  // the order they sit on screen, into view. Each mark goes by itself once its box
+  // holds something else (hooks/useFieldErrors.js).
+  const { markDescription } = formHook;
+  const { markItemFields } = instantItems;
+  const handleFormMarks = useCallback(({ job, items }) => {
+    if (job.companyName) contactFieldErrors.setFieldErrors({ companyName: job.companyName });
+    if (job.description) markDescription(job.description, formHook.formData.description);
+    if (Object.keys(items).length > 0) markItemFields(items);
+    const firstItemKey = formHook.lineItems
+      .flatMap(item => ['description', 'qty', 'jobType', 'drawingsType', 'customerProperty']
+        .map(field => fieldErrorKey(item.id, field)))
+      .find(key => items[key]);
+    const first = (job.description && 'jc-description') || (job.companyName && 'jc-company-name') || firstItemKey;
+    if (first) scrollFieldIntoView(first);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contactFieldErrors.setFieldErrors, markDescription, markItemFields, formHook.formData.description, formHook.lineItems]);
+
   // Create-only now (useJobCardSave.js) — an existing job has nothing left for a
   // Save to do; every field, row and worker writes itself the moment it changes.
   const { saving, handleSubmit } = useJobCardSave({
     canManage, isEdit, formHook, contactHook,
     showConfirm, onSuccess, onClose, setAttachmentWarnings,
-    onContactFieldErrors: handleContactFieldErrors
+    onContactFieldErrors: handleContactFieldErrors,
+    onFormMarks: handleFormMarks
   });
 
   // On a brand-new job the customer is picked through useContactSearch, a hook whose

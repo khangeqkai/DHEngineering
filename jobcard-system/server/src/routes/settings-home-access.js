@@ -4,6 +4,7 @@
  * Access card. Both admin-only.
  */
 const bcrypt = require('bcryptjs');
+const { homeAccessCodeProblem, homeAddressProblem } = require('../shared/settingsRules');
 
 // Body keys only an admin may send (settings.js 403s a manager on any of them).
 const HOME_ACCESS_BODY_KEYS = ['homeAccessCode', 'homeAddress'];
@@ -19,31 +20,27 @@ function homeAccessView(settings) {
 }
 
 // Validate and collect the home-access fields of a PUT /settings body.
-// Returns { error } or { updates } (snake_case, ready for db.updateSettings).
+// Returns { error, field } (field = the body key the refusal belongs to, so the
+// screen can mark that box) or { updates } (snake_case, ready for db.updateSettings).
 async function collectHomeAccessUpdates(body) {
   const updates = {};
   const { homeAccessCode, homeAddress } = body;
 
   // The shared secret a home user must give on top of their PIN. Stored
-  // hashed like a PIN; blank switches home access off.
+  // hashed like a PIN; blank switches home access off. Length rules are shared
+  // with the Home Access card (shared/settingsRules.js).
   if (homeAccessCode !== undefined) {
-    if (typeof homeAccessCode !== 'string' || (homeAccessCode && homeAccessCode.length < 8)) {
-      return { error: 'The home access code must be at least 8 characters' };
-    }
-    // bcrypt only reads the first 72 bytes, so a longer code would silently
-    // have a tail that doesn't count.
-    if (Buffer.byteLength(homeAccessCode, 'utf8') > 72) {
-      return { error: 'The home access code must be 72 characters or fewer' };
-    }
+    const problem = homeAccessCodeProblem(homeAccessCode);
+    if (problem) return { error: problem, field: 'homeAccessCode' };
     updates.home_access_code = homeAccessCode ? await bcrypt.hash(homeAccessCode, 10) : '';
   }
 
   // The address staff type from home — purely for display on the card; the
   // tunnel itself is set up in Cloudflare, not here.
   if (homeAddress !== undefined) {
-    const address = String(homeAddress || '').trim();
-    if (address.length > 200) return { error: 'The home address must be 200 characters or fewer' };
-    updates.home_address = address;
+    const problem = homeAddressProblem(homeAddress);
+    if (problem) return { error: problem, field: 'homeAddress' };
+    updates.home_address = String(homeAddress || '').trim();
   }
 
   return { updates };

@@ -1,11 +1,12 @@
-// Job card form validation for JobCardModal
-// Pure function: takes form state, returns the list of error messages plus the
-// filtered valid line items (reused by the caller when building the payload).
+// Job card form validation for JobCardModal (the Create check on a new job).
+// Pure function: takes form state, returns the marks for the boxes at fault, the
+// messages that have no box of their own, and the filtered valid line items
+// (reused by the caller when building the payload).
 //
 // The rules about what a box must contain live in fieldRules.mjs, read here and
 // by each box's own instant-save check — see the header comment there.
 
-import { itemFieldMessage, jobFieldMessage, ITEM_QTY_REQUIRED } from './fieldRules.mjs';
+import { itemFieldMessage, jobFieldMessage, fieldErrorKey } from './fieldRules.mjs';
 import { splitAnswer, hasMixedNa } from '../../../../server/src/shared/lineItemAnswers.js';
 
 // A line is "already saved" when it carries the server's stable "item:" id —
@@ -14,15 +15,29 @@ import { splitAnswer, hasMixedNa } from '../../../../server/src/shared/lineItemA
 export const isSavedLineItem = (item) =>
   typeof item.id === 'string' && item.id.startsWith('item:');
 
+// Returns { marks, errors, validItems }:
+//  - marks.job   — { companyName?, description? }: the customer and description boxes
+//  - marks.items — { [fieldErrorKey(item.id, field)]: message }: a part's own box, the
+//                  same keys its instant-save marks use (useInstantItems.js)
+//  - errors      — messages with no box to mark (no part at all, a supplier picked
+//                  with no treatment), for the caller to show as one pop-up
+// A mark sits under its own box, so it carries the box's own wording, not a
+// "on part N" sentence.
 export function validateJobCardForm({ canManage, formData, contactFormData, lineItems }) {
+  const job = {};
+  const items = {};
   const errors = [];
+  const markItem = (item, field, message) => {
+    const key = fieldErrorKey(item.id, field);
+    if (!items[key]) items[key] = message;
+  };
 
   if (canManage && !contactFormData.companyName.trim()) {
-    errors.push('Pick a customer for this job');
+    job.companyName = 'Pick a customer for this job';
   }
   const descriptionMessage = jobFieldMessage('description', formData.description);
   if (descriptionMessage) {
-    errors.push(descriptionMessage);
+    job.description = descriptionMessage;
   }
 
   // A blank line can't be saved, so it is marked rather than quietly discarded — on an
@@ -31,91 +46,55 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
   //
   // The one case that names nothing is a card that has never had a part saved on it and
   // still has none typed in: there is no particular row at fault, so it gets the single
-  // "add at least one part" message rather than that plus a blank-row complaint
-  // about the same empty card. A job that DOES have a saved part is different — blanking
-  // its only part is a mistake about that part, so the message names it. The two are
-  // mutually exclusive, so only ever one message comes out of this block.
+  // "add at least one part" message rather than that plus a blank-row mark on the same
+  // empty card. A job that DOES have a saved part is different — blanking its only part
+  // is a mistake about that part, so its box is marked.
   const validItems = lineItems.filter(item => !itemFieldMessage('description', item.description));
-  const blankIdx = lineItems.findIndex(item => itemFieldMessage('description', item.description));
   const hasSavedPart = lineItems.some(isSavedLineItem);
-  if (blankIdx !== -1 && (validItems.length > 0 || hasSavedPart)) {
-    // This only ever runs on a brand-new job (useJobCardSave.js returns early on
-    // an existing one), where a row has no server-stated position yet — ItemsTab.jsx's
-    // own badge for a still-local row is its place in the full list (itemIdx + 1),
-    // never itemNumber, which is only an internal counter that can skip a number
-    // once a row has been added and removed. Naming itemNumber here used to point
-    // this message at a part other than the one the screen numbers this way.
-    errors.push(`Description is required on part ${blankIdx + 1}`);
-  } else if (validItems.length === 0) {
+  if (validItems.length > 0 || hasSavedPart) {
+    for (const item of lineItems) {
+      const message = itemFieldMessage('description', item.description);
+      if (message) markItem(item, 'description', message);
+    }
+  } else {
     errors.push('Add at least one part');
-  }
-
-  // Each valid item's position in the FULL list — matching the badge ItemsTab.jsx
-  // shows for a still-local row (itemIdx + 1) — not its slot in this filtered
-  // array, which shifts when a blanked row above it is dropped, and not
-  // itemNumber, which can have gaps and never matches what's on screen.
-  const validItemPositions = [];
-  lineItems.forEach((item, idx) => {
-    if (!itemFieldMessage('description', item.description)) validItemPositions.push(idx + 1);
-  });
-  const itemNo = (i) => validItemPositions[i];
-
-  const itemMissingJobType = validItems.findIndex(item => itemFieldMessage('jobType', item.jobType));
-  if (itemMissingJobType !== -1) {
-    errors.push(`Job type is required on part ${itemNo(itemMissingJobType)}`);
-  }
-
-  const itemMissingDrawings = validItems.findIndex(item => itemFieldMessage('drawingsType', item.drawingsType));
-  if (itemMissingDrawings !== -1) {
-    errors.push(`Drawings is required on part ${itemNo(itemMissingDrawings)}`);
-  }
-
-  const itemMissingProperty = validItems.findIndex(item => itemFieldMessage('customerProperty', item.customerProperty));
-  if (itemMissingProperty !== -1) {
-    errors.push(`Customer property is required on part ${itemNo(itemMissingProperty)}`);
   }
 
   // "N/A" is the standalone "no drawing / nothing supplied" answer, so it can't
   // share a part with a real value. The picker already enforces this; the rule
   // itself is the same shared one the save check runs.
   const naCombined = (value) => hasMixedNa(splitAnswer(value));
-  for (let i = 0; i < validItems.length; i++) {
-    if (naCombined(validItems[i].drawingsType)) {
-      errors.push(`Part ${itemNo(i)} cannot combine "N/A" with other drawings values`);
-    }
-    if (naCombined(validItems[i].customerProperty)) {
-      errors.push(`Part ${itemNo(i)} cannot combine "N/A" with other customer property values`);
-    }
-  }
 
-  // Quantity is compulsory and must be a positive whole number (it drives the
-  // "all parts finished -> Done" check). Blanks, zero, and decimals are rejected.
-  // itemFieldMessage produces exactly one of two messages for qty, and the two
-  // sentences below infix the item number differently, so neither is that message
-  // plus a suffix. Telling them apart by the exported constant rather than by a
-  // copy of the wording keeps the two files from drifting apart silently.
-  for (let i = 0; i < validItems.length; i++) {
-    const qtyMessage = itemFieldMessage('qty', validItems[i].qty);
-    if (qtyMessage === ITEM_QTY_REQUIRED) {
-      errors.push(`Quantity is required on part ${itemNo(i)}`);
-    } else if (qtyMessage) {
-      errors.push(`Quantity on part ${itemNo(i)} must be a whole number of 1 or more`);
+  for (const item of validItems) {
+    // Job type, drawings, customer property and quantity (a positive whole number —
+    // it drives the "all parts finished -> Done" check) — each box's own rule.
+    for (const field of ['jobType', 'drawingsType', 'customerProperty', 'qty']) {
+      const message = itemFieldMessage(field, item[field]);
+      if (message) markItem(item, field, message);
+    }
+    if (naCombined(item.drawingsType)) {
+      markItem(item, 'drawingsType', 'Cannot combine "N/A" with other drawings values');
+    }
+    if (naCombined(item.customerProperty)) {
+      markItem(item, 'customerProperty', 'Cannot combine "N/A" with other customer property values');
     }
   }
 
   // One treatment per part, with an optional supplier. The only invalid shape is a
   // supplier chosen with no treatment (a dangling half-entry); a treatment on its
-  // own is fine.
-  for (let i = 0; i < validItems.length; i++) {
-    const item = validItems[i];
+  // own is fine. The treatment picker has no mark of its own, so this names the
+  // part by its place in the full list — the badge ItemsTab.jsx shows for a
+  // still-local row (itemIdx + 1), never itemNumber, an internal counter with gaps.
+  lineItems.forEach((item, idx) => {
+    if (!validItems.includes(item)) return;
     const treatments = Array.isArray(item.treatments) ? item.treatments : [];
     for (const tr of treatments) {
       if (!tr.value && !tr.supplierId) continue; // nothing on this part — fine
       if (!tr.value) {
-        errors.push(`Part ${itemNo(i)}: pick a treatment for the chosen supplier`);
+        errors.push(`Part ${idx + 1}: pick a treatment for the chosen supplier`);
       }
     }
-  }
+  });
 
-  return { errors, validItems };
+  return { marks: { job, items }, errors, validItems };
 }

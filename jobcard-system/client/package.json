@@ -47,10 +47,15 @@
         "from": "../server",
         "to": "server",
         "filter": [
-          "**/*",
+          "index.js",
+          "package.json",
+          ".puppeteerrc.cjs",
+          "src/**/*",
+          "node_modules/**/*",
           "!node_modules/.cache/**",
           "!node_modules/.bin/**",
-          "!.chrome/**"
+          "!**/.env",
+          "!**/.env.*"
         ]
       }
     ],

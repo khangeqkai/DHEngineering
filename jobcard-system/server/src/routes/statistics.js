@@ -99,7 +99,7 @@ router.get('/', (req, res) => {
     const workerLeaderboard = buildWorkerLeaderboard(workerEntriesMap, defaultRules);
     const { machineUtilization, totalMachineHours } = formatMachineUtilization(machineStatsMap);
     const periodTrends = buildPeriodTrends(inRangeJobs, completedInRangeJobs, inRangeTimeEntries, fmt, groupBy, startDate, endDate, preset);
-    const customerRankings = buildCustomerRankings(inRangeJobs, completedInRangeJobs, customerHoursMap, fmt, req.user.role);
+    const customerRankings = buildCustomerRankings(inRangeJobs, completedInRangeJobs, customerHoursMap, fmt, req.user.role, ot);
 
     res.json({
       range: { preset, startDate, endDate, label: rangeLabel, groupBy },

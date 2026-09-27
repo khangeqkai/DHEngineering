@@ -73,7 +73,7 @@ export default function CustomerSection({
 
       <div className="contact-fields-inline" ref={contactSearchRef}>
         <div className="form-row">
-          <div className="form-group">
+          <div className={contactGroupClass('companyName')}>
             <label htmlFor="jc-company-name">Company <span className="required">*</span></label>
             <div className="autocomplete-container">
               <input
@@ -109,6 +109,8 @@ export default function CustomerSection({
                 aria-controls={companyNav.listId}
                 aria-autocomplete="list"
                 aria-activedescendant={companyNav.activeIndex >= 0 ? `${companyNav.listId}-${companyNav.activeIndex}` : undefined}
+                aria-invalid={contactErrorFor('companyName') ? true : undefined}
+                aria-describedby={contactErrorFor('companyName') ? contactErrorProps('companyName').id : undefined}
                 autoComplete="off"
                 className={!contactFormData.companyName.trim() ? 'field-required' : ''}
               />
@@ -133,6 +135,7 @@ export default function CustomerSection({
                 </div>
               )}
             </div>
+            <FieldError {...contactErrorProps('companyName')} message={contactErrorFor('companyName')} />
             {!selectedCompany && !typedCompanyMatch && contactFormData.companyName.trim() && (
               <span className="field-hint">Not on the list — it will be added as a new customer.</span>
             )}

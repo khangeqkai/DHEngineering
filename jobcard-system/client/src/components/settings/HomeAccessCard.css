@@ -1,0 +1,23 @@
+/* Home Access card (HomeAccessCard.jsx). */
+.home-access-address {
+  margin-top: var(--space-1-5);
+}
+
+.home-access-hint {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.home-access-field {
+  margin-top: var(--gap-field);
+}
+
+/* Beats .timeout-input-group's own top margin: the wrapper above spaces the field. */
+.home-access-field .timeout-input-group {
+  margin-top: 0;
+}
+
+.home-access-field .form-control {
+  max-width: 360px;
+}

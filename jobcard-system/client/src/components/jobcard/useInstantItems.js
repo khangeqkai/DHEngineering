@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { buildItemPayload, mapLineItemFromApi } from './mappers';
 import { isSavedLineItem } from './jobCardValidation.mjs';
-import { itemFieldMessage, isItemRowComplete } from './fieldRules.mjs';
+import { itemFieldMessage, isItemRowComplete, fieldErrorKey } from './fieldRules.mjs';
 import { useFieldErrors } from '../../hooks/useFieldErrors';
 import { NOT_LANDED } from './useSaveQueue';
 import { isJobClosedError } from '../../utils/jobLock';
@@ -21,12 +21,6 @@ const ITEM_FIELD_NOUN = {
   treatments: 'treatment'
 };
 
-// '|' rather than ':' — a persisted row's own id is already "item:<uuid>", so a
-// ':' join would make the two halves ambiguous to split back apart. Exported so
-// closeReasons.js (the close question's "which part, which box" builder) and the
-// field elements' own `id` attributes (for scrollFieldIntoView's "Fix it") can
-// both agree on the same key without a second copy of this format.
-export const fieldErrorKey = (itemId, field) => `${itemId}|${field}`;
 
 /**
  * Instant save for the parts list on an existing job — the stage-4a companion to
@@ -473,6 +467,9 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     handleItemFieldChange,
     commitItemFieldBlur,
     itemErrorFor,
+    // For the Create check on a new job (useJobCardSave.js): marks keyed by
+    // fieldErrorKey, raised against what each box holds now, like any other mark.
+    markItemFields: setFieldErrors,
     removeItem,
     // Raw required-box marks (fieldErrorKey -> message), for closeReasons.js to
     // turn into "line N needs a description" — see JobCardModal.jsx.

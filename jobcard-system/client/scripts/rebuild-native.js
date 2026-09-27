@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const { execFileSync } = require('child_process');
 
 // Resolve the Electron version reliably across electron-builder releases.
@@ -21,6 +22,15 @@ exports.default = async function(context) {
   // matching prebuilt binary (no local C++ toolchain required) into the copied
   // server resources.
   const serverPath = path.join(context.appOutDir, 'resources', 'server');
+
+  // The server folder may hold a git-ignored .env with a developer's own keys (see
+  // server/.env.example). The extraResources filter in package.json copies only an
+  // include-list and leaves .env files out; this stops the build outright if one
+  // ever gets through anyway, rather than shipping it inside the installer.
+  const leakedEnv = path.join(serverPath, '.env');
+  if (fs.existsSync(leakedEnv)) {
+    throw new Error(`Refusing to package ${leakedEnv}: a local .env must never ship in the installer. Check the extraResources filter in client/package.json.`);
+  }
   const moduleDir = path.join(serverPath, 'node_modules', 'better-sqlite3');
   const prebuildInstall = path.join(serverPath, 'node_modules', 'prebuild-install', 'bin.js');
 

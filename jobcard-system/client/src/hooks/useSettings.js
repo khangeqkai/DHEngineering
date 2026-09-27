@@ -4,10 +4,21 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { validatePassword, todayIsoDate } from '../utils/formatters';
 import { isManagement, can } from '../utils/roles';
-import { useFieldErrors, scrollFieldIntoView } from './useFieldErrors';
+import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from './useFieldErrors';
 import {
-  INACTIVITY_MINUTES, isInactivityMinutes, isStartingJobNumber, STARTING_JOB_NUMBER_MESSAGE
+  INACTIVITY_MINUTES, isInactivityMinutes, isStartingJobNumber, STARTING_JOB_NUMBER_MESSAGE,
+  homeAccessCodeProblem, homeAddressProblem
 } from '../../../server/src/shared/settingsRules';
+
+// Which box on this page a server refusal of a settings field lands on (the
+// server names the field it refused — see refuseField in routes/settings.js).
+const SETTINGS_BOXES = {
+  jobFoldersBase: 'jobFoldersBase',
+  inactivityTimeoutMinutes: 'inactivityTimeout',
+  jobNumberNext: 'jobNumberNext',
+  homeAccessCode: 'homeAccessCode',
+  homeAddress: 'homeAddress'
+};
 
 export function useSettings() {
   const { user, refreshInactivityTimeout } = useAuth();
@@ -33,17 +44,20 @@ export function useSettings() {
   const [inactivityTimeout, setInactivityTimeoutState] = useState(String(INACTIVITY_MINUTES.defaultValue));
   const [jobNumberPrefix, setJobNumberPrefix] = useState('');
   const [jobNumberNext, setJobNumberNext] = useState('');
-  const { setFieldErrors, errorFor } = useFieldErrors((name) => {
+  const [homeAccessCode, setHomeAccessCode] = useState('');
+  const [homeAddress, setHomeAddress] = useState('');
+  const { setFieldErrors, errorFor, fieldProps, errorProps } = useFieldErrors((name) => {
     if (name === 'inactivityTimeout') return inactivityTimeout;
     if (name === 'jobNumberNext') return jobNumberNext;
+    if (name === 'jobFoldersBase') return jobFoldersBase;
+    if (name === 'homeAccessCode') return homeAccessCode;
+    if (name === 'homeAddress') return homeAddress;
     return undefined;
   });
   const [savingJobFolders, setSavingJobFolders] = useState(false);
   const [savingTimeout, setSavingTimeout] = useState(false);
   const [savingJobNumber, setSavingJobNumber] = useState(false);
-  const [homeAccessCode, setHomeAccessCode] = useState('');
   const [savingHomeAccess, setSavingHomeAccess] = useState(false);
-  const [homeAddress, setHomeAddress] = useState('');
   const [savingHomeAddress, setSavingHomeAddress] = useState(false);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -133,14 +147,20 @@ export function useSettings() {
       await api.updateSettings({ jobFoldersBase });
       toast.success('Job folders base path saved');
     } catch (err) {
-      toast.error(err.message || 'Failed to save job folders base path');
+      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save job folders base path' });
     } finally {
       setSavingJobFolders(false);
     }
-  }, [jobFoldersBase]);
+  }, [jobFoldersBase, setFieldErrors]);
 
   // Blank = switch home access off (the server refuses tunnel sign-ins with no code).
   const handleSaveHomeAccessCode = useCallback(async () => {
+    const problem = homeAccessCodeProblem(homeAccessCode);
+    if (problem) {
+      setFieldErrors({ homeAccessCode: problem });
+      scrollFieldIntoView('homeAccessCode');
+      return;
+    }
     const wasSet = !!homeAccessCode;
     setSavingHomeAccess(true);
     try {
@@ -149,24 +169,30 @@ export function useSettings() {
       setSettings(prev => (prev ? { ...prev, homeAccessCodeSet: wasSet } : prev));
       toast.success(wasSet ? 'Home access code saved' : 'Home access switched off');
     } catch (err) {
-      toast.error(err.message || 'Failed to save the home access code');
+      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save the home access code' });
     } finally {
       setSavingHomeAccess(false);
     }
-  }, [homeAccessCode]);
+  }, [homeAccessCode, setFieldErrors]);
 
   const handleSaveHomeAddress = useCallback(async () => {
+    const problem = homeAddressProblem(homeAddress);
+    if (problem) {
+      setFieldErrors({ homeAddress: problem });
+      scrollFieldIntoView('homeAddress');
+      return;
+    }
     setSavingHomeAddress(true);
     try {
       await api.updateSettings({ homeAddress });
       setSettings(prev => (prev ? { ...prev, homeAddress } : prev));
       toast.success('Home address saved');
     } catch (err) {
-      toast.error(err.message || 'Failed to save the home address');
+      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save the home address' });
     } finally {
       setSavingHomeAddress(false);
     }
-  }, [homeAddress]);
+  }, [homeAddress, setFieldErrors]);
 
   const handleSaveInactivityTimeout = useCallback(async () => {
     if (!isInactivityMinutes(inactivityTimeout)) {
@@ -184,7 +210,7 @@ export function useSettings() {
       if (refreshInactivityTimeout) await refreshInactivityTimeout();
       toast.success('Inactivity timeout saved');
     } catch (err) {
-      toast.error(err.message || 'Failed to save inactivity timeout');
+      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save inactivity timeout' });
     } finally {
       setSavingTimeout(false);
     }
@@ -201,7 +227,7 @@ export function useSettings() {
       await api.updateSettings({ jobNumberPrefix, jobNumberNext });
       toast.success('Job number settings saved');
     } catch (err) {
-      toast.error(err.message || 'Failed to save job number settings');
+      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save job number settings' });
     } finally {
       setSavingJobNumber(false);
     }
@@ -340,7 +366,7 @@ export function useSettings() {
     darkMode, toggleDarkMode,
     jobFoldersBase, setJobFoldersBase, handleSelectJobFolders, handleSaveJobFolders, savingJobFolders,
     inactivityTimeout, setInactivityTimeout, handleSaveInactivityTimeout, savingTimeout,
-    errorFor,
+    errorFor, fieldProps, errorProps,
     jobNumberPrefix, setJobNumberPrefix, jobNumberNext, setJobNumberNext, handleSaveJobNumber, savingJobNumber,
     homeAccessCode, setHomeAccessCode, handleSaveHomeAccessCode, savingHomeAccess,
     homeAddress, setHomeAddress, handleSaveHomeAddress, savingHomeAddress,

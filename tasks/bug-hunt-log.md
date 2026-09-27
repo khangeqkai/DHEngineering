@@ -16,6 +16,7 @@ Every agent in the hunt reads this file first. It is the memory between rounds.
 - **R6 — Customer name on pre-filled quality forms.** Workers are not meant to see customer names, but quality forms come pre-filled with the customer's company name and workers open and print them. Options: (1) allow it and write it down as an exception, since workers handle these forms anyway; (2) never pre-fill the customer box; (3) office copy filled, worker copy blank.
 - **R8 — Quality forms are frozen when the level is set.** Pre-filled forms are copied once (on job create / level change); later parts, due date, PO changes and the "date" box never update. Options: (1) fill forms fresh at print/view time and stop keeping pre-filled copies; (2) keep copies but refill on every job change; (3) accept it, drop the auto date box, add a "Refresh forms" button.
 - **R8 — Old level's forms stay after a level change.** The old level's blank forms stay in the job and print by default, and a form handed back under the old level counts as returned for the new level (so the job can be invoiced). Proposal: on a level change remove the old untouched blanks (never returned forms), move old returned forms to an "Earlier level" sub-folder, and count a returned form only for the level it was returned under.
+- **R10 — After the workshop PC restarts, nobody can reach the app until someone opens it by hand.** Options: (1) installer sets the app to open at Windows sign-in, and closing the window hides it to the tray (with a clear Quit) — smallest change; (2) run the shared part as a Windows service; (3) keep as is and change the checklist to say the app must be opened after every restart.
 
 ## Decided — leave alone
 _None yet._
@@ -119,6 +120,16 @@ _None yet._
 - The job list's "Invoiced" filter in the active view could never show anything.
 - The job list kept a stale row after a refused delete/unarchive.
 - Opening a deleted job from Search > Activity said "Failed to load… try again".
+### Round 10 — delivery and speed
+- The PIN-reset command worked on the wrong database for the installed app, kept old sign-ins and was described wrongly: it finds the app's real data folder (asks if several), lists active admins only, ends old sign-ins; instructions corrected.
+- Workshop Statistics over long ranges froze the whole server for several seconds: the office clock is built once, the overtime split jumps between rate changes instead of minute by minute, and customer rankings stop recomputing pricing per job.
+- The server log grew forever from background checks: routine successes aren't logged in production; the file rolls over at 10 MB.
+- A developer's review-tool key in server/.env would be copied into the installer: excluded from packaging.
+- A damaged certificate key stopped the app from ever starting: it's regenerated.
+- A failed tunnel download in home-access setup blocked every retry.
+- Home Access, starting job number and new-job Create now mark the box instead of pop-ups.
+- Not a bug: "Company Name" in Field Changed is recorded after all.
+- Rejected: "already running" message when another program holds the secure port.
 
 ## Rounds
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
@@ -132,3 +143,4 @@ _None yet._
 | 7 | Timers, logged work, status | 13 | 11 | 10 | 0 |
 | 8 | Files, printing, QA forms, Excel | 21 | 11 | 9 | 2 |
 | 9 | Job list, search, activity | 19 | 12 | 10 (2 carried) | 0 |
+| 10 | Delivery + speed | 18 | 8 (+3 carried) | 9 | 1 |

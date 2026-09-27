@@ -92,6 +92,13 @@ router.get('/', requireManagement, (req, res) => {
   }
 });
 
+// A refusal that belongs to one box on the Settings page: the message, plus which
+// body field it is about (the same `fields` shape validation.js sends), so the
+// screen marks that box instead of only showing a pop-up.
+function refuseField(res, field, message) {
+  return res.status(400).json({ error: message, fields: [{ field, message }] });
+}
+
 // Update settings (admin or manager; labour rates & overtime stay admin-only)
 router.put('/', requireManagement, async (req, res) => {
   try {
@@ -121,7 +128,7 @@ router.put('/', requireManagement, async (req, res) => {
 
     // Home access code + home address (settings-home-access.js).
     const home = await homeAccess.collectHomeAccessUpdates(req.body);
-    if (home.error) return res.status(400).json({ error: home.error });
+    if (home.error) return refuseField(res, home.field, home.error);
     Object.assign(updates, home.updates);
     // Switching home access on/off is a security change, so it leaves a trace
     // (set/not set only — never the code).
@@ -132,15 +139,15 @@ router.put('/', requireManagement, async (req, res) => {
     if (jobFoldersBase !== undefined) {
       if (jobFoldersBase && jobFoldersBase.trim()) {
         if (!fs.existsSync(jobFoldersBase)) {
-          return res.status(400).json({ error: 'Job folders base path does not exist' });
+          return refuseField(res, 'jobFoldersBase', 'Job folders base path does not exist');
         }
 
         const stats = fs.statSync(jobFoldersBase);
         if (!stats.isDirectory()) {
-          return res.status(400).json({ error: 'Job folders base path is not a directory' });
+          return refuseField(res, 'jobFoldersBase', 'Job folders base path is not a directory');
         }
         if (isDriveOrShareRoot(jobFoldersBase)) {
-          return res.status(400).json({ error: JOB_FOLDERS_ROOT_MESSAGE });
+          return refuseField(res, 'jobFoldersBase', JOB_FOLDERS_ROOT_MESSAGE);
         }
       }
       updates.job_folders_base = jobFoldersBase || '';
@@ -149,9 +156,8 @@ router.put('/', requireManagement, async (req, res) => {
     // Validate inactivity timeout if provided
     if (inactivityTimeoutMinutes !== undefined) {
       if (!isInactivityMinutes(inactivityTimeoutMinutes)) {
-        return res.status(400).json({
-          error: `Inactivity timeout must be between ${INACTIVITY_MINUTES.min} and ${INACTIVITY_MINUTES.max} minutes`
-        });
+        return refuseField(res, 'inactivityTimeoutMinutes',
+          `Inactivity timeout must be between ${INACTIVITY_MINUTES.min} and ${INACTIVITY_MINUTES.max} minutes`);
       }
       updates.inactivity_timeout_minutes = String(parseInt(inactivityTimeoutMinutes, 10));
     }
@@ -166,7 +172,7 @@ router.put('/', requireManagement, async (req, res) => {
     const jobNumberNext = req.body.jobNumberNext;
     if (jobNumberNext !== undefined) {
       if (jobNumberNext && !isStartingJobNumber(jobNumberNext)) {
-        return res.status(400).json({ error: STARTING_JOB_NUMBER_MESSAGE });
+        return refuseField(res, 'jobNumberNext', STARTING_JOB_NUMBER_MESSAGE);
       }
 
       // Prevent setting the counter backward into a job number already handed out.
@@ -182,7 +188,7 @@ router.put('/', requireManagement, async (req, res) => {
           const error = highest.deleted
             ? `Starting number must be greater than ${paddedMax} — job ${effectivePrefix}${paddedMax} was used by a job that has since been deleted`
             : `Starting number must be greater than ${paddedMax} — job ${effectivePrefix}${paddedMax} already exists`;
-          return res.status(400).json({ error });
+          return refuseField(res, 'jobNumberNext', error);
         }
       }
 
