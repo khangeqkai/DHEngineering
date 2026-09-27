@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useId, forwardRef, useImperat
 import { createPortal } from 'react-dom';
 import {
   FolderOpen, Upload, Camera, X, ArrowLeft, Check, Printer, Save,
-  FileStack, Eye, ChevronDown, AlertTriangle
+  FileStack, Eye, ChevronDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCamera } from './useCamera';
@@ -18,7 +18,7 @@ import { isManagement } from '../../utils/roles';
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import './JobPaperworkHub.css';
 
-// One place for a job's paperwork: the generated job card plus the three file
+// One place for a job's paperwork: the generated job card plus the two file
 // folders. View, upload (file or camera) per folder, print a single item, or weld
 // a ticked selection into one combined packet to print or save. Available to every
 // user (workers included), so it lives on a header button, not an admin-only tab.
@@ -28,7 +28,7 @@ import './JobPaperworkHub.css';
 // unarchived — the server refuses those writes (closedJobGuard), so they aren't offered.
 // `onJobClosed` is the job screen's shared closed-job handler, for a write refused
 // because the job was closed from another PC while this one still had it open.
-function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, attachmentWarnings = null, parts = [], locked = false, onJobClosed }, ref) {
+function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, parts = [], locked = false, onJobClosed }, ref) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState('hub'); // 'hub' | 'camera'
   const [cameraCategory, setCameraCategory] = useState(null);
@@ -273,14 +273,12 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
     const list = files.filesByCategory[cat] || [];
     const loading = !!files.loadingByCategory[cat];
     const isJobFiles = cat === 'job-files';
-    const showQaWarning = cat === 'qa-form-files' && attachmentWarnings?.missingQaForms;
     const state = sectionState(cat);
     const pickedHere = list.filter(f => selected.has(keyOf(cat, f.name))).length;
     const canToggleGroup = list.length > 0;
-    // The "For:" picker (which part a file belongs to) only makes sense for the two
-    // folders that drive the missing-attachment warning, and only if the job has
-    // saved parts to choose from.
-    const showOwnerPicker = !locked && (cat === 'job-files' || cat === 'customer-property-files') && assignableParts.length > 0;
+    // The "For:" picker (which part a file belongs to) — both folders drive the
+    // missing-attachment warning — only if the job has saved parts to choose from.
+    const showOwnerPicker = !locked && assignableParts.length > 0;
     const targeted = attachTarget && attachTarget.category === cat;
     return (
       <div className={`hub-group${targeted ? ' hub-group--targeted' : ''}`} key={cat}>
@@ -299,11 +297,6 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
             <span className="hub-group-label">{CATEGORY_LABELS[cat]}</span>
             {canToggleGroup && <span className="hub-group-meta">{pickedHere}/{list.length}</span>}
           </button>
-          {showQaWarning && (
-            <span className="hub-group-warn" title="A completed quality form hasn't been brought back yet">
-              <AlertTriangle size={14} aria-hidden="true" /> form missing
-            </span>
-          )}
           <span className="hub-group-spacer" />
           {!locked && (
             <>

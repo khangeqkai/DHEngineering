@@ -30,8 +30,7 @@ const MAX_PACKET_INPUT_BYTES = 600 * 1024 * 1024;
 
 // The job card printout is generated per job as an HTML page and printed on demand.
 // Nothing is stored on disk — the on-screen job is the live record, so a saved
-// snapshot would only ever be stale. (Quality inspection forms are a separate
-// feature and still use uploaded per-QA-level PDF templates.)
+// snapshot would only ever be stale.
 
 const printRouter = express.Router();
 

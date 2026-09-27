@@ -235,8 +235,7 @@ const MAX_STORED_BASE_BYTES = 200;
  *   file is identifiable on disk and the missing-file check can match per part
  *   even after the parts are re-numbered.
  * - Job-level files get a 14-digit timestamp tag instead, so two uploads of the
- *   same name don't collide. (The returned-QA-form check relies on an uploaded
- *   form's name differing from a bare template name, which the tag guarantees.)
+ *   same name don't collide.
  * In both cases " (n)" is appended before the extension if the name exists.
  */
 function buildStorageFilename(folderPath, displayName, partCode) {
@@ -264,33 +263,6 @@ function buildStorageFilename(folderPath, displayName, partCode) {
     counter += 1;
   }
   return candidate;
-}
-
-/**
- * Returned quality forms are renamed to a clean, predictable "Completed Form N"
- * regardless of what the scanner/camera called the file, so the QA Forms list
- * reads "Completed Form 1, 2, 3…" instead of "scan001"/"photo_…". The next
- * number is one past the highest existing "Completed Form N" in the folder
- * (gaps from any future deletion are left as-is; numbering only goes forward).
- * The timestamp tag is still appended by buildStorageFilename, so the
- * returned-form detection (and collision safety) is unchanged.
- */
-function nextQaFormNumber(folderPath) {
-  let max = 0;
-  try {
-    for (const name of fs.readdirSync(folderPath)) {
-      const ext = path.extname(name);
-      const base = name.slice(0, name.length - ext.length);
-      const m = base.match(/^Completed Form (\d+)\b/);
-      if (m) {
-        const n = parseInt(m[1], 10);
-        if (n > max) max = n;
-      }
-    }
-  } catch {
-    // Unreadable/missing folder → treat as empty, start at 1.
-  }
-  return max + 1;
 }
 
 function listFolderFiles(folderPath) {
@@ -327,7 +299,7 @@ function listFolderFiles(folderPath) {
 // then nothing is known about the files, and callers must not report any of
 // them as missing. Used by the
 // attachment-warnings detector to tell whether a declared drawing / customer
-// property / returned QA form actually has a file.
+// property actually has a file.
 function listCategoryFileNames(jobcardId, categories) {
   const wanted = Array.isArray(categories) ? categories : [categories];
   const empty = Object.fromEntries(wanted.map(c => [c, []]));
@@ -472,17 +444,7 @@ function saveFile({ jobcardId, category, displayName, buffer, source, itemId, re
     fs.mkdirSync(folderRes.folderPath, { recursive: true });
   }
 
-  // A file brought back into the QA Forms folder is a completed inspection form.
-  // Give it a clean "Completed Form N" name (counting up) so the list is tidy,
-  // dropping whatever random name the scanner/camera produced. Other folders keep
-  // the uploaded name. QA forms are always job-level (no line-item code).
-  let effectiveName = displayName;
-  if (category === 'qa-form-files' && !partFileCode(itemId)) {
-    const ext = path.extname(displayName);
-    effectiveName = `Completed Form ${nextQaFormNumber(folderRes.folderPath)}${ext}`;
-  }
-
-  const storageFilename = buildStorageFilename(folderRes.folderPath, effectiveName, partFileCode(itemId));
+  const storageFilename = buildStorageFilename(folderRes.folderPath, displayName, partFileCode(itemId));
   const targetPath = path.join(folderRes.folderPath, storageFilename);
   if (!isWithinBase(folderRes.folderPath, targetPath)) {
     return res.status(403).json({ error: 'Path traversal detected' });
@@ -491,7 +453,7 @@ function saveFile({ jobcardId, category, displayName, buffer, source, itemId, re
   fs.writeFileSync(targetPath, buffer);
 
   recordHistory('jobcard', jobcardId, 'upload_file', req.user.userId, actorName(req),
-    { file: { from: null, to: effectiveName } },
+    { file: { from: null, to: displayName } },
     { destination: CATEGORY_FOLDER[category], source, itemId: itemId ?? null }
   );
 
@@ -634,7 +596,7 @@ router.post('/:id/files/:category/:filename/assign', authenticate, validateCateg
 
 // ─── Delete a stored file ───
 // Management-only: a file is a job's evidence (drawing, customer property,
-// returned quality form), and removing one can silently re-open a part's
+// inspection paperwork), and removing one can silently re-open a part's
 // missing-attachment warning, so it follows the same rule as deleting a note.
 router.delete('/:id/files/:category/:filename', authenticate, requireManagement, validateCategory, validateFilenameParam, (req, res) => {
   try {
@@ -670,7 +632,3 @@ module.exports.listCategoryFileNames = listCategoryFileNames;
 module.exports.partFileCode = partFileCode;
 module.exports.resolveJobFolder = resolveJobFolder;
 module.exports.resolveCategoryFolder = resolveCategoryFolder;
-// The base64-inflated char-length ceiling derived from the shared upload cap —
-// other routes accepting a base64 file upload (e.g. QA template uploads) import it
-// rather than keeping their own copy, so the limit can never drift between them.
-module.exports.MAX_FILE_DATA_CHARS = MAX_FILE_DATA_CHARS;

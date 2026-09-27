@@ -13,7 +13,7 @@ export default function FoldersCard({ s }) {
           <div className="setting-info">
             <div className="setting-label">Job Folders Base Path</div>
             <div className="setting-description">
-              Set the base folder where company and job card folders are automatically created. When a contact is created, a company folder is created here. When a job card is created, subfolders for Job Files, QA Forms, and Customer Property are created inside the company folder.
+              Set the base folder where company and job card folders are automatically created. When a contact is created, a company folder is created here. When a job card is created, subfolders for Job Files and Customer Property are created inside the company folder.
             </div>
           </div>
         </div>

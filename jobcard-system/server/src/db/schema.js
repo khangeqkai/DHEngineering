@@ -379,21 +379,9 @@ db.exec(`
     name TEXT NOT NULL,
     name_lower TEXT UNIQUE NOT NULL,
     is_active INTEGER DEFAULT 1,
-    requires_returned_form INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   );
-
-  -- QA Level Templates (PDF templates per level)
-  CREATE TABLE IF NOT EXISTS qa_level_templates (
-    id TEXT PRIMARY KEY,
-    qa_level_id TEXT NOT NULL,
-    file_name TEXT NOT NULL,
-    display_name TEXT NOT NULL,
-    uploaded_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    FOREIGN KEY (qa_level_id) REFERENCES qa_levels(id) ON DELETE CASCADE
-  );
-  CREATE INDEX IF NOT EXISTS idx_qa_level_templates_level ON qa_level_templates(qa_level_id);
 `);
 
 // Enforce "at most one open (running) timer per user" at the database level, so a
@@ -427,16 +415,20 @@ try {
 // all) — the list lives in its own module, in the style of columnMigrations.js.
 require('./columnDrops').dropDeadColumns();
 
-// Drop legacy qa_forms + documents tables (replaced by disk-first folders), and
+// Drop legacy qa_forms + documents tables (replaced by disk-first folders),
 // contact_people — an earlier shape for "several people at one company" that no
-// code reads; the people now live in the contacts table under a company.
+// code reads; the people now live in the contacts table under a company — and
+// qa_level_templates, the per-level quality-form templates, removed with the whole
+// quality-form template feature (dropping the table drops its index too). The
+// template PDFs an admin uploaded stay on disk under [base]/QA Levels/, untouched.
 try {
   db.exec('DROP TABLE IF EXISTS qa_forms');
   db.exec('DROP TABLE IF EXISTS documents');
   db.exec('DROP TABLE IF EXISTS contact_people');
-  logger.info('Migration: Dropped legacy qa_forms, documents and contact_people tables');
+  db.exec('DROP TABLE IF EXISTS qa_level_templates');
+  logger.info('Migration: Dropped legacy qa_forms, documents, contact_people and qa_level_templates tables');
 } catch (err) {
-  logger.error({ err }, 'Migration: Failed to drop qa_forms/documents tables');
+  logger.error({ err }, 'Migration: Failed to drop legacy tables');
 }
 
 // Drop superseded time_entries columns: the old single scrap count (now split into

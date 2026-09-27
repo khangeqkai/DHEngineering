@@ -245,8 +245,7 @@ router.get('/inactivity-timeout', (req, res) => {
 const TABLE_ORDER = [
   'settings', 'users', 'companies', 'contacts', 'suppliers', 'machines', 'tags',
   'qa_levels', 'supplier_service_tags', 'jobcards', 'job_items', 'job_assignees',
-  'job_notes', 'time_entries', 'job_costings',
-  'qa_level_templates', 'history'
+  'job_notes', 'time_entries', 'job_costings', 'history'
 ];
 
 const SCHEMA_VERSION = 1;

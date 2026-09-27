@@ -95,9 +95,9 @@ router.post('/attachment-warnings', authenticate, (req, res) => {
       if (!jc || jc.archived === 1) continue;
 
       const items = jobItemQueries.getByJobcard.all(id);
-      const w = computeAttachmentWarnings(id, items, jc.qa_level_id);
+      const w = computeAttachmentWarnings(id, items);
       if (w.hasAny) {
-        flagged.push({ jobcardId: id, items: w.items, missingQaForms: w.missingQaForms });
+        flagged.push({ jobcardId: id, items: w.items });
       }
     }
 
@@ -118,7 +118,7 @@ router.get('/:id', authenticate, (req, res) => {
     const assignees = jobAssigneeQueries.getByJobcard.all(req.params.id);
 
     const response = formatJobcard(jobcard, items, assignees, req.user.role);
-    response.attachmentWarnings = computeAttachmentWarnings(req.params.id, items, jobcard.qa_level_id);
+    response.attachmentWarnings = computeAttachmentWarnings(req.params.id, items);
     res.json(response);
   } catch (err) {
     logger.error({ err }, 'Get jobcard error');
@@ -366,7 +366,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
       const updated = jobcardQueries.getById.get(id);
       const items = jobItemQueries.getByJobcard.all(id);
       const response = formatJobcard(updated, items, [], req.user.role);
-      response.attachmentWarnings = computeAttachmentWarnings(id, items, updated.qa_level_id);
+      response.attachmentWarnings = computeAttachmentWarnings(id, items);
       res.json(response);
     };
     if (status === existing.status) return sendJob();
@@ -378,9 +378,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
 
     // Shared invoicing step (see jobcard-helpers.js) — the hard running-timer
     // refusal and the soft missing-attachments checkpoint, both before any write.
-    // This route never changes the QA level, so the check runs against the
-    // job's current one.
-    const invoicing = checkInvoicing(existing, status, existing.qa_level_id, req.body.confirmMissingAttachments);
+    const invoicing = checkInvoicing(existing, status, req.body.confirmMissingAttachments);
     if (invoicing.refusal) {
       return res.status(invoicing.refusal.status).json(invoicing.refusal.body);
     }

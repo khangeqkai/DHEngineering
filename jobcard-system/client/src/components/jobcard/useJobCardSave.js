@@ -5,7 +5,6 @@ import { validateJobCardForm } from './jobCardValidation.mjs';
 import { buildJobcardPayload } from './mappers';
 import { showFormErrors } from './jobCardPrompts';
 import { resolveJobContactId } from './jobCardContact';
-import { warningToastIcon } from '../common/toastIcons';
 import { fieldErrorsFromRefusal } from '../../hooks/useFieldErrors';
 
 // A 400's fields (validation.js's handleValidationErrors, S4) name whichever route
@@ -106,17 +105,9 @@ export function useJobCardSave({
       const result = await api.createJobcard(jobcardData);
 
       onSuccess?.();
-      // The quality-form warning is about the job just created, not whatever is
-      // on screen now, so it is shown even after the window has moved on — named
-      // by job number in that case so it can't be read as about the open job.
-      const moved = formHook.sessionRef.current !== sessionToken;
-      if (result?.qaTemplateWarning) {
-        const message = moved && result.jobNumber
-          ? `Job ${result.jobNumber}: ${result.qaTemplateWarning}`
-          : result.qaTemplateWarning;
-        toast(message, { icon: warningToastIcon, duration: 8000 });
-      }
-      if (moved) return;
+      // The window may have moved on to another job while this one was saving;
+      // then nothing about this reply belongs on screen.
+      if (formHook.sessionRef.current !== sessionToken) return;
       setAttachmentWarnings(result?.attachmentWarnings || null);
       onClose();
     } catch (err) {

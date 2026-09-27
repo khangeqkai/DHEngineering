@@ -1,26 +1,13 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const fs = require('fs');
-const path = require('path');
 
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
 const { validateCreateQaLevel, validateUpdateQaLevel } = require('../middleware/validation');
 const {
-  sanitizeFolderName,
-  isWithinBase,
-  findQaLevelFolder,
-  ensureQaLevelFolder,
-  renameQaLevelFolder
-} = require('../utils/folderCreation');
-const { decodeBase64Strict, assertMatchesExtension } = require('../utils/fileValidation');
-const { MAX_FILE_DATA_CHARS } = require('./jobcard-files');
-const {
   qaLevelQueries,
-  qaLevelTemplateQueries,
   recordHistory,
-  actorName,
-  getSettings
+  actorName
 } = require('../db/database');
 const { db } = require('../db/connection');
 const { findOr404 } = require('../utils/findOr404');
@@ -29,30 +16,12 @@ const { sameName } = require('../shared/names');
 
 const router = express.Router();
 
-function getQaLevelsBasePath() {
-  const settings = getSettings();
-  const base = settings.job_folders_base;
-  if (!base || !base.trim()) return null;
-  return path.join(base.trim(), 'QA Levels');
-}
-
 function formatLevel(row) {
   return {
     id: row.id,
     name: row.name,
-    requiresReturnedForm: row.requires_returned_form === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at
-  };
-}
-
-function formatTemplate(row) {
-  return {
-    id: row.id,
-    qaLevelId: row.qa_level_id,
-    fileName: row.file_name,
-    displayName: row.display_name,
-    uploadedAt: row.uploaded_at
   };
 }
 
@@ -61,20 +30,11 @@ router.get('/', authenticate, (req, res) => {
   try {
     const canManage = isManagement(req.user.role);
 
+    const levels = qaLevelQueries.getAll.all();
     if (canManage) {
-      const levels = qaLevelQueries.getAll.all();
-      const result = levels.map(level => {
-        const templates = qaLevelTemplateQueries.getByLevel.all(level.id);
-        return {
-          ...formatLevel(level),
-          templates: templates.map(formatTemplate),
-          templateCount: templates.length
-        };
-      });
-      res.json(result);
+      res.json(levels.map(formatLevel));
     } else {
-      // Non-admin: all levels, no templates
-      const levels = qaLevelQueries.getAll.all();
+      // Non-management: just the id and name the job screen's picker needs
       res.json(levels.map(level => ({
         id: level.id,
         name: level.name
@@ -86,17 +46,13 @@ router.get('/', authenticate, (req, res) => {
   }
 });
 
-// GET /api/qa-levels/:id - Get level with templates (admin or manager)
+// GET /api/qa-levels/:id - Get one level (admin or manager)
 router.get('/:id', authenticate, requireManagement, (req, res) => {
   try {
     const level = findOr404(res, qaLevelQueries.getById.get(req.params.id), 'QA level not found');
     if (!level) return;
 
-    const templates = qaLevelTemplateQueries.getByLevel.all(level.id);
-    res.json({
-      ...formatLevel(level),
-      templates: templates.map(formatTemplate)
-    });
+    res.json(formatLevel(level));
   } catch (err) {
     logger.error({ err }, 'Get QA level error');
     res.status(500).json({ error: 'Failed to get QA level' });
@@ -112,7 +68,6 @@ router.post('/',
     try {
       const { name } = req.body;
       const nameLower = name.trim().toLowerCase();
-      const requiresReturnedForm = req.body.requiresReturnedForm ? 1 : 0;
 
       // Check for duplicate name (capitals and repeated spaces ignored — the shared
       // sameName rule, so "High  Risk" can't sit beside "High Risk")
@@ -123,24 +78,14 @@ router.post('/',
 
       const id = `qa-level:${uuidv4()}`;
 
-      // Create the level's folder on disk with its permanent-id code in the name.
-      // Fire-and-forget: a storage error is logged and never blocks creation.
-      const basePath = getQaLevelsBasePath();
-      if (basePath) ensureQaLevelFolder(basePath, id, name.trim());
-
-      qaLevelQueries.create.run(id, name.trim(), nameLower, requiresReturnedForm);
+      qaLevelQueries.create.run(id, name.trim(), nameLower);
 
       recordHistory('qa_level', id, 'create', req.user.userId, actorName(req), {
-        name: { from: null, to: name.trim() },
-        requiresReturnedForm: { from: null, to: requiresReturnedForm ? 'Yes' : 'No' }
+        name: { from: null, to: name.trim() }
       });
 
       const created = qaLevelQueries.getById.get(id);
-      res.status(201).json({
-        ...formatLevel(created),
-        templates: [],
-        templateCount: 0
-      });
+      res.status(201).json(formatLevel(created));
     } catch (err) {
       logger.error({ err }, 'Create QA level error');
       res.status(500).json({ error: 'Failed to create QA level' });
@@ -164,8 +109,8 @@ router.put('/:id',
       const nameLower = name.trim().toLowerCase();
 
       // Check for duplicate name (different record), by the same rule as create.
-      // Only when the name really changes, so a level that already sits beside a
-      // spacing-only twin from before this rule can still have its switch edited.
+      // Only when the name really changes, so re-saving a level that already sits
+      // beside a spacing-only twin from before this rule isn't refused.
       const duplicate = sameName(name, existing.name) ? null : findNameClash(qaLevelQueries.getAll.all(), name, id);
       if (duplicate) {
         return res.status(400).json({ error: 'A QA level with this name already exists' });
@@ -185,68 +130,28 @@ router.put('/:id',
         });
       }
 
-      // Keep the existing setting when the field is omitted, so a name-only edit
-      // doesn't silently turn the "needs form back" switch off.
-      const requiresReturnedForm = req.body.requiresReturnedForm === undefined
-        ? existing.requires_returned_form
-        : (req.body.requiresReturnedForm ? 1 : 0);
-
-      // Can't require a form back when the level has no template to print — there'd
-      // be nothing to return. Block only the act of turning it ON; a name-only edit
-      // (or any edit) on a level that's already on is left alone.
-      if (requiresReturnedForm === 1 && existing.requires_returned_form !== 1) {
-        const templateCount = qaLevelTemplateQueries.getByLevel.all(id).length;
-        if (templateCount === 0) {
-          return res.status(400).json({ error: 'Upload a form template to this level before requiring its return.' });
-        }
-      }
-
       const changes = {};
       if (name.trim() !== existing.name) {
         changes.name = { from: existing.name, to: name.trim() };
-      }
-      if (requiresReturnedForm !== existing.requires_returned_form) {
-        changes.requiresReturnedForm = {
-          from: existing.requires_returned_form ? 'Yes' : 'No',
-          to: requiresReturnedForm ? 'Yes' : 'No'
-        };
       }
 
       // The level's row and every job already copied onto it are updated together:
       // a job's stored quality_level is that copy, and it must never be left
       // pointing at a name the level no longer has.
       const applyRename = db.transaction(() => {
-        qaLevelQueries.update.run(
-          name.trim(),
-          nameLower,
-          requiresReturnedForm,
-          id
-        );
+        qaLevelQueries.update.run(name.trim(), nameLower, id);
         if (changes.name) {
           qaLevelQueries.renameOnJobs.run(name.trim().toUpperCase(), id);
         }
       });
       applyRename();
 
-      // Best-effort cosmetic rename so the folder name tracks the level name.
-      // Lookups go by the code in the folder name, so a failed/skipped rename
-      // never strands templates — the folder is still found by its id.
-      if (changes.name) {
-        const basePath = getQaLevelsBasePath();
-        if (basePath) renameQaLevelFolder(basePath, id, name.trim());
-      }
-
       if (Object.keys(changes).length > 0) {
         recordHistory('qa_level', id, 'update', req.user.userId, actorName(req), changes);
       }
 
       const updated = qaLevelQueries.getById.get(id);
-      const templates = qaLevelTemplateQueries.getByLevel.all(id);
-      res.json({
-        ...formatLevel(updated),
-        templates: templates.map(formatTemplate),
-        templateCount: templates.length
-      });
+      res.json(formatLevel(updated));
     } catch (err) {
       logger.error({ err }, 'Update QA level error');
       res.status(500).json({ error: 'Failed to update QA level' });
@@ -270,18 +175,6 @@ router.delete('/:id', authenticate, requireManagement, (req, res) => {
       });
     }
 
-    // Delete level folder from disk, located by the code in its name (not the name).
-    const basePath = getQaLevelsBasePath();
-    const levelFolder = basePath ? findQaLevelFolder(basePath, id) : null;
-    if (levelFolder && isWithinBase(basePath, levelFolder)) {
-      try {
-        fs.rmSync(levelFolder, { recursive: true, force: true });
-        logger.info({ folderPath: levelFolder }, 'Deleted QA level folder');
-      } catch (err) {
-        logger.error({ err }, 'Failed to delete QA level folder');
-      }
-    }
-
     qaLevelQueries.delete.run(id);
 
     recordHistory('qa_level', id, 'delete', req.user.userId, actorName(req), {
@@ -292,163 +185,6 @@ router.delete('/:id', authenticate, requireManagement, (req, res) => {
   } catch (err) {
     logger.error({ err }, 'Delete QA level error');
     res.status(500).json({ error: 'Failed to delete QA level' });
-  }
-});
-
-// POST /api/qa-levels/:id/templates - Upload template PDF (admin or manager)
-router.post('/:id/templates', authenticate, requireManagement, (req, res) => {
-  try {
-    const { id } = req.params;
-    const { fileName, displayName, fileData } = req.body;
-
-    if (!fileName || !fileData) {
-      return res.status(400).json({ error: 'fileName and fileData (base64) are required' });
-    }
-
-    // Quality forms are PDFs only — checked by extension here (the magic-bytes
-    // check below only confirms a .pdf actually starts with %PDF; it doesn't
-    // reject a non-.pdf extension in the first place).
-    if (path.extname(fileName).toLowerCase() !== '.pdf') {
-      return res.status(400).json({ error: 'Quality forms must be PDF files' });
-    }
-
-    const level = findOr404(res, qaLevelQueries.getById.get(id), 'QA level not found');
-    if (!level) return;
-
-    const templateId = `qa-template:${uuidv4()}`;
-    const sanitizedFileName = sanitizeFolderName(path.parse(fileName).name) + path.extname(fileName);
-    const finalDisplayName = displayName || sanitizedFileName;
-
-    // One name, one form. The file on disk IS the form, so a second form under the same
-    // name would overwrite it and leave two records sharing one file — removing either one
-    // then takes the file away and breaks every job on this level. Checked before the write,
-    // ignoring case: Windows file names are case-insensitive, so "Inspection.pdf" and
-    // "inspection.pdf" are the same file on disk.
-    const lowerName = sanitizedFileName.toLowerCase();
-    if (qaLevelTemplateQueries.getByLevel.all(id).some(t => t.file_name.toLowerCase() === lowerName)) {
-      return res.status(409).json({
-        error: `This level already has a form called "${sanitizedFileName}". Remove that one first if you're replacing it, or rename the file.`
-      });
-    }
-
-    // Cap the upload the same way job file uploads are capped (one definition,
-    // imported — see jobcard-files.js), checked before decoding so an oversized
-    // payload is rejected cheaply rather than blown up into a buffer first.
-    if (fileData.length > MAX_FILE_DATA_CHARS) {
-      return res.status(400).json({ error: 'File too large (max 30 MB)' });
-    }
-
-    // Reject a corrupt/cut-off upload before creating any record. Templates are PDFs.
-    let buffer;
-    try {
-      buffer = decodeBase64Strict(fileData);
-      assertMatchesExtension(buffer, sanitizedFileName);
-    } catch (decodeErr) {
-      return res.status(400).json({ error: decodeErr.message });
-    }
-
-    // The file on disk IS the template: a record with no file behind it makes every
-    // later job on this level fail its pre-save check ("missing form file"). So the
-    // write must succeed before any record is added — no folder, no record. The folder
-    // is located (or created) by the code in its name, so the level name can change.
-    const basePath = getQaLevelsBasePath();
-    if (!basePath) {
-      return res.status(400).json({ error: 'Set the job folders location in Settings before uploading a form.' });
-    }
-    const levelFolder = ensureQaLevelFolder(basePath, level.id, level.name);
-    if (!levelFolder) {
-      return res.status(500).json({ error: "Couldn't create this level's folder under the job folders location. Check the drive is reachable and try again." });
-    }
-    const filePath = path.join(levelFolder, sanitizedFileName);
-    if (!isWithinBase(levelFolder, filePath)) {
-      return res.status(400).json({ error: 'Invalid file name' });
-    }
-    try {
-      fs.writeFileSync(filePath, buffer);
-      logger.info({ filePath }, 'Saved QA template file');
-    } catch (err) {
-      logger.error({ err, filePath }, 'Failed to save QA template file');
-      return res.status(500).json({ error: "Couldn't write the form file to the job folders location. Check the drive is reachable and try again." });
-    }
-
-    qaLevelTemplateQueries.create.run(templateId, id, sanitizedFileName, finalDisplayName);
-
-    recordHistory('qa_level', id, 'add_template', req.user.userId, actorName(req), {
-      template: { from: null, to: finalDisplayName }
-    });
-
-    const template = qaLevelTemplateQueries.getById.get(templateId);
-    res.status(201).json(formatTemplate(template));
-  } catch (err) {
-    logger.error({ err }, 'Upload QA template error');
-    res.status(500).json({ error: 'Failed to upload template' });
-  }
-});
-
-// GET /api/qa-levels/:id/templates - List templates (admin or manager)
-router.get('/:id/templates', authenticate, requireManagement, (req, res) => {
-  try {
-    const level = findOr404(res, qaLevelQueries.getById.get(req.params.id), 'QA level not found');
-    if (!level) return;
-
-    const templates = qaLevelTemplateQueries.getByLevel.all(req.params.id);
-    res.json(templates.map(formatTemplate));
-  } catch (err) {
-    logger.error({ err }, 'Get QA templates error');
-    res.status(500).json({ error: 'Failed to get templates' });
-  }
-});
-
-// DELETE /api/qa-levels/:id/templates/:tid - Delete template (admin or manager)
-router.delete('/:id/templates/:tid', authenticate, requireManagement, (req, res) => {
-  try {
-    const { id, tid } = req.params;
-
-    const templateRow = qaLevelTemplateQueries.getById.get(tid);
-    const template = findOr404(res, templateRow && templateRow.qa_level_id === id ? templateRow : null, 'Template not found');
-    if (!template) return;
-
-    const level = qaLevelQueries.getById.get(id);
-
-    // A level that needs a completed form back must always have at least one
-    // template to print — otherwise there'd be nothing to fill in and return.
-    // PUT /:id already blocks turning the switch ON with zero templates; this
-    // blocks reaching the same invalid state the other way, by deleting the
-    // last template while the switch is already on.
-    if (level && level.requires_returned_form === 1) {
-      const remaining = qaLevelTemplateQueries.getByLevel.all(id).filter(t => t.id !== tid);
-      if (remaining.length === 0) {
-        return res.status(409).json({
-          error: 'This is the only form for a level that needs a completed form back. Upload the replacement first, or turn off \'needs a completed form back\', then delete this one.'
-        });
-      }
-    }
-
-    // Delete file from disk, locating the level folder by the code in its name.
-    const basePath = getQaLevelsBasePath();
-    const levelFolder = basePath && level ? findQaLevelFolder(basePath, level.id) : null;
-    if (levelFolder) {
-      const filePath = path.join(levelFolder, template.file_name);
-      try {
-        if (isWithinBase(levelFolder, filePath) && fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-          logger.info({ filePath }, 'Deleted QA template file');
-        }
-      } catch (err) {
-        logger.error({ err }, 'Failed to delete QA template file');
-      }
-    }
-
-    qaLevelTemplateQueries.delete.run(tid);
-
-    recordHistory('qa_level', id, 'remove_template', req.user.userId, actorName(req), {
-      template: { from: template.display_name, to: null }
-    });
-
-    res.json({ success: true });
-  } catch (err) {
-    logger.error({ err }, 'Delete QA template error');
-    res.status(500).json({ error: 'Failed to delete template' });
   }
 });
 

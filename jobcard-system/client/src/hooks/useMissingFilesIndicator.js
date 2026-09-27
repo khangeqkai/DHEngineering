@@ -5,8 +5,8 @@ import { api } from '../services/api';
 // so a row never sits on the loading hint forever when the visible set is static.
 const RETRY_DELAY_MS = 3000;
 
-// Tracks which job cards declared a drawing / customer property / quality forms
-// but have no matching file attached, so the job list can mark those rows.
+// Tracks which job cards declared a drawing / customer property but have no
+// matching file attached, so the job list can mark those rows.
 //
 // Checking is done per page, not for every job at once: the list asks to check
 // only the rows currently on screen (`ensure`), results are remembered, and a

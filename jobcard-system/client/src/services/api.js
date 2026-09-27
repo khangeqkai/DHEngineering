@@ -266,7 +266,7 @@ class ApiService {
     if (confirmMissingAttachments) body.confirmMissingAttachments = true;
     return this._patch(`/jobcards/${id}/status`, body);
   }
-  // Active jobs that declared a drawing / customer property / quality forms but
+  // Active jobs that declared a drawing / customer property but
   // have no matching file attached — used to flag rows in the job list.
   getAttachmentWarnings(ids) { return this._post('/jobcards/attachment-warnings', { ids: ids || [] }); }
   unarchiveJobcard(id) { return this._post(`/jobcards/${id}/unarchive`); }
@@ -312,7 +312,7 @@ class ApiService {
   updateCosting(jobcardId, data) { return this._put(`/jobcards/${jobcardId}/costing`, data); }
 
   // Job card files (disk-first; one folder per category per job).
-  // category: 'job-files' | 'qa-form-files' | 'customer-property-files'
+  // category: 'job-files' | 'customer-property-files'
   listJobcardFiles(jobcardId, category) {
     return this.request(`/jobcards/${jobcardId}/files/${category}`);
   }
@@ -444,8 +444,6 @@ class ApiService {
   createQaLevel(data) { return this._post('/qa-levels', data); }
   updateQaLevel(id, data) { return this._put(`/qa-levels/${id}`, data); }
   deleteQaLevel(id) { return this._del(`/qa-levels/${id}`); }
-  uploadQaTemplate(levelId, data) { return this._post(`/qa-levels/${levelId}/templates`, data); }
-  deleteQaTemplate(levelId, templateId) { return this._del(`/qa-levels/${levelId}/templates/${templateId}`); }
 
   // Statistics
   getStatistics(params = {}) {

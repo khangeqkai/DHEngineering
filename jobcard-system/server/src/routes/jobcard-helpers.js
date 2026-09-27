@@ -7,8 +7,6 @@ const {
   jobcardQueries,
   jobItemQueries,
   jobAssigneeQueries,
-  qaLevelQueries,
-  qaLevelTemplateQueries,
   tagQueries,
   getSettings
 } = require('../db/database');
@@ -16,7 +14,7 @@ const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
 const { diffFields } = require('../utils/historyChanges');
 const { officeDateString } = require('../utils/officeTime');
 const { formatDayAu } = require('../shared/calendarDate');
-const { NA_ANSWER, splitAnswer, isNaAnswer, declaresAnswer } = require('../shared/lineItemAnswers');
+const { splitAnswer, isNaAnswer, declaresAnswer } = require('../shared/lineItemAnswers');
 
 // Customer/contact fields hidden from non-admins. Used both when formatting a
 // job card and when sanitizing a job card's history so the two protections stay
@@ -84,17 +82,16 @@ function itemFileDisplayNames(names, itemId) {
 // declarations against what's actually on disk:
 //   - a drawing declared but no file named for that part in Job Files
 //   - customer property declared but no file named for that part in Customer Property
-//   - a QA level set but no returned (timestamp-named) form in QA Forms
 // Items may be DB rows (snake_case) or formatted/request items (camelCase).
 // No-ops safely (hasAny:false) when job-folders storage isn't configured, and
 // the same when the storage location can't be reached (drive or share offline)
 // — then nothing is known about the files, so nothing is flagged; that result
 // also carries `filesUnreachable: true`.
-function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null) {
+function computeAttachmentWarnings(jobcardId, items = []) {
   const { listCategoryFileNames, partFileCode } = require('./jobcard-files');
   const settings = getSettings();
   if (!settings.job_folders_base || !settings.job_folders_base.trim()) {
-    return { items: [], missingQaForms: false, hasAny: false, attachedByItem: {} };
+    return { items: [], hasAny: false, attachedByItem: {} };
   }
 
   // Normalise items once — they may be DB rows (snake_case) or formatted/request
@@ -114,28 +111,20 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null) {
   }));
 
   // Work out what actually needs checking before touching the disk, so a job
-  // that declared nothing (and needs no quality form) does no folder reads.
+  // that declared nothing does no folder reads.
   const anyDrawing = normItems.some(it => declaresAnswer(it.drawings));
   const anyProperty = normItems.some(it => declaresAnswer(it.customerProperty));
-  // A job needs a returned quality form only if its QA level has a template attached
-  // AND the level is switched to "requires completed form returned". Print-only levels
-  // (switch off) still get their templates copied/pre-filled on save, but never nag.
-  const qaTemplates = qaLevelId ? qaLevelTemplateQueries.getByLevel.all(qaLevelId) : [];
-  const qaLevel = qaLevelId ? qaLevelQueries.getById.get(qaLevelId) : null;
-  const needsQa = qaTemplates.length > 0 && !!(qaLevel && qaLevel.requires_returned_form);
-
-  if (!anyDrawing && !anyProperty && !needsQa) {
-    return { items: [], missingQaForms: false, hasAny: false, attachedByItem: {} };
+  if (!anyDrawing && !anyProperty) {
+    return { items: [], hasAny: false, attachedByItem: {} };
   }
 
   // Read only the category folders we need, in one job-folder resolve.
   const categories = [];
   if (anyDrawing) categories.push('job-files');
   if (anyProperty) categories.push('customer-property-files');
-  if (needsQa) categories.push('qa-form-files');
   const fileNames = listCategoryFileNames(jobcardId, categories);
   if (!fileNames) {
-    return { items: [], missingQaForms: false, hasAny: false, attachedByItem: {}, filesUnreachable: true };
+    return { items: [], hasAny: false, attachedByItem: {}, filesUnreachable: true };
   }
   const jobFileNames = fileNames['job-files'] || [];
   const customerPropertyNames = fileNames['customer-property-files'] || [];
@@ -170,38 +159,17 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null) {
     }
   });
 
-  // The blank templates are copied (bare-named) into the QA Forms folder when the
-  // job is created; a completed form is brought back in via the upload route,
-  // which stamps a 14-digit timestamp tag at the end of the name
-  // ("{name} [{timestamp}]", or "... (n)" on a clash). Detect a returned form by
-  // that positive marker — NOT by "any file that isn't a template name", which
-  // would let any unrelated file (or a stray blank template) dropped in the
-  // folder falsely clear the missing-form warning. The real gap is "no stamped
-  // form returned yet".
-  let missingQaForms = false;
-  if (needsQa) {
-    const returnedTag = /\[\d{14}\](?: \(\d+\))?$/;
-    const qaNames = fileNames['qa-form-files'] || [];
-    const hasReturnedForm = qaNames.some(name =>
-      returnedTag.test(name.slice(0, name.length - path.extname(name).length))
-    );
-    missingQaForms = !hasReturnedForm;
-  }
-
-  return { items: flagged, missingQaForms, hasAny: flagged.length > 0 || missingQaForms, attachedByItem };
+  return { items: flagged, hasAny: flagged.length > 0, attachedByItem };
 }
 
 // ─── Invoicing (shared by PUT /jobcards/:id and PATCH /jobcards/:id/status) ───
 // A job's status moving to INVOICED also files it away (archived + invoicedDate)
 // — see docs/notes/jobs-and-status.md. Both routes that can make this transition
 // run the exact same checks, in the same order, before any write; this is that
-// one shared step. `qaLevelId` is the level to check attachments against — the
-// full job save passes its just-validated new value (a QA level can change in
-// the same request), the status-only route passes the job's unchanged current
-// value. Returns `refusal` (a `{ status, body }` to send as-is) when the
+// one shared step. Returns `refusal` (a `{ status, body }` to send as-is) when the
 // transition must be blocked, otherwise `shouldArchive`/`invoicedDate` for the
 // caller to act on inside its own write transaction via applyInvoicingArchive.
-function checkInvoicing(existing, newStatus, qaLevelId, confirmMissingAttachments) {
+function checkInvoicing(existing, newStatus, confirmMissingAttachments) {
   const shouldArchive = newStatus === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
   if (!shouldArchive) {
     return { shouldArchive: false, invoicedDate: null, refusal: null };
@@ -222,7 +190,7 @@ function checkInvoicing(existing, newStatus, qaLevelId, confirmMissingAttachment
   // rather than letting an unchecked job be invoiced and archived silently.
   if (confirmMissingAttachments !== true) {
     const items = jobItemQueries.getByJobcard.all(existing.id);
-    const warnings = computeAttachmentWarnings(existing.id, items, qaLevelId);
+    const warnings = computeAttachmentWarnings(existing.id, items);
     if (warnings.hasAny || warnings.filesUnreachable) {
       const error = warnings.filesUnreachable ? 'FILES_UNREACHABLE' : 'MISSING_ATTACHMENTS';
       return {
@@ -382,91 +350,15 @@ function serializeTreatments(treatments) {
   return JSON.stringify(treatments);
 }
 
-// From the one shared jobStatuses.json (also read by the client's STATUS_OPTIONS,
-// client/src/components/jobcard/constants.js). Used only to keep the QA form's
-// printed status word human-readable.
-const STATUS_LABELS = Object.fromEntries(jobStatuses.statuses.map(s => [s.value, s.label]));
-
 // Friendly, comma-joined label for a stored multi-value tag field (drawings /
 // customer property), matching exactly how the job card printout shows them
 // (buildJobCardView below): the explicit "N/A" sentinel reads as "N/A" and
-// everything else resolves through tagName — so a QA form and the job card
-// never disagree on what a stored code means.
+// everything else resolves through tagName — so the activity trail and the job
+// card never disagree on what a stored code means.
 function friendlyTagList(raw, category) {
   if (isNaAnswer(raw)) return 'N/A';
   const vals = splitAnswer(raw);
   return [...new Set(vals.map(v => tagName(category, v)))].join(', ');
-}
-
-// Build the data object passed to copyQaTemplatesForJob for PDF pre-fill,
-// straight off the job's own saved row — both call sites (job create, after the
-// row is committed; a QA level change) hand this the job's id and its just-decided
-// quality-level label instead of building their own field list, so a quality form
-// can never disagree with the job it was filled from. Loads current items from DB
-// and aggregates treatments/job types across them. Every code/enum value is
-// resolved to the same human-readable label the job card printout uses (tagName,
-// PRIORITY_LABELS, STATUS_LABELS, formatDayAu), and every date goes through the
-// same AU-date formatting — a quality form is a file any worker can open, so it
-// must never show a raw internal code like ZINC_PLATE, N_A or SAME_DAY, or a raw
-// ISO timestamp.
-function qaFillDataForJob(jobcardId, qualityLevelName) {
-  const jc = jobcardQueries.getById.get(jobcardId);
-  const fields = {
-    jobNumber: jc.job_number,
-    status: jc.status,
-    companyId: jc.company_id,
-    companyName: jc.company_name,
-    description: jc.description,
-    priority: jc.priority || 'NONE',
-    dueDate: jc.due_date,
-    qualityLevel: qualityLevelName,
-    poNumber: jc.po_number,
-    quoteReference: jc.quote_reference,
-    repeatJob: jc.is_repeat_job === 1 ? 'Yes' : 'No',
-    repeatJobReference: jc.repeat_job_reference
-  };
-
-  const items = jobItemQueries.getByJobcard.all(jobcardId);
-  const itemsForPdf = items.map(i => ({
-    itemNumber: i.item_number,
-    qty: i.qty,
-    description: i.description,
-    jobType: tagName('job_type', i.job_type),
-    material: tagName('material', i.material),
-    treatments: parseTreatments(i.treatments).map(t => ({ ...t, value: tagName('treatment', t.value) })),
-    drawingsType: friendlyTagList(i.drawings_type, 'drawings'),
-    customerProperty: friendlyTagList(i.customer_property, 'customer_property')
-  }));
-  const allTreatments = itemsForPdf.flatMap(i => i.treatments).map(t => {
-    const name = t.value;
-    return t.supplierName ? `${name} - ${t.supplierName}` : name;
-  });
-  const allJobTypes = [...new Set(itemsForPdf.map(i => i.jobType).filter(Boolean))];
-  // Drawings + customer property now live per line item; aggregate them across
-  // the job so the job-level PDF fields still fill — de-duped per single value
-  // (not per part's whole list, or "A, B" and "A" would repeat A), resolved to
-  // the friendly label, with "N/A" excluded since it isn't a declared value.
-  const jobTagList = (field, category) => [...new Set(items
-    .flatMap(i => splitAnswer(i[field]))
-    .filter(v => v !== NA_ANSWER)
-    .map(v => tagName(category, v)))];
-  const allDrawings = jobTagList('drawings_type', 'drawings');
-  const allProperty = jobTagList('customer_property', 'customer_property');
-  return {
-    ...fields,
-    // The job's creation date, formatted for any "date created" PDF field — the
-    // office's own day, same as the printout.
-    dateCreated: formatDayAu(officeDateString(new Date(jc.created_at))),
-    // A due date is a bare calendar day, never read through a Date/time zone.
-    dueDate: fields.dueDate ? formatDayAu(fields.dueDate) : fields.dueDate,
-    priority: fields.priority ? (PRIORITY_LABELS[fields.priority] || fields.priority) : fields.priority,
-    status: fields.status ? (STATUS_LABELS[fields.status] || fields.status) : fields.status,
-    jobType: allJobTypes.join(', ') || null,
-    treatmentRequired: allTreatments.join(', ') || null,
-    drawingsType: allDrawings.join(', ') || null,
-    customerProperty: allProperty.join(', ') || null,
-    items: itemsForPdf
-  };
 }
 
 // ─── Job card printout (generated HTML) ───
@@ -604,9 +496,4 @@ function createRelatedRecords(jobcardId, data) {
   }
 }
 
-// Copying a QA level's templates onto disk (copyQaTemplatesForJob) and the
-// pre-save availability check (verifyQaTemplatesAvailable) now live in
-// utils/qaTemplateProvisioning.js — extracted out of this file (a straight
-// lift, no behaviour change) because it was getting long.
-
-module.exports = { formatJobcard, customerFields, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, partQtyText, qaFillDataForJob, buildJobCardView, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive, tagName, friendlyTagList };
+module.exports = { formatJobcard, customerFields, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, partQtyText, buildJobCardView, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive, tagName, friendlyTagList };

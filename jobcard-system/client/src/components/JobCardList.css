@@ -188,8 +188,8 @@
   50%      { opacity: 0.5; transform: scale(1.3); }
 }
 
-/* Marker on rows whose declared drawings / customer property / quality forms
-   have no attached file yet. Amber by default; turns red when the gap is
+/* Marker on rows whose declared drawings / customer property have no
+   attached file yet. Amber by default; turns red when the gap is
    blocking (see .missing-files-blocking). */
 .missing-files-indicator {
   position: relative;
@@ -208,7 +208,7 @@
   cursor: help;
 }
 
-/* Blocking variant: a missing drawing or quality form shouldn't ship, so the
+/* Blocking variant: a missing drawing shouldn't ship, so the
    badge turns red instead of amber. */
 .missing-files-blocking {
   background: rgba(var(--danger-rgb), 0.16);

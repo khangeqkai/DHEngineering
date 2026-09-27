@@ -2,7 +2,7 @@
 // what a job declared but has no file attached for. Shared by the close-out
 // confirm dialog on both the job card screen and the job list so they speak the
 // same language. Returns an array of strings, e.g.
-//   ["Drawing — part 2", "Customer property — part 3", "Quality form"]
+//   ["Drawing — part 2", "Customer property — part 3"]
 //
 // The server states each flagged item's `position` directly — the job's full
 // ordered parts list is exactly what it already has in hand when it builds this
@@ -19,7 +19,6 @@ export function describeAttachmentGaps(warnings) {
   const gaps = [];
   if (drawingItems.length) gaps.push(`Drawing — part ${drawingItems.join(', ')}`);
   if (propertyItems.length) gaps.push(`Customer property — part ${propertyItems.join(', ')}`);
-  if (warnings.missingQaForms) gaps.push('Quality form');
   return gaps;
 }
 
@@ -49,15 +48,14 @@ export function describeWorkWarning(warning) {
   return lines;
 }
 
-// Decide how loudly to flag a job's missing attachments. A missing drawing or
-// quality form is treated as blocking (it shouldn't go out the door without
-// them), so it reads red; a missing customer property is only a soft warning
+// Decide how loudly to flag a job's missing attachments. A missing drawing is
+// treated as blocking (it shouldn't go out the door without it), so it reads red; a missing customer property is only a soft warning
 // (amber); no declared gaps is fine (green). Returns 'blocking' | 'warning' | 'ok'.
 export function attachmentSeverity(warnings) {
   if (!warnings) return 'ok';
   const items = warnings.items || [];
   const missingDrawing = items.some(i => i.missingDrawing);
-  if (missingDrawing || warnings.missingQaForms) return 'blocking';
+  if (missingDrawing) return 'blocking';
   if (items.some(i => i.missingCustomerProperty)) return 'warning';
   return 'ok';
 }

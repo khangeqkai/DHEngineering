@@ -6,12 +6,12 @@ const qaLevelQueries = {
   getById: db.prepare('SELECT * FROM qa_levels WHERE id = ?'),
 
   create: db.prepare(`
-    INSERT INTO qa_levels (id, name, name_lower, is_active, requires_returned_form, created_at, updated_at)
-    VALUES (?, ?, ?, 1, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    INSERT INTO qa_levels (id, name, name_lower, is_active, created_at, updated_at)
+    VALUES (?, ?, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare(`
-    UPDATE qa_levels SET name = ?, name_lower = ?, requires_returned_form = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    UPDATE qa_levels SET name = ?, name_lower = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
@@ -22,26 +22,12 @@ const qaLevelQueries = {
 
   // Cascade a rename onto every job already on this level, so the copied label
   // (jobcards.quality_level) never drifts from the level's current name — the
-  // job list, search and the invoice-gate's CRITICAL checklist all key off that
-  // copied name, not off qa_level_id. Deliberately leaves updated_at alone (a
+  // job list, search and the Critical stop-timer inspection sign-off all key off
+  // that copied name, not off qa_level_id. Deliberately leaves updated_at alone (a
   // level rename isn't an edit to the job itself, so it must not re-sort the list).
   renameOnJobs: db.prepare('UPDATE jobcards SET quality_level = ? WHERE qa_level_id = ?')
 };
 
-// QA Level Template queries
-const qaLevelTemplateQueries = {
-  getByLevel: db.prepare('SELECT * FROM qa_level_templates WHERE qa_level_id = ? ORDER BY display_name ASC'),
-  getById: db.prepare('SELECT * FROM qa_level_templates WHERE id = ?'),
-
-  create: db.prepare(`
-    INSERT INTO qa_level_templates (id, qa_level_id, file_name, display_name, uploaded_at)
-    VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-  `),
-
-  delete: db.prepare('DELETE FROM qa_level_templates WHERE id = ?')
-};
-
 module.exports = {
-  qaLevelQueries,
-  qaLevelTemplateQueries
+  qaLevelQueries
 };

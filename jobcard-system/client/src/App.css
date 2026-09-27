@@ -714,25 +714,6 @@ select.has-retired option.retired-option {
   letter-spacing: normal;
 }
 
-/* Inline "form must be returned" toggle on each QA level row */
-.qa-level-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-tight);
-  cursor: pointer;
-  position: relative;
-  margin-right: var(--space-2);
-}
-
-.qa-level-toggle-text {
-  font-size: var(--text-xs);
-  font-weight: var(--font-bold);
-  color: var(--text-secondary);
-  white-space: nowrap;
-  text-transform: none;
-  letter-spacing: normal;
-}
-
 /* Required indicator */
 .required {
   color: var(--danger-ink);
@@ -2036,11 +2017,6 @@ div[data-hot-toast] > div {
   min-width: 12rem;
 }
 
-.qa-level-meta {
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-
 .qa-level-actions {
   display: flex;
   align-items: center;
@@ -2063,79 +2039,6 @@ div[data-hot-toast] > div {
 .badge-warning {
   background: var(--badge-pending-bg);
   color: var(--badge-pending-text);
-}
-
-.qa-level-templates {
-  padding: var(--space-3) var(--space-5) var(--space-4);
-  border-top: 1px solid var(--border-color);
-  background: var(--surface);
-}
-
-.template-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1-5);
-  margin-bottom: var(--space-3);
-}
-
-.template-item {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-tight);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  padding: var(--space-1) 0;
-}
-
-.template-name {
-  font-weight: var(--font-regular);
-  color: var(--text-primary);
-}
-
-.template-file {
-  color: var(--text-tertiary);
-  font-size: var(--text-xs);
-}
-
-.template-empty {
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-  font-style: italic;
-  margin-bottom: var(--space-3);
-}
-
-.template-upload {
-  display: flex;
-}
-
-.upload-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gap-inline);
-  cursor: pointer;
-}
-
-.qa-level-templates .btn-icon {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: var(--space-1);
-  border-radius: var(--radius-sm);
-  color: var(--text-tertiary);
-  display: flex;
-  align-items: center;
-  margin-left: auto;
-  box-shadow: none;
-  min-width: auto;
-  height: auto;
-}
-
-.qa-level-templates .btn-icon:hover {
-  color: var(--text-primary);
-}
-
-.qa-level-templates .btn-icon-danger:hover {
-  color: var(--danger-ink);
 }
 
 .form-help {

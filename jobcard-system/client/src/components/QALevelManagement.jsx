@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase } from '../utils/formatters';
-import { Plus, Trash2, Save, Upload, FileText, Pencil } from 'lucide-react';
+import { Plus, Trash2, Save, Pencil } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
@@ -10,9 +10,6 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useManagedListPage } from '../hooks/useManagedListPage';
 import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
 import FieldError from './common/FieldError';
-import { readFileAsBase64 } from '../utils/fileData';
-import { MAX_UPLOAD_BYTES } from '../../../server/src/shared/jobFiles';
-import { FOLDER_NAME_MAX } from '../../../server/src/shared/names';
 
 // Which box on the new-level form each field named in a server refusal belongs to.
 const QA_FORM_BOXES = { name: 'name' };
@@ -26,10 +23,8 @@ export default function QALevelManagement() {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ name: '' });
   const [saving, setSaving] = useState(false);
-  const [togglingId, setTogglingId] = useState(null);
   const [editingNameId, setEditingNameId] = useState(null);
   const [editingNameValue, setEditingNameValue] = useState('');
-  const [uploadingTemplate, setUploadingTemplate] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   // 'name' -> the new-level form's own box; 'renameName' -> the inline rename box
   // (editingNameValue), which only exists while a row is being renamed.
@@ -62,13 +57,6 @@ export default function QALevelManagement() {
       scrollFieldIntoView('name');
       return;
     }
-    // The name becomes the level's folder on disk, so it has a length cap (the
-    // server applies the same one).
-    if (formData.name.trim().length > FOLDER_NAME_MAX) {
-      setFieldErrors({ name: `Name cannot exceed ${FOLDER_NAME_MAX} characters` });
-      scrollFieldIntoView('name');
-      return;
-    }
 
     setSaving(true);
     try {
@@ -90,8 +78,7 @@ export default function QALevelManagement() {
     setEditingNameValue(level.name);
   };
 
-  // Save an inline rename (called from the title field's blur / Enter). Sends only the
-  // name so the level's "requires returned form" switch is left exactly as it was.
+  // Save an inline rename (called from the title field's blur / Enter).
   const commitRename = async (level) => {
     const name = toTitleCase(editingNameValue.trim());
     if (!name) {
@@ -101,12 +88,6 @@ export default function QALevelManagement() {
       // helper focuses the field, which would bounce the caret straight back in
       // and trap it. The row is already on screen, so the mark is enough.
       setFieldErrors({ renameName: 'Name is required' });
-      return;
-    }
-    // Same cap as the new-level form; a level already saved with a longer name
-    // passes as long as the name is left as it was.
-    if (name.length > FOLDER_NAME_MAX && name !== level.name) {
-      setFieldErrors({ renameName: `Name cannot exceed ${FOLDER_NAME_MAX} characters` });
       return;
     }
     setEditingNameId(null);
@@ -119,23 +100,6 @@ export default function QALevelManagement() {
     } catch (err) {
       setLevels(prev => prev.map(l => l.id === level.id ? { ...l, name: level.name } : l));
       toast.error(err.message || 'Failed to rename QA level');
-    }
-  };
-
-  // Flip the "requires completed form returned" switch straight from the level's row.
-  // Sends the unchanged name plus the new flag so the existing update route applies it
-  // (an unchanged name skips the rename/duplicate checks). Optimistic; reverts on failure.
-  const handleToggleReturnedForm = async (level) => {
-    const next = !level.requiresReturnedForm;
-    setTogglingId(level.id);
-    setLevels(prev => prev.map(l => l.id === level.id ? { ...l, requiresReturnedForm: next } : l));
-    try {
-      await api.updateQaLevel(level.id, { name: level.name, requiresReturnedForm: next });
-    } catch (err) {
-      setLevels(prev => prev.map(l => l.id === level.id ? { ...l, requiresReturnedForm: !next } : l));
-      toast.error(err.message || 'Failed to update QA level');
-    } finally {
-      setTogglingId(null);
     }
   };
 
@@ -157,75 +121,6 @@ export default function QALevelManagement() {
     }
   };
 
-  // One hidden file box serves every level's Upload button: the button notes which
-  // level it is for, then opens the box.
-  const templateInputRef = useRef(null);
-  const pendingTemplateLevel = useRef(null);
-  const pickTemplate = (levelId) => {
-    pendingTemplateLevel.current = levelId;
-    templateInputRef.current?.click();
-  };
-
-  const handleFileUpload = async (levelId, e) => {
-    const input = e.target;
-    const file = input.files?.[0];
-    if (!file) return;
-
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      toast.error('Only PDF files are allowed');
-      input.value = '';
-      return;
-    }
-
-    // Same cap as a job-file upload — checked here so an oversized template is
-    // caught before the base64 encode/send, not only by the server's size limit.
-    if (file.size > MAX_UPLOAD_BYTES) {
-      toast.error('This file is too large (max 30 MB)');
-      input.value = '';
-      return;
-    }
-
-    setUploadingTemplate(true);
-    // Reading and sending a large PDF takes a noticeable moment — say so while it
-    // runs, then turn the same message into the result.
-    const toastId = toast.loading('Uploading template…');
-    try {
-      const fileData = await readFileAsBase64(file);
-
-      await api.uploadQaTemplate(levelId, {
-        fileName: file.name,
-        displayName: file.name.replace(/\.pdf$/i, ''),
-        fileData
-      });
-
-      toast.success('Template uploaded', { id: toastId });
-      await loadData();
-    } catch (err) {
-      toast.error(err.message || 'Failed to upload template', { id: toastId });
-    } finally {
-      setUploadingTemplate(false);
-      input.value = '';
-    }
-  };
-
-  const handleDeleteTemplate = async (levelId, template) => {
-    const confirmed = await showConfirm({
-      title: 'Delete Template',
-      message: `Delete template "${template.displayName}"?`,
-      confirmLabel: 'Delete',
-      confirmVariant: 'danger'
-    });
-    if (!confirmed) return;
-
-    try {
-      await api.deleteQaTemplate(levelId, template.id);
-      toast.success('Template deleted');
-      await loadData();
-    } catch (err) {
-      toast.error(err.message || 'Failed to delete template');
-    }
-  };
-
   if (loading) {
     return (
       <div className="page-container page-enter">
@@ -237,14 +132,6 @@ export default function QALevelManagement() {
 
   return (
     <div className="page-container page-enter">
-      <input
-        type="file"
-        ref={templateInputRef}
-        accept=".pdf"
-        style={{ display: 'none' }}
-        tabIndex={-1}
-        onChange={(e) => handleFileUpload(pendingTemplateLevel.current, e)}
-      />
       <PageHeader title="QA Levels">
         <button className="btn btn-primary" onClick={() => { resetForm(); setShowForm(true); }}>
           <Plus size={16} /> New Level
@@ -290,25 +177,8 @@ export default function QALevelManagement() {
                       </button>
                     </h2>
                   )}
-                  <span className="qa-level-meta">
-                    {level.templateCount || 0} template{(level.templateCount || 0) !== 1 ? 's' : ''}
-                  </span>
                 </div>
                 <div className="qa-level-actions">
-                  <label
-                    className="qa-level-toggle"
-                    title="When on, a completed quality form must be scanned back before a job at this level can be invoiced (the level must have a form template first)"
-                  >
-                    <span className="qa-level-toggle-text">Form must be returned</span>
-                    <input
-                      className="toggle-input"
-                      type="checkbox"
-                      checked={!!level.requiresReturnedForm}
-                      disabled={togglingId === level.id}
-                      onChange={() => handleToggleReturnedForm(level)}
-                    />
-                    <span className="toggle-switch"></span>
-                  </label>
                   <button
                     type="button"
                     className="btn btn-danger btn-sm"
@@ -316,45 +186,6 @@ export default function QALevelManagement() {
                     onClick={() => handleDelete(level)}
                   >
                     <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Templates section */}
-              <div className="qa-level-templates">
-                {level.templates && level.templates.length > 0 ? (
-                  <div className="template-list">
-                    {level.templates.map(tmpl => (
-                      <div key={tmpl.id} className="template-item">
-                        <FileText size={14} />
-                        <span className="template-name">{tmpl.displayName}</span>
-                        <span className="template-file">({tmpl.fileName})</span>
-                        <button
-                          className="btn-icon btn-icon-danger"
-                          onClick={() => handleDeleteTemplate(level.id, tmpl)}
-                          title="Delete template"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="template-empty">No templates uploaded</div>
-                )}
-                <div className="template-upload">
-                  {/* A real button (reachable by Tab, pressed with Enter/Space) that
-                      opens the one hidden file box below for this level — a label
-                      wrapped round a hidden file box could never take focus. */}
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm upload-btn"
-                    onClick={() => pickTemplate(level.id)}
-                    disabled={uploadingTemplate}
-                    aria-label={`Upload PDF template to ${level.name}`}
-                  >
-                    <Upload size={14} />
-                    {uploadingTemplate ? 'Uploading...' : 'Upload PDF Template'}
                   </button>
                 </div>
               </div>

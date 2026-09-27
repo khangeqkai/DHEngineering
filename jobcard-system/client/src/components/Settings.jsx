@@ -326,7 +326,7 @@ export default function Settings() {
           </p>
           <ul style={{ margin: '0 0 var(--space-4) var(--space-5)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
             <li>All database records (job cards, contacts, users, etc.)</li>
-            <li>All job folder files (scanned documents, QA forms, etc.)</li>
+            <li>All job folder files (drawings, photos, scanned documents, etc.)</li>
           </ul>
           <p style={{ marginBottom: 'var(--space-3)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
             Everyone will be signed out and the app will reload when it finishes.

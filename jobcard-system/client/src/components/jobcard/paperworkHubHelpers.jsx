@@ -4,9 +4,9 @@ import { MAX_PRINT_FILES } from '../../../../server/src/shared/jobFiles';
 // Shared constants and small pure helpers for the paperwork hub, split out to keep
 // JobPaperworkHub.jsx focused on the panel itself.
 
-// Order the packet (and the folder sections) follow: job files, customer
-// property, then QA forms last.
-export const ORDER = ['job-files', 'customer-property-files', 'qa-form-files'];
+// Order the packet (and the folder sections) follow: job files, then customer
+// property.
+export const ORDER = ['job-files', 'customer-property-files'];
 
 // Most files that can go in one combined packet. The job card itself rides
 // separately and doesn't count toward this.

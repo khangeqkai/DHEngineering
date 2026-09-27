@@ -137,7 +137,7 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
     // A write's reply is the authority on what it changed — file notes are
     // recomputed from the item list this write actually produced, so the screen
     // never has to remember to go fetch them separately.
-    const attachmentWarnings = computeAttachmentWarnings(id, items, existing.qa_level_id);
+    const attachmentWarnings = computeAttachmentWarnings(id, items);
 
     // jobStatus only when this write moved it — see docs/notes/jobs-and-status.md.
     res.status(201).json({
@@ -215,7 +215,7 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
     const allItems = jobItemQueries.getByJobcard.all(id);
     const items = formatItems(allItems);
     const updated = items.find(i => i.id === itemId);
-    const attachmentWarnings = computeAttachmentWarnings(id, items, existing.qa_level_id);
+    const attachmentWarnings = computeAttachmentWarnings(id, items);
 
     // jobStatus only when this write moved it — see docs/notes/jobs-and-status.md.
     res.json({
@@ -278,7 +278,7 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
     });
 
     const items = formatItems(jobItemQueries.getByJobcard.all(id));
-    const attachmentWarnings = computeAttachmentWarnings(id, items, existing.qa_level_id);
+    const attachmentWarnings = computeAttachmentWarnings(id, items);
 
     // jobStatus only when this write moved it — see docs/notes/jobs-and-status.md.
     res.json({

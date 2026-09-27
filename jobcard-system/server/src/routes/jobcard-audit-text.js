@@ -42,14 +42,4 @@ function assigneeNames(userIds) {
   }).join(', ');
 }
 
-function buildQaTemplateWarning(result) {
-  if (!result || !Array.isArray(result.failed) || result.failed.length === 0) return null;
-  const fatal = result.failed.find(f => f.fileName === '*');
-  if (fatal) {
-    return `QA template copy failed: ${fatal.reason || 'unknown error'}`;
-  }
-  const parts = result.failed.map(f => `${f.fileName} (${f.reason || 'unknown'})`);
-  return `${result.failed.length} QA template${result.failed.length > 1 ? 's' : ''} failed to copy: ${parts.join('; ')}`;
-}
-
-module.exports = { itemSummary, describePart, assigneeNames, buildQaTemplateWarning };
+module.exports = { itemSummary, describePart, assigneeNames };

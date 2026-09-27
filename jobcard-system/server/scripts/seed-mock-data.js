@@ -39,7 +39,7 @@ const qaLevels = refData.qaLevels.map(q => ({ ...q, id: uid('qalevel') }));
 // ─── WIPE ALL TABLES ───
 console.log('Wiping all data...');
 const tables = [
-  'history', 'qa_level_templates', 'job_costings',
+  'history', 'job_costings',
   'time_entries', 'job_notes', 'job_assignees', 'job_items',
   'jobcards', 'supplier_service_tags', 'tags', 'machines', 'suppliers',
   'contacts', 'companies', 'users', 'qa_levels'
@@ -155,7 +155,7 @@ for (const q of qaLevels) {
 }
 console.log(`Created ${qaLevels.length} QA levels.`);
 
-// "Standard" is the baseline — no saved level, no special quality form. Give the job
+// "Standard" is the baseline — no saved level, no Critical inspection sign-off. Give the job
 // scenarios a Standard entry (id null) alongside the real levels so some seeded jobs
 // sit on the plain baseline, just like real jobs do.
 const scenarioLevels = [{ id: null, name: 'Standard' }, ...qaLevels];

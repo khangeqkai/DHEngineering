@@ -17,7 +17,6 @@ const MAX_PRINT_FILES = 20;
 // Stable URL slugs ↔ on-disk folder names.
 const CATEGORY_FOLDER = {
   'job-files': 'Job Files',
-  'qa-form-files': 'QA Forms',
   'customer-property-files': 'Customer Property'
 };
 

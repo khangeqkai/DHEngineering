@@ -57,8 +57,8 @@ function requiredString(field, label) {
 /**
  * Name-length cap for anything whose name becomes a folder on disk.
  * Only what is sent is checked: on an edit, a name identical to the stored one
- * passes even if it is longer (an older record, or a switch flipped on a row
- * without touching its name), so a record saved before the cap still edits.
+ * passes even if it is longer (an older record re-saved without touching its
+ * name), so a record saved before the cap still edits.
  * @param {string} field - Field name
  * @param {string} label - Human-readable label
  * @param {(req) => string|undefined} [storedNameOf] - the record's current name, on an edit
@@ -75,7 +75,6 @@ function folderNameLength(field, label, storedNameOf) {
 
 // Looked up lazily so this file doesn't load the database just by being required.
 const storedCompanyName = (req) => require('../db/database').companyQueries.getById.get(req.params.id)?.name;
-const storedQaLevelName = (req) => require('../db/database').qaLevelQueries.getById.get(req.params.id)?.name;
 
 /**
  * Optional email field validator
@@ -243,14 +242,12 @@ const validateUpdateCompany = [
 // POST /qa-levels
 const validateCreateQaLevel = [
   requiredString('name', 'Name'),
-  folderNameLength('name', 'Name'),
   handleValidationErrors
 ];
 
 // PUT /qa-levels/:id
 const validateUpdateQaLevel = [
   requiredString('name', 'Name'),
-  folderNameLength('name', 'Name', storedQaLevelName),
   handleValidationErrors
 ];
 

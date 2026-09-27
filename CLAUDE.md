@@ -23,10 +23,10 @@ The user is not reading the code. They need to understand what's happening, not 
 - Use everyday words: "the screen", "the button", "the form", "the list", "the message", "the page", "saves", "shows", "remembers", "sends"
 
 **Example — wrong (technical):**
-> The `qaTemplateWarning` field is set on the response in `jobcard-mutations.js:157` but the form's submit handler doesn't consume it, so no toast fires.
+> `usePacketPrint.js` never passes `cardIncluded` to the `/printed` route, so `printed_at` is never stamped and the list's Print column stays false.
 
 **Example — right (plain):**
-> When a job is created, if any quality forms fail to copy, the screen never shows a warning. So the user thinks everything worked when it didn't.
+> When someone prints a job's paperwork, the job list never shows the green tick in the Print column. So everyone thinks the job card was never printed when it was.
 
 The only exception is code comments and commit messages, where technical terms are appropriate because the audience is a future reader of the code itself.
 
@@ -37,7 +37,7 @@ Read the matching note **before** working in that area. Each one is the full, un
 | Working on... | Read first |
 |---|---|
 | Timers, logged work, overtime tiers, pricing | `docs/notes/time-and-costing.md` |
-| Job documents, folders on disk, printing, quality forms | `docs/notes/files-and-qa.md` |
+| Job documents, folders on disk, printing, quality levels | `docs/notes/files-and-qa.md` |
 | Job numbering, status, invoicing, deleting, comments, assignees | `docs/notes/jobs-and-status.md` |
 | Customers, contact people, dropdown options, per-part fields | `docs/notes/customers-and-tags.md` |
 | Anything that stores, compares or shows a date or time | `docs/notes/dates-and-timezones.md` |
@@ -144,7 +144,7 @@ Job card sub-routes: `/assignees`, `/items`, `/time-entries`, `/costing`, `/file
 
 ### Core tables
 
-Core tables: `users`, `companies`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `time_entries`, `job_costings` (carries the labour overtime tiers — `labour_ot1_*` / `labour_ot2_*` / `labour_holiday_*` hours/override/total/multiplier columns — see `docs/notes/time-and-costing.md`), `qa_levels`, `qa_level_templates`, `history`, `settings`, `machines`, `job_notes`, `tags`, `supplier_service_tags`. Files are not stored in the database — they live on disk under the configured job-folders base — see `docs/notes/files-and-qa.md`.
+Core tables: `users`, `companies`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `time_entries`, `job_costings` (carries the labour overtime tiers — `labour_ot1_*` / `labour_ot2_*` / `labour_holiday_*` hours/override/total/multiplier columns — see `docs/notes/time-and-costing.md`), `qa_levels`, `history`, `settings`, `machines`, `job_notes`, `tags`, `supplier_service_tags`. Files are not stored in the database — they live on disk under the configured job-folders base — see `docs/notes/files-and-qa.md`.
 
 All changes logged to `history` table for audit trail.
 

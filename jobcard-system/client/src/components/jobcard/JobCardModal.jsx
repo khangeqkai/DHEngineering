@@ -517,7 +517,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               jobNumber={formHook.jobNumber}
               onFilesChanged={refreshAttachmentWarnings}
               onPrinted={onPrinted}
-              attachmentWarnings={attachmentWarnings}
               parts={formHook.lineItems}
               locked={jobClosed}
               onJobClosed={handleJobClosedWrite}

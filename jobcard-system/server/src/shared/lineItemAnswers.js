@@ -1,7 +1,7 @@
 // A drawings / customer-property line-item field is stored as a comma-separated
 // list of tag slugs, where the explicit "no drawing / nothing supplied" answer is
 // the sentinel slug 'N_A'. This is the one place that splits such a field and
-// decides what it means — the job printout, the QA-template fill, the
+// decides what it means — the job printout, the missing-file check, the
 // create/update validator and the screen's tag picker all read it through here
 // instead of splitting the string or comparing to 'N_A' themselves.
 

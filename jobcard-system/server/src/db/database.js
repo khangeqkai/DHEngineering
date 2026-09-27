@@ -35,8 +35,7 @@ const {
   historyQueries,
   settingsQueries,
   getAssigneesForJobcards,
-  qaLevelQueries,
-  qaLevelTemplateQueries
+  qaLevelQueries
 } = require('./queries');
 
 // The Workshop Statistics route only needs a job's captured overtime rules
@@ -84,6 +83,5 @@ module.exports = {
   historyQueries,
   settingsQueries,
   getAssigneesForJobcards,
-  qaLevelQueries,
-  qaLevelTemplateQueries
+  qaLevelQueries
 };

@@ -12,10 +12,10 @@ function sameName(a, b) {
   return nameMatchKey(a) === nameMatchKey(b);
 }
 
-// The longest name a customer or a quality level may be given. Each one's name
-// becomes a folder on disk followed by a ~34-character permanent-id code, and a
-// folder name may be at most 255 characters — 150 leaves plenty of room. Read by
-// the server's name checks and by the client's name boxes.
+// The longest name a customer may be given. A customer's name becomes a folder on
+// disk followed by a ~34-character permanent-id code, and a folder name may be at
+// most 255 characters — 150 leaves plenty of room. Read by the server's name check
+// and by the Customers page's name box.
 const FOLDER_NAME_MAX = 150;
 
 module.exports = { nameMatchKey, sameName, FOLDER_NAME_MAX };

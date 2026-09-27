@@ -1,7 +1,5 @@
 import { useRef, useState, useMemo, useCallback } from 'react';
-import toast from 'react-hot-toast';
 import { api } from '../../services/api';
-import { warningToastIcon } from '../common/toastIcons';
 import { JOB_FIELD_LABEL } from './closeReasons';
 
 // What the shared status line beside a group of instant-save fields shows. There is
@@ -91,17 +89,8 @@ export function useInstantSave(jobCardId, saveQueue, { onSaved, onAttachmentWarn
             onSaved?.(extraName, extraValue);
           }
         }
-        // Changing the quality level makes the server copy that level's QA
-        // templates onto the job, which can come back with a warning (e.g. a
-        // template missing on disk) — the same one useJobCardSave.js surfaces
-        // from the old whole-job Save, so it isn't dropped just because this
-        // write is narrower.
-        if (result?.qaTemplateWarning) {
-          toast(result.qaTemplateWarning, { icon: warningToastIcon, duration: 8000 });
-        }
         // The reply's file notes were worked out against the job as it now
-        // stands (a new quality level changes which QA forms it expects), so
-        // hand them on the same way a part write's reply does.
+        // stands, so hand them on the same way a part write's reply does.
         if (result?.attachmentWarnings !== undefined) onAttachmentWarnings?.(result.attachmentWarnings);
       }), { label: JOB_FIELD_LABEL[name] || `the ${name}` });
   }, [saveQueue, onSaved, onAttachmentWarnings]);

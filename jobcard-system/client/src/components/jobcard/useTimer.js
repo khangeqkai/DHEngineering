@@ -375,8 +375,8 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
         scrapRecycleQty,
         machineNumber: machines,
         description,
-        // Inspection answers ride along; the server stores them only on Critical jobs
-        // and requires all four there before it will save.
+        // Inspection answers ride along; the server stores whatever is sent, and on a
+        // Critical job it requires all four answered before it will save.
         firstOffInspection: entryForm.firstOffInspection,
         inProcessValidation: entryForm.inProcessValidation,
         measuringEquipmentVerification: entryForm.measuringEquipmentVerification,

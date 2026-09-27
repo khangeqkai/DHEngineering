@@ -5,7 +5,7 @@ const extractZip = require('extract-zip');
 const logger = require('../utils/logger');
 const db = require('../db/database');
 const { runStartupConversions } = require('../db/init');
-const { PRINT_NAMING_CUTOVER_KEY } = require('../db/legacyMigrations');
+const { PRINT_NAMING_CUTOVER_KEY, QA_FORMS_MOVED_KEY } = require('../db/legacyMigrations');
 const { splitCustomersInBackup } = require('../db/splitCustomers');
 
 // The restore swaps the whole job-folders location out with renames and builds
@@ -507,13 +507,21 @@ function restoreTables({ data, tableOrder, tableColumns, currentJobBase, current
         db.settingsQueries.upsert.run(PRINT_NAMING_CUTOVER_KEY, keptPrintCutover);
       }
 
+      // The files just swapped in can hold per-job "QA Forms" folders again (a backup
+      // from before they were removed), and the flag that says "already moved" came
+      // from the backup, not from these files. Clear it so the conversion pass below
+      // moves them into Job Files now, rather than trusting a marker that describes
+      // some other set of folders.
+      db.db.prepare('DELETE FROM settings WHERE key = ?').run(QA_FORMS_MOVED_KEY);
+
       // A restore must end in exactly the state a fresh restart would produce, so
       // run the SAME full conversion pass a boot runs — timestamp normalisation,
       // then every migration in runMigrations() (whole-hour schedule snap, good-piece
-      // folding, the print-trail rename bounded by the cutover just kept above, and
-      // everything else in that list) — rather than hand-picking a subset here. A
-      // conversion missing from a hand-picked list is exactly how the overtime-hours
-      // migration was left out of a restore in the first place. Tidy-up only: a
+      // folding, the print-trail rename bounded by the cutover just kept above, moving
+      // old QA Forms folders into Job Files, and everything else in that list) —
+      // rather than hand-picking a subset here. A conversion missing from a
+      // hand-picked list is exactly how the overtime-hours migration was left out
+      // of a restore in the first place. Tidy-up only: a
       // failure here must never throw away a restore whose records already loaded
       // correctly (the next boot runs the same pass again and retries).
       try {

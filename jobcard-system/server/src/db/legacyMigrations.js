@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const logger = require('../utils/logger');
 const {
   db,
@@ -10,6 +12,7 @@ const { scheduleToWholeHours } = require('../shared/overtimeSchedule');
 const { readOvertimeSettings } = require('../utils/overtimeSettings');
 const { isCalendarDate } = require('../shared/calendarDate');
 const { officeDateString } = require('../utils/officeTime');
+const { isBaseReachable, isWithinBase, resolveCompanyFolder, sanitizeFolderName } = require('../utils/folderCreation');
 
 // One-time conversions for databases (and restored backups) that predate a rule the
 // rest of the app now assumes. Every conversion here fixes a shape only an old
@@ -109,6 +112,172 @@ function renameLegacyPrintTrail() {
   const renamed = rename();
   if (renamed.previews + renamed.builds > 0) {
     logger.info(renamed, 'Migration: Renamed pre-cutover print trail entries to preview/build');
+  }
+}
+
+// Quality-form templates were removed, and with them each job's "QA Forms" folder. Old
+// jobs can still have one on disk, holding forms people scanned back in — those are a
+// person's files and must never be lost, so every file in a job's QA Forms folder is
+// MOVED into that job's Job Files folder (where the Files panel still shows it), and the
+// QA Forms folder is removed only once it is empty.
+//
+// Guarded by a settings flag, but the flag is written only after a full pass that moved
+// everything: a job-folders location that isn't set or can't be reached right now (an
+// offline drive or share) does nothing and is retried next boot, and a file that couldn't
+// be moved (open on another computer, say) is left where it is, logged, and retried next
+// boot. A backup restore clears the flag before it runs this same pass (backup-helpers.js),
+// because an old backup can bring QA Forms folders back.
+//
+// The old [base]/QA Levels/ folder (the templates an admin uploaded) is deliberately left
+// alone — it is simply no longer used.
+const QA_FORMS_MOVED_KEY = 'qa_forms_moved_to_job_files_at';
+const OLD_QA_FOLDER = 'QA Forms';
+const JOB_FILES_FOLDER = 'Job Files';
+// A part's own tag at the end of a stored name ("name [p{32 hex}]", optionally " (n)").
+// A quality form was never a part's drawing or customer property, so a moved form must
+// not carry one into Job Files — there it would count as that part's drawing and hide a
+// genuinely missing one. The tag is dropped, which makes the file a whole-job file.
+const PART_TAG = / \[p[0-9a-f]{32}\](?: \(\d+\))?$/;
+// A whole-job file's timestamp tag at the end of a stored name (optionally " (n)").
+const TIMESTAMP_TAG = / \[\d{14}\](?: \(\d+\))?$/;
+
+// Pick a name in `destDir` that nothing already uses. A clash gets " (QA form)", then
+// " (QA form 2)" and so on — placed before the timestamp tag when the name carries one
+// (so the Files panel still reads the tag and shows the clean name), otherwise before
+// the extension.
+function freeJobFilesName(destDir, fileName) {
+  const ext = path.extname(fileName);
+  let base = fileName.slice(0, fileName.length - ext.length).replace(PART_TAG, '');
+  if (!base.trim()) base = 'QA form';
+  const tagMatch = base.match(TIMESTAMP_TAG);
+  const tag = tagMatch ? tagMatch[0] : '';
+  const head = tag ? base.slice(0, base.length - tag.length) : base;
+  const taken = (name) => fs.existsSync(path.join(destDir, name));
+  let candidate = `${head}${tag}${ext}`;
+  for (let n = 1; taken(candidate); n++) {
+    candidate = `${head} (QA form${n === 1 ? '' : ` ${n}`})${tag}${ext}`;
+  }
+  return candidate;
+}
+
+// Each job's folder on disk, keyed by its resolved path, so a QA Forms folder found on
+// disk can be tied back to its job for the trail. Resolved exactly the way the file
+// routes resolve it: the customer's current name, the company folder found by the code
+// in its name, the job number as the folder name.
+function jobsByFolder(base) {
+  const byFolder = new Map();
+  const rows = db.prepare(`
+    SELECT j.id, j.job_number, j.company_id, COALESCE(c.name, j.company_name) AS company_name
+      FROM jobcards j LEFT JOIN companies c ON c.id = j.company_id
+  `).all();
+  for (const row of rows) {
+    if (!row.company_name) continue;
+    const companyFolder = resolveCompanyFolder(base, row.company_id || null, row.company_name);
+    const jobFolder = sanitizeFolderName(row.job_number);
+    if (!companyFolder || !jobFolder) continue;
+    byFolder.set(path.resolve(companyFolder, jobFolder), row.id);
+  }
+  return byFolder;
+}
+
+// Move one job folder's QA Forms into its Job Files. Returns { moved, failed } — the
+// names moved, and how many files couldn't be.
+function moveOneQaFormsFolder(base, jobDir) {
+  const qaDir = path.join(jobDir, OLD_QA_FOLDER);
+  const destDir = path.join(jobDir, JOB_FILES_FOLDER);
+  const moved = [];
+  let failed = 0;
+  if (!isWithinBase(base, qaDir) || !isWithinBase(base, destDir)) return { moved, failed: 1 };
+
+  fs.mkdirSync(destDir, { recursive: true });
+  for (const entry of fs.readdirSync(qaDir, { withFileTypes: true })) {
+    const from = path.join(qaDir, entry.name);
+    if (!entry.isFile()) {
+      // Only files are moved; a folder someone made inside it is left as it is.
+      logger.warn({ path: from }, 'Migration: Left a non-file entry in an old QA Forms folder');
+      continue;
+    }
+    try {
+      const toName = freeJobFilesName(destDir, entry.name);
+      fs.renameSync(from, path.join(destDir, toName));
+      moved.push(toName);
+    } catch (err) {
+      failed++;
+      logger.error({ err, path: from }, 'Migration: Could not move a file out of an old QA Forms folder — left where it is, will retry next start');
+    }
+  }
+
+  try {
+    if (fs.readdirSync(qaDir).length === 0) fs.rmdirSync(qaDir);
+  } catch (err) {
+    logger.warn({ err, path: qaDir }, 'Migration: Could not remove an emptied QA Forms folder');
+  }
+  return { moved, failed };
+}
+
+function moveQaFormsIntoJobFiles() {
+  if (settingsQueries.getByKey.get(QA_FORMS_MOVED_KEY)?.value) return;
+
+  const baseRow = settingsQueries.getByKey.get('job_folders_base');
+  const base = baseRow && baseRow.value ? baseRow.value.trim() : '';
+  // Not set, or offline: nothing can be checked, so nothing is marked done.
+  if (!base) return;
+  if (!isBaseReachable(base)) {
+    logger.warn('Migration: Job folders location not reachable — old QA Forms folders will be moved on a later start');
+    return;
+  }
+
+  const jobIdByFolder = jobsByFolder(base);
+  let failed = 0;
+  let jobsMoved = 0;
+  // [base]/[Company]/[Job]/QA Forms — two folder levels down, whatever the names.
+  for (const company of fs.readdirSync(base, { withFileTypes: true })) {
+    if (!company.isDirectory()) continue;
+    const companyDir = path.join(base, company.name);
+    let jobs;
+    try {
+      jobs = fs.readdirSync(companyDir, { withFileTypes: true });
+    } catch (err) {
+      failed++;
+      logger.error({ err, path: companyDir }, 'Migration: Could not read a customer folder while moving old QA Forms');
+      continue;
+    }
+    for (const job of jobs) {
+      if (!job.isDirectory()) continue;
+      const jobDir = path.join(companyDir, job.name);
+      let isFolder = false;
+      try { isFolder = fs.statSync(path.join(jobDir, OLD_QA_FOLDER)).isDirectory(); } catch { /* none here */ }
+      if (!isFolder) continue;
+
+      let result;
+      try {
+        result = moveOneQaFormsFolder(base, jobDir);
+      } catch (err) {
+        failed++;
+        logger.error({ err, path: jobDir }, 'Migration: Could not move an old QA Forms folder');
+        continue;
+      }
+      failed += result.failed;
+      if (result.moved.length === 0) continue;
+
+      jobsMoved++;
+      const jobcardId = jobIdByFolder.get(path.resolve(jobDir));
+      if (jobcardId) {
+        const count = result.moved.length;
+        recordHistory('jobcard', jobcardId, 'update', null, 'system', {
+          files: { from: `QA Forms: ${count} file${count === 1 ? '' : 's'}`, to: 'moved to Job Files' }
+        }, { movedFiles: result.moved });
+      } else {
+        logger.warn({ path: jobDir, files: result.moved }, 'Migration: Moved old QA Forms files for a folder that matches no job');
+      }
+    }
+  }
+
+  if (jobsMoved > 0) logger.info({ jobs: jobsMoved }, 'Migration: Moved old QA Forms files into Job Files');
+  if (failed === 0) {
+    settingsQueries.upsert.run(QA_FORMS_MOVED_KEY, new Date().toISOString());
+  } else {
+    logger.warn({ failed }, 'Migration: Some old QA Forms files could not be moved — will retry next start');
   }
 }
 
@@ -305,22 +474,10 @@ function runLegacyMigrations() {
     logger.error({ err }, 'Migration: Failed to normalize stored due date shapes');
   }
 
-  // A quality level's form file on disk IS the record, so two records naming the same file
-  // share one file: removing either takes the file away and every job on that level then
-  // refuses to save. Uploading a duplicate name is now refused, but existing databases may
-  // already hold such pairs — keep the newest of each and drop the rest. Naturally
-  // idempotent (a second run finds no duplicates).
   try {
-    const dedupedTemplates = db.prepare(`
-      DELETE FROM qa_level_templates WHERE rowid NOT IN (
-        SELECT MAX(rowid) FROM qa_level_templates GROUP BY qa_level_id, file_name
-      )
-    `).run();
-    if (dedupedTemplates.changes > 0) {
-      logger.info({ removed: dedupedTemplates.changes }, 'Migration: Removed duplicate QA form records sharing one file');
-    }
+    moveQaFormsIntoJobFiles();
   } catch (err) {
-    logger.error({ err }, 'Migration: Failed to remove duplicate QA form records');
+    logger.error({ err }, 'Migration: Failed to move old QA Forms folders into Job Files');
   }
 
   // Special labour changed from an auto-tally of "special"-marked time blocks into a
@@ -369,8 +526,8 @@ function runLegacyMigrations() {
   }
 
   // A previous-job reference only exists on a repeat job. Unticking Repeat Job used
-  // to only hide the box, so the old reference stayed stored and still printed on the
-  // quality form, exported and matched searches. Clear it on every job that isn't a
+  // to only hide the box, so the old reference stayed stored and still printed, exported
+  // and matched searches. Clear it on every job that isn't a
   // repeat. Naturally idempotent (a second run finds none).
   try {
     const clearedRefs = db.prepare(
@@ -557,4 +714,4 @@ function runLegacyMigrations() {
   logger.info('Migrations complete');
 }
 
-module.exports = { runLegacyMigrations, PRINT_NAMING_CUTOVER_KEY };
+module.exports = { runLegacyMigrations, PRINT_NAMING_CUTOVER_KEY, QA_FORMS_MOVED_KEY };

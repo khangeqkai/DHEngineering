@@ -15,6 +15,9 @@ const columnDrops = [
   { table: 'job_items', column: 'customer_property_status' },
   // No longer tracked.
   { table: 'qa_levels', column: 'require_scanned_forms' },
+  // The "completed form must come back" switch — removed with the quality-form
+  // templates it governed.
+  { table: 'qa_levels', column: 'requires_returned_form' },
   // Work blocks can no longer be marked "special" — special labour is now a
   // manually-entered costing line instead, so the per-block flag is gone.
   { table: 'time_entries', column: 'is_special_labour' },

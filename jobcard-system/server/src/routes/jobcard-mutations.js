@@ -16,9 +16,8 @@ const {
   recordHistory,
   actorName
 } = require('../db/database');
-const { formatJobcard, buildChanges, createRelatedRecords, qaFillDataForJob, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
-const { copyQaTemplatesForJob, verifyQaTemplatesAvailable } = require('../utils/qaTemplateProvisioning');
-const { itemSummary, describePart, assigneeNames, buildQaTemplateWarning } = require('./jobcard-audit-text');
+const { formatJobcard, buildChanges, createRelatedRecords, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
+const { itemSummary, describePart, assigneeNames } = require('./jobcard-audit-text');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { readOvertimeSettings } = require('../utils/overtimeSettings');
 const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
@@ -27,7 +26,7 @@ const { findOr404 } = require('../utils/findOr404');
 
 const router = express.Router();
 
-router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequired, validateJobcardDueDate, ...validateJobcardEnums, ...validateJobcardContactFields, async (req, res) => {
+router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequired, validateJobcardDueDate, ...validateJobcardEnums, ...validateJobcardContactFields, (req, res) => {
   try {
     const data = req.body;
 
@@ -120,7 +119,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
       return res.status(400).json({ error: 'A new job cannot be created as Invoiced. Save it first, then invoice it.' });
     }
 
-    // No level chosen means the plain "Standard" baseline (no special quality form),
+    // No level chosen means the plain "Standard" baseline (no special quality level),
     // which is stored as the label STANDARD with no level id.
     const qaLevelId = data.qaLevelId || null;
     let qualityLevelName = 'STANDARD';
@@ -132,13 +131,6 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
         return res.status(400).json({ error: 'Invalid QA level selected' });
       }
       qualityLevelName = level.name.toUpperCase();
-
-      // Confirm the level's forms are actually on disk BEFORE consuming a job
-      // number, so a job is never saved believing it has forms that can't be made.
-      const qaCheck = verifyQaTemplatesAvailable(qaLevelId);
-      if (!qaCheck.ok) {
-        return res.status(400).json({ error: qaCheck.reason });
-      }
     }
 
     // Write the job record, its line items, and the number-bump as ONE
@@ -243,13 +235,6 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
       throw txErr;
     }
 
-    let qaResult = null;
-    if (qaLevelId) {
-      // The job row (and its number/status/etc) was just committed above, so the
-      // form is filled from the saved job, not from the request that created it.
-      qaResult = await copyQaTemplatesForJob(id, qaLevelId, qaFillDataForJob(id, qualityLevelName));
-    }
-
     const jobcard = jobcardQueries.getById.get(id);
     const items = jobItemQueries.getByJobcard.all(id);
     const assignees = jobAssigneeQueries.getByJobcard.all(id);
@@ -257,8 +242,6 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
     createJobCardFolders(jobcard.company_id, jobcard.company_name, jobNumber);
 
     const response = formatJobcard(jobcard, items, assignees, req.user.role);
-    const warning = buildQaTemplateWarning(qaResult);
-    if (warning) response.qaTemplateWarning = warning;
     res.status(201).json(response);
   } catch (err) {
     logger.error({ err }, 'Create jobcard error');
@@ -266,7 +249,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
   }
 });
 
-router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...validateJobcardEnums, async (req, res) => {
+router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...validateJobcardEnums, (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -313,12 +296,6 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
         return res.status(400).json({ error: 'Invalid QA level selected' });
       }
       newQualityLevel = newLevel.name.toUpperCase();
-      // Confirm the new level's forms are on disk BEFORE writing the update, so
-      // the job is never saved expecting forms that can't be made.
-      const qaCheck = verifyQaTemplatesAvailable(newQaLevelId);
-      if (!qaCheck.ok) {
-        return res.status(400).json({ error: qaCheck.reason });
-      }
     }
 
     // The screen sends only `qaLevelId`, never `qualityLevel` — but the trail
@@ -346,7 +323,7 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     // write. Parts and their attachments are never part of this route any more
     // (see jobcard-items.js and the files routes), so the attachment check
     // always reads the job's current, already-saved items.
-    const invoicing = checkInvoicing(existing, newStatus, newQaLevelId, data.confirmMissingAttachments);
+    const invoicing = checkInvoicing(existing, newStatus, data.confirmMissingAttachments);
     if (invoicing.refusal) {
       return res.status(invoicing.refusal.status).json(invoicing.refusal.body);
     }
@@ -402,14 +379,6 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
 
     Object.assign(changes, invoicingChanges);
 
-    // QA template copy is a disk operation, kept outside the database transaction.
-    let qaResult = null;
-    if (qaLevelChanged && newQaLevelId) {
-      // The update above already committed, so the job's own row already carries
-      // every field the form needs — no fallback to the request body required.
-      qaResult = await copyQaTemplatesForJob(id, newQaLevelId, qaFillDataForJob(id, newQualityLevel));
-    }
-
     if (Object.keys(changes).length > 0) {
       recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), changes, null);
     }
@@ -424,9 +393,7 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     }
 
     const response = formatJobcard(updated, items, assignees, req.user.role);
-    const warning = buildQaTemplateWarning(qaResult);
-    if (warning) response.qaTemplateWarning = warning;
-    response.attachmentWarnings = computeAttachmentWarnings(id, items, updated.qa_level_id);
+    response.attachmentWarnings = computeAttachmentWarnings(id, items);
     res.json(response);
   } catch (err) {
     logger.error({ err }, 'Update jobcard error');

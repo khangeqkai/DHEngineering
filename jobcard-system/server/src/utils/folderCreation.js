@@ -77,7 +77,7 @@ function isBaseReachable(basePath) {
   }
 }
 
-// A folder's owning record (a company, or a QA level) is identified by a short
+// A company folder's owning record is identified by a short
 // code embedded at the END of the folder name, in square brackets — e.g.
 // "Rio Tinto Iron Ore [550e8400]". Because the code is part of the name, a
 // folder can never exist "untagged": there is no separate marker file to forget
@@ -87,8 +87,8 @@ function isBaseReachable(basePath) {
 
 /**
  * Stable code derived from a permanent id, embedded in folder and file names.
- * Takes the part after the last ':' (so it works for bare company uuids,
- * "item:..." and "qa-level:..." alike), keeps alphanumerics, and lowercases.
+ * Takes the part after the last ':' (so it works for bare company uuids and
+ * "item:..." alike), keeps alphanumerics, and lowercases.
  * The FULL id is used (not a truncation) so the code is as unique as the id
  * itself — two records can never collide on it. Returns null for a missing id.
  */
@@ -110,12 +110,9 @@ function folderSlugOf(folderName) {
 }
 
 /**
- * Build the on-disk folder name for a coded record: "Name [code]". Shared by
- * a customer's company folder and a QA level's folder — the two are
- * identical in shape (a sanitized display name plus a code derived from the
- * record's permanent id) and differ only in which base directory and which
- * record they key off. Returns null if the name sanitizes to nothing or the
- * id has no code.
+ * Build the on-disk folder name for a coded record: "Name [code]" — a sanitized
+ * display name plus a code derived from the record's permanent id. Returns null
+ * if the name sanitizes to nothing or the id has no code.
  */
 function codedFolderName(name, id) {
   const sanitized = sanitizeFolderName(name);
@@ -127,7 +124,7 @@ function codedFolderName(name, id) {
  * Find a coded folder under `basePath` by matching the code in the folder
  * name to `id` — independent of the (mutable) display name, so a rename never
  * strands files. Returns the absolute path, or null.
- * @param {string} kind - human-readable noun for log messages (e.g. 'company', 'QA level')
+ * @param {string} kind - human-readable noun for log messages (e.g. 'company')
  */
 function findCodedFolder(basePath, id, kind) {
   try {
@@ -153,7 +150,7 @@ function findCodedFolder(basePath, id, kind) {
  * in the folder name makes it unique, so there's no marker file to write and
  * no same-name disambiguation to do. Fire-and-forget: logs errors but never
  * throws.
- * @param {string} kind - human-readable noun for log messages (e.g. 'company', 'QA level')
+ * @param {string} kind - human-readable noun for log messages (e.g. 'company')
  */
 function ensureCodedFolder(basePath, id, name, kind) {
   try {
@@ -185,7 +182,7 @@ function ensureCodedFolder(basePath, id, name, kind) {
  * to "New Name [code]". Best-effort — if the rename can't happen (e.g. the
  * folder is locked), lookups still succeed by code regardless of the on-disk
  * name. Fire-and-forget: never throws.
- * @param {string} kind - human-readable noun for log messages (e.g. 'company', 'QA level')
+ * @param {string} kind - human-readable noun for log messages (e.g. 'company')
  */
 function renameCodedFolder(basePath, id, newName, kind) {
   try {
@@ -237,7 +234,7 @@ function findCompanyFolder(basePath, companyId) {
  * With a company id: take the computed "Name [code]" path when it already
  * exists, else match by code, else return that computed path (which may not
  * exist yet). With no company id (a job whose customer was unlinked): fall back
- * to the plain name-built path. Used by read/delete/QA-copy callers.
+ * to the plain name-built path. Used by read/delete callers.
  */
 function resolveCompanyFolder(basePath, companyId, companyName) {
   try {
@@ -297,43 +294,6 @@ function renameCompanyFolder(companyId, oldName, newName) {
 const FILE_CATEGORY_FOLDERS = Object.values(CATEGORY_FOLDER);
 
 /**
- * Find a QA level's folder under the "QA Levels" base by matching the code in
- * the folder name to the level's id — independent of the display name, so
- * renaming a level never strands its template PDFs. Returns the absolute path,
- * or null.
- * @param {string} qaLevelsBase - the ".../QA Levels" directory
- * @param {string} levelId
- */
-function findQaLevelFolder(qaLevelsBase, levelId) {
-  return findCodedFolder(qaLevelsBase, levelId, 'QA level');
-}
-
-/**
- * Resolve a QA level's folder, creating it if needed. Returns the absolute
- * folder path, or null if storage isn't configured or the operation fails. The
- * code in the folder name makes it unique — no marker file, no disambiguation.
- * Fire-and-forget: logs errors but never throws.
- * @param {string} qaLevelsBase - the ".../QA Levels" directory
- * @param {string} levelId
- * @param {string} levelName
- */
-function ensureQaLevelFolder(qaLevelsBase, levelId, levelName) {
-  return ensureCodedFolder(qaLevelsBase, levelId, levelName, 'QA level');
-}
-
-/**
- * Relabel a QA level's folder when its name changes: find by code and rename to
- * "New Name [code]". Best-effort — lookups still succeed by code regardless of
- * the on-disk name. Fire-and-forget: never throws.
- * @param {string} qaLevelsBase - the ".../QA Levels" directory
- * @param {string} levelId
- * @param {string} newName
- */
-function renameQaLevelFolder(qaLevelsBase, levelId, newName) {
-  renameCodedFolder(qaLevelsBase, levelId, newName, 'QA level');
-}
-
-/**
  * Resolve the name-built company path as a fallback for jobs with no linked
  * company (e.g. the customer was unlinked) — there's no permanent id to
  * key on, so the company name is all we have.
@@ -346,7 +306,7 @@ function companyPathByName(basePath, companyName) {
 }
 
 /**
- * Create job card subfolders (Job Files/, QA Forms/, Customer Property/) under
+ * Create job card subfolders (Job Files/, Customer Property/) under
  * the customer's company folder, located by the permanent company id (created
  * if needed) so it survives company-name changes. Jobs with no company fall
  * back to the name-built company folder.
@@ -425,8 +385,5 @@ module.exports = {
   renameCompanyFolder,
   createJobCardFolders,
   deleteJobCardFolders,
-  findQaLevelFolder,
-  ensureQaLevelFolder,
-  renameQaLevelFolder,
   FILE_CATEGORY_FOLDERS
 };
