@@ -23,6 +23,7 @@ const {
   getSettings
 } = require('../db/database');
 const { db } = require('../db/connection');
+const { findOr404 } = require('../utils/findOr404');
 
 const router = express.Router();
 
@@ -86,10 +87,8 @@ router.get('/', authenticate, (req, res) => {
 // GET /api/qa-levels/:id - Get level with templates (admin or manager)
 router.get('/:id', authenticate, requireManagement, (req, res) => {
   try {
-    const level = qaLevelQueries.getById.get(req.params.id);
-    if (!level) {
-      return res.status(404).json({ error: 'QA level not found' });
-    }
+    const level = findOr404(res, qaLevelQueries.getById.get(req.params.id), 'QA level not found');
+    if (!level) return;
 
     const templates = qaLevelTemplateQueries.getByLevel.all(level.id);
     res.json({
@@ -158,10 +157,8 @@ router.put('/:id',
       const { id } = req.params;
       const { name } = req.body;
 
-      const existing = qaLevelQueries.getById.get(id);
-      if (!existing) {
-        return res.status(404).json({ error: 'QA level not found' });
-      }
+      const existing = findOr404(res, qaLevelQueries.getById.get(id), 'QA level not found');
+      if (!existing) return;
 
       const nameLower = name.trim().toLowerCase();
 
@@ -259,10 +256,8 @@ router.delete('/:id', authenticate, requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = qaLevelQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'QA level not found' });
-    }
+    const existing = findOr404(res, qaLevelQueries.getById.get(id), 'QA level not found');
+    if (!existing) return;
 
     // Check if any jobs use this level
     const usage = qaLevelQueries.countJobsByLevel.get(id);
@@ -314,10 +309,8 @@ router.post('/:id/templates', authenticate, requireManagement, (req, res) => {
       return res.status(400).json({ error: 'Quality forms must be PDF files' });
     }
 
-    const level = qaLevelQueries.getById.get(id);
-    if (!level) {
-      return res.status(404).json({ error: 'QA level not found' });
-    }
+    const level = findOr404(res, qaLevelQueries.getById.get(id), 'QA level not found');
+    if (!level) return;
 
     const templateId = `qa-template:${uuidv4()}`;
     const sanitizedFileName = sanitizeFolderName(path.parse(fileName).name) + path.extname(fileName);
@@ -392,10 +385,8 @@ router.post('/:id/templates', authenticate, requireManagement, (req, res) => {
 // GET /api/qa-levels/:id/templates - List templates (admin or manager)
 router.get('/:id/templates', authenticate, requireManagement, (req, res) => {
   try {
-    const level = qaLevelQueries.getById.get(req.params.id);
-    if (!level) {
-      return res.status(404).json({ error: 'QA level not found' });
-    }
+    const level = findOr404(res, qaLevelQueries.getById.get(req.params.id), 'QA level not found');
+    if (!level) return;
 
     const templates = qaLevelTemplateQueries.getByLevel.all(req.params.id);
     res.json(templates.map(formatTemplate));
@@ -410,10 +401,9 @@ router.delete('/:id/templates/:tid', authenticate, requireManagement, (req, res)
   try {
     const { id, tid } = req.params;
 
-    const template = qaLevelTemplateQueries.getById.get(tid);
-    if (!template || template.qa_level_id !== id) {
-      return res.status(404).json({ error: 'Template not found' });
-    }
+    const templateRow = qaLevelTemplateQueries.getById.get(tid);
+    const template = findOr404(res, templateRow && templateRow.qa_level_id === id ? templateRow : null, 'Template not found');
+    if (!template) return;
 
     const level = qaLevelQueries.getById.get(id);
 

@@ -166,12 +166,12 @@ This is policy, not implementation — getting it wrong is a security bug, so it
 ## Architectural Guidelines
 
 ### Backward Compatibility via Startup Conversions
-- **When a schema or value format changes, ship a one-time startup conversion that folds existing data into the new shape.** This is the single, consistent way we keep existing databases working across changes. Put the conversion in `runMigrations()` (`server/src/db/init.js`) — it runs on every boot, and must be idempotent (a second run finds nothing to convert and is a no-op).
+- **When a schema or value format changes, ship a one-time startup conversion that folds existing data into the new shape.** This is the single, consistent way we keep existing databases working across changes. Put the conversion in `runLegacyMigrations()` (`server/src/db/legacyMigrations.js`, called from `runStartupConversions()` in `init.js`) — it runs on every boot, and must be idempotent (a second run finds nothing to convert and is a no-op).
 - **Keep runtime code single-path — no backward-compatibility logic in live code** (old-value fallbacks, renamed aliases, dual read paths, etc.). The startup conversion is the *only* place that knows about the old shape; once it has run, every other part of the app only ever sees the new shape.
 - **Actively remove legacy code** when replacing a system — delete old files, routes, queries, tables, imports, and exports. Do not leave orphaned code "for reference" or "just in case." The conversion migrates the *data*; the old *code* still goes.
-- Older databases also get add-missing-column migrations (`columnMigrations.js`), covering every column added since the original schema. The live install dates from June 2026 — after the last column change — so a missing-column boot failure is not a live risk.
+- Older databases also get add-missing-column migrations (`columnMigrations.js`), covering every column added since the original schema; the mirror image, `columnDrops.js`, drops columns the code no longer uses. The live install dates from June 2026 — after the last column change — so a missing-column boot failure is not a live risk.
 - **Update the seed scripts to the new shape too**, so fresh installs and re-seeds produce new-shape data directly (only existing databases need the conversion).
-- Example: removing the `TREATMENT`/`ON_HOLD` job statuses folded them into `AWAITING_MATERIAL` via a startup conversion in `init.js`, while every status list, picker, sort map, and validator was updated to the new set and the old statuses were deleted from the code.
+- Example: removing the `TREATMENT`/`ON_HOLD` job statuses folded them into `AWAITING_MATERIAL` via a startup conversion in `legacyMigrations.js`, while every status list, picker, sort map, and validator was updated to the new set and the old statuses were deleted from the code.
 
 ### Shared rule files
 - A rule the server and the client must agree on (a calendar-day check, a rounding helper, the overtime schedule's grid math) is written **once**, in `server/src/shared/*.js`, and read by both sides — never written out a second time and kept in step by hand.

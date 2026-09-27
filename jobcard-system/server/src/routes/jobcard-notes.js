@@ -5,6 +5,7 @@ const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
 const { jobNoteQueries, recordHistory, actorName } = require('../db/database');
+const { findOr404 } = require('../utils/findOr404');
 
 const router = express.Router();
 
@@ -69,10 +70,8 @@ router.delete('/:id/notes/:noteId', authenticate, requireManagement, (req, res) 
   try {
     const { id, noteId } = req.params;
 
-    const existing = jobNoteQueries.getById.get(noteId);
-    if (!existing) {
-      return res.status(404).json({ error: 'Note not found' });
-    }
+    const existing = findOr404(res, jobNoteQueries.getById.get(noteId), 'Note not found');
+    if (!existing) return;
 
     if (existing.jobcard_id !== id) {
       return res.status(403).json({ error: 'Note does not belong to this job card' });

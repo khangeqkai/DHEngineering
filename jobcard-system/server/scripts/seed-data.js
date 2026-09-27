@@ -86,16 +86,16 @@ const companies = [
 
 // ─── SUPPLIERS: 10 Australian outside-service firms; `offers` = treatment values ───
 const suppliers = [
-  { name: 'Bodycote Australia',         contactName: 'Geoff Harris',  phone: '08 9350 5400', email: 'geoff@bodycote.com.au',       services: 'Heat treatment, metallurgical processing', offers: ['HEAT_TREATMENT'] },
-  { name: 'Heat Treatment Australia',   contactName: 'Paul Jenkins',  phone: '07 3265 2000', email: 'paul@hta.net.au',             services: 'Heat treatment, hardening, tempering',     offers: ['HEAT_TREATMENT'] },
-  { name: 'Industrial Galvanizers',     contactName: 'Tony Russo',    phone: '08 9456 3500', email: 'tony@indgalv.com.au',         services: 'Hot-dip galvanizing',                      offers: ['GALVANISE'] },
-  { name: 'Precision Grinding Services', contactName: 'Wayne Carter', phone: '08 9248 7700', email: 'wayne@precisiongrind.com.au', services: 'Surface and cylindrical grinding',         offers: ['PRECISION_GRINDING'] },
-  { name: 'Antec Anodising',            contactName: 'Sandra Lee',    phone: '08 9377 2400', email: 'sandra@antecanodising.com.au', services: 'Anodising, hard anodising',               offers: ['ANODISE'] },
-  { name: 'Chrome Plating Australia',   contactName: 'Mark Davies',   phone: '03 9314 6100', email: 'mark@chromeplating.com.au',   services: 'Hard chrome, electroplating',              offers: ['ELECTROPLATE', 'SPECIALISED_COATING'] },
-  { name: 'Blastone Surface Prep',      contactName: 'Craig Newman',  phone: '08 9244 9988', email: 'craig@blastone.com.au',       services: 'Abrasive blasting, surface preparation',   offers: ['BLASTING'] },
-  { name: 'Australian Powder Coating',  contactName: 'Dean Foster',   phone: '08 9455 1200', email: 'dean@auspowdercoat.com.au',   services: 'Powder coating',                           offers: ['POWDERCOAT'] },
-  { name: 'Pro Spray Finishes',         contactName: 'Luke Bennett',  phone: '02 9604 8800', email: 'luke@prospray.com.au',        services: 'Industrial spray painting, powder coating', offers: ['SPRAYPAINT', 'POWDERCOAT'] },
-  { name: 'Hardchrome Engineering',     contactName: 'Scott Murray',  phone: '08 9410 2900', email: 'scott@hardchrome.com.au',     services: 'Hard chrome, grinding, specialised coatings', offers: ['ELECTROPLATE', 'PRECISION_GRINDING', 'SPECIALISED_COATING'] },
+  { name: 'Bodycote Australia',         contactName: 'Geoff Harris',  phone: '08 9350 5400', email: 'geoff@bodycote.com.au',       offers: ['HEAT_TREATMENT'] },
+  { name: 'Heat Treatment Australia',   contactName: 'Paul Jenkins',  phone: '07 3265 2000', email: 'paul@hta.net.au',             offers: ['HEAT_TREATMENT'] },
+  { name: 'Industrial Galvanizers',     contactName: 'Tony Russo',    phone: '08 9456 3500', email: 'tony@indgalv.com.au',         offers: ['GALVANISE'] },
+  { name: 'Precision Grinding Services', contactName: 'Wayne Carter', phone: '08 9248 7700', email: 'wayne@precisiongrind.com.au', offers: ['PRECISION_GRINDING'] },
+  { name: 'Antec Anodising',            contactName: 'Sandra Lee',    phone: '08 9377 2400', email: 'sandra@antecanodising.com.au', offers: ['ANODISE'] },
+  { name: 'Chrome Plating Australia',   contactName: 'Mark Davies',   phone: '03 9314 6100', email: 'mark@chromeplating.com.au',   offers: ['ELECTROPLATE', 'SPECIALISED_COATING'] },
+  { name: 'Blastone Surface Prep',      contactName: 'Craig Newman',  phone: '08 9244 9988', email: 'craig@blastone.com.au',       offers: ['BLASTING'] },
+  { name: 'Australian Powder Coating',  contactName: 'Dean Foster',   phone: '08 9455 1200', email: 'dean@auspowdercoat.com.au',   offers: ['POWDERCOAT'] },
+  { name: 'Pro Spray Finishes',         contactName: 'Luke Bennett',  phone: '02 9604 8800', email: 'luke@prospray.com.au',        offers: ['SPRAYPAINT', 'POWDERCOAT'] },
+  { name: 'Hardchrome Engineering',     contactName: 'Scott Murray',  phone: '08 9410 2900', email: 'scott@hardchrome.com.au',     offers: ['ELECTROPLATE', 'PRECISION_GRINDING', 'SPECIALISED_COATING'] },
 ];
 
 // ─── MACHINES: 12 (10 original + wire EDM + waterjet for more variety) ───

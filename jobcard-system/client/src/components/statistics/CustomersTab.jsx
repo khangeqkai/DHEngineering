@@ -37,7 +37,7 @@ export default function CustomersTab({
           <div className="stats-card-body">
             <div className="distribution-list">
               {loading && Object.keys(qaLevelDistribution).length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-field)' }}>
                   <div className="skeleton-bar" style={{ width: '80%', height: '14px' }} />
                   <div className="skeleton-bar" style={{ width: '60%', height: '14px' }} />
                   <div className="skeleton-bar" style={{ width: '70%', height: '14px' }} />
@@ -75,7 +75,7 @@ export default function CustomersTab({
           <div className="stats-card-body">
             <div className="distribution-list">
               {loading && Object.keys(priorityDistribution).length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-field)' }}>
                   <div className="skeleton-bar" style={{ width: '75%', height: '14px' }} />
                   <div className="skeleton-bar" style={{ width: '85%', height: '14px' }} />
                   <div className="skeleton-bar" style={{ width: '50%', height: '14px' }} />

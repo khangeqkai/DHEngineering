@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
+import { useSuggestionLifecycle } from './useSuggestionLifecycle';
 
 /**
  * Blank customer details for a job with nothing picked yet.
@@ -27,11 +28,7 @@ function getDefaultContactFormData() {
  */
 export function useContactSearch() {
   const [contactFormData, setContactFormData] = useState(getDefaultContactFormData());
-  const [fieldFocused, setFieldFocused] = useState(false);
-  const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [companyMatches, setCompanyMatches] = useState([]);
-  const contactSearchRef = useRef(null);
-  const blurTimeoutRef = useRef(null);
 
   // The whole customer list, loaded once on first focus and filtered in the
   // browser — one call beats one per keystroke, and the list is small.
@@ -53,6 +50,20 @@ export function useContactSearch() {
     }
   }, []);
 
+  // Open/focus/blur/click-outside lifecycle shared with useJobSearch.js —
+  // focusing loads the customer list (once); noteCompanyTyping is what brings
+  // the suggestions back after an Enter pick, which never blurs the box itself.
+  const {
+    focused: fieldFocused,
+    setFocused: setFieldFocused,
+    showDropdown: showContactDropdown,
+    setShowDropdown: setShowContactDropdown,
+    containerRef: contactSearchRef,
+    handleFocus: handleFieldFocus,
+    handleBlur: handleFieldBlur,
+    noteTyping: noteCompanyTyping
+  } = useSuggestionLifecycle({ onFocus: loadCompanies });
+
   // Company autocomplete — filters the loaded list as the company field is typed.
   useEffect(() => {
     if (!fieldFocused) return;
@@ -62,43 +73,7 @@ export function useContactSearch() {
       : companies.slice(0, 10);
     setCompanyMatches(matches);
     setShowContactDropdown(matches.length > 0);
-  }, [fieldFocused, contactFormData.companyName, companies]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (contactSearchRef.current && !contactSearchRef.current.contains(event.target)) {
-        setShowContactDropdown(false);
-        setFieldFocused(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleFieldFocus = useCallback(() => {
-    if (blurTimeoutRef.current) {
-      clearTimeout(blurTimeoutRef.current);
-      blurTimeoutRef.current = null;
-    }
-    setFieldFocused(true);
-    loadCompanies();
-  }, [loadCompanies]);
-
-  // Delayed so a click on the dropdown still lands.
-  const handleFieldBlur = useCallback(() => {
-    blurTimeoutRef.current = setTimeout(() => {
-      blurTimeoutRef.current = null;
-      setFieldFocused(false);
-      setShowContactDropdown(false);
-    }, 200);
-  }, []);
-
-  // A pick closes the list by dropping the focus flag. Picking with the mouse
-  // takes the cursor out of the box, so coming back counts as a fresh visit and
-  // the flag returns on its own; Enter never moves the cursor, so typing after an
-  // Enter pick has to say the box is being worked in again — without this the
-  // suggestions never come back, however much is typed.
-  const noteCompanyTyping = useCallback(() => setFieldFocused(true), []);
+  }, [fieldFocused, contactFormData.companyName, companies, setShowContactDropdown]);
 
   // The people at the picked company, for the person dropdown.
   const selectedCompany = companies.find(c => c.id === contactFormData.companyId) || null;

@@ -7,6 +7,8 @@ const { db, supplierQueries, tagQueries, jobItemQueries, recordHistory, actorNam
 const { diffFields } = require('../utils/historyChanges');
 const { setArchived } = require('../utils/archiveToggle');
 const { supplierContactFields } = require('./supplier-helpers');
+const { findOr404 } = require('../utils/findOr404');
+const { nameConflictOr409 } = require('./name-conflict');
 
 const router = express.Router();
 
@@ -54,7 +56,6 @@ function toApiFormat(supplier, canManage = true) {
     contactName: supplier.contact_name,
     ...supplierContactFields(supplier, canManage),
     address: supplier.address,
-    services: supplier.services,
     approved: supplier.approved,
     notes: supplier.notes,
     active: supplier.active,
@@ -92,10 +93,8 @@ router.get('/', (req, res) => {
 // GET /api/suppliers/:id - Get single supplier
 router.get('/:id', (req, res) => {
   try {
-    const supplier = getSupplierWithTags(req.params.id, isManagement(req.user.role));
-    if (!supplier) {
-      return res.status(404).json({ error: 'Supplier not found' });
-    }
+    const supplier = findOr404(res, getSupplierWithTags(req.params.id, isManagement(req.user.role)), 'Supplier not found');
+    if (!supplier) return;
     res.json(supplier);
   } catch (err) {
     logger.error({ err }, 'Failed to get supplier');
@@ -111,12 +110,8 @@ router.post('/', requireManagement, validateCreateSupplier, (req, res) => {
     // Supplier names are unique (case-insensitive), same reasoning as companies —
     // an archived supplier still owns its name, so point the caller at restoring it.
     const existingByName = supplierQueries.getByName.get(name);
-    if (existingByName) {
-      return res.status(409).json({
-        error: existingByName.active === 0
-          ? 'A supplier with this name already exists in the archive. Restore it from the archived list instead.'
-          : 'A supplier with this name already exists'
-      });
+    if (nameConflictOr409(res, existingByName, null, { entityLabel: 'supplier', nameLabel: 'name', isArchived: (row) => row.active === 0 })) {
+      return;
     }
 
     const id = uuidv4();
@@ -133,7 +128,6 @@ router.post('/', requireManagement, validateCreateSupplier, (req, res) => {
         contactPhone || null,
         contactEmail || null,
         address || null,
-        null, // services field deprecated
         notes || null
       );
 
@@ -164,22 +158,16 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
     const { id } = req.params;
     const { name, contactName, contactPhone, contactEmail, address, notes, serviceTagIds } = req.body;
 
-    const existing = supplierQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Supplier not found' });
-    }
+    const existing = findOr404(res, supplierQueries.getById.get(id), 'Supplier not found');
+    if (!existing) return;
 
     // Case-insensitive match, same as companies. Only checked when the name actually
     // changes: a database from before this check may already hold two suppliers with
     // one name, and editing either one's phone must not be refused over it.
     const nameChanged = String(name).toLowerCase() !== String(existing.name || '').toLowerCase();
     const dupe = nameChanged ? supplierQueries.getByName.get(name) : null;
-    if (dupe && dupe.id !== id) {
-      return res.status(409).json({
-        error: dupe.active === 0
-          ? 'A supplier with this name already exists in the archive. Restore it from the archived list instead.'
-          : 'A supplier with this name already exists'
-      });
+    if (nameConflictOr409(res, dupe, id, { entityLabel: 'supplier', nameLabel: 'name', isArchived: (row) => row.active === 0 })) {
+      return;
     }
 
     // Track changes for audit
@@ -213,7 +201,6 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
         contactPhone || null,
         contactEmail || null,
         address || null,
-        null, // services field deprecated
         notes || null,
         id
       );

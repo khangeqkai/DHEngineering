@@ -3,7 +3,6 @@ const { db } = require('../connection');
 // QA Level queries
 const qaLevelQueries = {
   getAll: db.prepare('SELECT * FROM qa_levels ORDER BY name ASC'),
-  getBasic: db.prepare('SELECT id, name FROM qa_levels ORDER BY name ASC'),
   getById: db.prepare('SELECT * FROM qa_levels WHERE id = ?'),
   getByNameLower: db.prepare('SELECT * FROM qa_levels WHERE name_lower = ?'),
 

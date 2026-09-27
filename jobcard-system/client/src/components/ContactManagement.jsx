@@ -12,6 +12,7 @@ import ConfirmDialog from './common/ConfirmDialog';
 import EntityActivityLog from './common/EntityActivityLog';
 import CompanyPeople from './contacts/CompanyPeople';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import { useManagedListPage } from '../hooks/useManagedListPage';
 import './ContactManagement.css';
 
 const blankCompany = () => ({ name: '', address: '', notes: '' });
@@ -22,46 +23,46 @@ export default function ContactManagement() {
   // filtered it) — kept separate so "Export Current View" sends exactly those
   // rows instead of silently exporting every customer.
   const [visibleCompanies, setVisibleCompanies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    loading,
+    showArchived, setShowArchived,
+    pendingId, runPending,
+    activityRefreshKey, bumpActivity,
+    showActivityLog, setShowActivityLog,
+    runLoad
+  } = useManagedListPage();
   const [showForm, setShowForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [formData, setFormData] = useState(blankCompany());
   const [saving, setSaving] = useState(false);
-  const [pendingId, setPendingId] = useState(null);
-  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
-  const [showActivityLog, setShowActivityLog] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   // One call brings every customer and the people under them, which is what the
   // table lists. Retired people are always included here — this is the page you
   // come to in order to bring one back, so hiding them would strand them.
   const loadCompanies = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api.getCompanies({ includeArchived: true, withPeople: true });
-      // The "Show archived" box is about customers; a retired person still shows
-      // under their (live) customer so they can be restored.
-      const visible = (showArchived ? data : data.filter(c => !c.archived))
-        // Flattened so the search box finds a customer by the person you deal
-        // with there, not just by the company name.
-        .map(c => ({ ...c, peopleNames: (c.people || []).map(p => p.contactName).filter(Boolean).join(', ') }));
-      setCompanies(visible);
-      return visible;
-    } catch (err) {
-      toast.error('Could not load the customer list', { id: 'customer-list-load-failed' });
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, [showArchived]);
+    return await runLoad(
+      async () => {
+        const data = await api.getCompanies({ includeArchived: true, withPeople: true });
+        // The "Show archived" box is about customers; a retired person still shows
+        // under their (live) customer so they can be restored.
+        const visible = (showArchived ? data : data.filter(c => !c.archived))
+          // Flattened so the search box finds a customer by the person you deal
+          // with there, not just by the company name.
+          .map(c => ({ ...c, peopleNames: (c.people || []).map(p => p.contactName).filter(Boolean).join(', ') }));
+        setCompanies(visible);
+        return visible;
+      },
+      () => toast.error('Could not load the customer list', { id: 'customer-list-load-failed' })
+    );
+  }, [showArchived, runLoad]);
 
   useEffect(() => { loadCompanies(); }, [loadCompanies]);
 
   // Keep the open customer's panel in step after a change to its people.
   const refresh = async () => {
     const data = await loadCompanies();
-    setActivityRefreshKey(k => k + 1);
+    bumpActivity();
     if (data && editingCompany) {
       setEditingCompany(data.find(c => c.id === editingCompany.id) || null);
     }
@@ -111,30 +112,28 @@ export default function ContactManagement() {
     });
     if (!confirmed) return;
 
-    setPendingId(company.id);
-    try {
-      await api.archiveCompany(company.id);
-      toast.success('Customer archived');
-      await refresh();
-    } catch (err) {
-      toast.error(err.message || 'Could not archive the customer');
-    } finally {
-      setPendingId(null);
-    }
+    await runPending(company.id, async () => {
+      try {
+        await api.archiveCompany(company.id);
+        toast.success('Customer archived');
+        await refresh();
+      } catch (err) {
+        toast.error(err.message || 'Could not archive the customer');
+      }
+    });
   };
 
   const handleRestore = async (company) => {
     if (pendingId !== null) return;
-    setPendingId(company.id);
-    try {
-      await api.unarchiveCompany(company.id);
-      toast.success('Customer restored');
-      await refresh();
-    } catch (err) {
-      toast.error(err.message || 'Could not restore the customer');
-    } finally {
-      setPendingId(null);
-    }
+    await runPending(company.id, async () => {
+      try {
+        await api.unarchiveCompany(company.id);
+        toast.success('Customer restored');
+        await refresh();
+      } catch (err) {
+        toast.error(err.message || 'Could not restore the customer');
+      }
+    });
   };
 
   // --- People at the open customer ---
@@ -178,28 +177,26 @@ export default function ContactManagement() {
       confirmVariant: 'warning'
     });
     if (!confirmed) return;
-    setPendingId(person.id);
-    try {
-      await api.archiveContact(person.id);
-      await refresh();
-    } catch (err) {
-      toast.error(err.message || 'Could not retire the person');
-    } finally {
-      setPendingId(null);
-    }
+    await runPending(person.id, async () => {
+      try {
+        await api.archiveContact(person.id);
+        await refresh();
+      } catch (err) {
+        toast.error(err.message || 'Could not retire the person');
+      }
+    });
   };
 
   const restorePerson = async (person) => {
     if (pendingId !== null) return;
-    setPendingId(person.id);
-    try {
-      await api.unarchiveContact(person.id);
-      await refresh();
-    } catch (err) {
-      toast.error(err.message || 'Could not restore the person');
-    } finally {
-      setPendingId(null);
-    }
+    await runPending(person.id, async () => {
+      try {
+        await api.unarchiveContact(person.id);
+        await refresh();
+      } catch (err) {
+        toast.error(err.message || 'Could not restore the person');
+      }
+    });
   };
 
   const resetForm = () => {

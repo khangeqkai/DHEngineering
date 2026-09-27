@@ -91,9 +91,9 @@ console.log(`Created ${companies.length} companies and ${contacts.length} contac
 
 // ─── SUPPLIERS ───
 console.log('Creating suppliers...');
-const insertSupplier = db.prepare('INSERT INTO suppliers (id, name, contact_name, contact_phone, contact_email, services) VALUES (?, ?, ?, ?, ?, ?)');
+const insertSupplier = db.prepare('INSERT INTO suppliers (id, name, contact_name, contact_phone, contact_email) VALUES (?, ?, ?, ?, ?)');
 for (const s of suppliers) {
-  insertSupplier.run(s.id, s.name, s.contactName, s.phone, s.email, s.services);
+  insertSupplier.run(s.id, s.name, s.contactName, s.phone, s.email);
 }
 console.log(`Created ${suppliers.length} suppliers.`);
 

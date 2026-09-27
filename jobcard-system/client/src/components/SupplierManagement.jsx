@@ -12,12 +12,20 @@ import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import EntityActivityLog from './common/EntityActivityLog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import { useManagedListPage } from '../hooks/useManagedListPage';
 import './SupplierManagement.css';
 
 export default function SupplierManagement() {
   const [suppliers, setSuppliers] = useState([]);
   const [serviceTags, setServiceTags] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    loading,
+    showArchived: showInactive, setShowArchived: setShowInactive,
+    pendingId, runPending,
+    activityRefreshKey, bumpActivity,
+    showActivityLog, setShowActivityLog,
+    runLoad
+  } = useManagedListPage();
   const [showForm, setShowForm] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [formData, setFormData] = useState({
@@ -30,12 +38,8 @@ export default function SupplierManagement() {
     serviceTagIds: []
   });
   const [saving, setSaving] = useState(false);
-  const [pendingId, setPendingId] = useState(null);
-  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
-  const [showActivityLog, setShowActivityLog] = useState(false);
   const [showCustomTagInput, setShowCustomTagInput] = useState(false);
   const [customTagName, setCustomTagName] = useState('');
-  const [showInactive, setShowInactive] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   // What the table is actually showing right now (after its own search box has
   // filtered it) — kept separate so "Export Current View" sends exactly those
@@ -47,20 +51,18 @@ export default function SupplierManagement() {
   const [retiredTagsCache, setRetiredTagsCache] = useState({});
 
   const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [suppliersData, tagsData] = await Promise.all([
-        api.getSuppliers(showInactive),
-        api.getTags('treatment')
-      ]);
-      setSuppliers(suppliersData);
-      setServiceTags(tagsData);
-    } catch (err) {
-      toast.error(err.message || 'Failed to load data');
-    } finally {
-      setLoading(false);
-    }
-  }, [showInactive]);
+    await runLoad(
+      async () => {
+        const [suppliersData, tagsData] = await Promise.all([
+          api.getSuppliers(showInactive),
+          api.getTags('treatment')
+        ]);
+        setSuppliers(suppliersData);
+        setServiceTags(tagsData);
+      },
+      (err) => toast.error(err.message || 'Failed to load data')
+    );
+  }, [showInactive, runLoad]);
 
   useEffect(() => {
     loadData();
@@ -95,7 +97,7 @@ export default function SupplierManagement() {
         toast.success('Supplier created');
       }
       await loadData();
-      setActivityRefreshKey(k => k + 1);
+      bumpActivity();
       resetForm();
     } catch (err) {
       toast.error(err.message || 'Failed to save supplier');
@@ -129,32 +131,30 @@ export default function SupplierManagement() {
     });
     if (!confirmed) return;
 
-    setPendingId(supplier.id);
-    try {
-      await api.deactivateSupplier(supplier.id);
-      toast.success('Supplier archived');
-      await loadData();
-      setActivityRefreshKey(k => k + 1);
-    } catch (err) {
-      toast.error(err.message || 'Failed to archive supplier');
-    } finally {
-      setPendingId(null);
-    }
+    await runPending(supplier.id, async () => {
+      try {
+        await api.deactivateSupplier(supplier.id);
+        toast.success('Supplier archived');
+        await loadData();
+        bumpActivity();
+      } catch (err) {
+        toast.error(err.message || 'Failed to archive supplier');
+      }
+    });
   };
 
   const handleRestore = async (supplier) => {
     if (pendingId !== null) return;
-    setPendingId(supplier.id);
-    try {
-      await api.activateSupplier(supplier.id);
-      toast.success('Supplier restored');
-      await loadData();
-      setActivityRefreshKey(k => k + 1);
-    } catch (err) {
-      toast.error(err.message || 'Failed to restore supplier');
-    } finally {
-      setPendingId(null);
-    }
+    await runPending(supplier.id, async () => {
+      try {
+        await api.activateSupplier(supplier.id);
+        toast.success('Supplier restored');
+        await loadData();
+        bumpActivity();
+      } catch (err) {
+        toast.error(err.message || 'Failed to restore supplier');
+      }
+    });
   };
 
   const handleTagToggle = (tagId) => {

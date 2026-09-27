@@ -4,7 +4,8 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { createJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireManagement } = require('../middleware/auth');
-const { validateJobcardEnums, validateJobcardDescriptionRequired, validateJobcardDueDate, validateJobcardContactFields, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions, validateItemQuantities } = require('../middleware/validation');
+const { validateJobcardEnums, validateJobcardDescriptionRequired, validateJobcardDueDate, validateJobcardContactFields } = require('../middleware/validation');
+const { validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions, validateItemQuantities } = require('../middleware/itemValidation');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -22,6 +23,7 @@ const { computeLiveCosting, persistCosting } = require('../utils/costingCompute'
 const { readOvertimeSettings } = require('../utils/overtimeSettings');
 const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
 const { db } = require('../db/connection');
+const { findOr404 } = require('../utils/findOr404');
 
 const router = express.Router();
 
@@ -284,10 +286,8 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     // trail records the date as removed rather than changed to blank.
     if (data.dueDate === '') data.dueDate = null;
 
-    const existing = jobcardQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!existing) return;
 
     // An already-archived job never reaches this line: closedJobGuard (mounted
     // ahead of every /:id route) has already refused any write to it except the

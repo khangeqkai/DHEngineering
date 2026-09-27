@@ -5,6 +5,7 @@ const { authenticate, requireManagement } = require('../middleware/auth');
 const { tagQueries, recordHistory, actorName } = require('../db/database');
 const { setArchived } = require('../utils/archiveToggle');
 const { nameToValue } = require('../utils/tagSlug');
+const { findOr404 } = require('../utils/findOr404');
 
 const router = express.Router();
 
@@ -72,10 +73,8 @@ router.get('/', (req, res) => {
 // GET /api/tags/:id - Get single tag
 router.get('/:id', requireManagement, (req, res) => {
   try {
-    const tag = tagQueries.getById.get(req.params.id);
-    if (!tag) {
-      return res.status(404).json({ error: 'Tag not found' });
-    }
+    const tag = findOr404(res, tagQueries.getById.get(req.params.id), 'Tag not found');
+    if (!tag) return;
     res.json(formatTag(tag));
   } catch (err) {
     logger.error({ err }, 'Failed to get tag');
@@ -151,10 +150,8 @@ router.put('/:id', requireManagement, (req, res) => {
     const { id } = req.params;
     const { name } = req.body;
 
-    const existing = tagQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Tag not found' });
-    }
+    const existing = findOr404(res, tagQueries.getById.get(id), 'Tag not found');
+    if (!existing) return;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Tag name is required' });

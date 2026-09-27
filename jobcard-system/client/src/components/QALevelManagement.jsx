@@ -7,6 +7,7 @@ import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import { useManagedListPage } from '../hooks/useManagedListPage';
 import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
 import FieldError from './common/FieldError';
 import { readFileAsBase64 } from '../utils/fileData';
@@ -14,7 +15,10 @@ import { MAX_UPLOAD_BYTES } from '../../../server/src/shared/jobFiles';
 
 export default function QALevelManagement() {
   const [levels, setLevels] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // This page has no show-archived toggle, no archive/restore (a level is
+  // deleted outright, never archived) and no activity log, so only the
+  // load/loading/toast-on-failure slice of the shared list-page hook applies.
+  const { loading, runLoad } = useManagedListPage();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ name: '' });
   const [saving, setSaving] = useState(false);
@@ -33,16 +37,11 @@ export default function QALevelManagement() {
   );
 
   const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await api.getQaLevels();
-      setLevels(data);
-    } catch (err) {
-      toast.error(err.message || 'Failed to load QA levels');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    await runLoad(
+      async () => { setLevels(await api.getQaLevels()); },
+      (err) => toast.error(err.message || 'Failed to load QA levels')
+    );
+  }, [runLoad]);
 
   useEffect(() => {
     loadData();

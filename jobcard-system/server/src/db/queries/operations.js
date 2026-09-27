@@ -253,9 +253,7 @@ const jobCostingQueries = {
       subcontractor_description = excluded.subcontractor_description,
       grand_total = excluded.grand_total,
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-  `),
-
-  delete: db.prepare('DELETE FROM job_costings WHERE jobcard_id = ?')
+  `)
 };
 
 module.exports = {

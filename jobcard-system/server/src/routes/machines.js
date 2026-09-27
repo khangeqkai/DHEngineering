@@ -7,6 +7,7 @@ const { validateCreateMachine, validateUpdateMachine } = require('../middleware/
 const { diffFields } = require('../utils/historyChanges');
 const { parseMachineTokens } = require('./statistics-helpers');
 const { setArchived } = require('../utils/archiveToggle');
+const { findOr404 } = require('../utils/findOr404');
 
 const router = express.Router();
 
@@ -75,10 +76,8 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
   const { machineNumber, name, description } = req.body;
 
   try {
-    const existing = machineQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Machine not found' });
-    }
+    const existing = findOr404(res, machineQueries.getById.get(id), 'Machine not found');
+    if (!existing) return;
 
     // Check for duplicate machine number among active machines (archived ones don't count)
     // A capitals-only change ("cnc-01" → "CNC-01") is not a renumber: the check

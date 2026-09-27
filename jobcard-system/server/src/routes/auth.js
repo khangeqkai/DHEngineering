@@ -12,6 +12,7 @@ const { db, userQueries, jobNoteQueries, recordHistory, actorName, getSettings }
 const { diffFields } = require('../utils/historyChanges');
 const { isViaTunnel, clientIp } = require('../utils/homeAccess');
 const { setArchived } = require('../utils/archiveToggle');
+const { findOr404 } = require('../utils/findOr404');
 
 const router = express.Router();
 
@@ -227,10 +228,8 @@ router.post('/logout', authenticate, (req, res) => {
 // Get current user
 router.get('/me', authenticate, (req, res) => {
   try {
-    const user = userQueries.getById.get(req.user.userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const user = findOr404(res, userQueries.getById.get(req.user.userId), 'User not found');
+    if (!user) return;
     res.json({
       id: user.id,
       username: user.username,
@@ -314,10 +313,8 @@ router.get('/users', authenticate, requireManagement, (req, res) => {
 // Get single user (admin or manager)
 router.get('/users/:id', authenticate, requireManagement, (req, res) => {
   try {
-    const user = userQueries.getById.get(req.params.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const user = findOr404(res, userQueries.getById.get(req.params.id), 'User not found');
+    if (!user) return;
 
     res.json({
       id: user.id,
@@ -421,10 +418,8 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
       return res.status(403).json({ error: 'Only admins can grant the admin role' });
     }
 
-    const user = userQueries.getById.get(id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const user = findOr404(res, userQueries.getById.get(id), 'User not found');
+    if (!user) return;
 
     // Admin accounts are off-limits to managers (PIN resets, demotion, renames).
     if (user.role === 'admin' && !canManageAdmins) {
@@ -569,10 +564,8 @@ router.put('/change-password', authenticate, async (req, res) => {
       return res.status(400).json({ error: PIN_MESSAGE });
     }
 
-    const user = userQueries.getById.get(req.user.userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const user = findOr404(res, userQueries.getById.get(req.user.userId), 'User not found');
+    if (!user) return;
 
     const isValid = await bcrypt.compare(currentPassword, user.password);
     if (!isValid) {

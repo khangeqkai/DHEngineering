@@ -1,19 +1,27 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
+import { useSuggestionLifecycle } from './useSuggestionLifecycle';
 
 // At most this many matches show in the dropdown — a person picking a previous
 // job is scanning a short list, not browsing every job that ever matched.
 const MAX_MATCHES = 10;
 
 export function useJobSearch({ excludeJobNumber } = {}) {
-  const [focused, setFocused] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
+  const {
+    focused,
+    setFocused,
+    showDropdown,
+    setShowDropdown,
+    containerRef,
+    handleFocus,
+    handleBlur,
+    noteTyping,
+    cancelPendingClose
+  } = useSuggestionLifecycle();
   const [matches, setMatches] = useState([]);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const containerRef = useRef(null);
-  const blurTimeoutRef = useRef(null);
   const requestIdRef = useRef(0);
 
   useEffect(() => {
@@ -54,52 +62,15 @@ export function useJobSearch({ excludeJobNumber } = {}) {
     })();
 
     return () => { cancelled = true; };
-  }, [focused, debouncedQuery, excludeJobNumber]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setShowDropdown(false);
-        setFocused(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleFocus = useCallback(() => {
-    if (blurTimeoutRef.current) {
-      clearTimeout(blurTimeoutRef.current);
-      blurTimeoutRef.current = null;
-    }
-    setFocused(true);
-  }, []);
-
-  const handleBlur = useCallback(() => {
-    blurTimeoutRef.current = setTimeout(() => {
-      blurTimeoutRef.current = null;
-      setFocused(false);
-      setShowDropdown(false);
-    }, 200);
-  }, []);
-
-  // Same reason as the customer box: a pick closes the list by dropping the focus
-  // flag, and an Enter pick leaves the cursor where it is, so typing afterwards is
-  // the only thing that can say the box is being worked in again. Kept apart from
-  // setQuery, which is also called to keep the box in step with the saved job and
-  // must never open a list nobody asked for.
-  const noteTyping = useCallback(() => setFocused(true), []);
+  }, [focused, debouncedQuery, excludeJobNumber, setShowDropdown]);
 
   const selectMatch = useCallback((value) => {
-    if (blurTimeoutRef.current) {
-      clearTimeout(blurTimeoutRef.current);
-      blurTimeoutRef.current = null;
-    }
+    cancelPendingClose();
     setQuery(value);
     setDebouncedQuery(value);
     setShowDropdown(false);
     setFocused(false);
-  }, []);
+  }, [cancelPendingClose, setShowDropdown, setFocused]);
 
   return {
     containerRef,

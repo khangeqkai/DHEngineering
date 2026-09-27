@@ -7,6 +7,7 @@ const { companyQueries, contactQueries, recordHistory, actorName } = require('..
 const { diffFields } = require('../utils/historyChanges');
 const { toContactApi: toApiFormat } = require('./customer-format');
 const { setArchived } = require('../utils/archiveToggle');
+const { findOr404 } = require('../utils/findOr404');
 
 const router = express.Router();
 
@@ -54,8 +55,8 @@ router.put('/:id', requireManagement, validateUpdateContact, (req, res) => {
     const { id } = req.params;
     const { contactName, phone, email } = req.body;
 
-    const existing = contactQueries.getById.get(id);
-    if (!existing) return res.status(404).json({ error: 'Contact not found' });
+    const existing = findOr404(res, contactQueries.getById.get(id), 'Contact not found');
+    if (!existing) return;
 
     const changes = diffFields(existing, [
       ['contact_name', 'contactName', contactName || null],

@@ -225,10 +225,6 @@ class ApiService {
     return this.request(`/auth/employees${includeInactive ? '?includeInactive=true' : ''}`);
   }
 
-  getUser(id) {
-    return this.request(`/auth/users/${id}`);
-  }
-
   createUser(userData) { return this._post('/auth/users', userData); }
   updateUser(id, userData) { return this._put(`/auth/users/${id}`, userData); }
   deactivateUser(id) { return this._post(`/auth/users/${id}/deactivate`); }
@@ -387,7 +383,6 @@ class ApiService {
       : `limit=${limit}&offset=${offset}`;
     return this.request(`/history?${query}`);
   }
-  getUserActivity(userId, limit = 50) { return this.request(`/history/user/${userId}?limit=${limit}`); }
   getEntityHistory(entityType, page = 1) { return this.request(`/history/entity/${entityType}?page=${page}`); }
 
   // Machines
@@ -396,10 +391,6 @@ class ApiService {
   updateMachine(id, data) { return this._put(`/machines/${id}`, data); }
   archiveMachine(id) { return this._del(`/machines/${id}`); }
   activateMachine(id) { return this._post(`/machines/${id}/activate`); }
-
-  // Hardware endpoints
-  getPrinters() { return this.request('/hardware/printers'); }
-  getHardwareStatus() { return this.request('/hardware/status'); }
 
   // Settings (management only; backup export/import stays admin-only)
   getSettings() { return this.request('/settings'); }
@@ -448,7 +439,6 @@ class ApiService {
 
   // QA Levels
   getQaLevels() { return this.request('/qa-levels'); }
-  getQaLevel(id) { return this.request(`/qa-levels/${id}`); }
   createQaLevel(data) { return this._post('/qa-levels', data); }
   updateQaLevel(id, data) { return this._put(`/qa-levels/${id}`, data); }
   deleteQaLevel(id) { return this._del(`/qa-levels/${id}`); }

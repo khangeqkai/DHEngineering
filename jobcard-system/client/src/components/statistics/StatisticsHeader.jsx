@@ -146,13 +146,13 @@ export default function StatisticsHeader({
           </div>
         )}
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--gap-tight)' }}>
           <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>Trend View:</span>
           <select
             value={groupBy}
             onChange={(e) => setGroupBy(e.target.value)}
             style={{
-              padding: '0.35rem 0.6rem',
+              padding: 'var(--gap-inline) var(--space-2-5)',
               fontSize: 'var(--text-xs)',
               borderRadius: 'var(--radius-sm)',
               border: '1px solid var(--border-color)',

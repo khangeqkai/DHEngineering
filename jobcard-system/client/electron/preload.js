@@ -4,14 +4,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   // Printer functions
   getPrinters: () => ipcRenderer.invoke('get-printers'),
-  print: (options) => ipcRenderer.invoke('print', options),
-  printToPDF: (options) => ipcRenderer.invoke('print-to-pdf', options),
 
   // Open a combined-packet PDF buffer in the OS viewer (which prints it)
   openPdf: (data) => ipcRenderer.invoke('open-pdf', data),
-
-  // Camera functions
-  getCameras: () => ipcRenderer.invoke('get-cameras'),
 
   // App info
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),

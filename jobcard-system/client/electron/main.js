@@ -347,57 +347,6 @@ ipcMain.handle('get-printers', async () => {
   }
 });
 
-// Print content
-ipcMain.handle('print', async (event, options) => {
-  try {
-    const window = BrowserWindow.getAllWindows()[0];
-    return new Promise((resolve, reject) => {
-      window.webContents.print(
-        {
-          silent: options.silent || false,
-          printBackground: true,
-          deviceName: options.printerName || ''
-        },
-        (success, failureReason) => {
-          if (success) {
-            resolve({ success: true });
-          } else {
-            reject(new Error(failureReason));
-          }
-        }
-      );
-    });
-  } catch (err) {
-    logger.error({ err }, 'Print failed');
-    throw err;
-  }
-});
-
-// Print to PDF
-ipcMain.handle('print-to-pdf', async (event, options) => {
-  try {
-    const window = BrowserWindow.getAllWindows()[0];
-    const pdfData = await window.webContents.printToPDF({
-      pageSize: options.pageSize || 'A4',
-      printBackground: true,
-      margins: {
-        marginType: 'default'
-      }
-    });
-    return pdfData;
-  } catch (err) {
-    logger.error({ err }, 'Print to PDF failed');
-    throw err;
-  }
-});
-
-// Get media devices (cameras)
-ipcMain.handle('get-cameras', async () => {
-  // Camera access is handled via browser API in renderer
-  // This is a placeholder for future native camera integration
-  return { message: 'Use navigator.mediaDevices.getUserMedia in renderer' };
-});
-
 // Get app info
 ipcMain.handle('get-app-info', () => {
   return {

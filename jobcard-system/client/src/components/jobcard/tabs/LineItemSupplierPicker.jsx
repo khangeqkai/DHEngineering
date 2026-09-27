@@ -1,8 +1,9 @@
-import { useState, useMemo, useRef, useEffect, useId } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronDown, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../../../services/api';
 import { isActiveRecord } from '../../../../../server/src/shared/records';
+import { useComboboxNav } from '../useComboboxNav';
 
 // Search/select control for one line item's supplier. By default it lists only the
 // suppliers that provide the chosen treatment (their "Services Provided" includes
@@ -25,7 +26,6 @@ export default function LineItemSupplierPicker({
 }) {
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
-  const committingRef = useRef(false);
 
   const activeSuppliers = useMemo(() => suppliers.filter(isActiveRecord), [suppliers]);
   const providers = useMemo(
@@ -74,7 +74,6 @@ export default function LineItemSupplierPicker({
   };
 
   const commit = (id) => {
-    committingRef.current = true;
     setQuery('');
     setFocused(false);
     if (!id) {
@@ -87,19 +86,8 @@ export default function LineItemSupplierPicker({
   };
 
   const requestCreate = () => {
-    committingRef.current = true;
     setFocused(false);
     onRequestCreate(typed);
-  };
-
-  const handleBlur = () => {
-    if (committingRef.current) {
-      committingRef.current = false;
-      setFocused(false);
-      return;
-    }
-    setFocused(false);
-    setQuery('');
   };
 
   const inputValue = focused ? query : (selectedRetired ? `${selectedName} (retired)` : selectedName);
@@ -114,35 +102,35 @@ export default function LineItemSupplierPicker({
     return rows;
   }, [matches, required, supplierId, canCreate]);
 
-  const listId = useId();
-  const [activeIndex, setActiveIndex] = useState(-1);
-  // A changed list starts with nothing highlighted — keeping the old position would
-  // point the keyboard at a different supplier than the one that was under it.
-  useEffect(() => { setActiveIndex(-1); }, [options]);
-
   const showDropdown = focused && options.length > 0;
 
-  const choose = (opt) => {
+  const pickOption = (opt) => {
     if (opt.kind === 'supplier') commit(opt.supplier.id);
     else if (opt.kind === 'none') commit('');
     else requestCreate();
   };
 
-  // Worked from the keyboard without focus leaving the box: moving focus into the
-  // list would fire the blur that closes it.
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape') { e.stopPropagation(); e.target.blur(); return; }
-    if (!showDropdown) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setActiveIndex(i => (i < options.length - 1 ? i + 1 : 0));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActiveIndex(i => (i > 0 ? i - 1 : options.length - 1));
-    } else if (e.key === 'Enter' && activeIndex >= 0) {
-      e.preventDefault();
-      choose(options[activeIndex]);
+  // Highlight index, wrap-around, reset-on-change, Enter-to-pick and Escape are
+  // all shared with the job screen's other combos (useComboboxNav.js) — worked
+  // from the keyboard without focus leaving the box, since moving focus into the
+  // list would fire the blur that closes it. `choose` also arms the pick guard
+  // below, so the blur that follows a pick (mouse or Enter) knows to stand aside
+  // rather than clear the box a second time.
+  const { listId, activeIndex, setActiveIndex, handleKeyDown, choose, consumePickGuard } = useComboboxNav({
+    items: options,
+    isOpen: showDropdown,
+    onChoose: (i) => pickOption(options[i])
+  });
+
+  // A pick already cleared the box (or, for Create, left it as typed) and
+  // dropped focus — the blur that follows must not also clear the query.
+  const handleBlur = () => {
+    if (consumePickGuard()) {
+      setFocused(false);
+      return;
     }
+    setFocused(false);
+    setQuery('');
   };
 
   return (
@@ -175,7 +163,7 @@ export default function LineItemSupplierPicker({
               aria-selected={i === activeIndex}
               className={`customer-option${i === activeIndex ? ' is-active' : ''}`}
               onMouseEnter={() => setActiveIndex(i)}
-              onMouseDown={() => choose(opt)}
+              onMouseDown={() => choose(i)}
             >
               {opt.kind === 'supplier' && <strong>{opt.supplier.name}</strong>}
               {opt.kind === 'none' && <em>No supplier</em>}

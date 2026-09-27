@@ -60,7 +60,6 @@ db.exec(`
     contact_phone TEXT,
     contact_email TEXT,
     address TEXT,
-    services TEXT,
     approved INTEGER DEFAULT 1,
     notes TEXT,
     active INTEGER DEFAULT 1,
@@ -349,7 +348,7 @@ db.exec(`
   -- Superseded by the two sort-covered composites below (they cover every existing
   -- lookup on this table, plus the ORDER BY created_at each of those lookups already
   -- did as a separate sort step) — the old single-column indexes are dropped from an
-  -- existing database in runMigrations() (db/init.js).
+  -- existing database in runLegacyMigrations() (db/legacyMigrations.js).
   CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at);
   CREATE INDEX IF NOT EXISTS idx_history_user_created ON history(user_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_history_entity_created ON history(entity_type, entity_id, created_at);
@@ -424,66 +423,9 @@ try {
 }
 
 
-// Drop drawings_type / customer_property from jobcards (now live on job_items)
-try {
-  const jcCols = db.prepare('PRAGMA table_info(jobcards)').all();
-  for (const dead of ['drawings_type', 'customer_property']) {
-    if (jcCols.some(c => c.name === dead)) {
-      db.exec(`ALTER TABLE jobcards DROP COLUMN ${dead}`);
-      logger.info({ column: dead }, 'Migration: Dropped column from jobcards (moved to job_items)');
-    }
-  }
-} catch (err) {
-  logger.error({ err }, 'Migration: Failed to drop drawings/property columns from jobcards');
-}
-
-// Drop job_type column from jobcards (now lives on job_items)
-try {
-  const cols = db.prepare('PRAGMA table_info(jobcards)').all();
-  if (cols.some(c => c.name === 'job_type')) {
-    db.exec('ALTER TABLE jobcards DROP COLUMN job_type');
-    logger.info('Migration: Dropped job_type column from jobcards');
-  }
-} catch (err) {
-  logger.error({ err }, 'Migration: Failed to drop job_type from jobcards');
-}
-
-// Drop per-item files-status columns from job_items (no longer tracked)
-try {
-  const itemCols = db.prepare('PRAGMA table_info(job_items)').all();
-  for (const dead of ['qa_files_status', 'job_files_status', 'customer_property_status']) {
-    if (itemCols.some(c => c.name === dead)) {
-      db.exec(`ALTER TABLE job_items DROP COLUMN ${dead}`);
-      logger.info({ column: dead }, 'Migration: Dropped column from job_items');
-    }
-  }
-} catch (err) {
-  logger.error({ err }, 'Migration: Failed to drop files-status columns from job_items');
-}
-
-// Drop require_scanned_forms from qa_levels (no longer tracked)
-try {
-  const qaCols = db.prepare('PRAGMA table_info(qa_levels)').all();
-  if (qaCols.some(c => c.name === 'require_scanned_forms')) {
-    db.exec('ALTER TABLE qa_levels DROP COLUMN require_scanned_forms');
-    logger.info('Migration: Dropped require_scanned_forms column from qa_levels');
-  }
-} catch (err) {
-  logger.error({ err }, 'Migration: Failed to drop require_scanned_forms from qa_levels');
-}
-
-// Drop the time-entry special-labour flag: work blocks can no longer be marked
-// "special". Special labour is now a manually-entered costing line instead, so the
-// per-block flag is gone. Idempotent: a second run finds the column already gone.
-try {
-  const teCols = db.prepare('PRAGMA table_info(time_entries)').all();
-  if (teCols.some(c => c.name === 'is_special_labour')) {
-    db.exec('ALTER TABLE time_entries DROP COLUMN is_special_labour');
-    logger.info('Migration: Dropped is_special_labour from time_entries');
-  }
-} catch (err) {
-  logger.error({ err }, 'Migration: Failed to drop is_special_labour from time_entries');
-}
+// Columns dropped from existing tables (moved elsewhere, or no longer tracked at
+// all) — the list lives in its own module, in the style of columnMigrations.js.
+require('./columnDrops').dropDeadColumns();
 
 // Drop legacy qa_forms + documents tables (replaced by disk-first folders), and
 // contact_people — an earlier shape for "several people at one company" that no

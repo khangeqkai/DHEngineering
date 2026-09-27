@@ -127,12 +127,12 @@ const supplierQueries = {
   getByName: db.prepare('SELECT * FROM suppliers WHERE name = ? COLLATE NOCASE'),
 
   create: db.prepare(`
-    INSERT INTO suppliers (id, name, contact_name, contact_phone, contact_email, address, services, approved, notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    INSERT INTO suppliers (id, name, contact_name, contact_phone, contact_email, address, approved, notes, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, 1, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare(`
-    UPDATE suppliers SET name = ?, contact_name = ?, contact_phone = ?, contact_email = ?, address = ?, services = ?, notes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    UPDATE suppliers SET name = ?, contact_name = ?, contact_phone = ?, contact_email = ?, address = ?, notes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
@@ -144,7 +144,6 @@ const supplierQueries = {
 const tagQueries = {
   getById: db.prepare('SELECT * FROM tags WHERE id = ?'),
   getByValue: db.prepare('SELECT * FROM tags WHERE category = ? AND value = ?'),
-  getByName: db.prepare('SELECT * FROM tags WHERE category = ? AND name = ?'),
   // Active options only — drives the pickers ("what you can choose today").
   getByCategory: db.prepare('SELECT * FROM tags WHERE category = ? AND archived = 0 ORDER BY sort_order ASC, name ASC'),
   // Every option, archived included — drives save-validation and display lookups
@@ -162,7 +161,6 @@ const tagQueries = {
   unarchive: db.prepare('UPDATE tags SET archived = 0 WHERE id = ?'),
 
   getMaxSortOrder: db.prepare('SELECT MAX(sort_order) as max_sort FROM tags WHERE category = ?'),
-  updateSortOrder: db.prepare('UPDATE tags SET sort_order = ? WHERE id = ?'),
 
   // Count line items still referencing a tag value, per category. A value still
   // in use must not be renamed (a rename changes the value and would strand it).
@@ -205,19 +203,8 @@ const tagQueries = {
     VALUES (?, ?)
   `),
 
-  removeFromSupplier: db.prepare(`
-    DELETE FROM supplier_service_tags WHERE supplier_id = ? AND service_tag_id = ?
-  `),
-
   clearSupplierTags: db.prepare(`
     DELETE FROM supplier_service_tags WHERE supplier_id = ?
-  `),
-
-  getSuppliersByTag: db.prepare(`
-    SELECT s.* FROM suppliers s
-    INNER JOIN supplier_service_tags sst ON s.id = sst.supplier_id
-    WHERE sst.service_tag_id = ? AND s.active = 1
-    ORDER BY s.name ASC
   `)
 };
 

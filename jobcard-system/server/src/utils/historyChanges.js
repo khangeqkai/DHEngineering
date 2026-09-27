@@ -54,4 +54,4 @@ function diffFields(existing, fields) {
   return changes;
 }
 
-module.exports = { normalizeBlank, blankEqual, diffFields };
+module.exports = { blankEqual, diffFields };

@@ -18,6 +18,7 @@ const {
   actorName
 } = require('../db/database');
 const { db } = require('../db/connection');
+const { findOr404 } = require('../utils/findOr404');
 const { formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
 const { roundTo } = require('../shared/round');
 const jobcardMutationsRoutes = require('./jobcard-mutations');
@@ -110,10 +111,8 @@ router.post('/attachment-warnings', authenticate, (req, res) => {
 // Get single job card with all related data
 router.get('/:id', authenticate, (req, res) => {
   try {
-    const jobcard = jobcardQueries.getById.get(req.params.id);
-    if (!jobcard) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const jobcard = findOr404(res, jobcardQueries.getById.get(req.params.id), 'Job card not found');
+    if (!jobcard) return;
 
     const items = jobItemQueries.getByJobcard.all(req.params.id);
     const assignees = jobAssigneeQueries.getByJobcard.all(req.params.id);
@@ -153,10 +152,8 @@ router.post('/:id/assignees/self', authenticate, (req, res) => {
     const { id } = req.params;
     const { userId } = req.user;
 
-    const existing = jobcardQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!existing) return;
 
     const before = jobAssigneeQueries.getByJobcard.all(id);
     const alreadyAssigned = before.some(a => a.user_id === userId);
@@ -209,10 +206,8 @@ router.delete('/:id/assignees/self', authenticate, (req, res) => {
     const { id } = req.params;
     const { userId } = req.user;
 
-    const existing = jobcardQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!existing) return;
 
     const before = jobAssigneeQueries.getByJobcard.all(id);
     const wasAssigned = before.some(a => a.user_id === userId);
@@ -248,15 +243,11 @@ router.put('/:id/assignees/:userId', authenticate, requireManagement, (req, res)
   try {
     const { id, userId } = req.params;
 
-    const existing = jobcardQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!existing) return;
 
-    const user = userQueries.getById.get(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const user = findOr404(res, userQueries.getById.get(userId), 'User not found');
+    if (!user) return;
 
     const before = jobAssigneeQueries.getByJobcard.all(id);
     const alreadyAssigned = before.some(a => a.user_id === userId);
@@ -308,15 +299,11 @@ router.delete('/:id/assignees/:userId', authenticate, requireManagement, (req, r
   try {
     const { id, userId } = req.params;
 
-    const existing = jobcardQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!existing) return;
 
-    const user = userQueries.getById.get(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const user = findOr404(res, userQueries.getById.get(userId), 'User not found');
+    if (!user) return;
 
     const before = jobAssigneeQueries.getByJobcard.all(id);
     const wasAssigned = before.some(a => a.user_id === userId);
@@ -356,10 +343,8 @@ router.patch('/:id/status', authenticate, (req, res) => {
       return res.status(400).json({ error: 'Invalid status value' });
     }
 
-    const existing = jobcardQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!existing) return;
 
     if (!canSetStatus(req.user.role, existing.status, status)) {
       return res.status(403).json({ error: 'Only management can set that status' });
@@ -410,10 +395,8 @@ router.post('/:id/unarchive', authenticate, requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = jobcardQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!existing) return;
 
     if (existing.archived !== 1) {
       return res.status(400).json({ error: 'Job card is not archived' });
@@ -440,10 +423,8 @@ router.delete('/:id', authenticate, requirePermission('deleteJob'), (req, res) =
   try {
     const { id } = req.params;
 
-    const existing = jobcardQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!existing) return;
 
     // Soft delete checkpoint: deleting a job is permanent and its number is never
     // reused, so we never delete on the first request — we bounce back a 409 asking

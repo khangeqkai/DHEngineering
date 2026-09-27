@@ -8,6 +8,8 @@ const { diffFields } = require('../utils/historyChanges');
 const { ensureCompanyFolder, renameCompanyFolder } = require('../utils/folderCreation');
 const { toCompanyApi: toApiFormat, toContactApi } = require('./customer-format');
 const { setArchived } = require('../utils/archiveToggle');
+const { findOr404 } = require('../utils/findOr404');
+const { nameConflictOr409 } = require('./name-conflict');
 
 const router = express.Router();
 
@@ -51,12 +53,8 @@ router.post('/', requireManagement, validateCreateCompany, (req, res) => {
     // exactly one folder on disk. An archived customer still owns its name, so
     // tell the admin to restore it rather than leaving them at a dead end.
     const existing = companyQueries.getByName.get(name);
-    if (existing) {
-      return res.status(409).json({
-        error: existing.archived
-          ? 'A customer with this company name already exists in the archive. Restore it from the archived list instead.'
-          : 'A customer with this company name already exists'
-      });
+    if (nameConflictOr409(res, existing, null, { entityLabel: 'customer', nameLabel: 'company name', isArchived: (row) => Boolean(row.archived) })) {
+      return;
     }
 
     const id = uuidv4();
@@ -84,16 +82,12 @@ router.put('/:id', requireManagement, validateUpdateCompany, (req, res) => {
     const { id } = req.params;
     const { name, address, notes } = req.body;
 
-    const existing = companyQueries.getById.get(id);
-    if (!existing) return res.status(404).json({ error: 'Company not found' });
+    const existing = findOr404(res, companyQueries.getById.get(id), 'Company not found');
+    if (!existing) return;
 
     const dupe = companyQueries.getByName.get(name);
-    if (dupe && dupe.id !== id) {
-      return res.status(409).json({
-        error: dupe.archived
-          ? 'A customer with this company name already exists in the archive. Restore it from the archived list instead.'
-          : 'A customer with this company name already exists'
-      });
+    if (nameConflictOr409(res, dupe, id, { entityLabel: 'customer', nameLabel: 'company name', isArchived: (row) => Boolean(row.archived) })) {
+      return;
     }
 
     const changes = diffFields(existing, [

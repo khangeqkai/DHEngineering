@@ -20,7 +20,7 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
             </div>
           </div>
           <div className="stats-card-body">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 'var(--text-sm)' }}>Finished on or before due date:</span>
                 <strong style={{ color: 'var(--accent-ready)' }}>
@@ -37,7 +37,7 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
                 />
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: 'var(--space-3)' }}>
                 <span style={{ fontSize: 'var(--text-sm)' }}>Late finished jobs:</span>
                 <strong style={{ color: summary.lateJobsCount > 0 ? 'var(--accent-caution)' : 'inherit' }}>
                   {summary.lateJobsCount ?? 0} jobs
@@ -66,7 +66,7 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
             </div>
           </div>
           <div className="stats-card-body">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 'var(--text-sm)' }}>Total live jobs:</span>
                 <strong>{summary.activeJobsCount ?? 0} jobs open</strong>
@@ -77,7 +77,7 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
                 <strong style={{ color: 'var(--primary-accent)' }}>{summary.inProgressJobsCount ?? 0} jobs</strong>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: 'var(--space-3)' }}>
                 <span style={{ fontSize: 'var(--text-sm)' }}>Currently overdue (past due date):</span>
                 <strong style={{ color: summary.overdueActiveJobsCount > 0 ? 'var(--accent-caution)' : 'var(--accent-ready)' }}>
                   {summary.overdueActiveJobsCount ?? 0} jobs

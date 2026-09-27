@@ -12,6 +12,7 @@ import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import EntityActivityLog from './common/EntityActivityLog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import { useManagedListPage } from '../hooks/useManagedListPage';
 import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
 import { isManagement, can } from '../utils/roles';
 import FieldError from './common/FieldError';
@@ -27,8 +28,14 @@ export default function UserManagement() {
   // filtered it) — kept separate from `users` so "Export Current View" can send
   // exactly those rows instead of silently exporting everyone.
   const [visibleUsers, setVisibleUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showInactive, setShowInactive] = useState(false);
+  const {
+    loading,
+    showArchived: showInactive, setShowArchived: setShowInactive,
+    pendingId, runPending,
+    activityRefreshKey, bumpActivity,
+    showActivityLog, setShowActivityLog,
+    runLoad
+  } = useManagedListPage();
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({
@@ -39,9 +46,6 @@ export default function UserManagement() {
     role: 'user'
   });
   const [saving, setSaving] = useState(false);
-  const [pendingId, setPendingId] = useState(null);
-  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
-  const [showActivityLog, setShowActivityLog] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
     (name) => formData[name]
@@ -53,14 +57,11 @@ export default function UserManagement() {
   }, [showInactive]);
 
   const loadUsers = async () => {
-    try {
-      const data = await api.getUsers(showInactive);
-      setUsers(data);
-    } catch (err) {
-      toast.error(err.message || 'Failed to load users');
-    } finally {
-      setLoading(false);
-    }
+    await runLoad(
+      async () => { setUsers(await api.getUsers(showInactive)); },
+      (err) => toast.error(err.message || 'Failed to load users'),
+      { resetLoading: false }
+    );
   };
 
   const handleSubmit = async (e) => {
@@ -116,7 +117,7 @@ export default function UserManagement() {
       }
 
       await loadUsers();
-      setActivityRefreshKey(k => k + 1);
+      bumpActivity();
       resetForm();
     } catch (err) {
       toast.error(err.message || 'Failed to save user');
@@ -148,32 +149,30 @@ export default function UserManagement() {
     });
     if (!confirmed) return;
 
-    setPendingId(user.id);
-    try {
-      await api.deactivateUser(user.id);
-      toast.success('User archived');
-      await loadUsers();
-      setActivityRefreshKey(k => k + 1);
-    } catch (err) {
-      toast.error(err.message || 'Failed to archive user');
-    } finally {
-      setPendingId(null);
-    }
+    await runPending(user.id, async () => {
+      try {
+        await api.deactivateUser(user.id);
+        toast.success('User archived');
+        await loadUsers();
+        bumpActivity();
+      } catch (err) {
+        toast.error(err.message || 'Failed to archive user');
+      }
+    });
   };
 
   const handleRestore = async (user) => {
     if (pendingId !== null) return;
-    setPendingId(user.id);
-    try {
-      await api.activateUser(user.id);
-      toast.success('User restored');
-      await loadUsers();
-      setActivityRefreshKey(k => k + 1);
-    } catch (err) {
-      toast.error(err.message || 'Failed to restore user');
-    } finally {
-      setPendingId(null);
-    }
+    await runPending(user.id, async () => {
+      try {
+        await api.activateUser(user.id);
+        toast.success('User restored');
+        await loadUsers();
+        bumpActivity();
+      } catch (err) {
+        toast.error(err.message || 'Failed to restore user');
+      }
+    });
   };
 
   const resetForm = () => {
@@ -374,7 +373,7 @@ export default function UserManagement() {
                 key: 'actions',
                 label: 'Actions',
                 render: (_, row) => (
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <div className="action-buttons">
                     {row.id !== currentUser?.id && !(row.role === 'admin' && !canManageAdmins) && (
                       <>
                         {row.active ? (

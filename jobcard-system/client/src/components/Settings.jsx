@@ -318,14 +318,14 @@ export default function Settings() {
         size="small"
       >
         <BottomSheet.Body>
-          <p style={{ marginBottom: '0.75rem', fontWeight: 400 }}>
+          <p style={{ marginBottom: 'var(--space-3)', fontWeight: 400 }}>
             This will REPLACE all current data with the backup contents:
           </p>
-          <ul style={{ margin: '0 0 1rem 1.25rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+          <ul style={{ margin: '0 0 var(--space-4) var(--space-5)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
             <li>All database records (job cards, contacts, users, etc.)</li>
             <li>All job folder files (scanned documents, QA forms, etc.)</li>
           </ul>
-          <p style={{ marginBottom: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+          <p style={{ marginBottom: 'var(--space-3)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
             Everyone will be signed out and the app will reload when it finishes.
           </p>
           <p style={{ color: 'var(--danger-ink)', fontWeight: 400 }}>
@@ -364,10 +364,10 @@ export default function Settings() {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '1rem',
+            gap: 'var(--space-4)',
             color: '#fff',
             textAlign: 'center',
-            padding: '2rem'
+            padding: 'var(--space-8)'
           }}
         >
           <Spinner size={40} />

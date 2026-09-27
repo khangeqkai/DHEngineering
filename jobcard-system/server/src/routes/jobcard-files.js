@@ -119,6 +119,18 @@ function resolveCategoryFolder(jobcardId, category) {
 }
 
 /**
+ * The reply every route below sends when resolveCategoryFolder (or the saveFile
+ * helper's own call to it) couldn't resolve a folder — same status and message
+ * the folder lookup itself decided, just sent from one place instead of five.
+ * Returns true (having sent the reply) when there was an error, false otherwise.
+ */
+function replyIfFolderError(res, folderRes) {
+  if (!folderRes.error) return false;
+  res.status(folderRes.status).json({ error: folderRes.error });
+  return true;
+}
+
+/**
  * Derive a short, stable code from a line item's permanent id (e.g.
  * "item:550e8400-..." → "p550e8400"). Files for that part are named with this
  * code, so a part's attachments survive any re-numbering of the parts (the
@@ -357,7 +369,7 @@ router.get('/:id/files/:category', authenticate, validateCategory, (req, res) =>
   try {
     const { id, category } = req.params;
     const folderRes = resolveCategoryFolder(id, category);
-    if (folderRes.error) return res.status(folderRes.status).json({ error: folderRes.error });
+    if (replyIfFolderError(res, folderRes)) return;
     // Tag each file with the part it belongs to (and its clean display name) so the
     // paperwork hub can show a "For:" picker and reassign files to a part.
     res.json(resolveFileOwners(id, listFolderFiles(folderRes.folderPath)));
@@ -372,7 +384,7 @@ router.get('/:id/files/:category/:filename', authenticate, validateCategory, val
   try {
     const { id, category, filename } = req.params;
     const folderRes = resolveCategoryFolder(id, category);
-    if (folderRes.error) return res.status(folderRes.status).json({ error: folderRes.error });
+    if (replyIfFolderError(res, folderRes)) return;
 
     const filePath = path.join(folderRes.folderPath, filename);
     if (!isWithinBase(folderRes.folderPath, filePath)) {
@@ -398,7 +410,7 @@ router.get('/:id/files/:category/:filename', authenticate, validateCategory, val
 // ─── Save a file (shared by file-upload + camera flows) ───
 function saveFile({ jobcardId, category, displayName, buffer, source, itemId, req, res }) {
   const folderRes = resolveCategoryFolder(jobcardId, category);
-  if (folderRes.error) return res.status(folderRes.status).json({ error: folderRes.error });
+  if (replyIfFolderError(res, folderRes)) return;
 
   // A chosen part must still be a real line item on this job — the same check the
   // /assign route runs. Without it, a stale itemId from a screen that hasn't
@@ -496,7 +508,7 @@ router.post('/:id/files/:category/:filename/assign', authenticate, validateCateg
     const itemId = req.body.itemId || null;
 
     const folderRes = resolveCategoryFolder(id, category);
-    if (folderRes.error) return res.status(folderRes.status).json({ error: folderRes.error });
+    if (replyIfFolderError(res, folderRes)) return;
 
     const currentPath = path.join(folderRes.folderPath, filename);
     if (!isWithinBase(folderRes.folderPath, currentPath)) {
@@ -584,7 +596,7 @@ router.delete('/:id/files/:category/:filename', authenticate, requireManagement,
     const { id, category, filename } = req.params;
 
     const folderRes = resolveCategoryFolder(id, category);
-    if (folderRes.error) return res.status(folderRes.status).json({ error: folderRes.error });
+    if (replyIfFolderError(res, folderRes)) return;
 
     const filePath = path.join(folderRes.folderPath, filename);
     if (!isWithinBase(folderRes.folderPath, filePath)) {

@@ -3,7 +3,7 @@
  *
  * Replaces the old hand-written nine-scenario list with a deterministic generator
  * that walks coverage counters across every axis the app supports, so the demo
- * data exercises ALL of: each status (incl. On Hold), each job type, each
+ * data exercises ALL of: each status, each job type, each
  * material, each treatment (incl. the free-text "Other"), each drawing type,
  * each customer-property value, the repeat-job flag, and every priority.
  *
@@ -25,6 +25,11 @@ const STATUS_PLAN = [
   'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS',
   'DONE', 'DONE', 'DONE', 'DONE',
   'INVOICED', 'INVOICED', 'INVOICED', 'INVOICED',
+  // Appended rather than interleaved, so every existing index above (including the
+  // jobIdx-specific liveTimer/withOvertime picks below) keeps pointing at the same
+  // job it always did.
+  'PO_REQUESTED', 'PO_REQUESTED',
+  'CUST_NOTIFIED', 'CUST_NOTIFIED',
 ];
 
 const JOB_TYPES = ['MANUFACTURE', 'REPAIR', 'MODIFY', 'FABRICATE', 'SUPPLY', 'REVERSE_ENGINEER', 'INSPECTION', 'CAD_DRAWINGS', 'CONSULTATION', 'ONSITE'];
@@ -64,24 +69,28 @@ const CONTEXT = {
   QUOTE: 'quote pending customer approval',
   OPEN: 'approved, scheduled to start',
   AWAITING_MATERIAL: 'awaiting material from supplier',
+  PO_REQUESTED: 'purchase order requested from customer',
   IN_PROGRESS: 'machining underway',
   DONE: 'complete, awaiting collection',
+  CUST_NOTIFIED: 'customer notified, ready to invoice',
   INVOICED: 'completed and invoiced',
 };
 const NOTES = {
   OPEN: ['Drawing approved, tooling list prepared.', 'Scheduled to start next shift.'],
   AWAITING_MATERIAL: ['Bar stock ordered — ETA 5 working days.', 'Waiting on casting from the foundry.'],
+  PO_REQUESTED: ['Quote confirmed — purchase order requested from customer.', 'Following up with customer for a PO number.'],
   IN_PROGRESS: ['First item machined, first-off inspection passed.', 'Setup complete, running on the CNC now.'],
   DONE: ['All items complete, QC signed off.', 'Finished and ready for customer collection.'],
+  CUST_NOTIFIED: ['Customer notified that the job is complete.', 'Awaiting customer sign-off before invoicing.'],
   INVOICED: ['Completed, collected, and invoiced.', 'Final inspection passed — invoiced.'],
 };
 
-const STARTED = new Set(['IN_PROGRESS', 'DONE', 'INVOICED']);
-const FULLY_MACHINED = new Set(['DONE', 'INVOICED']);
-const COSTED = new Set(['IN_PROGRESS', 'DONE', 'INVOICED']);
+const STARTED = new Set(['IN_PROGRESS', 'DONE', 'CUST_NOTIFIED', 'INVOICED']);
+const FULLY_MACHINED = new Set(['DONE', 'CUST_NOTIFIED', 'INVOICED']);
+const COSTED = new Set(['IN_PROGRESS', 'DONE', 'CUST_NOTIFIED', 'INVOICED']);
 // Base age (days ago created) per status — terminal jobs are older than fresh ones.
-const BASE_AGE = { QUOTE: 2, OPEN: 3, AWAITING_MATERIAL: 6, IN_PROGRESS: 9, DONE: 22, INVOICED: 32 };
-const BASE_DUE = { QUOTE: 21, OPEN: 14, AWAITING_MATERIAL: 18, IN_PROGRESS: 8, DONE: 3, INVOICED: -8 };
+const BASE_AGE = { QUOTE: 2, OPEN: 3, AWAITING_MATERIAL: 6, PO_REQUESTED: 7, IN_PROGRESS: 9, DONE: 22, CUST_NOTIFIED: 26, INVOICED: 32 };
+const BASE_DUE = { QUOTE: 21, OPEN: 14, AWAITING_MATERIAL: 18, PO_REQUESTED: 12, IN_PROGRESS: 8, DONE: 3, CUST_NOTIFIED: -3, INVOICED: -8 };
 
 function buildScenarios(contacts, qaLevels, opts = {}) {
   const workerCount = opts.workerCount || 5;

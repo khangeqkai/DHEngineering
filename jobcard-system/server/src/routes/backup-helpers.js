@@ -1,7 +1,12 @@
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
+const extractZip = require('extract-zip');
 const logger = require('../utils/logger');
+const db = require('../db/database');
+const { runStartupConversions } = require('../db/init');
+const { PRINT_NAMING_CUTOVER_KEY } = require('../db/legacyMigrations');
+const { splitCustomersInBackup } = require('../db/splitCustomers');
 
 // Helper: collect every file under dir, with forward-slash paths relative to
 // baseDir. Symlinks and other special entries are ignored (real files only).
@@ -242,11 +247,204 @@ async function archiveBackupWithRetry({ metadata, tables, collected, outputPath,
   throw new Error('Backup export failed: too many files became unreadable during packing');
 }
 
+// ── Import-backup steps ──
+// POST /settings/import-backup (settings.js) splits into these four named steps,
+// called in exactly the order they ran as one long handler before: stage (read
+// and validate the archive), swap job folders, restore tables, and — only if the
+// table restore then fails — roll back the folder swap. The route still owns the
+// maintenance-mode flag, the temp/staging/old directory paths, and the outer
+// try/catch/finally that decides what to log and reply — only each step's own
+// body moved here, so the failure/rollback order is unchanged.
+
+// STAGE — unpack the archive and validate its shape. No live data (database or
+// job folders) is touched yet, so a rejection here needs no rollback of anything.
+// Returns { error, status } to send as-is, or { data } to continue with.
+async function stageBackupArchive(inputPath, tempDir, schemaVersion, tableOrder) {
+  await extractZip(inputPath, { dir: tempDir });
+
+  const dbJsonPath = path.join(tempDir, 'database.json');
+  if (!fs.existsSync(dbJsonPath)) {
+    return { error: 'Invalid backup: missing database.json', status: 400 };
+  }
+
+  const data = splitCustomersInBackup(JSON.parse(fs.readFileSync(dbJsonPath, 'utf-8')));
+
+  if (!data._metadata) {
+    return { error: 'Invalid backup: missing _metadata', status: 400 };
+  }
+  if (data._metadata.schemaVersion !== schemaVersion) {
+    return {
+      error: `Incompatible backup schema version ${data._metadata.schemaVersion} (expected ${schemaVersion})`,
+      status: 400
+    };
+  }
+  for (const table of tableOrder) {
+    if (!Array.isArray(data[table])) {
+      return { error: `Invalid backup: missing table "${table}"`, status: 400 };
+    }
+  }
+
+  return { data };
+}
+
+// SWAP JOB FOLDERS — stage the backup's files off to the side, confirm every
+// manifest file actually unpacked, then swap them into place with instant
+// renames. If the second rename fails, undo the first and re-throw so the live
+// folders are left untouched; if undoing that also fails, the thrown error
+// carries `.filesUnrecoverable = true` so the caller knows manual review is
+// needed. Returns { filesSwapped, hasFiles } on success (filesSwapped is false,
+// same as today, when the backup carries no files at all).
+function swapJobFolders({ tempDir, currentJobBase, stagingDir, oldDir, fileManifest }) {
+  const filesDir = path.join(tempDir, 'files');
+  const hasFiles = fs.existsSync(filesDir);
+  if (!hasFiles) return { filesSwapped: false, hasFiles: false };
+
+  copyDirRecursive(filesDir, stagingDir);
+  verifyStagedFiles(stagingDir, fileManifest);
+
+  fs.renameSync(currentJobBase, oldDir);
+  try {
+    fs.renameSync(stagingDir, currentJobBase);
+  } catch (swapErr) {
+    // Restoring the originals failed too — the live folder is now empty and
+    // the originals are stranded in __restore_old. Surface it, but still
+    // throw the real cause (swapErr) rather than masking it.
+    try {
+      fs.renameSync(oldDir, currentJobBase);
+    } catch (revertErr) {
+      logger.error(
+        { err: revertErr, from: oldDir, to: currentJobBase, step: 'swap-revert' },
+        'Backup restore swap revert failed: original files left in __restore_old, live folder empty — manual review required'
+      );
+      swapErr.filesUnrecoverable = true;
+    }
+    throw swapErr;
+  }
+
+  return { filesSwapped: true, hasFiles: true };
+}
+
+// RESTORE TABLES — reload every table as one all-or-nothing transaction, then run
+// the same full startup-conversion pass a boot would run. `tableColumns` is
+// computed by the caller (outside this step, matching today) so a failure there
+// is never mistaken for a table-restore failure needing the file rollback below.
+function restoreTables({ data, tableOrder, tableColumns, currentJobBase, currentPrintCutover }) {
+  db.db.pragma('foreign_keys = OFF');
+  try {
+    const importTransaction = db.db.transaction(() => {
+      const reversed = [...tableOrder].reverse();
+      for (const table of reversed) {
+        db.db.prepare(`DELETE FROM ${table}`).run();
+      }
+
+      for (const table of tableOrder) {
+        const rows = data[table];
+        if (rows.length === 0) continue;
+
+        const validColumns = tableColumns[table];
+        const columns = Object.keys(rows[0]).filter(c => validColumns.has(c));
+        if (columns.length === 0) continue;
+
+        const placeholders = columns.map(() => '?').join(', ');
+        const columnNames = columns.join(', ');
+        const stmt = db.db.prepare(`INSERT INTO ${table} (${columnNames}) VALUES (${placeholders})`);
+
+        for (const row of rows) {
+          stmt.run(...columns.map(col => row[col]));
+        }
+      }
+
+      // Fix sqlite_sequence for history table (AUTOINCREMENT)
+      if (data.history.length > 0) {
+        const maxId = data.history.reduce((max, r) => r.id > max ? r.id : max, 0);
+        db.db.prepare(`UPDATE sqlite_sequence SET seq = ? WHERE name = 'history'`).run(maxId);
+      }
+
+      // End every restored session so no one stays signed in across a rewind.
+      db.db.prepare('UPDATE users SET session_token = NULL').run();
+
+      // Keep THIS machine's folder locations (the backup may carry another
+      // machine's paths). Done inside the transaction so the live paths never
+      // briefly point at the backup machine's folders.
+      db.settingsQueries.upsert.run('job_folders_base', currentJobBase || '');
+
+      // The print-naming cutover is the one marker that belongs to the *data* rather
+      // than to this machine, so the earlier of the two dates wins: ours, and the
+      // backup's own marker, which has just landed with the rest of the settings.
+      // Keeping ours unconditionally would let a machine rebuilt today rename every
+      // genuine print carried by an older install's backup into a preview — the audit
+      // record destroyed while the job keeps its print tick, which is the exact
+      // disagreement the cutover exists to prevent. Earlier only ever renames fewer
+      // rows, which is the safe direction. Both are ISO-8601, so they sort by date.
+      const restoredPrintCutover = db.settingsQueries.getByKey.get(PRINT_NAMING_CUTOVER_KEY)?.value;
+      const keptPrintCutover = [currentPrintCutover, restoredPrintCutover].filter(Boolean).sort()[0];
+      if (keptPrintCutover) {
+        db.settingsQueries.upsert.run(PRINT_NAMING_CUTOVER_KEY, keptPrintCutover);
+      }
+
+      // A restore must end in exactly the state a fresh restart would produce, so
+      // run the SAME full conversion pass a boot runs — timestamp normalisation,
+      // then every migration in runMigrations() (whole-hour schedule snap, good-piece
+      // folding, the print-trail rename bounded by the cutover just kept above, and
+      // everything else in that list) — rather than hand-picking a subset here. A
+      // conversion missing from a hand-picked list is exactly how the overtime-hours
+      // migration was left out of a restore in the first place. Tidy-up only: a
+      // failure here must never throw away a restore whose records already loaded
+      // correctly (the next boot runs the same pass again and retries).
+      try {
+        runStartupConversions();
+      } catch (convErr) {
+        logger.error({ err: convErr }, 'Backup restore: startup conversion pass failed (records restored; next restart will retry)');
+      }
+    });
+
+    importTransaction();
+  } finally {
+    db.db.pragma('foreign_keys = ON');
+  }
+}
+
+// ROLL BACK — undo swapJobFolders after restoreTables has thrown: move the
+// newly-restored files out of the live folder, then put the originals (still
+// sitting in oldDir) back. Every failure here is logged as it happens (mirroring
+// today's inline code exactly); the return value only tells the caller whether
+// manual review is now needed.
+function rollbackJobFolderSwap({ currentJobBase, stagingDir, oldDir }) {
+  let movedNewAside = false;
+  let unrecoverable = false;
+  try {
+    fs.renameSync(currentJobBase, stagingDir);
+    movedNewAside = true;
+  } catch (rbErr) {
+    unrecoverable = true;
+    logger.error(
+      { err: rbErr, from: currentJobBase, to: stagingDir, step: 'rollback-move-new-aside' },
+      'Backup restore rollback failed: could not move restored files out of live folder; disk holds NEW files while database holds OLD records — manual review required'
+    );
+  }
+  if (movedNewAside) {
+    try {
+      fs.renameSync(oldDir, currentJobBase);
+    } catch (rbErr) {
+      unrecoverable = true;
+      logger.error(
+        { err: rbErr, from: oldDir, to: currentJobBase, step: 'rollback-restore-original' },
+        'Backup restore rollback failed: original files could not be restored to live folder (left in __restore_old); database holds OLD records — manual review required'
+      );
+    }
+  }
+  return { unrecoverable };
+}
+
 module.exports = {
   listFilesRecursive,
   verifyStagedFiles,
   copyDirRecursive,
   bestEffortRemove,
   partitionReadableFiles,
-  archiveBackupWithRetry
+  archiveBackupWithRetry,
+  stageBackupArchive,
+  swapJobFolders,
+  restoreTables,
+  rollbackJobFolderSwap
 };

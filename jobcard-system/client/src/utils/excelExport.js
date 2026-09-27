@@ -1,5 +1,3 @@
-import toast from 'react-hot-toast';
-import { api } from '../services/api';
 import { formatDate as fmtDate, formatDateTime as fmtDateTime, todayIsoDate } from './formatters';
 import { roundTo } from '../../../server/src/shared/round';
 import { STATUS_LABELS, PRIORITY_LABELS } from '../components/JobCardList.constants';
@@ -9,7 +7,7 @@ import { STATUS_LABELS, PRIORITY_LABELS } from '../components/JobCardList.consta
 // actually exports a spreadsheet. Load it on demand (and cache the module) so it
 // stays out of the initial app bundle and the app starts faster.
 let xlsxPromise = null;
-function loadXlsx() {
+export function loadXlsx() {
   if (!xlsxPromise) xlsxPromise = import('xlsx');
   return xlsxPromise;
 }
@@ -41,7 +39,7 @@ export async function saveWorkbook(wb, defaultName) {
 
 // ── Sheet builder helpers ────────────────────────────────────────────────────
 
-function buildSheet(XLSX, rows, columns) {
+export function buildSheet(XLSX, rows, columns) {
   const header = columns.map(c => c.label);
   const data = rows.map(row => columns.map(c => c.value(row)));
   const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
@@ -60,13 +58,13 @@ function buildSheet(XLSX, rows, columns) {
 
 // The local calendar day, not the UTC one — an export made in the morning in Australia
 // would otherwise be filed under yesterday's date.
-function timestamp() {
+export function timestamp() {
   return todayIsoDate();
 }
 
 // ── Formatters ───────────────────────────────────────────────────────────────
 
-function durationHrs(start, end) {
+export function durationHrs(start, end) {
   if (!start || !end) return '';
   const ms = new Date(end) - new Date(start);
   return roundTo(ms / 3600000, 2);
@@ -87,25 +85,19 @@ function valueToLabel(val) {
 // to itself. These look the value up in the tag lists (loaded once per export,
 // including archived options so a since-retired value still resolves) and only
 // fall back to the rebuilt guess when the value isn't found there at all.
-function labelFromMap(map, value) {
+export function labelFromMap(map, value) {
   if (!value) return value;
   return map.get(value) || valueToLabel(value);
 }
 
-function fmtCodeListWithMap(map, val) {
-  if (!val) return '';
-  return val.split(',').map(v => labelFromMap(map, v.trim())).join(', ');
-}
-
-function fmtItemTagListWithMap(map, items, field) {
-  const all = [...new Set(
-    (items || []).flatMap(i => (i[field] || '').split(',').map(v => v.trim()).filter(Boolean))
-  )];
-  return fmtCodeListWithMap(map, all.join(','));
-}
-
-function tagLabelMap(tags) {
-  return new Map((tags || []).map(t => [t.value, t.name]));
+export function formatChangesText(changes) {
+  if (!changes || typeof changes !== 'object') return '';
+  return Object.entries(changes).map(([field, val]) => {
+    if (val && typeof val === 'object' && ('from' in val || 'to' in val)) {
+      return `${field}: ${val.from ?? ''} → ${val.to ?? ''}`;
+    }
+    return `${field}: ${JSON.stringify(val)}`;
+  }).join('; ');
 }
 
 // ── Column definitions per entity ────────────────────────────────────────────
@@ -130,12 +122,6 @@ const SUPPLIER_COLS = [
   { label: 'Notes', value: r => r.notes },
 ];
 
-const EQUIPMENT_COLS = [
-  { label: 'Machine Number', value: r => r.machineNumber },
-  { label: 'Name', value: r => r.name },
-  { label: 'Description', value: r => r.description },
-];
-
 const USER_COLS = [
   { label: 'Username', value: r => r.username },
   { label: 'Display Name', value: r => r.name },
@@ -145,16 +131,6 @@ const USER_COLS = [
   { label: 'Created', value: r => fmtDateTime(r.createdAt) },
 ];
 
-function formatChangesText(changes) {
-  if (!changes || typeof changes !== 'object') return '';
-  return Object.entries(changes).map(([field, val]) => {
-    if (val && typeof val === 'object' && ('from' in val || 'to' in val)) {
-      return `${field}: ${val.from ?? ''} → ${val.to ?? ''}`;
-    }
-    return `${field}: ${JSON.stringify(val)}`;
-  }).join('; ');
-}
-
 const ACTIVITY_COLS = [
   { label: 'Time', value: r => fmtDateTime(r.createdAt) },
   { label: 'User', value: r => r.userName },
@@ -162,96 +138,6 @@ const ACTIVITY_COLS = [
   { label: 'Entity Type', value: r => r.entityType },
   { label: 'Entity ID', value: r => r.entityId },
   { label: 'Changes', value: r => formatChangesText(r.changes) },
-];
-
-const JOBCARD_SUMMARY_COLS = [
-  { label: 'Job #', value: r => r.jobNumber },
-  { label: 'Company', value: r => r.companyName },
-  { label: 'Contact Name', value: r => r.contactName },
-  { label: 'Contact Phone', value: r => r.contactPhone },
-  { label: 'Contact Email', value: r => r.contactEmail },
-  { label: 'Type', value: r => r.cardType },
-  // Export the words people read on screen, not the stored codes.
-  { label: 'Status', value: r => STATUS_LABELS[r.status] || r.status },
-  { label: 'Priority', value: r => PRIORITY_LABELS[r.priority] || r.priority },
-  { label: 'QA Level', value: r => r.qualityLevel },
-  { label: 'Due Date', value: r => fmtDate(r.dueDate) },
-  { label: 'Description', value: r => r.description },
-  { label: 'Assigned To', value: r => (r.assignees || []).map(a => a.userName || a.name).join(', ') },
-  // #N here is the part's position, stated by the server on each item — matches
-  // the screen, never its stored sort-order number, which can have gaps once a
-  // part is deleted.
-  { label: 'Parts', value: r => (r.items || []).map((it, idx) => `#${it.position != null ? it.position : idx + 1}: ${it.description || ''}`).join(', ') },
-  { label: 'PO Number', value: r => r.poNumber },
-  // These read the label the tag lists actually hold for the value (attached in
-  // buildJobCardWorkbook as _jobTypeDisplay etc.), falling back to a guess
-  // rebuilt from the code only when the value isn't found in those lists.
-  { label: 'Job Type', value: r => r._jobTypeDisplay },
-  { label: 'Drawings', value: r => r._drawingsDisplay },
-  { label: 'Material', value: r => r._materialDisplay },
-  { label: 'Treatment', value: r => r._treatmentDisplay },
-  { label: 'Customer Property', value: r => r._customerPropertyDisplay },
-  // Comments arrive newest-first (the on-screen thread reads that way), but an
-  // exported record should read oldest-first like a diary, so flip them back.
-  { label: 'Notes', value: r => (r._notes || []).slice().reverse().map(n => n.text).join(' | ') },
-  { label: 'Repeat Job', value: r => r.isRepeatJob ? 'Yes' : 'No' },
-  { label: 'Repeat Job Ref', value: r => r.repeatJobReference },
-  { label: 'Invoiced Date', value: r => fmtDate(r.invoicedDate) },
-  { label: 'Created', value: r => fmtDateTime(r.createdAt) },
-];
-
-const TIME_ENTRY_COLS = [
-  { label: 'Job #', value: r => r._jobNumber },
-  { label: 'Worker', value: r => r.userName },
-  // The part's position in the job's ordered list, not its stored item_number —
-  // resolved in buildJobCardWorkbook from the part's permanent id, since a
-  // deleted part's own stored number no longer means anything.
-  { label: 'Part', value: r => r._displayItemNumber ?? '' },
-  { label: 'Machine #', value: r => r.machineNumber },
-  { label: 'Qty', value: r => r.qty },
-  { label: 'Description', value: r => r.description },
-  { label: 'Start', value: r => fmtDateTime(r.startTime) },
-  { label: 'End', value: r => fmtDateTime(r.endTime) },
-  { label: 'Duration (hrs)', value: r => durationHrs(r.startTime, r.endTime) },
-];
-
-const ITEM_COLS = [
-  { label: 'Job #', value: r => r._jobNumber },
-  // Position in the job's ordered list, not the stored item_number — see
-  // buildJobCardWorkbook, which numbers each job's items as it flattens them.
-  { label: 'Part', value: r => r._displayNumber },
-  { label: 'Qty', value: r => r.qty },
-  { label: 'Description', value: r => r.description },
-  { label: 'Treatments', value: r => r._treatmentDisplay },
-];
-
-const COSTING_COLS = [
-  { label: 'Job #', value: r => r._jobNumber },
-  { label: 'Labour Hours', value: r => r.labourHours },
-  { label: 'Labour Rate', value: r => r.labourRate },
-  { label: 'Labour Total', value: r => r.labourTotal },
-  { label: 'OT1 Hours', value: r => r.labourOt1Hours },
-  { label: 'OT1 Multiplier', value: r => r.labourOt1Multiplier },
-  { label: 'OT1 Total', value: r => r.labourOt1Total },
-  { label: 'OT2 Hours', value: r => r.labourOt2Hours },
-  { label: 'OT2 Multiplier', value: r => r.labourOt2Multiplier },
-  { label: 'OT2 Total', value: r => r.labourOt2Total },
-  { label: 'Holiday Hours', value: r => r.labourHolidayHours },
-  { label: 'Holiday Multiplier', value: r => r.labourHolidayMultiplier },
-  { label: 'Holiday Total', value: r => r.labourHolidayTotal },
-  { label: 'Special Hours', value: r => r.labourSpecialHours },
-  { label: 'Special Rate', value: r => r.labourSpecialRate },
-  { label: 'Special Total', value: r => r.labourSpecialTotal },
-  { label: 'Special Covers', value: r => r.labourSpecialDescription },
-  { label: 'Materials Cost', value: r => r.materialsCost },
-  { label: 'Materials Markup %', value: r => r.materialsProfitPercent },
-  { label: 'Materials Total', value: r => r.materialsTotal },
-  { label: 'Materials Covers', value: r => r.materialsDescription },
-  { label: 'Subcontractor Cost', value: r => r.subcontractorCost },
-  { label: 'Subcontractor Markup %', value: r => r.subcontractorProfitPercent },
-  { label: 'Subcontractor Total', value: r => r.subcontractorTotal },
-  { label: 'Subcontractor Covers', value: r => r.subcontractorDescription },
-  { label: 'Grand Total', value: r => r.grandTotal },
 ];
 
 // ── Page export functions ────────────────────────────────────────────────────
@@ -270,13 +156,6 @@ export async function exportSuppliers(suppliers) {
   return saveWorkbook(wb, `Suppliers_${timestamp()}.xlsx`);
 }
 
-export async function exportEquipment(machines) {
-  const XLSX = await loadXlsx();
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, machines, EQUIPMENT_COLS), 'Equipment');
-  return saveWorkbook(wb, `Equipment_${timestamp()}.xlsx`);
-}
-
 export async function exportUsers(users) {
   const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
@@ -289,222 +168,6 @@ export async function exportActivityLog(activities) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, activities, ACTIVITY_COLS), 'Activity Log');
   return saveWorkbook(wb, `Activity_Log_${timestamp()}.xlsx`);
-}
-
-// ── Job Cards — shared multi-sheet builder ───────────────────────────────────
-
-// onBatchDone(doneCount, total) fires after each batch lands, so a caller can
-// step its progress message through "n of N" instead of one static line for
-// however long the whole stage takes.
-async function fetchInBatches(ids, fetcher, batchSize = 5, onBatchDone) {
-  const results = [];
-  for (let i = 0; i < ids.length; i += batchSize) {
-    const batch = ids.slice(i, i + batchSize);
-    const batchResults = await Promise.all(batch.map(fetcher));
-    results.push(...batchResults);
-    onBatchDone?.(results.length, ids.length);
-  }
-  return results;
-}
-
-async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
-  if (!cards.length) return { wb: false, failedCount: 0 };
-
-  const ids = cards.map(c => c.id);
-
-  // Any of the fetches below (details, time entries, costing, notes) can fail
-  // for a given job without stopping the export — that job still gets a row,
-  // built from whatever did load, and previously nothing said so. Every job id
-  // that hits at least one failure lands here, so the caller can report how
-  // many jobs' exports are incomplete instead of leaving it unsaid.
-  const failedJobIds = new Set();
-
-  // Fetch full card details (list endpoint omits items). A failed fetch here
-  // falls back to the slim list-view card, which has no items/parts at all —
-  // the job still appears in the Summary sheet but with most of its detail
-  // missing.
-  onProgress?.('Fetching job card details...');
-  const fullCards = await fetchInBatches(ids, id =>
-    api.getJobcard(id).catch(() => { failedJobIds.add(id); return null; }),
-    5,
-    (done, total) => onProgress?.(`Fetching job card details... (${done} of ${total})`)
-  );
-  const fullCardMap = {};
-  for (const fc of fullCards) {
-    if (fc) fullCardMap[fc.id] = fc;
-  }
-  const mergedCards = cards.map(c => fullCardMap[c.id] || c);
-
-  // Tag lists (including archived options) to resolve each stored value to its
-  // real, current name — a rebuilt guess is only used when a value isn't found.
-  onProgress?.('Fetching tag lists...');
-  const [jobTypeTags, drawingsTags, materialTags, customerPropertyTags, treatmentTags] = await Promise.all([
-    api.getTags('job_type', true).catch(() => []),
-    api.getTags('drawings', true).catch(() => []),
-    api.getTags('material', true).catch(() => []),
-    api.getTags('customer_property', true).catch(() => []),
-    api.getTags('treatment', true).catch(() => [])
-  ]);
-  const jobTypeLabelMap = tagLabelMap(jobTypeTags);
-  const drawingsLabelMap = tagLabelMap(drawingsTags);
-  const materialLabelMap = tagLabelMap(materialTags);
-  const customerPropertyLabelMap = tagLabelMap(customerPropertyTags);
-  const treatmentLabelMap = tagLabelMap(treatmentTags);
-
-  function treatmentDisplay(items) {
-    const parts = [];
-    for (const item of (items || [])) {
-      for (const t of (item.treatments || [])) {
-        const tName = labelFromMap(treatmentLabelMap, t.value);
-        const sName = t.supplierName || '(no supplier)';
-        parts.push(`${tName}→${sName}`);
-      }
-    }
-    return parts.join(', ');
-  }
-
-  onProgress?.('Fetching time entries...');
-  const timeEntriesPerJob = await fetchInBatches(ids, id =>
-    api.getTimeEntries(id).then(entries => ({ id, entries })).catch(() => {
-      failedJobIds.add(id);
-      return { id, entries: [] };
-    }),
-    5,
-    (done, total) => onProgress?.(`Fetching time entries... (${done} of ${total})`)
-  );
-
-  // Costing is admin-only (the endpoint refuses non-admins). Skip the fetch and the
-  // sheet entirely for anyone else so a manager's export doesn't carry an empty,
-  // pricing-shaped sheet.
-  let costingPerJob = [];
-  if (includeCosting) {
-    onProgress?.('Fetching costing...');
-    costingPerJob = await fetchInBatches(ids, id =>
-      api.getCosting(id).then(costing => ({ id, costing })).catch(() => {
-        failedJobIds.add(id);
-        return { id, costing: null };
-      }),
-      5,
-      (done, total) => onProgress?.(`Fetching costing... (${done} of ${total})`)
-    );
-  }
-
-  onProgress?.('Fetching notes...');
-  const notesPerJob = await fetchInBatches(ids, id =>
-    api.getJobNotes(id).then(notes => ({ id, notes })).catch(() => {
-      failedJobIds.add(id);
-      return { id, notes: [] };
-    }),
-    5,
-    (done, total) => onProgress?.(`Fetching notes... (${done} of ${total})`)
-  );
-
-  const jobLookup = {};
-  for (const c of mergedCards) jobLookup[c.id] = c.jobNumber;
-
-  const notesByJob = {};
-  for (const { id, notes } of notesPerJob) notesByJob[id] = notes;
-
-  const enrichedCards = mergedCards.map(c => {
-    const items = c.items || [];
-    const jobTypeAll = [...new Set(items.map(i => i.jobType).filter(Boolean))];
-    const materialAll = [...new Set(items.map(i => i.material).filter(Boolean))];
-    return {
-      ...c,
-      _notes: notesByJob[c.id] || [],
-      _jobTypeDisplay: fmtCodeListWithMap(jobTypeLabelMap, jobTypeAll.join(',')),
-      _materialDisplay: fmtCodeListWithMap(materialLabelMap, materialAll.join(',')),
-      _drawingsDisplay: fmtItemTagListWithMap(drawingsLabelMap, items, 'drawingsType'),
-      _customerPropertyDisplay: fmtItemTagListWithMap(customerPropertyLabelMap, items, 'customerProperty'),
-      _treatmentDisplay: treatmentDisplay(items),
-    };
-  });
-
-  // The server states each item's position directly (item.position) — the same
-  // number the job screen shows — so it's never recounted here. Keyed by the
-  // part's permanent id (not its stored item_number, which a deleted part can
-  // leave with gaps), so a time entry can look its part's position up below
-  // even though the part itself may since have been deleted.
-  const allItems = [];
-  const itemPositionById = {};
-  for (const c of mergedCards) {
-    (c.items || []).forEach((item, idx) => {
-      const displayNumber = item.position != null ? item.position : idx + 1;
-      if (item.id != null) itemPositionById[item.id] = displayNumber;
-      allItems.push({
-        ...item,
-        _jobNumber: c.jobNumber,
-        _displayNumber: displayNumber,
-        _treatmentDisplay: treatmentDisplay([item]),
-      });
-    });
-  }
-
-  const allTimeEntries = [];
-  for (const { id, entries } of timeEntriesPerJob) {
-    for (const e of entries) {
-      // Work on a since-deleted part has no position to show — same as the
-      // costing tab's "orphan" grouping.
-      const displayItemNumber = e.itemId != null ? (itemPositionById[e.itemId] ?? '') : '';
-      allTimeEntries.push({ ...e, _jobNumber: jobLookup[id], _displayItemNumber: displayItemNumber });
-    }
-  }
-
-  const allCosting = [];
-  for (const { id, costing } of costingPerJob) {
-    if (costing) {
-      allCosting.push({ ...costing, _jobNumber: jobLookup[id] });
-    }
-  }
-
-  onProgress?.('Building workbook...');
-  const XLSX = await loadXlsx();
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, enrichedCards, JOBCARD_SUMMARY_COLS), 'Summary');
-  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allItems, ITEM_COLS), 'Parts');
-  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allTimeEntries, TIME_ENTRY_COLS), 'Time Entries');
-  if (includeCosting) {
-    XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allCosting, COSTING_COLS), 'Costing');
-  }
-
-  return { wb, failedCount: failedJobIds.size };
-}
-
-// A partial fetch failure never blocks the export itself — the workbook still
-// saves with what did load — but it has to say so, or the person has no way of
-// knowing some jobs' rows are incomplete. failedCount is the number of distinct
-// jobs that hit at least one failed fetch (details, time entries, costing or
-// notes), not the number of failed requests.
-function warnIfIncomplete(failedCount, savedResult) {
-  if (failedCount > 0 && savedResult !== 'canceled') {
-    toast.error(
-      `${failedCount} job${failedCount === 1 ? '' : 's'} couldn't be fully loaded — the export may be missing some of their details`,
-      { id: 'export-jobs-missing' }
-    );
-  }
-}
-
-export async function exportJobCardList(cards, onProgress, includeCosting = true) {
-  const { wb, failedCount } = await buildJobCardWorkbook(cards, onProgress, includeCosting);
-  if (!wb) return false;
-  const result = await saveWorkbook(wb, `Job_Cards_${timestamp()}.xlsx`);
-  warnIfIncomplete(failedCount, result);
-  return result;
-}
-
-export async function exportJobCardsFull(onProgress, includeCosting = true) {
-  onProgress?.('Fetching job cards...');
-  // "All" means open and filed (invoiced) jobs together; the list route only
-  // ever returns one or the other, so ask twice and join.
-  const [open, filed] = await Promise.all([api.getJobcards(), api.getJobcards({ archived: true })]);
-  const cards = [...open, ...filed];
-  if (!cards.length) return false;
-
-  const { wb, failedCount } = await buildJobCardWorkbook(cards, onProgress, includeCosting);
-  if (!wb) return false;
-  const result = await saveWorkbook(wb, `Job_Cards_Full_${timestamp()}.xlsx`);
-  warnIfIncomplete(failedCount, result);
-  return result;
 }
 
 // ── Statistics Export ────────────────────────────────────────────────────────

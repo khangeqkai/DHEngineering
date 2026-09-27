@@ -1,6 +1,3 @@
-// Tag-based options are now loaded dynamically from the database via useTags hook.
-// These legacy exports are kept as empty fallbacks — components should use useTags() instead.
-
 // The job status list, priority list and worker-status rule all come from one
 // shared data file in the server folder (so the packaged app, which copies the
 // whole server folder, carries it) — see server/src/shared/jobStatuses.json.
@@ -22,10 +19,3 @@ export const PRIORITY_SORT_ORDER = Object.fromEntries(PRIORITY_OPTIONS.map((p, i
 
 // Statuses where the work is finished as far as the shop is concerned.
 export const SETTLED_STATUSES = jobStatuses.settledStatuses;
-
-export const QA_FORM_OPTIONS = [
-  { code: 'DHE-F39', name: 'Critical QA Inspection Form' },
-  { code: 'DHE-F15', name: 'First Article Inspection' },
-  { code: 'DHE-F09', name: 'Material Test Certificate' },
-  { code: 'DHE-F43', name: 'Non-Conformance Report' }
-];

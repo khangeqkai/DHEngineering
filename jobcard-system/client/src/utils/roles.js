@@ -12,5 +12,4 @@ export function can(user, permission) {
 
 // Management roles: a manager can do everything an admin can except job
 // costing and the labour rates/overtime settings (money stays admin-only).
-export const MANAGEMENT_ROLES = permissions.management;
 export const isManagement = (user) => can(user, 'management');

@@ -11,8 +11,9 @@ const {
   validateItemCustomerProperty,
   validateItemDescriptions,
   validateItemQuantities
-} = require('../middleware/validation');
+} = require('../middleware/itemValidation');
 const { jobcardQueries, jobItemQueries, timeEntryQueries, recordHistory, actorName } = require('../db/database');
+const { findOr404 } = require('../utils/findOr404');
 const { serializeTreatments, parseTreatments, computeAttachmentWarnings } = require('./jobcard-helpers');
 const { itemSummary, describePart } = require('./jobcard-audit-text');
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
@@ -87,10 +88,8 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = jobcardQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!existing) return;
 
     const existingItems = jobItemQueries.getByJobcard.all(id);
     const item = req.body || {};
@@ -156,16 +155,12 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
   try {
     const { id, itemId } = req.params;
 
-    const existing = jobcardQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!existing) return;
 
     const existingItems = jobItemQueries.getByJobcard.all(id);
-    const stored = existingItems.find(i => i.id === itemId);
-    if (!stored) {
-      return res.status(404).json({ error: 'Part not found' });
-    }
+    const stored = findOr404(res, existingItems.find(i => i.id === itemId), 'Part not found');
+    if (!stored) return;
 
     // Names this part by what it was called before this edit — stable even if
     // the edit itself is what's changing (or emptying) the description.
@@ -233,16 +228,12 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
   try {
     const { id, itemId } = req.params;
 
-    const existing = jobcardQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!existing) return;
 
     const existingItems = jobItemQueries.getByJobcard.all(id);
-    const stored = existingItems.find(i => i.id === itemId);
-    if (!stored) {
-      return res.status(404).json({ error: 'Part not found' });
-    }
+    const stored = findOr404(res, existingItems.find(i => i.id === itemId), 'Part not found');
+    if (!stored) return;
 
     const label = describePart(stored.description, 'that part');
 

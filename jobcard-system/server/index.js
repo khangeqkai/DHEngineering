@@ -21,7 +21,6 @@ const setupTrustRoutes = require('./src/routes/setup-trust');
 const logger = require('./src/utils/logger');
 const { requestLogger } = require('./src/utils/logger');
 const authRoutes = require('./src/routes/auth');
-const hardwareRoutes = require('./src/routes/hardware');
 const jobcardsRoutes = require('./src/routes/jobcards');
 const jobcardTimeEntriesRoutes = require('./src/routes/jobcard-time-entries');
 const jobcardCostingRoutes = require('./src/routes/jobcard-costing');
@@ -89,7 +88,6 @@ app.use('/api', (req, res, next) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/hardware', hardwareRoutes);
 // One lock for a closed (invoiced/archived) job, ahead of every job route so a
 // route added later is locked by default. `authenticate` runs here too (it has
 // no side effects — no session touch, no counter, no history — so running it

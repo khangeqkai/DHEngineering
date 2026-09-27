@@ -166,7 +166,6 @@ const jobAssigneeQueries = {
   `),
 
   delete: db.prepare('DELETE FROM job_assignees WHERE id = ?'),
-  deleteByJobcard: db.prepare('DELETE FROM job_assignees WHERE jobcard_id = ?'),
   deleteByJobcardAndUser: db.prepare('DELETE FROM job_assignees WHERE jobcard_id = ? AND user_id = ?')
 };
 

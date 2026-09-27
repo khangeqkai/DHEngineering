@@ -49,7 +49,7 @@
   splits the key back apart and looks the row up; the pricing sheet's `valueOf`
   reads a box's draft if one exists, else its committed figure. `setFieldErrors`
   records, per name, the message plus the value the box held (or was explicitly
-  raised against, via the optional second argument — `commitBox` in `useCosting.js`
+  raised against, via the optional second argument — `commitBox` in `useCostingDrafts.js`
   raises a pricing mark against the raw draft text, since the row/committed state it
   would otherwise read hasn't caught up with that same keystroke yet). A mark is
   live — shown, counted, announced — only while `valueOf(name)` still equals the
@@ -106,7 +106,7 @@ that still posted a whole-job payload on a timer would reproduce the same bug wi
 - **Status** was already instant and is untouched. **Pricing** has always saved itself — see the
   draft-then-commit pattern below, which is now what "leaving a box" means on that sheet too.
 - **A box that saves on leave holds its typed text as a draft; leaving is the one moment it is
-  judged and committed; a server reply never touches a draft.** The costing sheet (`useCosting.js`)
+  judged and committed; a server reply never touches a draft.** The costing sheet (`useCosting.js`, composed from `useCostingDrafts.js` and `useCostingSave.js`)
   is the pattern's fullest example, because it's the one screen where "leave it blank" and "type a
   bad value" both have to mean something specific rather than just falling back to whatever was
   there. A **committed** value (a plain number, a flag) is the only thing ever sent; a parallel
@@ -129,7 +129,7 @@ that still posted a whole-job payload on a timer would reproduce the same bug wi
   now — a reply landing mid-keystroke must never overwrite what's still being typed underneath it.
 - **A pick from an autocomplete does its own write.** `onMouseDown` fires before the input blurs and
   the blur still reads the DOM's *old* text, so the Previous Job Reference suggestion writes the job
-  number itself and sets `justPickedRef`, which makes the blur behind it stand aside. Without that
+  number itself and arms the pick guard in `useComboboxNav.js`, which makes the blur behind it stand aside. Without that
   the half-typed reference is written over the job number just chosen.
 - **A reply that lands after the user moved to another job is dropped** — `useInstantSave` and
   `toggleAssignee` both compare a captured job id against a live ref before touching any state, so a

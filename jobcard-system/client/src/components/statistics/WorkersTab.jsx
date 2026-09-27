@@ -84,7 +84,7 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
                 label: 'Overtime',
                 sortable: true,
                 render: (val, row) => (
-                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 'var(--space-1)', flexWrap: 'wrap' }}>
                     {val > 0 ? (
                       <>
                         {row.ot1Hours > 0 && <span className="tier-tag ot">OT1: {row.ot1Hours}h</span>}

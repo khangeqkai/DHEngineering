@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('./logger');
 const db = require('../db/database');
+const { CATEGORY_FOLDER } = require('../shared/jobFiles');
 
 // Windows reserved device names: unusable as a file/folder name whether or not an
 // extension follows (CON, con.txt, COM1, lpt1.pdf, … are all reserved), regardless
@@ -89,23 +90,28 @@ function folderSlugOf(folderName) {
 }
 
 /**
- * Build the on-disk folder name for a customer: "Company Name [code]".
- * Returns null if the name sanitizes to nothing or the id has no code.
+ * Build the on-disk folder name for a coded record: "Name [code]". Shared by
+ * a customer's company folder and a QA level's folder — the two are
+ * identical in shape (a sanitized display name plus a code derived from the
+ * record's permanent id) and differ only in which base directory and which
+ * record they key off. Returns null if the name sanitizes to nothing or the
+ * id has no code.
  */
-function companyFolderName(companyName, companyId) {
-  const sanitized = sanitizeFolderName(companyName);
-  const slug = idSlug(companyId);
+function codedFolderName(name, id) {
+  const sanitized = sanitizeFolderName(name);
+  const slug = idSlug(id);
   return (sanitized && slug) ? `${sanitized} [${slug}]` : null;
 }
 
 /**
- * Find a customer's company folder under the base by matching the code in the
- * folder name to the company's id — independent of the (mutable) company name,
- * so a rename never strands files. Returns the absolute path, or null.
+ * Find a coded folder under `basePath` by matching the code in the folder
+ * name to `id` — independent of the (mutable) display name, so a rename never
+ * strands files. Returns the absolute path, or null.
+ * @param {string} kind - human-readable noun for log messages (e.g. 'company', 'QA level')
  */
-function findCompanyFolder(basePath, companyId) {
+function findCodedFolder(basePath, id, kind) {
   try {
-    const slug = idSlug(companyId);
+    const slug = idSlug(id);
     if (!basePath || !slug || !fs.existsSync(basePath)) return null;
 
     for (const entry of fs.readdirSync(basePath, { withFileTypes: true })) {
@@ -116,9 +122,89 @@ function findCompanyFolder(basePath, companyId) {
     }
     return null;
   } catch (err) {
-    logger.error({ err, companyId }, 'Failed to find company folder');
+    logger.error({ err, id }, `Failed to find ${kind} folder`);
     return null;
   }
+}
+
+/**
+ * Resolve a coded folder, creating it if needed. Returns the absolute folder
+ * path, or null if storage isn't configured or the operation fails. The code
+ * in the folder name makes it unique, so there's no marker file to write and
+ * no same-name disambiguation to do. Fire-and-forget: logs errors but never
+ * throws.
+ * @param {string} kind - human-readable noun for log messages (e.g. 'company', 'QA level')
+ */
+function ensureCodedFolder(basePath, id, name, kind) {
+  try {
+    if (!basePath || !id) return null;
+
+    const existing = findCodedFolder(basePath, id, kind);
+    if (existing) return existing;
+
+    const folderName = codedFolderName(name, id);
+    if (!folderName) return null;
+
+    const target = path.join(basePath, folderName);
+    if (!isWithinBase(basePath, target)) {
+      logger.error({ id, target }, `${kind} folder path escapes base directory`);
+      return null;
+    }
+
+    fs.mkdirSync(target, { recursive: true });
+    logger.info({ folderPath: target }, `Ensured ${kind} folder`);
+    return target;
+  } catch (err) {
+    logger.error({ err, id }, `Failed to ensure ${kind} folder`);
+    return null;
+  }
+}
+
+/**
+ * Relabel a coded folder when its name changes: find it by code and rename it
+ * to "New Name [code]". Best-effort — if the rename can't happen (e.g. the
+ * folder is locked), lookups still succeed by code regardless of the on-disk
+ * name. Fire-and-forget: never throws.
+ * @param {string} kind - human-readable noun for log messages (e.g. 'company', 'QA level')
+ */
+function renameCodedFolder(basePath, id, newName, kind) {
+  try {
+    if (!basePath || !id) return;
+
+    const desired = codedFolderName(newName, id);
+    if (!desired) return;
+
+    const current = findCodedFolder(basePath, id, kind);
+    if (!current) {
+      // Nothing on disk yet → just make the new folder.
+      ensureCodedFolder(basePath, id, newName, kind);
+      return;
+    }
+
+    const target = path.join(basePath, desired);
+    if (!isWithinBase(basePath, target)) return;
+    if (path.resolve(current) === path.resolve(target)) return; // already correct
+
+    if (fs.existsSync(target)) {
+      // Can't happen with a unique code, but never clobber another folder if it does.
+      logger.warn({ id, target }, `${kind} rename target exists; keeping current folder`);
+      return;
+    }
+
+    fs.renameSync(current, target);
+    logger.info({ from: current, to: target }, `Renamed ${kind} folder`);
+  } catch (err) {
+    logger.error({ err, id }, `Failed to rename ${kind} folder`);
+  }
+}
+
+/**
+ * Find a customer's company folder under the base by matching the code in the
+ * folder name to the company's id — independent of the (mutable) company name,
+ * so a rename never strands files. Returns the absolute path, or null.
+ */
+function findCompanyFolder(basePath, companyId) {
+  return findCodedFolder(basePath, companyId, 'company');
 }
 
 /**
@@ -139,7 +225,7 @@ function resolveCompanyFolder(basePath, companyId, companyName) {
       // otherwise re-list every company folder once per job, which is the
       // expensive part on a network drive. The code is still what identifies the
       // folder; this only skips the search when the name also lines up.
-      const name = companyFolderName(companyName, companyId);
+      const name = codedFolderName(companyName, companyId);
       const target = name ? path.join(basePath, name) : null;
       if (target && isWithinBase(basePath, target) && fs.existsSync(target)) return target;
 
@@ -166,29 +252,8 @@ function resolveCompanyFolder(basePath, companyId, companyName) {
  * but never throws.
  */
 function ensureCompanyFolder(companyId, companyName) {
-  try {
-    const basePath = getBasePath();
-    if (!basePath || !companyId) return null;
-
-    const existing = findCompanyFolder(basePath, companyId);
-    if (existing) return existing;
-
-    const name = companyFolderName(companyName, companyId);
-    if (!name) return null;
-
-    const target = path.join(basePath, name);
-    if (!isWithinBase(basePath, target)) {
-      logger.error({ companyId, target }, 'Company folder path escapes base directory');
-      return null;
-    }
-
-    fs.mkdirSync(target, { recursive: true });
-    logger.info({ folderPath: target }, 'Ensured company folder');
-    return target;
-  } catch (err) {
-    logger.error({ err, companyId }, 'Failed to ensure company folder');
-    return null;
-  }
+  const basePath = getBasePath();
+  return ensureCodedFolder(basePath, companyId, companyName, 'company');
 }
 
 /**
@@ -198,47 +263,13 @@ function ensureCompanyFolder(companyId, companyName) {
  * regardless of the on-disk name. Fire-and-forget: never throws.
  */
 function renameCompanyFolder(companyId, oldName, newName) {
-  try {
-    const basePath = getBasePath();
-    if (!basePath || !companyId) return;
-
-    const desired = companyFolderName(newName, companyId);
-    if (!desired) return;
-
-    const current = findCompanyFolder(basePath, companyId);
-    if (!current) {
-      // Nothing on disk yet → just make the new folder.
-      ensureCompanyFolder(companyId, newName);
-      return;
-    }
-
-    const target = path.join(basePath, desired);
-    if (!isWithinBase(basePath, target)) return;
-    if (path.resolve(current) === path.resolve(target)) return; // already correct
-
-    if (fs.existsSync(target)) {
-      // Can't happen with a unique code, but never clobber another folder if it does.
-      logger.warn({ companyId, target }, 'Company rename target exists; keeping current folder');
-      return;
-    }
-
-    fs.renameSync(current, target);
-    logger.info({ from: current, to: target }, 'Renamed company folder');
-  } catch (err) {
-    logger.error({ err, companyId }, 'Failed to rename company folder');
-  }
+  const basePath = getBasePath();
+  renameCodedFolder(basePath, companyId, newName, 'company');
 }
 
-const FILE_CATEGORY_FOLDERS = ['Job Files', 'QA Forms', 'Customer Property'];
-
-/**
- * Build the on-disk folder name for a QA level: "Level Name [code]".
- */
-function qaLevelFolderName(levelName, levelId) {
-  const sanitized = sanitizeFolderName(levelName);
-  const slug = idSlug(levelId);
-  return (sanitized && slug) ? `${sanitized} [${slug}]` : null;
-}
+// Same on-disk folder names as CATEGORY_FOLDER's values, in the same order —
+// read from the one shared list so the two can't drift apart.
+const FILE_CATEGORY_FOLDERS = Object.values(CATEGORY_FOLDER);
 
 /**
  * Find a QA level's folder under the "QA Levels" base by matching the code in
@@ -249,21 +280,7 @@ function qaLevelFolderName(levelName, levelId) {
  * @param {string} levelId
  */
 function findQaLevelFolder(qaLevelsBase, levelId) {
-  try {
-    const slug = idSlug(levelId);
-    if (!qaLevelsBase || !slug || !fs.existsSync(qaLevelsBase)) return null;
-
-    for (const entry of fs.readdirSync(qaLevelsBase, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
-      if (folderSlugOf(entry.name) !== slug) continue;
-      const folderPath = path.join(qaLevelsBase, entry.name);
-      if (isWithinBase(qaLevelsBase, folderPath)) return folderPath;
-    }
-    return null;
-  } catch (err) {
-    logger.error({ err, levelId }, 'Failed to find QA level folder');
-    return null;
-  }
+  return findCodedFolder(qaLevelsBase, levelId, 'QA level');
 }
 
 /**
@@ -276,28 +293,7 @@ function findQaLevelFolder(qaLevelsBase, levelId) {
  * @param {string} levelName
  */
 function ensureQaLevelFolder(qaLevelsBase, levelId, levelName) {
-  try {
-    if (!qaLevelsBase || !levelId) return null;
-
-    const existing = findQaLevelFolder(qaLevelsBase, levelId);
-    if (existing) return existing;
-
-    const name = qaLevelFolderName(levelName, levelId);
-    if (!name) return null;
-
-    const target = path.join(qaLevelsBase, name);
-    if (!isWithinBase(qaLevelsBase, target)) {
-      logger.error({ levelId, target }, 'QA level folder path escapes base directory');
-      return null;
-    }
-
-    fs.mkdirSync(target, { recursive: true });
-    logger.info({ folderPath: target }, 'Ensured QA level folder');
-    return target;
-  } catch (err) {
-    logger.error({ err, levelId }, 'Failed to ensure QA level folder');
-    return null;
-  }
+  return ensureCodedFolder(qaLevelsBase, levelId, levelName, 'QA level');
 }
 
 /**
@@ -309,30 +305,7 @@ function ensureQaLevelFolder(qaLevelsBase, levelId, levelName) {
  * @param {string} newName
  */
 function renameQaLevelFolder(qaLevelsBase, levelId, newName) {
-  try {
-    const desired = qaLevelFolderName(newName, levelId);
-    if (!qaLevelsBase || !desired) return;
-
-    const current = findQaLevelFolder(qaLevelsBase, levelId);
-    if (!current) {
-      ensureQaLevelFolder(qaLevelsBase, levelId, newName);
-      return;
-    }
-
-    const target = path.join(qaLevelsBase, desired);
-    if (!isWithinBase(qaLevelsBase, target)) return;
-    if (path.resolve(current) === path.resolve(target)) return;
-
-    if (fs.existsSync(target)) {
-      logger.warn({ levelId, target }, 'QA level rename target exists; keeping current folder');
-      return;
-    }
-
-    fs.renameSync(current, target);
-    logger.info({ from: current, to: target }, 'Renamed QA level folder');
-  } catch (err) {
-    logger.error({ err, levelId }, 'Failed to rename QA level folder');
-  }
+  renameCodedFolder(qaLevelsBase, levelId, newName, 'QA level');
 }
 
 /**

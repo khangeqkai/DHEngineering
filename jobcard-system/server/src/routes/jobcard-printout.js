@@ -13,6 +13,7 @@ const { isWithinBase } = require('../utils/folderCreation');
 const { buildPacketPdf } = require('../utils/pdfPacket');
 const { renderHtmlToPdf } = require('../utils/htmlToPdf');
 const { jobcardQueries, recordHistory, actorName } = require('../db/database');
+const { findOr404 } = require('../utils/findOr404');
 const { ALLOWED_FILE_EXTENSIONS, MAX_PRINT_FILES } = require('../shared/jobFiles');
 
 // Built from the shared allowlist so a printable extension can never drift from
@@ -39,10 +40,8 @@ const printRouter = express.Router();
 // not job-folder storage is configured, since it never writes a file.
 printRouter.post('/:id/print', authenticate, (req, res) => {
   try {
-    const jobcard = jobcardQueries.getById.get(req.params.id);
-    if (!jobcard) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const jobcard = findOr404(res, jobcardQueries.getById.get(req.params.id), 'Job card not found');
+    if (!jobcard) return;
 
     const view = buildJobCardView(req.params.id, jobcard, isManagement(req.user.role));
     const html = renderJobCardHtml(view);
@@ -92,10 +91,8 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
     const items = req.body.items || [];
     const includeJobCard = req.body.includeJobCard !== false; // default true
 
-    const jobcard = jobcardQueries.getById.get(id);
-    if (!jobcard) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const jobcard = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!jobcard) return;
 
     // Verify every requested name against the live folder listing — a name that
     // isn't actually in the folder is rejected (blocks traversal and guessing).
@@ -207,10 +204,8 @@ const validatePrinted = [
 printRouter.post('/:id/printed', authenticate, validatePrinted, (req, res) => {
   try {
     const { id } = req.params;
-    const jobcard = jobcardQueries.getById.get(id);
-    if (!jobcard) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const jobcard = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!jobcard) return;
 
     const userName = actorName(req);
     const now = new Date().toISOString();
@@ -248,10 +243,8 @@ const validateSaved = [
 printRouter.post('/:id/saved', authenticate, validateSaved, (req, res) => {
   try {
     const { id } = req.params;
-    const jobcard = jobcardQueries.getById.get(id);
-    if (!jobcard) {
-      return res.status(404).json({ error: 'Job card not found' });
-    }
+    const jobcard = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    if (!jobcard) return;
 
     recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
       packetSaved: { from: null, to: new Date().toISOString() }
