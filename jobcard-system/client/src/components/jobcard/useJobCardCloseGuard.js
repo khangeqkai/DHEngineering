@@ -79,6 +79,22 @@ export function useJobCardCloseGuard({
     pending: saveQueue.pending()
   });
 
+  // The pricing sheet as of the latest render — the close handler below outlives the
+  // render it started in, and needs to know whether its own save left figures unstored.
+  const costingRef = useRef(costingHook);
+  costingRef.current = costingHook;
+  // Set for the length of one close attempt whose pricing save failed ('failed') or
+  // hadn't answered within the close's time limit ('pending'). Only a failed save's
+  // figures are dropped when the person answers "discard" — otherwise the save-on-close
+  // backstop (useJobCardCosting.js) would quietly send the figures they just chose to
+  // lose. A pending save is left alone: it is still on its way and may yet store, so
+  // the question never offers to lose it and nothing here throws it away.
+  const pricingUnsavedRef = useRef(false);
+  const closeDroppingPricing = useCallback(() => {
+    if (pricingUnsavedRef.current === 'failed') costingRef.current.dropUnsavedCosting();
+    onClose();
+  }, [onClose]);
+
   const guard = useUnsavedGuard({
     isOpen,
     isDirty,
@@ -91,7 +107,7 @@ export function useJobCardCloseGuard({
     // with an unsaved or red pricing box asks first.
     costingUnsettled: canSeePricing ? costingHook.costingHasDraft : false,
     showConfirm,
-    onClose,
+    onClose: closeDroppingPricing,
     isEdit,
     closeReasons,
     revealDetails
@@ -108,7 +124,10 @@ export function useJobCardCloseGuard({
   // job save to land (for up to a few seconds), then ask the question against the screen as it is NOW — through
   // a ref, because the handler this call started in still holds the old state. Anything
   // that genuinely couldn't be kept (a failed save, a required box left blank) is still
-  // asked about. Pricing itself is flushed on close by useJobCardCosting.js.
+  // asked about. Pricing is saved here too, and waited for, before the question — a
+  // pricing save that fails is named in the question like any other unsaved work rather
+  // than lost after the window has gone (useJobCardCosting.js's save on close is only a
+  // backstop for closes that never reach this).
   const askRef = useRef(guard.handleRequestClose);
   askRef.current = guard.handleRequestClose;
   const closingRef = useRef(false);
@@ -129,21 +148,37 @@ export function useJobCardCloseGuard({
         await Promise.race([whenSettled(), wait(CLOSE_SETTLE_LIMIT_MS)]);
         await nextFrame();
         // A red pricing box is a harder stop than the ordinary unsaved-work question
-        // below: the figure in it was never valid, so there's nothing to "save either
-        // way" the way that question assumes about costingDirty. Ask about it first,
-        // and separately. costingHook.guardLeaveCosting commits every other box on the
-        // way (exactly like leaving the tab does) and only stops here for one still
-        // sitting red.
+        // below: the figure in it was never valid, so there's nothing to save. Ask about
+        // it first, and separately. costingHook.guardLeaveCosting commits every other
+        // box on the way (exactly like leaving the tab does) and only stops here for one
+        // still sitting red.
         if (canSeePricing) {
           const { proceed, field } = await costingHook.guardLeaveCosting(showConfirm);
           if (!proceed) {
             revealCosting?.(field);
             return;
           }
+          // Then save the pricing and wait for the answer. A failure is only work at
+          // risk while the sheet still holds figures the server never stored — a save
+          // refused because the job was closed elsewhere drops them on purpose.
+          // Bounded like the job saves above, and for the same reason: a pricing save
+          // stuck on a dead network would otherwise hold the close open for good. Past
+          // the limit the save keeps running in the background, and the question says
+          // the pricing hasn't finished saving rather than that it failed.
+          await nextFrame();
+          const { ok, timedOut } = await Promise.race([
+            costingRef.current.flushCosting(),
+            wait(CLOSE_SETTLE_LIMIT_MS).then(() => ({ ok: false, timedOut: true }))
+          ]);
+          await nextFrame();
+          pricingUnsavedRef.current = !ok && costingRef.current.costingDirty
+            ? (timedOut ? 'pending' : 'failed')
+            : false;
         }
       }
-      await askRef.current();
+      await askRef.current({ pricingUnsaved: pricingUnsavedRef.current });
     } finally {
+      pricingUnsavedRef.current = false;
       closingRef.current = false;
     }
   }, [isEdit, whenSettled, canSeePricing, costingHook, showConfirm, revealCosting]);

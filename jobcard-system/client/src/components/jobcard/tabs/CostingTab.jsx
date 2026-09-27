@@ -50,6 +50,10 @@ export default function CostingTab({
   loaded = true,
   loadFailed = false,
   onRetryLoad,
+  // An invoiced (closed) job: every box and reset link is disabled, but the view-only
+  // buttons — the "what this job used" toggle, and Try again on a failed load — are
+  // left outside the lock so they still work.
+  locked = false,
   lineItems,
   timeEntries,
   machines = []
@@ -279,9 +283,9 @@ export default function CostingTab({
 
   const status = SAVE_STATUS[saveState];
 
-  // Enter anywhere in the sheet saves straight away, without leaving the box. The
-  // surrounding job form already swallows Enter, so nothing else fires off the same
-  // keypress. Enter commits exactly the box the cursor is in — the same commitBox that
+  // Enter in any box on the sheet saves straight away, without leaving the box. The
+  // surrounding job form already swallows Enter in a typing box, so nothing else fires
+  // off the same keypress (on a button, Enter still presses it). Enter commits exactly the box the cursor is in — the same commitBox that
   // blur below reaches — and leaves the cursor where it was, unlike blur.
   const saveOnEnter = (e) => {
     if (e.key !== 'Enter') return;
@@ -338,6 +342,11 @@ export default function CostingTab({
           <CostingBreakdown lineItems={lineItems} timeEntries={timeEntries} machines={machines} />
         )}
 
+        {/* A closed job's editable sheet is read-only — a plain <fieldset disabled>
+            (display: contents, so it adds no box of its own) rather than threading a
+            lock through every box. Nothing on it can be dirty or invalid on a closed
+            job, so there's nothing for the tab-switch/close/invoice guards to catch. */}
+        <fieldset className="jc-lock-fieldset" disabled={locked}>
         {/* Labour — one panel: base rate up top, tiers as a rate ladder, subtotal in the header */}
         <section className="labour-block">
           <div className="labour-block-head">
@@ -484,6 +493,7 @@ export default function CostingTab({
             {costNote('subcontractorDescription', 'e.g. Hard chrome plating and freight both ways')}
           </div>
         </div>
+        </fieldset>
       </div>
     </div>
   );

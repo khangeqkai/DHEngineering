@@ -10,16 +10,16 @@ import { useCostingSave } from './useCostingSave';
 //
 // The drafts half calls into the save half on every real edit (markEdited,
 // requestImmediateSave), but the save half is built FROM the drafts half's own committed
-// figures (costingForm, drafts, calculateCostingTotals, commitAllBoxes,
-// discardCostingDrafts) — so it has to be built second. markEdited/requestImmediateSave
-// are threaded to the drafts half through a stable indirection instead: a ref, filled in
+// figures (costingForm, drafts, commitAllBoxes, discardCostingDrafts) — so it has to be
+// built second. markEdited/requestImmediateSave are threaded to the drafts half through a stable indirection instead: a ref, filled in
 // with the real implementation immediately below, so its identity never changes across
 // renders (matching the always-stable identity both functions already had before this
 // split). Neither is ever called during render — only from event handlers and effects —
 // so by the time either fires the ref is already pointing at the real thing.
 export function useCosting(jobCardId, {
   costing: loadedCosting,
-  updateCosting
+  updateCosting,
+  onJobClosed
 } = {}) {
   const markEditedRef = useRef(() => {});
   const requestImmediateSaveRef = useRef(() => {});
@@ -31,12 +31,12 @@ export function useCosting(jobCardId, {
   const save = useCostingSave(jobCardId, {
     loadedCosting,
     updateCosting,
+    onJobClosed,
     costingForm: drafts.costingForm,
     drafts: drafts.drafts,
     setCostingForm: drafts.setCostingForm,
     setDrafts: drafts.setDrafts,
     clearAllFieldErrors: drafts.clearAllFieldErrors,
-    calculateCostingTotals: drafts.calculateCostingTotals,
     commitAllBoxes: drafts.commitAllBoxes,
     discardCostingDrafts: drafts.discardCostingDrafts
   });
@@ -69,6 +69,7 @@ export function useCosting(jobCardId, {
     openedAt: save.openedAt,
     flushCosting: save.flushCosting,
     guardLeaveCosting: save.guardLeaveCosting,
+    dropUnsavedCosting: save.dropUnsavedCosting,
     discardCostingDrafts: drafts.discardCostingDrafts,
     // Kept under its old name — every caller (CostingTab's blur bubbling, Enter handler)
     // already reaches it this way, and it now IS commitBox: a box saves by committing,

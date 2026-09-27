@@ -21,12 +21,12 @@ import { describeAtRisk, describeSafe, describeSafeAsSecondLine } from './closeR
 // framing the whole window amber for it would dilute a signal that means something else.
 //
 // Pricing (costingDirty) is deliberately left out of hasUnsavedWork too, and for a
-// different reason: closing the job already flushes it straight to the server (see
-// useJobCardCosting.js's effect on isOpen), so the amber ring and the close confirm never
-// need to ask about it. But a page refresh and the inactivity sign-out don't run that
-// flush — they just make the screen disappear — so the two effects below that guard
-// against those need a wider question still: hasWorkToLose, which folds costingDirty in
-// alongside hasUnsavedWork.
+// different reason: closing the job saves it first and waits for the answer
+// (useJobCardCloseGuard.js), so the close question only has to mention pricing when that
+// save failed or hasn't answered yet — the caller says so with pricingUnsaved. But a page refresh and
+// the inactivity sign-out don't run that save — they just make the screen disappear — so
+// the two effects below that guard against those need a wider question still:
+// hasWorkToLose, which folds costingDirty in alongside hasUnsavedWork.
 export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNote, stopFormOpen, costingDirty = false, costingUnsettled = false, showConfirm, onClose, isEdit = false, closeReasons = { safe: [], atRisk: [] }, revealDetails }) {
   const { registerUnsavedWork } = useAuth();
   const hasUnsavedWork = isDirty || hasUnpostedNote || stopFormOpen;
@@ -41,7 +41,15 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
   // dismissal path. A save already in flight is not raced by a close — it isn't
   // cancelled, it just keeps running and its own toast/onSuccess still land once it
   // resolves, same as if the screen had stayed open.
-  const handleRequestClose = useCallback(async () => {
+  //
+  // pricingUnsaved: the close guard tried to save the pricing sheet just now and it
+  // failed ('failed') — the typed figures would go with the window, so they are named as
+  // work at risk — or hadn't answered in time ('pending'). A pending save is still on its
+  // way and may yet store, so it is never called lost: it gets its own "still saving"
+  // question, like a job save in flight, and closing leaves it running.
+  const handleRequestClose = useCallback(async ({ pricingUnsaved = false } = {}) => {
+    const pricingPending = pricingUnsaved === 'pending';
+    const pricingFailed = pricingUnsaved === 'failed';
     // Pressing Save and then Escape within the same second used to be met with "close and
     // lose them?", which was simply untrue: the work is on its way and almost always
     // lands. (The screen still reads as unsaved during that second, because the mark only
@@ -52,7 +60,8 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
     if (saving) {
       const carryOn = await showConfirm({
         title: 'Still saving',
-        message: 'This job card is still being saved. Close it anyway? If the save fails there will be nothing left on screen to try again from.',
+        message: 'This job card is still being saved. Close it anyway? If the save fails there will be nothing left on screen to try again from.'
+          + (pricingPending ? ' Your pricing is still being saved too and may still go through.' : ''),
         confirmLabel: 'Close anyway',
         cancelLabel: 'Wait',
         confirmVariant: 'warning'
@@ -61,7 +70,19 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
       onClose();
       return;
     }
-    if (!hasUnsavedWork) {
+    // Asked before anything else is weighed, and answered on its own: "Close anyway"
+    // only settles the pricing, and any other unsaved work still gets its own question.
+    if (pricingPending) {
+      const carryOn = await showConfirm({
+        title: 'Still saving',
+        message: 'Your pricing is still being saved and may still go through — close anyway?',
+        confirmLabel: 'Close anyway',
+        cancelLabel: 'Wait',
+        confirmVariant: 'warning'
+      });
+      if (!carryOn) return;
+    }
+    if (!hasUnsavedWork && !pricingFailed) {
       onClose();
       return;
     }
@@ -72,9 +93,7 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
     if (!isEdit) {
       const ok = await showConfirm({
         title: 'Unsaved changes',
-        message: costingDirty
-          ? "This job card has changes that haven't been saved yet. Close it and lose them? Your pricing changes are saved either way."
-          : "This job card has changes that haven't been saved yet. Close it and lose them?",
+        message: "This job card has changes that haven't been saved yet. Close it and lose them?",
         confirmLabel: 'Discard changes',
         cancelLabel: 'Keep editing',
         confirmVariant: 'danger'
@@ -91,6 +110,7 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
     const atRisk = [...closeReasons.atRisk];
     if (hasUnpostedNote) atRisk.push({ text: 'your unposted comment', verb: "hasn't been posted" });
     if (stopFormOpen) atRisk.push({ text: 'the open timer entry form', verb: "hasn't been saved" });
+    if (pricingFailed) atRisk.push({ text: 'your pricing', verb: "hasn't been saved" });
     const { safe } = closeReasons;
 
     // Real risk beats "nothing to lose": if anything could actually be lost by
@@ -98,13 +118,7 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
     // (if there's also one of those) is folded in as a second line rather than
     // its own dialog.
     if (atRisk.length > 0) {
-      let message = describeAtRisk(atRisk) + describeSafeAsSecondLine(safe);
-      // Pricing is the exception to "discard": closing the job sends those figures to
-      // the server rather than dropping them (see the note above). Saying "lose them"
-      // while money quietly goes the other way is the kind of surprise this question
-      // exists to prevent, so when pricing is also waiting the answer says plainly
-      // which half is kept and which is thrown away.
-      if (costingDirty) message += ' Your pricing changes are saved either way.';
+      const message = describeAtRisk(atRisk) + describeSafeAsSecondLine(safe);
       const ok = await showConfirm({
         title: 'Unsaved changes',
         message,
@@ -123,8 +137,7 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
     // nothing above explained it, so closeReasons.js's own fallback (a field
     // still mid-flight) would already have landed in atRisk if this job's dirt
     // came from anywhere else.
-    let { title, message } = describeSafe(safe);
-    if (costingDirty) message += ' Your pricing changes are saved either way.';
+    const { title, message } = describeSafe(safe);
     const ok = await showConfirm({
       title,
       message,
@@ -142,7 +155,7 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
     // Switch there first, then let that render land before reaching for the element.
     revealDetails?.(); // the caller switches to the Details tab; see the comment above
     requestAnimationFrame(() => scrollFieldIntoView(safe[0].key));
-  }, [saving, hasUnsavedWork, isEdit, closeReasons, hasUnpostedNote, stopFormOpen, costingDirty, showConfirm, onClose, revealDetails]);
+  }, [saving, hasUnsavedWork, isEdit, closeReasons, hasUnpostedNote, stopFormOpen, showConfirm, onClose, revealDetails]);
 
   // A browser refresh (Ctrl+R) and closing the tab never reach handleRequestClose — they
   // were throwing a half-filled card away in silence, which is the same hole that was

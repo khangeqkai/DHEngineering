@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
+import { isJobClosedError } from '../../utils/jobLock';
 import { readFileAsBase64, base64ToBlob } from '../../utils/fileData';
 import { ALLOWED_FILE_EXTENSIONS, MAX_UPLOAD_BYTES, CATEGORY_FOLDER } from '../../../../server/src/shared/jobFiles';
 
@@ -23,11 +24,26 @@ function fileExtension(name) {
   return dot > 0 ? name.slice(dot).toLowerCase() : '';
 }
 
+// True (and handled) when err is the closed-job refusal and there's a handler for it.
+function handledAsJobClosed(err, onJobClosed) {
+  if (!isJobClosedError(err) || !onJobClosed) return false;
+  onJobClosed();
+  return true;
+}
+
 /**
  * Files hook scoped to a single job card. Lists, uploads, and views files
  * for one category at a time. Files are identified by filename on disk.
+ *
+ * onJobClosed (optional) is the job screen's shared closed-job handler: an upload,
+ * re-tag or delete refused because the job was invoiced and closed from another PC
+ * calls it (one message, and a reload that locks the screen) instead of the
+ * ordinary failure toast.
  */
-export function useJobFiles(jobcardId) {
+export function useJobFiles(jobcardId, { onJobClosed } = {}) {
+  const onJobClosedRef = useRef(onJobClosed);
+  onJobClosedRef.current = onJobClosed;
+
   const [counts, setCounts] = useState(
     () => Object.fromEntries(CATEGORIES.map(c => [c, null]))
   );
@@ -133,13 +149,19 @@ export function useJobFiles(jobcardId) {
     try {
       let saved = 0;
       const failed = [];
-      // Upload each file independently so one failure doesn't abandon the rest.
+      // Upload each file independently so one failure doesn't abandon the rest —
+      // except the job being closed, which every remaining file would meet too.
       for (const file of valid) {
         try {
           const raw = await readFileAsBase64(file);
           await api.uploadToJobcardFiles(jobcardId, category, file.name, raw, itemId);
           saved++;
         } catch (err) {
+          if (handledAsJobClosed(err, onJobClosedRef.current)) {
+            toast.dismiss(toastId);
+            if (saved > 0) refreshCount(category);
+            return;
+          }
           failed.push(file.name);
         }
       }
@@ -187,6 +209,11 @@ export function useJobFiles(jobcardId) {
           saved++;
           if (removePhoto) removePhoto(photo.id);
         } catch (err) {
+          if (handledAsJobClosed(err, onJobClosedRef.current)) {
+            toast.dismiss(toastId);
+            if (saved > 0) refreshCount(category);
+            return;
+          }
           failed.push({ photo, message: err.message });
         }
       }
@@ -219,7 +246,7 @@ export function useJobFiles(jobcardId) {
       await loadFiles(category);
       return updated?.name || filename;
     } catch (err) {
-      toast.error(err.message || 'Could not change which part this file is for');
+      if (!handledAsJobClosed(err, onJobClosedRef.current)) toast.error(err.message || 'Could not change which part this file is for');
       return null;
     } finally {
       setAssigningKeys(prev => { const next = new Set(prev); next.delete(key); return next; });
@@ -239,7 +266,7 @@ export function useJobFiles(jobcardId) {
       toast.success('File deleted');
       return true;
     } catch (err) {
-      toast.error(err.message || 'Could not delete the file');
+      if (!handledAsJobClosed(err, onJobClosedRef.current)) toast.error(err.message || 'Could not delete the file');
       return false;
     } finally {
       setDeletingKeys(prev => { const next = new Set(prev); next.delete(key); return next; });

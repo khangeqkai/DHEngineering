@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { scrollFieldIntoView } from '../../hooks/useFieldErrors';
+import { isJobClosedError } from '../../utils/jobLock';
 import { TEXT_FIELDS } from './useCostingDrafts';
 
 // The save half of the pricing sheet: the save queue, save-now, flush, leave guard and
@@ -13,19 +14,23 @@ import { TEXT_FIELDS } from './useCostingDrafts';
 // runSave below for why there is no question in front of it any more.
 //
 // costingForm/drafts are the CURRENT values from useCostingDrafts.js, passed in fresh
-// every render; setCostingForm/setDrafts/clearAllFieldErrors, calculateCostingTotals,
-// commitAllBoxes and discardCostingDrafts are that half's own setters/functions, crossing
+// every render; setCostingForm/setDrafts/clearAllFieldErrors, commitAllBoxes and
+// discardCostingDrafts are that half's own setters/functions, crossing
 // over so this half can adopt a save reply, load the initial figures, and commit/discard
 // open boxes on the way out.
+//
+// onJobClosed is the job screen's shared closed-job handler (JobCardModal.jsx): a save
+// refused because the job was invoiced and closed from another PC calls it — one
+// message, and a reload that locks the sheet — instead of the ordinary failure toast.
 export function useCostingSave(jobCardId, {
   loadedCosting,
   updateCosting,
+  onJobClosed,
   costingForm,
   drafts,
   setCostingForm,
   setDrafts,
   clearAllFieldErrors,
-  calculateCostingTotals,
   commitAllBoxes,
   discardCostingDrafts
 }) {
@@ -58,7 +63,9 @@ export function useCostingSave(jobCardId, {
   // flight. It lets a flush tell "a save carrying exactly these figures is already on its
   // way" apart from "something has been typed since that save started".
   const inFlightSeq = useRef(null);
-  // The last figures loaded from (or stored by) the server. While it's still null it
+  // The last figures loaded from (or stored by) the server — also what a save compares
+  // against to send only the figures this screen changed. Moved on by every successful
+  // save reply, including one whose figures aren't adopted into the boxes (see runSave). While it's still null it
   // marks the pricing as never having arrived, which blocks saving. Without that block, a
   // failed load leaves an all-zero screen that the first keystroke would write over the
   // real figures.
@@ -138,6 +145,20 @@ export function useCostingSave(jobCardId, {
     }
   }, []);
 
+  // Throw away every figure this screen holds that the server never stored: open drafts
+  // and their red marks, and committed figures still waiting to be sent — the sheet goes
+  // back to the last figures the server handed back. Used when a save is refused because
+  // the job was closed elsewhere, and when the person answers "discard" to a close
+  // question naming pricing whose save failed (not one still in flight, which may yet store) (useJobCardCloseGuard.js), so the
+  // save-on-close backstop doesn't send what they chose to lose.
+  const dropUnsavedCosting = useCallback(() => {
+    discardCostingDrafts();
+    if (loadedRef.current) setCostingForm(loadedRef.current);
+    setCostingDirty(false);
+    setSaveState('idle');
+    setAutoSavePaused(false);
+  }, [discardCostingDrafts, setCostingForm]);
+
   // Send the current figures. Returns true when they're safely stored and false when the
   // save failed. Callers that gate an irreversible step on the save (invoicing files the
   // job away) rely on the false case to abort instead of proceeding with unsaved numbers.
@@ -164,38 +185,35 @@ export function useCostingSave(jobCardId, {
 
     const form = costingForm;
     const seq = editSeq.current;
+    // Which opening of the pricing this save belongs to — see the comparison-base update
+    // after the reply below.
+    const opening = openingRef.current;
     // What this save covers, for flushCosting to compare against — see there.
     inFlightSeq.current = seq;
     setSavingCosting(true);
     setSaveState('saving');
     try {
-      const totals = calculateCostingTotals(form);
-      const costingData = {
-        ...form,
-        // Send each tier's manual hours only when overridden; null tells the server to
-        // use its auto tally. The server recomputes every total from these + settings.
-        labourHoursOverride: form.labourHoursOverridden ? form.labourHours : null,
-        labourOt1Override: form.labourOt1Overridden ? form.labourOt1Hours : null,
-        labourOt2Override: form.labourOt2Overridden ? form.labourOt2Hours : null,
-        labourHolidayOverride: form.labourHolidayOverridden ? form.labourHolidayHours : null,
-        // Same deal for the two overtime multipliers: a hand-typed figure travels as
-        // the override, null tells the server to follow the company setting.
-        labourOt1MultiplierOverride: form.labourOt1MultiplierOverridden ? form.labourOt1Multiplier : null,
-        labourOt2MultiplierOverride: form.labourOt2MultiplierOverridden ? form.labourOt2Multiplier : null,
-        labourTotal: totals.labourTotal,
-        labourOt1Total: totals.labourOt1Total,
-        labourOt2Total: totals.labourOt2Total,
-        labourHolidayTotal: totals.labourHolidayTotal,
-        labourSpecialTotal: totals.labourSpecialTotal,
-        materialsTotal: totals.materialsTotal,
-        subcontractorTotal: totals.subcontractorTotal,
-        grandTotal: totals.grandTotal
-      };
+      // Only the figures this screen changed since the server last handed its figures
+      // back. Sending the whole sheet let a second admin's out-of-date copy of a figure
+      // they never touched overwrite the first admin's saved one. The server keeps its
+      // stored value for anything left out and works every total out itself.
+      const costingData = changedFigures(form, loadedRef.current);
 
       if (!updateCosting) {
         throw new Error('updateCosting operation not provided');
       }
       const stored = await updateCosting(costingData);
+      // Whatever happens to the boxes below, the comparison base moves to what the server
+      // now holds — on EVERY successful reply for this opening, adopted or not. Otherwise
+      // a figure changed while this save was in flight and then put back to its old
+      // value (materials $100 → $200, left; another box edited meanwhile; materials back
+      // to $100) would be judged unchanged against the stale base and never sent,
+      // leaving the server on $200. The opening check keeps a reply that lands after
+      // the job was closed (or closed and reopened) from touching the next opening's
+      // base — while it is null the save block below still has to hold.
+      if (stored && jobCardIdRef.current === jobCardId && openingRef.current === opening) {
+        loadedRef.current = stored;
+      }
       // Only call it saved when nothing was typed while the request was in flight —
       // otherwise those later keystrokes would look stored without ever having been sent.
       // Left dirty, they go out with the next box left, Enter, or flush.
@@ -210,7 +228,6 @@ export function useCostingSave(jobCardId, {
         // flight (a box someone started typing in during the wait would still carry a
         // draft, which display already overlays on top of whatever this puts in below).
         if (stored) {
-          loadedRef.current = stored;
           setCostingForm(prev => {
             // stored is already the form shape (mapCostingResponseToForm) — copy it so
             // the notes patch below doesn't mutate the object held in loadedRef.
@@ -231,6 +248,14 @@ export function useCostingSave(jobCardId, {
       }
       return true;
     } catch (err) {
+      // The job was invoiced and closed elsewhere: these figures can never be stored,
+      // so they're dropped (the sheet goes back to what the server holds, and closing
+      // won't ask about them) and the screen reloads into its locked state.
+      if (isJobClosedError(err) && jobCardIdRef.current === jobCardId) {
+        dropUnsavedCosting();
+        onJobClosed?.();
+        return false;
+      }
       setSaveState('error');
       setAutoSavePaused(true);
       toastSaveFailed(err);
@@ -239,7 +264,7 @@ export function useCostingSave(jobCardId, {
       inFlightSeq.current = null;
       setSavingCosting(false);
     }
-  }, [jobCardId, costingForm, calculateCostingTotals, updateCosting, drafts]);
+  }, [jobCardId, costingForm, updateCosting, drafts, onJobClosed, dropUnsavedCosting]);
 
   // Read by the queue below so a save that waits its turn sends the figures as they are
   // when it finally runs, not as they were when it was asked for.
@@ -440,10 +465,52 @@ export function useCostingSave(jobCardId, {
     requestImmediateSave,
     flushCosting,
     guardLeaveCosting,
+    dropUnsavedCosting,
     handleSaveCosting,
     refreshCosting,
     resetSaveState
   };
+}
+
+// What a save sends for each figure the server accepts, read off a committed form (or
+// off the figures the server last handed back — the same shape). An override box
+// travels as its override: the hand-typed figure, or null to follow the logged/company
+// figure.
+function savedFigures(form) {
+  return {
+    labourRate: form.labourRate,
+    labourHoursOverride: form.labourHoursOverridden ? form.labourHours : null,
+    labourOt1Override: form.labourOt1Overridden ? form.labourOt1Hours : null,
+    labourOt2Override: form.labourOt2Overridden ? form.labourOt2Hours : null,
+    labourHolidayOverride: form.labourHolidayOverridden ? form.labourHolidayHours : null,
+    labourOt1MultiplierOverride: form.labourOt1MultiplierOverridden ? form.labourOt1Multiplier : null,
+    labourOt2MultiplierOverride: form.labourOt2MultiplierOverridden ? form.labourOt2Multiplier : null,
+    labourSpecialHours: form.labourSpecialHours,
+    labourSpecialRate: form.labourSpecialRate,
+    labourSpecialDescription: form.labourSpecialDescription,
+    materialsCost: form.materialsCost,
+    materialsProfitPercent: form.materialsProfitPercent,
+    materialsDescription: form.materialsDescription,
+    subcontractorCost: form.subcontractorCost,
+    subcontractorProfitPercent: form.subcontractorProfitPercent,
+    subcontractorDescription: form.subcontractorDescription
+  };
+}
+
+// The figures on screen that differ from the ones the server last stored. Notes are
+// compared as the server stores them (trimmed, blank as empty) — the boxes keep the
+// untrimmed text on purpose, and that alone isn't a change worth sending.
+function changedFigures(form, stored) {
+  const now = savedFigures(form);
+  const was = savedFigures(stored);
+  const same = (field, a, b) => (TEXT_FIELDS.has(field)
+    ? (a || '').trim() === (b || '').trim()
+    : a === b);
+  const changed = {};
+  for (const field of Object.keys(now)) {
+    if (!same(field, now[field], was[field])) changed[field] = now[field];
+  }
+  return changed;
 }
 
 // Split out so runSave (already long) reads as a list of steps rather than a wall of

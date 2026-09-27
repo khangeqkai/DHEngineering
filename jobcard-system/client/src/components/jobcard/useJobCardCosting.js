@@ -11,7 +11,7 @@ import { useCosting } from './useCosting';
 // Wraps useCosting, which owns the figures themselves, and hands back its whole API
 // plus the load state the pricing tab needs.
 export function useJobCardCosting({
-  isOpen, isEdit, canSeePricing, jobCardId, activeTab
+  isOpen, isEdit, canSeePricing, jobCardId, activeTab, onJobClosed
 }) {
   const [costing, setCosting] = useState(null);
   // Set when the pricing couldn't be fetched. The screen shows a plain message and a
@@ -77,6 +77,8 @@ export function useJobCardCosting({
 
   const costingHook = useCosting(jobCardId, {
     costing,
+    // The job screen's shared closed-job handler — see useCostingSave.js.
+    onJobClosed,
     // No re-fetch after the save: the reply carries the stored figures, and re-reading
     // would spend a whole recompute — a walk over every logged minute — per save.
     updateCosting: async (data) => {
@@ -90,7 +92,9 @@ export function useJobCardCosting({
   });
 
   // Pricing saves itself when a box is left. The two paths below cover leaving with the
-  // cursor still in a box. Held in a ref so they don't re-run (and re-save) on every render.
+  // cursor still in a box. Closing the job normally saves pricing (and waits for it)
+  // in the close guard first — useJobCardCloseGuard.js — so the close effect is only a
+  // backstop for a close that never went through that guard. Held in a ref so they don't re-run (and re-save) on every render.
   const flushRef = useRef(null);
   flushRef.current = costingHook.flushCosting;
 

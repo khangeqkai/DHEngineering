@@ -26,7 +26,9 @@ import './JobPaperworkHub.css';
 // `locked` is an invoiced (closed) job: its paperwork can still be viewed, printed and
 // saved as a packet, but nothing can be added, re-assigned or deleted until it is
 // unarchived — the server refuses those writes (closedJobGuard), so they aren't offered.
-function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, attachmentWarnings = null, parts = [], locked = false }, ref) {
+// `onJobClosed` is the job screen's shared closed-job handler, for a write refused
+// because the job was closed from another PC while this one still had it open.
+function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, attachmentWarnings = null, parts = [], locked = false, onJobClosed }, ref) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState('hub'); // 'hub' | 'camera'
   const [cameraCategory, setCameraCategory] = useState(null);
@@ -57,7 +59,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, atta
   // silently re-open a part's missing-attachment warning).
   const canDelete = isManagement(user);
 
-  const files = useJobFiles(jobcardId);
+  const files = useJobFiles(jobcardId, { onJobClosed });
   const camera = useCamera();
   const packet = usePacketPrint(jobcardId, jobNumber, onPrinted);
   const {

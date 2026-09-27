@@ -53,8 +53,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // open: a write already on its way reaches the server after that and is refused
   // (closedJobGuard, server/src/middleware/closedJob.js) with a 409 carrying
   // code: 'JOB_CLOSED'. Every write path that can hit this — the save queue (fields,
-  // parts, workers), comments, the status control, and manual time entries — calls
-  // this the moment it sees that code: one shared sentence, and a reload so the
+  // parts, workers), comments, the status control, manual time entries, the timer's
+  // start and stop-form saves, file uploads/re-tags/deletes and the pricing sheet —
+  // calls this the moment it sees that code: one shared sentence, and a reload so the
   // screen catches up to the closed job and renders read-only (see the jobClosed
   // guards below) instead of going on offering edits that would only fail the same
   // way. Held in a ref because loadJobCard (defined further down, after formHook)
@@ -85,7 +86,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   }, []);
   // lineItems is handed in so the timer's own toasts and switch-timer prompts can
   // name a part by its position in this job's list, never by its stored number.
-  const timer = useTimer(isEdit ? jobCardId : null, { onExternalStop, lineItems: formHook.lineItems });
+  const timer = useTimer(isEdit ? jobCardId : null, { onExternalStop, lineItems: formHook.lineItems, onJobClosed: handleJobClosedWrite });
   const { dialogState, showConfirm, handleCancel, handleConfirm, handleAlt, cancelConfirms } = useConfirmDialog();
 
   // Questions belong to the open card. Once it closes nothing renders the box any more,
@@ -99,7 +100,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm, onNotesChange, handleJobClosedWrite);
   // Pricing: the on-open load and the save-on-the-way-out paths all live in this hook —
   // see useJobCardCosting.js.
-  const costingHook = useJobCardCosting({ isOpen, isEdit, canSeePricing, jobCardId, activeTab });
+  const costingHook = useJobCardCosting({ isOpen, isEdit, canSeePricing, jobCardId, activeTab, onJobClosed: handleJobClosedWrite });
 
   // The lists every picker on this screen draws from — suppliers, workers, machines,
   // quality levels — loaded once (with its own retry-on-reopen and failure toast),
@@ -235,7 +236,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const timeEntry = useTimeEntries(jobCardId, {
     ...apiTimeEntryOperations,
     showConfirm,
-    isInvoiced
+    isInvoiced,
+    onJobClosed: handleJobClosedWrite
   });
   const { resetTimeEntries } = timeEntry;
   const { resetCosting } = costingHook;
@@ -416,6 +418,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   });
 
   if (!isOpen) return null;
+  // Enter in a box someone types into must not submit the form by accident. Only those
+  // boxes: a button (a tab, a reset link, a part's buttons) keeps Enter's normal job of
+  // pressing it. The comboboxes and the pricing sheet handle their own Enter first.
+  const blockEnterSubmit = (e) => {
+    if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return;
+    if (['button', 'submit', 'reset'].includes(e.target.type)) return;
+    e.preventDefault();
+  };
   // Same plain calendar-date comparison the job list uses, so the two never disagree.
   const today = todayIsoDate();
   const isOverdue = isJobOverdue(formHook.formData.dueDate, formHook.formData.status, today);
@@ -478,6 +488,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               attachmentWarnings={attachmentWarnings}
               parts={formHook.lineItems}
               locked={jobClosed}
+              onJobClosed={handleJobClosedWrite}
             />
           ) : null
         }
@@ -492,7 +503,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
             <span>Opening this job card…</span>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT' && e.target.type !== 'submit') e.preventDefault(); }} style={{ display: 'contents' }}>
+          <form onSubmit={handleSubmit} onKeyDown={blockEnterSubmit} style={{ display: 'contents' }}>
             <BottomSheet.Body>
               <div className="jc-zoom-root">
               {jobClosed && (
@@ -598,14 +609,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
               )}
 
               {activeTab === 'costing' && isEdit && canSeePricing && (
-                // A closed job's pricing is read-only too (C1.3) — wrapped in a plain
-                // <fieldset disabled>, same reasoning as DetailsTab.jsx's management
-                // view, rather than threading a lock through every box useCosting.js
-                // owns. Nothing on this sheet can be dirty or invalid on a closed job
-                // (there's no way to have typed into it since), so there's nothing
-                // left for the tab-switch/close/invoice guards above to catch here.
-                <fieldset className="jc-lock-fieldset" disabled={jobClosed}>
+                // A closed job's pricing is read-only too (C1.3) — CostingTab locks its
+                // editable sheet itself, leaving its view-only buttons usable.
                 <CostingTab
+                  locked={jobClosed}
                   costingForm={costingHook.costingForm}
                   openedAt={costingHook.openedAt}
                   handleCostingChange={costingHook.handleCostingChange}
@@ -627,7 +634,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   timeEntries={timeEntries}
                   machines={machines || []}
                 />
-                </fieldset>
               )}
 
               {activeTab === 'activity' && isEdit && canSeeActivity && (

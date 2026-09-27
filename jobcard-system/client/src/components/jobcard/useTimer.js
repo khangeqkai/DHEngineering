@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { discardToastIcon } from '../common/toastIcons';
 import { describeItemPosition } from './workMatch.mjs';
 import { joinMachineCodes } from '../../../../server/src/shared/machineList';
+import { isJobClosedError } from '../../utils/jobLock';
 
 const emptyEntryForm = () => ({
   qty: '',
@@ -20,7 +21,10 @@ const emptyEntryForm = () => ({
   equipmentChecksComments: ''
 });
 
-export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
+// onJobClosed (optional) is the job screen's shared closed-job handler: a start, or a
+// stop-form save/resume on this job, refused because the job was invoiced and closed
+// from another PC calls it instead of the ordinary failure toast.
+export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } = {}) {
   const { registerBeforeLogout, user } = useAuth();
   const currentUserId = user?.id;
   // Read the live parts list from a ref, not the argument closed over below — the
@@ -49,6 +53,14 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
   const pollInFlightRef = useRef(false);
   const onExternalStopRef = useRef(onExternalStop);
   onExternalStopRef.current = onExternalStop;
+  const onJobClosedRef = useRef(onJobClosed);
+  onJobClosedRef.current = onJobClosed;
+  // True (and handled) when err is the closed-job refusal for a write on THIS job.
+  const handledAsJobClosed = useCallback((err, writeJobcardId = jobcardId) => {
+    if (writeJobcardId !== jobcardId || !isJobClosedError(err) || !onJobClosedRef.current) return false;
+    onJobClosedRef.current();
+    return true;
+  }, [jobcardId]);
 
   const loadActiveTimer = useCallback(async () => {
     try {
@@ -164,6 +176,8 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
       }
       return true;
     } catch (err) {
+      // Checked first: it is a 409 too, and would otherwise read as a timer conflict.
+      if (handledAsJobClosed(err)) return false;
       // On-behalf: the chosen worker already has a timer running elsewhere. This
       // is their conflict, not the admin's, so just report it — the admin's own
       // stop-and-switch flow below only makes sense for the admin's own timer.
@@ -243,7 +257,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, currentUserId, labelForRunningItem]);
+  }, [jobcardId, currentUserId, labelForRunningItem, handledAsJobClosed]);
 
   const stopTimer = useCallback(async () => {
     if (!activeTimer) return;
@@ -392,12 +406,13 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
       if (reloadEntries) await reloadEntries();
       return { startedNewTimer };
     } catch (err) {
+      if (handledAsJobClosed(err, stoppedEntry.jobcardId || jobcardId)) return { startedNewTimer: false };
       toast.error(err.message || 'Failed to update time entry', { id: 'update-time-entry-failed' });
       return { startedNewTimer: false };
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, stoppedEntry, entryForm, pendingStartItem]);
+  }, [jobcardId, stoppedEntry, entryForm, pendingStartItem, handledAsJobClosed]);
 
   const cancelEntryForm = useCallback(async (reloadEntries) => {
     if (!stoppedEntry) return;
@@ -435,11 +450,12 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
       if (reloadEntries) await reloadEntries();
       toast.success('Timer resumed');
     } catch (err) {
+      if (handledAsJobClosed(err, entryJobcardId)) return;
       toast.error(err.message || 'Failed to resume timer', { id: 'resume-timer-failed' });
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, stoppedEntry, currentUserId]);
+  }, [jobcardId, stoppedEntry, currentUserId, handledAsJobClosed]);
 
   // Resume timer if user gets auto-logged out while filling StopTimerForm
   const stoppedEntryRef = useRef(null);

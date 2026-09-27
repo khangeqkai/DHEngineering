@@ -198,13 +198,15 @@ export default function DetailsTab({
   }
 
   return (
-    // A closed job locks every field, part, worker and comment box below for
-    // management too (workers already get the read-only view above) — a plain
-    // <fieldset disabled> refuses interaction with everything inside it, native
-    // controls and nested components alike, without threading a lock prop
-    // through each one. See .jc-lock-fieldset in JobCardModal.css.
-    <fieldset className="jc-lock-fieldset" disabled={jobClosed}>
     <div className="modal-form-grid">
+    {/* A closed job locks every field, part and worker below for management too
+        (workers already get the read-only view above) — a plain <fieldset disabled>
+        refuses interaction with everything inside it, native controls and nested
+        components alike, without threading a lock prop through each one. See
+        .jc-lock-fieldset in JobCardModal.css (display: contents, so the grid is
+        unchanged). The comments sit outside it: they lock themselves (locked below)
+        and keep their view-only Retry button working. */}
+    <fieldset className="jc-lock-fieldset" disabled={jobClosed}>
       {/* Customer — frozen after creation: picked on create, read-only on edit (management only) */}
       {canManage && (
         <CustomerSection
@@ -311,6 +313,7 @@ export default function DetailsTab({
           }}
         />
       </div>
+    </fieldset>
 
       {/* Job Comments (shared, append-only) */}
       {isEdit && (
@@ -328,6 +331,5 @@ export default function DetailsTab({
         />
       )}
     </div>
-    </fieldset>
   );
 }
