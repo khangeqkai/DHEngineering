@@ -1,7 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { STATUS_SORT_ORDER } from '../components/jobcard/constants';
-
-const PRIORITY_SORT_ORDER = { NONE: 0, LOW: 1, MEDIUM: 2, HIGH: 3, SAME_DAY: 4 };
+import { STATUS_SORT_ORDER, PRIORITY_SORT_ORDER } from '../components/jobcard/constants';
 
 export const SORT_VALUE_GETTERS = {
   jobNumber: (c) => c.jobNumber || '',

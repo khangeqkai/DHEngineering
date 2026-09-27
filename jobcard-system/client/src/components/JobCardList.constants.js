@@ -1,5 +1,4 @@
-import { PRIORITY_OPTIONS, STATUS_OPTIONS as JOB_STATUS_OPTIONS } from './jobcard/constants';
-import jobStatuses from '../../../server/src/shared/jobStatuses.json';
+import { PRIORITY_OPTIONS, STATUS_OPTIONS as JOB_STATUS_OPTIONS, SETTLED_STATUSES } from './jobcard/constants';
 
 // All + the one shared status list (server/src/shared/jobStatuses.json, via
 // jobcard/constants.js) + the list-only Overdue filter, in that order.
@@ -104,7 +103,6 @@ export const getStatusBadgeClass = (status) => (status ? `status-${statusToken(s
 // disagree about which jobs are late. Dates are plain YYYY-MM-DD, so a string compare
 // is the whole comparison. The settled statuses themselves come from the one shared
 // jobStatuses.json (also read by statistics-helpers.js's FINISHED_STATUSES).
-const SETTLED_STATUSES = jobStatuses.settledStatuses;
 
 export const isJobOverdue = (dueDate, status, today) =>
   Boolean(dueDate && String(dueDate).trim() && dueDate < today && !SETTLED_STATUSES.includes(status));
