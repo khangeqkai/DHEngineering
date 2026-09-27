@@ -2,6 +2,8 @@
 
 Started 2026-09-27, on top of commit c451d5f (clean-up sweep). 10 rounds, one area per round.
 
+Second hunt started 2026-09-28 on top of commit ddae2fa (fixed Standard/Critical quality levels, settings-area polish): 3 rounds, numbered 11–13.
+
 Every agent in the hunt reads this file first. It is the memory between rounds.
 
 ## Rules of the hunt
@@ -16,6 +18,7 @@ _None._
 
 ## Decided — leave alone
 - **R6/R8 — Quality forms.** Owner: the uploaded quality-form template system was a leftover. Removed completely, with the per-job QA Forms folder; old jobs' QA Forms files move into Job Files at start-up. Quality is the level name plus the Critical stop-timer sign-off. This settles all three quality-form questions.
+- **2026-09-28 — Quality levels are fixed.** Owner: a job is Standard (default) or Critical, nothing else; the QA Levels page and its table are gone, old level names are folded in at start-up. Don't report the missing page or ask for custom levels.
 - **R10 — Restart.** Owner agreed: the app starts at Windows sign-in and hides to the tray on close. Done.
 - **R4 — Reused machine numbers.** Owner: machine numbers are never reused in this workshop, so statistics crediting hours by machine number is fine. Leave as is.
 
