@@ -28,6 +28,10 @@ export function useJobCardTimerActions({
   currentUserId,
   setFormData,
   onTimerChange,
+  // Raised after a hand-added, edited or deleted block: the server may have moved the
+  // job's status or put the worker on it, so the job list reloads when this job
+  // closes — the same close-time flag the field, part and worker saves raise.
+  onWorkSaved,
   // Kept current by JobCardModal on every render (unlike jobCardId below, which
   // this hook's own closures capture at the moment a request started). Comparing
   // the two after an await tells a reply that's still for the open job apart from
@@ -76,16 +80,19 @@ export function useJobCardTimerActions({
   const apiTimeEntryOperations = {
     addTimeEntry: async (data) => {
       await api.addTimeEntry(jobCardId, data);
+      onWorkSaved?.();
       creditAssignee(data.workerId, employees);
       await reloadTimeEntriesAndCosting();
     },
     updateTimeEntry: async (id, data) => {
       await api.updateTimeEntry(jobCardId, id, data);
+      onWorkSaved?.();
       creditAssignee(data.workerId, employees);
       await reloadTimeEntriesAndCosting();
     },
     deleteTimeEntry: async (id) => {
       await api.deleteTimeEntry(jobCardId, id);
+      onWorkSaved?.();
       await reloadTimeEntriesAndCosting();
     }
   };

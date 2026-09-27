@@ -14,7 +14,7 @@ const {
 } = require('../middleware/itemValidation');
 const { jobcardQueries, jobItemQueries, timeEntryQueries, recordHistory, actorName } = require('../db/database');
 const { findOr404 } = require('../utils/findOr404');
-const { serializeTreatments, parseTreatments, computeAttachmentWarnings } = require('./jobcard-helpers');
+const { serializeTreatments, parseTreatments, partQtyText, computeAttachmentWarnings } = require('./jobcard-helpers');
 const { itemSummary, describePart } = require('./jobcard-audit-text');
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
 const { db } = require('../db/connection');
@@ -111,7 +111,7 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
       const itemNumber = (maxNumber || 0) + 1;
       jobItemQueries.create.run(
         itemId, id, itemNumber,
-        item.qty || null, item.description,
+        partQtyText(item.qty), item.description,
         item.jobType || null, item.material || null,
         serializeTreatments(item.treatments),
         item.drawingsType || null, item.customerProperty || null
@@ -185,7 +185,7 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
     // This route never moves a part — the stored position number is passed straight through.
     jobItemQueries.updateById.run(
       stored.item_number,
-      merged.qty || null, merged.description,
+      partQtyText(merged.qty), merged.description,
       merged.jobType || null, merged.material || null,
       serializeTreatments(merged.treatments),
       merged.drawingsType || null, merged.customerProperty || null,

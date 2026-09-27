@@ -234,7 +234,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   } = useJobCardTimerActions({
     jobCardId, canSeePricing, isInvoiced, costingLoaded, refreshCosting, refreshJobStatus,
     reloadTimeEntries, timer, showConfirm, creditAssignee, dropAssignee,
-    employees, currentUserId: user?.id, setFormData, onTimerChange, currentJobIdRef
+    employees, currentUserId: user?.id, setFormData, onTimerChange, onWorkSaved: flagInstantSave,
+    currentJobIdRef
   });
 
   const timeEntry = useTimeEntries(jobCardId, {

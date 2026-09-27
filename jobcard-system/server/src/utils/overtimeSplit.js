@@ -151,7 +151,12 @@ function splitHours(entries, { schedule, holidays, timezone }) {
     let table = null;
     let isHoliday = false;
 
-    for (let t = s; t < en; t += MIN) {
+    // Stepped along the clock's own whole minutes, where tier changes fall — not in
+    // 60-second strides from the block's start second, which would bill a step that
+    // straddles a change (16:59:30–17:00:30) wholly at the earlier tier. So the first
+    // step runs only to the next minute boundary, and the last may stop short of one.
+    for (let t = s, next; t < en; t = next) {
+      next = Math.min(t - (t % MIN) + MIN, en);
       while (segmentIndex < segments.length - 1 && t >= segments[segmentIndex].end) {
         segmentIndex++;
         dayIndex = null; // the clock just moved; re-read the day
@@ -169,8 +174,8 @@ function splitHours(entries, { schedule, holidays, timezone }) {
       const tier = isHoliday
         ? 'holiday'
         : (table ? table[Math.floor((local - day * DAY) / MIN)] : 'normal');
-      // Last step may be a partial minute — count only the slice inside the entry.
-      const frac = (Math.min(t + MIN, en) - t) / MIN; // 0..1 of a minute
+      // First and last steps may be partial minutes — count only the slice inside the entry.
+      const frac = (next - t) / MIN; // 0..1 of a minute
       const hrs = frac / 60;
       if (tier === 'ot1') ot1 += hrs;
       else if (tier === 'ot2') ot2 += hrs;

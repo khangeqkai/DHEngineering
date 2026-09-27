@@ -79,6 +79,17 @@ _None yet._
 - The Statistics export kept the invoiced-money column after a mid-session demotion.
 - (Carried from R5) Management forms now mark the box instead of pop-ups/browser bubbles; QA "Upload PDF Template" is a real button.
 - Carried to round 7: Pressing Escape in a QA level's rename box throws the new name away; Creating a user with an archived account's username gives only 'Username already exists'; A very long customer name saves but its folder can never be made.
+### Round 7 — timers, logged work, overtime, status
+- Good pieces stored as "12.0" blocked later corrections and logged false changes: the pieces helper stores whole-number text; part quantities too.
+- Signing out with another worker's stop form open restarted that worker's timer: only your own block is resumed on sign-out.
+- A hand-added/edited work block could have no part, vanish from the job screen and (with no finish) block invoicing forever: a part is required.
+- Hand-entered work could finish in the future and be billed at once: finish time may not be in the future.
+- The job list kept the old status and workers after hand-entered time changed.
+- The stop-timer form couldn't be dismissed when Save and Resume were both refused.
+- A hand-added block with no finish time skipped the one-month date check.
+- Saving the manual edit form overwrote pieces/machines/notes saved on the block meanwhile: only changed fields are sent.
+- The overtime split gave up to a minute per tier change to the earlier rate when a block started mid-minute.
+- "Timer stopped" notice used a typed emoji and always blamed an admin.
 
 ## Rounds
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
@@ -89,3 +100,4 @@ _None yet._
 | 4 | Workshop Statistics | 13 | 7 | 5 | 1 |
 | 5 | Management pages | 26 | 15 | 10 (5 carried) | 0 |
 | 6 | Sign-in + permissions | 20 | 9 (+5 carried) | 10 | 1 |
+| 7 | Timers, logged work, status | 13 | 11 | 10 | 0 |

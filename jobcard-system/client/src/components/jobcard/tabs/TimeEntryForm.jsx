@@ -117,13 +117,20 @@ export default function TimeEntryForm({
       </div>
 
       <div className="form-row">
-        <div className="form-group">
-          <label htmlFor={idFor('itemId')}>Part</label>
+        <div className={groupClass('itemId')}>
+          <label htmlFor={idFor('itemId')}>Part <span className="required">*</span></label>
           {/* Identifies the part to the server by its permanent id — never its
               item_number, which is only a sort order and may have gaps. The
               number shown here is the row's position in this same list, so it
               always matches the badge on the part's own card. */}
-          <select id={idFor('itemId')} name="itemId" value={timeEntryForm.itemId} onChange={handleTimeEntryChange}>
+          <select
+            id={idFor('itemId')}
+            name="itemId"
+            value={timeEntryForm.itemId}
+            onChange={handleTimeEntryChange}
+            aria-invalid={errorFor('itemId') ? true : undefined}
+            aria-describedby={errorFor('itemId') ? errorIdFor('itemId') : undefined}
+          >
             <option value="">Select part…</option>
             {lineItems.map((item, idx) => (
               <option key={item.id} value={item.id}>
@@ -131,6 +138,7 @@ export default function TimeEntryForm({
               </option>
             ))}
           </select>
+          <FieldError id={errorIdFor('itemId')} message={errorFor('itemId')} />
         </div>
         <div className="form-group">
           <label>Machines</label>

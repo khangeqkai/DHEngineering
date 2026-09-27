@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { discardToastIcon } from '../common/toastIcons';
+import { discardToastIcon, infoToastIcon } from '../common/toastIcons';
 import { describeItemPosition } from './workMatch.mjs';
 import { joinMachineCodes } from '../../../../server/src/shared/machineList';
 import { isJobClosedError } from '../../utils/jobLock';
@@ -101,7 +101,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     }
   }, [jobcardId, loadActiveTimer]);
 
-  // Poll for external stops (e.g. admin stopped the timer)
+  // Poll for external stops (e.g. a manager, or the worker on another PC, stopped it)
   useEffect(() => {
     if (!activeTimer || !jobcardId) return;
 
@@ -122,7 +122,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
         const current = await api.getActiveTimer();
         if (!current || current.id !== activeTimer.id) {
           if (!selfStoppedRef.current) {
-            toast('Your timer was stopped by an admin', { icon: 'ℹ️' });
+            toast('Your timer was stopped from another screen', { icon: infoToastIcon });
             if (onExternalStopRef.current) onExternalStopRef.current();
           }
           selfStoppedRef.current = false;
@@ -319,6 +319,25 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     }
   }, [jobcardId, activeTimer]);
 
+  // Close the stop form for good when its save or resume was refused in a way no retry
+  // can fix: the job was invoiced and closed, or the block itself was deleted. The form
+  // offers only Save and Resume (no Escape), so leaving it open would cover the job
+  // screen with two buttons that can never work. Any other failure keeps it open.
+  // Returns true when it closed the form.
+  const closeFormIfBlockGone = useCallback((err, entryJobcardId) => {
+    const jobClosed = isJobClosedError(err);
+    if (!jobClosed && err?.status !== 404) return false;
+    if (!(jobClosed && handledAsJobClosed(err, entryJobcardId))) {
+      toast.error('That work block can no longer be changed — it was deleted, or its job was invoiced, from another screen.', { id: 'stopped-block-gone' });
+    }
+    setShowEntryForm(false);
+    setStoppedEntry(null);
+    setStoppedEntryJobCard(null);
+    setEntryForm(emptyEntryForm());
+    setPendingStartItem(null);
+    return true;
+  }, [handledAsJobClosed]);
+
   const handleEntryFieldChange = useCallback((field, value) => {
     setEntryForm(prev => ({ ...prev, [field]: value }));
   }, []);
@@ -406,13 +425,13 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       if (reloadEntries) await reloadEntries();
       return { startedNewTimer };
     } catch (err) {
-      if (handledAsJobClosed(err, stoppedEntry.jobcardId || jobcardId)) return { startedNewTimer: false };
+      if (closeFormIfBlockGone(err, entryJobcardId)) return { startedNewTimer: false };
       toast.error(err.message || 'Failed to update time entry', { id: 'update-time-entry-failed' });
       return { startedNewTimer: false };
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, stoppedEntry, entryForm, pendingStartItem, handledAsJobClosed]);
+  }, [jobcardId, stoppedEntry, entryForm, pendingStartItem, closeFormIfBlockGone]);
 
   const cancelEntryForm = useCallback(async (reloadEntries) => {
     if (!stoppedEntry) return;
@@ -450,14 +469,17 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       if (reloadEntries) await reloadEntries();
       toast.success('Timer resumed');
     } catch (err) {
-      if (handledAsJobClosed(err, entryJobcardId)) return;
+      if (closeFormIfBlockGone(err, entryJobcardId)) return;
       toast.error(err.message || 'Failed to resume timer', { id: 'resume-timer-failed' });
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, stoppedEntry, currentUserId, handledAsJobClosed]);
+  }, [jobcardId, stoppedEntry, currentUserId, closeFormIfBlockGone]);
 
-  // Resume timer if user gets auto-logged out while filling StopTimerForm
+  // Resume timer if user gets auto-logged out while filling StopTimerForm — but only
+  // their own run. A manager may be holding another worker's block here (stopped from
+  // a part's progress list); signing out must not restart that worker's timer behind
+  // their back, so it stays stopped, waiting for its pieces.
   const stoppedEntryRef = useRef(null);
   useEffect(() => { stoppedEntryRef.current = stoppedEntry; }, [stoppedEntry]);
 
@@ -466,13 +488,13 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     if (!showEntryForm || !hasStoppedEntry) return;
     return registerBeforeLogout(() => {
       const entry = stoppedEntryRef.current;
-      if (!entry) return;
+      if (!entry || entry.userId !== currentUserId) return;
       // Use entry.jobcardId (not jobcardId) so cross-job stops resume on the correct job.
       // Handed back so signing out waits for it: the session is cancelled server-side
       // now, and a resume that arrives after that is refused and the run stays stopped.
       return api.updateTimeEntry(entry.jobcardId || jobcardId, entry.id, { ...entry, endTime: null }).catch(() => {});
     });
-  }, [showEntryForm, hasStoppedEntry, jobcardId, registerBeforeLogout]);
+  }, [showEntryForm, hasStoppedEntry, jobcardId, currentUserId, registerBeforeLogout]);
 
   const resetTimer = useCallback(() => {
     setActiveTimer(null);

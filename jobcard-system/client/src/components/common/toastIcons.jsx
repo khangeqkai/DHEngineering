@@ -1,4 +1,4 @@
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Info, Trash2 } from 'lucide-react';
 
 // Ready-made toast icon elements. Toast calls live in plain `.js` hook files
 // (the project's naming convention keeps hooks as `use*.js`), and `.js` files
@@ -6,3 +6,4 @@ import { AlertTriangle, Trash2 } from 'lucide-react';
 // imported wherever a toast needs one, instead of passing an emoji character.
 export const warningToastIcon = <AlertTriangle size={16} />;
 export const discardToastIcon = <Trash2 size={16} />;
+export const infoToastIcon = <Info size={16} />;

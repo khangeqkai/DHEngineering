@@ -238,7 +238,7 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
     if (itemError) {
       return res.status(400).json({ error: itemError });
     }
-    const itemRecord = itemId ? jobItemQueries.getByJobcard.all(id).find(it => it.id === itemId) : null;
+    const itemRecord = jobItemQueries.getByJobcard.all(id).find(it => it.id === itemId);
 
     // Credit the block to the worker the admin picked, not the admin filling in the
     // form, so per-worker hours and labour reports are accurate.
@@ -322,7 +322,7 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
     const workerName = workerRecord.name || workerRecord.username;
     recordHistory('jobcard', id, 'add_time_entry', req.user.userId, actorName(req), {
       worker: { from: null, to: workerName },
-      item: { from: null, to: itemRecord ? itemRecord.description : null },
+      item: { from: null, to: itemRecord.description },
       machineNumber: { from: null, to: data.machineNumber || null },
       description: { from: null, to: data.description || null },
       qty: { from: null, to: wholeQty(data.qty) },
@@ -414,6 +414,17 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       }
     }
 
+    // Pieces, machines and notes: an update that leaves a field out keeps the stored
+    // value. The manual edit form sends only what the manager changed, so a worker's
+    // stop-form save made while that form was open isn't wiped by its old copy.
+    const machineNumber = data.machineNumber !== undefined
+      ? (data.machineNumber || null)
+      : existing.machine_number;
+    const qty = data.qty !== undefined ? wholeQty(data.qty) : existing.qty;
+    const description = data.description !== undefined
+      ? (data.description || null)
+      : existing.description;
+
     // Scrap comes from the worker's stop-timer form or the admin's time-entry
     // form (which has Scrap fields when editing too), split into binned and
     // recycled pieces. If an update omits a field entirely, keep the existing value.
@@ -465,9 +476,12 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     // job's automatic status, so — like the times and the worker above — only
     // management may move it. A worker's save keeps the stored part whatever it
     // sends (or leaves out), so it can neither re-credit the block nor detach it.
+    // Management leaving the part out keeps it too.
     let itemId = existing.item_id;
-    if (isManagement(req.user.role)) {
-      const resolvedItem = resolveItemId(id, data.itemId);
+    if (isManagement(req.user.role) && data.itemId !== undefined) {
+      // Blank is accepted only for an old block that never had a part, so its other
+      // fields stay correctable; a block with a part can't be detached from it.
+      const resolvedItem = resolveItemId(id, data.itemId, { blankAllowed: !existing.item_id });
       if (resolvedItem.error) {
         return res.status(400).json({ error: resolvedItem.error });
       }
@@ -489,9 +503,9 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       timeEntryQueries.update.run(
         workerId,
         itemId,
-        data.machineNumber || null,
-        wholeQty(data.qty),
-        data.description || null,
+        machineNumber,
+        qty,
+        description,
         scrapBinQty,
         scrapRecycleQty,
         inspection.firstOffInspection,
@@ -520,9 +534,9 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
 
     // Build proper diff of changed fields
     const changes = diffFields(existing, [
-      ['machine_number', 'machineNumber', data.machineNumber || null],
-      ['qty', 'qty', wholeQty(data.qty)],
-      ['description', 'description', data.description || null],
+      ['machine_number', 'machineNumber', machineNumber],
+      ['qty', 'qty', qty],
+      ['description', 'description', description],
       ['scrap_bin_qty', 'scrapBin', scrapBinQty],
       ['scrap_recycle_qty', 'scrapRecycle', scrapRecycleQty],
       ['first_off_inspection', 'firstOffInspection', inspection.firstOffInspection],

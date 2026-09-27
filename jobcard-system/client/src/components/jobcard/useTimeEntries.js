@@ -24,6 +24,10 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   // start out "touched" (there's nothing to fall back to).
   const originalTimesRef = useRef({ startTime: null, endTime: null });
   const touchedTimesRef = useRef({ startTime: true, endTime: true });
+  // The edit form as it opened (null for a new block). Saving an edit sends only the
+  // fields that differ from it, so pieces, machines or notes the worker saved on the
+  // block while this form was open aren't overwritten by the copy taken at Edit.
+  const openedFormRef = useRef(null);
 
   const resetTimeEntryForm = useCallback(() => {
     setTimeEntryForm({
@@ -35,6 +39,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     resetFieldErrors();
     originalTimesRef.current = { startTime: null, endTime: null };
     touchedTimesRef.current = { startTime: true, endTime: true };
+    openedFormRef.current = null;
   }, [resetFieldErrors]);
 
   const handleTimeEntryChange = useCallback((e) => {
@@ -74,7 +79,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     }
     resetFieldErrors();
     setEditingTimeEntryId(entry.id);
-    setTimeEntryForm({
+    const opened = {
       workerId: entry.userId || '',
       // Fallback label for an archived worker, who won't be in the active
       // dropdown any more — see TimeEntryForm.jsx.
@@ -92,7 +97,9 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       description: entry.description || '',
       startTime: isoToLocalInput(entry.startTime),
       endTime: isoToLocalInput(entry.endTime)
-    });
+    };
+    setTimeEntryForm(opened);
+    openedFormRef.current = opened;
     originalTimesRef.current = { startTime: entry.startTime || null, endTime: entry.endTime || null };
     touchedTimesRef.current = { startTime: false, endTime: false };
     setShowTimeEntryForm(true);
@@ -116,6 +123,17 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     if (!timeEntryForm.workerId) {
       setFieldErrors({ workerId: 'Please choose the worker who did this work' });
       scrollFieldIntoView('workerId');
+      return;
+    }
+
+    // Every block belongs to a part — the job screen lists work only under its part,
+    // so a block with none could never be seen, edited or stopped again. The one
+    // exception is editing an old block that was recorded before that rule and never
+    // had a part: its other fields can still be corrected.
+    const openedWithoutPart = !!openedFormRef.current && !openedFormRef.current.itemId;
+    if (!timeEntryForm.itemId && !openedWithoutPart) {
+      setFieldErrors({ itemId: 'Please choose the part this work was on' });
+      scrollFieldIntoView('itemId');
       return;
     }
 
@@ -143,13 +161,25 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
         scrollFieldIntoView('endTime');
         return;
       }
+      // Same 15-minute allowance for clock drift as the server gives.
+      if (end > Date.now() + 15 * 60 * 1000) {
+        setFieldErrors({ endTime: 'Finish time cannot be in the future' });
+        scrollFieldIntoView('endTime');
+        return;
+      }
     }
 
     try {
       const { workerName, ...rest } = timeEntryForm;
+      // An edit sends only what changed since the form opened (the start and finish
+      // always go, as the server judges them as a pair); a new block sends everything.
+      const opened = openedFormRef.current;
+      const fields = opened
+        ? Object.fromEntries(Object.entries(rest).filter(([key, value]) => value !== opened[key]))
+        : rest;
+      if ('itemId' in fields || !opened) fields.itemId = timeEntryForm.itemId || null;
       const entryData = {
-        ...rest,
-        itemId: timeEntryForm.itemId || null,
+        ...fields,
         // Only a field the user actually changed is rebuilt from the
         // minute-precision input — an untouched one is sent back exactly as
         // it was stored, so editing one end of a block never truncates the

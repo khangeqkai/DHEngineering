@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { base64ToBytes } from '../../utils/fileData';
-import { warningToastIcon } from '../common/toastIcons';
+import { warningToastIcon, infoToastIcon } from '../common/toastIcons';
 
 // Builds and prints/saves the combined "packet" PDF (job card + chosen files).
 // The server builds the whole packet — including rendering the job card to a PDF —
@@ -43,7 +43,7 @@ function showPdfInBrowser(win, bytes, filename) {
     const a = document.createElement('a');
     a.href = url; a.download = filename; a.click();
     toast('Pop-up blocked — the packet was downloaded instead, so it isn’t recorded as a print',
-      { icon: 'ℹ️', duration: 6000 });
+      { icon: infoToastIcon, duration: 6000 });
   }
   setTimeout(() => URL.revokeObjectURL(url), 60000);
   return opened;

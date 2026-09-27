@@ -358,6 +358,15 @@ function sanitizeHistoryForRole(record, userRole) {
   return record;
 }
 
+// A part's quantity column is text. Bind it as text: a JSON number bound as-is is
+// written as a decimal ("10.0"), which then fails the whole-number check on every
+// later edit of the part. Blank → NULL.
+function partQtyText(qty) {
+  if (qty === undefined || qty === null) return null;
+  const str = String(qty).trim();
+  return str === '' ? null : str;
+}
+
 function serializeTreatments(treatments) {
   if (!Array.isArray(treatments) || treatments.length === 0) return null;
   return JSON.stringify(treatments);
@@ -560,7 +569,7 @@ function createRelatedRecords(jobcardId, data) {
       const itemId = `item:${uuidv4()}`;
       jobItemQueries.create.run(
         itemId, jobcardId, i + 1,
-        item.qty || null, item.description,
+        partQtyText(item.qty), item.description,
         item.jobType || null, item.material || null,
         serializeTreatments(item.treatments),
         item.drawingsType || null, item.customerProperty || null
@@ -585,4 +594,4 @@ function createRelatedRecords(jobcardId, data) {
 // utils/qaTemplateProvisioning.js — extracted out of this file (a straight
 // lift, no behaviour change) because it was getting long.
 
-module.exports = { formatJobcard, customerFields, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, qaFillDataForJob, buildJobCardView, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive, tagName, friendlyTagList };
+module.exports = { formatJobcard, customerFields, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, partQtyText, qaFillDataForJob, buildJobCardView, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive, tagName, friendlyTagList };

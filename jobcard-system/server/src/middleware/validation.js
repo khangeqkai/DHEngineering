@@ -461,6 +461,13 @@ const validateManualTimeEntry = [
     .optional({ nullable: true, checkFalsy: true })
     .custom((v, { req }) => new Date(v).getTime() > new Date(req.body.startTime).getTime())
     .withMessage('Finish time must be after the start time'),
+  // Same leeway as the start: a finish further ahead than clock drift is a mistyped
+  // hour or day, and would be billed and counted toward Done straight away. The
+  // stop form never trips this — its finish is the real stop time the server stored.
+  body('endTime')
+    .optional({ nullable: true, checkFalsy: true })
+    .custom(v => new Date(v).getTime() <= Date.now() + 15 * 60 * 1000)
+    .withMessage('Finish time cannot be in the future'),
   body('qty').custom(wholeNonNegative).withMessage('Good pieces must be a whole number, 0 or more'),
   body('scrapBinQty').custom(wholeNonNegative).withMessage('Scrap (bin) must be a whole number, 0 or more'),
   body('scrapRecycleQty').custom(wholeNonNegative).withMessage('Scrap (recycle) must be a whole number, 0 or more'),

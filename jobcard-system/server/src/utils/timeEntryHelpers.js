@@ -21,13 +21,15 @@ function normalizeTime(value) {
 
 // Confirm a line's permanent id actually belongs to this job card, so a manually
 // entered or edited time record links to the line itself, not to a position
-// number that can repeat, shift, or leave a gap. Returns { itemId: null } when no
-// id was given (a record may legitimately have no line), but returns { error }
-// when an id WAS given that matches no current line on this job — so a manual
-// record can never silently attach to nothing, or to a part on a different job.
-function resolveItemId(jobcardId, itemId) {
+// number that can repeat, shift, or leave a gap. A part is required: the job screen
+// only lists work under a part, so a block saved with none would have nowhere to
+// show — it could never be edited, deleted or (if open) stopped, yet still count
+// toward labour and block invoicing. `blankAllowed` is only for editing an old block
+// that already has no part (recorded before blocks were tied to parts), so its other
+// fields can still be corrected. Returns { itemId } or { error }.
+function resolveItemId(jobcardId, itemId, { blankAllowed = false } = {}) {
   if (itemId === null || itemId === undefined || itemId === '') {
-    return { itemId: null };
+    return blankAllowed ? { itemId: null } : { error: 'Please choose the part this work was on' };
   }
   const match = jobItemQueries.getByJobcard.all(jobcardId).find(it => it.id === itemId);
   if (!match) {
@@ -146,11 +148,14 @@ function invoiceBlockedByTime(jobcardId) {
 
 // Good pieces are counted, not measured: every reader (auto-status, statistics, the
 // part's progress bar) must agree, so the stored value is a whole number or NULL.
-// Blank/garbage → NULL (nothing recorded), "2.5" → 2, negatives → 0.
+// Blank/garbage → NULL (nothing recorded), "2.5" → "2", negatives → "0".
+// Returned as text because the column is text: a JS number bound into it is written
+// as a decimal ("12.0"), which the edit form's whole-number check then refuses and
+// the change log reports as a change from 12.
 function wholeQty(v) {
   if (v == null || String(v).trim() === '') return null;
   const n = parseInt(v, 10);
-  return Number.isFinite(n) ? Math.max(0, n) : null;
+  return Number.isFinite(n) ? String(Math.max(0, n)) : null;
 }
 
 // Read a yes/no inspection answer from a request body into the stored form
@@ -220,11 +225,14 @@ function toCamelCase(e) {
 
 // A hand-entered block longer than this is almost certainly a mistyped date. Such a
 // block would make overtime splitting walk an enormous span on every costing read, so
-// it's rejected at entry. Returns an error string, or null when the block is fine.
+// it's rejected at entry. An open block (no finish time) is measured up to now: it is
+// a running timer, and a start typed a year back would otherwise run on and be billed
+// as thousands of hours when stopped. Returns an error string, or null when fine.
 const MAX_MANUAL_ENTRY_MS = 31 * 24 * 60 * 60 * 1000; // 31 days
 function checkEntryDuration(startTime, endTime) {
-  if (!startTime || !endTime) return null; // open block (no finish time) — nothing to check
-  const span = new Date(endTime).getTime() - new Date(startTime).getTime();
+  if (!startTime) return null;
+  const finishMs = endTime ? new Date(endTime).getTime() : Date.now();
+  const span = finishMs - new Date(startTime).getTime();
   if (Number.isFinite(span) && span > MAX_MANUAL_ENTRY_MS) {
     return 'That work block is longer than a month — please check the start and finish dates.';
   }
