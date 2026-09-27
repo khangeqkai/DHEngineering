@@ -15,7 +15,7 @@
 // clock is consulted.
 
 const { makeOfficeFormatter } = require('./officeTime');
-const { roundTo } = require('./round');
+const { roundTo } = require('../shared/round');
 
 const MIN = 60 * 1000;
 const DAY = 24 * 60 * MIN;

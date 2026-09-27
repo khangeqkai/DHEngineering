@@ -47,36 +47,23 @@ function parseDateValue(value) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-// Today's calendar date as "YYYY-MM-DD", read off the local clock so it can be compared
-// straight against a stored due date. Deliberately not toISOString(), which gives the
-// UTC day — in Australia that is still yesterday for the first hours of the morning, so
-// "overdue" would turn over mid-morning instead of at local midnight.
-export function todayIsoDate() {
-  const now = new Date();
+// Local calendar date as "YYYY-MM-DD" for any Date object, read off the local clock.
+// Deliberately not toISOString(), which gives the UTC day — in Australia that is
+// still yesterday for the first hours of the morning.
+export function toIsoDate(date) {
   const pad = (n) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-// True only for a string "YYYY-MM-DD" naming a day that actually exists ("2026-02-30"
-// -> false, "2028-02-29" -> true, "2026-02-29" -> false). Built with Date.UTC and
-// checked by reading the year/month/day back — a bad day rolls over into the next
-// month/day when read back, so the mismatch catches it. The server's twin is
-// server/src/utils/calendarDate.js — client and server code can't share a module here,
-// so the two are kept in step by hand; they must agree on every input.
-export function isCalendarDate(value) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const [y, m, d] = value.split('-').map(Number);
-  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
-  const t = Date.UTC(y, m - 1, d);
-  if (!Number.isFinite(t)) return false;
-  const check = new Date(t);
-  return check.getUTCFullYear() === y && check.getUTCMonth() === m - 1 && check.getUTCDate() === d;
+// Today's calendar date as "YYYY-MM-DD", read off the local clock so it can be compared
+// straight against a stored due date — see toIsoDate for why not toISOString().
+export function todayIsoDate() {
+  return toIsoDate(new Date());
 }
 
-// The one rounding helper for the client — same body as the server's utils/round.js.
-export function roundTo(n, places) {
-  return Math.round((Number(n) || 0) * 10 ** places) / 10 ** places;
-}
+// isCalendarDate and roundTo used to be written out here a second time, kept in step
+// with the server's copies by hand. Both are now one shared file each side imports —
+// see server/src/shared/calendarDate.js and server/src/shared/round.js.
 
 // Australian date, e.g. "17/07/2026". Returns '' for empty/invalid input.
 export function formatDate(value, options) {
@@ -137,4 +124,21 @@ export function formatCount(n) {
 // computer's own locale, so a total reads the same on every screen and PC.
 export function formatMoney(n) {
   return `$${(Number(n) || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// A running timer's elapsed time as "HH:MM:SS". Negative or non-numeric input
+// clamps to 0 — clock skew can otherwise hand this a negative value for the
+// first tick or two of a fresh timer, which would print as e.g. "-1".
+export function formatElapsed(seconds) {
+  const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+  const h = Math.floor(safeSeconds / 3600);
+  const m = Math.floor((safeSeconds % 3600) / 60);
+  const s = Math.floor(safeSeconds % 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+// Whole seconds elapsed since startTime, up to now. Never negative — same clock-skew
+// guard as formatElapsed above.
+export function elapsedSecondsSince(startTime) {
+  return Math.max(0, Math.floor((Date.now() - new Date(startTime).getTime()) / 1000));
 }

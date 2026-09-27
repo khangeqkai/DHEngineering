@@ -2,10 +2,8 @@
 // (time zone, weekly schedule, default hourly rate, multipliers, public holidays).
 // Kept beside settings.js the same way backup-helpers.js is.
 
-const { isCalendarDate } = require('../utils/calendarDate');
-
-const SCHEDULE_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-const SCHEDULE_TIERS = ['normal', 'ot1', 'ot2'];
+const { isCalendarDate } = require('../shared/calendarDate');
+const { DAYS: SCHEDULE_DAYS, TIERS: SCHEDULE_TIERS } = require('../shared/overtimeSchedule');
 
 // The overtime configuration is admin-only (managers get every other setting).
 // These lists let settings.js reject a manager's attempt to save any of these

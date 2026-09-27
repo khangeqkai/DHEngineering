@@ -6,6 +6,7 @@ const { validateCreateSupplier, validateUpdateSupplier } = require('../middlewar
 const { db, supplierQueries, tagQueries, jobItemQueries, recordHistory, actorName } = require('../db/database');
 const { diffFields } = require('../utils/historyChanges');
 const { setArchived } = require('../utils/archiveToggle');
+const { supplierContactFields } = require('./supplier-helpers');
 
 const router = express.Router();
 
@@ -51,8 +52,7 @@ function toApiFormat(supplier, canManage = true) {
     id: supplier.id,
     name: supplier.name,
     contactName: supplier.contact_name,
-    contactPhone: canManage ? supplier.contact_phone : null,
-    contactEmail: canManage ? supplier.contact_email : null,
+    ...supplierContactFields(supplier, canManage),
     address: supplier.address,
     services: supplier.services,
     approved: supplier.approved,

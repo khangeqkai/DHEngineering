@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { getDefaultTimeEntryForm, isoToLocalInput, localInputToIso } from './mappers';
-import { formatDate, roundTo } from '../../utils/formatters';
+import { formatDate } from '../../utils/formatters';
+import { roundTo } from '../../../../server/src/shared/round';
 import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
 import { isJobClosedError } from '../../utils/jobLock';
 

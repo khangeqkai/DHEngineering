@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { createJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireManagement } = require('../middleware/auth');
-const { validateJobcardEnums, validateJobcardDescriptionRequired, validateJobcardContactFields, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions, validateItemQuantities } = require('../middleware/validation');
+const { validateJobcardEnums, validateJobcardDescriptionRequired, validateJobcardDueDate, validateJobcardContactFields, validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions, validateItemQuantities } = require('../middleware/validation');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -25,7 +25,7 @@ const { db } = require('../db/connection');
 
 const router = express.Router();
 
-router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequired, ...validateJobcardEnums, ...validateJobcardContactFields, async (req, res) => {
+router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequired, validateJobcardDueDate, ...validateJobcardEnums, ...validateJobcardContactFields, async (req, res) => {
   try {
     const data = req.body;
 
@@ -263,7 +263,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
   }
 });
 
-router.put('/:id', authenticate, requireManagement, ...validateJobcardEnums, async (req, res) => {
+router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...validateJobcardEnums, async (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;

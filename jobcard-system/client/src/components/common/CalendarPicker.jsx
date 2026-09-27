@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { pushModal, removeModal, isTopModal } from './modalStack';
-import { todayIsoDate } from '../../utils/formatters';
+import { todayIsoDate, toIsoDate } from '../../utils/formatters';
 import './CalendarPicker.css';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -10,13 +10,6 @@ const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
-
-function toDateString(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
 
 export default function CalendarPicker({ isOpen, value, onSelect, onClose, allowClear = false }) {
   const initial = value ? new Date(value + 'T00:00:00') : new Date();
@@ -97,7 +90,7 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose, allow
   };
 
   const handleSelect = (day) => {
-    const dateStr = toDateString(new Date(viewYear, viewMonth, day));
+    const dateStr = toIsoDate(new Date(viewYear, viewMonth, day));
     onSelect(dateStr);
     onClose();
   };
@@ -119,7 +112,7 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose, allow
     cells.push(<div key={`empty-${i}`} className="calendar-cell empty" />);
   }
   for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = toDateString(new Date(viewYear, viewMonth, day));
+    const dateStr = toIsoDate(new Date(viewYear, viewMonth, day));
     const isToday = dateStr === today;
     const isSelected = dateStr === value;
     cells.push(

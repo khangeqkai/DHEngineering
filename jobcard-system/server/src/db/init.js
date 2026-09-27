@@ -13,53 +13,10 @@ const { normalizeStoredTimestamps } = require('./normalizeTimestamps');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { DEFAULT_VIC_PUBLIC_HOLIDAYS_2026 } = require('../utils/defaultHolidays');
 const { COSTING_DEFAULTS } = require('../utils/costingDefaults');
-
-// Canonicalise one day's blocks to whole-hour boundaries using the SAME cycle
-// semantics the schedule editor and the minute-splitter use: build the 24 hourly
-// tiers (each hour classified at its top-of-hour minute; the hours before the earliest
-// block wrap to the last block's tier), then fold that back into a compact block list
-// with a block at each hour whose tier differs from the hour before it. Legacy data
-// could hold sub-hour starts (e.g. 14:30) the new hour-grid can't show; this snaps the
-// stored data to match what's shown and billed. Whole-hour data passes through unchanged.
-function scheduleDayToWholeHours(day) {
-  const toMin = (hm) => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
-  const hourLabel = (h) => `${String(h).padStart(2, '0')}:00`;
-  const sorted = (Array.isArray(day) ? day : [])
-    .filter(b => b && /^\d{2}:\d{2}$/.test(b.start))
-    .map(b => ({ start: b.start, tier: ['normal', 'ot1', 'ot2'].includes(b.tier) ? b.tier : 'normal' }))
-    .sort((a, b) => a.start.localeCompare(b.start));
-  if (sorted.length === 0) return [{ start: '00:00', tier: 'normal' }];
-  const wrapTier = sorted[sorted.length - 1].tier;
-  const grid = new Array(24);
-  for (let h = 0; h < 24; h++) {
-    const m = h * 60;
-    let tier = wrapTier;
-    for (const b of sorted) { if (toMin(b.start) <= m) tier = b.tier; else break; }
-    grid[h] = tier;
-  }
-  const blocks = [];
-  for (let h = 0; h < 24; h++) {
-    if (grid[h] !== grid[(h + 23) % 24]) blocks.push({ start: hourLabel(h), tier: grid[h] });
-  }
-  if (blocks.length === 0) blocks.push({ start: '00:00', tier: grid[0] });
-  return blocks;
-}
-
-// Snap a whole weekly schedule to whole-hour block starts. Used by the one-time
-// startup conversion and by backup restore, so a restored backup can never bring
-// sub-hour boundaries back. `changed` is false when nothing needed snapping.
-const SCHEDULE_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-function scheduleToWholeHours(sched) {
-  const schedule = {};
-  let changed = false;
-  for (const d of SCHEDULE_DAYS) {
-    const before = sched?.[d];
-    const after = scheduleDayToWholeHours(before);
-    schedule[d] = after;
-    if (JSON.stringify(after) !== JSON.stringify(before)) changed = true;
-  }
-  return { schedule, changed };
-}
+const { DAYS: SCHEDULE_DAYS, DEFAULT_DAY, scheduleToWholeHours } = require('../shared/overtimeSchedule');
+const { readOvertimeSettings } = require('../utils/overtimeSettings');
+const { isCalendarDate } = require('../shared/calendarDate');
+const { officeDateString } = require('../utils/officeTime');
 
 // Run database migrations for existing databases
 // Good pieces on a work block are stored as whole numbers (see wholeQty in
@@ -208,6 +165,85 @@ function cleanUpDuplicateItemNumbering() {
   }
 }
 
+// A due date is a bare calendar day and nothing ever checked its shape on save (see
+// validateJobcardDueDate in middleware/validation.js, added alongside this migration) —
+// so an existing database can hold a due_date that isn't a plain 'YYYY-MM-DD', and the
+// printout's strict reader (jobcard-helpers.js's formatDayAu(jc.due_date)) then shows a
+// blank due date instead of the real one. Fold every stored value into the new shape.
+// Only shapes with exactly one meaning are converted — nothing is guessed:
+//   - a UTC-midnight instant / zone-less 'YYYY-MM-DD HH:MM:SS' is trimmed to its first
+//     10 characters (already the calendar day, never read through a Date/time zone);
+//   - a slash date is day-first — the only way this app has ever written one — with one
+//     or two digits for day and month ('1/05/2026' is 1 May), rearranged string-only;
+//   - a full ISO instant carrying its own zone ('...T14:00:00Z', '...+10:00') is read
+//     down to the calendar day it falls on in the office's own time zone.
+// Anything else is never handed to a general date reader (Date.parse reads '1/05/2026'
+// month-first, which would save the wrong day silently). Instead it is cleared to "no
+// due date" and the original text is recorded in the job's activity trail, so the
+// value is kept where a person can find it and no row is left in a shape the save
+// check refuses — otherwise every later edit of that job would be blocked. Naturally
+// idempotent: a value that already passes isCalendarDate is skipped, and a cleared one
+// is NULL, so a second run finds nothing to convert. Runs after the older
+// "empty string -> NULL" migration above, so '' is already gone by the time this runs.
+function normalizeDueDateShapes() {
+  const rows = db.prepare(
+    "SELECT id, due_date FROM jobcards WHERE due_date IS NOT NULL AND due_date != ''"
+  ).all();
+  const setDueDate = db.prepare('UPDATE jobcards SET due_date = ? WHERE id = ?');
+
+  let converted = 0;
+  let cleared = 0;
+  for (const row of rows) {
+    const value = String(row.due_date).trim();
+    if (isCalendarDate(value)) {
+      if (value !== row.due_date) { setDueDate.run(value, row.id); converted++; }
+      continue;
+    }
+
+    let day = null;
+
+    // A day stamped at UTC midnight, or a wall-clock 'YYYY-MM-DD HH:MM:SS' with no zone —
+    // the calendar day is already sitting in the first 10 characters.
+    if (/^\d{4}-\d{2}-\d{2}(T00:00:00(\.0+)?Z|[T ]\d{2}:\d{2}:\d{2})$/.test(value)) {
+      const candidate = value.slice(0, 10);
+      if (isCalendarDate(candidate)) day = candidate;
+    }
+
+    // Day-first slash date, one or two digits for day and month.
+    if (!day) {
+      const auMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
+      if (auMatch) {
+        const candidate = `${auMatch[3]}-${auMatch[2].padStart(2, '0')}-${auMatch[1].padStart(2, '0')}`;
+        if (isCalendarDate(candidate)) day = candidate;
+      }
+    }
+
+    // A full ISO instant with its own zone — the calendar day it falls on in the office.
+    if (!day && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/.test(value)) {
+      const parsedMs = Date.parse(value);
+      if (Number.isFinite(parsedMs)) {
+        const candidate = officeDateString(new Date(parsedMs));
+        if (isCalendarDate(candidate)) day = candidate;
+      }
+    }
+
+    if (day) {
+      setDueDate.run(day, row.id);
+      converted++;
+    } else {
+      setDueDate.run(null, row.id);
+      recordHistory('jobcard', row.id, 'update', null, 'system', {
+        dueDate: { from: row.due_date, to: null }
+      });
+      cleared++;
+      logger.warn({ jobcardId: row.id, dueDate: row.due_date }, 'Migration: Could not read a stored due date as a calendar day — cleared it and kept the original in the job\'s activity trail');
+    }
+  }
+  if (converted > 0 || cleared > 0) {
+    logger.info({ converted, cleared }, 'Migration: Folded stored due dates into plain calendar-day shape');
+  }
+}
+
 function runMigrations() {
   logger.info('Running migrations...');
 
@@ -263,6 +299,12 @@ function runMigrations() {
     }
   } catch (err) {
     logger.error({ err }, 'Migration: Failed to store cleared due dates as no date');
+  }
+
+  try {
+    normalizeDueDateShapes();
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to normalize stored due date shapes');
   }
 
   // A quality level's form file on disk IS the record, so two records naming the same file
@@ -444,17 +486,22 @@ function runMigrations() {
     const otOwnershipFlag = db.prepare('SELECT value FROM settings WHERE key = ?').get(otOwnershipKey);
     if (!otOwnershipFlag) {
       try {
-        const getS = (k) => {
-          const r = db.prepare('SELECT value FROM settings WHERE key = ?').get(k);
-          return r ? r.value : null;
-        };
+        // Read the company's overtime rules through the same shared reader every live
+        // costing compute uses (readOvertimeSettings, utils/overtimeSettings.js), rather
+        // than this migration's own hand-rolled settings lookup — that copy fell back to
+        // 'UTC' for a missing time zone (readOvertimeSettings falls back to the machine's
+        // own zone, matching officeTimeZone everywhere else) and treated a genuine 0
+        // multiplier as "unset" (Number(x) || default), both of which readOvertimeSettings
+        // gets right. Schedule/holidays are parsed objects here, so they're stringified
+        // back to JSON text for the job_costings columns, which store them as text.
+        const live = readOvertimeSettings();
         const params = {
-          schedule: getS('labour_schedule'),
-          holidays: getS('labour_public_holidays'),
-          timezone: getS('timezone') || 'UTC',
-          ot1: Number(getS('labour_ot1_multiplier')) || COSTING_DEFAULTS.ot1Multiplier,
-          ot2: Number(getS('labour_ot2_multiplier')) || COSTING_DEFAULTS.ot2Multiplier,
-          hol: Number(getS('labour_holiday_multiplier')) || COSTING_DEFAULTS.holidayMultiplier
+          schedule: JSON.stringify(live.schedule),
+          holidays: JSON.stringify(live.holidays),
+          timezone: live.timezone,
+          ot1: live.ot1Mult,
+          ot2: live.ot2Mult,
+          hol: live.holidayMult
         };
         const stampRules = db.prepare(
           `UPDATE job_costings SET
@@ -588,9 +635,8 @@ async function initializeDatabase() {
 
   // Overtime defaults: an all-normal week (every hour bills at the base rate) so
   // existing/fresh installs behave exactly as before until an admin sets up blocks.
-  const allNormalDay = [{ start: '00:00', tier: 'normal' }];
   const defaultSchedule = {};
-  for (const d of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']) defaultSchedule[d] = allNormalDay;
+  for (const d of SCHEDULE_DAYS) defaultSchedule[d] = DEFAULT_DAY;
   settingsStmt.run('labour_schedule', JSON.stringify(defaultSchedule));
   settingsStmt.run('labour_ot1_multiplier', String(COSTING_DEFAULTS.ot1Multiplier));
   settingsStmt.run('labour_ot2_multiplier', String(COSTING_DEFAULTS.ot2Multiplier));

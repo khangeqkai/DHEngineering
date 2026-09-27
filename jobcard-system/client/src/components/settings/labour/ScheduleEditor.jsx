@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Copy } from 'lucide-react';
-import { DAYS, TIERS, gridFromBlocks } from '../../../hooks/useLabourRates';
+import { DAYS, TIERS } from '../../../hooks/useLabourRates';
+import { gridFromBlocks } from '../../../../../server/src/shared/overtimeSchedule';
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const TIER_LABEL = { normal: 'Normal', ot1: 'Overtime 1', ot2: 'Overtime 2' };

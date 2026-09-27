@@ -12,13 +12,13 @@ import CustomersTab from './statistics/CustomersTab';
 import EmptyState from './common/EmptyState';
 import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
 import { BarChart3, Users, CheckCircle2, Cpu, Building2 } from 'lucide-react';
-import { todayIsoDate, isCalendarDate } from '../utils/formatters';
+import { todayIsoDate } from '../utils/formatters';
+import { isCalendarDate } from '../../../server/src/shared/calendarDate';
 import './Statistics.css';
 
-  const monthStartYmd = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-  };
+// First of the current month as "YYYY-MM-DD" — built from today's local date
+// rather than duplicating the pad/format logic todayIsoDate already does.
+const monthStartYmd = () => `${todayIsoDate().slice(0, 7)}-01`;
 
 export default function Statistics() {
   const [loading, setLoading] = useState(true);

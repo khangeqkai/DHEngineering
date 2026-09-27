@@ -2,21 +2,14 @@ import { useState, useEffect, useId, useRef } from 'react';
 import { MoreVertical, Pencil, Trash2, ChevronDown, ArrowRight } from 'lucide-react';
 import ScrapStat from './ScrapStat';
 import { pushModal, removeModal, isTopModal } from '../../common/modalStack';
-import { formatDate, formatTime, formatCount } from '../../../utils/formatters';
-
-function formatElapsed(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-}
+import { formatDate, formatTime, formatCount, formatElapsed, elapsedSecondsSince } from '../../../utils/formatters';
 
 function LiveElapsed({ startTime }) {
-  const [elapsed, setElapsed] = useState(() => Math.max(0, Math.floor((Date.now() - new Date(startTime).getTime()) / 1000)));
+  const [elapsed, setElapsed] = useState(() => elapsedSecondsSince(startTime));
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setElapsed(Math.max(0, Math.floor((Date.now() - new Date(startTime).getTime()) / 1000)));
+      setElapsed(elapsedSecondsSince(startTime));
     }, 1000);
     return () => clearInterval(interval);
   }, [startTime]);

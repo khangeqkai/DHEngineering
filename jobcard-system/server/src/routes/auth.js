@@ -400,7 +400,6 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
 
     // Check permissions
     const canManageAdmins = can(req.user.role, 'adminAccounts');
-    const isManager = req.user.role === 'manager';
     const isSelf = req.user.userId === id;
 
     // Changing your OWN PIN always goes through PUT /auth/change-password, which
@@ -412,10 +411,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
       return res.status(403).json({ error: 'To change your own PIN, use Change PIN in Settings — it asks for your current PIN first.' });
     }
 
-    // Only admins and managers can change roles, and a role must be a real one.
-    if (role && !canManageAdmins && !isManager) {
-      return res.status(403).json({ error: 'Only admins or managers can change roles' });
-    }
+    // A role must be a real one (requireManagement already limits this route to admins and managers).
     if (role && !ALL_ROLES.includes(role)) {
       return res.status(400).json({ error: 'Role must be "admin", "manager" or "user"' });
     }

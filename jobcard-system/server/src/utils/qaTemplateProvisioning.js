@@ -6,7 +6,7 @@ const { sanitizeFolderName, isWithinBase, findQaLevelFolder, ensureCompanyFolder
 const { fillPdfTemplate } = require('./pdfFiller');
 const { qaLevelQueries, qaLevelTemplateQueries, getSettings } = require('../db/database');
 const { officeDateString } = require('./officeTime');
-const { formatDayAu } = require('./calendarDate');
+const { formatDayAu } = require('../shared/calendarDate');
 
 // Copying a QA level's templates onto a job's disk folder, and the pre-save check
 // that confirms those templates are actually there before the job is written.

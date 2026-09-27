@@ -1,12 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
-
-function formatElapsed(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
+import { formatElapsed, elapsedSecondsSince } from '../utils/formatters';
 
 export function useActiveTimerIndicator() {
   const [activeTimer, setActiveTimer] = useState(null);
@@ -36,10 +30,7 @@ export function useActiveTimerIndicator() {
   useEffect(() => {
     if (activeTimer) {
       const updateElapsed = () => {
-        const start = new Date(activeTimer.startTime).getTime();
-        // Clamped at 0 — a clock skewed ahead of the server's own would otherwise
-        // read as a negative elapsed time for the first few ticks after starting.
-        setElapsed(Math.max(0, Math.floor((Date.now() - start) / 1000)));
+        setElapsed(elapsedSecondsSince(activeTimer.startTime));
       };
       updateElapsed();
       intervalRef.current = setInterval(updateElapsed, 1000);

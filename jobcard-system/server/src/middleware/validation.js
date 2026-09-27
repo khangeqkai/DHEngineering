@@ -1,6 +1,7 @@
 const { body, param, query, validationResult } = require('express-validator');
 const jobStatuses = require('../shared/jobStatuses.json');
 const { ALL_ROLES } = require('./auth');
+const { isCalendarDate } = require('../shared/calendarDate');
 
 // The PIN rule ("exactly 4 numeric digits") and its wording, in one place —
 // routes/auth.js's own inline password checks (update user, change own
@@ -408,6 +409,16 @@ const validateJobcardEnums = [
   handleValidationErrors
 ];
 
+// Due date is a bare calendar day, never a moment — must be null, '' (cleared) or
+// a real 'YYYY-MM-DD'. Used on both create and update; nothing else writes due_date
+// (see jobcard-mutations.js POST '/' and PUT '/:id').
+const validateJobcardDueDate = body('dueDate')
+  .custom(value => {
+    if (value === undefined || value === null || value === '') return true;
+    if (typeof value === 'string' && isCalendarDate(value)) return true;
+    throw new Error('Due date must be a real calendar day (YYYY-MM-DD)');
+  });
+
 // POST /jobcards only — a new job may carry a typed-in contact name/phone/email
 // (the person hasn't been saved as a real contact yet). Mirrors validateCreateContact's
 // checks for the same three fields. Never applied to PUT — an existing job's
@@ -781,6 +792,7 @@ module.exports = {
   validateUpdateMachine,
   validateJobcardListQuery,
   validateJobcardEnums,
+  validateJobcardDueDate,
   validateJobcardContactFields,
   validateJobcardDescriptionRequired,
   validateStartTimer,

@@ -1,7 +1,7 @@
 import { Cpu, Zap, Activity, AlertTriangle } from 'lucide-react';
 import DataTable from '../common/DataTable';
 import EmptyState from '../common/EmptyState';
-import { roundTo } from '../../utils/formatters';
+import { roundTo } from '../../../../server/src/shared/round';
 
 const PALETTE = [
   '#2563eb', // Blue

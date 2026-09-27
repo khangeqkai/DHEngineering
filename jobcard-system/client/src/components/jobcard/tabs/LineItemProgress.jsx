@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Check, ChevronDown } from 'lucide-react';
 import TimeEntryCard from './TimeEntryCard';
-import { formatCount, roundTo } from '../../../utils/formatters';
+import { formatCount } from '../../../utils/formatters';
+import { roundTo } from '../../../../../server/src/shared/round';
 
 function parseQty(v) {
   if (v == null || v === '') return 0;

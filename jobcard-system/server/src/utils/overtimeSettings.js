@@ -6,15 +6,17 @@
 const { getSettings } = require('../db/database');
 const { officeTimeZone } = require('./officeTime');
 const { COSTING_DEFAULTS } = require('./costingDefaults');
-
-const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-const DEFAULT_DAY = [{ start: '00:00', tier: 'normal' }];
+const { DAYS, DEFAULT_DAY } = require('../shared/overtimeSchedule');
 
 const num = (v, dflt) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : dflt;
 };
 
+// Read as stored. The company schedule is already whole-hour (the settings save rejects
+// anything else and the one-time startup conversion snapped older ones), and a job's own
+// copy is fixed from the day it was created — so this must never reshape a day, or an
+// old job's overtime split would quietly change under it.
 function parseSchedule(raw) {
   let obj = {};
   try { obj = raw ? JSON.parse(raw) : {}; } catch { obj = {}; }

@@ -2,59 +2,23 @@ import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useFieldErrors, scrollFieldIntoView } from './useFieldErrors';
-import { isCalendarDate } from '../utils/formatters';
+import {
+  DAYS as DAY_KEYS, TIERS as TIER_VALUES,
+  cleanDayBlocks, gridFromBlocks, blocksFromGrid
+} from '../../../server/src/shared/overtimeSchedule';
+import { isCalendarDate } from '../../../server/src/shared/calendarDate';
 
-export const DAYS = [
-  { key: 'mon', label: 'Monday' },
-  { key: 'tue', label: 'Tuesday' },
-  { key: 'wed', label: 'Wednesday' },
-  { key: 'thu', label: 'Thursday' },
-  { key: 'fri', label: 'Friday' },
-  { key: 'sat', label: 'Saturday' },
-  { key: 'sun', label: 'Sunday' }
-];
-
-export const TIERS = [
-  { value: 'normal', label: 'Normal' },
-  { value: 'ot1', label: 'Overtime 1' },
-  { value: 'ot2', label: 'Overtime 2' }
-];
-
-const toMin = (hm) => {
-  const [h, m] = hm.split(':').map(Number);
-  return h * 60 + m;
+// The day keys and tier values themselves are the one shared shape (server/src/shared/
+// overtimeSchedule.js, read on both sides via the Vite plugin in vite.config.js); only
+// the display labels live here, since the server has no reason to know them.
+const DAY_LABELS = {
+  mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday',
+  fri: 'Friday', sat: 'Saturday', sun: 'Sunday'
 };
-const hourLabel = (h) => `${String(h).padStart(2, '0')}:00`;
+const TIER_LABELS = { normal: 'Normal', ot1: 'Overtime 1', ot2: 'Overtime 2' };
 
-// A day's blocks → the tier for each of the 24 hours. The day is a cycle: the hours
-// before the earliest block start take the LAST block's tier (it wraps past midnight).
-export function gridFromBlocks(blocks) {
-  const sorted = [...blocks].sort((a, b) => a.start.localeCompare(b.start));
-  const grid = new Array(24);
-  const wrapTier = sorted[sorted.length - 1].tier;
-  for (let h = 0; h < 24; h++) {
-    const m = h * 60;
-    let tier = wrapTier;
-    for (const b of sorted) {
-      if (toMin(b.start) <= m) tier = b.tier; else break;
-    }
-    grid[h] = tier;
-  }
-  return grid;
-}
-
-// 24 hourly tiers → the compact block list the server stores. A block begins at each
-// hour whose tier differs from the hour before it (wrapping hour 0 back to hour 23).
-// An all-one-tier day collapses to a single block. Starts are unique and ascending.
-export function blocksFromGrid(grid) {
-  const blocks = [];
-  for (let h = 0; h < 24; h++) {
-    const prevTier = grid[(h + 23) % 24];
-    if (grid[h] !== prevTier) blocks.push({ start: hourLabel(h), tier: grid[h] });
-  }
-  if (blocks.length === 0) blocks.push({ start: '00:00', tier: grid[0] });
-  return blocks;
-}
+export const DAYS = DAY_KEYS.map(key => ({ key, label: DAY_LABELS[key] || key }));
+export const TIERS = TIER_VALUES.map(value => ({ value, label: TIER_LABELS[value] || value }));
 
 function emptySchedule() {
   const s = {};
@@ -65,6 +29,9 @@ function emptySchedule() {
 // Coerce whatever came back from settings into a full, valid 7-day schedule. Each day
 // is a 24-hour cycle: blocks are kept start-ordered, and the time before the earliest
 // block wraps to the last block — so a block can start at any time, not just midnight.
+// Deliberately does NOT snap to whole hours the way scheduleDayToWholeHours does — this
+// page shows sub-hour legacy starts as-is until they're painted over — so it shares
+// only the cleaning step (cleanDayBlocks), not the shared file's whole-hour snap.
 function normalize(raw) {
   let obj = raw;
   if (typeof raw === 'string') {
@@ -72,14 +39,8 @@ function normalize(raw) {
   }
   const out = {};
   for (const d of DAYS) {
-    let blocks = Array.isArray(obj?.[d.key]) ? obj[d.key] : null;
-    if (!blocks || blocks.length === 0) blocks = [{ start: '00:00', tier: 'normal' }];
-    blocks = blocks
-      .filter(b => b && /^\d{2}:\d{2}$/.test(b.start))
-      .map(b => ({ start: b.start, tier: ['normal', 'ot1', 'ot2'].includes(b.tier) ? b.tier : 'normal' }))
-      .sort((a, b) => a.start.localeCompare(b.start));
-    if (blocks.length === 0) blocks = [{ start: '00:00', tier: 'normal' }];
-    out[d.key] = blocks;
+    const cleaned = cleanDayBlocks(obj?.[d.key]);
+    out[d.key] = cleaned.length ? cleaned : [{ start: '00:00', tier: 'normal' }];
   }
   return out;
 }

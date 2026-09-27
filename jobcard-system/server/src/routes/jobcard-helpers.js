@@ -15,7 +15,7 @@ const {
 const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
 const { diffFields } = require('../utils/historyChanges');
 const { officeDateString } = require('../utils/officeTime');
-const { formatDayAu } = require('../utils/calendarDate');
+const { formatDayAu } = require('../shared/calendarDate');
 
 // Customer/contact fields hidden from non-admins. Used both when formatting a
 // job card and when sanitizing a job card's history so the two protections stay
@@ -560,7 +560,7 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
     company: customerFields(jc, canManage).companyName || '',
     poNumber: jc.po_number || '',
     quoteReference: jc.quote_reference || '',
-    printed: new Date().toLocaleDateString('en-AU'),
+    printed: formatDayAu(officeDateString(new Date())),
     items
   };
 }

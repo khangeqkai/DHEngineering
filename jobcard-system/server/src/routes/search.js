@@ -4,7 +4,8 @@ const { authenticate, isManagement, can } = require('../middleware/auth');
 const { getAssigneesForJobcards } = require('../db/database');
 const { officeTimeZone, officeDayStart, officeDayEnd } = require('../utils/officeTime');
 const { customerFields } = require('./jobcard-helpers');
-const { roundTo } = require('../utils/round');
+const { supplierContactFields } = require('./supplier-helpers');
+const { roundTo } = require('../shared/round');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -93,16 +94,12 @@ function formatContact(row) {
   };
 }
 
-// Contact phone/email are hidden from non-management the same way suppliers.js
-// hides them (toApiFormat there isn't exported, so this gates the same fields
-// with the same rule rather than importing it).
 function formatSupplier(row, canManage) {
   return {
     id: row.id,
     name: row.name,
     contactName: row.contact_name,
-    contactPhone: canManage ? row.contact_phone : null,
-    contactEmail: canManage ? row.contact_email : null,
+    ...supplierContactFields(row, canManage),
     address: row.address
   };
 }

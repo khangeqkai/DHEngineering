@@ -3,7 +3,8 @@ import DataTable from '../common/DataTable';
 import { useAuth } from '../../context/AuthContext';
 import { can } from '../../utils/roles';
 import { PRIORITY_LABELS } from '../JobCardList.constants';
-import { formatMoney, roundTo } from '../../utils/formatters';
+import { formatMoney } from '../../utils/formatters';
+import { roundTo } from '../../../../server/src/shared/round';
 
 // Bar colour per priority — anything not listed reads as the muted default.
 const PRIORITY_BAR_COLORS = {

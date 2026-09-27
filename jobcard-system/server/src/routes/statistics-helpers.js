@@ -1,7 +1,7 @@
 const { splitHours } = require('../utils/overtimeSplit');
 const { makeOfficeFormatter: makeDateFormatter, officeDateString } = require('../utils/officeTime');
-const { isCalendarDate } = require('../utils/calendarDate');
-const { roundTo } = require('../utils/round');
+const { isCalendarDate } = require('../shared/calendarDate');
+const { roundTo } = require('../shared/round');
 const jobStatuses = require('../shared/jobStatuses.json');
 
 function pad2(n) {

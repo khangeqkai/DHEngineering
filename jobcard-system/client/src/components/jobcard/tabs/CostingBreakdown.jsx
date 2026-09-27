@@ -1,6 +1,6 @@
 import { useMemo, Fragment } from 'react';
 import { useTags } from '../../../hooks/useTags';
-import { roundTo } from '../../../utils/formatters';
+import { roundTo } from '../../../../../server/src/shared/round';
 
 // A read-only table under the costing header: the supporting figures for the pricing
 // boxes below. ONE table, so everything about a part is on one horizontal band and is

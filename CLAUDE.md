@@ -173,6 +173,12 @@ This is policy, not implementation — getting it wrong is a security bug, so it
 - **Update the seed scripts to the new shape too**, so fresh installs and re-seeds produce new-shape data directly (only existing databases need the conversion).
 - Example: removing the `TREATMENT`/`ON_HOLD` job statuses folded them into `AWAITING_MATERIAL` via a startup conversion in `init.js`, while every status list, picker, sort map, and validator was updated to the new set and the old statuses were deleted from the code.
 
+### Shared rule files
+- A rule the server and the client must agree on (a calendar-day check, a rounding helper, the overtime schedule's grid math) is written **once**, in `server/src/shared/*.js`, and read by both sides — never written out a second time and kept in step by hand.
+- **The convention**: a shared rule file is plain CommonJS, pure functions only, no Node or browser APIs, and no dependencies except other files in `server/src/shared/`. Only these statement forms may touch modules: `const name = require('./x.json');` / `const { a, b } = require('./x');` (relative paths inside `shared/` only), and exactly one final `module.exports = { a, b, c };` (shorthand names only).
+- The server `require()`s it as-is. The client can't — Vite only understands ES modules for anything outside `node_modules` — so a small Vite plugin in `client/vite.config.js` (`enforce: 'pre'`) rewrites those exact statement forms into `import`/`export` for every module id that resolves inside `server/src/shared/` and ends in `.js`. It throws, naming the file, if anything outside the convention (a second require per line, a non-shorthand export, `exports.x = …`) is still there after rewriting.
+- A client file imports a shared `.js` file by its relative path straight into `server/src/shared/`, the same way `client/src/utils/roles.js` already imports `permissions.json`.
+
 ### Separation of Concerns
 - **Custom hooks** (`use*.js`): Encapsulate domain logic (state, handlers, API calls)
 - **Constants** (`constants.js`): Enum-like values, dropdown options, form templates
