@@ -2,15 +2,12 @@ const { body, param, query, validationResult } = require('express-validator');
 const jobStatuses = require('../shared/jobStatuses.json');
 const { ALL_ROLES } = require('./auth');
 const { isCalendarDate } = require('../shared/calendarDate');
-
-// The PIN rule ("exactly 4 numeric digits") and its wording, in one place —
-// routes/auth.js's own inline password checks (update user, change own
-// password) reuse this instead of repeating the regex and picking their own
-// wording. The client has its own copy (client/src/utils/formatters.js,
-// PIN_REGEX) since client and server code can't share a module; the two are
-// cross-referenced by comment rather than kept in sync automatically.
-const PIN_REGEX = /^\d{4}$/;
-const PIN_MESSAGE = 'Password must be exactly 4 digits';
+// The PIN rule ("exactly 4 numeric digits") and its wording, read from the one
+// shared copy — routes/auth.js's own inline password checks (update user,
+// change own password) import PIN_REGEX/PIN_MESSAGE from here, and the client
+// (client/src/utils/formatters.js) reads the same shared file directly.
+const { PIN_REGEX, PIN_MESSAGE } = require('../shared/pin');
+const { splitAnswer, hasMixedNa } = require('../shared/lineItemAnswers');
 
 // Lazy-loaded tag queries (avoids circular dependency with database.js)
 let _tagQueries = null;
@@ -690,13 +687,13 @@ function validateItemTagList(items, field, category, label, existingItems, colum
     const item = items[i];
     const itemLabel = getItemLabel(item, i);
     const raw = item[field];
-    const values = (raw ? String(raw) : '').split(',').map(v => v.trim()).filter(Boolean);
+    const values = splitAnswer(raw);
     if (values.length === 0) {
       return `${itemLabel} is missing ${label}`;
     }
     // "N/A" is the standalone "no drawing / nothing supplied" answer, so it can't
     // be combined with a real value for the same line.
-    if (values.includes('N_A') && values.length > 1) {
+    if (hasMixedNa(values)) {
       return `${itemLabel} cannot combine "N/A" with other ${label} values`;
     }
     if (allowed.length > 0) {

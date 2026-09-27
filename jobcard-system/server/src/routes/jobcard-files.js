@@ -17,10 +17,9 @@ const { decodeBase64Strict, assertMatchesExtension } = require('../utils/fileVal
 const { handleValidationErrors } = require('../middleware/validation');
 const { describePart } = require('./jobcard-audit-text');
 const { body, param } = require('express-validator');
+const { ALLOWED_FILE_EXTENSIONS, MAX_UPLOAD_BYTES, CATEGORY_FOLDER } = require('../shared/jobFiles');
 
 const router = express.Router();
-
-const VALID_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp', '.gif'];
 
 const MIME_TYPES = {
   '.pdf': 'application/pdf',
@@ -42,20 +41,12 @@ const MIME_TYPES = {
   '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 };
 
-// Stable URL slugs ↔ on-disk folder names.
-const CATEGORY_FOLDER = {
-  'job-files': 'Job Files',
-  'qa-form-files': 'QA Forms',
-  'customer-property-files': 'Customer Property'
-};
-
 const CATEGORIES = Object.keys(CATEGORY_FOLDER);
 
 // Cap binary upload at 30 MB so a single phone-photo upload can't tie up the
 // request thread; the global express.json() ceiling of 50 MB is intentionally
 // looser to accommodate other JSON payloads. Base64 encoding inflates bytes by
 // ~4/3, so the raw-string ceiling is ceil(30 MB * 4 / 3).
-const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
 const MAX_FILE_DATA_CHARS = Math.ceil((MAX_UPLOAD_BYTES * 4) / 3);
 
 /**
@@ -219,7 +210,7 @@ function buildStorageFilename(folderPath, displayName, partCode) {
   // filesystem-unsafe characters, path-traversal sequences, and refuses a
   // Windows-reserved device name like CON/PRN/COM1) — an uploaded name is
   // typed by whoever scanned/renamed the file and isn't otherwise checked.
-  // The extension itself was already validated against VALID_EXTENSIONS, so
+  // The extension itself was already validated against ALLOWED_FILE_EXTENSIONS, so
   // it's kept as-is and only the base is sanitized.
   const base = sanitizeFolderName(path.basename(displayName, ext)) || 'file';
   const tag = partCode || new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
@@ -272,7 +263,7 @@ function listFolderFiles(folderPath) {
       }
       if (!stat.isFile()) return null;
       const ext = path.extname(name).toLowerCase();
-      if (!VALID_EXTENSIONS.includes(ext)) return null;
+      if (!ALLOWED_FILE_EXTENSIONS.includes(ext)) return null;
       return {
         name,
         size: stat.size,
@@ -337,7 +328,7 @@ const validateUploadBody = [
         throw new Error('Filename must not contain path separators');
       }
       const ext = path.extname(value).toLowerCase();
-      if (!VALID_EXTENSIONS.includes(ext)) {
+      if (!ALLOWED_FILE_EXTENSIONS.includes(ext)) {
         throw new Error('Invalid file extension');
       }
       return true;
@@ -622,8 +613,7 @@ module.exports.listCategoryFileNames = listCategoryFileNames;
 module.exports.partFileCode = partFileCode;
 module.exports.resolveJobFolder = resolveJobFolder;
 module.exports.resolveCategoryFolder = resolveCategoryFolder;
-// The one place the upload size cap is defined — other routes accepting a
-// base64 file upload (e.g. QA template uploads) import these rather than
-// keeping their own copy, so the limit can never drift between them.
-module.exports.MAX_UPLOAD_BYTES = MAX_UPLOAD_BYTES;
+// The base64-inflated char-length ceiling derived from the shared upload cap —
+// other routes accepting a base64 file upload (e.g. QA template uploads) import it
+// rather than keeping their own copy, so the limit can never drift between them.
 module.exports.MAX_FILE_DATA_CHARS = MAX_FILE_DATA_CHARS;

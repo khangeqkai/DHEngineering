@@ -3,6 +3,7 @@ import { MoreVertical, Pencil, Trash2, ChevronDown, ArrowRight } from 'lucide-re
 import ScrapStat from './ScrapStat';
 import { pushModal, removeModal, isTopModal } from '../../common/modalStack';
 import { formatDate, formatTime, formatCount, formatElapsed, elapsedSecondsSince } from '../../../utils/formatters';
+import { splitMachineCodes } from '../../../../../server/src/shared/machineList';
 
 function LiveElapsed({ startTime }) {
   const [elapsed, setElapsed] = useState(() => elapsedSecondsSince(startTime));
@@ -35,9 +36,7 @@ export default function TimeEntryCard({
   const durationSec = entry.endTime
     ? Math.round((new Date(entry.endTime) - new Date(entry.startTime)) / 1000)
     : null;
-  const machinesList = entry.machineNumber
-    ? String(entry.machineNumber).split(',').map(s => s.trim()).filter(Boolean)
-    : [];
+  const machinesList = splitMachineCodes(entry.machineNumber);
 
   const rawQty = entry.qty != null ? String(entry.qty).trim() : '';
   const qtyNum = rawQty === '' ? null : parseFloat(rawQty);

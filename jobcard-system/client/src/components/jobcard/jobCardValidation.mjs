@@ -6,6 +6,7 @@
 // by each box's own instant-save check — see the header comment there.
 
 import { itemFieldMessage, jobFieldMessage, ITEM_QTY_REQUIRED } from './fieldRules.mjs';
+import { splitAnswer, hasMixedNa } from '../../../../server/src/shared/lineItemAnswers.js';
 
 // A line is "already saved" when it carries the server's stable "item:" id —
 // fresh rows only get a temporary local number. buildJobcardPayload (mappers.js)
@@ -75,12 +76,9 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
   }
 
   // "N/A" is the standalone "no drawing / nothing supplied" answer, so it can't
-  // share a part with a real value. The picker already enforces this; this mirrors
-  // the server rule so the form and the save check agree.
-  const naCombined = (value) => {
-    const values = String(value || '').split(',').map(v => v.trim()).filter(Boolean);
-    return values.includes('N_A') && values.length > 1;
-  };
+  // share a part with a real value. The picker already enforces this; the rule
+  // itself is the same shared one the save check runs.
+  const naCombined = (value) => hasMixedNa(splitAnswer(value));
   for (let i = 0; i < validItems.length; i++) {
     if (naCombined(validItems[i].drawingsType)) {
       errors.push(`Part ${itemNo(i)} cannot combine "N/A" with other drawings values`);

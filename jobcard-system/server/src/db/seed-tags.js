@@ -1,8 +1,5 @@
 const { db } = require('./connection');
-
-function nameToValue(name) {
-  return name.toUpperCase().replace(/[\s/]+/g, '_').replace(/[^A-Z0-9_]/g, '');
-}
+const { nameToValue } = require('../utils/tagSlug');
 
 const insertTag = db.prepare(`
   INSERT OR IGNORE INTO tags (id, category, name, value, sort_order)

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { api, base64ToBytes } from '../../services/api';
+import { api } from '../../services/api';
+import { base64ToBytes } from '../../utils/fileData';
 import { warningToastIcon } from '../common/toastIcons';
 
 // Builds and prints/saves the combined "packet" PDF (job card + chosen files).

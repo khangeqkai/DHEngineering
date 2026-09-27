@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { discardToastIcon } from '../common/toastIcons';
 import { describeItemPosition } from './workMatch.mjs';
+import { joinMachineCodes } from '../../../../server/src/shared/machineList';
 
 const emptyEntryForm = () => ({
   qty: '',
@@ -327,7 +328,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems } = {}) {
     const qty = String(entryForm.qty || '0').trim() || '0';
     const scrapBinQty = Math.max(0, parseInt(entryForm.scrapBinQty, 10) || 0);
     const scrapRecycleQty = Math.max(0, parseInt(entryForm.scrapRecycleQty, 10) || 0);
-    const machines = (entryForm.machineNumbers || []).join(', ');
+    const machines = joinMachineCodes(entryForm.machineNumbers);
     const description = (entryForm.description || '').trim();
 
     const entryJobcardId = stoppedEntry.jobcardId || jobcardId;

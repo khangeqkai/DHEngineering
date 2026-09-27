@@ -12,6 +12,8 @@ import FieldError from '../../common/FieldError';
 import { itemWarningMap } from '../../../utils/attachmentWarnings';
 import { workBelongsToItem } from '../workMatch.mjs';
 import { fieldErrorKey } from '../useInstantItems';
+import { NA_ANSWER } from '../../../../../server/src/shared/lineItemAnswers';
+import { isActiveRecord } from '../../../../../server/src/shared/records';
 
 // Work pairs with a part by the part's permanent id (see workMatch.mjs) — a save
 // can renumber every part, and work keyed to the old numbers would otherwise
@@ -394,7 +396,7 @@ const LineItemCard = memo(function LineItemCard({
                     // If the saved supplier still exists but is archived, tag it
                     // "(retired)" so it reads the same as a retired treatment.
                     const supplier = t.supplierId ? suppliers.find(s => s.id === t.supplierId) : null;
-                    const supplierRetired = supplier && !(supplier.active === 1 || supplier.active === true);
+                    const supplierRetired = supplier && !isActiveRecord(supplier);
                     return (
                       <span key={i} className="readonly-badge treatment">
                         {tName} → {t.supplierName
@@ -425,7 +427,7 @@ const LineItemCard = memo(function LineItemCard({
           value={item.drawingsType || ''}
           options={drawingsTags.map(o => ({ value: o.value, label: o.label }))}
           labelOf={drawingsLabelOf}
-          naValue="N_A"
+          naValue={NA_ANSWER}
           onChange={(v) => onFieldChange(item, 'drawingsType', v)}
           warning={!!warningByItem[item.itemNumber]?.missingDrawing}
           attachedFiles={attachedByItem[item.itemNumber]?.drawings || []}
@@ -441,7 +443,7 @@ const LineItemCard = memo(function LineItemCard({
           value={item.customerProperty || ''}
           options={customerPropertyTags.map(o => ({ value: o.value, label: o.label }))}
           labelOf={customerPropertyLabelOf}
-          naValue="N_A"
+          naValue={NA_ANSWER}
           onChange={(v) => onFieldChange(item, 'customerProperty', v)}
           warning={!!warningByItem[item.itemNumber]?.missingCustomerProperty}
           attachedFiles={attachedByItem[item.itemNumber]?.customerProperty || []}

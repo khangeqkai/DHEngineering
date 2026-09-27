@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { ChevronDown, AlertTriangle, Check } from 'lucide-react';
 import FieldError from '../../common/FieldError';
+import { useDismissableMenu } from '../../../hooks/useDismissableMenu';
 
 // A per-line-item multi-select stored as a comma-separated string of tag values.
 // Rendered as a compact dropdown (closed state matches the Job Type / Material
@@ -66,26 +67,9 @@ export default function LineItemTagSelect({
   // receives the already-computed error string, not a hook instance to draw the
   // pairing from.
   const errorId = `${id}-error`;
+  const closeMenu = useCallback(() => setOpen(false), []);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleClickOutside(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    function handleKeyDown(e) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown, true);
-    };
-  }, [open]);
+  useDismissableMenu({ open, onClose: closeMenu, containerRef: ref });
 
   // A value saved on this job whose option was since archived won't be in the
   // active `options` list. Add those selected-but-missing values to the menu (tagged

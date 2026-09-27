@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { api, SIGNED_OUT_MESSAGES } from '../services/api';
 import { useInactivityTimer } from '../hooks/useInactivityTimer';
 import { can } from '../utils/roles';
+import { INACTIVITY_MINUTES } from '../../../server/src/shared/settingsRules';
 
 const AuthContext = createContext(null);
 
@@ -15,7 +16,6 @@ const AuthContext = createContext(null);
 // for the countdown pays for the tick.
 const InactivityCountdownContext = createContext(0);
 
-const DEFAULT_TIMEOUT_MINUTES = 5;
 const SESSION_POLL_MS = 5000;
 // How long signing out waits for last-moment work to land before cancelling the
 // pass. Long enough for one save on a slow network, short enough to never feel
@@ -25,7 +25,7 @@ const BEFORE_LOGOUT_GRACE_MS = 3000;
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false); // No token check needed on mount
-  const [inactivityTimeoutMs, setInactivityTimeoutMs] = useState(DEFAULT_TIMEOUT_MINUTES * 60 * 1000);
+  const [inactivityTimeoutMs, setInactivityTimeoutMs] = useState(INACTIVITY_MINUTES.defaultValue * 60 * 1000);
   const pollRef = useRef(null);
   const beforeLogoutCallbacksRef = useRef([]);
   const unsavedWorkRef = useRef([]);
@@ -133,10 +133,10 @@ export function AuthProvider({ children }) {
   const loadInactivityTimeout = useCallback(async () => {
     try {
       const { inactivityTimeoutMinutes } = await api.getInactivityTimeout();
-      setInactivityTimeoutMs((inactivityTimeoutMinutes || DEFAULT_TIMEOUT_MINUTES) * 60 * 1000);
+      setInactivityTimeoutMs((inactivityTimeoutMinutes || INACTIVITY_MINUTES.defaultValue) * 60 * 1000);
     } catch (err) {
       // Use default if fetch fails
-      setInactivityTimeoutMs(DEFAULT_TIMEOUT_MINUTES * 60 * 1000);
+      setInactivityTimeoutMs(INACTIVITY_MINUTES.defaultValue * 60 * 1000);
     }
   }, []);
 

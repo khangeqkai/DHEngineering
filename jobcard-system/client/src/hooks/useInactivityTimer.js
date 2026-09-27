@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { INACTIVITY_MINUTES } from '../../../server/src/shared/settingsRules';
 
-const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;  // 5 minutes default
+const DEFAULT_TIMEOUT_MS = INACTIVITY_MINUTES.defaultValue * 60 * 1000;
 const WARNING_DURATION_MS = 30 * 1000;      // 30 seconds warning
 
 export function useInactivityTimer({ onTimeout, enabled = true, timeoutMs = DEFAULT_TIMEOUT_MS }) {

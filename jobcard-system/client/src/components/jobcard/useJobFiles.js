@@ -1,27 +1,19 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
+import { readFileAsBase64, base64ToBlob } from '../../utils/fileData';
+import { ALLOWED_FILE_EXTENSIONS, MAX_UPLOAD_BYTES, CATEGORY_FOLDER } from '../../../../server/src/shared/jobFiles';
 
-export const CATEGORIES = ['qa-form-files', 'job-files', 'customer-property-files'];
+export const CATEGORIES = Object.keys(CATEGORY_FOLDER);
 
-export const CATEGORY_LABELS = {
-  'qa-form-files': 'QA Forms',
-  'job-files': 'Job Files',
-  'customer-property-files': 'Customer Property'
-};
+// The folder map is keyed by on-disk folder name, which doubles as the label
+// the screen shows for each category.
+export const CATEGORY_LABELS = CATEGORY_FOLDER;
 
 // Mirror the server's upload allowlist so the picker only offers (and only
 // accepts) the file types the server will keep.
-export const ACCEPTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp', '.gif'];
+export const ACCEPTED_EXTENSIONS = ALLOWED_FILE_EXTENSIONS;
 export const ACCEPT_ATTR = ACCEPTED_EXTENSIONS.join(',');
-const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
-
-function base64ToBlob(base64, mimeType = 'application/pdf') {
-  const bytes = atob(base64);
-  const arr = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-  return new Blob([arr], { type: mimeType });
-}
 
 // Extract a lower-cased extension only when the name has a real base before
 // the dot (so dotfile-style names like ".pdf" count as having no extension,
@@ -29,18 +21,6 @@ function base64ToBlob(base64, mimeType = 'application/pdf') {
 function fileExtension(name) {
   const dot = name.lastIndexOf('.');
   return dot > 0 ? name.slice(dot).toLowerCase() : '';
-}
-
-function readFileAsBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result || '';
-      resolve(String(result).replace(/^data:[^;]*;base64,/, ''));
-    };
-    reader.onerror = () => reject(reader.error || new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
 }
 
 /**

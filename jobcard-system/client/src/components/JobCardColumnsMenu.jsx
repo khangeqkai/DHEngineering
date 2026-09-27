@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Columns3, Check, ChevronUp, ChevronDown } from 'lucide-react';
+import { useDismissableMenu } from '../hooks/useDismissableMenu';
 
 // "Columns" button + drop-down checklist for choosing which job-list columns show.
 // `columns` is the toggleable set the user is allowed to see (job number excluded);
@@ -10,22 +11,9 @@ import { Columns3, Check, ChevronUp, ChevronDown } from 'lucide-react';
 export default function JobCardColumnsMenu({ columns, hiddenColumns, onToggle, onReset, onMove }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const closeMenu = useCallback(() => setOpen(false), []);
 
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [open]);
+  useDismissableMenu({ open, onClose: closeMenu, containerRef: ref });
 
   const hiddenCount = hiddenColumns.length;
 

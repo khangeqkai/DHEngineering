@@ -9,6 +9,8 @@ import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
 import FieldError from './common/FieldError';
+import { readFileAsBase64 } from '../utils/fileData';
+import { MAX_UPLOAD_BYTES } from '../../../server/src/shared/jobFiles';
 
 export default function QALevelManagement() {
   const [levels, setLevels] = useState([]);
@@ -145,11 +147,6 @@ export default function QALevelManagement() {
     }
   };
 
-  // Same cap the job-file upload uses (client/src/components/jobcard/useJobFiles.js
-  // MAX_UPLOAD_BYTES) — checked here too so an oversized template is caught before
-  // the base64 encode/send instead of only after the server's body-size limit rejects it.
-  const MAX_TEMPLATE_UPLOAD_BYTES = 30 * 1024 * 1024;
-
   const handleFileUpload = async (levelId, e) => {
     const input = e.target;
     const file = input.files?.[0];
@@ -161,7 +158,9 @@ export default function QALevelManagement() {
       return;
     }
 
-    if (file.size > MAX_TEMPLATE_UPLOAD_BYTES) {
+    // Same cap as a job-file upload — checked here so an oversized template is
+    // caught before the base64 encode/send, not only by the server's size limit.
+    if (file.size > MAX_UPLOAD_BYTES) {
       toast.error('This file is too large (max 30 MB)');
       input.value = '';
       return;
@@ -169,12 +168,7 @@ export default function QALevelManagement() {
 
     setUploadingTemplate(true);
     try {
-      const reader = new FileReader();
-      const fileData = await new Promise((resolve, reject) => {
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      const fileData = await readFileAsBase64(file);
 
       await api.uploadQaTemplate(levelId, {
         fileName: file.name,

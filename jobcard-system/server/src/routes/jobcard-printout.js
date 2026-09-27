@@ -13,9 +13,11 @@ const { isWithinBase } = require('../utils/folderCreation');
 const { buildPacketPdf } = require('../utils/pdfPacket');
 const { renderHtmlToPdf } = require('../utils/htmlToPdf');
 const { jobcardQueries, recordHistory, actorName } = require('../db/database');
+const { ALLOWED_FILE_EXTENSIONS, MAX_PRINT_FILES } = require('../shared/jobFiles');
 
-const VALID_PACKET_EXT = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp', '.gif']);
-const MAX_PACKET_ITEMS = 20;
+// Built from the shared allowlist so a printable extension can never drift from
+// what the file folders themselves accept.
+const VALID_PACKET_EXT = new Set(ALLOWED_FILE_EXTENSIONS);
 const MAX_PACKET_BYTES = 40 * 1024 * 1024;
 // Ceiling on the total bytes of on-disk files we'll pull into memory at once while
 // building a packet. With 20 items at the 30 MB per-file upload cap that tops out
@@ -72,7 +74,7 @@ printRouter.post('/:id/print', authenticate, (req, res) => {
 // afterwards via POST /:id/printed or POST /:id/saved.
 const validatePacket = [
   param('id').isString().trim().notEmpty(),
-  body('items').isArray({ max: MAX_PACKET_ITEMS }).withMessage('Too many items'),
+  body('items').isArray({ max: MAX_PRINT_FILES }).withMessage('Too many items'),
   body('items.*.category').isString().notEmpty(),
   body('items.*.filename').isString().notEmpty().custom((v) => {
     if (v.includes('/') || v.includes('\\') || v.includes('..')) {

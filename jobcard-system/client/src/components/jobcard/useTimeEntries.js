@@ -5,12 +5,7 @@ import { formatDate } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
 import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
 import { isJobClosedError } from '../../utils/jobLock';
-
-// Shown wherever adding, editing or deleting recorded time is refused because
-// the job is invoiced — one stable id so repeated attempts replace the same
-// toast instead of stacking.
-const INVOICED_LOCK_MESSAGE = 'Reopen the job to change its time';
-const invoicedLockToast = () => toast.error(INVOICED_LOCK_MESSAGE, { id: 'invoiced-time-locked' });
+import { isTimeLocked, showTimeLockedToast } from './timeLock';
 
 export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, showConfirm, isInvoiced = false, onJobClosed }) {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
@@ -59,8 +54,8 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   }, []);
 
   const handleAddTimeEntry = useCallback((itemId = '') => {
-    if (isInvoiced) {
-      invoicedLockToast();
+    if (isTimeLocked(isInvoiced)) {
+      showTimeLockedToast();
       return;
     }
     resetTimeEntryForm();
@@ -73,8 +68,8 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   }, [resetTimeEntryForm, isInvoiced]);
 
   const handleEditTimeEntry = useCallback((entry) => {
-    if (isInvoiced) {
-      invoicedLockToast();
+    if (isTimeLocked(isInvoiced)) {
+      showTimeLockedToast();
       return;
     }
     resetFieldErrors();
@@ -108,8 +103,8 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
 
     // The server refuses this outright once a job is invoiced (reopen it
     // first) — don't even ask; just say so and stop here.
-    if (isInvoiced) {
-      invoicedLockToast();
+    if (isTimeLocked(isInvoiced)) {
+      showTimeLockedToast();
       return;
     }
 
@@ -182,8 +177,8 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
 
   const handleDeleteTimeEntry = useCallback(async (entry) => {
     if (!jobCardId) return;
-    if (isInvoiced) {
-      invoicedLockToast();
+    if (isTimeLocked(isInvoiced)) {
+      showTimeLockedToast();
       return;
     }
 

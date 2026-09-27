@@ -4,6 +4,7 @@
 
 const { isCalendarDate } = require('../shared/calendarDate');
 const { DAYS: SCHEDULE_DAYS, TIERS: SCHEDULE_TIERS } = require('../shared/overtimeSchedule');
+const { isValidTimeZone } = require('../utils/officeTime');
 
 // The overtime configuration is admin-only (managers get every other setting).
 // These lists let settings.js reject a manager's attempt to save any of these
@@ -75,9 +76,7 @@ function collectOvertimeUpdates(body) {
     if (typeof timezone !== 'string' || !timezone.trim()) {
       return { error: 'Time zone is required' };
     }
-    try {
-      new Intl.DateTimeFormat('en', { timeZone: timezone });
-    } catch {
+    if (!isValidTimeZone(timezone)) {
       return { error: `Unrecognised time zone: ${timezone}` };
     }
     updates.timezone = timezone;

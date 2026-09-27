@@ -1,11 +1,6 @@
 import { useCallback } from 'react';
-import toast from 'react-hot-toast';
 import { api } from '../../services/api';
-
-// Same wording and toast id as useTimeEntries.js's invoiced lock, so a worker
-// who tries both a manual save and a live Start on a reopened-then-reinvoiced
-// job sees one message replace itself rather than two stacking.
-const invoicedLockToast = () => toast.error('Reopen the job to change its time', { id: 'invoiced-time-locked' });
+import { isTimeLocked, showTimeLockedToast } from './timeLock';
 
 /**
  * Orchestrates the timer and time-entry actions JobCardModal wires into the
@@ -99,8 +94,8 @@ export function useJobCardTimerActions({
     // The server refuses this outright once a job is invoiced — reopening is
     // the only way back in, so say that up front rather than let the attempt
     // fail silently against a job whose timer buttons are otherwise still live.
-    if (isInvoiced) {
-      invoicedLockToast();
+    if (isTimeLocked(isInvoiced)) {
+      showTimeLockedToast();
       return;
     }
     const started = await timer.startTimerWithConflictCheck(itemId, displayNumber, showConfirm, workerId, workerName);

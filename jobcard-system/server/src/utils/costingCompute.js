@@ -9,6 +9,31 @@ const { readOvertimeSettings, parseSchedule, parseHolidays, num } = require('./o
 const { roundTo } = require('../shared/round');
 const { COSTING_DEFAULTS } = require('./costingDefaults');
 
+// This job's own captured overtime rules (schedule, holidays, timezone, base
+// multipliers) if it has one, else today's live company settings. `existing` is
+// a job_costings row (or null/undefined for a not-yet-captured job); `ot` is
+// readOvertimeSettings()'s live snapshot. Never taken from a submitted form —
+// the client can't change a job's rules, only its rate/overrides — so the
+// rules stay write-once from creation. The one lookup every reader of a job's
+// overtime baseline goes through: computeLiveCosting below, and the Workshop
+// Statistics route (server/src/routes/statistics.js), which only needs the
+// schedule/holidays/timezone piece of it.
+function jobOvertimeBaseline(existing, ot) {
+  return {
+    schedule: existing && existing.labour_schedule
+      ? parseSchedule(existing.labour_schedule) : ot.schedule,
+    holidays: existing && existing.labour_public_holidays
+      ? parseHolidays(existing.labour_public_holidays) : ot.holidays,
+    timezone: (existing && existing.labour_timezone) || ot.timezone,
+    ot1Mult: existing && existing.labour_base_ot1_multiplier != null
+      ? num(existing.labour_base_ot1_multiplier, ot.ot1Mult) : ot.ot1Mult,
+    ot2Mult: existing && existing.labour_base_ot2_multiplier != null
+      ? num(existing.labour_base_ot2_multiplier, ot.ot2Mult) : ot.ot2Mult,
+    holidayMult: existing && existing.labour_base_holiday_multiplier != null
+      ? num(existing.labour_base_holiday_multiplier, ot.holidayMult) : ot.holidayMult
+  };
+}
+
 // Compute all costing values for a job from its OWN captured overtime rules + logged
 // time. `incoming` is the submitted form (PUT); pass null to recompute purely from the
 // stored row, keeping the admin's saved rate/overrides.
@@ -29,22 +54,7 @@ function computeLiveCosting(jobId, incoming) {
   const has = (key) => Object.prototype.hasOwnProperty.call(src, key);
 
   const ot = readOvertimeSettings();
-  // This job's own overtime rules: its captured copy when it has one, else live settings.
-  // Never taken from the submitted form — the client can't change a job's rules, only its
-  // rate/overrides — so the rules stay write-once from creation.
-  const baseline = {
-    schedule: existing && existing.labour_schedule
-      ? parseSchedule(existing.labour_schedule) : ot.schedule,
-    holidays: existing && existing.labour_public_holidays
-      ? parseHolidays(existing.labour_public_holidays) : ot.holidays,
-    timezone: (existing && existing.labour_timezone) || ot.timezone,
-    ot1Mult: existing && existing.labour_base_ot1_multiplier != null
-      ? num(existing.labour_base_ot1_multiplier, ot.ot1Mult) : ot.ot1Mult,
-    ot2Mult: existing && existing.labour_base_ot2_multiplier != null
-      ? num(existing.labour_base_ot2_multiplier, ot.ot2Mult) : ot.ot2Mult,
-    holidayMult: existing && existing.labour_base_holiday_multiplier != null
-      ? num(existing.labour_base_holiday_multiplier, ot.holidayMult) : ot.holidayMult
-  };
+  const baseline = jobOvertimeBaseline(existing, ot);
   const entries = timeEntryQueries.getCompletedByJobcard.all(jobId);
   const split = splitHours(entries, baseline);
 
@@ -250,5 +260,6 @@ function buildCostingResponse(jobId, computed) {
 module.exports = {
   computeLiveCosting,
   persistCosting,
-  buildCostingResponse
+  buildCostingResponse,
+  jobOvertimeBaseline
 };

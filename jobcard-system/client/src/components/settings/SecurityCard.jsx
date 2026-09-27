@@ -2,6 +2,7 @@ import FieldError from '../common/FieldError';
 
 export default function SecurityCard({ s }) {
   const timeoutError = s.errorFor('inactivityTimeout');
+  const jobNumberNextError = s.errorFor('jobNumberNext');
   return (
     <>
       <div className="card full-width">
@@ -70,16 +71,20 @@ export default function SecurityCard({ s }) {
                 style={{ width: '120px' }}
               />
             </div>
-            <div className="form-group" style={{ flex: '0 0 auto' }}>
-              <label className="form-label">Starting Number</label>
+            <div className={jobNumberNextError ? 'form-group field-error' : 'form-group'} style={{ flex: '0 0 auto' }}>
+              <label className="form-label" htmlFor="jobNumberNext">Starting Number</label>
               <input
                 type="text"
+                id="jobNumberNext"
                 className="form-control"
                 value={s.jobNumberNext}
                 onChange={(e) => s.setJobNumberNext(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="e.g. 00001"
                 style={{ width: '160px' }}
+                aria-invalid={jobNumberNextError ? true : undefined}
+                aria-describedby={jobNumberNextError ? 'jobNumberNext-error' : undefined}
               />
+              <FieldError message={jobNumberNextError} id="jobNumberNext-error" />
             </div>
             <div className="form-group" style={{ flex: '0 0 auto', alignSelf: 'flex-end' }}>
               <button

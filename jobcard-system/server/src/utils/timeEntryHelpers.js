@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('./logger');
+const { isActiveRecord } = require('../shared/records');
 const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, recordHistory } = require('../db/database');
 
 // Normalise a hand-entered time into a full ISO timestamp with time zone, so
@@ -47,7 +48,7 @@ function resolveWorkerId(workerId) {
   if (!user) {
     return { error: 'That worker does not exist' };
   }
-  if (!(user.active === 1 || user.active === true)) {
+  if (!isActiveRecord(user)) {
     return { error: 'That worker is no longer active' };
   }
   return { userId: user.id };

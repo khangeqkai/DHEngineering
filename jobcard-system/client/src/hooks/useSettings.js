@@ -5,6 +5,9 @@ import { api } from '../services/api';
 import { validatePassword, todayIsoDate } from '../utils/formatters';
 import { isManagement, can } from '../utils/roles';
 import { useFieldErrors, scrollFieldIntoView } from './useFieldErrors';
+import {
+  INACTIVITY_MINUTES, isInactivityMinutes, isStartingJobNumber, STARTING_JOB_NUMBER_MESSAGE
+} from '../../../server/src/shared/settingsRules';
 
 export function useSettings() {
   const { user, refreshInactivityTimeout } = useAuth();
@@ -27,12 +30,14 @@ export function useSettings() {
   // Kept as a string, not a number, so the box can hold "" or a partial digit while
   // the user is typing — clamping every keystroke made 6 unkeyable (it kept
   // snapping back to 1 before the second digit landed). Range is checked on save.
-  const [inactivityTimeout, setInactivityTimeoutState] = useState('5');
-  const { setFieldErrors, errorFor } = useFieldErrors(
-    (name) => (name === 'inactivityTimeout' ? inactivityTimeout : undefined)
-  );
+  const [inactivityTimeout, setInactivityTimeoutState] = useState(String(INACTIVITY_MINUTES.defaultValue));
   const [jobNumberPrefix, setJobNumberPrefix] = useState('');
   const [jobNumberNext, setJobNumberNext] = useState('');
+  const { setFieldErrors, errorFor } = useFieldErrors((name) => {
+    if (name === 'inactivityTimeout') return inactivityTimeout;
+    if (name === 'jobNumberNext') return jobNumberNext;
+    return undefined;
+  });
   const [savingJobFolders, setSavingJobFolders] = useState(false);
   const [savingTimeout, setSavingTimeout] = useState(false);
   const [savingJobNumber, setSavingJobNumber] = useState(false);
@@ -64,7 +69,7 @@ export function useSettings() {
       setSettings(data);
       if (data) {
         setJobFoldersBase(data.jobFoldersBase || '');
-        setInactivityTimeoutState(String(parseInt(data.inactivityTimeoutMinutes, 10) || 5));
+        setInactivityTimeoutState(String(parseInt(data.inactivityTimeoutMinutes, 10) || INACTIVITY_MINUTES.defaultValue));
         setJobNumberPrefix(data.jobNumberPrefix || '');
         setJobNumberNext(data.jobNumberNext || '');
         setHomeAddress(data.homeAddress || '');
@@ -156,12 +161,14 @@ export function useSettings() {
   }, [homeAddress]);
 
   const handleSaveInactivityTimeout = useCallback(async () => {
-    const n = parseInt(String(inactivityTimeout).trim(), 10);
-    if (String(inactivityTimeout).trim() === '' || !Number.isFinite(n) || n < 1 || n > 60) {
-      setFieldErrors({ inactivityTimeout: 'Enter a number of minutes between 1 and 60' });
+    if (!isInactivityMinutes(inactivityTimeout)) {
+      setFieldErrors({
+        inactivityTimeout: `Enter a number of minutes between ${INACTIVITY_MINUTES.min} and ${INACTIVITY_MINUTES.max}`
+      });
       scrollFieldIntoView('inactivityTimeout');
       return;
     }
+    const n = parseInt(inactivityTimeout, 10);
     setSavingTimeout(true);
     try {
       await api.updateSettings({ inactivityTimeoutMinutes: n });
@@ -176,8 +183,9 @@ export function useSettings() {
   }, [inactivityTimeout, refreshInactivityTimeout, setFieldErrors]);
 
   const handleSaveJobNumber = useCallback(async () => {
-    if (jobNumberNext && !/^\d+$/.test(jobNumberNext)) {
-      toast.error('Starting number must contain only digits (e.g. 00001)');
+    if (jobNumberNext && !isStartingJobNumber(jobNumberNext)) {
+      setFieldErrors({ jobNumberNext: STARTING_JOB_NUMBER_MESSAGE });
+      scrollFieldIntoView('jobNumberNext');
       return;
     }
     setSavingJobNumber(true);
@@ -189,7 +197,7 @@ export function useSettings() {
     } finally {
       setSavingJobNumber(false);
     }
-  }, [jobNumberPrefix, jobNumberNext]);
+  }, [jobNumberPrefix, jobNumberNext, setFieldErrors]);
 
   const toggleDarkMode = useCallback(() => setDarkMode(prev => !prev), []);
 

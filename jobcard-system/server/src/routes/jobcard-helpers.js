@@ -16,6 +16,7 @@ const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
 const { diffFields } = require('../utils/historyChanges');
 const { officeDateString } = require('../utils/officeTime');
 const { formatDayAu } = require('../shared/calendarDate');
+const { NA_ANSWER, splitAnswer, isNaAnswer, declaresAnswer } = require('../shared/lineItemAnswers');
 
 // Customer/contact fields hidden from non-admins. Used both when formatting a
 // job card and when sanitizing a job card's history so the two protections stay
@@ -37,14 +38,6 @@ function parseTreatments(raw) {
   } catch {
     return [];
   }
-}
-
-// A drawings / customer-property field "declares" something when it carries a
-// real value — anything other than empty or the explicit "N/A" answer (stored
-// as the slug N_A). Values are comma-separated tag slugs.
-function declaresValue(raw) {
-  if (!raw) return false;
-  return String(raw).split(',').map(v => v.trim()).filter(Boolean).some(v => v !== 'N_A');
 }
 
 // A per-part file is stored as "{name} [p{code}]" by the upload route (or
@@ -119,8 +112,8 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null) {
 
   // Work out what actually needs checking before touching the disk, so a job
   // that declared nothing (and needs no quality form) does no folder reads.
-  const anyDrawing = normItems.some(it => declaresValue(it.drawings));
-  const anyProperty = normItems.some(it => declaresValue(it.customerProperty));
+  const anyDrawing = normItems.some(it => declaresAnswer(it.drawings));
+  const anyProperty = normItems.some(it => declaresAnswer(it.customerProperty));
   // A job needs a returned quality form only if its QA level has a template attached
   // AND the level is switched to "requires completed form returned". Print-only levels
   // (switch off) still get their templates copied/pre-filled on save, but never nag.
@@ -155,8 +148,8 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null) {
     // never actually hit in practice; skip it rather than flag a part nothing
     // can be matched to yet, and it'll be checked normally on the next read.
     if (!partFileCode(it.id)) return;
-    const missingDrawing = declaresValue(it.drawings) && !hasItemFile(jobFileNames, it.id);
-    const missingCustomerProperty = declaresValue(it.customerProperty) && !hasItemFile(customerPropertyNames, it.id);
+    const missingDrawing = declaresAnswer(it.drawings) && !hasItemFile(jobFileNames, it.id);
+    const missingCustomerProperty = declaresAnswer(it.customerProperty) && !hasItemFile(customerPropertyNames, it.id);
     if (missingDrawing || missingCustomerProperty) {
       flagged.push({ itemNumber: it.itemNumber, position: it.position, missingDrawing, missingCustomerProperty });
     }
@@ -381,9 +374,8 @@ const STATUS_LABELS = Object.fromEntries(jobStatuses.statuses.map(s => [s.value,
 // everything else resolves through tagName — so a QA form and the job card
 // never disagree on what a stored code means.
 function friendlyTagList(raw, category) {
-  const vals = splitValues(raw);
-  const isNa = vals.length === 0 || (vals.length === 1 && vals[0] === 'N_A');
-  if (isNa) return 'N/A';
+  if (isNaAnswer(raw)) return 'N/A';
+  const vals = splitAnswer(raw);
   return [...new Set(vals.map(v => tagName(category, v)))].join(', ');
 }
 
@@ -436,8 +428,8 @@ function qaFillDataForJob(jobcardId, qualityLevelName) {
   // (not per part's whole list, or "A, B" and "A" would repeat A), resolved to
   // the friendly label, with "N/A" excluded since it isn't a declared value.
   const jobTagList = (field, category) => [...new Set(items
-    .flatMap(i => splitValues(i[field]))
-    .filter(v => v !== 'N_A')
+    .flatMap(i => splitAnswer(i[field]))
+    .filter(v => v !== NA_ANSWER)
     .map(v => tagName(category, v)))];
   const allDrawings = jobTagList('drawings_type', 'drawings');
   const allProperty = jobTagList('customer_property', 'customer_property');
@@ -474,10 +466,6 @@ function tagName(category, value) {
   return row ? row.name : value;
 }
 
-function splitValues(raw) {
-  return String(raw || '').split(',').map(v => v.trim()).filter(Boolean);
-}
-
 // Build friendly, pre-formatted data for the generated job card printout
 // (rendered by renderJobCardHtml in utils/jobCardHtml.js). `jc` is the raw
 // jobcards row. `canManage` gates the customer company name — non-management
@@ -498,8 +486,8 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
   // so this loop's own index gives each part's 1-based position — what the
   // printed card shows, never the stored (possibly gapped) item_number.
   const items = rows.map((r, idx) => {
-    const dVals = splitValues(r.drawings_type);
-    const drawingsIsNa = dVals.length === 0 || (dVals.length === 1 && dVals[0] === 'N_A');
+    const dVals = splitAnswer(r.drawings_type);
+    const drawingsIsNa = isNaAnswer(r.drawings_type);
     const drawings = drawingsIsNa
       ? 'N/A'
       : [...new Set(dVals.map(v => tagName('drawings', v)))].join(', ');
@@ -513,8 +501,8 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
     });
     // Customer property is a per-part field on screen, so the printout shows it
     // per part too (same friendly-name + N/A handling as drawings).
-    const cpVals = splitValues(r.customer_property);
-    const customerPropertyIsNa = cpVals.length === 0 || (cpVals.length === 1 && cpVals[0] === 'N_A');
+    const cpVals = splitAnswer(r.customer_property);
+    const customerPropertyIsNa = isNaAnswer(r.customer_property);
     const customerProperty = customerPropertyIsNa
       ? 'N/A'
       : [...new Set(cpVals.map(v => tagName('customer_property', v)))].join(', ');

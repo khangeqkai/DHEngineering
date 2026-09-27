@@ -31,6 +31,7 @@ import StopTimerForm from './StopTimerForm';
 import JobPaperworkHub from './JobPaperworkHub';
 import JobIdentityStrip from './JobIdentityStrip';
 import { mapTimeEntryFromApi } from './mappers';
+import { isActiveRecord } from '../../../../server/src/shared/records';
 
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onPrinted, initialTab = null }) {
   const { user } = useAuth();
@@ -139,7 +140,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       setSuppliers(suppliersRes || []);
       setQaLevels(qaLevelsRes || []);
       const activeEmployees = (usersRes || [])
-        .filter(u => u.active === 1 || u.active === true)
+        .filter(isActiveRecord)
         .sort((a, b) => (a.name || a.username || '').localeCompare(b.name || b.username || ''));
       setEmployees(activeEmployees);
       setMachines(machinesRes || []);

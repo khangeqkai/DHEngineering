@@ -1,4 +1,5 @@
 import { STATUS_LABELS, PRIORITY_LABELS } from '../components/JobCardList.constants';
+import { isValidPin, PIN_MESSAGE } from '../../../server/src/shared/pin';
 
 export function toTitleCase(str) {
   if (!str) return str;
@@ -22,10 +23,10 @@ export function capitalizeFirst(str) {
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
-// Mirrors PIN_REGEX/PIN_MESSAGE in server/src/middleware/validation.js — client
-// and server code can't share a module here, so the two are kept in step by hand.
+// The one shared PIN rule (server/src/shared/pin.js) — same check the server
+// runs on create/update/change-password, read here instead of a second copy.
 export function validatePassword(password) {
-  if (!/^\d{4}$/.test(password)) return 'Password must be exactly 4 digits';
+  if (!isValidPin(password)) return PIN_MESSAGE;
   return null;
 }
 

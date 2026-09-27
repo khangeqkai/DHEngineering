@@ -3,10 +3,7 @@ import CreatableTagSelect from '../../common/CreatableTagSelect';
 import LineItemSupplierPicker from './LineItemSupplierPicker';
 import InlineSupplierForm from '../../common/InlineSupplierForm';
 import { useTags } from '../../../hooks/useTags';
-
-function isActive(s) {
-  return s.active === 1 || s.active === true;
-}
+import { isActiveRecord } from '../../../../../server/src/shared/records';
 
 // Per-line-item Treatment + Supplier. Treatment is a type-or-create picker (any
 // treatment, plus add-a-new-one on the spot) shown first. Once a treatment is
@@ -39,7 +36,7 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
     ? createdTag.id
     : (rawTags.find(t => t.value === value)?.id || null);
   const providerCount = suppliers.filter(
-    s => isActive(s) && (s.serviceTags || []).some(t => t.value === value)
+    s => isActiveRecord(s) && (s.serviceTags || []).some(t => t.value === value)
   ).length;
 
   // Whether the inline "add supplier" form is showing in place of the picker.

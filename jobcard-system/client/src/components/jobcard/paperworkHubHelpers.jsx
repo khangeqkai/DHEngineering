@@ -1,4 +1,5 @@
 import { Check, Minus } from 'lucide-react';
+import { MAX_PRINT_FILES } from '../../../../server/src/shared/jobFiles';
 
 // Shared constants and small pure helpers for the paperwork hub, split out to keep
 // JobPaperworkHub.jsx focused on the panel itself.
@@ -7,9 +8,9 @@ import { Check, Minus } from 'lucide-react';
 // property, then QA forms last.
 export const ORDER = ['job-files', 'customer-property-files', 'qa-form-files'];
 
-// Most files that can go in one combined packet (matches the server's cap). The
-// job card itself rides separately and doesn't count toward this.
-export const MAX_PACKET_FILES = 20;
+// Most files that can go in one combined packet. The job card itself rides
+// separately and doesn't count toward this.
+export const MAX_PACKET_FILES = MAX_PRINT_FILES;
 
 export const keyOf = (category, filename) => `${category}::${filename}`;
 

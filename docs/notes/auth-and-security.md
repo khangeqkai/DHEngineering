@@ -21,7 +21,7 @@
 ## Editing an account
 
 - **`PUT /auth/users/:id` is management-only, full stop** — `requireManagement` gates the whole route, so a non-management caller gets 403 before the handler even runs, including for their own account. There used to be a self branch that let anyone rename or re-email their own account here (the only fields it let self through for, since self-password is refused below and self-role-change was already blocked) — that was the bug: a worker could rename or re-email themselves. Once name/email are off-limits to self too, nothing useful was left for a non-management caller on this route, so it went management-only rather than keeping a self branch with nothing left to do. Everything management could already do — edit anyone's name/email/role, reset a password, the admin-only and last-admin guards below — is unchanged.
-- **Field checks on update mirror create**: `validateUpdateUser` (`middleware/validation.js`, beside `validateCreateUser`, reusing its helpers) checks `name` (optional, same length cap) and `email` (optional, valid format, lower-cased only — never `normalizeEmail()`, so a typed address is never silently rewritten) before the route's own inline password (exactly 4 digits) and role (`admin`/`manager`/`user`) checks run.
+- **Field checks on update mirror create**: `validateUpdateUser` (`middleware/validation.js`, beside `validateCreateUser`, reusing its helpers) checks `name` (optional, same length cap) and `email` (optional, valid format, lower-cased only — never `normalizeEmail()`, so a typed address is never silently rewritten) before the route's own inline password (exactly 4 digits — the one shared `isValidPin`/`PIN_MESSAGE` in `server/src/shared/pin.js`, read by `middleware/validation.js` for create/update and by the client's own pre-save check in `client/src/utils/formatters.js`) and role (`admin`/`manager`/`user`) checks run.
 
 ## Sessions and signing out
 
@@ -49,7 +49,7 @@ Auth sub-routes: `PUT /auth/change-password` (all authenticated users, verifies 
 
 ## Other protections
 
-- **Inactivity auto-logout**: Configurable timeout (1-60 min, default 5 min) with 30-second warning modal. Admin configures in Settings. Handles system sleep/wake via visibility API. Does not apply to admin accounts (see the roles section of `CLAUDE.md`).
+- **Inactivity auto-logout**: Configurable timeout (1-60 min, default 5 min) with 30-second warning modal. Admin configures in Settings. Handles system sleep/wake via visibility API. Does not apply to admin accounts (see the roles section of `CLAUDE.md`). The range and default (`INACTIVITY_MINUTES`) and the "is this a valid number of minutes" check (`isInactivityMinutes`) live once in `server/src/shared/settingsRules.js` — `routes/settings.js` (save validation, and the fallback in `GET /settings/inactivity-timeout`), `hooks/useSettings.js` (the on-screen check, marking the field via `useFieldErrors` rather than a pop-up), `context/AuthContext.jsx` and `hooks/useInactivityTimer.js` (the client's own fallback default) all read it instead of carrying their own copy of the numbers.
 
 - **Signed-in replies are never stored by the browser**: a small middleware sets `Cache-Control: no-store` on everything under `/api` (mounted in `server/index.js` before the API routers). Express sends no cache headers of its own, so a browser was free to keep authenticated JSON on disk under heuristic freshness and hand it back on a shared machine after the next person signed in.
 

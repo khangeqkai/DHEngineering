@@ -4,7 +4,8 @@ import { Calendar, ChevronDown } from 'lucide-react';
 import CalendarPicker from '../common/CalendarPicker';
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import { capitalizeFirst, formatDate } from '../../utils/formatters';
-import { PRIORITY_OPTIONS, STATUS_OPTIONS, canChangeStatus, getSettableStatusValues } from './constants';
+import { PRIORITY_OPTIONS, STATUS_OPTIONS } from './constants';
+import { canChangeStatus, offeredStatusValues } from '../../../../server/src/shared/jobStatus';
 import { statusToken, priorityToken } from '../JobCardList.constants';
 import { changeJobStatus } from './changeJobStatus';
 import { summarizeFieldStates, INSTANT_SAVE_STATUS_TEXT } from './useInstantSave';
@@ -160,15 +161,11 @@ export default function JobIdentityStrip({
   // moved past the point where they may touch it at all, the control is locked —
   // office statuses stay with management.
   const statusChangeable = canChangeStatus(canManage, status);
-  const settableStatusValues = getSettableStatusValues(canManage, status);
-  const baseStatusOptions = STATUS_OPTIONS.filter(opt => {
-    if (settableStatusValues && !settableStatusValues.has(opt.value)) return false;
-    if (opt.value !== 'INVOICED') return true;
-    // Invoicing files a job away and runs the missing-files check + auto-archive,
-    // which only happen on an existing job. Never offer it while creating a new
-    // job (and never to non-management).
-    return isEdit && canManage;
-  });
+  // Invoicing files a job away and runs the missing-files check + auto-archive,
+  // which only happen on an existing job — offeredStatusValues never offers
+  // it while creating a new job (and never to non-management).
+  const offeredValues = new Set(offeredStatusValues(canManage, status, isEdit));
+  const baseStatusOptions = STATUS_OPTIONS.filter(opt => offeredValues.has(opt.value));
   const statusOptions = baseStatusOptions.some(o => o.value === status)
     ? baseStatusOptions
     : [

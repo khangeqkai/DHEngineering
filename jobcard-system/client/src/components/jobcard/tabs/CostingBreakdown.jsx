@@ -1,6 +1,8 @@
 import { useMemo, Fragment } from 'react';
 import { useTags } from '../../../hooks/useTags';
 import { roundTo } from '../../../../../server/src/shared/round';
+import { splitMachineCodes } from '../../../../../server/src/shared/machineList';
+import { isActiveRecord } from '../../../../../server/src/shared/records';
 
 // A read-only table under the costing header: the supporting figures for the pricing
 // boxes below. ONE table, so everything about a part is on one horizontal band and is
@@ -39,19 +41,9 @@ function formatDecimalHours(ms) {
 // between them without inventing figures, so the machines are kept together as one
 // row — "CNC-01 + MILL-01" — which is what actually happened.
 //
-// The stored value is the machine's own code (CNC-01, LATHE-02) — that is what the
-// worker picked. Split it into the individual codes so each can be shown with its
-// friendly name underneath.
-function machineCodes(raw) {
-  return String(raw || '')
-    .split(',')
-    .map(s => s.trim())
-    .filter(Boolean);
-}
-
 // The codes joined, for grouping rows that share the same machines + worker.
 function machineKey(raw) {
-  const list = machineCodes(raw);
+  const list = splitMachineCodes(raw);
   return list.length === 0 ? 'No machine' : list.join(' + ');
 }
 
@@ -77,8 +69,7 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [], mac
   // capitals, because a block keeps the number as it was typed back then.
   const machineNames = useMemo(() => {
     const map = new Map();
-    const isActive = m => m.active === 1 || m.active === true;
-    [...machines.filter(m => !isActive(m)), ...machines.filter(isActive)].forEach(m => {
+    [...machines.filter(m => !isActiveRecord(m)), ...machines.filter(isActiveRecord)].forEach(m => {
       if (m.machineNumber != null) map.set(String(m.machineNumber).toLowerCase(), m.name || '');
     });
     return map;
@@ -104,7 +95,7 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [], mac
       if (!Number.isFinite(span) || span <= 0) return;
 
       const key = entry.itemId != null ? String(entry.itemId) : '';
-      const codes = machineCodes(entry.machineNumber);
+      const codes = splitMachineCodes(entry.machineNumber);
       const rowLabel = machineKey(entry.machineNumber);
       const worker = entry.userName || 'Unknown';
       const rowKey = `${rowLabel}||${worker}`;

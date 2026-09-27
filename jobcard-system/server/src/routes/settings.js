@@ -25,6 +25,9 @@ const {
   archiveBackupWithRetry
 } = require('./backup-helpers');
 const { collectOvertimeUpdates, OVERTIME_BODY_KEYS, OVERTIME_DB_KEYS } = require('./settings-overtime');
+const {
+  INACTIVITY_MINUTES, isInactivityMinutes, isStartingJobNumber, STARTING_JOB_NUMBER_MESSAGE
+} = require('../shared/settingsRules');
 
 // All settings routes require authentication
 router.use(authenticate);
@@ -137,11 +140,12 @@ router.put('/', requireManagement, async (req, res) => {
 
     // Validate inactivity timeout if provided
     if (inactivityTimeoutMinutes !== undefined) {
-      const timeout = parseInt(inactivityTimeoutMinutes, 10);
-      if (isNaN(timeout) || timeout < 1 || timeout > 60) {
-        return res.status(400).json({ error: 'Inactivity timeout must be between 1 and 60 minutes' });
+      if (!isInactivityMinutes(inactivityTimeoutMinutes)) {
+        return res.status(400).json({
+          error: `Inactivity timeout must be between ${INACTIVITY_MINUTES.min} and ${INACTIVITY_MINUTES.max} minutes`
+        });
       }
-      updates.inactivity_timeout_minutes = String(timeout);
+      updates.inactivity_timeout_minutes = String(parseInt(inactivityTimeoutMinutes, 10));
     }
 
     // Validate job number prefix if provided
@@ -153,8 +157,8 @@ router.put('/', requireManagement, async (req, res) => {
     // Validate job number next if provided
     const jobNumberNext = req.body.jobNumberNext;
     if (jobNumberNext !== undefined) {
-      if (jobNumberNext && !/^\d+$/.test(jobNumberNext)) {
-        return res.status(400).json({ error: 'Starting number must contain only digits (e.g. 00001)' });
+      if (jobNumberNext && !isStartingJobNumber(jobNumberNext)) {
+        return res.status(400).json({ error: STARTING_JOB_NUMBER_MESSAGE });
       }
 
       // Prevent setting the counter backward into a job number already handed out.
@@ -215,7 +219,7 @@ router.put('/', requireManagement, async (req, res) => {
 router.get('/inactivity-timeout', (req, res) => {
   try {
     const settings = db.getSettings();
-    const timeoutMinutes = parseInt(settings.inactivity_timeout_minutes, 10) || 5;
+    const timeoutMinutes = parseInt(settings.inactivity_timeout_minutes, 10) || INACTIVITY_MINUTES.defaultValue;
     res.json({ inactivityTimeoutMinutes: timeoutMinutes });
   } catch (err) {
     logger.error({ err }, 'Error getting inactivity timeout');

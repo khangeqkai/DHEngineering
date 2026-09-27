@@ -5,14 +5,24 @@ const { getSettings } = require('../db/database');
 // reading, or turning a picked calendar day into the instants that day starts and ends at
 // — goes through here, so there is one definition of "the office's day".
 
+// True only for a time zone name Intl actually recognises (checked by trying to
+// format against it) — the one "is this a real time zone" check every caller reads.
+function isValidTimeZone(zone) {
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // The office's time zone (the one the overtime schedule is measured against), falling
 // back to this machine's own zone if it was never set or isn't recognised.
 function officeTimeZone() {
   const own = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   try {
     const zone = getSettings().timezone;
-    if (!zone) return own;
-    new Intl.DateTimeFormat('en-CA', { timeZone: zone }); // throws on an unknown zone
+    if (!zone || !isValidTimeZone(zone)) return own;
     return zone;
   } catch {
     return own;
@@ -99,5 +109,5 @@ function officeDayEnd(date, timeZone = officeTimeZone()) {
 }
 
 module.exports = {
-  officeTimeZone, makeOfficeFormatter, officeDateString, wallClockToIso, officeDayStart, officeDayEnd
+  officeTimeZone, isValidTimeZone, makeOfficeFormatter, officeDateString, wallClockToIso, officeDayStart, officeDayEnd
 };

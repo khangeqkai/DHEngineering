@@ -2,13 +2,7 @@ import { useId, useState } from 'react';
 import { capitalizeFirst } from '../../../utils/formatters';
 import CheckboxDropdown from '../../common/CheckboxDropdown';
 import FieldError from '../../common/FieldError';
-
-// Machines on a time entry are kept as one comma-joined string (e.g. "5, 9") to
-// match how the worker's stop-timer form stores them. Split it back into a list
-// for the tick-box picker, and join the list back into that string on each change.
-function machineListToArray(value) {
-  return value ? String(value).split(',').map(s => s.trim()).filter(Boolean) : [];
-}
+import { splitMachineCodes, joinMachineCodes } from '../../../../../server/src/shared/machineList';
 
 // The admin's add/edit time-entry form. Rendered inline, directly under the line
 // item it belongs to, so opening it never yanks the screen away from the button
@@ -60,7 +54,7 @@ export default function TimeEntryForm({
   // machine, so it is ticked under that machine's own entry, not as "(retired)".
   const activeMachines = machines.filter(m => m.active !== 0 && m.active !== false);
   const sameNumber = (m, v) => String(m.machineNumber).toLowerCase() === v.toLowerCase();
-  const selectedMachineValues = machineListToArray(timeEntryForm.machineNumber).map(v => {
+  const selectedMachineValues = splitMachineCodes(timeEntryForm.machineNumber).map(v => {
     const active = activeMachines.find(m => sameNumber(m, v));
     return active ? String(active.machineNumber) : v;
   });
@@ -150,7 +144,7 @@ export default function TimeEntryForm({
               const next = current.includes(value)
                 ? current.filter(v => v !== value)
                 : [...current, value];
-              handleTimeEntryChange({ target: { name: 'machineNumber', value: next.join(', ') } });
+              handleTimeEntryChange({ target: { name: 'machineNumber', value: joinMachineCodes(next) } });
             }}
           />
         </div>

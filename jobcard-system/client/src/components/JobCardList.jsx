@@ -15,6 +15,7 @@ import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
 import { useMissingFilesIndicator } from '../hooks/useMissingFilesIndicator';
+import { useDismissableMenu } from '../hooks/useDismissableMenu';
 import { describeWorkWarning } from '../utils/attachmentWarnings';
 import { changeJobStatus } from './jobcard/changeJobStatus';
 import useJobCardSort from '../hooks/useJobCardSort';
@@ -32,30 +33,6 @@ import {
   isJobOverdue
 } from './JobCardList.constants';
 import './JobCardList.css';
-
-// Keep Tab focus penned inside an open row popover (status / assignee) instead of
-// letting it drift onto the list rows behind. Wraps focus first<->last and pulls
-// focus in from the trigger on the first press. No-op for non-Tab keys.
-const POPOVER_FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-function penTabWithin(e, container) {
-  if (e.key !== 'Tab' || !container) return;
-  const focusable = Array.from(container.querySelectorAll(POPOVER_FOCUSABLE))
-    .filter((el) => el.offsetParent !== null);
-  if (focusable.length === 0) return;
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  const active = document.activeElement;
-  const inside = container.contains(active);
-  if (e.shiftKey && (active === first || !inside)) {
-    e.preventDefault();
-    last.focus();
-  } else if (!e.shiftKey && (active === last || !inside)) {
-    e.preventDefault();
-    first.focus();
-  }
-}
 
 export default function JobCardList() {
   const { user } = useAuth();
@@ -219,43 +196,11 @@ export default function JobCardList() {
     });
   }, [showConfirm, refreshMissingFiles, loadJobcards]);
 
-  useEffect(() => {
-    if (!statusPopoverId) return;
-    const handleClickOutside = (e) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
-        setStatusPopoverId(null);
-      }
-    };
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') { setStatusPopoverId(null); return; }
-      penTabWithin(e, popoverRef.current);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [statusPopoverId]);
+  const closeStatusPopover = useCallback(() => setStatusPopoverId(null), []);
+  const closeAssignPopover = useCallback(() => setAssignPopoverId(null), []);
 
-  useEffect(() => {
-    if (!assignPopoverId) return;
-    const handleClickOutside = (e) => {
-      if (assignPopoverRef.current && !assignPopoverRef.current.contains(e.target)) {
-        setAssignPopoverId(null);
-      }
-    };
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') { setAssignPopoverId(null); return; }
-      penTabWithin(e, assignPopoverRef.current);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [assignPopoverId]);
+  useDismissableMenu({ open: !!statusPopoverId, onClose: closeStatusPopover, containerRef: popoverRef });
+  useDismissableMenu({ open: !!assignPopoverId, onClose: closeAssignPopover, containerRef: assignPopoverRef });
 
   const handleSelfToggle = useCallback(async (card, isAssigned) => {
     if (!user?.id) return;

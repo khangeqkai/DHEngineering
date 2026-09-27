@@ -2,10 +2,7 @@ import { useState, useMemo, useRef, useEffect, useId } from 'react';
 import { ChevronDown, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../../../services/api';
-
-function isActive(s) {
-  return s.active === 1 || s.active === true;
-}
+import { isActiveRecord } from '../../../../../server/src/shared/records';
 
 // Search/select control for one line item's supplier. By default it lists only the
 // suppliers that provide the chosen treatment (their "Services Provided" includes
@@ -30,14 +27,14 @@ export default function LineItemSupplierPicker({
   const [focused, setFocused] = useState(false);
   const committingRef = useRef(false);
 
-  const activeSuppliers = useMemo(() => suppliers.filter(isActive), [suppliers]);
+  const activeSuppliers = useMemo(() => suppliers.filter(isActiveRecord), [suppliers]);
   const providers = useMemo(
     () => activeSuppliers.filter(s => (s.serviceTags || []).some(t => t.value === treatmentValue)),
     [activeSuppliers, treatmentValue]
   );
 
   const selected = suppliers.find(s => s.id === supplierId) || null;
-  const selectedRetired = !!supplierId && (!selected || !isActive(selected));
+  const selectedRetired = !!supplierId && (!selected || !isActiveRecord(selected));
   // No supplier chosen → empty, so the box shows its "No supplier" hint rather than a
   // word that reads like a supplier's name. A retired one keeps its saved name.
   const selectedName = selected ? selected.name : (supplierName || '');

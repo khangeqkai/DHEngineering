@@ -7,7 +7,7 @@ import {
   priorityToken,
   getStatusBadgeClass
 } from './JobCardList.constants';
-import { canChangeStatus, getSettableStatusValues } from './jobcard/constants';
+import { canChangeStatus, offeredStatusValues } from '../../../server/src/shared/jobStatus';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { isJobClosed } from '../utils/jobLock';
 import { can } from '../utils/roles';
@@ -257,7 +257,7 @@ export function getJobCardColumns({
             </td>
           );
         }
-        const settableValues = getSettableStatusValues(canManage, card.status);
+        const offeredValues = new Set(offeredStatusValues(canManage, card.status));
         return (
           <td key="status">
             <div className="status-popover-wrapper" ref={statusPopoverId === card.id ? popoverRef : null}>
@@ -275,7 +275,7 @@ export function getJobCardColumns({
               {statusPopoverId === card.id && (
                 <div className="status-popover">
                   {Object.entries(STATUS_LABELS)
-                    .filter(([value]) => (canManage || value !== 'INVOICED') && (!settableValues || settableValues.has(value)))
+                    .filter(([value]) => offeredValues.has(value))
                     .map(([value, label]) => (
                     <button
                       key={value}

@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, can } = require('../middleware/auth');
-const { db } = require('../db/database');
+const { db, getJobCostingOvertimeRowsByJobcardIds } = require('../db/database');
 const { officeTimeZone, officeDateString } = require('../utils/officeTime');
-const { computeLiveCosting } = require('../utils/costingCompute');
-const { readOvertimeSettings, parseSchedule, parseHolidays } = require('../utils/overtimeSettings');
+const { computeLiveCosting, jobOvertimeBaseline } = require('../utils/costingCompute');
+const { readOvertimeSettings } = require('../utils/overtimeSettings');
 const { roundTo } = require('../shared/round');
 const {
   FINISHED_STATUSES,
@@ -20,6 +20,23 @@ const {
 
 router.use(authenticate);
 router.use(requireManagement);
+
+// One time entry's worth of logged work — the elapsed hours and its good-parts /
+// scrap figures, exactly as the summary totals loop and the period trend loop
+// both read them, so a session can never mean two different things to the two
+// totals. Returns null for a backwards or zero-length entry (contributes
+// nothing to either).
+function measureTimeEntry(te) {
+  const startMs = new Date(te.start_time).getTime();
+  const endMs = new Date(te.end_time).getTime();
+  if (endMs <= startMs) return null;
+  return {
+    hours: (endMs - startMs) / 3600000,
+    qty: parseInt(te.qty, 10) || 0,
+    scrapBin: te.scrap_bin_qty || 0,
+    scrapRecycle: te.scrap_recycle_qty || 0
+  };
+}
 
 // GET /api/statistics
 router.get('/', (req, res) => {
@@ -174,18 +191,15 @@ router.get('/', (req, res) => {
     // jobcard_id (see w.entriesByJob further down), so a job with no in-range time
     // entries can never be consulted and doesn't need a row fetched for it.
     const costingJobIds = [...new Set(inRangeTimeEntries.map(te => te.jobcard_id))];
-    const costingsRows = costingJobIds.length
-      ? db.prepare(
-          `SELECT jobcard_id, labour_schedule, labour_public_holidays, labour_timezone
-           FROM job_costings WHERE jobcard_id IN (${costingJobIds.map(() => '?').join(', ')})`
-        ).all(...costingJobIds)
-      : [];
+    const costingsRows = getJobCostingOvertimeRowsByJobcardIds(costingJobIds);
     const jobCostingsMap = new Map();
     for (const row of costingsRows) {
-      const jSchedule = row.labour_schedule ? parseSchedule(row.labour_schedule) : defaultSchedule;
-      const jHolidays = row.labour_public_holidays ? parseHolidays(row.labour_public_holidays) : defaultHolidays;
+      // Same "this job's captured rules, else today's settings" lookup
+      // computeLiveCosting uses — only the schedule/holidays/timezone piece of
+      // it is needed here.
+      const { schedule, holidays, timezone: jTimezone } = jobOvertimeBaseline(row, ot);
       jobCostingsMap.set(row.jobcard_id, {
-        rules: { schedule: jSchedule, holidays: jHolidays, timezone: row.labour_timezone || timezone }
+        rules: { schedule, holidays, timezone: jTimezone }
       });
     }
 
@@ -289,18 +303,14 @@ router.get('/', (req, res) => {
     let totalInspectionChecks = 0;
 
     for (const te of inRangeTimeEntries) {
-      const s = new Date(te.start_time).getTime();
-      const e = new Date(te.end_time).getTime();
-      if (e <= s) continue;
+      const measured = measureTimeEntry(te);
+      if (!measured) continue;
+      const { hours: dur, qty, scrapBin, scrapRecycle: scrapRec } = measured;
 
-      const dur = (e - s) / 3600000;
       totalWorkshopHours += dur;
 
-      const qty = parseInt(te.qty, 10) || 0;
       if (qty > 0) totalPartsProduced += qty;
 
-      const scrapBin = te.scrap_bin_qty || 0;
-      const scrapRec = te.scrap_recycle_qty || 0;
       totalScrapBin += scrapBin;
       totalScrapRecycle += scrapRec;
 
@@ -445,9 +455,8 @@ router.get('/', (req, res) => {
     }
 
     for (const te of inRangeTimeEntries) {
-      const s = new Date(te.start_time).getTime();
-      const e = new Date(te.end_time).getTime();
-      if (e <= s) continue;
+      const measured = measureTimeEntry(te);
+      if (!measured) continue;
 
       const pKey = getPeriodKey(te.localDate);
       if (pKey) {
@@ -455,11 +464,9 @@ router.get('/', (req, res) => {
           trendMap.set(pKey, { period: pKey, jobsCreated: 0, jobsCompleted: 0, onTimeCompleted: 0, lateCompleted: 0, totalHours: 0, partsProduced: 0, scrapQty: 0 });
         }
         const b = trendMap.get(pKey);
-        const dur = (e - s) / 3600000;
-        b.totalHours += dur;
-        const q = parseInt(te.qty, 10) || 0;
-        if (q > 0) b.partsProduced += q;
-        b.scrapQty += (te.scrap_bin_qty || 0) + (te.scrap_recycle_qty || 0);
+        b.totalHours += measured.hours;
+        if (measured.qty > 0) b.partsProduced += measured.qty;
+        b.scrapQty += measured.scrapBin + measured.scrapRecycle;
       }
     }
 

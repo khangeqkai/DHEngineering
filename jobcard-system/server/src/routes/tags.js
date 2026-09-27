@@ -4,14 +4,11 @@ const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { tagQueries, recordHistory, actorName } = require('../db/database');
 const { setArchived } = require('../utils/archiveToggle');
+const { nameToValue } = require('../utils/tagSlug');
 
 const router = express.Router();
 
 const VALID_CATEGORIES = ['treatment', 'customer_property', 'drawings', 'job_type', 'material'];
-
-function nameToValue(name) {
-  return name.toUpperCase().replace(/[\s/]+/g, '_').replace(/[^A-Z0-9_]/g, '');
-}
 
 function formatTag(t) {
   return {

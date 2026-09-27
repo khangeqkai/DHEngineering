@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const { userQueries } = require('../db/database');
-const jobStatuses = require('../shared/jobStatuses.json');
+const { canSetStatus: sharedCanSetStatus } = require('../shared/jobStatus');
 const permissions = require('../shared/permissions.json');
 
 // Middleware to verify JWT token
@@ -105,24 +105,15 @@ const requireManagement = requirePermission('management');
 // (creating/updating a user) rather than just against management vs. not.
 const ALL_ROLES = ['admin', 'manager', 'user'];
 
-// Which statuses a non-management user (a worker) may move a job TO, and which
-// current statuses they're allowed to move it FROM. In Progress and Done are
-// normally driven by logged work (see utils/jobStatusAuto.js); the one manual
-// nudge a worker needs is flagging "waiting on material" and clearing it again.
-// Every other status change is an office decision and stays management-only.
-// From the one shared jobStatuses.json (also read by the client's copy of these
-// two lists, client/src/components/jobcard/constants.js).
-const WORKER_SETTABLE_STATUSES = jobStatuses.workerSettableStatuses;
-const WORKER_STATUS_FROM = jobStatuses.workerStatusFrom;
-
 // Single source of truth for "may this role move this job from fromStatus to
 // toStatus?" — used by both the status-only route and the general job update
 // route so the rule can never drift between them. A no-op (status unchanged)
-// is always allowed, for any role.
+// is always allowed, for any role. The rule itself (which statuses a worker
+// may move a job to/from) lives once in server/src/shared/jobStatus.js — also
+// read by the client's copy, client/src/components/jobcard/constants.js — this
+// is just the role-to-boolean seam.
 function canSetStatus(role, fromStatus, toStatus) {
-  if (fromStatus === toStatus) return true;
-  if (isManagement(role)) return true;
-  return WORKER_SETTABLE_STATUSES.includes(toStatus) && WORKER_STATUS_FROM.includes(fromStatus);
+  return sharedCanSetStatus(isManagement(role), fromStatus, toStatus);
 }
 
 module.exports = {
@@ -134,7 +125,5 @@ module.exports = {
   isManagement,
   MANAGEMENT_ROLES,
   ALL_ROLES,
-  WORKER_SETTABLE_STATUSES,
-  WORKER_STATUS_FROM,
   canSetStatus
 };
