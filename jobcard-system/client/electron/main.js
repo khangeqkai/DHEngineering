@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, globalShortcut, dialog, shell, session } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, Tray, Notification, nativeImage, globalShortcut, dialog, shell, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { X509Certificate } = require('crypto');
@@ -43,6 +43,30 @@ const logger = {
 let printerModule = null;
 
 const isDev = !app.isPackaged;
+
+// The packaged app IS the shared server (startServer() below runs it
+// in-process), so other PCs and home access can only reach the job cards while
+// this process is alive. Three things follow, all packaged-only — in
+// development the server runs as its own process, so the window is just a
+// viewer:
+//   - it starts itself at Windows sign-in, straight to the tray (--hidden);
+//   - closing the window hides it to the tray instead of quitting;
+//   - the only way to really quit is the tray's Quit (or the OS quitting the app).
+const HIDDEN_ARG = '--hidden';
+const APP_ICON = path.join(__dirname, '..', 'assets', 'icon.png');
+const startedHidden = !isDev && (
+  process.argv.includes(HIDDEN_ARG) ||
+  (process.platform === 'darwin' && app.getLoginItemSettings().wasOpenedAtLogin)
+);
+
+let mainWindow = null;
+let tray = null;
+// Set once a real quit has begun, so the window's close handler lets the close
+// through instead of hiding to the tray.
+let isQuitting = false;
+// Someone opened the app again while a hidden sign-in start was still booting
+// the server; show the window once it exists instead of dropping the request.
+let showRequested = false;
 
 // The data folder the server writes its local certificate authority into. Mirrors
 // the path startServer() sets as DATA_DIR, but computed independently so it's
@@ -157,8 +181,9 @@ async function startServer() {
   }
 }
 
-function createWindow() {
-  const mainWindow = new BrowserWindow({
+function createWindow({ show = true } = {}) {
+  mainWindow = new BrowserWindow({
+    show,
     width: 1400,
     height: 900,
     minWidth: 1024,
@@ -170,7 +195,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false
     },
-    icon: path.join(__dirname, '..', 'assets', 'icon.png')
+    icon: APP_ICON
   });
 
   // Hide the menu bar (it drops down only on Alt). The constructor option alone
@@ -212,6 +237,9 @@ function createWindow() {
   // the page's objection and go ahead with the close/reload"; doing nothing
   // leaves the close cancelled, which is why the safe choice is wired to that.
   mainWindow.webContents.on('will-prevent-unload', (event) => {
+    // A tray Quit can reach here with the window hidden; show it so the question
+    // isn't lost behind other windows and "Keep Editing" lands on the card.
+    if (!mainWindow.isVisible()) mainWindow.show();
     const choice = dialog.showMessageBoxSync(mainWindow, {
       type: 'warning',
       title: 'Unsaved Changes',
@@ -223,11 +251,89 @@ function createWindow() {
     });
     if (choice === 0) {
       event.preventDefault(); // user chose to leave — let the close/reload proceed
+    } else {
+      // User chose to stay, or dismissed with Escape — leave the close
+      // cancelled. If this close was part of a Quit, the quit is now abandoned,
+      // so the next X must go back to hiding to the tray.
+      isQuitting = false;
     }
-    // else: user chose to stay, or dismissed with Escape — leave the close cancelled
   });
 
+  // X hides the window to the tray while the shared server keeps running. Only
+  // a real quit (tray Quit, OS sign-out/shutdown) lets the close through. This
+  // fires before the page's own unload check, so hiding never discards unsaved
+  // edits — the page simply stays loaded behind the tray icon.
+  mainWindow.on('close', (event) => {
+    if (isQuitting || !tray) return;
+    event.preventDefault();
+    mainWindow.hide();
+    showTrayNoticeOnce();
+  });
+
+  // Windows is signing out or shutting down: let every close through so the
+  // hide-to-tray above never holds up the shutdown.
+  mainWindow.on('session-end', () => { isQuitting = true; });
+
+  mainWindow.on('closed', () => { mainWindow = null; });
+
   return mainWindow;
+}
+
+function showMainWindow() {
+  if (!mainWindow) {
+    createWindow();
+    return;
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+// The first time the window is ever hidden to the tray, say where the app went
+// and how to really quit. Remembered by a marker file so it shows only once.
+function showTrayNoticeOnce() {
+  const marker = path.join(app.getPath('userData'), 'tray-notice-shown');
+  if (fs.existsSync(marker)) return;
+  try { fs.writeFileSync(marker, new Date().toISOString()); } catch { /* still show it */ }
+  const title = 'Job Cards';
+  const content = 'Job Cards is still running in the tray so other PCs can connect. Right-click the tray icon to quit.';
+  if (process.platform === 'win32' && tray) {
+    tray.displayBalloon({ iconType: 'info', title, content });
+  } else if (Notification.isSupported()) {
+    new Notification({ title, body: content }).show();
+  }
+}
+
+function confirmAndQuit() {
+  const choice = dialog.showMessageBoxSync({
+    type: 'warning',
+    title: 'Quit Job Cards',
+    message: 'Other PCs and home access will lose the job cards until the app is opened again. Quit anyway?',
+    buttons: ['Quit', 'Cancel'],
+    defaultId: 1,
+    cancelId: 1
+  });
+  if (choice !== 0) return;
+  isQuitting = true;
+  app.quit();
+}
+
+async function createTray() {
+  let image = nativeImage.createFromPath(APP_ICON);
+  if (image.isEmpty()) {
+    // No bundled icon file — fall back to the icon of the app's own program file,
+    // the same picture its desktop shortcut shows.
+    try { image = await app.getFileIcon(process.execPath, { size: 'small' }); } catch { /* keep empty */ }
+  }
+  tray = new Tray(image.isEmpty() ? image : image.resize({ width: 16, height: 16 }));
+  tray.setToolTip('DH Engineering Job Cards');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Open Job Cards', click: showMainWindow },
+    { type: 'separator' },
+    { label: 'Quit', click: confirmAndQuit }
+  ]));
+  tray.on('click', showMainWindow);
+  tray.on('double-click', showMainWindow);
 }
 
 // Create application menu
@@ -281,12 +387,13 @@ if (!gotSingleInstanceLock) {
   app.quit();
 }
 
-app.on('second-instance', () => {
-  const existing = BrowserWindow.getAllWindows()[0];
-  if (existing) {
-    if (existing.isMinimized()) existing.restore();
-    existing.focus();
-  }
+app.on('second-instance', (event, argv) => {
+  // A sign-in start while the app is already running must not pop the window up.
+  if (argv.includes(HIDDEN_ARG)) return;
+  // Only once the first window exists — while the server is still starting,
+  // startup itself is about to open it.
+  if (mainWindow) showMainWindow();
+  else showRequested = true;
 });
 
 app.whenReady().then(async () => {
@@ -311,17 +418,36 @@ app.whenReady().then(async () => {
       app.quit();
       return;
     }
+
+    // Start with Windows sign-in, straight to the tray. Set on every launch so
+    // a reinstall to another folder re-points it at the current program file.
+    app.setLoginItemSettings({ openAtLogin: true, openAsHidden: true, args: [HIDDEN_ARG] });
+    try {
+      await createTray();
+    } catch (err) {
+      // Without a tray the close handler falls back to a normal quit, so the
+      // app can still be closed; never leave a server running with no way out.
+      tray = null;
+      logger.error({ err }, 'Tray failed');
+    }
   }
 
-  createWindow();
+  createWindow({ show: !startedHidden || showRequested });
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    showMainWindow();
   });
 });
 
+// Any real quit — tray Quit, the macOS app menu, the OS — lets windows close.
+app.on('before-quit', () => { isQuitting = true; });
+
+app.on('will-quit', () => {
+  if (tray) { tray.destroy(); tray = null; }
+});
+
+// With hide-to-tray, the last window only closes during a real quit (or in
+// development, where there is no tray), so this still ends the app.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();

@@ -38,6 +38,26 @@ What happens:
 
 Either way, both the desktop and the web access shut down together.
 
+(This is the `npm run lan` way of running it. The **installed** app on the
+workshop PC works differently — see below.)
+
+---
+
+## The installed app on the workshop PC
+
+- **It starts by itself** when Windows signs in, straight into the tray (the
+  small icons by the clock). No window opens; other PCs and home access can
+  connect straight away.
+- **Windows must still sign in after a restart.** The app can't start before
+  someone logs in — or before Windows logs in by itself, if the PC is set to
+  sign in automatically. A PC sitting at the sign-in screen means nobody can
+  reach the job cards.
+- **Closing the window (X) doesn't stop it.** It just hides to the tray so
+  other PCs keep working. The first time, a small message says so.
+- **To open it again**, click the tray icon (or open the app as normal).
+- **To really stop it**, right-click the tray icon → **Quit** → confirm. Other
+  PCs and home access lose the job cards until the app is opened again.
+
 ---
 
 ## Logging in
@@ -84,6 +104,7 @@ Both ask "Are you sure?" before wiping the existing database.
 ## Troubleshooting
 
 **Other PCs can't open the web address**
+- On the workshop PC, check the Job Cards icon is in the tray by the clock (hover over it: it says "DH Engineering Job Cards"; the picture is the plain default app icon). If someone chose **Quit**, or Windows is still at the sign-in screen, nobody can connect — sign in / open the app.
 - Check they're on the same Wi-Fi.
 - Check the macOS / Windows firewall isn't blocking the connection (the first launch should have prompted; you may need to allow it manually in System Settings → Network → Firewall).
 - Guest Wi-Fi networks often isolate devices — won't work.
@@ -124,7 +145,8 @@ Windows on its own.
 9. `git pull`
 10. `cd client` then `npm run build:electron`
 11. Run the installer it produces, same as always.
-12. Open the app, sign in as admin, confirm it works.
+12. Open the app, sign in as admin, confirm it works. From now on it
+    starts by itself when Windows signs in, and lives in the tray.
 
 **C. Create the real tunnel (browser)**
 
@@ -170,12 +192,16 @@ Windows on its own.
 40. Open `https://93120050.online`.
 41. Sign-in shows the **Home access code** box.
 42. Code + PIN. You're in.
-43. Restart the workshop PC, wait a minute, phone again. Still in.
+43. Restart the workshop PC, sign in to Windows (or let it sign in by
+    itself), wait a minute, phone again. Still in — the app started on its
+    own in the tray.
 
 **If it fails**
 
 - Page won't load: step 25 wasn't Healthy, rerun the bat.
-- "502 bad gateway": app not running, or step 30/31 wrong.
+- "502 bad gateway": app not running, or step 30/31 wrong. After a
+  restart, check Windows actually got past the sign-in screen, and that the
+  Job Cards icon is in the tray (hover text "DH Engineering Job Cards"). If it isn't, open the app once.
 - No code box: step 33 off, or address typed with `http`.
 - "Home access switched off": step 37 not saved.
 - Step 34 says name in use: steps 5 and 6 not done.
