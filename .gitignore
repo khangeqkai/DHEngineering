@@ -29,3 +29,6 @@
 
 # jev-gate scratch: the current work order, per-machine
 .jev/
+
+# Python bytecode
+__pycache__/
