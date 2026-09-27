@@ -12,12 +12,9 @@ import CustomersTab from './statistics/CustomersTab';
 import EmptyState from './common/EmptyState';
 import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
 import { BarChart3, Users, CheckCircle2, Cpu, Building2 } from 'lucide-react';
+import { todayIsoDate } from '../utils/formatters';
 import './Statistics.css';
 
-  const todayYmd = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
   const monthStartYmd = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
@@ -29,7 +26,7 @@ export default function Statistics() {
   const [data, setData] = useState(null);
   const [preset, setPreset] = useState('this_month');
   const [customStartDate, setCustomStartDate] = useState(monthStartYmd);
-  const [customEndDate, setCustomEndDate] = useState(todayYmd);
+  const [customEndDate, setCustomEndDate] = useState(todayIsoDate);
   const [groupBy, setGroupBy] = useState('month');
   const [activeTab, setActiveTab] = useState('overview');
   const [exporting, setExporting] = useState(false);
@@ -53,7 +50,7 @@ export default function Statistics() {
       const params = { preset, groupBy };
       if (preset === 'custom') {
         const start = customStartDate || monthStartYmd();
-        const end = customEndDate || todayYmd();
+        const end = customEndDate || todayIsoDate();
         params.startDate = start;
         params.endDate = end;
       }

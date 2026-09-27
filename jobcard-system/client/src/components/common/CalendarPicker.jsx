@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { pushModal, removeModal, isTopModal } from './modalStack';
+import { todayIsoDate } from '../../utils/formatters';
 import './CalendarPicker.css';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -73,7 +74,7 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose, allow
 
   if (!isOpen) return null;
 
-  const today = toDateString(new Date());
+  const today = todayIsoDate();
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
 
