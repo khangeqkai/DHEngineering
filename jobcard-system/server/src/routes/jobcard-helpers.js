@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
 const { isManagement } = require('../middleware/auth');
+const jobStatuses = require('../shared/jobStatuses.json');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -359,20 +360,10 @@ function serializeTreatments(treatments) {
   return JSON.stringify(treatments);
 }
 
-// Mirrors the client's STATUS_OPTIONS labels (client/src/components/jobcard/
-// constants.js) — there's no shared import path between server and client, so
-// the two are kept in step by hand, the same way PRIORITY_LABELS below already
-// is. Used only to keep the QA form's printed status word human-readable.
-const STATUS_LABELS = {
-  QUOTE: 'Quote',
-  OPEN: 'Open',
-  AWAITING_MATERIAL: 'Material/Service',
-  PO_REQUESTED: 'PO Requested',
-  IN_PROGRESS: 'In Progress',
-  DONE: 'Done',
-  CUST_NOTIFIED: 'Cust. Notified',
-  INVOICED: 'Invoiced'
-};
+// From the one shared jobStatuses.json (also read by the client's STATUS_OPTIONS,
+// client/src/components/jobcard/constants.js). Used only to keep the QA form's
+// printed status word human-readable.
+const STATUS_LABELS = Object.fromEntries(jobStatuses.statuses.map(s => [s.value, s.label]));
 
 // Friendly, comma-joined label for a stored multi-value tag field (drawings /
 // customer property), matching exactly how the job card printout shows them
@@ -443,13 +434,9 @@ function buildQaFillData(jobcardId, fields) {
 // Which pill the printed card wears. Anything not listed prints as the calm pill.
 const PRIORITY_PILL_CLASSES = { HIGH: 'high', SAME_DAY: 'same-day' };
 
-const PRIORITY_LABELS = {
-  NONE: 'None',
-  LOW: 'Low',
-  MEDIUM: 'Medium',
-  HIGH: 'High',
-  SAME_DAY: 'Same Day Service'
-};
+// From the one shared jobStatuses.json (also read by the client's
+// PRIORITY_OPTIONS, client/src/components/jobcard/constants.js).
+const PRIORITY_LABELS = Object.fromEntries(jobStatuses.priorities.map(p => [p.value, p.label]));
 
 function tagName(category, value) {
   if (value == null || value === '') return '';

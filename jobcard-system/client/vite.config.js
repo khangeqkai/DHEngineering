@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
@@ -13,6 +13,12 @@ export default defineConfig({
     watch: {
       usePolling: true,
       interval: 150
+    },
+    fs: {
+      // The one shared job-status/priority data file lives outside the client
+      // project root, in ../server/src/shared — Vite's dev server otherwise
+      // refuses to serve an import from outside its own root.
+      allow: [searchForWorkspaceRoot(process.cwd()), '../server/src/shared']
     },
     proxy: {
       '/api': 'http://localhost:3000',
