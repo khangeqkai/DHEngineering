@@ -56,16 +56,9 @@ export default function LineItemSupplierPicker({
     if (!treatmentTagId) return;
     if ((supplier.serviceTags || []).some(t => t.value === treatmentValue)) return;
     try {
-      const ids = [...(supplier.serviceTags || []).map(t => t.id), treatmentTagId];
-      await api.updateSupplier(supplier.id, {
-        name: supplier.name,
-        contactName: supplier.contactName ?? null,
-        contactPhone: supplier.contactPhone ?? null,
-        contactEmail: supplier.contactEmail ?? null,
-        address: supplier.address ?? null,
-        notes: supplier.notes ?? null,
-        serviceTagIds: ids
-      });
+      // Only the one service is sent — never the rest of the supplier from this
+      // screen's copy, which can be stale or have the contact details blanked.
+      await api.addSupplierServiceTag(supplier.id, treatmentTagId);
       if (onSuppliersChanged) onSuppliersChanged();
     } catch (err) {
       // A repeat of the same failure replaces the first rather than stacking under it.

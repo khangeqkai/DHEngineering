@@ -14,6 +14,10 @@ Any route guarded by a validator chain ending in `handleValidationErrors` (`midd
 
 Every non-GET/HEAD/OPTIONS request under `/api/jobcards/:id` is checked by `closedJobGuard` (`server/src/middleware/closedJob.js`, mounted once in `index.js` ahead of every job route) before that route ever runs: if the job is archived, the request is refused with 409 `{ error: 'This job is invoiced and closed. Unarchive it to make changes.', code: 'JOB_CLOSED' }` unless it's one of a short, named allow-list — `POST /:id/unarchive`, `DELETE /:id`, `POST /:id/time-entries/:entryId/stop`, `POST /:id/printed`, `POST /:id/saved`. See "One lock for a closed job" in `docs/notes/jobs-and-status.md` for the full rationale.
 
+## Suppliers
+
+`POST /suppliers/:id/service-tags` (management) with `{ tagId }` adds one treatment tag to a supplier and changes nothing else — the job screen's part supplier picker uses it instead of the full-record `PUT /suppliers/:id`, which would overwrite every contact field from the job screen's copy. Missing supplier or a tag that isn't a treatment → 404; already linked → 200 with the supplier, nothing written and no trail entry; otherwise one `update` trail entry with `serviceTags { from, to }`.
+
 ## Statistics
 
 Statistics endpoint: `GET /api/statistics` (management) — aggregates workshop throughput, on-time delivery rate, worker hours leaderboard (split by normal, OT1, OT2, and holiday tiers respecting each job's captured costing rules), equipment utilization (with multi-machine entry splitting), customer repeat work volume, delayed jobs bottleneck list, and QA level distribution. Accepts query params: `preset` (`this_month`|`last_month`|`last_3_months`|`last_6_months`|`this_year`|`last_year`|`all`|`custom`), `startDate`, `endDate`, `groupBy` (`month`|`year`). Hides invoiced financial totals for non-admin managers. Managed on the **Workshop Statistics** page (`/statistics`, `Statistics.jsx` + `components/statistics/` sub-views + `exportStatistics` in `excelExport.js`).

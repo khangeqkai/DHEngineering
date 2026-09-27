@@ -357,6 +357,7 @@ class ApiService {
   getSupplier(id) { return this.request(`/suppliers/${id}`); }
   createSupplier(data) { return this._post('/suppliers', data); }
   updateSupplier(id, data) { return this._put(`/suppliers/${id}`, data); }
+  addSupplierServiceTag(id, tagId) { return this._post(`/suppliers/${id}/service-tags`, { tagId }); }
   deactivateSupplier(id) { return this._post(`/suppliers/${id}/deactivate`); }
   activateSupplier(id) { return this._post(`/suppliers/${id}/activate`); }
 

@@ -235,6 +235,46 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
   }
 });
 
+// POST /api/suppliers/:id/service-tags - Add ONE service to a supplier (admin or manager)
+// The job screen uses this when a part picks a supplier that doesn't yet list the
+// part's treatment. It touches nothing else on the supplier: going through the
+// full-record PUT above meant re-sending every contact field from whatever copy the
+// job screen held, which reverted other people's edits (and, for a copy with the
+// contact details blanked, wiped them). Already linked → success, nothing written.
+router.post('/:id/service-tags', requireManagement, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tagId } = req.body || {};
+
+    const existing = findOr404(res, supplierQueries.getById.get(id), 'Supplier not found');
+    if (!existing) return;
+    const tag = typeof tagId === 'string' ? tagQueries.getById.get(tagId) : null;
+    if (!tag || tag.category !== 'treatment') {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    const oldTags = tagQueries.getForSupplier.all(id) || [];
+    if (oldTags.some(t => t.id === tag.id)) {
+      return res.json(getSupplierWithTags(id));
+    }
+
+    db.transaction(() => {
+      tagQueries.addToSupplier.run(id, tag.id);
+    })();
+
+    const supplier = getSupplierWithTags(id);
+    const names = (list) => list.map(t => t.name).sort().join(', ') || null;
+    recordHistory('supplier', id, 'update', req.user.userId, actorName(req), {
+      serviceTags: { from: names(oldTags), to: names(supplier.serviceTags) }
+    }, supplier);
+
+    res.json(supplier);
+  } catch (err) {
+    logger.error({ err }, 'Failed to add service to supplier');
+    res.status(500).json({ error: 'Failed to add service to supplier' });
+  }
+});
+
 // POST /api/suppliers/:id/deactivate - Archive supplier (admin or manager)
 // Suppliers are never permanently deleted: jobs snapshot a supplier's id/name onto
 // their treatments, so erasing a supplier would leave those jobs pointing at nothing.
