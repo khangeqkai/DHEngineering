@@ -9,6 +9,7 @@ const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences } = require('../middleware/validation');
 const { db, userQueries, jobNoteQueries, recordHistory, getSettings } = require('../db/database');
+const { diffFields } = require('../utils/historyChanges');
 const { isViaTunnel, clientIp } = require('../utils/homeAccess');
 
 const router = express.Router();
@@ -441,14 +442,15 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
       return res.status(400).json({ error: 'This is the only admin account. Make another person an admin first.' });
     }
 
-    // Track changes for audit (normalize empty string / null for comparison)
-    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
-    const changes = {};
-    if (name && normalizeEmpty(name) !== normalizeEmpty(user.name)) changes.name = { from: user.name, to: name };
-    if (email !== undefined && normalizeEmpty(email) !== normalizeEmpty(user.email)) {
-      changes.email = { from: user.email || null, to: email || null };
-    }
-    if (role && normalizeEmpty(role) !== normalizeEmpty(user.role)) changes.role = { from: user.role, to: role };
+    // Track changes for audit. Each field is only tracked when the caller actually
+    // sent it — name/role only when truthy (a falsy value here means "not provided",
+    // since neither can legitimately be cleared to blank), email whenever it's
+    // present at all (an empty string is a legitimate "clear the email" value).
+    const fieldsToTrack = [];
+    if (name) fieldsToTrack.push(['name', 'name', name]);
+    if (email !== undefined) fieldsToTrack.push(['email', 'email', email || null, user.email || null]);
+    if (role) fieldsToTrack.push(['role', 'role', role]);
+    const changes = diffFields(user, fieldsToTrack);
     if (password) changes.password = { from: '(hidden)', to: '(changed)' };
 
     // Validate password before any DB writes

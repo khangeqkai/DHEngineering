@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateCreateCompany, validateUpdateCompany } = require('../middleware/validation');
 const { companyQueries, contactQueries, recordHistory } = require('../db/database');
+const { diffFields } = require('../utils/historyChanges');
 const { ensureCompanyFolder, renameCompanyFolder } = require('../utils/folderCreation');
 const { toCompanyApi: toApiFormat, toContactApi } = require('./customer-format');
 
@@ -94,11 +95,11 @@ router.put('/:id', requireManagement, validateUpdateCompany, (req, res) => {
       });
     }
 
-    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
-    const changes = {};
-    if (normalizeEmpty(name) !== normalizeEmpty(existing.name)) changes.name = { from: existing.name, to: name };
-    if (normalizeEmpty(address) !== normalizeEmpty(existing.address)) changes.address = { from: existing.address, to: address || null };
-    if (normalizeEmpty(notes) !== normalizeEmpty(existing.notes)) changes.notes = { from: existing.notes, to: notes || null };
+    const changes = diffFields(existing, [
+      ['name', 'name', name],
+      ['address', 'address', address || null],
+      ['notes', 'notes', notes || null],
+    ]);
 
     companyQueries.update.run(name, address || null, notes || null, id);
     const company = companyQueries.getById.get(id);

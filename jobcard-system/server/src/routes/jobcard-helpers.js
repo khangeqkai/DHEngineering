@@ -11,6 +11,7 @@ const {
   tagQueries,
   getSettings
 } = require('../db/database');
+const { diffFields } = require('../utils/historyChanges');
 
 // Customer/contact fields hidden from non-admins. Used both when formatting a
 // job card and when sanitizing a job card's history so the two protections stay
@@ -256,8 +257,7 @@ function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
 }
 
 function buildChanges(existing, data) {
-  const changes = {};
-  const fieldsToTrack = [
+  const fieldSpecs = [
     ['status', 'status'],
     ['quality_level', 'qualityLevel'],
     ['priority', 'priority'],
@@ -281,16 +281,17 @@ function buildChanges(existing, data) {
     // actually picks up and records — "Standard → Premium" instead of two ids.
   ];
 
-  const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
-  for (const [dbField, reqField] of fieldsToTrack) {
-    if (data[reqField] === undefined) continue;
-    const value = dbField === 'is_repeat_job' ? (data[reqField] ? 1 : 0) : data[reqField];
-    if (normalizeEmpty(value) !== normalizeEmpty(existing[dbField])) {
-      changes[reqField] = { from: existing[dbField], to: value };
-    }
-  }
+  // Only fields the caller actually sent are compared at all — this is a partial
+  // update, so a field left out of `data` means "don't touch it", not "clear it".
+  const fieldsToTrack = fieldSpecs
+    .filter(([, reqField]) => data[reqField] !== undefined)
+    .map(([dbField, reqField]) => [
+      dbField,
+      reqField,
+      dbField === 'is_repeat_job' ? (data[reqField] ? 1 : 0) : data[reqField]
+    ]);
 
-  return changes;
+  return diffFields(existing, fieldsToTrack);
 }
 
 // Strip customer/contact fields out of a single history record for non-admins,

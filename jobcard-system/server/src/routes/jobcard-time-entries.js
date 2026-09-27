@@ -5,6 +5,7 @@ const logger = require('../utils/logger');
 const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
 const { validateStartTimer, validateManualTimeEntry } = require('../middleware/validation');
 const { db, timeEntryQueries, jobItemQueries, userQueries, recordHistory } = require('../db/database');
+const { blankEqual, diffFields } = require('../utils/historyChanges');
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
 const { discardIfAccidentalTap } = require('../utils/startTimerUndo');
 const {
@@ -510,8 +511,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     }
 
     // Build proper diff of changed fields
-    const changes = {};
-    const fieldsToTrack = [
+    const changes = diffFields(existing, [
       ['machine_number', 'machineNumber', data.machineNumber || null],
       ['qty', 'qty', wholeQty(data.qty)],
       ['description', 'description', data.description || null],
@@ -524,20 +524,14 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       ['equipment_checks_comments', 'equipmentChecksComments', equipmentChecksComments],
       ['start_time', 'startTime', startTime],
       ['end_time', 'endTime', endTime],
-    ];
-    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
-    for (const [dbField, changeKey, newValue] of fieldsToTrack) {
-      if (normalizeEmpty(newValue) !== normalizeEmpty(existing[dbField])) {
-        changes[changeKey] = { from: existing[dbField], to: newValue };
-      }
-    }
+    ]);
 
     // The entry's line is decided by its stable id, not its position number, so only
     // log a line change when it actually points at a different line. Named by
     // description, not number — item_number is a sort order the server owns and
     // isn't stable enough to identify a part in the trail (nothing renumbers on
     // delete, so two jobs' history could both say "part 2" about different parts).
-    if (normalizeEmpty(itemId) !== normalizeEmpty(existing.item_id)) {
+    if (!blankEqual(itemId, existing.item_id)) {
       const jobItems = jobItemQueries.getByJobcard.all(id);
       const oldItem = jobItems.find(it => it.id === existing.item_id);
       const newItem = itemId ? jobItems.find(it => it.id === itemId) : null;

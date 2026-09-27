@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateCreateContact, validateUpdateContact } = require('../middleware/validation');
 const { companyQueries, contactQueries, recordHistory } = require('../db/database');
+const { diffFields } = require('../utils/historyChanges');
 const { toContactApi: toApiFormat } = require('./customer-format');
 
 const router = express.Router();
@@ -55,11 +56,11 @@ router.put('/:id', requireManagement, validateUpdateContact, (req, res) => {
     const existing = contactQueries.getById.get(id);
     if (!existing) return res.status(404).json({ error: 'Contact not found' });
 
-    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
-    const changes = {};
-    if (normalizeEmpty(contactName) !== normalizeEmpty(existing.contact_name)) changes.contactName = { from: existing.contact_name, to: contactName || null };
-    if (normalizeEmpty(phone) !== normalizeEmpty(existing.phone)) changes.phone = { from: existing.phone, to: phone || null };
-    if (normalizeEmpty(email) !== normalizeEmpty(existing.email)) changes.email = { from: existing.email, to: email || null };
+    const changes = diffFields(existing, [
+      ['contact_name', 'contactName', contactName || null],
+      ['phone', 'phone', phone || null],
+      ['email', 'email', email || null],
+    ]);
 
     contactQueries.update.run(contactName || null, phone || null, email || null, id);
     const contact = contactQueries.getById.get(id);

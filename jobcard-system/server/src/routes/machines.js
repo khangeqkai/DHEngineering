@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { machineQueries, timeEntryQueries, recordHistory } = require('../db/database');
 const { authenticate, isManagement } = require('../middleware/auth');
+const { diffFields } = require('../utils/historyChanges');
 const { parseMachineTokens } = require('./statistics-helpers');
 
 const router = express.Router();
@@ -126,18 +127,11 @@ router.put('/:id', (req, res) => {
     const machine = machineQueries.getById.get(id);
 
     // Build proper diff of changed fields
-    const changes = {};
-    const fieldsToTrack = [
+    const changes = diffFields(existing, [
       ['machine_number', 'machineNumber', machineNumber],
       ['name', 'name', name || ''],
       ['description', 'description', description || ''],
-    ];
-    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
-    for (const [dbField, changeKey, newValue] of fieldsToTrack) {
-      if (normalizeEmpty(newValue) !== normalizeEmpty(existing[dbField])) {
-        changes[changeKey] = { from: existing[dbField], to: newValue };
-      }
-    }
+    ]);
 
     if (Object.keys(changes).length > 0) {
       recordHistory('machine', id, 'update', req.user.userId, req.user.name || req.user.username,

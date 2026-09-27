@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
 const { validateCreateSupplier, validateUpdateSupplier } = require('../middleware/validation');
 const { db, supplierQueries, tagQueries, jobItemQueries, recordHistory } = require('../db/database');
+const { diffFields } = require('../utils/historyChanges');
 
 const router = express.Router();
 
@@ -184,14 +185,14 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
     const oldTags = tagQueries.getForSupplier.all(id) || [];
     const oldTagIds = oldTags.map(t => t.id).sort().join(',');
     const newTagIds = Array.isArray(serviceTagIds) ? [...serviceTagIds].sort().join(',') : oldTagIds;
-    const normalizeEmpty = v => (v === null || v === undefined || v === '') ? '' : v;
-    const changes = {};
-    if (normalizeEmpty(name) !== normalizeEmpty(existing.name)) changes.name = { from: existing.name, to: name };
-    if (normalizeEmpty(contactName) !== normalizeEmpty(existing.contact_name)) changes.contactName = { from: existing.contact_name, to: contactName || null };
-    if (normalizeEmpty(contactPhone) !== normalizeEmpty(existing.contact_phone)) changes.contactPhone = { from: existing.contact_phone, to: contactPhone || null };
-    if (normalizeEmpty(contactEmail) !== normalizeEmpty(existing.contact_email)) changes.contactEmail = { from: existing.contact_email, to: contactEmail || null };
-    if (normalizeEmpty(address) !== normalizeEmpty(existing.address)) changes.address = { from: existing.address, to: address || null };
-    if (normalizeEmpty(notes) !== normalizeEmpty(existing.notes)) changes.notes = { from: existing.notes, to: notes || null };
+    const changes = diffFields(existing, [
+      ['name', 'name', name],
+      ['contact_name', 'contactName', contactName || null],
+      ['contact_phone', 'contactPhone', contactPhone || null],
+      ['contact_email', 'contactEmail', contactEmail || null],
+      ['address', 'address', address || null],
+      ['notes', 'notes', notes || null],
+    ]);
     if (newTagIds !== oldTagIds) {
       const oldTagNames = oldTags.map(t => t.name).sort().join(', ') || null;
       const allTags = tagQueries.getByCategoryIncludeArchived.all('treatment') || [];
