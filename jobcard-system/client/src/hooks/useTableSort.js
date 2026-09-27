@@ -1,8 +1,14 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 
 export default function useTableSort(data, defaultSortKey = null, defaultSortOrder = 'asc', columns = []) {
   const [sortKey, setSortKey] = useState(defaultSortKey);
   const [sortOrder, setSortOrder] = useState(defaultSortOrder);
+  // Callers build their column list inline, so it is a new array on every render.
+  // Read it through a ref rather than depending on it: re-sorting on every render
+  // hands the table's caller a fresh array each time (onVisibleRowsChange), the
+  // caller stores it, re-renders, and the page locks up in an endless loop.
+  const columnsRef = useRef(columns);
+  columnsRef.current = columns;
 
   const handleSort = useCallback((key) => {
     if (sortKey === key) {
@@ -18,7 +24,7 @@ export default function useTableSort(data, defaultSortKey = null, defaultSortOrd
 
     // A column can say "sort me by this instead" (e.g. a status pill sorting by
     // workflow order rather than its label) by declaring sortValue(row).
-    const sortCol = columns.find(c => c.key === sortKey);
+    const sortCol = columnsRef.current.find(c => c.key === sortKey);
     const getValue = sortCol?.sortValue ? sortCol.sortValue : (row) => row[sortKey];
 
     return [...data].sort((a, b) => {
@@ -54,7 +60,7 @@ export default function useTableSort(data, defaultSortKey = null, defaultSortOrd
 
       return sortOrder === 'desc' ? -result : result;
     });
-  }, [data, sortKey, sortOrder, columns]);
+  }, [data, sortKey, sortOrder]);
 
   return { sortKey, sortOrder, handleSort, sortedData };
 }
