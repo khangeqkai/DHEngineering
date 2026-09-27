@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
-const { tagQueries, recordHistory } = require('../db/database');
+const { tagQueries, recordHistory, actorName } = require('../db/database');
 
 const router = express.Router();
 
@@ -122,7 +122,7 @@ router.post('/', requireManagement, (req, res) => {
         if (trimmedName !== existing.name) {
           restoreChanges.name = { from: existing.name, to: trimmedName };
         }
-        recordHistory('tag', existing.id, 'unarchive', req.user.userId, req.user.name || req.user.username, restoreChanges);
+        recordHistory('tag', existing.id, 'unarchive', req.user.userId, actorName(req), restoreChanges);
         return res.status(200).json(formatTag(restored));
       }
       return res.status(200).json(formatTag(existing));
@@ -135,7 +135,7 @@ router.post('/', requireManagement, (req, res) => {
     tagQueries.create.run(id, category, trimmedName, value, sortOrder);
 
     const tag = tagQueries.getById.get(id);
-    recordHistory('tag', id, 'create', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('tag', id, 'create', req.user.userId, actorName(req), {
       name: { from: null, to: tag.name },
       category: { from: null, to: tag.category }
     });
@@ -206,7 +206,7 @@ router.put('/:id', requireManagement, (req, res) => {
     }
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('tag', id, 'update', req.user.userId, req.user.name || req.user.username, changes);
+      recordHistory('tag', id, 'update', req.user.userId, actorName(req), changes);
     }
 
     res.json(formatTag(tagQueries.getById.get(id)));
@@ -233,7 +233,7 @@ router.delete('/:id', requireManagement, (req, res) => {
     }
 
     tagQueries.archive.run(id);
-    recordHistory('tag', id, 'archive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('tag', id, 'archive', req.user.userId, actorName(req), {
       status: { from: 'Active', to: 'Archived' }
     });
 
@@ -255,7 +255,7 @@ router.post('/:id/activate', requireManagement, (req, res) => {
     }
 
     tagQueries.unarchive.run(id);
-    recordHistory('tag', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('tag', id, 'unarchive', req.user.userId, actorName(req), {
       status: { from: 'Archived', to: 'Active' }
     });
 

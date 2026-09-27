@@ -8,7 +8,7 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, ALL_ROLES } = require('../middleware/auth');
 const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences, PIN_REGEX, PIN_MESSAGE } = require('../middleware/validation');
-const { db, userQueries, jobNoteQueries, recordHistory, getSettings } = require('../db/database');
+const { db, userQueries, jobNoteQueries, recordHistory, actorName, getSettings } = require('../db/database');
 const { diffFields } = require('../utils/historyChanges');
 const { isViaTunnel, clientIp } = require('../utils/homeAccess');
 
@@ -213,7 +213,7 @@ router.post('/login', validateLogin, async (req, res) => {
 router.post('/logout', authenticate, (req, res) => {
   try {
     userQueries.updateSessionToken.run(null, req.user.userId);
-    recordHistory('user', req.user.userId, 'logout', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('user', req.user.userId, 'logout', req.user.userId, actorName(req), {
       username: { from: req.user.username, to: null }
     });
     res.json({ success: true });
@@ -367,7 +367,7 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
     );
 
     // Record in history
-    recordHistory('user', userId, 'create', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('user', userId, 'create', req.user.userId, actorName(req), {
       username: { from: null, to: username },
       role: { from: null, to: role || 'user' },
       name: { from: null, to: name }
@@ -491,7 +491,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
 
     // Record in history
     if (Object.keys(changes).length > 0) {
-      recordHistory('user', id, 'update', req.user.userId, req.user.name || req.user.username, changes, { username: user.username, name: user.name });
+      recordHistory('user', id, 'update', req.user.userId, actorName(req), changes, { username: user.username, name: user.name });
     }
 
     const updatedUser = userQueries.getById.get(id);
@@ -534,7 +534,7 @@ router.post('/users/:id/deactivate', authenticate, requireManagement, (req, res)
     // blocked at next login. (The per-request active check also covers this.)
     userQueries.updateSessionToken.run(null, id);
 
-    recordHistory('user', id, 'archive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('user', id, 'archive', req.user.userId, actorName(req), {
       status: { from: 'Active', to: 'Archived' }
     }, { username: user.username, name: user.name });
 
@@ -562,7 +562,7 @@ router.post('/users/:id/activate', authenticate, requireManagement, (req, res) =
 
     userQueries.activate.run(id);
 
-    recordHistory('user', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('user', id, 'unarchive', req.user.userId, actorName(req), {
       status: { from: 'Archived', to: 'Active' }
     }, { username: user.username, name: user.name });
 
@@ -614,7 +614,7 @@ router.put('/change-password', authenticate, async (req, res) => {
       { expiresIn: config.jwt.expiresIn }
     );
 
-    recordHistory('user', req.user.userId, 'update', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('user', req.user.userId, 'update', req.user.userId, actorName(req), {
       password: { from: '(hidden)', to: '(changed)' }
     }, { username: user.username, name: user.name });
 

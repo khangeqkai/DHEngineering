@@ -1,7 +1,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
-const { machineQueries, timeEntryQueries, recordHistory } = require('../db/database');
+const { machineQueries, timeEntryQueries, recordHistory, actorName } = require('../db/database');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateCreateMachine, validateUpdateMachine } = require('../middleware/validation');
 const { diffFields } = require('../utils/historyChanges');
@@ -56,7 +56,7 @@ router.post('/', requireManagement, validateCreateMachine, (req, res) => {
     const machine = machineQueries.getById.get(id);
 
     const created = toResponseFormat(machine);
-    recordHistory('machine', id, 'create', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('machine', id, 'create', req.user.userId, actorName(req), {
       machineNumber: { from: null, to: created.machineNumber },
       name: { from: null, to: created.name }
     });
@@ -119,7 +119,7 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
     ]);
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('machine', id, 'update', req.user.userId, req.user.name || req.user.username,
+      recordHistory('machine', id, 'update', req.user.userId, actorName(req),
         changes, toResponseFormat(machine));
     }
 
@@ -145,7 +145,7 @@ router.delete('/:id', requireManagement, (req, res) => {
 
     machineQueries.deactivate.run(id);
 
-    recordHistory('machine', id, 'archive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('machine', id, 'archive', req.user.userId, actorName(req), {
       status: { from: 'Active', to: 'Archived' }
     }, toResponseFormat(existing));
 
@@ -176,7 +176,7 @@ router.post('/:id/activate', requireManagement, (req, res) => {
 
     machineQueries.activate.run(id);
 
-    recordHistory('machine', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('machine', id, 'unarchive', req.user.userId, actorName(req), {
       status: { from: 'Archived', to: 'Active' }
     }, toResponseFormat(existing));
 

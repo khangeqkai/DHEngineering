@@ -12,7 +12,7 @@ const {
   validateItemDescriptions,
   validateItemQuantities
 } = require('../middleware/validation');
-const { jobcardQueries, jobItemQueries, timeEntryQueries, recordHistory } = require('../db/database');
+const { jobcardQueries, jobItemQueries, timeEntryQueries, recordHistory, actorName } = require('../db/database');
 const { serializeTreatments, parseTreatments, computeAttachmentWarnings } = require('./jobcard-helpers');
 const { itemSummary, describePart } = require('./jobcard-audit-text');
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
@@ -126,7 +126,7 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
     const statusChange = syncStatusToWork(id, req.user);
 
     const summary = itemSummary(item.qty, item.description, item.jobType, item.material, item.treatments, item.drawingsType, item.customerProperty);
-    recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
       [`part ${label} added`]: { from: null, to: summary },
       ...(statusChange ? { status: statusChange } : {})
     });
@@ -206,7 +206,7 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
     const statusChange = syncStatusToWork(id, req.user);
 
     if (beforeSummary !== afterSummary || statusChange) {
-      recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, {
+      recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
         ...(beforeSummary !== afterSummary ? { [`part ${label}`]: { from: beforeSummary, to: afterSummary } } : {}),
         ...(statusChange ? { status: statusChange } : {})
       });
@@ -273,7 +273,7 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
     // history entry, the same way the time routes do.
     const statusChange = syncStatusToWork(id, req.user);
 
-    recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
       [`part ${label} removed`]: { from: summary, to: null },
       ...(statusChange ? { status: statusChange } : {})
     });

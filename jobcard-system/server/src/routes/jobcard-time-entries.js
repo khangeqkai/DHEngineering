@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
 const { validateStartTimer, validateManualTimeEntry } = require('../middleware/validation');
-const { db, timeEntryQueries, jobItemQueries, userQueries, recordHistory } = require('../db/database');
+const { db, timeEntryQueries, jobItemQueries, userQueries, recordHistory, actorName } = require('../db/database');
 const { blankEqual, diffFields } = require('../utils/historyChanges');
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
 const { discardIfAccidentalTap } = require('../utils/startTimerUndo');
@@ -135,7 +135,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
     // start); name the worker as well when it isn't the admin's own timer, so the
     // timeline reads "started for <worker>".
     const targetWorker = isSelf ? null : userQueries.getById.get(targetWorkerId);
-    recordHistory('jobcard', id, 'start_timer', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'start_timer', req.user.userId, actorName(req), {
       timer: { from: null, to: startTime },
       // Named by description, not position — item_number is a sort order the
       // server owns and isn't stable enough to identify a part in the trail.
@@ -191,7 +191,7 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
     // fold any change into the stop-timer entry so it reads as one event.
     const statusChange = syncStatusToWork(id, req.user);
 
-    recordHistory('jobcard', id, 'stop_timer', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'stop_timer', req.user.userId, actorName(req), {
       endTime: { from: null, to: endTime },
       ...(statusChange ? { status: statusChange } : {})
     }, { timeEntryId: entryId, startTime: existing.start_time });
@@ -320,7 +320,7 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
 
     const workerRecord = userQueries.getById.get(workerId);
     const workerName = workerRecord.name || workerRecord.username;
-    recordHistory('jobcard', id, 'add_time_entry', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'add_time_entry', req.user.userId, actorName(req), {
       worker: { from: null, to: workerName },
       item: { from: null, to: itemRecord ? itemRecord.description : null },
       machineNumber: { from: null, to: data.machineNumber || null },
@@ -553,7 +553,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     }
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('jobcard', id, 'update_time_entry', req.user.userId, req.user.name || req.user.username, changes, {
+      recordHistory('jobcard', id, 'update_time_entry', req.user.userId, actorName(req), changes, {
         timeEntryId: entryId
       });
     }
@@ -605,7 +605,7 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
     };
     if (statusChange) changes.status = statusChange;
 
-    recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, req.user.name || req.user.username, changes);
+    recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, actorName(req), changes);
 
     res.json({ success: true });
   } catch (err) {

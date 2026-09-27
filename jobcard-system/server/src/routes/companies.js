@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateCreateCompany, validateUpdateCompany } = require('../middleware/validation');
-const { companyQueries, contactQueries, recordHistory } = require('../db/database');
+const { companyQueries, contactQueries, recordHistory, actorName } = require('../db/database');
 const { diffFields } = require('../utils/historyChanges');
 const { ensureCompanyFolder, renameCompanyFolder } = require('../utils/folderCreation');
 const { toCompanyApi: toApiFormat, toContactApi } = require('./customer-format');
@@ -66,7 +66,7 @@ router.post('/', requireManagement, validateCreateCompany, (req, res) => {
     ensureCompanyFolder(id, name);
 
     const company = companyQueries.getById.get(id);
-    recordHistory('company', id, 'create', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('company', id, 'create', req.user.userId, actorName(req), {
       name: { from: null, to: company.name }
     });
 
@@ -112,7 +112,7 @@ router.put('/:id', requireManagement, validateUpdateCompany, (req, res) => {
     }
 
     if (Object.keys(changes).length > 0) {
-      recordHistory('company', id, 'update', req.user.userId, req.user.name || req.user.username, changes, toApiFormat(company));
+      recordHistory('company', id, 'update', req.user.userId, actorName(req), changes, toApiFormat(company));
     }
 
     res.json(toApiFormat(company));
@@ -135,7 +135,7 @@ router.post('/:id/archive', requireManagement, (req, res) => {
     companyQueries.archive.run(id);
     const company = companyQueries.getById.get(id);
 
-    recordHistory('company', id, 'archive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('company', id, 'archive', req.user.userId, actorName(req), {
       status: { from: 'Active', to: 'Archived' }
     });
 
@@ -157,7 +157,7 @@ router.post('/:id/unarchive', requireManagement, (req, res) => {
     companyQueries.unarchive.run(id);
     const company = companyQueries.getById.get(id);
 
-    recordHistory('company', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('company', id, 'unarchive', req.user.userId, actorName(req), {
       status: { from: 'Archived', to: 'Active' }
     });
 

@@ -14,7 +14,8 @@ const {
   getAssigneesForJobcards,
   getLatestNotesForJobcards,
   historyQueries,
-  recordHistory
+  recordHistory,
+  actorName
 } = require('../db/database');
 const { db } = require('../db/connection');
 const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
@@ -189,7 +190,7 @@ router.post('/:id/assignees/self', authenticate, (req, res) => {
     const fromNames = before.map(a => a.user_name).join(', ') || 'none';
     const toNames = after.map(a => a.user_name).join(', ') || 'none';
 
-    recordHistory('jobcard', id, 'self_assign', userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'self_assign', userId, actorName(req), {
       assignees: { from: fromNames, to: toNames }
     });
 
@@ -228,7 +229,7 @@ router.delete('/:id/assignees/self', authenticate, (req, res) => {
     const fromNames = before.map(a => a.user_name).join(', ') || 'none';
     const toNames = after.map(a => a.user_name).join(', ') || 'none';
 
-    recordHistory('jobcard', id, 'self_unassign', userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'self_unassign', userId, actorName(req), {
       assignees: { from: fromNames, to: toNames }
     });
 
@@ -289,7 +290,7 @@ router.put('/:id/assignees/:userId', authenticate, requireManagement, (req, res)
     const fromNames = before.map(a => a.user_name).join(', ') || 'none';
     const toNames = after.map(a => a.user_name).join(', ') || 'none';
 
-    recordHistory('jobcard', id, 'assign', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'assign', req.user.userId, actorName(req), {
       assignees: { from: fromNames, to: toNames }
     });
 
@@ -332,7 +333,7 @@ router.delete('/:id/assignees/:userId', authenticate, requireManagement, (req, r
     const fromNames = before.map(a => a.user_name).join(', ') || 'none';
     const toNames = after.map(a => a.user_name).join(', ') || 'none';
 
-    recordHistory('jobcard', id, 'unassign', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'unassign', req.user.userId, actorName(req), {
       assignees: { from: fromNames, to: toNames }
     });
 
@@ -407,7 +408,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
       // number; a later settings change can't move it.
     }
 
-    recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, changes, null);
+    recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), changes, null);
 
     const updated = jobcardQueries.getById.get(id);
     const items = jobItemQueries.getByJobcard.all(id);
@@ -437,7 +438,7 @@ router.post('/:id/unarchive', authenticate, requireManagement, (req, res) => {
     // Un-filing also resets the status back to OPEN so the job returns as a
     // normal working job, never a back-in-the-list-but-still-INVOICED limbo.
     jobcardQueries.unarchive.run(req.user.userId, id);
-    recordHistory('jobcard', id, 'unarchive', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'unarchive', req.user.userId, actorName(req), {
       archived: { from: true, to: false },
       invoicedDate: { from: existing.invoiced_date, to: null },
       status: { from: existing.status, to: 'OPEN' }
@@ -490,7 +491,7 @@ router.delete('/:id', authenticate, requireAdmin, (req, res) => {
     }
 
     // Record deletion with snapshot
-    recordHistory('jobcard', id, 'delete', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'delete', req.user.userId, actorName(req), {
       jobNumber: { from: existing.job_number, to: null },
       status: { from: existing.status, to: null }
     });

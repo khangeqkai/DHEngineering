@@ -19,6 +19,7 @@ const {
   qaLevelQueries,
   qaLevelTemplateQueries,
   recordHistory,
+  actorName,
   getSettings
 } = require('../db/database');
 const { db } = require('../db/connection');
@@ -128,7 +129,7 @@ router.post('/',
 
       qaLevelQueries.create.run(id, name.trim(), nameLower, requiresReturnedForm);
 
-      recordHistory('qa_level', id, 'create', req.user.userId, req.user.name || req.user.username, {
+      recordHistory('qa_level', id, 'create', req.user.userId, actorName(req), {
         name: { from: null, to: name.trim() },
         requiresReturnedForm: { from: null, to: requiresReturnedForm ? 'Yes' : 'No' }
       });
@@ -236,7 +237,7 @@ router.put('/:id',
       }
 
       if (Object.keys(changes).length > 0) {
-        recordHistory('qa_level', id, 'update', req.user.userId, req.user.name || req.user.username, changes);
+        recordHistory('qa_level', id, 'update', req.user.userId, actorName(req), changes);
       }
 
       const updated = qaLevelQueries.getById.get(id);
@@ -285,7 +286,7 @@ router.delete('/:id', authenticate, requireManagement, (req, res) => {
 
     qaLevelQueries.delete.run(id);
 
-    recordHistory('qa_level', id, 'delete', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('qa_level', id, 'delete', req.user.userId, actorName(req), {
       name: { from: existing.name, to: null }
     });
 
@@ -376,7 +377,7 @@ router.post('/:id/templates', authenticate, requireManagement, (req, res) => {
 
     qaLevelTemplateQueries.create.run(templateId, id, sanitizedFileName, finalDisplayName);
 
-    recordHistory('qa_level', id, 'add_template', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('qa_level', id, 'add_template', req.user.userId, actorName(req), {
       template: { from: null, to: finalDisplayName }
     });
 
@@ -447,7 +448,7 @@ router.delete('/:id/templates/:tid', authenticate, requireManagement, (req, res)
 
     qaLevelTemplateQueries.delete.run(tid);
 
-    recordHistory('qa_level', id, 'remove_template', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('qa_level', id, 'remove_template', req.user.userId, actorName(req), {
       template: { from: template.display_name, to: null }
     });
 

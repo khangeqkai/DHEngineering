@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
-const { jobNoteQueries, recordHistory } = require('../db/database');
+const { jobNoteQueries, recordHistory, actorName } = require('../db/database');
 
 const router = express.Router();
 
@@ -41,11 +41,11 @@ router.post('/:id/notes', authenticate, [
       noteId,
       id,
       req.user.userId,
-      req.user.name || req.user.username,
+      actorName(req),
       text.trim()
     );
 
-    recordHistory('jobcard', id, 'add_note', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'add_note', req.user.userId, actorName(req), {
       note: { from: null, to: text.trim() }
     }, null);
 
@@ -78,7 +78,7 @@ router.delete('/:id/notes/:noteId', authenticate, requireManagement, (req, res) 
       return res.status(403).json({ error: 'Note does not belong to this job card' });
     }
 
-    recordHistory('jobcard', id, 'delete_note', req.user.userId, req.user.name || req.user.username, {
+    recordHistory('jobcard', id, 'delete_note', req.user.userId, actorName(req), {
       note: { from: existing.text, to: null },
       'note author': { from: existing.user_name, to: null }
     }, null);
