@@ -17,8 +17,7 @@ const {
   recordHistory
 } = require('../db/database');
 const { db } = require('../db/connection');
-const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
-const { formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings } = require('./jobcard-helpers');
+const { formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
 const jobcardMutationsRoutes = require('./jobcard-mutations');
 const jobcardPrintoutRoutes = require('./jobcard-printout');
 const jobcardItemsRoutes = require('./jobcard-items');
@@ -368,44 +367,28 @@ router.patch('/:id/status', authenticate, (req, res) => {
     // the job and resets its status back to OPEN. An already-archived job never
     // reaches this line: closedJobGuard (mounted ahead of every /:id route) has
     // already refused any write to it except the allow-listed ones.
-    const isInvoicingTransition = status === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
 
-    // A running timer, or a just-stopped one whose form isn't saved yet, can't be
-    // confirmed away like a missing attachment can — refuse before any write, and
-    // before the soft attachment checkpoint below.
-    const timeBlock = isInvoicingTransition ? invoiceBlockedByTime(id) : null;
-    if (timeBlock) {
-      return res.status(409).json({ error: timeBlock });
+    // Shared invoicing step (see jobcard-helpers.js) — the hard running-timer
+    // refusal and the soft missing-attachments checkpoint, both before any write.
+    // This route never changes the QA level, so the check runs against the
+    // job's current one.
+    const invoicing = checkInvoicing(existing, status, existing.qa_level_id, req.body.confirmMissingAttachments);
+    if (invoicing.refusal) {
+      return res.status(invoicing.refusal.status).json(invoicing.refusal.body);
     }
-
-    // Soft close-out checkpoint: when invoicing (which also archives) and files
-    // were declared but never attached, stop and report the gaps instead of
-    // writing — unless the caller has already confirmed "invoice anyway".
-    if (isInvoicingTransition && req.body.confirmMissingAttachments !== true) {
-      const items = jobItemQueries.getByJobcard.all(id);
-      const warnings = computeAttachmentWarnings(id, items, existing.qa_level_id);
-      if (warnings.hasAny) {
-        return res.status(409).json({ error: 'MISSING_ATTACHMENTS', attachmentWarnings: warnings });
-      }
-    }
+    const { shouldArchive, invoicedDate } = invoicing;
 
     const changes = { status: { from: existing.status, to: status } };
-    const invoicedDate = isInvoicingTransition ? new Date().toISOString() : null;
 
     // Status and the filing-away must land together (same as the PUT route): a failure
     // between the two left a job reading INVOICED while still sitting in the open list.
     db.transaction(() => {
       jobcardQueries.updateStatus.run(status, req.user.userId, id);
-      if (isInvoicingTransition) jobcardQueries.archive.run(invoicedDate, req.user.userId, id);
-    })();
-
-    if (isInvoicingTransition) {
-      changes.archived = { from: false, to: true };
-      changes.invoicedDate = { from: null, to: invoicedDate };
+      Object.assign(changes, applyInvoicingArchive(shouldArchive, invoicedDate, req.user.userId, id));
       // Invoicing just files the job away — no costing snapshot needed. The job owns its
       // own overtime rules and rate, so its costing always recomputes to the billed
       // number; a later settings change can't move it.
-    }
+    })();
 
     recordHistory('jobcard', id, 'update', req.user.userId, req.user.name || req.user.username, changes, null);
 

@@ -11,6 +11,7 @@ const {
   tagQueries,
   getSettings
 } = require('../db/database');
+const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
 
 // Customer/contact fields hidden from non-admins. Used both when formatting a
 // job card and when sanitizing a job card's history so the two protections stay
@@ -89,7 +90,7 @@ function itemFileDisplayNames(names, itemId) {
 //   - a QA level set but no returned (timestamp-named) form in QA Forms
 // Items may be DB rows (snake_case) or formatted/request items (camelCase).
 // No-ops safely (hasAny:false) when job-folders storage isn't configured.
-function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flagUnsaved = false) {
+function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null) {
   const { listCategoryFileNames, partFileCode } = require('./jobcard-files');
   const settings = getSettings();
   if (!settings.job_folders_base || !settings.job_folders_base.trim()) {
@@ -145,20 +146,11 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
   normItems.forEach((it) => {
     // Only a saved part has a permanent "item:" id; an unsaved part (just added
     // in this same edit) has no folder code, so no file can be matched to it yet.
-    if (!partFileCode(it.id)) {
-      // In a live scan, skip it — flagging a part you can't attach to yet is a
-      // dead end; it'll be checked normally on the next save once it has an id.
-      // At the invoice gate (flagUnsaved), a declared drawing/customer-property
-      // on a brand-new part is genuinely unattached, so it must be flagged or the
-      // job could be invoiced with a missing file no warning ever caught.
-      if (!flagUnsaved) return;
-      const missingDrawing = declaresValue(it.drawings);
-      const missingCustomerProperty = declaresValue(it.customerProperty);
-      if (missingDrawing || missingCustomerProperty) {
-        flagged.push({ itemNumber: it.itemNumber, position: it.position, missingDrawing, missingCustomerProperty });
-      }
-      return;
-    }
+    // Every caller — including the invoice-time check — passes this job's
+    // current, already-saved items (jobItemQueries.getByJobcard.all), so this is
+    // never actually hit in practice; skip it rather than flag a part nothing
+    // can be matched to yet, and it'll be checked normally on the next read.
+    if (!partFileCode(it.id)) return;
     const missingDrawing = declaresValue(it.drawings) && !hasItemFile(jobFileNames, it.id);
     const missingCustomerProperty = declaresValue(it.customerProperty) && !hasItemFile(customerPropertyNames, it.id);
     if (missingDrawing || missingCustomerProperty) {
@@ -194,6 +186,61 @@ function computeAttachmentWarnings(jobcardId, items = [], qaLevelId = null, flag
   }
 
   return { items: flagged, missingQaForms, hasAny: flagged.length > 0 || missingQaForms, attachedByItem };
+}
+
+// ─── Invoicing (shared by PUT /jobcards/:id and PATCH /jobcards/:id/status) ───
+// A job's status moving to INVOICED also files it away (archived + invoicedDate)
+// — see docs/notes/jobs-and-status.md. Both routes that can make this transition
+// run the exact same checks, in the same order, before any write; this is that
+// one shared step. `qaLevelId` is the level to check attachments against — the
+// full job save passes its just-validated new value (a QA level can change in
+// the same request), the status-only route passes the job's unchanged current
+// value. Returns `refusal` (a `{ status, body }` to send as-is) when the
+// transition must be blocked, otherwise `shouldArchive`/`invoicedDate` for the
+// caller to act on inside its own write transaction via applyInvoicingArchive.
+function checkInvoicing(existing, newStatus, qaLevelId, confirmMissingAttachments) {
+  const shouldArchive = newStatus === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
+  if (!shouldArchive) {
+    return { shouldArchive: false, invoicedDate: null, refusal: null };
+  }
+
+  // Hard block: a running timer, or a just-stopped one whose form isn't saved
+  // yet, can't be confirmed away like a missing attachment can — refuse before
+  // any write, and before the soft attachment checkpoint below.
+  const timeBlock = invoiceBlockedByTime(existing.id);
+  if (timeBlock) {
+    return { shouldArchive, invoicedDate: null, refusal: { status: 409, body: { error: timeBlock } } };
+  }
+
+  // Soft close-out checkpoint: stop before any write and report the gaps
+  // instead of writing — unless the caller already confirmed "invoice anyway".
+  if (confirmMissingAttachments !== true) {
+    const items = jobItemQueries.getByJobcard.all(existing.id);
+    const warnings = computeAttachmentWarnings(existing.id, items, qaLevelId);
+    if (warnings.hasAny) {
+      return {
+        shouldArchive,
+        invoicedDate: null,
+        refusal: { status: 409, body: { error: 'MISSING_ATTACHMENTS', attachmentWarnings: warnings } }
+      };
+    }
+  }
+
+  return { shouldArchive, invoicedDate: new Date().toISOString(), refusal: null };
+}
+
+// Writes the archive row — call from inside the caller's own write transaction,
+// in the same position the inline `if (shouldArchive) jobcardQueries.archive.run(...)`
+// used to sit — and returns the history change entries to fold into the
+// caller's own `changes` object. No-ops (and returns {}) when this update isn't
+// an invoicing transition.
+function applyInvoicingArchive(shouldArchive, invoicedDate, userId, jobcardId) {
+  if (!shouldArchive) return {};
+  jobcardQueries.archive.run(invoicedDate, userId, jobcardId);
+  return {
+    archived: { from: false, to: true },
+    invoicedDate: { from: null, to: invoicedDate }
+  };
 }
 
 function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
@@ -536,4 +583,4 @@ function createRelatedRecords(jobcardId, data) {
 // utils/qaTemplateProvisioning.js — extracted out of this file (a straight
 // lift, no behaviour change) because it was getting long.
 
-module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, buildJobCardView, computeAttachmentWarnings, tagName, friendlyTagList };
+module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, buildJobCardView, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive, tagName, friendlyTagList };
