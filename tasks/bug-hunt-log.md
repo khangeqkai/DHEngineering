@@ -144,3 +144,46 @@ _None yet._
 | 8 | Files, printing, QA forms, Excel | 21 | 11 | 9 | 2 |
 | 9 | Job list, search, activity | 19 | 12 | 10 (2 carried) | 0 |
 | 10 | Delivery + speed | 18 | 8 (+3 carried) | 9 | 1 |
+
+## Test these by hand before delivery
+Nothing here has an automatic test, so click through these once on a real PC. Each line is a screen the hunt changed.
+
+**Pricing (admin)**
+1. Change a price, pull the network cable, close the job → you're warned the price isn't saved.
+2. Two admins open the same job; each changes a different price → both prices stick.
+3. Invoice a job, reopen it → Costing is locked but "What this job used" still opens.
+
+**Job screen**
+4. Add three parts, remove the first → the rest renumber 1, 2.
+5. Tick then untick Repeat Job → the previous-job number is gone from the printout.
+6. Type an existing customer's exact name without clicking the suggestion → it uses that customer.
+7. Press Create with empty boxes → the boxes are marked, no pop-up list.
+8. Invoice a job from its own screen → it locks straight away.
+
+**Timers and logged work**
+9. Stop a timer, save 12 pieces, then edit only the finish time → it saves.
+10. Add work by hand with no part, or a finish time tomorrow → refused.
+11. As a manager, stop a worker's timer, then sign out without filling the form → the worker's timer stays stopped.
+
+**Suppliers, customers, equipment**
+12. Link a service to a supplier from a job, then edit that supplier's phone on the Suppliers page → the service stays.
+13. Edit a machine's name → its description is kept.
+
+**Sign-in and security**
+14. Enter a wrong current PIN on Change PIN five times → you're slowed down.
+15. As a worker: prices, customer phone/email and the activity log stay hidden.
+
+**Files and printing**
+16. Reprint an invoiced job's job card and packet → works.
+17. Disconnect the job-folders drive, open a job → "location can't be reached", not "missing files".
+
+**Backup**
+18. Export a backup to a folder outside the job folders, then restore it → works, older backups untouched.
+19. Try saving a backup inside the job folders → refused with a message.
+
+**Statistics**
+20. Pick "Last 6 Months" → six rows, quiet months as zero; "All Time" loads in about a second.
+
+**Installed app**
+21. Build the installer on a PC with no review-tool key; install on a fresh PC with no internet → starts, sign in admin / 1234.
+22. Run the PIN-reset command on the installed PC → it finds the app's real database.
