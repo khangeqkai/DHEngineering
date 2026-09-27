@@ -1,4 +1,5 @@
 const { splitHours } = require('../utils/overtimeSplit');
+const jobStatuses = require('../shared/jobStatuses.json');
 
 function makeDateFormatter(timeZone) {
   const opts = {
@@ -158,7 +159,9 @@ function daysDiff(d1Str, d2Str) {
 // the customer has been told to collect, or it is invoiced. Anything else is still
 // live work. Used for the active/overdue counts and for deciding a job has a finish
 // date at all, so the two can never disagree about which jobs are still running.
-const FINISHED_STATUSES = ['DONE', 'CUST_NOTIFIED', 'INVOICED'];
+// From the one shared jobStatuses.json (also read by the client's SETTLED_STATUSES,
+// client/src/components/JobCardList.constants.js).
+const FINISHED_STATUSES = jobStatuses.settledStatuses;
 
 function getJobFinishDate(job, maxTimeEntryEnd, fmt) {
   // The finish day is when the shop actually finished the work — the end of the

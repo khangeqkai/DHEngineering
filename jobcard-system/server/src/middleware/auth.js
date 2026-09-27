@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const { userQueries } = require('../db/database');
+const jobStatuses = require('../shared/jobStatuses.json');
 
 // Middleware to verify JWT token
 function authenticate(req, res, next) {
@@ -84,8 +85,10 @@ const requireManagement = requireRole(...MANAGEMENT_ROLES);
 // normally driven by logged work (see utils/jobStatusAuto.js); the one manual
 // nudge a worker needs is flagging "waiting on material" and clearing it again.
 // Every other status change is an office decision and stays management-only.
-const WORKER_SETTABLE_STATUSES = ['IN_PROGRESS', 'AWAITING_MATERIAL'];
-const WORKER_STATUS_FROM = ['OPEN', 'IN_PROGRESS', 'AWAITING_MATERIAL'];
+// From the one shared jobStatuses.json (also read by the client's copy of these
+// two lists, client/src/components/jobcard/constants.js).
+const WORKER_SETTABLE_STATUSES = jobStatuses.workerSettableStatuses;
+const WORKER_STATUS_FROM = jobStatuses.workerStatusFrom;
 
 // Single source of truth for "may this role move this job from fromStatus to
 // toStatus?" — used by both the status-only route and the general job update

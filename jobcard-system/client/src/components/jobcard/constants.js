@@ -1,24 +1,17 @@
 // Tag-based options are now loaded dynamically from the database via useTags hook.
 // These legacy exports are kept as empty fallbacks — components should use useTags() instead.
 
-export const PRIORITY_OPTIONS = [
-  { value: 'NONE', label: 'None' },
-  { value: 'LOW', label: 'Low' },
-  { value: 'MEDIUM', label: 'Medium' },
-  { value: 'HIGH', label: 'High' },
-  { value: 'SAME_DAY', label: 'Same Day Service' }
-];
+// The job status list, priority list and worker-status rule all come from one
+// shared data file in the server folder (so the packaged app, which copies the
+// whole server folder, carries it) — see server/src/shared/jobStatuses.json.
+// This is the only place the client imports it from; every export below just
+// re-shapes that one file's data, so adding/renaming a status or priority is a
+// one-file edit.
+import jobStatuses from '../../../../server/src/shared/jobStatuses.json';
 
-export const STATUS_OPTIONS = [
-  { value: 'QUOTE', label: 'Quote' },
-  { value: 'OPEN', label: 'Open' },
-  { value: 'AWAITING_MATERIAL', label: 'Material/Service' },
-  { value: 'PO_REQUESTED', label: 'PO Requested' },
-  { value: 'IN_PROGRESS', label: 'In Progress' },
-  { value: 'DONE', label: 'Done' },
-  { value: 'CUST_NOTIFIED', label: 'Cust. Notified' },
-  { value: 'INVOICED', label: 'Invoiced' }
-];
+export const PRIORITY_OPTIONS = jobStatuses.priorities;
+
+export const STATUS_OPTIONS = jobStatuses.statuses;
 
 export const QA_FORM_OPTIONS = [
   { code: 'DHE-F39', name: 'Critical QA Inspection Form' },
@@ -27,16 +20,15 @@ export const QA_FORM_OPTIONS = [
   { code: 'DHE-F43', name: 'Non-Conformance Report' }
 ];
 
-// Mirrors the server-side rule (canSetStatus in server/src/middleware/auth.js; there is no
-// shared import path between client and server, so the two lists are kept in step
-// by hand): a non-management user may only set a job to In Progress or
-// Material/Service, and only while the job is currently Open, In Progress or
-// Material/Service — everything else (moving it further, or touching it from any
-// other status) is management-only. In Progress and Done are driven by logged
-// work automatically; a worker only needs to flag "waiting on material" and clear
-// it again.
-export const WORKER_SETTABLE_STATUSES = ['IN_PROGRESS', 'AWAITING_MATERIAL'];
-export const WORKER_STATUS_FROM = ['OPEN', 'IN_PROGRESS', 'AWAITING_MATERIAL'];
+// Mirrors the server-side rule (canSetStatus in server/src/middleware/auth.js),
+// from the same shared jobStatuses.json: a non-management user may only set a
+// job to In Progress or Material/Service, and only while the job is currently
+// Open, In Progress or Material/Service — everything else (moving it further,
+// or touching it from any other status) is management-only. In Progress and
+// Done are driven by logged work automatically; a worker only needs to flag
+// "waiting on material" and clear it again.
+export const WORKER_SETTABLE_STATUSES = jobStatuses.workerSettableStatuses;
+export const WORKER_STATUS_FROM = jobStatuses.workerStatusFrom;
 
 // Whether a non-management user may change the status at all, given where the job
 // currently stands. Management can always change it (subject to their own checks

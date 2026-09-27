@@ -1,4 +1,5 @@
 const { body, param, query, validationResult } = require('express-validator');
+const jobStatuses = require('../shared/jobStatuses.json');
 
 // Lazy-loaded tag queries (avoids circular dependency with database.js)
 let _tagQueries = null;
@@ -167,9 +168,12 @@ function optionalEnum(field, label, allowed) {
 // Tag-based fields (drawings, customer_property, treatment, material, job_type)
 // are validated dynamically via getTagValues() from the tags DB table.
 
-const JOBCARD_STATUSES = ['QUOTE', 'OPEN', 'AWAITING_MATERIAL', 'PO_REQUESTED', 'IN_PROGRESS', 'DONE', 'CUST_NOTIFIED', 'INVOICED'];
+// Status/priority values come from the one shared jobStatuses.json (also read by
+// the client — see client/src/components/jobcard/constants.js) so the two never
+// drift apart.
+const JOBCARD_STATUSES = jobStatuses.statuses.map(s => s.value);
 
-const PRIORITY_OPTIONS = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'SAME_DAY'];
+const PRIORITY_OPTIONS = jobStatuses.priorities.map(p => p.value);
 
 
 // Mirrors DEFAULT_COLUMN_ORDER in client/src/components/JobCardList.constants.js —

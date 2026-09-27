@@ -1,0 +1,23 @@
+{
+  "_about": "One shared source for a job card's status list, priority list, which statuses count as settled/finished, and the worker manual-status-change rule. The server reads this file directly; the client imports it too (see vite.config.js's server.fs.allow, and the re-exports in client/src/components/jobcard/constants.js and client/src/components/JobCardList.constants.js). JSON can't hold comments, so the reasoning for each list lives as a comment at each import site instead of here.",
+  "statuses": [
+    { "value": "QUOTE", "label": "Quote" },
+    { "value": "OPEN", "label": "Open" },
+    { "value": "AWAITING_MATERIAL", "label": "Material/Service" },
+    { "value": "PO_REQUESTED", "label": "PO Requested" },
+    { "value": "IN_PROGRESS", "label": "In Progress" },
+    { "value": "DONE", "label": "Done" },
+    { "value": "CUST_NOTIFIED", "label": "Cust. Notified" },
+    { "value": "INVOICED", "label": "Invoiced" }
+  ],
+  "priorities": [
+    { "value": "NONE", "label": "None" },
+    { "value": "LOW", "label": "Low" },
+    { "value": "MEDIUM", "label": "Medium" },
+    { "value": "HIGH", "label": "High" },
+    { "value": "SAME_DAY", "label": "Same Day Service" }
+  ],
+  "settledStatuses": ["DONE", "CUST_NOTIFIED", "INVOICED"],
+  "workerSettableStatuses": ["IN_PROGRESS", "AWAITING_MATERIAL"],
+  "workerStatusFrom": ["OPEN", "IN_PROGRESS", "AWAITING_MATERIAL"]
+}
