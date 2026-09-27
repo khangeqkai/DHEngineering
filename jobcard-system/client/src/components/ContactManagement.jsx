@@ -10,12 +10,19 @@ import DataTable from './common/DataTable';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import EntityActivityLog from './common/EntityActivityLog';
-import CompanyPeople from './contacts/CompanyPeople';
+import CompanyPeople, { PERSON_FORM_BOXES } from './contacts/CompanyPeople';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useManagedListPage } from '../hooks/useManagedListPage';
+import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
+import FieldError from './common/FieldError';
 import './ContactManagement.css';
 
 const blankCompany = () => ({ name: '', address: '', notes: '' });
+
+// Which box on the customer form each field named in a server refusal belongs to,
+// and which form value each box shows.
+const COMPANY_FORM_BOXES = { name: 'companyName', address: 'address', notes: 'notes' };
+const COMPANY_BOX_VALUE = { companyName: 'name', address: 'address', notes: 'notes' };
 
 // The people still working at a customer. The page also holds retired people (so
 // they can be restored), but the Contacts column and the export only ever list
@@ -40,6 +47,9 @@ export default function ContactManagement() {
   const [editingCompany, setEditingCompany] = useState(null);
   const [formData, setFormData] = useState(blankCompany());
   const [saving, setSaving] = useState(false);
+  const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
+    (box) => formData[COMPANY_BOX_VALUE[box]]
+  );
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   // One call brings every customer and the people under them, which is what the
@@ -75,6 +85,11 @@ export default function ContactManagement() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.name.trim()) {
+      setFieldErrors({ companyName: 'Please enter the company name' });
+      scrollFieldIntoView('companyName');
+      return;
+    }
     // The name box only tidies itself on blur — hitting Enter from inside it
     // submits the form directly and never fires that blur, so the same formatter
     // is applied here too before the name goes out.
@@ -89,9 +104,10 @@ export default function ContactManagement() {
         toast.success('Customer added', { id: 'customer-added' });
         setEditingCompany({ ...created, people: [] });
       }
+      resetFieldErrors();
       await refresh();
     } catch (err) {
-      toast.error(err.message || 'Could not save the customer');
+      showSaveRefusal(err, { boxFor: COMPANY_FORM_BOXES, setFieldErrors, fallback: 'Could not save the customer' });
     } finally {
       setSaving(false);
     }
@@ -99,6 +115,7 @@ export default function ContactManagement() {
 
   const handleEdit = (company) => {
     setEditingCompany(company);
+    resetFieldErrors();
     setFormData({
       name: company.name || '',
       address: company.address || '',
@@ -143,7 +160,9 @@ export default function ContactManagement() {
 
   // --- People at the open customer ---
 
-  const createPerson = async (person) => {
+  // `markBoxes` is the person form's own field-error setter (CompanyPeople owns
+  // that form), so a refusal naming one of its boxes marks the box.
+  const createPerson = async (person, markBoxes) => {
     setSaving(true);
     try {
       await api.createContact({ companyId: editingCompany.id, ...person });
@@ -151,14 +170,14 @@ export default function ContactManagement() {
       await refresh();
       return true;
     } catch (err) {
-      toast.error(err.message || 'Could not add the person');
+      showSaveRefusal(err, { boxFor: PERSON_FORM_BOXES, setFieldErrors: markBoxes, fallback: 'Could not add the person' });
       return false;
     } finally {
       setSaving(false);
     }
   };
 
-  const updatePerson = async (id, person) => {
+  const updatePerson = async (id, person, markBoxes) => {
     setSaving(true);
     try {
       await api.updateContact(id, person);
@@ -166,7 +185,7 @@ export default function ContactManagement() {
       await refresh();
       return true;
     } catch (err) {
-      toast.error(err.message || 'Could not save the person');
+      showSaveRefusal(err, { boxFor: PERSON_FORM_BOXES, setFieldErrors: markBoxes, fallback: 'Could not save the person' });
       return false;
     } finally {
       setSaving(false);
@@ -207,6 +226,7 @@ export default function ContactManagement() {
   const resetForm = () => {
     setShowForm(false);
     setEditingCompany(null);
+    resetFieldErrors();
     setFormData(blankCompany());
   };
 
@@ -238,7 +258,7 @@ export default function ContactManagement() {
         <button className="btn btn-secondary" onClick={() => setShowActivityLog(true)}>
           <History size={16} /> Activity Log
         </button>
-        <button className="btn btn-primary" onClick={() => { setEditingCompany(null); setFormData(blankCompany()); setShowForm(true); }}>
+        <button className="btn btn-primary" onClick={() => { setEditingCompany(null); setFormData(blankCompany()); resetFieldErrors(); setShowForm(true); }}>
           <Plus size={16} /> Add Customer
         </button>
       </PageHeader>
@@ -250,12 +270,12 @@ export default function ContactManagement() {
         size="small"
       >
         <BottomSheet.Body>
-          <form id="company-form" onSubmit={handleSubmit}>
-            <div className="form-group">
+          <form id="company-form" onSubmit={handleSubmit} noValidate>
+            <div className={groupClass('companyName')}>
               <label htmlFor="companyName">Company *</label>
               <input
                 type="text"
-                id="companyName"
+                {...fieldProps('companyName')}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 onBlur={(e) => {
@@ -263,16 +283,16 @@ export default function ContactManagement() {
                   if (formatted !== e.target.value) setFormData(prev => ({ ...prev, name: formatted }));
                 }}
                 placeholder="Company name..."
-                required
               />
+              <FieldError {...errorProps('companyName')} message={errorFor('companyName')} />
             </div>
 
-            <div className="form-group">
+            <div className={groupClass('address')}>
               <label htmlFor="address">Address</label>
               <textarea
                 ref={(el) => { if (el) autoResize(el); }}
                 onInput={(e) => autoResize(e.target)}
-                id="address"
+                {...fieldProps('address')}
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 onBlur={(e) => {
@@ -281,14 +301,15 @@ export default function ContactManagement() {
                 }}
                 rows={2}
               />
+              <FieldError {...errorProps('address')} message={errorFor('address')} />
             </div>
 
-            <div className="form-group">
+            <div className={groupClass('notes')}>
               <label htmlFor="notes">Notes</label>
               <textarea
                 ref={(el) => { if (el) autoResize(el); }}
                 onInput={(e) => autoResize(e.target)}
-                id="notes"
+                {...fieldProps('notes')}
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 onBlur={(e) => {
@@ -297,6 +318,7 @@ export default function ContactManagement() {
                 }}
                 rows={2}
               />
+              <FieldError {...errorProps('notes')} message={errorFor('notes')} />
             </div>
           </form>
 

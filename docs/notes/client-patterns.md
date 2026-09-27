@@ -71,8 +71,12 @@
   `contactEmail` (the job route) or `contactName`/`phone`/`email` (the contact routes
   `jobCardContact.jsx` calls first, for "Update contact" / "Add as new person") onto
   the same three boxes via `JobCardModal.jsx`'s own `useFieldErrors` instance —
-  `contactFieldErrorsFrom` in `useJobCardSave.js` is the one place that knows both
-  spellings. Any other failure (a network error, a non-validation 500) still falls
+  `CONTACT_FIELD_TO_BOX` in `useJobCardSave.js` is the one place that knows both
+  spellings, handed to the shared `fieldErrorsFromRefusal` in `hooks/useFieldErrors.js`
+  — the same step the Users, Suppliers, Customers (company and person) and Tags &
+  Equipment forms use through its `showSaveRefusal` wrapper, each with its own
+  field→box map and `noValidate` on the form so the app's own marks report an empty
+  required box instead of the browser's bubble. Any other failure (a network error, a non-validation 500) still falls
   through to a toast. `buildJobcardPayload` (`mappers.js`) only sends a picked
   person's phone/email/name when it was actually edited for this job
   (`detailChanges` off `useContactSearch.js`) — the server copies the rest from the

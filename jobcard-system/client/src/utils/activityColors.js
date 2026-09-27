@@ -19,7 +19,7 @@ export const ACTION_COLORS = {
   update_costing: 'var(--primary-accent)',
   add_template: 'var(--accent-ready)', remove_template: 'var(--accent-caution)',
   upload_file: 'var(--accent-ready)', reassign_file: 'var(--primary-accent)', delete_file: 'var(--accent-caution)',
-  login: 'var(--accent-info)', logout: 'var(--accent-info)', login_failed: 'var(--accent-caution)',
+  login: 'var(--accent-info)', logout: 'var(--accent-info)', login_failed: 'var(--accent-caution)', pin_change_failed: 'var(--accent-caution)',
   data_export: 'var(--accent-info)', data_import: 'var(--accent-info)',
 };
 

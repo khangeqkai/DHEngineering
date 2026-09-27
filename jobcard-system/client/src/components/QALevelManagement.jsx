@@ -148,6 +148,15 @@ export default function QALevelManagement() {
     }
   };
 
+  // One hidden file box serves every level's Upload button: the button notes which
+  // level it is for, then opens the box.
+  const templateInputRef = useRef(null);
+  const pendingTemplateLevel = useRef(null);
+  const pickTemplate = (levelId) => {
+    pendingTemplateLevel.current = levelId;
+    templateInputRef.current?.click();
+  };
+
   const handleFileUpload = async (levelId, e) => {
     const input = e.target;
     const file = input.files?.[0];
@@ -216,6 +225,14 @@ export default function QALevelManagement() {
 
   return (
     <div className="page-container page-enter">
+      <input
+        type="file"
+        ref={templateInputRef}
+        accept=".pdf"
+        style={{ display: 'none' }}
+        tabIndex={-1}
+        onChange={(e) => handleFileUpload(pendingTemplateLevel.current, e)}
+      />
       <PageHeader title="QA Levels">
         <button className="btn btn-primary" onClick={() => { resetForm(); setShowForm(true); }}>
           <Plus size={16} /> New Level
@@ -313,17 +330,19 @@ export default function QALevelManagement() {
                   <div className="template-empty">No templates uploaded</div>
                 )}
                 <div className="template-upload">
-                  <label className="btn btn-secondary btn-sm upload-btn">
+                  {/* A real button (reachable by Tab, pressed with Enter/Space) that
+                      opens the one hidden file box below for this level — a label
+                      wrapped round a hidden file box could never take focus. */}
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm upload-btn"
+                    onClick={() => pickTemplate(level.id)}
+                    disabled={uploadingTemplate}
+                    aria-label={`Upload PDF template to ${level.name}`}
+                  >
                     <Upload size={14} />
                     {uploadingTemplate ? 'Uploading...' : 'Upload PDF Template'}
-                    <input
-                      type="file"
-                      accept=".pdf"
-                      onChange={(e) => handleFileUpload(level.id, e)}
-                      style={{ display: 'none' }}
-                      disabled={uploadingTemplate}
-                    />
-                  </label>
+                  </button>
                 </div>
               </div>
             </div>

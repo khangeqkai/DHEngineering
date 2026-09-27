@@ -13,6 +13,7 @@ Every agent in the hunt reads this file first. It is the memory between rounds.
 
 ## Waiting for the owner (design decisions)
 - **R4 — Reused machine numbers.** When a machine is archived and its number given to another machine (new, or renumbered), Workshop Statistics credits all past hours under that number to the machine that holds it now; the retired machine vanishes from the Machines tab. A proper fix needs the app to remember *when* each machine took its number (a new stored date, filled for existing machines at start-up), then credit each piece of work to whichever machine held the number at that time. A first attempt using the machine's "added" date was wrong for renumbered machines and was reverted. Proposal: add that stored date. Only matters if machine numbers are ever reused.
+- **R6 — Customer name on pre-filled quality forms.** Workers are not meant to see customer names, but quality forms come pre-filled with the customer's company name and workers open and print them. Options: (1) allow it and write it down as an exception, since workers handle these forms anyway; (2) never pre-fill the customer box; (3) office copy filled, worker copy blank.
 
 ## Decided — leave alone
 _None yet._
@@ -67,6 +68,17 @@ _None yet._
 - Adding an existing service under "+ Other" showed it twice and logged a false change.
 - Rejected: customer panel flipping to "Add New Customer" when someone else archives the open customer.
 - Carried to round 6 (confirmed, not yet fixed): field mistakes as pop-ups on Users/Suppliers/customer-person forms; QA "Upload PDF Template" not keyboard-reachable; Escape in QA rename box discards the name; archived-username message; very long customer name whose folder can't be made.
+### Round 6 — sign-in and who can see what
+- An invoiced job's card preview and combined print/save were refused by the closed-job lock: both read-only steps are allowed.
+- Change PIN had no limit on wrong current-PIN guesses and left no trace: a shared PIN-attempt limiter (per account) now covers it, with trail entries.
+- A correct sign-in wiped the wrong-PIN count for every account on that computer: only failures aimed at the account that signed in are cleared.
+- A failed sign-in stored the typed username at any length: sign-in fields are length-capped and the route has a small body limit.
+- PIN reset, archive/restore or backup restore signed people out saying "logged in from another device": the message now names the real reason.
+- A renamed person kept their old name in the sidebar and Settings.
+- A worker could move their own stopped work block to a different part.
+- The Statistics export kept the invoiced-money column after a mid-session demotion.
+- (Carried from R5) Management forms now mark the box instead of pop-ups/browser bubbles; QA "Upload PDF Template" is a real button.
+- Carried to round 7: Pressing Escape in a QA level's rename box throws the new name away; Creating a user with an archived account's username gives only 'Username already exists'; A very long customer name saves but its folder can never be made.
 
 ## Rounds
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
@@ -76,3 +88,4 @@ _None yet._
 | 3 | Database, backup, settings | 13 | 8 | 8 | 0 |
 | 4 | Workshop Statistics | 13 | 7 | 5 | 1 |
 | 5 | Management pages | 26 | 15 | 10 (5 carried) | 0 |
+| 6 | Sign-in + permissions | 20 | 9 (+5 carried) | 10 | 1 |

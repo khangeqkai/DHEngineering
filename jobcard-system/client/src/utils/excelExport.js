@@ -239,7 +239,10 @@ const STATS_DELAYED_COLS = [
   { label: 'QA Level', value: r => r.qualityLevel },
 ];
 
-export async function exportStatistics(data) {
+// The invoiced-money column goes by the person's pricing access right now, not by
+// whether the loaded figures happen to carry money — the same rule as the job-card
+// export's Costing sheet — so figures loaded before a demotion can't export it.
+export async function exportStatistics(data, canSeePricing) {
   if (!data) return false;
   const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
@@ -283,8 +286,7 @@ export async function exportStatistics(data) {
   }
 
   if (data.customerRankings?.length) {
-    const hasMoney = data.customerRankings.some(c => c.invoicedTotal !== null && c.invoicedTotal !== undefined);
-    XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, data.customerRankings, getStatsCustomerCols(hasMoney)), 'Customers');
+    XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, data.customerRankings, getStatsCustomerCols(!!canSeePricing)), 'Customers');
   }
 
   if (data.delayedJobsList?.length) {

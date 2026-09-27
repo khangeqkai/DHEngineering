@@ -54,6 +54,10 @@ app.set('trust proxy', 'loopback');
 // No CORS middleware: every client loads the page from this server (the Vite
 // dev proxy, the packaged app and Electron all stay same-origin), so there is
 // no other site that should ever be allowed to call it.
+// Sign-in is reachable before anyone is signed in and carries only a few short
+// boxes, so it gets its own small body limit, parsed first — a huge body is
+// refused before it is read instead of inheriting the photo-sized limit below.
+app.use('/api/auth/login', express.json({ limit: '10kb' }));
 app.use(express.json({ limit: '50mb' })); // Large limit for photos
 app.use(requestLogger); // Request logging
 

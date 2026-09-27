@@ -101,24 +101,37 @@ export function AuthProvider({ children }) {
     return () => api.setOnSessionInvalidated(null);
   }, []);
 
-  // Swap ONLY the role. Never adopt the whole fresh profile: an in-flight
-  // preference save (updatePreferences) would be reverted by a profile that was
-  // fetched just before it landed.
-  const applyRole = useCallback((role) => {
-    setUser(prev => (prev && role && prev.role !== role ? { ...prev, role } : prev));
+  // Swap ONLY the live identity — role and display name, both of which the
+  // server already reads fresh on every request. Never adopt the whole fresh
+  // profile: an in-flight preference save (updatePreferences) would be reverted
+  // by a profile that was fetched just before it landed.
+  const applyIdentity = useCallback(({ role, name } = {}) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const next = { ...prev };
+      if (role) next.role = role;
+      if (name) next.name = name;
+      return next.role !== prev.role || next.name !== prev.name ? next : prev;
+    });
   }, []);
 
   // Poll session validity so stale sessions get kicked promptly, and pick up a
-  // role change (someone demoted/promoted us) without forcing a sign-out. The
-  // effect re-runs on every user change, so knownRole is never stale.
+  // role or name change (someone demoted/promoted/renamed us) without forcing a
+  // sign-out. The effect re-runs on every user change, so knownRole/knownName
+  // are never stale.
   useEffect(() => {
     if (!user) return undefined;
     const knownRole = user.role;
+    const knownName = user.name;
     pollRef.current = setInterval(async () => {
       try {
         const fresh = await api.getMe();
-        if (fresh?.role && fresh.role !== knownRole) {
-          applyRole(fresh.role);
+        const roleChanged = !!fresh?.role && fresh.role !== knownRole;
+        const nameChanged = !!fresh?.name && fresh.name !== knownName;
+        if (roleChanged || nameChanged) {
+          applyIdentity(fresh);
+        }
+        if (roleChanged) {
           toast('Your access level was changed. The screen has been updated to match.', { duration: 6000 });
         }
       } catch {
@@ -127,7 +140,7 @@ export function AuthProvider({ children }) {
       }
     }, SESSION_POLL_MS);
     return () => clearInterval(pollRef.current);
-  }, [user, applyRole]);
+  }, [user, applyIdentity]);
 
   // Load inactivity timeout from server
   const loadInactivityTimeout = useCallback(async () => {
@@ -188,7 +201,7 @@ export function AuthProvider({ children }) {
     resetInactivityTimer: resetTimer,
     handleActivity,
     refreshInactivityTimeout: loadInactivityTimeout,
-    applyRole,
+    applyIdentity,
     registerBeforeLogout,
     registerUnsavedWork,
     getUnsavedWorkLabel,
@@ -202,7 +215,7 @@ export function AuthProvider({ children }) {
     resetTimer,
     handleActivity,
     loadInactivityTimeout,
-    applyRole,
+    applyIdentity,
     registerBeforeLogout,
     registerUnsavedWork,
     getUnsavedWorkLabel,

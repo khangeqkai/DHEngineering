@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import toast from 'react-hot-toast';
 
 // The one naming rule an input's aria-describedby and its message's id both have to
 // agree on. Kept as a single module-level function (not duplicated inline in
@@ -95,6 +96,43 @@ export function useFieldErrors(valueOf) {
   const errorProps = useCallback((name) => ({ id: errorIdFor(name) }), []);
 
   return { fieldErrors, setFieldErrors, clearAll, groupClass, errorFor, fieldProps, errorProps };
+}
+
+// Splits a server refusal into marks for this form's boxes and whatever is left
+// over. A 400 from the server's validation step (validation.js's
+// handleValidationErrors) says which field each message belongs to in `fields`;
+// `boxFor` maps a server field name to the box it lands on here (a name it doesn't
+// list has no box on this form). Returns { marks, others }: marks is null when
+// nothing landed on a box, others is every message that has no box of its own.
+export function fieldErrorsFromRefusal(err, boxFor) {
+  const fields = err?.data?.fields;
+  if (!Array.isArray(fields)) return { marks: null, others: [] };
+  const marks = {};
+  const others = [];
+  for (const { field, message } of fields) {
+    const box = boxFor[field];
+    if (box) {
+      if (!marks[box]) marks[box] = message;
+    } else {
+      others.push(message);
+    }
+  }
+  return { marks: Object.keys(marks).length > 0 ? marks : null, others };
+}
+
+// The one way a form with a Save/Create button reports a failed save: a message
+// that belongs to one of its boxes marks that box (and brings the first into view);
+// anything else — a message with no box, or a refusal that names no field at all —
+// is a pop-up. The two never both fire for one message.
+export function showSaveRefusal(err, { boxFor, setFieldErrors, fallback, toastId }) {
+  const { marks, others } = fieldErrorsFromRefusal(err, boxFor);
+  if (!marks) {
+    toast.error(err?.message || fallback, toastId ? { id: toastId } : undefined);
+    return;
+  }
+  setFieldErrors(marks);
+  scrollFieldIntoView(Object.keys(marks)[0]);
+  if (others.length > 0) toast.error(others.join('. '), toastId ? { id: toastId } : undefined);
 }
 
 // Scrolls a field's input into view when a submit-time error has just marked it

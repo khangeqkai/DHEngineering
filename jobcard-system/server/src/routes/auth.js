@@ -13,91 +13,20 @@ const { diffFields } = require('../utils/historyChanges');
 const { isViaTunnel, clientIp } = require('../utils/homeAccess');
 const { setArchived } = require('../utils/archiveToggle');
 const { findOr404 } = require('../utils/findOr404');
+const { createPinAttemptLimiter } = require('../utils/pinAttempts');
 
 const router = express.Router();
 
-// Custom login rate limiter: first 5 FAILED attempts normal, then an ESCALATING
-// cooldown that grows the more they fail. No hard account lockout (a workshop must
-// never let one person lock a coworker out), but the wait climbs to discourage
-// steady guessing. Only failed attempts count — successful logins do not consume them.
-const loginFailures = new Map(); // IP -> { count, lastFailure, windowStart }
-const LOGIN_FREE_ATTEMPTS = 5;
-const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes - resets failure count after inactivity
+// Wrong-PIN throttles (see utils/pinAttempts.js). Sign-in is keyed on the
+// computer the guesses come from, and each failure remembers the username it was
+// aimed at. Change PIN is keyed on the account itself — only its own session can
+// reach that route, so no coworker can be slowed down by someone else's guessing.
+const loginAttempts = createPinAttemptLimiter();
+const changePinAttempts = createPinAttemptLimiter();
 
-// Cooldown grows with the number of failures already recorded for this IP.
-// count 5-6 -> 30s, 7-8 -> 1m, 9-10 -> 2m, 11+ -> 5m (cap).
-const cooldownMsForCount = (count) => {
-  if (count <= 6) return 30 * 1000;
-  if (count <= 8) return 60 * 1000;
-  if (count <= 10) return 120 * 1000;
-  return 300 * 1000;
-};
-
-// True once an IP's record has gone a full window with no new failure — the only
-// point a record may be dropped. A record still inside its window keeps its count
-// even when its current cooldown has passed, or the escalating wait would reset.
-// Shared by the rate-limit check and the periodic sweep below, so the two can never
-// disagree about what counts as "expired".
-const isLoginFailureExpired = (record, now) => (now - record.lastFailure) > LOGIN_WINDOW_MS;
-
-const checkLoginRateLimit = (ip) => {
-  const now = Date.now();
-  let record = loginFailures.get(ip);
-
-  // Reset if window expired (15 min of no failures)
-  if (record && isLoginFailureExpired(record, now)) {
-    loginFailures.delete(ip);
-    record = null;
-  }
-
-  if (!record || record.count < LOGIN_FREE_ATTEMPTS) {
-    return null; // allowed
-  }
-
-  // Beyond free attempts - enforce an escalating cooldown
-  const cooldownMs = cooldownMsForCount(record.count);
-  const timeSinceLastFailure = now - record.lastFailure;
-  if (timeSinceLastFailure < cooldownMs) {
-    const waitSeconds = Math.ceil((cooldownMs - timeSinceLastFailure) / 1000);
-    return waitSeconds; // blocked
-  }
-
-  return null; // cooldown passed, allowed
-};
-
-// The map above is never read except by IP, so a record whose window (and any
-// cooldown) has fully passed just sits there forever otherwise — on a server that
-// stays up for weeks, that's an entry per distinct IP that has ever mistyped a PIN,
-// never freed. Sweep it out periodically using the exact same expiry test the rate
-// limiter itself uses, so this can never delete a record still counting failures. Unref'd so
-// the timer never keeps the process alive on its own.
-const LOGIN_FAILURE_SWEEP_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
-const sweepLoginFailures = () => {
-  const now = Date.now();
-  for (const [ip, record] of loginFailures) {
-    if (isLoginFailureExpired(record, now)) {
-      loginFailures.delete(ip);
-    }
-  }
-};
-const loginFailureSweepTimer = setInterval(sweepLoginFailures, LOGIN_FAILURE_SWEEP_INTERVAL_MS);
-loginFailureSweepTimer.unref();
-
-const recordLoginFailure = (ip) => {
-  const now = Date.now();
-  let record = loginFailures.get(ip);
-
-  if (!record) {
-    loginFailures.set(ip, { count: 1, lastFailure: now, windowStart: now });
-  } else {
-    record.count++;
-    record.lastFailure = now;
-  }
-};
-
-const clearLoginFailures = (ip) => {
-  loginFailures.delete(ip);
-};
+// Usernames are matched ignoring case (the column is COLLATE NOCASE), so the
+// failure record is too — a mistyped "Admin" is forgiven by a correct "admin".
+const loginTarget = (username) => username.toLowerCase();
 
 // Rate limiter for user creation - 10 attempts per 15 minutes per IP
 const userCreationLimiter = rateLimit({
@@ -115,7 +44,7 @@ router.post('/login', validateLogin, async (req, res) => {
     const ip = clientIp(req);
 
     // Check rate limit before processing
-    const waitSeconds = checkLoginRateLimit(ip);
+    const waitSeconds = loginAttempts.check(ip);
     if (waitSeconds) {
       logger.warn({ ip, waitSeconds }, 'Login rate limited');
       return res.status(429).json({
@@ -126,8 +55,8 @@ router.post('/login', validateLogin, async (req, res) => {
     // Count the attempt NOW, before any awaiting work. bcrypt.compare yields, so
     // checking the limit and recording the failure afterwards left a gap wide
     // enough for a whole burst of guesses to pass the check together — one
-    // cooldown wait bought unlimited tries. A successful login clears it below.
-    recordLoginFailure(ip);
+    // cooldown wait bought unlimited tries. A successful login forgives it below.
+    loginAttempts.recordFailure(ip, loginTarget(username));
 
     // A visitor through the home-access tunnel must give the shared home access
     // code before the PIN is even looked at: the tunnel address is public, and
@@ -169,8 +98,10 @@ router.post('/login', validateLogin, async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Successful login - clear any failure history for this IP
-    clearLoginFailures(ip);
+    // Successful login - forgive the failures from this computer that were aimed
+    // at THIS account only. Guesses at anyone else's keep counting, or signing in
+    // to your own account between guesses would buy unlimited tries at theirs.
+    loginAttempts.forgive(ip, loginTarget(username));
 
     // Record login in history
     recordHistory('user', user.id, 'login', user.id, user.name, {
@@ -567,10 +498,28 @@ router.put('/change-password', authenticate, async (req, res) => {
     const user = findOr404(res, userQueries.getById.get(req.user.userId), 'User not found');
     if (!user) return;
 
+    // The current PIN is the lock that stops someone at a session left signed in
+    // from setting a PIN of their own, so guessing it gets the same limit as
+    // signing in. Counted before the comparison, for the same reason as sign-in.
+    const pinKey = req.user.userId;
+    const waitSeconds = changePinAttempts.check(pinKey);
+    if (waitSeconds) {
+      logger.warn({ userId: pinKey, waitSeconds }, 'Change PIN rate limited');
+      return res.status(429).json({
+        error: `Too many attempts. Please wait ${waitSeconds} seconds before trying again.`
+      });
+    }
+    changePinAttempts.recordFailure(pinKey, pinKey);
+
     const isValid = await bcrypt.compare(currentPassword, user.password);
     if (!isValid) {
+      logger.warn({ userId: pinKey, reason: 'invalid_current_password' }, 'Failed PIN change attempt');
+      recordHistory('user', pinKey, 'pin_change_failed', pinKey, actorName(req), {
+        reason: { from: null, to: 'invalid_current_password' }
+      }, { username: user.username, name: user.name });
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
+    changePinAttempts.forgive(pinKey, pinKey);
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     userQueries.updatePassword.run(hashedPassword, req.user.userId);

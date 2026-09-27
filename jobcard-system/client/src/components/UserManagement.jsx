@@ -13,12 +13,15 @@ import ConfirmDialog from './common/ConfirmDialog';
 import EntityActivityLog from './common/EntityActivityLog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useManagedListPage } from '../hooks/useManagedListPage';
-import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
+import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
 import { isManagement, can } from '../utils/roles';
 import FieldError from './common/FieldError';
 
+// Which box on the form each field named in a server refusal belongs to.
+const USER_FORM_BOXES = { username: 'username', password: 'password', name: 'name', email: 'email' };
+
 export default function UserManagement() {
-  const { user: currentUser, applyRole } = useAuth();
+  const { user: currentUser, applyIdentity } = useAuth();
   // Managers reach this page too, but admin accounts are off-limits to them
   // (no editing/archiving admins, no granting the admin role) — the server
   // enforces the same rules.
@@ -67,6 +70,12 @@ export default function UserManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!editingUser && !formData.username.trim()) {
+      setFieldErrors({ username: 'Please enter a username' });
+      scrollFieldIntoView('username');
+      return;
+    }
+
     // Every account must carry a real display name so time entries, the activity
     // log, and pickers always show who someone is — never a blank.
     if (!formData.name.trim()) {
@@ -99,12 +108,14 @@ export default function UserManagement() {
       let ownNewRole = null;
       if (editingUser) {
         const updated = await api.updateUser(editingUser.id, payload);
-        // Changing your own access level takes effect immediately, so adopt it
-        // rather than carrying on as the role you no longer have.
-        if (updated.id === currentUser?.id && updated.role !== currentUser?.role) {
-          ownNewRole = updated.role;
-          applyRole(ownNewRole);
-          toast.success('Your own access level changed. Some screens are no longer available to you.');
+        // Changing your own access level or name takes effect immediately, so
+        // adopt it rather than carrying on as the role/name you no longer have.
+        if (updated.id === currentUser?.id) {
+          applyIdentity(updated);
+          if (updated.role !== currentUser?.role) {
+            ownNewRole = updated.role;
+            toast.success('Your own access level changed. Some screens are no longer available to you.');
+          }
         }
       } else {
         await api.createUser(payload);
@@ -124,7 +135,7 @@ export default function UserManagement() {
       bumpActivity();
       resetForm();
     } catch (err) {
-      toast.error(err.message || 'Failed to save user');
+      showSaveRefusal(err, { boxFor: USER_FORM_BOXES, setFieldErrors, fallback: 'Failed to save user' });
     } finally {
       setSaving(false);
     }
@@ -226,18 +237,18 @@ export default function UserManagement() {
         size="small"
       >
         <BottomSheet.Body>
-          <form id="user-form" onSubmit={handleSubmit}>
+          <form id="user-form" onSubmit={handleSubmit} noValidate>
             <div className="form-row">
-              <div className="form-group">
+              <div className={groupClass('username')}>
                 <label htmlFor="username">Username *</label>
                 <input
                   type="text"
-                  id="username"
+                  {...fieldProps('username')}
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  required
                   disabled={editingUser}
                 />
+                <FieldError {...errorProps('username')} message={errorFor('username')} />
               </div>
 
               {/* Your own PIN is changed in Settings, where the current one is
@@ -260,7 +271,6 @@ export default function UserManagement() {
                         setFormData({ ...formData, password: e.target.value.replace(/\D/g, '').slice(0, 4) });
                       }}
                       placeholder="4-digit PIN"
-                      required={!editingUser}
                     />
                     <FieldError {...errorProps('password')} message={errorFor('password')} />
                   </>
@@ -284,19 +294,19 @@ export default function UserManagement() {
                       setFormData(prev => ({ ...prev, name: formatted }));
                     }
                   }}
-                  required
                 />
                 <FieldError {...errorProps('name')} message={errorFor('name')} />
               </div>
 
-              <div className="form-group">
+              <div className={groupClass('email')}>
                 <label htmlFor="email">Email</label>
                 <input
                   type="email"
-                  id="email"
+                  {...fieldProps('email')}
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
+                <FieldError {...errorProps('email')} message={errorFor('email')} />
               </div>
             </div>
 

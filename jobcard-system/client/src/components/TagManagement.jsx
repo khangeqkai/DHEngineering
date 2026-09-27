@@ -8,7 +8,7 @@ import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { tagActions } from '../hooks/useTags';
-import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
+import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
 import FieldError from './common/FieldError';
 import { hasMachineSeparator, MACHINE_SEPARATOR_MESSAGE } from '../../../server/src/shared/machineList';
 import './TagManagement.css';
@@ -23,6 +23,9 @@ const CATEGORY_INFO = {
 };
 
 const CATEGORIES = Object.keys(CATEGORY_INFO);
+
+// Which form value each box on the shared form shows.
+const BOX_VALUE = { machineNumber: 'machineNumber', machineName: 'name', machineDescription: 'description', tagName: 'name' };
 
 export default function TagManagement() {
   const [selectedCategory, setSelectedCategory] = useState('treatment');
@@ -47,11 +50,16 @@ export default function TagManagement() {
   const [formCategory, setFormCategory] = useState('treatment');
   const [saving, setSaving] = useState(false);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
+  // The name box is spelled differently for a machine and a tag; both show formData.name.
   const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
-    (name) => formData[name]
+    (box) => formData[BOX_VALUE[box]]
   );
 
   const isFormEquipment = formCategory === 'equipment';
+  // Which box each field named in a server refusal belongs to on the form showing now.
+  const formBoxes = isFormEquipment
+    ? { machineNumber: 'machineNumber', name: 'machineName', description: 'machineDescription' }
+    : { name: 'tagName' };
 
   // --- Load tags ---
   const loadTags = useCallback(async () => {
@@ -110,6 +118,16 @@ export default function TagManagement() {
     const description = capitalizeFirst(formData.description.trim());
     // The comma separates machines in logged work, so a number holding one would
     // read back as two machines — the server refuses it with the same shared rule.
+    if (isFormEquipment && !machineNumber) {
+      setFieldErrors({ machineNumber: 'Please enter the machine number' });
+      scrollFieldIntoView('machineNumber');
+      return;
+    }
+    if (!isFormEquipment && !name) {
+      setFieldErrors({ tagName: 'Please enter the tag name' });
+      scrollFieldIntoView('tagName');
+      return;
+    }
     if (isFormEquipment && hasMachineSeparator(machineNumber)) {
       setFieldErrors({ machineNumber: MACHINE_SEPARATOR_MESSAGE }, { machineNumber: formData.machineNumber });
       scrollFieldIntoView('machineNumber');
@@ -142,14 +160,9 @@ export default function TagManagement() {
       }
       resetForm();
     } catch (err) {
-      // The server's comma refusal belongs to the number box — mark it there.
-      const numberError = isFormEquipment && (err.data?.fields || []).find(f => f.field === 'machineNumber');
-      if (numberError) {
-        setFieldErrors({ machineNumber: numberError.message }, { machineNumber: formData.machineNumber });
-        scrollFieldIntoView('machineNumber');
-      } else {
-        toast.error(err.message || 'Failed to save');
-      }
+      // A refusal naming one of the boxes (the server's comma refusal on the number,
+      // say) marks that box; anything else is a pop-up.
+      showSaveRefusal(err, { boxFor: formBoxes, setFieldErrors, fallback: 'Failed to save' });
     } finally {
       setSaving(false);
     }
@@ -246,7 +259,7 @@ export default function TagManagement() {
       {/* Unified BottomSheet — adapts fields based on category */}
       <BottomSheet isOpen={showForm} onClose={resetForm} title={formTitle} size="small">
         <BottomSheet.Body>
-          <form id="tag-form" onSubmit={handleSubmit}>
+          <form id="tag-form" onSubmit={handleSubmit} noValidate>
             <div className="form-group">
               <label htmlFor="tagCategory">Category</label>
               {editingItem ? (
@@ -268,32 +281,35 @@ export default function TagManagement() {
                   <input type="text" {...fieldProps('machineNumber')} value={formData.machineNumber}
                     onChange={(e) => setFormData(prev => ({ ...prev, machineNumber: e.target.value }))}
                     onBlur={(e) => { const f = e.target.value.toUpperCase().trim(); if (f !== e.target.value) setFormData(prev => ({ ...prev, machineNumber: f })); }}
-                    placeholder="e.g. M1, LATHE-01..." required autoFocus />
+                    placeholder="e.g. M1, LATHE-01..." autoFocus />
                   <FieldError {...errorProps('machineNumber')} message={errorFor('machineNumber')} />
                 </div>
-                <div className="form-group">
+                <div className={groupClass('machineName')}>
                   <label htmlFor="machineName">Name</label>
-                  <input type="text" id="machineName" value={formData.name}
+                  <input type="text" {...fieldProps('machineName')} value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     onBlur={(e) => { const f = toTitleCase(e.target.value); if (f !== e.target.value) setFormData(prev => ({ ...prev, name: f })); }}
                     placeholder="Machine name..." />
+                  <FieldError {...errorProps('machineName')} message={errorFor('machineName')} />
                 </div>
               </div>
-              <div className="form-group">
+              <div className={groupClass('machineDescription')}>
                 <label htmlFor="machineDescription">Description</label>
-                <input type="text" id="machineDescription" value={formData.description}
+                <input type="text" {...fieldProps('machineDescription')} value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   onBlur={(e) => { const f = capitalizeFirst(e.target.value); if (f !== e.target.value) setFormData(prev => ({ ...prev, description: f })); }}
                   placeholder="e.g. CNC vertical machining centre..." />
+                <FieldError {...errorProps('machineDescription')} message={errorFor('machineDescription')} />
               </div>
               </>
             ) : (
-              <div className="form-group">
+              <div className={groupClass('tagName')}>
                 <label htmlFor="tagName">Tag Name *</label>
-                <input type="text" id="tagName" value={formData.name}
+                <input type="text" {...fieldProps('tagName')} value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   onBlur={(e) => { const f = toTitleCase(e.target.value); if (f !== e.target.value) setFormData(prev => ({ ...prev, name: f })); }}
-                  required autoFocus />
+                  autoFocus />
+                <FieldError {...errorProps('tagName')} message={errorFor('tagName')} />
               </div>
             )}
           </form>

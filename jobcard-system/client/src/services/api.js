@@ -23,6 +23,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // the wording they see. Shared with AuthContext so both say the same thing.
 export const SIGNED_OUT_MESSAGES = {
   SESSION_REPLACED: 'You have been signed out because your account was logged in from another device.',
+  SESSION_ENDED: 'You have been signed out. Your PIN or access may have been changed, or the data restored from a backup. Please sign in again.',
   ACCOUNT_DEACTIVATED: 'You have been signed out because your account was turned off.',
   TOKEN_EXPIRED: 'Your sign-in has expired. Please sign in again.',
   TOKEN_INVALID: 'Your sign-in is no longer valid. Please sign in again.'

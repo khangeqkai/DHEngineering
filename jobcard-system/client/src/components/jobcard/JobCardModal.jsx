@@ -315,7 +315,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // Marks a contact box instead of a pop-up when Create (or the "Update contact" /
   // "Add as new person" prompt it can run first) comes back with a 400 naming
   // contactName/contactPhone/contactEmail — see useJobCardSave.js's
-  // contactFieldErrorsFrom. Declared before useJobCardSave so its callback can
+  // fieldErrorsFromRefusal (hooks/useFieldErrors.js). Declared before useJobCardSave so its callback can
   // close over it.
   const contactFieldErrors = useFieldErrors((name) => {
     if (name === 'contactName') return contactHook.contactFormData.contactName;

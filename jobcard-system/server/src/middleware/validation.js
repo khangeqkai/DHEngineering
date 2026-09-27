@@ -141,13 +141,28 @@ const HIDEABLE_COLUMN_IDS = JOBCARD_COLUMN_IDS.filter(id => id !== 'jobNumber');
 // Pre-built Validation Arrays for Common Routes
 // =============================================================================
 
+// The longest username an account can have — the same cap on creating an account
+// and on the sign-in box, so every real username still fits the sign-in check.
+const USERNAME_MAX_LENGTH = 100;
+
 /**
  * Login validation
  * POST /auth/login
  */
+// Sign-in is the one write anyone can reach before signing in (every failure is
+// logged and written to the activity trail with the typed username), so every box
+// carries a size cap and an oversize value is refused here, before the throttle,
+// the trail or the log are touched. The home access code's cap matches the most
+// it can ever be (72 bytes, the most bcrypt reads — see settings-home-access.js).
 const validateLogin = [
-  requiredString('username', 'Username'),
-  requiredString('password', 'Password'),
+  requiredString('username', 'Username')
+    .isLength({ max: USERNAME_MAX_LENGTH }).withMessage(`Username cannot exceed ${USERNAME_MAX_LENGTH} characters`),
+  requiredString('password', 'Password')
+    .isLength({ max: 64 }).withMessage('Password cannot exceed 64 characters'),
+  body('homeAccessCode')
+    .optional()
+    .isString().withMessage('Home access code must be a string')
+    .isLength({ max: 72 }).withMessage('Home access code cannot exceed 72 characters'),
   handleValidationErrors
 ];
 
@@ -156,7 +171,8 @@ const validateLogin = [
  * POST /auth/users
  */
 const validateCreateUser = [
-  requiredString('username', 'Username'),
+  requiredString('username', 'Username')
+    .isLength({ max: USERNAME_MAX_LENGTH }).withMessage(`Username cannot exceed ${USERNAME_MAX_LENGTH} characters`),
   body('password')
     .exists({ checkFalsy: true })
     .withMessage('Password is required')

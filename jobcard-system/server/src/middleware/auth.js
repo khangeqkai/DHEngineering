@@ -31,6 +31,12 @@ function authenticate(req, res, next) {
     if (!row || row.active !== 1) {
       return res.status(401).json({ error: 'Account deactivated', code: 'ACCOUNT_DEACTIVATED' });
     }
+    // An empty marker means the session was ended here (a PIN reset, archiving the
+    // account, a backup restore, signing out) — not that someone signed in
+    // elsewhere, so it gets its own code and the person isn't told it was another device.
+    if (!row.sessionToken) {
+      return res.status(401).json({ error: 'Session ended', code: 'SESSION_ENDED' });
+    }
     if (row.sessionToken !== decoded.sessionToken) {
       return res.status(401).json({ error: 'Session invalidated', code: 'SESSION_REPLACED' });
     }

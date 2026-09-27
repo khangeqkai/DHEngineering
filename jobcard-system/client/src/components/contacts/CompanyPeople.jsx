@@ -1,8 +1,15 @@
 import { useState } from 'react';
 import { Plus, Archive, ArchiveRestore, Save, X } from 'lucide-react';
 import { toTitleCase } from '../../utils/formatters';
+import { useFieldErrors } from '../../hooks/useFieldErrors';
+import FieldError from '../common/FieldError';
 
 const blankPerson = () => ({ contactName: '', phone: '', email: '' });
+
+// Which box on the person form each field named in a server refusal belongs to,
+// and which form value each box shows.
+export const PERSON_FORM_BOXES = { contactName: 'companyPersonName', phone: 'companyPersonPhone', email: 'companyPersonEmail' };
+const PERSON_BOX_VALUE = { companyPersonName: 'contactName', companyPersonPhone: 'phone', companyPersonEmail: 'email' };
 
 /**
  * The people at one company. Several can sit under the same customer, so this is
@@ -13,21 +20,25 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
   const [editingId, setEditingId] = useState(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(blankPerson());
+  const { setFieldErrors, clearAll, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
+    (box) => form[PERSON_BOX_VALUE[box]]
+  );
 
-  const startAdd = () => { setEditingId(null); setAdding(true); setForm(blankPerson()); };
+  const startAdd = () => { setEditingId(null); setAdding(true); setForm(blankPerson()); clearAll(); };
   const startEdit = (p) => {
     setAdding(false);
     setEditingId(p.id);
     setForm({ contactName: p.contactName || '', phone: p.phone || '', email: p.email || '' });
+    clearAll();
   };
-  const cancel = () => { setAdding(false); setEditingId(null); setForm(blankPerson()); };
+  const cancel = () => { setAdding(false); setEditingId(null); setForm(blankPerson()); clearAll(); };
 
   const submit = async (e) => {
     e.preventDefault();
     // The name box only tidies itself on blur — Enter from inside it submits
     // without that blur, so the same tidy-up is applied here too.
     const person = { ...form, contactName: toTitleCase(form.contactName) };
-    const ok = adding ? await onCreate(person) : await onUpdate(editingId, person);
+    const ok = adding ? await onCreate(person, setFieldErrors) : await onUpdate(editingId, person, setFieldErrors);
     if (ok) cancel();
   };
 
@@ -37,26 +48,29 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
   };
 
   const editor = (
-    <form className="company-person-form" onSubmit={submit}>
+    <form className="company-person-form" onSubmit={submit} noValidate>
       <div className="form-row">
-        <div className="form-group">
+        <div className={groupClass('companyPersonName')}>
           <label htmlFor="companyPersonName">Name</label>
           <input
             type="text"
-            id="companyPersonName"
+            {...fieldProps('companyPersonName')}
             value={form.contactName}
             onChange={(e) => setForm({ ...form, contactName: e.target.value })}
             onBlur={titleCaseBlur}
             autoFocus
           />
+          <FieldError {...errorProps('companyPersonName')} message={errorFor('companyPersonName')} />
         </div>
-        <div className="form-group">
+        <div className={groupClass('companyPersonPhone')}>
           <label htmlFor="companyPersonPhone">Phone</label>
-          <input type="tel" id="companyPersonPhone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <input type="tel" {...fieldProps('companyPersonPhone')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <FieldError {...errorProps('companyPersonPhone')} message={errorFor('companyPersonPhone')} />
         </div>
-        <div className="form-group">
+        <div className={groupClass('companyPersonEmail')}>
           <label htmlFor="companyPersonEmail">Email</label>
-          <input type="email" id="companyPersonEmail" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <input type="email" {...fieldProps('companyPersonEmail')} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <FieldError {...errorProps('companyPersonEmail')} message={errorFor('companyPersonEmail')} />
         </div>
       </div>
       <div className="company-person-actions">

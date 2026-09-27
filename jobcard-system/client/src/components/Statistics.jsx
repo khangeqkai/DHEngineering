@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { exportStatistics } from '../utils/excelExport';
+import { useAuth } from '../context/AuthContext';
+import { can } from '../utils/roles';
 import StatisticsHeader from './statistics/StatisticsHeader';
 import StatisticsKpis from './statistics/StatisticsKpis';
 import TrendsTab from './statistics/TrendsTab';
@@ -21,6 +23,8 @@ import './Statistics.css';
 const monthStartYmd = () => `${todayIsoDate().slice(0, 7)}-01`;
 
 export default function Statistics() {
+  const { user } = useAuth();
+  const canSeePricing = can(user, 'pricing');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
@@ -38,9 +42,11 @@ export default function Statistics() {
     (name) => (name === 'customRange' ? [customStartDate, customEndDate] : undefined)
   );
 
+  // Also re-loaded when the signed-in role changes, so figures fetched under
+  // access the person no longer has (the invoiced money) don't linger on screen.
   useEffect(() => {
     fetchStatistics();
-  }, [preset, groupBy]);
+  }, [preset, groupBy, user?.role]);
 
   // The one check on a custom range, run before every load of one — Apply, Refresh,
   // Retry and a Trend View change alike — so no button can load a range Apply would
@@ -104,7 +110,7 @@ export default function Statistics() {
     // A loading toast shows for the length of the export, not just after it finishes.
     const toastId = toast.loading('Exporting…');
     try {
-      const ok = await exportStatistics(data);
+      const ok = await exportStatistics(data, canSeePricing);
       if (ok === 'canceled') {
         toast.dismiss(toastId);
         return;

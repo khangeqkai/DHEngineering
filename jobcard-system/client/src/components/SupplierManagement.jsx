@@ -13,7 +13,12 @@ import ConfirmDialog from './common/ConfirmDialog';
 import EntityActivityLog from './common/EntityActivityLog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useManagedListPage } from '../hooks/useManagedListPage';
+import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
+import FieldError from './common/FieldError';
 import './SupplierManagement.css';
+
+// Which box on the form each field named in a server refusal belongs to.
+const SUPPLIER_FORM_BOXES = { name: 'name', contactEmail: 'contactEmail', contactPhone: 'contactPhone' };
 
 export default function SupplierManagement() {
   const [suppliers, setSuppliers] = useState([]);
@@ -38,6 +43,9 @@ export default function SupplierManagement() {
     serviceTagIds: []
   });
   const [saving, setSaving] = useState(false);
+  const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
+    (name) => formData[name]
+  );
   const [showCustomTagInput, setShowCustomTagInput] = useState(false);
   const [customTagName, setCustomTagName] = useState('');
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
@@ -86,6 +94,11 @@ export default function SupplierManagement() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.name.trim()) {
+      setFieldErrors({ name: 'Please enter the supplier name' });
+      scrollFieldIntoView('name');
+      return;
+    }
     setSaving(true);
 
     // Each name box only tidies itself on blur — Enter from inside the box submits
@@ -116,7 +129,7 @@ export default function SupplierManagement() {
       bumpActivity();
       resetForm();
     } catch (err) {
-      toast.error(err.message || 'Failed to save supplier');
+      showSaveRefusal(err, { boxFor: SUPPLIER_FORM_BOXES, setFieldErrors, fallback: 'Failed to save supplier' });
     } finally {
       setSaving(false);
     }
@@ -134,6 +147,7 @@ export default function SupplierManagement() {
       // can't undo anything linked meanwhile.
     }
     setEditingSupplier(supplier);
+    resetFieldErrors();
     setFormData({
       name: supplier.name || '',
       contactName: supplier.contactName || '',
@@ -238,6 +252,7 @@ export default function SupplierManagement() {
   const resetForm = () => {
     setShowForm(false);
     setEditingSupplier(null);
+    resetFieldErrors();
     setFormData({
       name: '',
       contactName: '',
@@ -290,13 +305,13 @@ export default function SupplierManagement() {
         size="small"
       >
         <BottomSheet.Body>
-          <form id="supplier-form" onSubmit={handleSubmit}>
+          <form id="supplier-form" onSubmit={handleSubmit} noValidate>
             <div className="form-row">
-              <div className="form-group">
+              <div className={groupClass('name')}>
                 <label htmlFor="name">Company Name *</label>
                 <input
                   type="text"
-                  id="name"
+                  {...fieldProps('name')}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   onBlur={(e) => {
@@ -305,8 +320,8 @@ export default function SupplierManagement() {
                       setFormData(prev => ({ ...prev, name: formatted }));
                     }
                   }}
-                  required
                 />
+                <FieldError {...errorProps('name')} message={errorFor('name')} />
               </div>
 
               <div className="form-group">
@@ -327,24 +342,26 @@ export default function SupplierManagement() {
             </div>
 
             <div className="form-row">
-              <div className="form-group">
+              <div className={groupClass('contactPhone')}>
                 <label htmlFor="contactPhone">Phone</label>
                 <input
                   type="tel"
-                  id="contactPhone"
+                  {...fieldProps('contactPhone')}
                   value={formData.contactPhone}
                   onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
                 />
+                <FieldError {...errorProps('contactPhone')} message={errorFor('contactPhone')} />
               </div>
 
-              <div className="form-group">
+              <div className={groupClass('contactEmail')}>
                 <label htmlFor="contactEmail">Email</label>
                 <input
                   type="email"
-                  id="contactEmail"
+                  {...fieldProps('contactEmail')}
                   value={formData.contactEmail}
                   onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
                 />
+                <FieldError {...errorProps('contactEmail')} message={errorFor('contactEmail')} />
               </div>
             </div>
 

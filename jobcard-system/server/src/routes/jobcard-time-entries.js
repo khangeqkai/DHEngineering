@@ -461,9 +461,17 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       workerId = resolved.userId;
     }
 
-    const { itemId, error: itemError } = resolveItemId(id, data.itemId);
-    if (itemError) {
-      return res.status(400).json({ error: itemError });
+    // Which part the block is credited to drives per-part progress, hours and the
+    // job's automatic status, so — like the times and the worker above — only
+    // management may move it. A worker's save keeps the stored part whatever it
+    // sends (or leaves out), so it can neither re-credit the block nor detach it.
+    let itemId = existing.item_id;
+    if (isManagement(req.user.role)) {
+      const resolvedItem = resolveItemId(id, data.itemId);
+      if (resolvedItem.error) {
+        return res.status(400).json({ error: resolvedItem.error });
+      }
+      itemId = resolvedItem.itemId;
     }
 
     // awaiting_details only ends the wait on the worker's own stop-timer form
