@@ -12,14 +12,12 @@ Every agent in the hunt reads this file first. It is the memory between rounds.
 - **Anything listed under "Decided — leave alone" or "Fixed" is not re-reported** unless the fix itself is wrong.
 
 ## Waiting for the owner (design decisions)
-- **R4 — Reused machine numbers.** When a machine is archived and its number given to another machine (new, or renumbered), Workshop Statistics credits all past hours under that number to the machine that holds it now; the retired machine vanishes from the Machines tab. A proper fix needs the app to remember *when* each machine took its number (a new stored date, filled for existing machines at start-up), then credit each piece of work to whichever machine held the number at that time. A first attempt using the machine's "added" date was wrong for renumbered machines and was reverted. Proposal: add that stored date. Only matters if machine numbers are ever reused.
 - **R6 — Customer name on pre-filled quality forms.** Workers are not meant to see customer names, but quality forms come pre-filled with the customer's company name and workers open and print them. Options: (1) allow it and write it down as an exception, since workers handle these forms anyway; (2) never pre-fill the customer box; (3) office copy filled, worker copy blank.
 - **R8 — Quality forms are frozen when the level is set.** Pre-filled forms are copied once (on job create / level change); later parts, due date, PO changes and the "date" box never update. Options: (1) fill forms fresh at print/view time and stop keeping pre-filled copies; (2) keep copies but refill on every job change; (3) accept it, drop the auto date box, add a "Refresh forms" button.
 - **R8 — Old level's forms stay after a level change.** The old level's blank forms stay in the job and print by default, and a form handed back under the old level counts as returned for the new level (so the job can be invoiced). Proposal: on a level change remove the old untouched blanks (never returned forms), move old returned forms to an "Earlier level" sub-folder, and count a returned form only for the level it was returned under.
-- **R10 — After the workshop PC restarts, nobody can reach the app until someone opens it by hand.** Options: (1) installer sets the app to open at Windows sign-in, and closing the window hides it to the tray (with a clear Quit) — smallest change; (2) run the shared part as a Windows service; (3) keep as is and change the checklist to say the app must be opened after every restart.
 
 ## Decided — leave alone
-_None yet._
+- **R4 — Reused machine numbers.** Owner: machine numbers are never reused in this workshop, so statistics crediting hours by machine number is fine. Leave as is.
 
 ## Fixed
 ### Round 1 — pricing sheet and job screen
