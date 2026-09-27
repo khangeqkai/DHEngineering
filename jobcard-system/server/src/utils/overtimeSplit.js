@@ -14,6 +14,8 @@
 // still come out exactly as before — the only thing that changed is how often the
 // clock is consulted.
 
+const { makeOfficeFormatter } = require('./officeTime');
+
 const MIN = 60 * 1000;
 const DAY = 24 * 60 * MIN;
 
@@ -25,21 +27,6 @@ const WEEKDAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const HM_OF_MINUTE = Array.from({ length: 1440 }, (_, m) =>
   `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 );
-
-// Build a formatter locked to the given zone. Falls back to UTC if the zone is
-// missing or not recognised, so costing never throws over a bad setting.
-function makeFormatter(timeZone) {
-  const opts = {
-    hour12: false, weekday: 'short',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit'
-  };
-  try {
-    return new Intl.DateTimeFormat('en-CA', { timeZone: timeZone || 'UTC', ...opts });
-  } catch {
-    return new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', ...opts });
-  }
-}
 
 // How far the zone runs ahead of UTC at an instant. Reading the instant on the office
 // clock and then treating that reading as if it were UTC leaves exactly the offset
@@ -132,7 +119,7 @@ function dayTierTable(blocks) {
 const MAX_WALK_MS = 60 * 24 * 60 * 60 * 1000; // 60 days
 
 function splitHours(entries, { schedule, holidays, timezone }) {
-  const fmt = makeFormatter(timezone);
+  const fmt = makeOfficeFormatter(timezone);
   const holidaySet = new Set(Array.isArray(holidays) ? holidays : []);
   const tierTables = new Map();
   const tableFor = (weekday) => {

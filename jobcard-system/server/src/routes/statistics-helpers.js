@@ -1,17 +1,5 @@
 const { splitHours } = require('../utils/overtimeSplit');
-
-function makeDateFormatter(timeZone) {
-  const opts = {
-    hour12: false, weekday: 'short',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit'
-  };
-  try {
-    return new Intl.DateTimeFormat('en-CA', { timeZone: timeZone || 'UTC', ...opts });
-  } catch {
-    return new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', ...opts });
-  }
-}
+const { makeOfficeFormatter: makeDateFormatter } = require('../utils/officeTime');
 
 function getLocalDateString(fmt, date) {
   try {
