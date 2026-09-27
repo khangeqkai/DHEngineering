@@ -288,6 +288,20 @@ const validateUpdateSupplier = [
   handleValidationErrors
 ];
 
+// POST /machines — a machine is its number (required, non-blank); name and
+// description are optional free text, unvalidated here (as before). Mirrors
+// validateCreateSupplier.
+const validateCreateMachine = [
+  requiredString('machineNumber', 'Machine number'),
+  handleValidationErrors
+];
+
+// PUT /machines/:id
+const validateUpdateMachine = [
+  requiredString('machineNumber', 'Machine number'),
+  handleValidationErrors
+];
+
 /**
  * Update user preferences validation
  * PUT /auth/me/preferences
@@ -759,6 +773,8 @@ module.exports = {
   validateUpdateContact,
   validateCreateSupplier,
   validateUpdateSupplier,
+  validateCreateMachine,
+  validateUpdateMachine,
   validateJobcardListQuery,
   validateJobcardEnums,
   validateJobcardContactFields,

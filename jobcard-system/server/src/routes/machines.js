@@ -2,7 +2,8 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { machineQueries, timeEntryQueries, recordHistory } = require('../db/database');
-const { authenticate, isManagement } = require('../middleware/auth');
+const { authenticate, requireManagement } = require('../middleware/auth');
+const { validateCreateMachine, validateUpdateMachine } = require('../middleware/validation');
 const { diffFields } = require('../utils/historyChanges');
 const { parseMachineTokens } = require('./statistics-helpers');
 
@@ -39,16 +40,8 @@ router.get('/', (req, res) => {
 });
 
 // Create machine (admin or manager)
-router.post('/', (req, res) => {
-  if (!isManagement(req.user.role)) {
-    return res.status(403).json({ error: 'Insufficient permissions' });
-  }
-
+router.post('/', requireManagement, validateCreateMachine, (req, res) => {
   const { machineNumber, name, description } = req.body;
-
-  if (!machineNumber) {
-    return res.status(400).json({ error: 'Machine number is required' });
-  }
 
   try {
     // Check if an active machine already uses this number (archived ones don't count)
@@ -76,17 +69,9 @@ router.post('/', (req, res) => {
 });
 
 // Update machine (admin or manager)
-router.put('/:id', (req, res) => {
-  if (!isManagement(req.user.role)) {
-    return res.status(403).json({ error: 'Insufficient permissions' });
-  }
-
+router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
   const { id } = req.params;
   const { machineNumber, name, description } = req.body;
-
-  if (!machineNumber) {
-    return res.status(400).json({ error: 'Machine number is required' });
-  }
 
   try {
     const existing = machineQueries.getById.get(id);
@@ -149,11 +134,7 @@ router.put('/:id', (req, res) => {
 // Machines are never permanently deleted: time entries record which machine ran a
 // job, so erasing one would leave that history pointing at nothing. Archiving keeps
 // the record (existing time entries stay valid) and frees its number for reuse.
-router.delete('/:id', (req, res) => {
-  if (!isManagement(req.user.role)) {
-    return res.status(403).json({ error: 'Insufficient permissions' });
-  }
-
+router.delete('/:id', requireManagement, (req, res) => {
   const { id } = req.params;
 
   try {
@@ -176,11 +157,7 @@ router.delete('/:id', (req, res) => {
 });
 
 // Restore archived machine (admin or manager)
-router.post('/:id/activate', (req, res) => {
-  if (!isManagement(req.user.role)) {
-    return res.status(403).json({ error: 'Insufficient permissions' });
-  }
-
+router.post('/:id/activate', requireManagement, (req, res) => {
   const { id } = req.params;
 
   try {
