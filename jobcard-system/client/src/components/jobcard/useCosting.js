@@ -47,43 +47,6 @@ const NUMERIC_PATTERN = /^-?\d+(\.\d+)?$|^-?\.\d+$/;
 
 const floorMessage = (min) => (min >= 1 ? "Can't be below ×1." : "Can't be negative.");
 
-// The on-screen form built from a loaded costing row — used when the pricing first loads,
-// and again when a save's reply carries the stored figures back.
-function formFromCosting(c) {
-  return {
-    labourHours: c.labourHours || 0,
-    labourHoursCalculated: c.labourHoursCalculated || 0,
-    labourHoursOverridden: c.labourHoursOverride != null,
-    labourRate: c.labourRate || 0,
-    labourDefaultRate: c.labourDefaultRate || 0,
-    labourOt1Hours: c.labourOt1Hours || 0,
-    labourOt1HoursCalculated: c.labourOt1HoursCalculated || 0,
-    labourOt1Overridden: c.labourOt1Override != null,
-    labourOt1Multiplier: c.labourOt1Multiplier ?? 1.5,
-    labourOt1MultiplierCalculated: c.labourOt1MultiplierCalculated ?? 1.5,
-    labourOt1MultiplierOverridden: c.labourOt1MultiplierOverride != null,
-    labourOt2Hours: c.labourOt2Hours || 0,
-    labourOt2HoursCalculated: c.labourOt2HoursCalculated || 0,
-    labourOt2Overridden: c.labourOt2Override != null,
-    labourOt2Multiplier: c.labourOt2Multiplier ?? 2,
-    labourOt2MultiplierCalculated: c.labourOt2MultiplierCalculated ?? 2,
-    labourOt2MultiplierOverridden: c.labourOt2MultiplierOverride != null,
-    labourHolidayHours: c.labourHolidayHours || 0,
-    labourHolidayHoursCalculated: c.labourHolidayHoursCalculated || 0,
-    labourHolidayOverridden: c.labourHolidayOverride != null,
-    labourHolidayMultiplier: c.labourHolidayMultiplier ?? 2.5,
-    labourSpecialHours: c.labourSpecialHours || 0,
-    labourSpecialRate: c.labourSpecialRate || 0,
-    materialsCost: c.materialsCost || 0,
-    materialsProfitPercent: c.materialsProfitPercent ?? 100,
-    subcontractorCost: c.subcontractorCost || 0,
-    subcontractorProfitPercent: c.subcontractorProfitPercent ?? 0,
-    labourSpecialDescription: c.labourSpecialDescription || '',
-    materialsDescription: c.materialsDescription || '',
-    subcontractorDescription: c.subcontractorDescription || ''
-  };
-}
-
 // What a box currently being typed in (a draft, not yet committed) is worth for the
 // LIVE totals only — never sent. A blank plain box prices at 0; a blank override box
 // prices at its calculated figure, exactly like the committed form does once the box is
@@ -167,14 +130,16 @@ export function useCosting(jobCardId, {
   jobCardIdRef.current = jobCardId;
 
   // Fill the form from the costing loaded for this job. That load happens once per
-  // opening — the save no longer re-reads.
+  // opening — the save no longer re-reads. loadedCosting already IS the form shape —
+  // mapCostingResponseToForm (mappers.js) maps the server reply straight into it, so
+  // there is no separate mapping step here any more.
   useEffect(() => {
     if (loadedCosting) {
       loadedRef.current = loadedCosting;
       openingRef.current = loadedCosting;
       setCostingDirty(false);
       setSaveState('idle');
-      setCostingForm(formFromCosting(loadedCosting));
+      setCostingForm(loadedCosting);
       setDrafts({});
       clearAllFieldErrors();
     }
@@ -498,7 +463,9 @@ export function useCosting(jobCardId, {
         if (stored) {
           loadedRef.current = stored;
           setCostingForm(prev => {
-            const next = formFromCosting(stored);
+            // stored is already the form shape (mapCostingResponseToForm) — copy it so
+            // the notes patch below doesn't mutate the object held in loadedRef.
+            const next = { ...stored };
             // Keep the notes exactly as they are in the boxes when nothing was typed in
             // them (there is no draft to preserve instead) — the server trims them for
             // storage, and swapping the trimmed copy back in would only ever differ by
@@ -734,7 +701,7 @@ export function useCosting(jobCardId, {
   // control vanish about a second after it appeared, since this sheet saves on every
   // edit. So for as long as the job stays open it keeps offering the figure the job was
   // opened with, even once later autosaves have moved the actually-stored value past it.
-  const openedAt = openingRef.current ? formFromCosting(openingRef.current) : null;
+  const openedAt = openingRef.current ? { ...openingRef.current } : null;
 
   // What the sheet actually renders: every committed figure, with any box currently
   // being typed in showing its draft text instead. Built here so every caller (the tab,

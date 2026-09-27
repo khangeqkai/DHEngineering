@@ -47,7 +47,7 @@ export function useJobCardCloseGuard({
   isOpen,
   isEdit,
   jobCardId,
-  isAdmin,
+  canSeePricing,
   isDirty,
   formHook,
   instantItems,
@@ -85,11 +85,11 @@ export function useJobCardCloseGuard({
     saving,
     hasUnpostedNote: jobNotes.newNote.trim() !== '',
     stopFormOpen: timer.showEntryForm,
-    costingDirty: isAdmin ? costingHook.costingDirty : false,
+    costingDirty: canSeePricing ? costingHook.costingDirty : false,
     // A box still being typed in (including a red one) — see costingHasDraft in
     // useCosting.js. Counted as work to lose alongside costingDirty, so a page refresh
     // with an unsaved or red pricing box asks first.
-    costingUnsettled: isAdmin ? costingHook.costingHasDraft : false,
+    costingUnsettled: canSeePricing ? costingHook.costingHasDraft : false,
     showConfirm,
     onClose,
     isEdit,
@@ -134,7 +134,7 @@ export function useJobCardCloseGuard({
         // and separately. costingHook.guardLeaveCosting commits every other box on the
         // way (exactly like leaving the tab does) and only stops here for one still
         // sitting red.
-        if (isAdmin) {
+        if (canSeePricing) {
           const { proceed, field } = await costingHook.guardLeaveCosting(showConfirm);
           if (!proceed) {
             revealCosting?.(field);
@@ -146,7 +146,7 @@ export function useJobCardCloseGuard({
     } finally {
       closingRef.current = false;
     }
-  }, [isEdit, whenSettled, isAdmin, costingHook, showConfirm, revealCosting]);
+  }, [isEdit, whenSettled, canSeePricing, costingHook, showConfirm, revealCosting]);
 
   return { ...guard, handleRequestClose };
 }

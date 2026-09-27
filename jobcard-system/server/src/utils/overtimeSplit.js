@@ -15,6 +15,7 @@
 // clock is consulted.
 
 const { makeOfficeFormatter } = require('./officeTime');
+const { roundTo } = require('./round');
 
 const MIN = 60 * 1000;
 const DAY = 24 * 60 * MIN;
@@ -178,11 +179,10 @@ function splitHours(entries, { schedule, holidays, timezone }) {
     }
   }
 
-  const round3 = (n) => Math.round(n * 1000) / 1000;
-  ot1 = round3(ot1);
-  ot2 = round3(ot2);
-  holiday = round3(holiday);
-  const normalHours = Math.max(0, round3(totalHours - ot1 - ot2 - holiday));
+  ot1 = roundTo(ot1, 3);
+  ot2 = roundTo(ot2, 3);
+  holiday = roundTo(holiday, 3);
+  const normalHours = Math.max(0, roundTo(totalHours - ot1 - ot2 - holiday, 3));
 
   return { normalHours, ot1Hours: ot1, ot2Hours: ot2, holidayHours: holiday };
 }

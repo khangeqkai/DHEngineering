@@ -14,6 +14,8 @@ const {
 } = require('../db/database');
 const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
 const { diffFields } = require('../utils/historyChanges');
+const { officeDateString } = require('../utils/officeTime');
+const { formatDayAu } = require('../utils/calendarDate');
 
 // Customer/contact fields hidden from non-admins. Used both when formatting a
 // job card and when sanitizing a job card's history so the two protections stay
@@ -245,24 +247,31 @@ function applyInvoicingArchive(shouldArchive, invoicedDate, userId, jobcardId) {
   };
 }
 
-function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
-  const canManage = isManagement(userRole);
-  // Customer fields are hidden from non-admins — same set as CUSTOMER_HISTORY_FIELDS.
-  const contactFields = canManage ? {
+// The one "hide customer details" step — the six customer/contact fields off a
+// job's own row, or all null when the requester isn't management. Every reader of
+// a job's customer fields (the live job card, search's job results, the printout)
+// goes through here, so the hiding rule can never drift between them.
+function customerFields(row, canManage) {
+  if (!canManage) return Object.fromEntries(CUSTOMER_HISTORY_FIELDS.map(f => [f, null]));
+  return {
     companyId: row.company_id,
     contactId: row.contact_id,
     contactName: row.contact_name,
     companyName: row.company_name,
     contactPhone: row.contact_phone,
     contactEmail: row.contact_email
-  } : Object.fromEntries(CUSTOMER_HISTORY_FIELDS.map(f => [f, null]));
+  };
+}
+
+function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
+  const canManage = isManagement(userRole);
   return {
     _id: row.id,
     id: row.id,
     jobNumber: row.job_number,
     cardType: row.card_type,
     status: row.status,
-    ...contactFields,
+    ...customerFields(row, canManage),
     qualityLevel: row.quality_level,
     qaLevelId: row.qa_level_id || null,
     priority: row.priority,
@@ -378,14 +387,34 @@ function friendlyTagList(raw, category) {
   return [...new Set(vals.map(v => tagName(category, v)))].join(', ');
 }
 
-// Build the data object passed to copyQaTemplatesForJob for PDF pre-fill.
-// Loads current items from DB and aggregates treatments/job types across them.
-// Every code/enum value is resolved to the same human-readable label the job
-// card printout uses (tagName, PRIORITY_LABELS, STATUS_LABELS, formatAuDate),
-// and every date goes through the same AU-date formatting — a quality form is
-// a file any worker can open, so it must never show a raw internal code like
-// ZINC_PLATE, N_A or SAME_DAY, or a raw ISO timestamp.
-function buildQaFillData(jobcardId, fields) {
+// Build the data object passed to copyQaTemplatesForJob for PDF pre-fill,
+// straight off the job's own saved row — both call sites (job create, after the
+// row is committed; a QA level change) hand this the job's id and its just-decided
+// quality-level label instead of building their own field list, so a quality form
+// can never disagree with the job it was filled from. Loads current items from DB
+// and aggregates treatments/job types across them. Every code/enum value is
+// resolved to the same human-readable label the job card printout uses (tagName,
+// PRIORITY_LABELS, STATUS_LABELS, formatDayAu), and every date goes through the
+// same AU-date formatting — a quality form is a file any worker can open, so it
+// must never show a raw internal code like ZINC_PLATE, N_A or SAME_DAY, or a raw
+// ISO timestamp.
+function qaFillDataForJob(jobcardId, qualityLevelName) {
+  const jc = jobcardQueries.getById.get(jobcardId);
+  const fields = {
+    jobNumber: jc.job_number,
+    status: jc.status,
+    companyId: jc.company_id,
+    companyName: jc.company_name,
+    description: jc.description,
+    priority: jc.priority || 'NONE',
+    dueDate: jc.due_date,
+    qualityLevel: qualityLevelName,
+    poNumber: jc.po_number,
+    quoteReference: jc.quote_reference,
+    repeatJob: jc.is_repeat_job === 1 ? 'Yes' : 'No',
+    repeatJobReference: jc.repeat_job_reference
+  };
+
   const items = jobItemQueries.getByJobcard.all(jobcardId);
   const itemsForPdf = items.map(i => ({
     itemNumber: i.item_number,
@@ -412,13 +441,13 @@ function buildQaFillData(jobcardId, fields) {
     .map(v => tagName(category, v)))];
   const allDrawings = jobTagList('drawings_type', 'drawings');
   const allProperty = jobTagList('customer_property', 'customer_property');
-  // The job's creation date, formatted for any "date created" PDF field — same
-  // formatAuDate the printout uses.
-  const jc = jobcardQueries.getById.get(jobcardId);
   return {
     ...fields,
-    dateCreated: jc ? formatAuDate(jc.created_at) : null,
-    dueDate: fields.dueDate ? formatAuDate(fields.dueDate) : fields.dueDate,
+    // The job's creation date, formatted for any "date created" PDF field — the
+    // office's own day, same as the printout.
+    dateCreated: formatDayAu(officeDateString(new Date(jc.created_at))),
+    // A due date is a bare calendar day, never read through a Date/time zone.
+    dueDate: fields.dueDate ? formatDayAu(fields.dueDate) : fields.dueDate,
     priority: fields.priority ? (PRIORITY_LABELS[fields.priority] || fields.priority) : fields.priority,
     status: fields.status ? (STATUS_LABELS[fields.status] || fields.status) : fields.status,
     jobType: allJobTypes.join(', ') || null,
@@ -447,12 +476,6 @@ function tagName(category, value) {
 
 function splitValues(raw) {
   return String(raw || '').split(',').map(v => v.trim()).filter(Boolean);
-}
-
-function formatAuDate(raw) {
-  if (!raw) return '';
-  const d = new Date(raw);
-  return isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString('en-AU');
 }
 
 // Build friendly, pre-formatted data for the generated job card printout
@@ -526,12 +549,15 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
     description: jc.description || '',
     priorityLabel,
     priorityClass: PRIORITY_PILL_CLASSES[priorityKey] || 'normal',
-    dateCreated: formatAuDate(jc.created_at),
-    dueDate: formatAuDate(jc.due_date),
+    // The created moment is read on the office's day, same as the printout's
+    // other office-day fields; the due date is a bare calendar day, never read
+    // through a Date/time zone.
+    dateCreated: formatDayAu(officeDateString(new Date(jc.created_at))),
+    dueDate: formatDayAu(jc.due_date),
     // The shop-floor printout shows the company to management requesters so they
     // know whose job it is. Non-management requesters never see the customer —
     // contact name / phone / email are never on the printout for anyone.
-    company: canManage ? (jc.company_name || '') : '',
+    company: customerFields(jc, canManage).companyName || '',
     poNumber: jc.po_number || '',
     quoteReference: jc.quote_reference || '',
     printed: new Date().toLocaleDateString('en-AU'),
@@ -571,4 +597,4 @@ function createRelatedRecords(jobcardId, data) {
 // utils/qaTemplateProvisioning.js — extracted out of this file (a straight
 // lift, no behaviour change) because it was getting long.
 
-module.exports = { formatJobcard, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, buildQaFillData, buildJobCardView, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive, tagName, friendlyTagList };
+module.exports = { formatJobcard, customerFields, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, qaFillDataForJob, buildJobCardView, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive, tagName, friendlyTagList };

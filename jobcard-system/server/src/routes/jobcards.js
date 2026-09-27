@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { deleteJobCardFolders } = require('../utils/folderCreation');
-const { authenticate, requireManagement, requireAdmin, canSetStatus } = require('../middleware/auth');
+const { authenticate, requireManagement, requirePermission, canSetStatus } = require('../middleware/auth');
 const { validateJobcardListQuery, JOBCARD_STATUSES } = require('../middleware/validation');
 const {
   jobcardQueries,
@@ -19,6 +19,7 @@ const {
 } = require('../db/database');
 const { db } = require('../db/connection');
 const { formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
+const { roundTo } = require('../utils/round');
 const jobcardMutationsRoutes = require('./jobcard-mutations');
 const jobcardPrintoutRoutes = require('./jobcard-printout');
 const jobcardItemsRoutes = require('./jobcard-items');
@@ -127,7 +128,7 @@ router.get('/:id', authenticate, (req, res) => {
 });
 
 // Get job card history (admin only — the trail carries pricing changes)
-router.get('/:id/history', authenticate, requireAdmin, (req, res) => {
+router.get('/:id/history', authenticate, requirePermission('activityTrail'), (req, res) => {
   try {
     const history = historyQueries.getByEntity.all('jobcard', req.params.id);
 
@@ -435,7 +436,7 @@ router.post('/:id/unarchive', authenticate, requireManagement, (req, res) => {
 });
 
 // Delete job card
-router.delete('/:id', authenticate, requireAdmin, (req, res) => {
+router.delete('/:id', authenticate, requirePermission('deleteJob'), (req, res) => {
   try {
     const { id } = req.params;
 
@@ -462,7 +463,7 @@ router.delete('/:id', authenticate, requireAdmin, (req, res) => {
           entries.filter(e => e.end_time).map(e => e.user_name).filter(Boolean)
         )];
         const hrs = timeEntryQueries.getHoursByJobcard.get(id);
-        const loggedHours = Math.round((hrs?.labour_hours || 0) * 10) / 10;
+        const loggedHours = roundTo(hrs?.labour_hours, 1);
         workWarning = {
           hasActive: activeWorkers.length > 0,
           activeWorkers,

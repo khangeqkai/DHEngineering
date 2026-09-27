@@ -12,6 +12,7 @@ const {
 const { normalizeStoredTimestamps } = require('./normalizeTimestamps');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { DEFAULT_VIC_PUBLIC_HOLIDAYS_2026 } = require('../utils/defaultHolidays');
+const { COSTING_DEFAULTS } = require('../utils/costingDefaults');
 
 // Canonicalise one day's blocks to whole-hour boundaries using the SAME cycle
 // semantics the schedule editor and the minute-splitter use: build the 24 hourly
@@ -451,9 +452,9 @@ function runMigrations() {
           schedule: getS('labour_schedule'),
           holidays: getS('labour_public_holidays'),
           timezone: getS('timezone') || 'UTC',
-          ot1: Number(getS('labour_ot1_multiplier')) || 1.5,
-          ot2: Number(getS('labour_ot2_multiplier')) || 2,
-          hol: Number(getS('labour_holiday_multiplier')) || 2.5
+          ot1: Number(getS('labour_ot1_multiplier')) || COSTING_DEFAULTS.ot1Multiplier,
+          ot2: Number(getS('labour_ot2_multiplier')) || COSTING_DEFAULTS.ot2Multiplier,
+          hol: Number(getS('labour_holiday_multiplier')) || COSTING_DEFAULTS.holidayMultiplier
         };
         const stampRules = db.prepare(
           `UPDATE job_costings SET
@@ -591,16 +592,16 @@ async function initializeDatabase() {
   const defaultSchedule = {};
   for (const d of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']) defaultSchedule[d] = allNormalDay;
   settingsStmt.run('labour_schedule', JSON.stringify(defaultSchedule));
-  settingsStmt.run('labour_ot1_multiplier', '1.5');
-  settingsStmt.run('labour_ot2_multiplier', '2');
-  settingsStmt.run('labour_holiday_multiplier', '2.5');
+  settingsStmt.run('labour_ot1_multiplier', String(COSTING_DEFAULTS.ot1Multiplier));
+  settingsStmt.run('labour_ot2_multiplier', String(COSTING_DEFAULTS.ot2Multiplier));
+  settingsStmt.run('labour_holiday_multiplier', String(COSTING_DEFAULTS.holidayMultiplier));
   // Ship the Victorian (VIC) 2026 public holidays as the starting list. Admins can
   // add or remove any of these on the Labour Rates & Overtime page.
   settingsStmt.run('labour_public_holidays', JSON.stringify(DEFAULT_VIC_PUBLIC_HOLIDAYS_2026));
   // Company-wide default hourly rate — the starting base rate for any job still on the
   // default. Seeded at 0 so behaviour matches the old "type it per job" flow until an
   // admin sets a real figure on the Labour Rates & Overtime page.
-  settingsStmt.run('labour_default_rate', '0');
+  settingsStmt.run('labour_default_rate', String(COSTING_DEFAULTS.labourDefaultRate));
 
   logger.info('Database initialization complete');
 }

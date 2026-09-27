@@ -1,8 +1,10 @@
 const express = require('express');
 const { db } = require('../db/connection');
-const { authenticate, isManagement } = require('../middleware/auth');
+const { authenticate, isManagement, can } = require('../middleware/auth');
 const { getAssigneesForJobcards } = require('../db/database');
 const { officeTimeZone, officeDayStart, officeDayEnd } = require('../utils/officeTime');
+const { customerFields } = require('./jobcard-helpers');
+const { roundTo } = require('../utils/round');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -59,11 +61,12 @@ function jobSearchMatch(canManage, like) {
 // --- Formatters (snake_case → camelCase) ---
 
 function formatJob(row, assignees, canManage) {
+  const { companyName, contactName } = customerFields(row, canManage);
   return {
     id: row.id,
     jobNumber: row.job_number,
-    companyName: canManage ? row.company_name : null,
-    contactName: canManage ? row.contact_name : null,
+    companyName,
+    contactName,
     status: row.status,
     priority: row.priority,
     qualityLevel: row.quality_level,
@@ -90,13 +93,16 @@ function formatContact(row) {
   };
 }
 
-function formatSupplier(row) {
+// Contact phone/email are hidden from non-management the same way suppliers.js
+// hides them (toApiFormat there isn't exported, so this gates the same fields
+// with the same rule rather than importing it).
+function formatSupplier(row, canManage) {
   return {
     id: row.id,
     name: row.name,
     contactName: row.contact_name,
-    contactPhone: row.contact_phone,
-    contactEmail: row.contact_email,
+    contactPhone: canManage ? row.contact_phone : null,
+    contactEmail: canManage ? row.contact_email : null,
     address: row.address
   };
 }
@@ -127,7 +133,9 @@ function formatTimeEntry(row) {
     description: row.description,
     startTime: row.start_time,
     endTime: row.end_time,
-    durationHours: row.duration_hours != null ? Math.round(row.duration_hours * 100) / 100 : null
+    // null stays null rather than rounding to 0 — an in-progress entry has no
+    // end time yet, and that must read as "still running", not "zero hours".
+    durationHours: row.duration_hours != null ? roundTo(row.duration_hours, 2) : null
   };
 }
 
@@ -139,17 +147,17 @@ router.get('/', authenticate, (req, res) => {
     const canManage = isManagement(req.user.role);
     // Activity results are drawn from the raw history trail, which carries pricing
     // changes — admin-only, so a manager can't read money through search.
-    const isAdmin = req.user.role === 'admin';
+    const canSeeActivity = can(req.user.role, 'activityTrail');
 
     switch (scope) {
       case 'all': return searchAll(req, res, canManage);
       case 'jobs': return searchJobs(req, res, canManage);
       case 'people': {
         if (!canManage) return res.status(403).json({ error: 'Management only' });
-        return searchPeople(req, res);
+        return searchPeople(req, res, canManage);
       }
       case 'activity': {
-        if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
+        if (!canSeeActivity) return res.status(403).json({ error: 'Admin only' });
         return searchActivity(req, res);
       }
       case 'time': return searchTime(req, res, canManage);
@@ -200,13 +208,13 @@ function searchAll(req, res, canManage) {
     const sWhere = "active = 1 AND (name LIKE ? ESCAPE '\\' OR contact_name LIKE ? ESCAPE '\\' OR contact_phone LIKE ? ESCAPE '\\' OR contact_email LIKE ? ESCAPE '\\')";
     groups.suppliers = {
       count: db.prepare(`SELECT COUNT(*) as count FROM suppliers WHERE ${sWhere}`).get(like, like, like, like).count,
-      results: db.prepare(`SELECT * FROM suppliers WHERE ${sWhere} ORDER BY name ASC LIMIT ?`).all(like, like, like, like, PREVIEW_LIMIT).map(formatSupplier)
+      results: db.prepare(`SELECT * FROM suppliers WHERE ${sWhere} ORDER BY name ASC LIMIT ?`).all(like, like, like, like, PREVIEW_LIMIT).map(r => formatSupplier(r, canManage))
     };
   }
 
   // Activity — admin only (the history trail carries pricing changes, which managers
   // are barred from seeing), so it sits outside the management block above.
-  if (req.user.role === 'admin') {
+  if (can(req.user.role, 'activityTrail')) {
     const hWhere = "(user_name LIKE ? ESCAPE '\\' OR entity_id LIKE ? ESCAPE '\\' OR changes LIKE ? ESCAPE '\\')";
     groups.activity = {
       count: db.prepare(`SELECT COUNT(*) as count FROM history WHERE ${hWhere}`).get(like, like, like).count,
@@ -276,7 +284,7 @@ function searchJobs(req, res, canManage) {
 // supplier's own name and unused by formatContact; `contact_name` is read by both, but
 // means the person at the company in the contacts branch and the supplier's own contact
 // person in the suppliers branch, exactly as each original query already had it).
-function searchPeople(req, res) {
+function searchPeople(req, res, canManage) {
   const { q, peopleType = 'both' } = req.query;
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const like = q ? likeTerm(q.trim()) : null;
@@ -328,7 +336,7 @@ function searchPeople(req, res) {
   ).all(...allParams, PAGE_SIZE, offset);
 
   const results = rows.map(r => r.type === 'supplier'
-    ? { ...formatSupplier(r), type: 'supplier' }
+    ? { ...formatSupplier(r, canManage), type: 'supplier' }
     : { ...formatContact(r), type: 'contact' }
   );
 
@@ -416,7 +424,7 @@ function searchTime(req, res, canManage) {
   res.json({
     results: rows.map(formatTimeEntry),
     total, page, totalPages: Math.ceil(total / PAGE_SIZE),
-    totalHours: Math.round(hoursResult.total_hours * 100) / 100
+    totalHours: roundTo(hoursResult.total_hours, 2)
   });
 }
 

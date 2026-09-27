@@ -1,5 +1,6 @@
 const { db } = require('./connection');
-const { settingsQueries } = require('./queries/support');
+const { settingsQueries, historyQueries } = require('./queries/support');
+const { jobcardQueries } = require('./queries/jobcard');
 
 // Helper to record history
 function recordHistory(entityType, entityId, action, userId, userName, changes, snapshot) {
@@ -25,6 +26,12 @@ function actorName(req) {
   return req.user.name || req.user.username;
 }
 
+// The one place a job number is built from its parts. Preserves leading zeros:
+// the caller passes the width of the stored counter string.
+function formatJobNumber(prefix, num, width) {
+  return prefix + String(num).padStart(width, '0');
+}
+
 // Compute the next job number WITHOUT touching the counter.
 // Returns { jobNumber, nextNum, width, error } - error if not configured.
 // The caller commits the bump (bumpJobNumber) only after the job record has been
@@ -45,8 +52,32 @@ function peekNextJobNumber() {
     return { jobNumber: null, error: 'Invalid job number sequence value.' };
   }
 
-  const jobNumber = prefix + String(nextNum).padStart(width, '0');
+  const jobNumber = formatJobNumber(prefix, nextNum, width);
   return { jobNumber, nextNum, width, error: null };
+}
+
+// The highest job number ever actually handed out with this prefix — the jobs that
+// exist, plus deleted jobs, whose number the delete trail keeps. A deleted job's
+// number is never reused. The counter's own current value is deliberately NOT a
+// floor: it may have been moved past numbers nobody ever used (a mistyped 50000),
+// and that mistake has to be undoable. Returns { num, deleted } or null when this
+// prefix has never been used.
+function highestUsedJobNumber(prefix) {
+  const existingRows = jobcardQueries.getByPrefix.all(prefix.length, prefix);
+  const deletedRows = historyQueries.getDeletedJobNumbers.all();
+
+  let maxExisting = 0;
+  let maxIsDeleted = false;
+  const consider = (jobNumber, deleted) => {
+    if (typeof jobNumber !== 'string' || !jobNumber.startsWith(prefix)) return;
+    const num = parseInt(jobNumber.slice(prefix.length), 10);
+    if (!isNaN(num) && num > maxExisting) { maxExisting = num; maxIsDeleted = deleted; }
+  };
+  existingRows.forEach(r => consider(r.job_number, false));
+  deletedRows.forEach(r => consider(r.job_number, true));
+
+  if (maxExisting === 0) return null;
+  return { num: maxExisting, deleted: maxIsDeleted };
 }
 
 // Advance the job-number counter. Call this LAST inside the create transaction
@@ -77,7 +108,9 @@ function updateSettings(settingsObj) {
 module.exports = {
   recordHistory,
   actorName,
+  formatJobNumber,
   peekNextJobNumber,
+  highestUsedJobNumber,
   bumpJobNumber,
   getSettings,
   updateSettings

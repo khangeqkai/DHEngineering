@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useFieldErrors, scrollFieldIntoView } from './useFieldErrors';
+import { isCalendarDate } from '../utils/formatters';
 
 export const DAYS = [
   { key: 'mon', label: 'Monday' },
@@ -86,10 +87,13 @@ function normalize(raw) {
 export function useLabourRates() {
   const [loading, setLoading] = useState(true);
   const [schedule, setSchedule] = useState(emptySchedule());
-  const [defaultRate, setDefaultRateState] = useState('0');
-  const [ot1Mult, setOt1MultState] = useState('1.5');
-  const [ot2Mult, setOt2MultState] = useState('2');
-  const [holidayMult, setHolidayMultState] = useState('2.5');
+  // Blank until the real settings load — the server is the only source of the company
+  // rates. LabourRatesSettings.jsx shows "Loading..." in place of the whole grid while
+  // `loading` is true, so these blanks are never shown, edited or saved.
+  const [defaultRate, setDefaultRateState] = useState('');
+  const [ot1Mult, setOt1MultState] = useState('');
+  const [ot2Mult, setOt2MultState] = useState('');
+  const [holidayMult, setHolidayMultState] = useState('');
   const [holidays, setHolidays] = useState([]);
 
   const [timezone, setTimezoneState] = useState('');
@@ -237,7 +241,7 @@ export function useLabourRates() {
   }, [ot1Mult, ot2Mult, holidayMult, setFieldErrors]);
 
   const addHoliday = useCallback((date) => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    if (!isCalendarDate(date)) return;
     setHolidays(prev => (prev.includes(date) ? prev : [...prev, date].sort()));
   }, []);
 

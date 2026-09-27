@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Minus, Plus, RotateCw } from 'lucide-react';
 import { api } from '../../services/api';
-import { capitalizeFirst, formatTime } from '../../utils/formatters';
+import { capitalizeFirst, formatTime, roundTo } from '../../utils/formatters';
 import ToggleTiles from '../common/ToggleTiles';
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import './StopTimerForm.css';
@@ -240,7 +240,7 @@ export default function StopTimerForm({
   const goodCount = toInt(entryForm.qty);
   const scrapTotal = toInt(entryForm.scrapBinQty) + toInt(entryForm.scrapRecycleQty);
   const totalMade = goodCount + scrapTotal;
-  const scrapRate = totalMade > 0 ? Math.round((scrapTotal / totalMade) * 100) : null;
+  const scrapRate = totalMade > 0 ? roundTo((scrapTotal / totalMade) * 100, 0) : null;
 
   // With a big equipment list, a flat wall of tiles is unusable — once there are
   // many machines we add a filter box and a scrollable area. Picked machines are

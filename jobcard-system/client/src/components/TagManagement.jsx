@@ -7,7 +7,7 @@ import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
-import { invalidateTagCache } from '../hooks/useTags';
+import { tagActions } from '../hooks/useTags';
 import './TagManagement.css';
 
 const CATEGORY_INFO = {
@@ -114,15 +114,14 @@ export default function TagManagement() {
       } else {
         if (!name) return;
         if (editingItem) {
-          await api.updateTag(editingItem.id, { name });
+          await tagActions.update(editingItem.id, { name });
           toast.success('Tag updated');
         } else {
           // Creating is idempotent server-side: a name that already exists just
           // returns the existing option, so the wording stays true either way.
-          await api.createTag({ category: formCategory, name });
+          await tagActions.create({ category: formCategory, name });
           toast.success('Tag saved');
         }
-        invalidateTagCache(formCategory);
         if (formCategory === selectedCategory) await loadTags();
       }
       resetForm();
@@ -151,7 +150,7 @@ export default function TagManagement() {
     });
     if (!confirmed) return;
     setPendingTagId(tag.id);
-    try { await api.archiveTag(tag.id); toast.success('Option archived'); invalidateTagCache(selectedCategory); await loadTags(); }
+    try { await tagActions.archive(tag); toast.success('Option archived'); await loadTags(); }
     catch (err) { toast.error(err.message || 'Failed to archive option'); }
     finally { setPendingTagId(null); }
   };
@@ -159,7 +158,7 @@ export default function TagManagement() {
   const handleRestoreTag = async (tag) => {
     if (pendingTagId !== null) return;
     setPendingTagId(tag.id);
-    try { await api.activateTag(tag.id); toast.success('Option restored'); invalidateTagCache(selectedCategory); await loadTags(); }
+    try { await tagActions.restore(tag); toast.success('Option restored'); await loadTags(); }
     catch (err) { toast.error(err.message || 'Failed to restore option'); }
     finally { setPendingTagId(null); }
   };

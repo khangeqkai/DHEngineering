@@ -1,6 +1,6 @@
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
-import { formatDate as fmtDate, formatDateTime as fmtDateTime, todayIsoDate } from './formatters';
+import { formatDate as fmtDate, formatDateTime as fmtDateTime, todayIsoDate, roundTo } from './formatters';
 import { STATUS_LABELS, PRIORITY_LABELS } from '../components/JobCardList.constants';
 // Tag labels are now dynamic (DB-driven). For exports, convert values to readable labels.
 
@@ -68,7 +68,7 @@ function timestamp() {
 function durationHrs(start, end) {
   if (!start || !end) return '';
   const ms = new Date(end) - new Date(start);
-  return Math.round((ms / 3600000) * 100) / 100;
+  return roundTo(ms / 3600000, 2);
 }
 
 // ── Label lookup helpers ─────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ import ConfirmDialog from './common/ConfirmDialog';
 import EntityActivityLog from './common/EntityActivityLog';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
-import { isManagement } from '../utils/roles';
+import { isManagement, can } from '../utils/roles';
 import FieldError from './common/FieldError';
 
 export default function UserManagement() {
@@ -21,7 +21,7 @@ export default function UserManagement() {
   // Managers reach this page too, but admin accounts are off-limits to them
   // (no editing/archiving admins, no granting the admin role) — the server
   // enforces the same rules.
-  const isAdmin = currentUser?.role === 'admin';
+  const canManageAdmins = can(currentUser, 'adminAccounts');
   const [users, setUsers] = useState([]);
   // What the table is actually showing right now (after its own search box has
   // filtered it) — kept separate from `users` so "Export Current View" can send
@@ -306,7 +306,7 @@ export default function UserManagement() {
               >
                 <option value="user">User</option>
                 <option value="manager">Manager</option>
-                {isAdmin && <option value="admin">Admin</option>}
+                {canManageAdmins && <option value="admin">Admin</option>}
               </select>
             </div>
           </form>
@@ -333,7 +333,7 @@ export default function UserManagement() {
                 sortable: true,
                 render: (val, row) => (
                   // A manager can't edit admin accounts, so don't offer the edit link.
-                  (row.role === 'admin' && !isAdmin) ? (
+                  (row.role === 'admin' && !canManageAdmins) ? (
                     <strong>{val}</strong>
                   ) : (
                     <button type="button" className="row-link-btn" onClick={(e) => { e.stopPropagation(); handleEdit(row); }} aria-label={`Edit user ${val}`}>
@@ -375,7 +375,7 @@ export default function UserManagement() {
                 label: 'Actions',
                 render: (_, row) => (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {row.id !== currentUser?.id && !(row.role === 'admin' && !isAdmin) && (
+                    {row.id !== currentUser?.id && !(row.role === 'admin' && !canManageAdmins) && (
                       <>
                         {row.active ? (
                           <button className="btn btn-warning btn-sm" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); handleArchive(row); }}>

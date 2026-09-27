@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useMemo, u
 import toast from 'react-hot-toast';
 import { api, SIGNED_OUT_MESSAGES } from '../services/api';
 import { useInactivityTimer } from '../hooks/useInactivityTimer';
+import { can } from '../utils/roles';
 
 const AuthContext = createContext(null);
 
@@ -139,8 +140,9 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Inactivity timer - active while logged in, except for admins (they stay
-  // signed in; the timeout exists for shared shop-floor workstations)
+  // Inactivity timer - active while logged in, except for whoever holds the
+  // stayLoggedIn permission (admins today; the timeout exists for shared
+  // shop-floor workstations)
   const {
     isWarningActive,
     secondsRemaining,
@@ -148,7 +150,7 @@ export function AuthProvider({ children }) {
     handleActivity
   } = useInactivityTimer({
     onTimeout: logout,
-    enabled: !!user && user.role !== 'admin',
+    enabled: !!user && !can(user, 'stayLoggedIn'),
     timeoutMs: inactivityTimeoutMs
   });
 

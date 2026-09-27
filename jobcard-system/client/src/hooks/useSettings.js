@@ -3,14 +3,15 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { validatePassword, todayIsoDate } from '../utils/formatters';
-import { isManagement } from '../utils/roles';
+import { isManagement, can } from '../utils/roles';
 import { useFieldErrors, scrollFieldIntoView } from './useFieldErrors';
 
 export function useSettings() {
   const { user, refreshInactivityTimeout } = useAuth();
-  // Managers see the management settings cards; backups stay admin-only
-  // (a backup carries the whole database, pricing included).
-  const isAdmin = user?.role === 'admin';
+  // Managers see the management settings cards; the job-folders path, backups
+  // and the home-access code stay admin-only (systemData) — a backup carries
+  // the whole database, pricing included.
+  const canSeeSystemData = can(user, 'systemData');
   const canManage = isManagement(user);
 
   const [settings, setSettings] = useState(null);
@@ -296,7 +297,7 @@ export function useSettings() {
   }, []);
 
   return {
-    user, isAdmin, canManage,
+    user, canSeeSystemData, canManage,
     settings, loading, appInfo, printers, loadingPrinters,
     darkMode, toggleDarkMode,
     jobFoldersBase, setJobFoldersBase, handleSelectJobFolders, handleSaveJobFolders, savingJobFolders,

@@ -3,52 +3,11 @@
 // Used by the costing GET/PUT routes so the numbers are worked out in exactly one place.
 
 const { v4: uuidv4 } = require('uuid');
-const { jobCostingQueries, timeEntryQueries, getSettings } = require('../db/database');
+const { jobCostingQueries, timeEntryQueries } = require('../db/database');
 const { splitHours } = require('./overtimeSplit');
-
-const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-const DEFAULT_DAY = [{ start: '00:00', tier: 'normal' }];
-const DEFAULT_MULT = { ot1: 1.5, ot2: 2.0, holiday: 2.5 };
-
-const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
-const num = (v, dflt) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : dflt;
-};
-
-function parseSchedule(raw) {
-  let obj = {};
-  try { obj = raw ? JSON.parse(raw) : {}; } catch { obj = {}; }
-  const out = {};
-  for (const d of DAYS) {
-    const blocks = Array.isArray(obj[d]) ? obj[d] : null;
-    out[d] = (blocks && blocks.length) ? blocks : DEFAULT_DAY;
-  }
-  return out;
-}
-
-function parseHolidays(raw) {
-  try {
-    const a = JSON.parse(raw);
-    return Array.isArray(a) ? a : [];
-  } catch {
-    return [];
-  }
-}
-
-// Read the live overtime configuration from settings.
-function readOtSettings() {
-  const s = getSettings();
-  return {
-    schedule: parseSchedule(s.labour_schedule),
-    holidays: parseHolidays(s.labour_public_holidays),
-    timezone: s.timezone || 'UTC',
-    defaultRate: num(s.labour_default_rate, 0),
-    ot1Mult: num(s.labour_ot1_multiplier, DEFAULT_MULT.ot1),
-    ot2Mult: num(s.labour_ot2_multiplier, DEFAULT_MULT.ot2),
-    holidayMult: num(s.labour_holiday_multiplier, DEFAULT_MULT.holiday)
-  };
-}
+const { readOvertimeSettings, parseSchedule, parseHolidays, num } = require('./overtimeSettings');
+const { roundTo } = require('./round');
+const { COSTING_DEFAULTS } = require('./costingDefaults');
 
 // Compute all costing values for a job from its OWN captured overtime rules + logged
 // time. `incoming` is the submitted form (PUT); pass null to recompute purely from the
@@ -69,7 +28,7 @@ function computeLiveCosting(jobId, incoming) {
   // every box, so today this only guards a hand-made request or a future partial save.
   const has = (key) => Object.prototype.hasOwnProperty.call(src, key);
 
-  const ot = readOtSettings();
+  const ot = readOvertimeSettings();
   // This job's own overtime rules: its captured copy when it has one, else live settings.
   // Never taken from the submitted form — the client can't change a job's rules, only its
   // rate/overrides — so the rules stay write-once from creation.
@@ -89,10 +48,10 @@ function computeLiveCosting(jobId, incoming) {
   const entries = timeEntryQueries.getCompletedByJobcard.all(jobId);
   const split = splitHours(entries, baseline);
 
-  const normalCalc = round2(split.normalHours);
-  const ot1Calc = round2(split.ot1Hours);
-  const ot2Calc = round2(split.ot2Hours);
-  const holidayCalc = round2(split.holidayHours);
+  const normalCalc = roundTo(split.normalHours, 2);
+  const ot1Calc = roundTo(split.ot1Hours, 2);
+  const ot2Calc = roundTo(split.ot2Hours, 2);
+  const holidayCalc = roundTo(split.holidayHours, 2);
 
   // An override is null (= use the auto value) or a hand-typed number floored at
   // `min` (0 for hours; 1 for multipliers, since below 1 would undercharge OT).
@@ -159,12 +118,12 @@ function computeLiveCosting(jobId, incoming) {
   const specialDescription = pickText('labourSpecialDescription', 'labour_special_description');
 
   const materialsCost = pickNum('materialsCost', 'materials_cost', 0);
-  const materialsProfit = pickRaw('materialsProfitPercent', 'materials_profit_percent', 100);
+  const materialsProfit = pickRaw('materialsProfitPercent', 'materials_profit_percent', COSTING_DEFAULTS.materialsProfitPercent);
   const materialsTotal = materialsCost * (1 + materialsProfit / 100);
   const materialsDescription = pickText('materialsDescription', 'materials_description');
 
   const subCost = pickNum('subcontractorCost', 'subcontractor_cost', 0);
-  const subProfit = pickRaw('subcontractorProfitPercent', 'subcontractor_profit_percent', 0);
+  const subProfit = pickRaw('subcontractorProfitPercent', 'subcontractor_profit_percent', COSTING_DEFAULTS.subcontractorProfitPercent);
   const subTotal = subCost * (1 + subProfit / 100);
   const subDescription = pickText('subcontractorDescription', 'subcontractor_description');
 

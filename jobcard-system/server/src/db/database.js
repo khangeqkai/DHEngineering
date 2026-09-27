@@ -8,7 +8,9 @@ require('./schema');
 const {
   recordHistory,
   actorName,
+  formatJobNumber,
   peekNextJobNumber,
+  highestUsedJobNumber,
   bumpJobNumber,
   getSettings,
   updateSettings
@@ -42,7 +44,9 @@ module.exports = {
   DB_PATH,
   recordHistory,
   actorName,
+  formatJobNumber,
   peekNextJobNumber,
+  highestUsedJobNumber,
   bumpJobNumber,
   getSettings,
   updateSettings,

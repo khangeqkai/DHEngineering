@@ -1,16 +1,8 @@
 const { splitHours } = require('../utils/overtimeSplit');
-const { makeOfficeFormatter: makeDateFormatter } = require('../utils/officeTime');
+const { makeOfficeFormatter: makeDateFormatter, officeDateString } = require('../utils/officeTime');
+const { isCalendarDate } = require('../utils/calendarDate');
+const { roundTo } = require('../utils/round');
 const jobStatuses = require('../shared/jobStatuses.json');
-
-function getLocalDateString(fmt, date) {
-  try {
-    const parts = fmt.formatToParts(date);
-    const get = (t) => parts.find(p => p.type === t)?.value;
-    return `${get('year')}-${get('month')}-${get('day')}`;
-  } catch {
-    return date.toISOString().slice(0, 10);
-  }
-}
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -29,10 +21,10 @@ function calculateDateRange(preset, customStart, customEnd, timezone) {
   const todayYmd = `${curYear}-${pad2(curMonth)}-${pad2(curDay)}`;
 
   if (preset === 'custom') {
-    const validStart = customStart && /^\d{4}-\d{2}-\d{2}$/.test(String(customStart).trim()) && !isNaN(Date.parse(String(customStart).trim()))
+    const validStart = customStart && isCalendarDate(String(customStart).trim())
       ? String(customStart).trim()
       : null;
-    const validEnd = customEnd && /^\d{4}-\d{2}-\d{2}$/.test(String(customEnd).trim()) && !isNaN(Date.parse(String(customEnd).trim()))
+    const validEnd = customEnd && isCalendarDate(String(customEnd).trim())
       ? String(customEnd).trim()
       : null;
 
@@ -167,7 +159,7 @@ function getJobFinishDate(job, maxTimeEntryEnd, fmt) {
   }
   if (!raw) return null;
   if (fmt) {
-    return getLocalDateString(fmt, new Date(raw));
+    return officeDateString(new Date(raw), fmt);
   }
   return raw.slice(0, 10);
 }
@@ -202,21 +194,19 @@ function splitWorkerHoursByJobRules(entriesByJob, defaultRules) {
     holidayHours += split.holidayHours;
   }
 
-  const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
   return {
-    normalHours: round2(normalHours),
-    ot1Hours: round2(ot1Hours),
-    ot2Hours: round2(ot2Hours),
-    holidayHours: round2(holidayHours),
-    totalHours: round2(normalHours + ot1Hours + ot2Hours + holidayHours),
-    totalOtHours: round2(ot1Hours + ot2Hours + holidayHours)
+    normalHours: roundTo(normalHours, 2),
+    ot1Hours: roundTo(ot1Hours, 2),
+    ot2Hours: roundTo(ot2Hours, 2),
+    holidayHours: roundTo(holidayHours, 2),
+    totalHours: roundTo(normalHours + ot1Hours + ot2Hours + holidayHours, 2),
+    totalOtHours: roundTo(ot1Hours + ot2Hours + holidayHours, 2)
   };
 }
 
 module.exports = {
   FINISHED_STATUSES,
   makeDateFormatter,
-  getLocalDateString,
   calculateDateRange,
   daysDiff,
   getJobFinishDate,

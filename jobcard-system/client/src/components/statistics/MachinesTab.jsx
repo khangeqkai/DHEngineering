@@ -1,6 +1,7 @@
 import { Cpu, Zap, Activity, AlertTriangle } from 'lucide-react';
 import DataTable from '../common/DataTable';
 import EmptyState from '../common/EmptyState';
+import { roundTo } from '../../utils/formatters';
 
 const PALETTE = [
   '#2563eb', // Blue
@@ -27,13 +28,13 @@ export default function MachinesTab({ machineUtilization = [], loading = false }
     ? machineUtilization[0]
     : null;
   const topMachineShare = totalMachineHours > 0 && topMachine
-    ? Math.round((topMachine.totalHours / totalMachineHours) * 1000) / 10
+    ? roundTo((topMachine.totalHours / totalMachineHours) * 100, 1)
     : 0;
 
   const totalParts = machineUtilization.reduce((sum, m) => sum + (m.partsProduced || 0), 0);
   const totalScrap = machineUtilization.reduce((sum, m) => sum + (m.scrapQty || 0), 0);
   const fleetScrapRate = (totalParts + totalScrap) > 0
-    ? Math.round((totalScrap / (totalParts + totalScrap)) * 1000) / 10
+    ? roundTo((totalScrap / (totalParts + totalScrap)) * 100, 1)
     : 0;
 
   return (
@@ -46,7 +47,7 @@ export default function MachinesTab({ machineUtilization = [], loading = false }
             <div className="kpi-icon"><Cpu size={16} /></div>
           </div>
           <div className="kpi-body">
-            <div className="kpi-value">{loading ? <span className="stat-dash">—</span> : `${Math.round(totalMachineHours * 10) / 10}h`}</div>
+            <div className="kpi-value">{loading ? <span className="stat-dash">—</span> : `${roundTo(totalMachineHours, 1)}h`}</div>
           </div>
           <div className="kpi-footer">
             <div className="kpi-stat-row">
@@ -165,7 +166,7 @@ export default function MachinesTab({ machineUtilization = [], loading = false }
                   const color = colourOf.get(m.machineNumber);
                   const machinePartsTotal = (m.partsProduced || 0) + (m.scrapQty || 0);
                   const machineScrapPct = machinePartsTotal > 0
-                    ? Math.round(((m.scrapQty || 0) / machinePartsTotal) * 1000) / 10
+                    ? roundTo(((m.scrapQty || 0) / machinePartsTotal) * 100, 1)
                     : 0;
 
                   return (
@@ -335,7 +336,7 @@ export default function MachinesTab({ machineUtilization = [], loading = false }
                 sortable: true,
                 render: (val, row) => {
                   const total = (row.partsProduced || 0) + (val || 0);
-                  const scrapPct = total > 0 ? Math.round((val / total) * 1000) / 10 : 0;
+                  const scrapPct = total > 0 ? roundTo((val / total) * 100, 1) : 0;
                   return (
                     <span style={{ color: val > 0 ? 'var(--accent-caution)' : 'inherit' }}>
                       {val || 0} pieces {val > 0 ? `(${scrapPct}%)` : ''}

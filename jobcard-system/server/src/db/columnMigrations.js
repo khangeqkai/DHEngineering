@@ -1,5 +1,6 @@
 const { db } = require('./connection');
 const logger = require('../utils/logger');
+const { COSTING_DEFAULTS } = require('../utils/costingDefaults');
 
 // Migration: Add missing columns to existing tables
 // This handles the case where the database was created with an older schema
@@ -32,9 +33,9 @@ const migrations = [
   { table: 'job_costings', column: 'labour_holiday_hours', type: 'REAL DEFAULT 0' },
   { table: 'job_costings', column: 'labour_holiday_override', type: 'REAL' },
   { table: 'job_costings', column: 'labour_holiday_total', type: 'REAL DEFAULT 0' },
-  { table: 'job_costings', column: 'labour_ot1_multiplier', type: 'REAL DEFAULT 1.5' },
-  { table: 'job_costings', column: 'labour_ot2_multiplier', type: 'REAL DEFAULT 2' },
-  { table: 'job_costings', column: 'labour_holiday_multiplier', type: 'REAL DEFAULT 2.5' },
+  { table: 'job_costings', column: 'labour_ot1_multiplier', type: `REAL DEFAULT ${COSTING_DEFAULTS.ot1Multiplier}` },
+  { table: 'job_costings', column: 'labour_ot2_multiplier', type: `REAL DEFAULT ${COSTING_DEFAULTS.ot2Multiplier}` },
+  { table: 'job_costings', column: 'labour_holiday_multiplier', type: `REAL DEFAULT ${COSTING_DEFAULTS.holidayMultiplier}` },
   { table: 'job_costings', column: 'labour_ot1_multiplier_override', type: 'REAL' },
   { table: 'job_costings', column: 'labour_ot2_multiplier_override', type: 'REAL' },
   // Per-job captured overtime rules (present in CREATE TABLE; added here for existing

@@ -1,5 +1,6 @@
 import { useMemo, Fragment } from 'react';
 import { useTags } from '../../../hooks/useTags';
+import { roundTo } from '../../../utils/formatters';
 
 // A read-only table under the costing header: the supporting figures for the pricing
 // boxes below. ONE table, so everything about a part is on one horizontal band and is
@@ -31,7 +32,7 @@ function formatSpan(ms) {
 // The same span as a decimal figure — the form the Hours boxes above take, so this is
 // the column an admin actually transcribes from.
 function formatDecimalHours(ms) {
-  return (Math.round((ms / 3600000) * 100) / 100).toFixed(2);
+  return roundTo(ms / 3600000, 2).toFixed(2);
 }
 
 // A block can be logged on more than one machine at once. Its span can't be split

@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, ChevronLeft, ChevronRight, Briefcase, Users as UsersIcon, Clock, Timer, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { isManagement } from '../utils/roles';
+import { isManagement, can } from '../utils/roles';
 import useSearch from '../hooks/useSearch';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
@@ -24,7 +24,7 @@ const SCOPES = [
   { key: 'all', label: 'All', icon: Search },
   { key: 'jobs', label: 'Jobs', icon: Briefcase },
   { key: 'people', label: 'People', icon: UsersIcon, managementOnly: true },
-  { key: 'activity', label: 'Activity', icon: Clock, adminOnly: true },
+  { key: 'activity', label: 'Activity', icon: Clock, permission: 'activityTrail' },
   { key: 'time', label: 'Time', icon: Timer },
 ];
 const GROUP_LABELS = { jobs: 'Job Cards', contacts: 'Contacts', suppliers: 'Suppliers', activity: 'Activity' };
@@ -103,7 +103,6 @@ const ACTION_TO_TAB = {
 export default function SearchPage() {
   const { user } = useAuth();
   const canManage = isManagement(user);
-  const isAdmin = user?.role === 'admin';
   const navigate = useNavigate();
   const inputRef = useRef(null);
   const {
@@ -272,7 +271,7 @@ export default function SearchPage() {
 
       {/* Scope tabs */}
       <div className="search-scope-tabs">
-        {SCOPES.filter(s => (!s.managementOnly || canManage) && (!s.adminOnly || isAdmin)).map(s => (
+        {SCOPES.filter(s => (!s.managementOnly || canManage) && (!s.permission || can(user, s.permission))).map(s => (
           <button key={s.key} type="button" className={`search-scope-tab ${scope === s.key ? 'active' : ''}`}
             onClick={() => changeScope(s.key)}>
             <s.icon size={16} /> {s.label}

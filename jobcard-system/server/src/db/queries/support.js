@@ -40,7 +40,15 @@ const historyQueries = {
     WHERE user_id = ?
     ORDER BY created_at DESC
     LIMIT ?
-  `)
+  `),
+
+  // Every deleted job's own number, from its delete trail entry — the
+  // deleted-numbers half of highestUsedJobNumber (db/helpers.js). A deleted
+  // job's number is never reused, so its own history entry is the only record
+  // of it once the job row itself is gone.
+  getDeletedJobNumbers: db.prepare(
+    "SELECT json_extract(changes, '$.jobNumber.from') AS job_number FROM history WHERE entity_type = 'jobcard' AND action = 'delete'"
+  )
 };
 
 // Settings queries

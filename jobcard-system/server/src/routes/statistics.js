@@ -1,14 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const logger = require('../utils/logger');
-const { authenticate, requireManagement } = require('../middleware/auth');
-const { db, getSettings } = require('../db/database');
-const { officeTimeZone } = require('../utils/officeTime');
+const { authenticate, requireManagement, can } = require('../middleware/auth');
+const { db } = require('../db/database');
+const { officeTimeZone, officeDateString } = require('../utils/officeTime');
 const { computeLiveCosting } = require('../utils/costingCompute');
+const { readOvertimeSettings, parseSchedule, parseHolidays } = require('../utils/overtimeSettings');
+const { roundTo } = require('../utils/round');
 const {
   FINISHED_STATUSES,
   makeDateFormatter,
-  getLocalDateString,
   calculateDateRange,
   daysDiff,
   getJobFinishDate,
@@ -28,19 +29,18 @@ router.get('/', (req, res) => {
     const customEnd = req.query.endDate;
     const groupBy = req.query.groupBy || 'month';
 
-    const settings = getSettings();
     const timezone = officeTimeZone();
     const fmt = makeDateFormatter(timezone);
-    const todayStr = getLocalDateString(fmt, new Date());
+    const todayStr = officeDateString(new Date(), fmt);
 
     const { startDate, endDate, label: rangeLabel } = calculateDateRange(preset, customStart, customEnd, timezone);
 
-    const defaultSchedule = settings.labour_schedule
-      ? (typeof settings.labour_schedule === 'string' ? JSON.parse(settings.labour_schedule) : settings.labour_schedule)
-      : {};
-    const defaultHolidays = settings.labour_public_holidays
-      ? (typeof settings.labour_public_holidays === 'string' ? JSON.parse(settings.labour_public_holidays) : settings.labour_public_holidays)
-      : [];
+    // The company's own overtime rules, read the one way every other reader does —
+    // a malformed stored schedule/holidays blob now falls back to filled-in defaults
+    // here too, instead of turning this whole page into a 500.
+    const ot = readOvertimeSettings();
+    const defaultSchedule = ot.schedule;
+    const defaultHolidays = ot.holidays;
 
     const defaultRules = { schedule: defaultSchedule, holidays: defaultHolidays, timezone };
 
@@ -163,7 +163,7 @@ router.get('/', (req, res) => {
     // Filter time entries strictly by local date boundary in shop's timezone
     const inRangeTimeEntries = [];
     for (const te of rawTimeEntries) {
-      const localDate = getLocalDateString(fmt, new Date(te.start_time));
+      const localDate = officeDateString(new Date(te.start_time), fmt);
       if (startDate && localDate < startDate) continue;
       if (endDate && localDate > endDate) continue;
       inRangeTimeEntries.push({ ...te, localDate });
@@ -182,10 +182,8 @@ router.get('/', (req, res) => {
       : [];
     const jobCostingsMap = new Map();
     for (const row of costingsRows) {
-      let jSchedule = defaultSchedule;
-      let jHolidays = defaultHolidays;
-      try { if (row.labour_schedule) jSchedule = JSON.parse(row.labour_schedule); } catch {}
-      try { if (row.labour_public_holidays) jHolidays = JSON.parse(row.labour_public_holidays); } catch {}
+      const jSchedule = row.labour_schedule ? parseSchedule(row.labour_schedule) : defaultSchedule;
+      const jHolidays = row.labour_public_holidays ? parseHolidays(row.labour_public_holidays) : defaultHolidays;
       jobCostingsMap.set(row.jobcard_id, {
         rules: { schedule: jSchedule, holidays: jHolidays, timezone: row.labour_timezone || timezone }
       });
@@ -212,7 +210,7 @@ router.get('/', (req, res) => {
     const completedInRangeJobs = [];
 
     for (const job of allJobs) {
-      const createdLocalDate = job.created_at ? getLocalDateString(fmt, new Date(job.created_at)) : null;
+      const createdLocalDate = job.created_at ? officeDateString(new Date(job.created_at), fmt) : null;
       const finishDate = getJobFinishDate(job, job.max_entry_end, fmt);
       const isFinished = FINISHED_STATUSES.includes(job.status);
 
@@ -277,7 +275,7 @@ router.get('/', (req, res) => {
     delayedJobsList.sort((a, b) => b.daysLate - a.daysLate);
 
     const onTimeRate = (onTimeJobsCount + lateJobsCount) > 0
-      ? Math.round((onTimeJobsCount / (onTimeJobsCount + lateJobsCount)) * 1000) / 10
+      ? roundTo((onTimeJobsCount / (onTimeJobsCount + lateJobsCount)) * 100, 1)
       : null;
 
     // ── Process Time Entries (Workers, Machines, Customer Hours) ──
@@ -405,7 +403,7 @@ router.get('/', (req, res) => {
         ot2Hours: split.ot2Hours,
         holidayHours: split.holidayHours,
         totalOtHours: split.totalOtHours,
-        avgSessionHours: w.sessionCount > 0 ? Math.round((split.totalHours / w.sessionCount) * 100) / 100 : 0
+        avgSessionHours: w.sessionCount > 0 ? roundTo(split.totalHours / w.sessionCount, 2) : 0
       });
     }
     workerLeaderboard.sort((a, b) => b.totalHours - a.totalHours);
@@ -413,7 +411,7 @@ router.get('/', (req, res) => {
 
     // Format machine utilization
     const machineUtilization = Array.from(machineStatsMap.values())
-      .map(m => ({ ...m, totalHours: Math.round(m.totalHours * 10) / 10 }))
+      .map(m => ({ ...m, totalHours: roundTo(m.totalHours, 1) }))
       .sort((a, b) => b.totalHours - a.totalHours);
 
     // ── Trend Buckets (Strictly in range) ──
@@ -421,7 +419,7 @@ router.get('/', (req, res) => {
     const getPeriodKey = (dStr) => (dStr ? (groupBy === 'year' ? dStr.slice(0, 4) : dStr.slice(0, 7)) : null);
 
     for (const j of inRangeJobs) {
-      const pKey = getPeriodKey(j.created_at ? getLocalDateString(fmt, new Date(j.created_at)) : null);
+      const pKey = getPeriodKey(j.created_at ? officeDateString(new Date(j.created_at), fmt) : null);
       if (pKey) {
         if (!trendMap.has(pKey)) {
           trendMap.set(pKey, { period: pKey, jobsCreated: 0, jobsCompleted: 0, onTimeCompleted: 0, lateCompleted: 0, totalHours: 0, partsProduced: 0, scrapQty: 0 });
@@ -471,8 +469,8 @@ router.get('/', (req, res) => {
         const totalRated = b.onTimeCompleted + b.lateCompleted;
         return {
           ...b,
-          totalHours: Math.round(b.totalHours * 10) / 10,
-          onTimeRate: totalRated > 0 ? Math.round((b.onTimeCompleted / totalRated) * 1000) / 10 : null
+          totalHours: roundTo(b.totalHours, 1),
+          onTimeRate: totalRated > 0 ? roundTo((b.onTimeCompleted / totalRated) * 100, 1) : null
         };
       });
 
@@ -507,7 +505,7 @@ router.get('/', (req, res) => {
         if (fDate <= j.due_date) c.onTimeCount++;
         else c.lateCount++;
       }
-      if (req.user.role === 'admin' && j.status === 'INVOICED') {
+      if (can(req.user.role, 'pricing') && j.status === 'INVOICED') {
         // No invoice-time freeze (docs/notes/time-and-costing.md, "Per-job rule
         // ownership") — the stored grand_total is only refreshed by a pricing-sheet
         // save, so it goes stale the moment logged time changes after invoicing.
@@ -528,13 +526,13 @@ router.get('/', (req, res) => {
     const customerRankings = Array.from(customerMap.values())
       .map(c => {
         const rated = c.onTimeCount + c.lateCount;
-        const hoursInPeriod = Math.round((customerHoursMap.get(c.companyName) || 0) * 10) / 10;
+        const hoursInPeriod = roundTo(customerHoursMap.get(c.companyName) || 0, 1);
         return {
           ...c,
           totalHours: hoursInPeriod,
-          invoicedTotal: req.user.role === 'admin' ? Math.round(c.invoicedTotal * 100) / 100 : null,
-          onTimeRate: rated > 0 ? Math.round((c.onTimeCount / rated) * 1000) / 10 : null,
-          repeatPercent: c.jobsCount > 0 ? Math.round((c.repeatCount / c.jobsCount) * 100) : 0
+          invoicedTotal: can(req.user.role, 'pricing') ? roundTo(c.invoicedTotal, 2) : null,
+          onTimeRate: rated > 0 ? roundTo((c.onTimeCount / rated) * 100, 1) : null,
+          repeatPercent: c.jobsCount > 0 ? roundTo((c.repeatCount / c.jobsCount) * 100, 0) : 0
         };
       })
       .sort((a, b) => (b.totalHours - a.totalHours) || (b.jobsCount - a.jobsCount));
@@ -547,9 +545,9 @@ router.get('/', (req, res) => {
         onTimeJobsCount,
         lateJobsCount,
         noDueDateJobsCount,
-        avgDaysLate: lateJobsCount > 0 ? Math.round((totalDaysLate / lateJobsCount) * 10) / 10 : 0,
-        avgTurnaroundDays: turnaroundCount > 0 ? Math.round((totalTurnaroundDays / turnaroundCount) * 10) / 10 : 0,
-        totalWorkshopHours: Math.round(totalWorkshopHours * 100) / 100,
+        avgDaysLate: lateJobsCount > 0 ? roundTo(totalDaysLate / lateJobsCount, 1) : 0,
+        avgTurnaroundDays: turnaroundCount > 0 ? roundTo(totalTurnaroundDays / turnaroundCount, 1) : 0,
+        totalWorkshopHours: roundTo(totalWorkshopHours, 2),
         activeJobsCount,
         inProgressJobsCount,
         overdueActiveJobsCount,
@@ -559,10 +557,10 @@ router.get('/', (req, res) => {
         totalScrapRecycle,
         totalScrap: totalScrapBin + totalScrapRecycle,
         scrapRate: (totalPartsProduced + totalScrapBin + totalScrapRecycle) > 0
-          ? Math.round(((totalScrapBin + totalScrapRecycle) / (totalPartsProduced + totalScrapBin + totalScrapRecycle)) * 1000) / 10
+          ? roundTo(((totalScrapBin + totalScrapRecycle) / (totalPartsProduced + totalScrapBin + totalScrapRecycle)) * 100, 1)
           : 0,
         repeatJobsCount,
-        repeatRate: totalJobsCreated > 0 ? Math.round((repeatJobsCount / totalJobsCreated) * 100) : 0,
+        repeatRate: totalJobsCreated > 0 ? roundTo((repeatJobsCount / totalJobsCreated) * 100, 0) : 0,
         totalInspectionChecks
       },
       workerLeaderboard,

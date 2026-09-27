@@ -1,8 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useId } from 'react';
 import { ChevronDown, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { api } from '../../services/api';
-import { useTags, invalidateTagCache } from '../../hooks/useTags';
+import { useTags, tagActions } from '../../hooks/useTags';
 import { toTitleCase } from '../../utils/formatters';
 
 // A type-to-search picker for a tag category (e.g. material, treatment) that can
@@ -12,7 +11,7 @@ import { toTitleCase } from '../../utils/formatters';
 // Creation is dedup-safe: the server returns the existing option when the typed
 // name already maps to one, so you never get a duplicate.
 export default function CreatableTagSelect({ id, category, value, onChange, onCreate, placeholder = '', disabled = false }) {
-  const { tags, labelOf, refresh } = useTags(category);
+  const { tags, labelOf } = useTags(category);
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -49,9 +48,10 @@ export default function CreatableTagSelect({ id, category, value, onChange, onCr
     committingRef.current = true;
     setCreating(true);
     try {
-      const tag = await api.createTag({ category, name: toTitleCase(typed) });
-      invalidateTagCache(category);
-      refresh();
+      // The change itself now tells every mounted list showing this category to
+      // re-fetch (useTags' subscriber set) — this box's own list included, so
+      // there's no separate cache-drop-then-refresh to do here any more.
+      const tag = await tagActions.create({ category, name: toTitleCase(typed) });
       onChange(tag.value);
       // Let the caller know this option was freshly created (vs picked from the
       // list) — used to require a supplier when a brand-new treatment is added.

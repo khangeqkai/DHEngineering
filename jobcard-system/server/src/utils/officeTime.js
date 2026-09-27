@@ -73,6 +73,19 @@ function wallClockToIso(value, timeZone) {
   return new Date(settled).toISOString();
 }
 
+// 'YYYY-MM-DD' of a moment, read on the office clock. Callers looping over many
+// moments can pass a pre-built formatter (e.g. makeOfficeFormatter(officeTimeZone()))
+// so the loop doesn't rebuild one every time; the default builds one for a single call.
+function officeDateString(moment, fmt = makeOfficeFormatter(officeTimeZone())) {
+  try {
+    const parts = fmt.formatToParts(moment);
+    const get = (t) => parts.find(p => p.type === t)?.value;
+    return `${get('year')}-${get('month')}-${get('day')}`;
+  } catch {
+    return moment.toISOString().slice(0, 10);
+  }
+}
+
 // The instants a picked calendar day ("YYYY-MM-DD") begins and ends at on the office
 // clock. Used by the date-range filters: comparing the picked date as a plain string
 // against a stored UTC instant shifts the window by the office's offset (in Melbourne,
@@ -85,4 +98,6 @@ function officeDayEnd(date, timeZone = officeTimeZone()) {
   return wallClockToIso(`${date}T23:59:59.999`, timeZone);
 }
 
-module.exports = { officeTimeZone, makeOfficeFormatter, wallClockToIso, officeDayStart, officeDayEnd };
+module.exports = {
+  officeTimeZone, makeOfficeFormatter, officeDateString, wallClockToIso, officeDayStart, officeDayEnd
+};

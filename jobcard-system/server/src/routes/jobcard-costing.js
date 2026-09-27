@@ -1,7 +1,7 @@
 const express = require('express');
 
 const logger = require('../utils/logger');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 const { jobCostingQueries, recordHistory, actorName } = require('../db/database');
 const {
   computeLiveCosting,
@@ -12,7 +12,7 @@ const {
 const router = express.Router();
 
 // Get job card costing (admin only)
-router.get('/:id/costing', authenticate, requireAdmin, (req, res) => {
+router.get('/:id/costing', authenticate, requirePermission('pricing'), (req, res) => {
   try {
     const jobId = req.params.id;
 
@@ -29,7 +29,7 @@ router.get('/:id/costing', authenticate, requireAdmin, (req, res) => {
 });
 
 // Update costing (admin only)
-router.put('/:id/costing', authenticate, requireAdmin, (req, res) => {
+router.put('/:id/costing', authenticate, requirePermission('pricing'), (req, res) => {
   try {
     const jobId = req.params.id;
     const existing = jobCostingQueries.getByJobcard.get(jobId);

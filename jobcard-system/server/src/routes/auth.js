@@ -6,11 +6,12 @@ const rateLimit = require('express-rate-limit');
 
 const config = require('../config');
 const logger = require('../utils/logger');
-const { authenticate, requireManagement, ALL_ROLES } = require('../middleware/auth');
+const { authenticate, requireManagement, can, ALL_ROLES } = require('../middleware/auth');
 const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences, PIN_REGEX, PIN_MESSAGE } = require('../middleware/validation');
 const { db, userQueries, jobNoteQueries, recordHistory, actorName, getSettings } = require('../db/database');
 const { diffFields } = require('../utils/historyChanges');
 const { isViaTunnel, clientIp } = require('../utils/homeAccess');
+const { setArchived } = require('../utils/archiveToggle');
 
 const router = express.Router();
 
@@ -341,7 +342,7 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
 
     // A manager can create accounts but never mint an admin — otherwise they
     // could grant themselves the costing access managers are barred from.
-    if (role === 'admin' && req.user.role !== 'admin') {
+    if (role === 'admin' && !can(req.user.role, 'adminAccounts')) {
       return res.status(403).json({ error: 'Only admins can create admin accounts' });
     }
 
@@ -398,7 +399,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     const { password, role, name, email } = req.body;
 
     // Check permissions
-    const isAdmin = req.user.role === 'admin';
+    const canManageAdmins = can(req.user.role, 'adminAccounts');
     const isManager = req.user.role === 'manager';
     const isSelf = req.user.userId === id;
 
@@ -412,7 +413,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     }
 
     // Only admins and managers can change roles, and a role must be a real one.
-    if (role && !isAdmin && !isManager) {
+    if (role && !canManageAdmins && !isManager) {
       return res.status(403).json({ error: 'Only admins or managers can change roles' });
     }
     if (role && !ALL_ROLES.includes(role)) {
@@ -420,7 +421,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     }
     // A manager can never promote anyone to admin — that would let them grant
     // themselves the costing access managers are barred from.
-    if (role === 'admin' && !isAdmin) {
+    if (role === 'admin' && !canManageAdmins) {
       return res.status(403).json({ error: 'Only admins can grant the admin role' });
     }
 
@@ -430,7 +431,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     }
 
     // Admin accounts are off-limits to managers (PIN resets, demotion, renames).
-    if (user.role === 'admin' && !isAdmin) {
+    if (user.role === 'admin' && !canManageAdmins) {
       return res.status(403).json({ error: 'Only admins can modify admin accounts' });
     }
 
@@ -512,65 +513,51 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
 
 // Archive user (admin or manager) - soft delete
 router.post('/users/:id/deactivate', authenticate, requireManagement, (req, res) => {
-  try {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    if (req.user.userId === id) {
-      return res.status(400).json({ error: 'Cannot archive yourself' });
-    }
-
-    const user = userQueries.getById.get(id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Admin accounts can only be archived by another admin.
-    if (user.role === 'admin' && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can archive admin accounts' });
-    }
-
-    userQueries.deactivate.run(id);
-    // End any open session for this account so the cutoff is immediate, not just
-    // blocked at next login. (The per-request active check also covers this.)
-    userQueries.updateSessionToken.run(null, id);
-
-    recordHistory('user', id, 'archive', req.user.userId, actorName(req), {
-      status: { from: 'Active', to: 'Archived' }
-    }, { username: user.username, name: user.name });
-
-    res.json({ success: true, message: 'User archived' });
-  } catch (err) {
-    logger.error({ err }, 'Archive user error');
-    res.status(500).json({ error: 'Failed to archive user' });
+  if (req.user.userId === id) {
+    return res.status(400).json({ error: 'Cannot archive yourself' });
   }
+
+  setArchived(req, res, {
+    entityType: 'user',
+    load: () => userQueries.getById.get(id),
+    notFound: 'User not found',
+    isArchived: (row) => !row.active,
+    // Admin accounts can only be archived by another admin.
+    refuse: (row) => (row.role === 'admin' && !can(req.user.role, 'adminAccounts')
+      ? { status: 403, error: 'Only admins can archive admin accounts' }
+      : null),
+    archive: true,
+    write: (row) => {
+      userQueries.deactivate.run(row.id);
+      // End any open session for this account so the cutoff is immediate, not
+      // just blocked at next login. (The per-request active check also covers this.)
+      userQueries.updateSessionToken.run(null, row.id);
+    },
+    respond: () => ({ success: true, message: 'User archived' }),
+    snapshot: (row) => ({ username: row.username, name: row.name })
+  });
 });
 
 // Restore archived user (admin or manager)
 router.post('/users/:id/activate', authenticate, requireManagement, (req, res) => {
-  try {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    const user = userQueries.getById.get(id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
+  setArchived(req, res, {
+    entityType: 'user',
+    load: () => userQueries.getById.get(id),
+    notFound: 'User not found',
+    isArchived: (row) => !row.active,
     // Admin accounts can only be restored by another admin.
-    if (user.role === 'admin' && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can restore admin accounts' });
-    }
-
-    userQueries.activate.run(id);
-
-    recordHistory('user', id, 'unarchive', req.user.userId, actorName(req), {
-      status: { from: 'Archived', to: 'Active' }
-    }, { username: user.username, name: user.name });
-
-    res.json({ success: true, message: 'User restored' });
-  } catch (err) {
-    logger.error({ err }, 'Restore user error');
-    res.status(500).json({ error: 'Failed to restore user' });
-  }
+    refuse: (row) => (row.role === 'admin' && !can(req.user.role, 'adminAccounts')
+      ? { status: 403, error: 'Only admins can restore admin accounts' }
+      : null),
+    archive: false,
+    write: (row) => userQueries.activate.run(row.id),
+    respond: () => ({ success: true, message: 'User restored' }),
+    snapshot: (row) => ({ username: row.username, name: row.name })
+  });
 });
 
 // Change password (any authenticated user, for their own account)

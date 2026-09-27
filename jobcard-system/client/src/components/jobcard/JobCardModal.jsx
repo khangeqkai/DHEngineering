@@ -5,7 +5,7 @@ import Spinner from '../common/Spinner';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { isManagement } from '../../utils/roles';
+import { isManagement, can } from '../../utils/roles';
 import { todayIsoDate } from '../../utils/formatters';
 import { isJobOverdue } from '../JobCardList.constants';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
@@ -35,9 +35,11 @@ import { mapTimeEntryFromApi } from './mappers';
 export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onPrinted, initialTab = null }) {
   const { user } = useAuth();
   const isEdit = Boolean(jobCardId);
-  // Two tiers: costing is admin-only money; everything else managerial on this
-  // screen (editing, tabs, time-entry corrections) is admin-or-manager.
-  const isAdmin = user?.role === 'admin';
+  // Two permissions, both admin-only today: pricing gates the Costing tab and its
+  // countdown, activityTrail gates the Activity tab. Everything else managerial on
+  // this screen (editing, tabs, time-entry corrections) is admin-or-manager.
+  const canSeePricing = can(user, 'pricing');
+  const canSeeActivity = can(user, 'activityTrail');
   const canManage = isManagement(user);
   const [activeTab, setActiveTab] = useState('details');
   const [loading, setLoading] = useState(false);
@@ -100,7 +102,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm, onNotesChange, handleJobClosedWrite);
   // Pricing: the on-open load and the save-on-the-way-out paths all live in this hook —
   // see useJobCardCosting.js.
-  const costingHook = useJobCardCosting({ isOpen, isEdit, isAdmin, jobCardId, activeTab });
+  const costingHook = useJobCardCosting({ isOpen, isEdit, canSeePricing, jobCardId, activeTab });
 
   // Re-fetch suppliers after one is created or linked to a treatment on a line item,
   // so the new name and its updated services show up in the pickers right away.
@@ -289,7 +291,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     handleSubmitEntryForm,
     handleCancelEntryForm
   } = useJobCardTimerActions({
-    jobCardId, isAdmin, isInvoiced, costingLoaded, refreshCosting, refreshJobStatus,
+    jobCardId, canSeePricing, isInvoiced, costingLoaded, refreshCosting, refreshJobStatus,
     reloadTimeEntries, timer, showConfirm, creditAssignee, dropAssignee,
     employees, currentUserId: user?.id, setFormData, onTimerChange, currentJobIdRef
   });
@@ -317,21 +319,22 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   useEffect(() => {
     if (isOpen) {
       // Only tabs this user can actually open are valid; anything else (a stale
-      // 'costing' or 'activity' for a non-admin) lands on Details.
-      const validTabs = isAdmin
-        ? ['details', 'costing', 'activity']
-        : ['details'];
+      // 'costing' or 'activity' for someone who can't see it) lands on Details.
+      const validTabs = ['details']
+        .concat(canSeePricing ? ['costing'] : [])
+        .concat(canSeeActivity ? ['activity'] : []);
       setActiveTab(validTabs.includes(initialTab) ? initialTab : 'details');
     }
-  }, [isOpen, initialTab]);
+  }, [isOpen, initialTab, canSeePricing, canSeeActivity]);
 
-  // Admin access can also be lost while the modal is already open. The tab strip
-  // and the Costing/Activity panels vanish on that render, so without this the
-  // body would draw nothing at all. Kept separate from the effect above so it
-  // never re-applies initialTab mid-session.
+  // Pricing/activity access can also be lost while the modal is already open. The
+  // tab strip and the Costing/Activity panels vanish on that render, so without
+  // this the body would draw nothing at all. Kept separate from the effect above
+  // so it never re-applies initialTab mid-session.
   useEffect(() => {
-    if (!isAdmin && activeTab !== 'details') setActiveTab('details');
-  }, [isAdmin, activeTab]);
+    if (activeTab === 'costing' && !canSeePricing) setActiveTab('details');
+    if (activeTab === 'activity' && !canSeeActivity) setActiveTab('details');
+  }, [canSeePricing, canSeeActivity, activeTab]);
 
   const resetFormRef = useRef(resetForm);
   const loadJobCardRef = useRef(loadJobCard);
@@ -430,14 +433,14 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // Every way of leaving the Costing tab by the person's own action funnels through
   // here, so a box still sitting red is caught once rather than at each tab button.
   const handleTabChange = useCallback(async (tab) => {
-    if (activeTab === 'costing' && tab !== 'costing' && isAdmin) {
+    if (activeTab === 'costing' && tab !== 'costing' && canSeePricing) {
       const { proceed } = await costingHook.guardLeaveCosting(showConfirm);
       if (!proceed) return;
     }
     setActiveTab(tab);
-  }, [activeTab, isAdmin, costingHook, showConfirm]);
+  }, [activeTab, canSeePricing, costingHook, showConfirm]);
   const { handleRequestClose } = useJobCardCloseGuard({
-    isOpen, isEdit, jobCardId, isAdmin, isDirty,
+    isOpen, isEdit, jobCardId, canSeePricing, isDirty,
     formHook, instantItems, saveQueue: formHook.saveQueue, jobNotes, timer, costingHook,
     saving, showConfirm, onClose: closeAndRefresh, revealDetails: showDetailsTab, revealCosting
   });
@@ -447,7 +450,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // job is settled. Named once here because two different things need it: the header's
   // running total, and the "everything landed" signals below, which must not say
   // everything while money is still outstanding.
-  const costingOutstanding = isAdmin && costingHook.costingDirty;
+  const costingOutstanding = canSeePricing && costingHook.costingDirty;
 
   // Everything still on its way to the job: the job's own fields, parts and people
   // (isDirty) plus the pricing countdown. This is the single question both halves of
@@ -496,10 +499,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       showConfirm={showConfirm}
       onSuccess={onSuccess}
       costingDirty={costingOutstanding}
-      costingInvalid={isAdmin && costingHook.costingInvalid}
+      costingInvalid={canSeePricing && costingHook.costingInvalid}
       invalidCostingField={costingHook.firstInvalidCostingField}
       revealCosting={revealCosting}
-      canSeeTotal={isAdmin && isEdit}
+      canSeeTotal={canSeePricing && isEdit}
       fetchCurrentTotal={costingHook.fetchCurrentTotal}
       saveCosting={costingHook.handleSaveCosting}
       descriptionError={formHook.descriptionError}
@@ -561,16 +564,21 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   This job is invoiced and closed. Unarchive it to make changes.
                 </div>
               )}
-              {isEdit && isAdmin && (
+              {isEdit && (canSeePricing || canSeeActivity) && (
                 <div className="modal-tabs">
                   <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => handleTabChange('details')}>
                     Details
                     {jobNotes.notes.length > 0 && <span className="tab-badge">{jobNotes.notes.length}</span>}
                   </button>
-                  {/* The bar itself is already admin-only (money and the trail both
-                      are), so these two don't re-ask the same question. */}
-                  <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => handleTabChange('costing')}>Costing</button>
-                  <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => handleTabChange('activity')}>Activity</button>
+                  {/* Each tab button below only renders when its own permission
+                      allows it, so the bar itself doesn't re-ask a question the
+                      tab content below already answers. */}
+                  {canSeePricing && (
+                    <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => handleTabChange('costing')}>Costing</button>
+                  )}
+                  {canSeeActivity && (
+                    <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => handleTabChange('activity')}>Activity</button>
+                  )}
                 </div>
               )}
 
@@ -653,7 +661,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 />
               )}
 
-              {activeTab === 'costing' && isEdit && isAdmin && (
+              {activeTab === 'costing' && isEdit && canSeePricing && (
                 // A closed job's pricing is read-only too (C1.3) — wrapped in a plain
                 // <fieldset disabled>, same reasoning as DetailsTab.jsx's management
                 // view, rather than threading a lock through every box useCosting.js
@@ -686,7 +694,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 </fieldset>
               )}
 
-              {activeTab === 'activity' && isEdit && isAdmin && (
+              {activeTab === 'activity' && isEdit && canSeeActivity && (
                 <ActivityLogTab
                   history={activityLog.history}
                   loading={activityLog.loadingHistory}

@@ -1,0 +1,10 @@
+{
+  "_about": "One name per permission, and the roles that carry it — read directly by the server and imported by the client the same way constants.js imports jobStatuses.json (see vite.config.js's server.fs.allow). Meaning of each name is documented in CLAUDE.md's Roles and permissions section; this file only carries the role list.",
+  "management":    ["admin", "manager"],
+  "pricing":       ["admin"],
+  "activityTrail": ["admin"],
+  "systemData":    ["admin"],
+  "adminAccounts": ["admin"],
+  "deleteJob":     ["admin"],
+  "stayLoggedIn":  ["admin"]
+}

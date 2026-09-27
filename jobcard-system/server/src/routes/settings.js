@@ -5,7 +5,7 @@ const path = require('path');
 const os = require('os');
 const extractZip = require('extract-zip');
 const logger = require('../utils/logger');
-const { authenticate, requireAdmin, requireManagement } = require('../middleware/auth');
+const { authenticate, can, requirePermission, requireManagement } = require('../middleware/auth');
 const db = require('../db/database');
 const config = require('../config');
 const { lanIpv4s } = require('../utils/netHost');
@@ -59,13 +59,13 @@ router.get('/', requireManagement, (req, res) => {
     // Labour rates & overtime are admin-only money settings: strip them for
     // managers so the pricing never reaches a session that can't open the
     // Labour Rates page. (getSettings builds a fresh object per call.)
-    if (req.user.role !== 'admin') {
+    if (!can(req.user.role, 'pricing')) {
       for (const key of OVERTIME_DB_KEYS) delete settings[key];
     }
     // The job-folders base path is admin-only too: it decides where every job's
     // files and backups are written, so a manager should never even see it, let
     // alone be able to work out or repoint where files land.
-    if (req.user.role !== 'admin') {
+    if (!can(req.user.role, 'systemData')) {
       delete settings.job_folders_base;
     }
     // Convert snake_case keys to camelCase
@@ -89,15 +89,17 @@ router.put('/', requireManagement, async (req, res) => {
   try {
     // Reject a manager's attempt to save any overtime/labour-rate field outright
     // rather than silently dropping it, so a stale client fails loudly.
-    if (req.user.role !== 'admin') {
+    if (!can(req.user.role, 'pricing')) {
       const blocked = OVERTIME_BODY_KEYS.find(k => req.body[k] !== undefined);
       if (blocked) {
         return res.status(403).json({ error: 'Only admins can change labour rates and overtime settings' });
       }
+    }
+    if (!can(req.user.role, 'systemData')) {
       // The job-folders base path decides where every job's files (and backups) are
       // written; only admins can repoint it, so a manager can't redirect company
       // files to a personal/removable drive.
-      if (req.body.jobFoldersBase !== undefined || req.body.job_folders_base !== undefined) {
+      if (req.body.jobFoldersBase !== undefined) {
         return res.status(403).json({ error: 'Only admins can change the job folders base path' });
       }
       if (homeAccess.HOME_ACCESS_BODY_KEYS.some(k => req.body[k] !== undefined)) {
@@ -105,8 +107,8 @@ router.put('/', requireManagement, async (req, res) => {
       }
     }
 
-    const jobFoldersBase = req.body.jobFoldersBase ?? req.body.job_folders_base;
-    const inactivityTimeoutMinutes = req.body.inactivityTimeoutMinutes ?? req.body.inactivity_timeout_minutes;
+    const jobFoldersBase = req.body.jobFoldersBase;
+    const inactivityTimeoutMinutes = req.body.inactivityTimeoutMinutes;
     const updates = {};
 
     // Home access code + home address (settings-home-access.js).
@@ -143,47 +145,29 @@ router.put('/', requireManagement, async (req, res) => {
     }
 
     // Validate job number prefix if provided
-    const jobNumberPrefix = req.body.jobNumberPrefix ?? req.body.job_number_prefix;
+    const jobNumberPrefix = req.body.jobNumberPrefix;
     if (jobNumberPrefix !== undefined) {
       updates.job_number_prefix = jobNumberPrefix || '';
     }
 
     // Validate job number next if provided
-    const jobNumberNext = req.body.jobNumberNext ?? req.body.job_number_next;
+    const jobNumberNext = req.body.jobNumberNext;
     if (jobNumberNext !== undefined) {
       if (jobNumberNext && !/^\d+$/.test(jobNumberNext)) {
         return res.status(400).json({ error: 'Starting number must contain only digits (e.g. 00001)' });
       }
 
-      // Prevent setting the counter backward into existing job numbers
+      // Prevent setting the counter backward into a job number already handed out.
       if (jobNumberNext) {
         const currentSettings = db.getSettings();
         const effectivePrefix = jobNumberPrefix !== undefined ? (jobNumberPrefix || '') : (currentSettings.job_number_prefix || '');
         const newNum = parseInt(jobNumberNext, 10);
         const width = jobNumberNext.length;
 
-        // Find every job number with this prefix that was actually handed out — the
-        // jobs that exist, plus deleted jobs, whose number the delete trail keeps. A
-        // deleted job's number is never reused. The counter's own current value is
-        // deliberately NOT a floor: it may have been moved past numbers nobody ever
-        // used (a mistyped 50000), and that mistake has to be undoable.
-        const existingRows = db.db.prepare("SELECT job_number FROM jobcards WHERE substr(job_number, 1, ?) = ?").all(effectivePrefix.length, effectivePrefix);
-        const deletedRows = db.db.prepare(
-          "SELECT json_extract(changes, '$.jobNumber.from') AS job_number FROM history WHERE entity_type = 'jobcard' AND action = 'delete'"
-        ).all();
-        let maxExisting = 0;
-        let maxIsDeleted = false;
-        const consider = (jobNumber, deleted) => {
-          if (typeof jobNumber !== 'string' || !jobNumber.startsWith(effectivePrefix)) return;
-          const num = parseInt(jobNumber.slice(effectivePrefix.length), 10);
-          if (!isNaN(num) && num > maxExisting) { maxExisting = num; maxIsDeleted = deleted; }
-        };
-        existingRows.forEach(r => consider(r.job_number, false));
-        deletedRows.forEach(r => consider(r.job_number, true));
-
-        if (maxExisting > 0 && newNum <= maxExisting) {
-          const paddedMax = String(maxExisting).padStart(width, '0');
-          const error = maxIsDeleted
+        const highest = db.highestUsedJobNumber(effectivePrefix);
+        if (highest && newNum <= highest.num) {
+          const paddedMax = db.formatJobNumber('', highest.num, width);
+          const error = highest.deleted
             ? `Starting number must be greater than ${paddedMax} — job ${effectivePrefix}${paddedMax} was used by a job that has since been deleted`
             : `Starting number must be greater than ${paddedMax} — job ${effectivePrefix}${paddedMax} already exists`;
           return res.status(400).json({ error });
@@ -255,7 +239,7 @@ function getTableColumns(table) {
 }
 
 // Export full backup as ZIP (admin only)
-router.post('/export-backup', requireAdmin, [
+router.post('/export-backup', requirePermission('systemData'), [
   requiredString('outputPath', 'Output path'),
   handleValidationErrors
 ], async (req, res) => {
@@ -341,7 +325,7 @@ router.post('/export-backup', requireAdmin, [
 });
 
 // Import full backup from ZIP (admin only)
-router.post('/import-backup', requireAdmin, [
+router.post('/import-backup', requirePermission('systemData'), [
   requiredString('inputPath', 'Input path'),
   handleValidationErrors
 ], async (req, res) => {

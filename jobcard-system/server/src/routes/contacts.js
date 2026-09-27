@@ -6,6 +6,7 @@ const { validateCreateContact, validateUpdateContact } = require('../middleware/
 const { companyQueries, contactQueries, recordHistory, actorName } = require('../db/database');
 const { diffFields } = require('../utils/historyChanges');
 const { toContactApi: toApiFormat } = require('./customer-format');
+const { setArchived } = require('../utils/archiveToggle');
 
 const router = express.Router();
 
@@ -79,46 +80,30 @@ router.put('/:id', requireManagement, validateUpdateContact, (req, res) => {
 // POST /api/contacts/:id/archive - Retire a person who has left. Never deleted:
 // their jobs keep naming them, they just stop being offered on new work.
 router.post('/:id/archive', requireManagement, (req, res) => {
-  try {
-    const { id } = req.params;
-    const existing = contactQueries.getById.get(id);
-    if (!existing) return res.status(404).json({ error: 'Contact not found' });
-    if (existing.archived) return res.json(toApiFormat(existing));
-
-    contactQueries.archive.run(id);
-    const contact = contactQueries.getById.get(id);
-
-    recordHistory('contact', id, 'archive', req.user.userId, actorName(req), {
-      status: { from: 'Active', to: 'Archived' }
-    });
-
-    res.json(toApiFormat(contact));
-  } catch (err) {
-    logger.error({ err }, 'Failed to archive contact');
-    res.status(500).json({ error: 'Failed to archive contact' });
-  }
+  const { id } = req.params;
+  setArchived(req, res, {
+    entityType: 'contact',
+    load: () => contactQueries.getById.get(id),
+    notFound: 'Contact not found',
+    isArchived: (row) => Boolean(row.archived),
+    archive: true,
+    write: (row) => contactQueries.archive.run(row.id),
+    respond: (row) => toApiFormat(row)
+  });
 });
 
 // POST /api/contacts/:id/unarchive - Bring a retired person back.
 router.post('/:id/unarchive', requireManagement, (req, res) => {
-  try {
-    const { id } = req.params;
-    const existing = contactQueries.getById.get(id);
-    if (!existing) return res.status(404).json({ error: 'Contact not found' });
-    if (!existing.archived) return res.json(toApiFormat(existing));
-
-    contactQueries.unarchive.run(id);
-    const contact = contactQueries.getById.get(id);
-
-    recordHistory('contact', id, 'unarchive', req.user.userId, actorName(req), {
-      status: { from: 'Archived', to: 'Active' }
-    });
-
-    res.json(toApiFormat(contact));
-  } catch (err) {
-    logger.error({ err }, 'Failed to restore contact');
-    res.status(500).json({ error: 'Failed to restore contact' });
-  }
+  const { id } = req.params;
+  setArchived(req, res, {
+    entityType: 'contact',
+    load: () => contactQueries.getById.get(id),
+    notFound: 'Contact not found',
+    isArchived: (row) => Boolean(row.archived),
+    archive: false,
+    write: (row) => contactQueries.unarchive.run(row.id),
+    respond: (row) => toApiFormat(row)
+  });
 });
 
 module.exports = router;

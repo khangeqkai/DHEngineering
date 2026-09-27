@@ -19,7 +19,7 @@ const invoicedLockToast = () => toast.error('Reopen the job to change its time',
  */
 export function useJobCardTimerActions({
   jobCardId,
-  isAdmin,
+  canSeePricing,
   isInvoiced = false,
   costingLoaded,
   refreshCosting,
@@ -56,10 +56,10 @@ export function useJobCardTimerActions({
     // latest hours anyway. Tests costingLoaded rather than costingOpened so a load that
     // failed isn't retried on every timer tick, and so this never writes hours onto a
     // still-default sheet ahead of the real figures landing.
-    if (isAdmin && costingLoaded) await refreshCosting();
+    if (canSeePricing && costingLoaded) await refreshCosting();
     if (!isStillThisJob()) return;
     await refreshJobStatus();
-  }, [isStillThisJob, reloadTimeEntries, isAdmin, costingLoaded, refreshCosting, refreshJobStatus]);
+  }, [isStillThisJob, reloadTimeEntries, canSeePricing, costingLoaded, refreshCosting, refreshJobStatus]);
 
   const handleSubmitEntryForm = useCallback(async () => {
     const result = await timer.submitEntryForm(reloadTimeEntriesAndCosting);

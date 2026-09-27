@@ -5,6 +5,7 @@ const { authenticate, requireManagement, isManagement } = require('../middleware
 const { validateCreateSupplier, validateUpdateSupplier } = require('../middleware/validation');
 const { db, supplierQueries, tagQueries, jobItemQueries, recordHistory, actorName } = require('../db/database');
 const { diffFields } = require('../utils/historyChanges');
+const { setArchived } = require('../utils/archiveToggle');
 
 const router = express.Router();
 
@@ -252,48 +253,32 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
 // their treatments, so erasing a supplier would leave those jobs pointing at nothing.
 // Archiving keeps the record (existing jobs stay valid) but drops it from the picker.
 router.post('/:id/deactivate', requireManagement, (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const existing = getSupplierWithTags(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Supplier not found' });
-    }
-
-    supplierQueries.deactivate.run(id);
-
-    recordHistory('supplier', id, 'archive', req.user.userId, actorName(req), {
-      status: { from: 'Active', to: 'Archived' }
-    }, { name: existing.name });
-
-    res.json({ success: true });
-  } catch (err) {
-    logger.error({ err }, 'Failed to archive supplier');
-    res.status(500).json({ error: 'Failed to archive supplier' });
-  }
+  const { id } = req.params;
+  setArchived(req, res, {
+    entityType: 'supplier',
+    load: () => getSupplierWithTags(id),
+    notFound: 'Supplier not found',
+    isArchived: (row) => !row.active,
+    archive: true,
+    write: (row) => supplierQueries.deactivate.run(row.id),
+    respond: () => ({ success: true }),
+    snapshot: (row) => ({ name: row.name })
+  });
 });
 
 // POST /api/suppliers/:id/activate - Restore archived supplier (admin or manager)
 router.post('/:id/activate', requireManagement, (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const existing = getSupplierWithTags(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Supplier not found' });
-    }
-
-    supplierQueries.activate.run(id);
-
-    recordHistory('supplier', id, 'unarchive', req.user.userId, actorName(req), {
-      status: { from: 'Archived', to: 'Active' }
-    }, { name: existing.name });
-
-    res.json({ success: true });
-  } catch (err) {
-    logger.error({ err }, 'Failed to restore supplier');
-    res.status(500).json({ error: 'Failed to restore supplier' });
-  }
+  const { id } = req.params;
+  setArchived(req, res, {
+    entityType: 'supplier',
+    load: () => getSupplierWithTags(id),
+    notFound: 'Supplier not found',
+    isArchived: (row) => !row.active,
+    archive: false,
+    write: (row) => supplierQueries.activate.run(row.id),
+    respond: () => ({ success: true }),
+    snapshot: (row) => ({ name: row.name })
+  });
 });
 
 module.exports = router;

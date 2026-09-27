@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Check, ChevronDown } from 'lucide-react';
 import TimeEntryCard from './TimeEntryCard';
-import { formatCount } from '../../../utils/formatters';
+import { formatCount, roundTo } from '../../../utils/formatters';
 
 function parseQty(v) {
   if (v == null || v === '') return 0;
@@ -87,7 +87,7 @@ export default function LineItemProgress({
   // Total made = good pieces + scrap. Scrap rate divides into it, so every number on the
   // line ties together: scrap of total made = the percentage shown.
   const totalMade = progress.completed + progress.scrapTotal;
-  const scrapRate = totalMade > 0 ? Math.round((progress.scrapTotal / totalMade) * 100) : 0;
+  const scrapRate = totalMade > 0 ? roundTo((progress.scrapTotal / totalMade) * 100, 0) : 0;
 
   const [open, setOpen] = useState(progress.hasActive);
   const prevHasActive = useRef(progress.hasActive);

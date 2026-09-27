@@ -1,6 +1,6 @@
 const express = require('express');
 const logger = require('../utils/logger');
-const { authenticate, requireAdmin, requireManagement } = require('../middleware/auth');
+const { authenticate, requirePermission, requireManagement } = require('../middleware/auth');
 const { historyQueries, db } = require('../db/database');
 
 const router = express.Router();
@@ -21,7 +21,7 @@ function parseHistoryCursor(raw) {
 
 // Get recent activity (admin only — the trail carries pricing changes, which
 // managers are barred from seeing)
-router.get('/', authenticate, requireAdmin, (req, res) => {
+router.get('/', authenticate, requirePermission('activityTrail'), (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
     let history;
@@ -52,7 +52,7 @@ router.get('/', authenticate, requireAdmin, (req, res) => {
 });
 
 // Get activity by user (admin only)
-router.get('/user/:userId', authenticate, requireAdmin, (req, res) => {
+router.get('/user/:userId', authenticate, requirePermission('activityTrail'), (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
     const history = historyQueries.getByUser.all(req.params.userId, limit);

@@ -1,8 +1,9 @@
 import { Award, Filter, Building2 } from 'lucide-react';
 import DataTable from '../common/DataTable';
 import { useAuth } from '../../context/AuthContext';
+import { can } from '../../utils/roles';
 import { PRIORITY_LABELS } from '../JobCardList.constants';
-import { formatMoney } from '../../utils/formatters';
+import { formatMoney, roundTo } from '../../utils/formatters';
 
 // Bar colour per priority — anything not listed reads as the muted default.
 const PRIORITY_BAR_COLORS = {
@@ -19,7 +20,7 @@ export default function CustomersTab({
   loading = false
 }) {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const canSeePricing = can(user, 'pricing');
 
   return (
     <div className="stats-panel">
@@ -43,7 +44,7 @@ export default function CustomersTab({
               ) : (
                 Object.entries(qaLevelDistribution).map(([level, count]) => {
                   const pct = totalJobsCreated > 0
-                    ? Math.round((count / totalJobsCreated) * 100)
+                    ? roundTo((count / totalJobsCreated) * 100, 0)
                     : 0;
                   return (
                     <div key={level} className="distribution-item">
@@ -81,7 +82,7 @@ export default function CustomersTab({
               ) : (
                 Object.entries(priorityDistribution).map(([prio, count]) => {
                   const pct = totalJobsCreated > 0
-                    ? Math.round((count / totalJobsCreated) * 100)
+                    ? roundTo((count / totalJobsCreated) * 100, 0)
                     : 0;
                   return (
                     <div key={prio} className="distribution-item">
@@ -162,7 +163,7 @@ export default function CustomersTab({
                 sortable: true,
                 render: (val) => <span style={{ fontFamily: 'var(--font-mono)' }}>{val}h</span>
               },
-              ...(isAdmin ? [{
+              ...(canSeePricing ? [{
                 key: 'invoicedTotal',
                 label: 'Invoiced Total',
                 sortable: true,

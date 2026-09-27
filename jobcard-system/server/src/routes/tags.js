@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { tagQueries, recordHistory, actorName } = require('../db/database');
+const { setArchived } = require('../utils/archiveToggle');
 
 const router = express.Router();
 
@@ -220,50 +221,30 @@ router.put('/:id', requireManagement, (req, res) => {
 // jobs reference it by value, so removing the row would strand it on every job that
 // used it. Archiving pulls it from the pickers for new work while keeping old jobs intact.
 router.delete('/:id', requireManagement, (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const existing = tagQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Tag not found' });
-    }
-
-    if (existing.archived) {
-      return res.json({ success: true });
-    }
-
-    tagQueries.archive.run(id);
-    recordHistory('tag', id, 'archive', req.user.userId, actorName(req), {
-      status: { from: 'Active', to: 'Archived' }
-    });
-
-    res.json({ success: true });
-  } catch (err) {
-    logger.error({ err }, 'Failed to archive tag');
-    res.status(500).json({ error: 'Failed to archive tag' });
-  }
+  const { id } = req.params;
+  setArchived(req, res, {
+    entityType: 'tag',
+    load: () => tagQueries.getById.get(id),
+    notFound: 'Tag not found',
+    isArchived: (row) => Boolean(row.archived),
+    archive: true,
+    write: (row) => tagQueries.archive.run(row.id),
+    respond: () => ({ success: true })
+  });
 });
 
 // POST /api/tags/:id/activate - Restore an archived tag (admin or manager)
 router.post('/:id/activate', requireManagement, (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const existing = tagQueries.getById.get(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Tag not found' });
-    }
-
-    tagQueries.unarchive.run(id);
-    recordHistory('tag', id, 'unarchive', req.user.userId, actorName(req), {
-      status: { from: 'Archived', to: 'Active' }
-    });
-
-    res.json(formatTag(tagQueries.getById.get(id)));
-  } catch (err) {
-    logger.error({ err }, 'Failed to restore tag');
-    res.status(500).json({ error: 'Failed to restore tag' });
-  }
+  const { id } = req.params;
+  setArchived(req, res, {
+    entityType: 'tag',
+    load: () => tagQueries.getById.get(id),
+    notFound: 'Tag not found',
+    isArchived: (row) => Boolean(row.archived),
+    archive: false,
+    write: (row) => tagQueries.unarchive.run(row.id),
+    respond: (row) => formatTag(row)
+  });
 });
 
 module.exports = router;

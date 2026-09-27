@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const { userQueries } = require('../db/database');
 const jobStatuses = require('../shared/jobStatuses.json');
+const permissions = require('../shared/permissions.json');
 
 // Middleware to verify JWT token
 function authenticate(req, res, next) {
@@ -71,14 +72,34 @@ function requireRole(...roles) {
   };
 }
 
-// Convenience middleware for admin-only routes
-const requireAdmin = requireRole('admin');
+// One name per permission, and the roles that carry it — read from the shared
+// JSON (server/src/shared/permissions.json) so a role's access can never drift
+// between here and the client's copy of the same rule (client/src/utils/roles.js).
+// Throws on an unknown permission name so a typo fails loudly rather than
+// silently refusing (or silently allowing) everyone.
+function can(role, permission) {
+  const roles = permissions[permission];
+  if (!Array.isArray(roles)) throw new Error(`Unknown permission: ${permission}`);
+  return roles.includes(role);
+}
+
+function requirePermission(permission) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    if (!can(req.user.role, permission)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+    next();
+  };
+}
 
 // Management roles: a manager can do everything an admin can except job
 // costing and the labour rates/overtime configuration (money stays admin-only).
-const MANAGEMENT_ROLES = ['admin', 'manager'];
-const isManagement = (role) => MANAGEMENT_ROLES.includes(role);
-const requireManagement = requireRole(...MANAGEMENT_ROLES);
+const MANAGEMENT_ROLES = permissions.management;
+const isManagement = (role) => can(role, 'management');
+const requireManagement = requirePermission('management');
 
 // Every role that exists. Used wherever a role is checked against the full set
 // (creating/updating a user) rather than just against management vs. not.
@@ -107,7 +128,8 @@ function canSetStatus(role, fromStatus, toStatus) {
 module.exports = {
   authenticate,
   requireRole,
-  requireAdmin,
+  can,
+  requirePermission,
   requireManagement,
   isManagement,
   MANAGEMENT_ROLES,

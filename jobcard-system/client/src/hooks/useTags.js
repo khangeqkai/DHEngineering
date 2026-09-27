@@ -6,6 +6,28 @@ const tagCache = {};
 const cacheTimestamps = {};
 const CACHE_TTL = 60000; // 1 minute
 
+// Every mounted useTags(category) instance registers itself here, so a change made
+// through tagActions can tell every list showing that category to re-fetch — rather
+// than each screen that changes an option having to remember to call something
+// itself, which is what invalidateTagCache used to require (and what a screen could
+// forget: dropping the cache doesn't refresh a list already on screen).
+const subscribers = {};
+
+function subscribe(category, listener) {
+  if (!subscribers[category]) subscribers[category] = new Set();
+  subscribers[category].add(listener);
+  return () => subscribers[category].delete(listener);
+}
+
+function notify(category) {
+  subscribers[category]?.forEach(listener => listener());
+}
+
+function dropCache(category) {
+  delete tagCache[category];
+  delete cacheTimestamps[category];
+}
+
 /**
  * Hook to fetch tags by category from the unified tags API.
  * Returns tags as { value, label } array for dropdowns/checkboxes,
@@ -44,6 +66,13 @@ export function useTags(category) {
     fetchTags();
   }, [fetchTags]);
 
+  // Subscribe on mount, unsubscribe on unmount — a tagActions call re-fetches every
+  // mounted instance for the affected category(ies) instead of just dropping the
+  // cache and leaving whatever's already on screen stale.
+  useEffect(() => {
+    return subscribe(category, fetchTags);
+  }, [category, fetchTags]);
+
   // Pickers offer active options only. (rawTags may include archived ones, which
   // we keep around purely so labelOf can name a retired value on an existing job.)
   // Memoised on purpose: callers key work off this array's identity. A fresh array
@@ -60,8 +89,7 @@ export function useTags(category) {
   const labelOf = (value) => rawTags.find(t => t.value === value)?.name || value;
 
   const refresh = useCallback(() => {
-    delete tagCache[category];
-    delete cacheTimestamps[category];
+    dropCache(category);
     setLoading(true);
     fetchTags();
   }, [category, fetchTags]);
@@ -69,18 +97,40 @@ export function useTags(category) {
   return { tags, rawTags, loading, refresh, labelOf };
 }
 
-/**
- * Invalidate tag cache for a category (call after creating/deleting tags).
- */
-export function invalidateTagCache(category) {
-  if (category) {
-    delete tagCache[category];
-    delete cacheTimestamps[category];
-  } else {
-    // Clear all
-    Object.keys(tagCache).forEach(k => {
-      delete tagCache[k];
-      delete cacheTimestamps[k];
-    });
+// The one place every screen that changes a tag goes through — dropping the cache
+// and notifying subscribers is what makes a list already on screen catch up, so a
+// caller can no longer change an option and forget to say so (see the note on
+// `subscribers` above). Each method calls the matching api method, drops that
+// category's cache and notifies its subscribers, then returns the api result;
+// failures propagate to the caller unchanged so it can show its own toast.
+export const tagActions = {
+  async create(data) {
+    const result = await api.createTag(data);
+    dropCache(data.category);
+    notify(data.category);
+    return result;
+  },
+  async update(id, data) {
+    const result = await api.updateTag(id, data);
+    // Usually just the tag's own category — but if this update also carried a new
+    // category, both the one it left and the one it moved to need to catch up.
+    const categories = new Set(
+      Object.keys(tagCache).filter(cat => (tagCache[cat] || []).some(t => t.id === id))
+    );
+    if (data.category) categories.add(data.category);
+    categories.forEach(cat => { dropCache(cat); notify(cat); });
+    return result;
+  },
+  async archive(tag) {
+    const result = await api.archiveTag(tag.id);
+    dropCache(tag.category);
+    notify(tag.category);
+    return result;
+  },
+  async restore(tag) {
+    const result = await api.activateTag(tag.id);
+    dropCache(tag.category);
+    notify(tag.category);
+    return result;
   }
-}
+};

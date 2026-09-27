@@ -5,6 +5,8 @@ const logger = require('./logger');
 const { sanitizeFolderName, isWithinBase, findQaLevelFolder, ensureCompanyFolder, resolveCompanyFolder } = require('./folderCreation');
 const { fillPdfTemplate } = require('./pdfFiller');
 const { qaLevelQueries, qaLevelTemplateQueries, getSettings } = require('../db/database');
+const { officeDateString } = require('./officeTime');
+const { formatDayAu } = require('./calendarDate');
 
 // Copying a QA level's templates onto a job's disk folder, and the pre-save check
 // that confirms those templates are actually there before the job is written.
@@ -85,7 +87,7 @@ async function copyTemplatesToJobFolder(jobcardId, level, templates, jobData) {
       // above to find or create the customer's folder) nor the contact person.
       companyName: null,
       contactName: null,
-      date: new Date().toLocaleDateString('en-AU'),
+      date: formatDayAu(officeDateString(new Date())),
       qualityLevel: jobData.qualityLevel || level.name,
       items: jobData.items || []
     };

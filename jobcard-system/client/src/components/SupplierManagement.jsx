@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
+import { tagActions } from '../hooks/useTags';
 import { toTitleCase, capitalizeFirst, autoResize } from '../utils/formatters';
 import { Plus, Archive, ArchiveRestore, Save, History, Check, X } from 'lucide-react';
 import PageHeader from './common/PageHeader';
@@ -169,7 +170,7 @@ export default function SupplierManagement() {
     if (!customTagName.trim()) return;
 
     try {
-      const newTag = await api.createTag({ category: 'treatment', name: customTagName.trim() });
+      const newTag = await tagActions.create({ category: 'treatment', name: customTagName.trim() });
       setServiceTags(prev => [...prev, newTag]);
       setFormData(prev => ({
         ...prev,
@@ -193,7 +194,7 @@ export default function SupplierManagement() {
     if (!confirmed) return;
 
     try {
-      await api.archiveTag(tag.id);
+      await tagActions.archive(tag);
       setServiceTags(prev => prev.filter(t => t.id !== tag.id));
       // Leave the tag ticked on the supplier being edited — retiring a service must
       // not silently drop it from what's about to be saved. It reappears below as

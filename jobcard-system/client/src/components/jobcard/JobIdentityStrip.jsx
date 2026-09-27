@@ -4,14 +4,12 @@ import { Calendar, ChevronDown } from 'lucide-react';
 import CalendarPicker from '../common/CalendarPicker';
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import { capitalizeFirst, formatDate } from '../../utils/formatters';
-import { api } from '../../services/api';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS, canChangeStatus, getSettableStatusValues } from './constants';
 import { statusToken, priorityToken } from '../JobCardList.constants';
-import { confirmInvoiceAnyway, confirmMarkInvoiced } from './jobCardPrompts';
+import { changeJobStatus } from './changeJobStatus';
 import { summarizeFieldStates, INSTANT_SAVE_STATUS_TEXT } from './useInstantSave';
 import { jobFieldMessage } from './fieldRules.mjs';
 import FieldError from '../common/FieldError';
-import { isJobClosedError } from '../../utils/jobLock';
 
 const PRIORITY_VALUES = PRIORITY_OPTIONS.map(p => p.value);
 
@@ -186,7 +184,7 @@ export default function JobIdentityStrip({
 
   // An existing job writes each of these fields the moment it changes; a brand-new
   // job has nothing to write to yet, so the change stays purely on screen and
-  // travels in the create payload instead — same seam runStatusChange below uses.
+  // travels in the create payload instead — same seam handleStatusChange below uses.
   const canWriteInstantly = isEdit && Boolean(jobCardId);
   // baseline is what the server last confirmed storing for this field. The screen
   // always takes the new value regardless, but the write is only sent when it
@@ -207,110 +205,93 @@ export default function JobIdentityStrip({
   // region announcing three separate lines for one tab-through would be unusable.
   const identityStatus = summarizeFieldStates(fieldStates, ['priority', 'dueDate', 'description']);
 
-  const runStatusChange = async (newStatus) => {
+  // A red pricing box is refused outright, before anything else about invoicing is
+  // even asked — the job is never billed on a figure the admin didn't mean, and
+  // there's no "discard" offered here the way closing the job offers one: the admin
+  // has to actually fix it. By the time this click handler runs, whatever box the
+  // cursor was last in has already been blurred (clicking anywhere else always blurs
+  // the previously focused box first), so costingInvalid already reflects every box
+  // on the sheet, typed-in or not.
+  //
+  // Invoicing files the job away, so the figure in the confirm question has to be the
+  // figure that actually gets billed. Unsaved pricing edits are therefore sent FIRST,
+  // before the question is asked, rather than after it is answered. The on-screen total
+  // can't stand in for them: the server recalculates from the job's own rules and folds
+  // in every minute logged since the pricing screen loaded, so what it stores is often a
+  // different number from what the boxes add up to. Saving first means the total below
+  // is read back from the server after the recalculation — the real one. Nothing is
+  // given away by saving first: this sheet has no Save button and files itself a second
+  // after the last keystroke anyway, so these edits were already on their way. Backing
+  // out of the question still leaves the job un-invoiced.
+  const prepareInvoice = async () => {
+    if (costingInvalid) {
+      toast.error('Fix the red pricing figure before invoicing.', { id: 'invoice-costing-invalid' });
+      revealCosting?.(invalidCostingField);
+      return null;
+    }
+    if (costingDirty && saveCosting) {
+      const saved = await saveCosting();
+      if (!saved) {
+        // The save already said why it failed. Don't go on to ask about invoicing: the
+        // total would be wrong and the job would be filed away without these edits.
+        toast.error('Could not save the costing — invoicing cancelled.');
+        return null;
+      }
+    }
+    // The total is always asked of the server, never taken from the boxes on screen: the
+    // server works it out afresh from the job's own rules every time it is asked, so it
+    // carries every minute logged since this screen loaded, which the boxes do not.
+    // A manager, or an admin who can't see a total, gets the plain message with no total
+    // line and no fetch. A failed fetch falls back to the plain message too: never show
+    // a total that might be wrong.
+    let freshTotal = null;
+    if (canSeeTotal && fetchCurrentTotal) {
+      const toastId = toast.loading('Getting the current total…');
+      try {
+        const fetched = await fetchCurrentTotal();
+        if (typeof fetched === 'number') freshTotal = fetched;
+      } catch {
+        freshTotal = null;
+      } finally {
+        toast.dismiss(toastId);
+      }
+    }
+    return { total: freshTotal, costingChangesSaved: costingDirty };
+  };
+
+  // Everything below runs behind one lock, held from the first moment of the change to
+  // the last, so a second pick made while the first is still working is simply ignored
+  // (this screen's own guard, on top of changeJobStatus's per-job one — this is also
+  // what disables the status picker while a change is in flight).
+  const handleStatusChange = async (newStatus) => {
+    if (statusBusy) return;
     if (!isEdit || !jobCardId) {
       setField('status', newStatus);
       return;
     }
-    if (newStatus === 'INVOICED') {
-      // A red pricing box is refused outright, before anything else about invoicing is
-      // even asked — the job is never billed on a figure the admin didn't mean, and
-      // there's no "discard" offered here the way closing the job offers one: the admin
-      // has to actually fix it. By the time this click handler runs, whatever box the
-      // cursor was last in has already been blurred (clicking anywhere else always blurs
-      // the previously focused box first), so costingInvalid already reflects every box
-      // on the sheet, typed-in or not.
-      if (costingInvalid) {
-        toast.error('Fix the red pricing figure before invoicing.', { id: 'invoice-costing-invalid' });
-        revealCosting?.(invalidCostingField);
-        return;
-      }
-      // Invoicing files the job away, so the figure in this question has to be the figure
-      // that actually gets billed. Unsaved pricing edits are therefore sent FIRST, before
-      // the question is asked, rather than after it is answered. The on-screen total can't
-      // stand in for them: the server recalculates from the job's own rules and folds in
-      // every minute logged since the pricing screen loaded, so what it stores is often a
-      // different number from what the boxes add up to. Saving first means the total below
-      // is read back from the server after the recalculation — the real one. Nothing is
-      // given away by saving first: this sheet has no Save button and files itself a second
-      // after the last keystroke anyway, so these edits were already on their way. Backing
-      // out of the question still leaves the job un-invoiced.
-      if (costingDirty && saveCosting) {
-        const saved = await saveCosting();
-        if (!saved) {
-          // The save already said why it failed. Don't go on to ask about invoicing: the
-          // total would be wrong and the job would be filed away without these edits.
-          toast.error('Could not save the costing — invoicing cancelled.');
-          return;
-        }
-      }
-      // The total is always asked of the server, never taken from the boxes on screen: the
-      // server works it out afresh from the job's own rules every time it is asked, so it
-      // carries every minute logged since this screen loaded, which the boxes do not.
-      // A manager, or an admin who can't see a total, gets the plain message with no total
-      // line and no fetch. A failed fetch falls back to the plain message too: never show
-      // a total that might be wrong.
-      let freshTotal = null;
-      if (canSeeTotal && fetchCurrentTotal) {
-        const toastId = toast.loading('Getting the current total…');
-        try {
-          const fetched = await fetchCurrentTotal();
-          if (typeof fetched === 'number') freshTotal = fetched;
-        } catch {
-          freshTotal = null;
-        } finally {
-          toast.dismiss(toastId);
-        }
-      }
-      // Same question, same wording the job list's status badge asks — see jobCardPrompts.jsx.
-      const ok = await confirmMarkInvoiced(showConfirm, { total: freshTotal, costingChangesSaved: costingDirty });
-      if (!ok) return;
-    }
-    // A part save already in flight (or queued behind one) must land BEFORE this
-    // status write is sent — its reply can carry its own jobStatus (see
-    // useInstantItems.js's applyItemReply) and, unguarded, a slow one of those could
-    // still arrive after this and stomp the status the user just picked by hand back
-    // to whatever the part write computed. Waiting here, not there, is what actually
-    // closes that race. Never rejects, so a part save failing doesn't block the
-    // status change — see useSaveQueue.js's whenSettled. statusBusy (set by the
-    // caller before runStatusChange is called) stays held across the wait.
-    await whenPartSavesSettled?.();
-    const applyLocally = () => {
-      setField('status', newStatus);
-      onSuccess?.();
-      toast.success('Status updated');
-    };
-    try {
-      await api.updateJobcardStatus(jobCardId, newStatus);
-      applyLocally();
-    } catch (err) {
-      // Invoicing with declared-but-missing files: confirm, then resend.
-      if (err.status === 409 && err.data?.attachmentWarnings) {
-        const proceed = await confirmInvoiceAnyway(err.data.attachmentWarnings, showConfirm);
-        if (!proceed) return;
-        try {
-          await api.updateJobcardStatus(jobCardId, newStatus, true);
-          applyLocally();
-        } catch (e2) {
-          if (isJobClosedError(e2)) onJobClosed?.();
-          else toast.error(e2.message || 'Failed to update status', { id: 'status-update-failed' });
-        }
-        return;
-      }
-      // The job was invoiced and archived from another PC while this screen still
-      // had it open — this pick reached the server after that.
-      if (isJobClosedError(err)) { onJobClosed?.(); return; }
-      toast.error(err.message || 'Failed to update status', { id: 'status-update-failed' });
-    }
-  };
-
-  // Everything above runs behind one lock, held from the first moment of the change to
-  // the last, so a second pick made while the first is still working is simply ignored.
-  const handleStatusChange = async (newStatus) => {
-    if (statusBusy) return;
     setStatusBusy(true);
     try {
-      await runStatusChange(newStatus);
+      await changeJobStatus({
+        jobId: jobCardId,
+        newStatus,
+        showConfirm,
+        prepareInvoice,
+        // A part save already in flight (or queued behind one) must land BEFORE this
+        // status write is sent — its reply can carry its own jobStatus (see
+        // useInstantItems.js's applyItemReply) and, unguarded, a slow one of those could
+        // still arrive after this and stomp the status the user just picked by hand back
+        // to whatever the part write computed. Waiting here is what actually closes that
+        // race. Never rejects, so a part save failing doesn't block the status change —
+        // see useSaveQueue.js's whenSettled.
+        beforeSend: whenPartSavesSettled,
+        onApplied: async () => {
+          setField('status', newStatus);
+          onSuccess?.();
+        },
+        // The job was invoiced and archived from another PC while this screen still
+        // had it open — this pick reached the server after that.
+        onJobClosed
+      });
     } finally {
       setStatusBusy(false);
     }

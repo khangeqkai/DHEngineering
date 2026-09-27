@@ -128,44 +128,48 @@ export function getDefaultTimeEntryForm() {
   };
 }
 
+// The form before the job's own pricing has arrived — every figure null, not a company
+// default: the server is the only source of pricing figures (see
+// mapCostingResponseToForm below). The Costing tab shows a "Loading pricing…"
+// placeholder until costingLoaded, so this shape is never displayed, edited or saved.
 export function getDefaultCostingForm() {
   return {
-    labourHours: 0,
+    labourHours: null,
     // The auto-tallied hours from logged time — shown as a reference and used as the
     // fallback when no manual override is in place.
-    labourHoursCalculated: 0,
+    labourHoursCalculated: null,
     // True once the admin has typed their own labour hours over the calculated figure.
     labourHoursOverridden: false,
-    labourRate: 0,
+    labourRate: null,
     // The current company default — shown only as a "use default" convenience; the job's
     // rate (labourRate) is its own, seeded from this at creation.
-    labourDefaultRate: 0,
+    labourDefaultRate: null,
     // Overtime tiers — hours auto-split from logged time, each hand-overridable. Each
     // tier charges labourRate × its multiplier. The two overtime multipliers start on
     // the company setting (the *Calculated figure) and can be hand-overridden per job,
     // exactly like the hours.
-    labourOt1Hours: 0,
-    labourOt1HoursCalculated: 0,
+    labourOt1Hours: null,
+    labourOt1HoursCalculated: null,
     labourOt1Overridden: false,
-    labourOt1Multiplier: 1.5,
-    labourOt1MultiplierCalculated: 1.5,
+    labourOt1Multiplier: null,
+    labourOt1MultiplierCalculated: null,
     labourOt1MultiplierOverridden: false,
-    labourOt2Hours: 0,
-    labourOt2HoursCalculated: 0,
+    labourOt2Hours: null,
+    labourOt2HoursCalculated: null,
     labourOt2Overridden: false,
-    labourOt2Multiplier: 2,
-    labourOt2MultiplierCalculated: 2,
+    labourOt2Multiplier: null,
+    labourOt2MultiplierCalculated: null,
     labourOt2MultiplierOverridden: false,
-    labourHolidayHours: 0,
-    labourHolidayHoursCalculated: 0,
+    labourHolidayHours: null,
+    labourHolidayHoursCalculated: null,
     labourHolidayOverridden: false,
-    labourHolidayMultiplier: 2.5,
-    labourSpecialHours: 0,
-    labourSpecialRate: 0,
-    materialsCost: 0,
-    materialsProfitPercent: 100,
-    subcontractorCost: 0,
-    subcontractorProfitPercent: 0,
+    labourHolidayMultiplier: null,
+    labourSpecialHours: null,
+    labourSpecialRate: null,
+    materialsCost: null,
+    materialsProfitPercent: null,
+    subcontractorCost: null,
+    subcontractorProfitPercent: null,
     // Free-text note beside each manual cost line, saying what the cost covers.
     labourSpecialDescription: '',
     materialsDescription: '',
@@ -253,38 +257,40 @@ export function buildJobcardPayload({
   };
 }
 
-// Turn a costing response from the server into the plain data object the job card
-// modal holds and feeds to the costing hook. One place, so the modal's initial load
-// and its post-save refresh can't drift apart.
-export function mapCostingResponseToData(costingRes) {
+// Turn a costing response from the server into the costing form the sheet holds and
+// edits — the one reply→form mapping. The server is the only source of pricing figures
+// and every figure it sends is already filled in, so nothing here falls back to a
+// default rate. Only the *Override fields may be null, meaning "follow the calculated
+// figure", which is what the derived *Overridden flags capture.
+export function mapCostingResponseToForm(costingRes) {
   return {
-    labourHours: costingRes.labourHours || 0,
-    labourHoursCalculated: costingRes.labourHoursCalculated || 0,
-    labourHoursOverride: costingRes.labourHoursOverride ?? null,
-    labourRate: costingRes.labourRate || 0,
-    labourDefaultRate: costingRes.labourDefaultRate || 0,
-    labourOt1Hours: costingRes.labourOt1Hours || 0,
-    labourOt1HoursCalculated: costingRes.labourOt1HoursCalculated || 0,
-    labourOt1Override: costingRes.labourOt1Override ?? null,
-    labourOt1Multiplier: costingRes.labourOt1Multiplier ?? 1.5,
-    labourOt1MultiplierCalculated: costingRes.labourOt1MultiplierCalculated ?? 1.5,
-    labourOt1MultiplierOverride: costingRes.labourOt1MultiplierOverride ?? null,
-    labourOt2Hours: costingRes.labourOt2Hours || 0,
-    labourOt2HoursCalculated: costingRes.labourOt2HoursCalculated || 0,
-    labourOt2Override: costingRes.labourOt2Override ?? null,
-    labourOt2Multiplier: costingRes.labourOt2Multiplier ?? 2,
-    labourOt2MultiplierCalculated: costingRes.labourOt2MultiplierCalculated ?? 2,
-    labourOt2MultiplierOverride: costingRes.labourOt2MultiplierOverride ?? null,
-    labourHolidayHours: costingRes.labourHolidayHours || 0,
-    labourHolidayHoursCalculated: costingRes.labourHolidayHoursCalculated || 0,
-    labourHolidayOverride: costingRes.labourHolidayOverride ?? null,
-    labourHolidayMultiplier: costingRes.labourHolidayMultiplier ?? 2.5,
-    labourSpecialHours: costingRes.labourSpecialHours || 0,
-    labourSpecialRate: costingRes.labourSpecialRate || 0,
-    materialsCost: costingRes.materialsCost || 0,
-    materialsProfitPercent: costingRes.materialsProfitPercent ?? 100,
-    subcontractorCost: costingRes.subcontractorCost || 0,
-    subcontractorProfitPercent: costingRes.subcontractorProfitPercent ?? 0,
+    labourHours: costingRes.labourHours,
+    labourHoursCalculated: costingRes.labourHoursCalculated,
+    labourHoursOverridden: costingRes.labourHoursOverride != null,
+    labourRate: costingRes.labourRate,
+    labourDefaultRate: costingRes.labourDefaultRate,
+    labourOt1Hours: costingRes.labourOt1Hours,
+    labourOt1HoursCalculated: costingRes.labourOt1HoursCalculated,
+    labourOt1Overridden: costingRes.labourOt1Override != null,
+    labourOt1Multiplier: costingRes.labourOt1Multiplier,
+    labourOt1MultiplierCalculated: costingRes.labourOt1MultiplierCalculated,
+    labourOt1MultiplierOverridden: costingRes.labourOt1MultiplierOverride != null,
+    labourOt2Hours: costingRes.labourOt2Hours,
+    labourOt2HoursCalculated: costingRes.labourOt2HoursCalculated,
+    labourOt2Overridden: costingRes.labourOt2Override != null,
+    labourOt2Multiplier: costingRes.labourOt2Multiplier,
+    labourOt2MultiplierCalculated: costingRes.labourOt2MultiplierCalculated,
+    labourOt2MultiplierOverridden: costingRes.labourOt2MultiplierOverride != null,
+    labourHolidayHours: costingRes.labourHolidayHours,
+    labourHolidayHoursCalculated: costingRes.labourHolidayHoursCalculated,
+    labourHolidayOverridden: costingRes.labourHolidayOverride != null,
+    labourHolidayMultiplier: costingRes.labourHolidayMultiplier,
+    labourSpecialHours: costingRes.labourSpecialHours,
+    labourSpecialRate: costingRes.labourSpecialRate,
+    materialsCost: costingRes.materialsCost,
+    materialsProfitPercent: costingRes.materialsProfitPercent,
+    subcontractorCost: costingRes.subcontractorCost,
+    subcontractorProfitPercent: costingRes.subcontractorProfitPercent,
     // The free-text note on each manual cost line ("what this covers").
     labourSpecialDescription: costingRes.labourSpecialDescription || '',
     materialsDescription: costingRes.materialsDescription || '',

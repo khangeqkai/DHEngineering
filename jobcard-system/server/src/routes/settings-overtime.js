@@ -2,6 +2,8 @@
 // (time zone, weekly schedule, default hourly rate, multipliers, public holidays).
 // Kept beside settings.js the same way backup-helpers.js is.
 
+const { isCalendarDate } = require('../utils/calendarDate');
+
 const SCHEDULE_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const SCHEDULE_TIERS = ['normal', 'ot1', 'ot2'];
 
@@ -131,7 +133,7 @@ function collectOvertimeUpdates(body) {
     }
     const clean = [];
     for (const d of list) {
-      if (typeof d !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(d) || isNaN(Date.parse(d))) {
+      if (!isCalendarDate(d)) {
         return { error: `Invalid holiday date: ${d}` };
       }
       if (!clean.includes(d)) clean.push(d);

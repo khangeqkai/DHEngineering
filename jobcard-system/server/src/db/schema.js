@@ -1,5 +1,6 @@
 const { db } = require('./connection');
 const logger = require('../utils/logger');
+const { COSTING_DEFAULTS } = require('../utils/costingDefaults');
 
 // Stored moments are always full ISO-8601 UTC ("YYYY-MM-DDTHH:MM:SS.sssZ"), written with
 // strftime('%Y-%m-%dT%H:%M:%fZ','now') — the same shape as JavaScript's toISOString().
@@ -229,7 +230,7 @@ db.exec(`
     -- Per-job base hourly rate. Seeded from the company default (labour_default_rate in
     -- settings) when the job is created, then owned by the job: a later change to the
     -- company default never moves an already-created job (the default only seeds new jobs).
-    labour_rate REAL DEFAULT 0,
+    labour_rate REAL DEFAULT ${COSTING_DEFAULTS.labourDefaultRate},
     labour_total REAL DEFAULT 0,
 
     -- Overtime tiers. The same base labour_rate applies to every tier; each tier's
@@ -248,9 +249,9 @@ db.exec(`
     labour_holiday_hours REAL DEFAULT 0,
     labour_holiday_override REAL,
     labour_holiday_total REAL DEFAULT 0,
-    labour_ot1_multiplier REAL DEFAULT 1.5,
-    labour_ot2_multiplier REAL DEFAULT 2,
-    labour_holiday_multiplier REAL DEFAULT 2.5,
+    labour_ot1_multiplier REAL DEFAULT ${COSTING_DEFAULTS.ot1Multiplier},
+    labour_ot2_multiplier REAL DEFAULT ${COSTING_DEFAULTS.ot2Multiplier},
+    labour_holiday_multiplier REAL DEFAULT ${COSTING_DEFAULTS.holidayMultiplier},
     -- Optional per-job overtime multipliers (NULL = follow this job's own captured
     -- baseline below). When set, labour_*_multiplier above holds this value (the
     -- effective multiplier the job charges at).
@@ -281,12 +282,12 @@ db.exec(`
     labour_special_description TEXT,
 
     materials_cost REAL DEFAULT 0,
-    materials_profit_percent REAL DEFAULT 100,
+    materials_profit_percent REAL DEFAULT ${COSTING_DEFAULTS.materialsProfitPercent},
     materials_total REAL DEFAULT 0,
     materials_description TEXT,
 
     subcontractor_cost REAL DEFAULT 0,
-    subcontractor_profit_percent REAL DEFAULT 0,
+    subcontractor_profit_percent REAL DEFAULT ${COSTING_DEFAULTS.subcontractorProfitPercent},
     subcontractor_total REAL DEFAULT 0,
     subcontractor_description TEXT,
 

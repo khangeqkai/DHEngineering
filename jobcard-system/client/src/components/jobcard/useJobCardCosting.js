@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../../services/api';
-import { mapCostingResponseToData } from './mappers';
+import { mapCostingResponseToForm } from './mappers';
 import { useCosting } from './useCosting';
 
 // Everything the job screen needs to run its pricing tab, in one place: fetching the
@@ -11,7 +11,7 @@ import { useCosting } from './useCosting';
 // Wraps useCosting, which owns the figures themselves, and hands back its whole API
 // plus the load state the pricing tab needs.
 export function useJobCardCosting({
-  isOpen, isEdit, isAdmin, jobCardId, activeTab
+  isOpen, isEdit, canSeePricing, jobCardId, activeTab
 }) {
   const [costing, setCosting] = useState(null);
   // Set when the pricing couldn't be fetched. The screen shows a plain message and a
@@ -47,19 +47,19 @@ export function useJobCardCosting({
   useEffect(() => () => { loadSeq.current += 1; }, [isOpen, jobCardId]);
 
   const loadCosting = useCallback(async () => {
-    if (!isEdit || !jobCardId || !isAdmin) return;
+    if (!isEdit || !jobCardId || !canSeePricing) return;
     const seq = loadSeq.current;
     try {
       const costingRes = await api.getCosting(jobCardId);
       if (seq !== loadSeq.current) return; // a different opening now — not ours
       if (costingRes) {
-        setCosting(mapCostingResponseToData(costingRes));
+        setCosting(mapCostingResponseToForm(costingRes));
         setLoadFailed(false);
       }
     } catch {
       if (seq === loadSeq.current) setLoadFailed(true);
     }
-  }, [isEdit, jobCardId, isAdmin]);
+  }, [isEdit, jobCardId, canSeePricing]);
 
   // Load only once the Costing tab has actually been opened this opening, not the instant
   // an admin opens any job — the fetch walks every logged minute, and most job opens never
@@ -70,10 +70,10 @@ export function useJobCardCosting({
   // opening (costing stays non-null until the job is closed), still admin-only, and still
   // off a brand-new card (isEdit false).
   useEffect(() => {
-    if (isOpen && isEdit && isAdmin && costingOpened && costing === null) {
+    if (isOpen && isEdit && canSeePricing && costingOpened && costing === null) {
       loadCosting();
     }
-  }, [isOpen, isEdit, isAdmin, costingOpened, costing, loadCosting]);
+  }, [isOpen, isEdit, canSeePricing, costingOpened, costing, loadCosting]);
 
   const costingHook = useCosting(jobCardId, {
     costing,
@@ -85,7 +85,7 @@ export function useJobCardCosting({
       // any time logged since the screen loaded). The pricing screen only takes these
       // when nothing was typed while the save was in flight and the same job is still
       // open, so this can't overwrite someone mid-type or land on the wrong job.
-      return res?.costing ? mapCostingResponseToData(res.costing) : null;
+      return res?.costing ? mapCostingResponseToForm(res.costing) : null;
     }
   });
 

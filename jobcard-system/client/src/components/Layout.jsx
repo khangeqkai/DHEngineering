@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { Suspense, useEffect, useState } from 'react';
 import { useAuth, useInactivityCountdown } from '../context/AuthContext';
-import { isManagement } from '../utils/roles';
+import { isManagement, can } from '../utils/roles';
 import InactivityWarningModal from './common/InactivityWarningModal';
 import Spinner from './common/Spinner';
 import dhLogo from '../assets/dh-logo.png';
@@ -207,7 +207,7 @@ export default function Layout() {
                     <span className="nav-text">QA Levels</span>
                   </NavLink>
                 </li>
-                {user?.role === 'admin' && (
+                {can(user, 'pricing') && (
                   <li>
                     <NavLink to="/labour-rates" onClick={handleNavClick}>
                       <span className="nav-icon">
@@ -235,7 +235,7 @@ export default function Layout() {
                 <span className="nav-text">Search</span>
               </NavLink>
             </li>
-            {user?.role === 'admin' && (
+            {can(user, 'activityTrail') && (
               <li>
                 <NavLink to="/activity" onClick={handleNavClick}>
                   <span className="nav-icon">

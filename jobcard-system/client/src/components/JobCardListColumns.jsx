@@ -10,6 +10,7 @@ import {
 import { canChangeStatus, getSettableStatusValues } from './jobcard/constants';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { isJobClosed } from '../utils/jobLock';
+import { can } from '../utils/roles';
 
 export function getJobCardColumns({
   user,
@@ -468,7 +469,7 @@ export function getJobCardColumns({
                 <ArchiveRestore size={14} /> Unarchive
               </button>
             )}
-            {user?.role === 'admin' && (
+            {can(user, 'deleteJob') && (
               <button
                 className="btn btn-outline-danger btn-sm"
                 onClick={() => handleDelete(card.id)}

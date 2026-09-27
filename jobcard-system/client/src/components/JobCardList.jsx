@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { Plus } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { isManagement } from '../utils/roles';
+import { isManagement, can } from '../utils/roles';
 import { useLocalToday } from '../hooks/useLocalToday';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
@@ -16,7 +16,7 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useActiveTimerIndicator } from '../hooks/useActiveTimerIndicator';
 import { useMissingFilesIndicator } from '../hooks/useMissingFilesIndicator';
 import { describeWorkWarning } from '../utils/attachmentWarnings';
-import { confirmInvoiceAnyway, confirmMarkInvoiced } from './jobcard/jobCardPrompts';
+import { changeJobStatus } from './jobcard/changeJobStatus';
 import useJobCardSort from '../hooks/useJobCardSort';
 import useJobCardColumnOrder from '../hooks/useJobCardColumnOrder';
 import useJobCardColumnVisibility from '../hooks/useJobCardColumnVisibility';
@@ -28,7 +28,6 @@ import JobCardListPagination from './JobCardListPagination';
 import { getJobCardColumns } from './JobCardListColumns';
 import {
   STATUS_OPTIONS,
-  STATUS_LABELS,
   PAGE_SIZE,
   isJobOverdue
 } from './JobCardList.constants';
@@ -61,7 +60,7 @@ function penTabWithin(e, container) {
 export default function JobCardList() {
   const { user } = useAuth();
   const canManage = isManagement(user);
-  const isAdmin = user?.role === 'admin';
+  const canSeePricing = can(user, 'pricing');
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [filter, setFilter] = useState(() => {
@@ -194,54 +193,30 @@ export default function JobCardList() {
 
   const handleQuickStatusChange = useCallback(async (cardId, newStatus) => {
     setStatusPopoverId(null);
-    if (newStatus === 'INVOICED') {
-      // Same question and wording the job screen asks before invoicing (see
-      // jobCardPrompts.jsx) — picking Invoiced from the list's status badge must
-      // not archive the job with no confirmation at all. The list has no costing
-      // access, so it never has a fresh total or unsaved pricing to mention —
-      // just the plain question.
-      const proceed = await confirmMarkInvoiced(showConfirm);
-      if (!proceed) return;
-    }
-    const applyLocally = async () => {
-      toast.success(`Status updated to ${STATUS_LABELS[newStatus]}`);
-      // Invoicing files the job away, so it drops out of the active list — reload
-      // rather than leaving a stale "Invoiced" row that then errors ("un-file it
-      // first") when clicked. Other status changes update in place for snappiness.
-      if (newStatus === 'INVOICED') {
-        await loadJobcards();
-        return;
-      }
-      setJobcards(prev => prev.map(c => c.id === cardId ? { ...c, status: newStatus } : c));
-      refreshMissingFiles([cardId]);
-    };
-    try {
-      await api.updateJobcardStatus(cardId, newStatus);
-      await applyLocally();
-    } catch (err) {
-      // Invoicing with declared-but-missing files: confirm, then resend. Same
-      // shared confirm the job screen uses.
-      if (err.status === 409 && err.data?.attachmentWarnings) {
-        const proceed = await confirmInvoiceAnyway(err.data.attachmentWarnings, showConfirm);
-        if (!proceed) return;
-        try {
-          await api.updateJobcardStatus(cardId, newStatus, true);
-          await applyLocally();
-        } catch (e2) {
-          // A failed resend still leaves this row stale (e.g. someone else invoiced
-          // or archived the job on another PC in the meantime) — reload so the row
-          // catches up with the server instead of sitting there wrong.
-          toast.error(e2.message || 'Failed to update status', { id: 'status-update-failed' });
+    // The list has no costing access, so it never has a fresh total or unsaved
+    // pricing to mention — no prepareInvoice, just the plain invoicing question.
+    // A failure — including the job having been invoiced/archived elsewhere
+    // already (closedJobGuard's 409, which with no onJobClosed takes the failure
+    // path and shows its message) — can leave this row stale, most notably a
+    // stale "Invoiced" row that then errors ("un-file it first") when clicked, so
+    // it reloads rather than trying to patch the row in place.
+    await changeJobStatus({
+      jobId: cardId,
+      newStatus,
+      showConfirm,
+      onApplied: async () => {
+        // Invoicing files the job away, so it drops out of the active list —
+        // reload rather than leaving a stale row. Other status changes update
+        // in place for snappiness.
+        if (newStatus === 'INVOICED') {
           await loadJobcards();
+          return;
         }
-        return;
-      }
-      // Any other failure can also mean the row is stale — most notably the job
-      // being invoiced/archived elsewhere already (closedJobGuard's 409), which
-      // otherwise left an errored-but-unchanged "Invoiced" row sitting in the list.
-      toast.error(err.message || 'Failed to update status', { id: 'status-update-failed' });
-      await loadJobcards();
-    }
+        setJobcards(prev => prev.map(c => c.id === cardId ? { ...c, status: newStatus } : c));
+        refreshMissingFiles([cardId]);
+      },
+      onFailed: loadJobcards
+    });
   }, [showConfirm, refreshMissingFiles, loadJobcards]);
 
   useEffect(() => {
@@ -471,8 +446,8 @@ export default function JobCardList() {
         </label>
         {canManage && (
           <ExportButton
-            onExportView={(onProgress) => displayedCards.length ? exportJobCardList(displayedCards, onProgress, isAdmin) : false}
-            onExportAll={(onProgress) => exportJobCardsFull(onProgress, isAdmin)}
+            onExportView={(onProgress) => displayedCards.length ? exportJobCardList(displayedCards, onProgress, canSeePricing) : false}
+            onExportAll={(onProgress) => exportJobCardsFull(onProgress, canSeePricing)}
           />
         )}
         {!showArchived && canManage && (

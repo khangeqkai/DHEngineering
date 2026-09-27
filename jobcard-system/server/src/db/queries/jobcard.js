@@ -5,6 +5,11 @@ const jobcardQueries = {
   getById: db.prepare('SELECT * FROM jobcards WHERE id = ?'),
   getByJobNumber: db.prepare('SELECT * FROM jobcards WHERE job_number = ?'),
 
+  // Every job number starting with this prefix — the prefix-scan half of
+  // highestUsedJobNumber (db/helpers.js), which decides how low a new starting
+  // number is allowed to go.
+  getByPrefix: db.prepare('SELECT job_number FROM jobcards WHERE substr(job_number, 1, ?) = ?'),
+
   getAll: db.prepare(`
     SELECT j.*
     FROM jobcards j

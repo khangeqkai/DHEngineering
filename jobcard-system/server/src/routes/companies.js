@@ -7,6 +7,7 @@ const { companyQueries, contactQueries, recordHistory, actorName } = require('..
 const { diffFields } = require('../utils/historyChanges');
 const { ensureCompanyFolder, renameCompanyFolder } = require('../utils/folderCreation');
 const { toCompanyApi: toApiFormat, toContactApi } = require('./customer-format');
+const { setArchived } = require('../utils/archiveToggle');
 
 const router = express.Router();
 
@@ -126,46 +127,30 @@ router.put('/:id', requireManagement, validateUpdateCompany, (req, res) => {
 // are never deleted (track-and-trace): archiving hides them from pickers but keeps
 // the record, the link from their jobs, and their files on disk intact.
 router.post('/:id/archive', requireManagement, (req, res) => {
-  try {
-    const { id } = req.params;
-    const existing = companyQueries.getById.get(id);
-    if (!existing) return res.status(404).json({ error: 'Company not found' });
-    if (existing.archived) return res.json(toApiFormat(existing));
-
-    companyQueries.archive.run(id);
-    const company = companyQueries.getById.get(id);
-
-    recordHistory('company', id, 'archive', req.user.userId, actorName(req), {
-      status: { from: 'Active', to: 'Archived' }
-    });
-
-    res.json(toApiFormat(company));
-  } catch (err) {
-    logger.error({ err }, 'Failed to archive company');
-    res.status(500).json({ error: 'Failed to archive company' });
-  }
+  const { id } = req.params;
+  setArchived(req, res, {
+    entityType: 'company',
+    load: () => companyQueries.getById.get(id),
+    notFound: 'Company not found',
+    isArchived: (row) => Boolean(row.archived),
+    archive: true,
+    write: (row) => companyQueries.archive.run(row.id),
+    respond: (row) => toApiFormat(row)
+  });
 });
 
 // POST /api/companies/:id/unarchive - Restore an archived customer (admin or manager).
 router.post('/:id/unarchive', requireManagement, (req, res) => {
-  try {
-    const { id } = req.params;
-    const existing = companyQueries.getById.get(id);
-    if (!existing) return res.status(404).json({ error: 'Company not found' });
-    if (!existing.archived) return res.json(toApiFormat(existing));
-
-    companyQueries.unarchive.run(id);
-    const company = companyQueries.getById.get(id);
-
-    recordHistory('company', id, 'unarchive', req.user.userId, actorName(req), {
-      status: { from: 'Archived', to: 'Active' }
-    });
-
-    res.json(toApiFormat(company));
-  } catch (err) {
-    logger.error({ err }, 'Failed to restore company');
-    res.status(500).json({ error: 'Failed to restore company' });
-  }
+  const { id } = req.params;
+  setArchived(req, res, {
+    entityType: 'company',
+    load: () => companyQueries.getById.get(id),
+    notFound: 'Company not found',
+    isArchived: (row) => Boolean(row.archived),
+    archive: false,
+    write: (row) => companyQueries.unarchive.run(row.id),
+    respond: (row) => toApiFormat(row)
+  });
 });
 
 module.exports = router;

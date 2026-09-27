@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import toast, { Toaster, ToastBar } from 'react-hot-toast';
 import { X } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
-import { isManagement } from './utils/roles';
+import { isManagement, can } from './utils/roles';
 import Login from './components/Login';
 import JobCardList from './components/JobCardList';
 import Layout from './components/Layout';
@@ -35,7 +35,10 @@ function PrivateRoute({ children }) {
   return user ? children : <Navigate to="/login" replace />;
 }
 
-function AdminRoute({ children }) {
+// Gated on a named permission rather than the admin role itself, so each route
+// carries the reason it's locked down (pricing, the activity trail, ...) instead
+// of a bare "admin only" that can't tell the two apart.
+function PermissionRoute({ permission, children }) {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -46,7 +49,7 @@ function AdminRoute({ children }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'admin') {
+  if (!can(user, permission)) {
     return <Navigate to="/" replace />;
   }
 
@@ -54,7 +57,8 @@ function AdminRoute({ children }) {
 }
 
 // Admin or manager. Managers get every admin page except the money ones
-// (Labour Rates stays behind AdminRoute; costing has no page of its own).
+// (Labour Rates stays behind PermissionRoute's pricing permission; costing has
+// no page of its own).
 function ManagementRoute({ children }) {
   const { user, loading } = useAuth();
 
@@ -178,17 +182,17 @@ function App() {
           <Route
             path="labour-rates"
             element={
-              <AdminRoute>
+              <PermissionRoute permission="pricing">
                 <LabourRatesSettings />
-              </AdminRoute>
+              </PermissionRoute>
             }
           />
           <Route
             path="activity"
             element={
-              <AdminRoute>
+              <PermissionRoute permission="activityTrail">
                 <ActivityLog />
-              </AdminRoute>
+              </PermissionRoute>
             }
           />
           <Route path="settings" element={<Settings />} />

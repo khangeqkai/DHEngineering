@@ -40,7 +40,7 @@ export default function HomeAccessCard({ s }) {
           </div>
         </dl>
 
-        {s.isAdmin && (
+        {s.canSeeSystemData && (
           <>
             <div className="timeout-input-group" style={{ marginTop: '.75rem' }}>
               <input

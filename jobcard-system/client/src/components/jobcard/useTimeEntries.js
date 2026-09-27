@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { getDefaultTimeEntryForm, isoToLocalInput, localInputToIso } from './mappers';
-import { formatDate } from '../../utils/formatters';
+import { formatDate, roundTo } from '../../utils/formatters';
 import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
 import { isJobClosedError } from '../../utils/jobLock';
 
@@ -191,7 +191,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     // totals) on the strength of a vague one-liner.
     const who = entry?.userName || 'this worker';
     const hours = entry?.startTime && entry?.endTime
-      ? Math.round(((new Date(entry.endTime) - new Date(entry.startTime)) / 3600000) * 10) / 10
+      ? roundTo((new Date(entry.endTime) - new Date(entry.startTime)) / 3600000, 1)
       : null;
     const day = entry?.startTime ? formatDate(entry.startTime) : null;
     const message = hours != null && day

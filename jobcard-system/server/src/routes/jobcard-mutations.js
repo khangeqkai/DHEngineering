@@ -12,14 +12,14 @@ const {
   qaLevelQueries,
   companyQueries,
   contactQueries,
-  getSettings,
   recordHistory,
   actorName
 } = require('../db/database');
-const { formatJobcard, buildChanges, createRelatedRecords, buildQaFillData, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
+const { formatJobcard, buildChanges, createRelatedRecords, qaFillDataForJob, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
 const { copyQaTemplatesForJob, verifyQaTemplatesAvailable } = require('../utils/qaTemplateProvisioning');
 const { itemSummary, describePart, assigneeNames, buildQaTemplateWarning } = require('./jobcard-audit-text');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
+const { readOvertimeSettings } = require('../utils/overtimeSettings');
 const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
 const { db } = require('../db/connection');
 
@@ -189,7 +189,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
       // job owns it. This is what makes the default apply to NEW jobs only — a later
       // change to the company default reads this stored rate and never moves the job.
       // Everything else on the costing starts at zero (no logged time yet).
-      const seedRate = Number(getSettings().labour_default_rate) || 0;
+      const seedRate = readOvertimeSettings().defaultRate;
       persistCosting(computeLiveCosting(id, { labourRate: seedRate }));
 
       bumpJobNumber(peek.nextNum, peek.width);
@@ -242,22 +242,9 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
 
     let qaResult = null;
     if (qaLevelId) {
-      qaResult = await copyQaTemplatesForJob(id, qaLevelId, buildQaFillData(id, {
-        jobNumber: jobNumber,
-        status: status,
-        companyId: company.id,
-        // Used only to name the customer's folder on disk — never printed on the
-        // forms (copyTemplatesToJobFolder blanks it before filling).
-        companyName: company.name,
-        description: data.description || null,
-        priority: data.priority || 'NONE',
-        dueDate: data.dueDate || null,
-        qualityLevel: qualityLevelName,
-        poNumber: data.poNumber || null,
-        quoteReference: data.quoteReference || null,
-        repeatJob: data.isRepeatJob ? 'Yes' : 'No',
-        repeatJobReference: data.repeatJobReference || null
-      }));
+      // The job row (and its number/status/etc) was just committed above, so the
+      // form is filled from the saved job, not from the request that created it.
+      qaResult = await copyQaTemplatesForJob(id, qaLevelId, qaFillDataForJob(id, qualityLevelName));
     }
 
     const jobcard = jobcardQueries.getById.get(id);
@@ -410,23 +397,9 @@ router.put('/:id', authenticate, requireManagement, ...validateJobcardEnums, asy
     // QA template copy is a disk operation, kept outside the database transaction.
     let qaResult = null;
     if (qaLevelChanged && newQaLevelId) {
-      const current = jobcardQueries.getById.get(id);
-      qaResult = await copyQaTemplatesForJob(id, newQaLevelId, buildQaFillData(id, {
-        jobNumber: current.job_number,
-        status: current.status,
-        companyId: current.company_id || null,
-        // Used only to name the customer's folder on disk — never printed on the
-        // forms (copyTemplatesToJobFolder blanks it before filling).
-        companyName: current.company_name || null,
-        description: current.description || data.description || null,
-        priority: current.priority || data.priority || 'NONE',
-        dueDate: current.due_date || data.dueDate || null,
-        qualityLevel: newQualityLevel,
-        poNumber: current.po_number || data.poNumber || null,
-        quoteReference: current.quote_reference || data.quoteReference || null,
-        repeatJob: (data.isRepeatJob !== undefined ? data.isRepeatJob : current.is_repeat_job === 1) ? 'Yes' : 'No',
-        repeatJobReference: current.repeat_job_reference || data.repeatJobReference || null
-      }));
+      // The update above already committed, so the job's own row already carries
+      // every field the form needs — no fallback to the request body required.
+      qaResult = await copyQaTemplatesForJob(id, newQaLevelId, qaFillDataForJob(id, newQualityLevel));
     }
 
     if (Object.keys(changes).length > 0) {

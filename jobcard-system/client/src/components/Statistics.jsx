@@ -12,7 +12,7 @@ import CustomersTab from './statistics/CustomersTab';
 import EmptyState from './common/EmptyState';
 import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
 import { BarChart3, Users, CheckCircle2, Cpu, Building2 } from 'lucide-react';
-import { todayIsoDate } from '../utils/formatters';
+import { todayIsoDate, isCalendarDate } from '../utils/formatters';
 import './Statistics.css';
 
   const monthStartYmd = () => {
@@ -79,8 +79,7 @@ export default function Statistics() {
       scrollFieldIntoView(customStartDate ? 'customRangeEnd' : 'customRange');
       return;
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(customStartDate) || !/^\d{4}-\d{2}-\d{2}$/.test(customEndDate) ||
-        isNaN(Date.parse(customStartDate)) || isNaN(Date.parse(customEndDate))) {
+    if (!isCalendarDate(customStartDate) || !isCalendarDate(customEndDate)) {
       setFieldErrors({ customRange: 'Please enter valid dates (YYYY-MM-DD)' });
       scrollFieldIntoView('customRange');
       return;
