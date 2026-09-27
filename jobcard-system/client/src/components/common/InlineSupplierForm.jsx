@@ -78,7 +78,6 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
             {...fieldProps('supplierName')}
             value={form.name}
             autoFocus
-            required
             onChange={(e) => set('name', e.target.value)}
             onBlur={formatOnBlur('name', toTitleCase)}
           />
@@ -103,7 +102,10 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
 
         <div className="form-group">
           <label htmlFor="supplierContactEmail">Email</label>
-          <input type="email" id="supplierContactEmail" value={form.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} />
+          {/* Plain text, not type="email" (and no `required` on the name above): this
+              form sits inside the job form, and a browser-checked box would veto the
+              job's own Create with a native bubble. The name check is the app's own. */}
+          <input type="text" inputMode="email" id="supplierContactEmail" value={form.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} />
         </div>
 
         <div className="form-group">

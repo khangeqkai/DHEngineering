@@ -75,8 +75,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // The details fields and the parts list save themselves through these (see
   // useJobCardInstantSaves.js). A part write's reply also refreshes the file
   // notes here (Contract B) — setAttachmentWarnings is the one landing point,
-  // whether the write came from a part being added, edited or removed.
-  const { instantSave, instantItems, resetInstantSaves } = useJobCardInstantSaves(formHook, isEdit, jobCardId, formHook.saveQueue, setAttachmentWarnings);
+  // whether the write came from a part being added, edited or removed, or a
+  // field such as the quality level.
+  const { instantSave, instantItems, resetInstantSaves } = useJobCardInstantSaves(formHook, isEdit, jobCardId, formHook.saveQueue, {
+    onAttachmentWarnings: setAttachmentWarnings,
+    onJobClosed: handleJobClosedWrite
+  });
   const activityLog = useActivityLog(jobCardId);
   const reloadTimeEntriesRef = useRef(null);
   const resetInstantSavesRef = useRef(null);
@@ -306,6 +310,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const selectCompany = (company) => contactHook.selectCompany(company, formHook.setFormData);
   const selectPerson = (personId) => contactHook.selectPerson(personId, formHook.setFormData);
   const handleContactFieldChange = (field, value) => contactHook.handleContactFieldChange(field, value, formHook.setFormData);
+  const adoptExactCompany = (name) => contactHook.adoptExactCompany(name, formHook.setFormData);
 
   // Marks a contact box instead of a pop-up when Create (or the "Update contact" /
   // "Add as new person" prompt it can run first) comes back with a 400 naming
@@ -503,7 +508,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
             <span>Opening this job card…</span>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} onKeyDown={blockEnterSubmit} style={{ display: 'contents' }}>
+          /* noValidate: every check here is the app's own (a mark on the field),
+             and a sub-form nested inside (the part's New supplier form) must not
+             be able to veto Create with a browser bubble. */
+          <form onSubmit={handleSubmit} onKeyDown={blockEnterSubmit} noValidate style={{ display: 'contents' }}>
             <BottomSheet.Body>
               <div className="jc-zoom-root">
               {jobClosed && (
@@ -560,6 +568,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   handleContactFieldChange={handleContactFieldChange}
                   noteCompanyTyping={contactHook.noteCompanyTyping}
                   selectCompany={selectCompany}
+                  adoptExactCompany={adoptExactCompany}
+                  typedCompanyMatch={contactHook.typedCompanyMatch}
                   showContactDropdown={contactHook.showContactDropdown}
                   contactSearchRef={contactHook.contactSearchRef}
                   fieldFocused={contactHook.fieldFocused}

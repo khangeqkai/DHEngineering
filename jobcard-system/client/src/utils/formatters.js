@@ -3,13 +3,17 @@ import { isValidPin, PIN_MESSAGE } from '../../../server/src/shared/pin';
 
 export function toTitleCase(str) {
   if (!str) return str;
-  const titled = str.trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-  // The rule above sees straight past an apostrophe (it's not a word character), so
-  // it also capitalizes the letter right after one — "bob's" became "Bob'S". Only
+  // A word starts at a letter that doesn't follow another letter (or accent mark), digit or "_".
+  // Unicode-aware on purpose: the old ASCII word boundary (\b\w) treated "ü" or
+  // "ó" as a break, so "müller" became "MüLler" and "gómez" became "GóMez".
+  const titled = str.trim().replace(/\s+/g, ' ')
+    .replace(/(^|[^\p{L}\p{M}\p{N}_])(\p{L})/gu, (m, pre, c) => pre + c.toUpperCase());
+  // The rule above sees straight past an apostrophe (it's not a letter), so it
+  // also capitalizes the letter right after one — "bob's" became "Bob'S". Only
   // fold that back down for an actual contraction/possessive suffix ('s, 't, 'd,
   // 'll, 're, 've, 'm); a name like "O'Brien" doesn't match "brien" against any of
   // these, so it's untouched.
-  return titled.replace(/'(s|t|d|m|ll|re|ve)\b/gi, (m) => m.toLowerCase());
+  return titled.replace(/'(s|t|d|m|ll|re|ve)(?![\p{L}\p{M}\p{N}_])/giu, (m) => m.toLowerCase());
 }
 
 export function autoResize(textarea) {

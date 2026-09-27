@@ -368,6 +368,21 @@ function runLegacyMigrations() {
     logger.error({ err }, 'Migration: Failed to clear stale labour-hours overrides');
   }
 
+  // A previous-job reference only exists on a repeat job. Unticking Repeat Job used
+  // to only hide the box, so the old reference stayed stored and still printed on the
+  // quality form, exported and matched searches. Clear it on every job that isn't a
+  // repeat. Naturally idempotent (a second run finds none).
+  try {
+    const clearedRefs = db.prepare(
+      'UPDATE jobcards SET repeat_job_reference = NULL WHERE is_repeat_job = 0 AND repeat_job_reference IS NOT NULL'
+    ).run();
+    if (clearedRefs.changes > 0) {
+      logger.info({ cleared: clearedRefs.changes }, 'Migration: Cleared previous-job references on non-repeat jobs');
+    }
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to clear previous-job references on non-repeat jobs');
+  }
+
   // The 'TREATMENT' and 'ON_HOLD' statuses were removed and folded into
   // 'AWAITING_MATERIAL' (relabelled "Material/Treatment"). Convert any job still
   // parked on the old values so they display, sort, and save normally — otherwise

@@ -24,6 +24,8 @@ export default function DetailsTab({
   handleContactFieldChange,
   noteCompanyTyping,
   selectCompany,
+  adoptExactCompany,
+  typedCompanyMatch,
   selectPerson,
   selectedCompany,
   people,
@@ -218,6 +220,8 @@ export default function DetailsTab({
           handleContactFieldChange={handleContactFieldChange}
           selectPerson={selectPerson}
           noteCompanyTyping={noteCompanyTyping}
+          adoptExactCompany={adoptExactCompany}
+          typedCompanyMatch={typedCompanyMatch}
           handleFieldFocus={handleFieldFocus}
           handleFieldBlur={handleFieldBlur}
           companyMatches={companyMatches}

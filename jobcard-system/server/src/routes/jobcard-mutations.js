@@ -178,7 +178,8 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
         data.description || null,
         data.dueDate || null,
         data.isRepeatJob ? 1 : 0,
-        data.repeatJobReference || null,
+        // A previous-job reference only exists on a repeat job.
+        data.isRepeatJob ? (data.repeatJobReference || null) : null,
         data.photos ? JSON.stringify(data.photos) : null,
         req.user.userId,
         req.user.userId,
@@ -328,6 +329,13 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     // newQualityLevel then equals the existing label).
     if (qaLevelChanged) {
       data.qualityLevel = newQualityLevel;
+    }
+    // A previous-job reference only exists on a repeat job: when the job ends up
+    // not being one (unticked now, or already not one), the reference is cleared —
+    // set on `data` so the write below stores it and the trail records it.
+    const endsRepeatJob = data.isRepeatJob !== undefined ? !!data.isRepeatJob : existing.is_repeat_job === 1;
+    if (!endsRepeatJob && (data.repeatJobReference !== undefined || existing.repeat_job_reference != null)) {
+      data.repeatJobReference = null;
     }
     const changes = buildChanges(existing, data);
 

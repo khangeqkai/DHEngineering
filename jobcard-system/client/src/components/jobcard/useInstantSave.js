@@ -40,7 +40,7 @@ export function summarizeFieldStates(fieldStates, names) {
  * jobCardId is null on a brand-new job. Every call site only reaches saveField once
  * `isEdit && jobCardId` is true — everything stays local-only before that.
  */
-export function useInstantSave(jobCardId, saveQueue, { onSaved } = {}) {
+export function useInstantSave(jobCardId, saveQueue, { onSaved, onAttachmentWarnings } = {}) {
   const jobCardIdRef = useRef(jobCardId);
   jobCardIdRef.current = jobCardId;
 
@@ -99,8 +99,12 @@ export function useInstantSave(jobCardId, saveQueue, { onSaved } = {}) {
         if (result?.qaTemplateWarning) {
           toast(result.qaTemplateWarning, { icon: warningToastIcon, duration: 8000 });
         }
+        // The reply's file notes were worked out against the job as it now
+        // stands (a new quality level changes which QA forms it expects), so
+        // hand them on the same way a part write's reply does.
+        if (result?.attachmentWarnings !== undefined) onAttachmentWarnings?.(result.attachmentWarnings);
       }), { label: JOB_FIELD_LABEL[name] || `the ${name}` });
-  }, [saveQueue, onSaved]);
+  }, [saveQueue, onSaved, onAttachmentWarnings]);
 
   // Live queued/inFlight/failed state layered over the "ever saved" record — a
   // field currently in the queue always wins (it's the authoritative, recorded

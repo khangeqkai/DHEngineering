@@ -12,15 +12,19 @@ import { useInstantItems } from './useInstantItems';
  * jobCardId is only ever handed through on an existing job — both hooks already
  * treat a null id as "nothing to write to yet" and stay local-only.
  *
- * onAttachmentWarnings (Contract B) lets a part write's reply refresh the file
- * notes the moment it lands, the same way the screen rows and the saved baseline
- * already do — see useInstantItems.js's applyItemReply.
+ * onAttachmentWarnings (Contract B) lets a part or field write's reply refresh
+ * the file notes the moment it lands, the same way the screen rows and the saved
+ * baseline already do — see useInstantItems.js's applyItemReply.
+ *
+ * onJobClosed is the job screen's shared closed-job handler, for a part add or
+ * removal refused because the job was closed from another PC — those two report
+ * their own refusals rather than failing through the save queue.
  */
-export function useJobCardInstantSaves(formHook, isEdit, jobCardId, saveQueue, onAttachmentWarnings) {
+export function useJobCardInstantSaves(formHook, isEdit, jobCardId, saveQueue, { onAttachmentWarnings, onJobClosed } = {}) {
   const { markFieldSaved, markItemSaved, markItemRemoved, setFormData } = formHook;
   const forJobCardId = isEdit ? jobCardId : null;
 
-  const instantSave = useInstantSave(forJobCardId, saveQueue, { onSaved: markFieldSaved });
+  const instantSave = useInstantSave(forJobCardId, saveQueue, { onSaved: markFieldSaved, onAttachmentWarnings });
   // A part create/update/delete can auto-advance the job's status server-side, the
   // same way starting/stopping a timer already does (JobCardModal.jsx's
   // refreshJobStatus / useJobCardTimerActions.js) — folding the reply's own
@@ -47,6 +51,7 @@ export function useJobCardInstantSaves(formHook, isEdit, jobCardId, saveQueue, o
     onItemRemoved: markItemRemoved,
     onAttachmentWarnings,
     onJobStatusChange,
+    onJobClosed,
     saveQueue
   });
 

@@ -34,12 +34,13 @@ const snapshotForm = (formData) => {
 };
 const snapshotAssignees = (assignees) =>
   JSON.stringify([...new Set(assignees.map(a => a.userId))].sort());
-// Part ids are left out: a part added here carries a temporary id until it is
-// saved, so the stored id coming back would otherwise read as an edit. A row added
+// Part ids (and the on-screen key that outlives an id swap) are left out: a part
+// added here carries a temporary id until it is saved, so the stored id coming
+// back would otherwise read as an edit. A row added
 // and left blank now counts as an unsaved edit too — the save refuses it until it's
 // filled in or removed, so the header is right to say there's something waiting.
 const snapshotItems = (lineItems) =>
-  JSON.stringify(lineItems.map(({ id, ...rest }) => rest));
+  JSON.stringify(lineItems.map(({ id, rowKey, ...rest }) => rest));
 
 // What a brand-new, untouched job card looks like: the default form values, no
 // assignees, and the single blank part row the state below starts with. This is

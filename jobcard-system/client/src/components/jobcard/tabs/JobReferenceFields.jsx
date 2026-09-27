@@ -93,8 +93,19 @@ export default function JobReferenceFields({
               name="isRepeatJob"
               checked={formData.isRepeatJob}
               onChange={(e) => {
-                handleChange(e);
-                if (canWriteInstantly) saveField('isRepeatJob', e.target.checked);
+                const isRepeatJob = e.target.checked;
+                if (isRepeatJob) {
+                  handleChange(e);
+                  if (canWriteInstantly) saveField('isRepeatJob', true);
+                  return;
+                }
+                // A previous-job reference only exists on a repeat job, so
+                // unticking clears it rather than just hiding the box (it used to
+                // stay stored and still print, export and match searches). The
+                // server clears its copy with the same write, so both baselines
+                // move together once it lands.
+                setFormData(prev => ({ ...prev, isRepeatJob: false, repeatJobReference: '' }));
+                if (canWriteInstantly) saveField('isRepeatJob', false, { alsoMarkSaved: { repeatJobReference: '' } });
               }}
             />
             {formData.isRepeatJob ? 'Yes' : 'No'}

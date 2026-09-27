@@ -27,8 +27,20 @@ _None yet._
 - Enter did nothing on buttons inside the job screen.
 - Stored pricing totals carried float noise (51.74999999999999): totals rounded to cents at the one compute point.
 - A number too long to fit saved as 0 or cleared an override: rejected as invalid on both sides.
+### Round 2 — job details, customer box, parts
+- Linking a service to a supplier from a part re-sent the whole supplier from an old copy, undoing others' edits (and renaming it back on every job): a narrow "attach one service" server action now does only that.
+- Remaining parts kept old numbers after one was removed: the display position from the server reply is now carried onto kept rows.
+- Adding/removing a part on a job invoiced elsewhere didn't lock the screen: part create/remove now route the closed-job refusal to the shared handler.
+- Unticking Repeat Job kept the hidden previous-job reference (printed, exported, searched): the server clears it whenever the job isn't a repeat; a startup conversion cleans existing jobs.
+- The browser's own "fill out this field" bubble on the inline New supplier form blocked Create: the job form turns browser validation off; the app's own check marks the field.
+- Typing an existing customer's exact name without picking the suggestion offered to add a duplicate, then failed: an exact match is now treated as that customer.
+- Changing Quality Level didn't refresh the missing-quality-form warning in Files.
+- Title-casing capitalised the letter after an accented letter.
+- A half-filled New supplier form on a new part vanished when the part saved.
+- Known small leftover (accepted): typing a previous-job reference then instantly unticking Repeat Job can briefly show the reference on screen until the job reloads; the stored data is always correct.
 
 ## Rounds
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
 |---|---|---|---|---|---|
 | 1 | Pricing sheet + job screen | 13 | 8 | 8 | 0 |
+| 2 | Job details + parts | 16 | 9 | 9 | 0 |

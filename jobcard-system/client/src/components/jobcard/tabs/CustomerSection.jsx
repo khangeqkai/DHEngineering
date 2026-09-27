@@ -21,6 +21,8 @@ export default function CustomerSection({
   handleContactFieldChange,
   selectPerson,
   noteCompanyTyping,
+  adoptExactCompany,
+  typedCompanyMatch,
   handleFieldFocus,
   handleFieldBlur,
   companyMatches,
@@ -95,6 +97,9 @@ export default function CustomerSection({
                   // is still the pre-pick text, so re-capitalising it here would
                   // overwrite the pick with a mis-cased version of what was typed.
                   if (companyNav.consumePickGuard()) return;
+                  // A customer's name typed out in full is taken as that customer,
+                  // the same as clicking its row — never offered as a new one.
+                  if (adoptExactCompany(e.target.value)) return;
                   const formatted = toTitleCase(e.target.value);
                   if (formatted !== e.target.value) handleContactFieldChange('companyName', formatted);
                 }}
@@ -128,7 +133,7 @@ export default function CustomerSection({
                 </div>
               )}
             </div>
-            {!selectedCompany && contactFormData.companyName.trim() && (
+            {!selectedCompany && !typedCompanyMatch && contactFormData.companyName.trim() && (
               <span className="field-hint">Not on the list — it will be added as a new customer.</span>
             )}
           </div>

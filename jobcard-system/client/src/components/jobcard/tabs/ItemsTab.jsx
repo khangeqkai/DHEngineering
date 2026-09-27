@@ -193,7 +193,10 @@ export default function ItemsTab({
         <div className="line-items-list" ref={listRef}>
           {lineItems.map((item, itemIdx) => (
             <LineItemCard
-              key={item.id}
+              // rowKey outlives the one id swap when a new part is first saved
+              // (useInstantItems.js's applyItemReply), so the card isn't rebuilt
+              // and nothing it holds for itself is lost at that moment.
+              key={item.rowKey ?? item.id}
               item={item}
               itemIdx={itemIdx}
               jobCardId={jobCardId}

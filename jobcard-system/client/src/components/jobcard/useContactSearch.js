@@ -125,6 +125,44 @@ export function useContactSearch() {
     setShowContactDropdown(false);
   }, []);
 
+  // The one loaded customer whose name is exactly this text (ignoring capitals and
+  // surrounding spaces), or null. The server refuses a new customer by that same
+  // rule, so a name typed out in full without clicking its row is that customer,
+  // not a new one — otherwise the screen offered to add it and the save then
+  // failed as a duplicate. The loaded list holds active customers only.
+  const findExactCompany = useCallback((name) => {
+    const typed = (name || '').trim().toLowerCase();
+    if (!typed) return null;
+    const hits = companies.filter(c => (c.name || '').trim().toLowerCase() === typed);
+    return hits.length === 1 ? hits[0] : null;
+  }, [companies]);
+
+  // On leaving the company box: a name typed out exactly is taken as that
+  // customer. Nothing was picked, so only the company is adopted — person details
+  // typed by hand are left alone (the same rule as handleContactFieldChange);
+  // the only person is filled in, as a pick would, just when those boxes are
+  // empty. Returns whether it adopted one.
+  const adoptExactCompany = useCallback((name, setFormData) => {
+    if (contactFormData.companyId) return false;
+    const match = findExactCompany(name);
+    if (!match) return false;
+    const typedByHand = [contactFormData.contactName, contactFormData.phone, contactFormData.email]
+      .some(v => (v || '').trim());
+    if (!typedByHand) {
+      selectCompany(match, setFormData);
+      return true;
+    }
+    setContactFormData(prev => ({ ...prev, companyId: match.id, companyName: match.name || '', contactId: '' }));
+    setFormData(prev => ({ ...prev, companyId: match.id, companyName: match.name || '', contactId: '' }));
+    setFieldFocused(false);
+    setShowContactDropdown(false);
+    return true;
+  }, [contactFormData, findExactCompany, selectCompany]);
+
+  // What the typed, unpicked company text already names, for the "Not on the
+  // list" hint — which must not show for a customer that is on the list.
+  const typedCompanyMatch = contactFormData.companyId ? null : findExactCompany(contactFormData.companyName);
+
   const selectPerson = useCallback((personId, setFormData) => {
     applyPerson(people.find(p => p.id === personId) || null, setFormData);
   }, [people, applyPerson]);
@@ -239,10 +277,13 @@ export function useContactSearch() {
     people,
     pickedPerson,
     detailChanges,
+    typedCompanyMatch,
     contactSearchRef,
     // Actions
     selectCompany,
     selectPerson,
+    findExactCompany,
+    adoptExactCompany,
     handleContactFieldChange,
     noteCompanyTyping,
     handleFieldFocus,

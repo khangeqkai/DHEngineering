@@ -6,6 +6,7 @@ import { isSavedLineItem } from './jobCardValidation.mjs';
 import { itemFieldMessage, isItemRowComplete } from './fieldRules.mjs';
 import { useFieldErrors } from '../../hooks/useFieldErrors';
 import { NOT_LANDED } from './useSaveQueue';
+import { isJobClosedError } from '../../utils/jobLock';
 
 // Noun used in the save queue's label for a field write on a real row — e.g.
 // "part 2's description" — so a queued/failed entry reads the same way the close
@@ -61,7 +62,7 @@ export const fieldErrorKey = (itemId, field) => `${itemId}|${field}`;
  * locally and travels once in the create payload — every function below is then a
  * no-op, same as useInstantSave's saveField and toggleAssignee before a job exists.
  */
-export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLineItem, savedItemFields, onItemSaved, onItemRemoved, onAttachmentWarnings, onJobStatusChange, saveQueue }) {
+export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLineItem, savedItemFields, onItemSaved, onItemRemoved, onAttachmentWarnings, onJobStatusChange, onJobClosed, saveQueue }) {
   const jobCardIdRef = useRef(jobCardId);
   jobCardIdRef.current = jobCardId;
   // Read the live rows from a ref rather than closing over the lineItems argument,
@@ -140,7 +141,8 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     const baseAtReply = savedItemFieldsRef.current;
 
     // A row the user is part-way through editing keeps what is on screen; only its
-    // server-owned numbering moves. Taking the server's copy wholesale would throw
+    // server-owned numbering moves (the stored sort number AND the display
+    // position — both change when a sibling is added or removed). Taking the server's copy wholesale would throw
     // away typing that hasn't been sent yet — including in the box the cursor is
     // still sitting in — just because an earlier write on this same row came back.
     // A row with no baseline yet (one that has only just been created) has nothing
@@ -152,7 +154,19 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
       const base = baseAtReply[serverRow.id];
       if (base === undefined) return serverRow;
       if (JSON.stringify(buildItemPayload(currentRow)) === JSON.stringify(base)) return serverRow;
-      return { ...currentRow, itemNumber: serverRow.itemNumber };
+      return { ...currentRow, itemNumber: serverRow.itemNumber, position: serverRow.position };
+    };
+
+    // A part card's on-screen identity (rowKey, see ItemsTab.jsx) must survive
+    // the one moment its id changes — the create swapping the placeholder id for
+    // the stored one — or the card is rebuilt and loses anything it holds for
+    // itself (a half-filled New supplier form, an open picker). The row it
+    // replaces hands its key on; a row that never had its id swapped just keeps
+    // reading its own id.
+    const keepScreenKey = (next, current) => {
+      if (!current) return next;
+      const rowKey = current.rowKey ?? current.id;
+      return rowKey === next.id ? next : { ...next, rowKey };
     };
 
     if (items) {
@@ -164,10 +178,13 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
             const current = onScreen.get(row.id);
             // Not the row this reply is about: this reply's copy of its fields
             // may already be stale (it was built before a later write on THIS row
-            // reached the server). Only its position moves — everything else
-            // stays exactly what's on screen, with its own baseline untouched.
-            if (row.id !== touchedId) return current ? { ...current, itemNumber: row.itemNumber } : row;
-            return keepLocalEdits(row, current);
+            // reached the server). Only its numbering moves (sort number and
+            // display position) — everything else stays exactly what's on
+            // screen, with its own baseline untouched.
+            if (row.id !== touchedId) return current ? { ...current, itemNumber: row.itemNumber, position: row.position } : row;
+            // On a create the row on screen is still under its placeholder id.
+            const replaced = current || (dropLocalId != null ? onScreen.get(dropLocalId) : undefined);
+            return keepScreenKey(keepLocalEdits(row, current), replaced);
           }),
           ...prev.filter(row => !isSavedLineItem(row) && row.id !== dropLocalId)
         ];
@@ -179,8 +196,8 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     } else if (bareSingle) {
       const row = mapLineItemFromApi(bareSingle);
       setLineItems(prev => prev.map(it => {
-        if (it.id === dropLocalId) return row;          // create: the id swap itself
-        if (it.id === row.id) return keepLocalEdits(row, it);
+        if (it.id === dropLocalId) return keepScreenKey(row, it); // create: the id swap itself
+        if (it.id === row.id) return keepScreenKey(keepLocalEdits(row, it), it);
         return it;
       }));
       onItemSaved?.(row.id, buildItemPayload(row));
@@ -295,8 +312,12 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
         .catch(err => {
           if (!isCurrent()) return;
           // Never re-sent automatically — the row stays local, exactly as typed.
-          // Completing it again (any required box) is what retries.
-          toast.error(err.message || "Couldn't add that part", { id: `item-create-${localId}` });
+          // Completing it again (any required box) is what retries. A job closed
+          // from another PC goes to the screen's shared closed-job handling (the
+          // one the save queue uses for every other refused write), so the screen
+          // locks instead of reading as an ordinary refusal.
+          if (isJobClosedError(err) && onJobClosed) onJobClosed();
+          else toast.error(err.message || "Couldn't add that part", { id: `item-create-${localId}` });
           // Reported above with its own toast, not flagged 'failed' in the queue
           // (there's nothing stored to retry against — the row is still local) —
           // and NOT a landing either, so it must not count toward landedCount or
@@ -305,7 +326,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
         })
         .finally(() => creatingRef.current.delete(localId));
     }, { label: 'a new part' });
-  }, [saveQueue, applyItemReply, writeItemField]);
+  }, [saveQueue, applyItemReply, writeItemField, onJobClosed]);
 
   // Dropdowns, tags and toggles: called straight from onChange (see ItemsTab.jsx).
   // A still-local row just holds the edit — nothing is sent until the row as a
@@ -429,10 +450,16 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
         // what the user needs to hear, not a paraphrase. Also NOT a landing —
         // nothing was actually removed, so it must not count toward
         // landedCount or arm the green saved flash.
-        toast.error(err.message || "Couldn't remove that part", { id: `item-remove-${item.id}` });
+        // A job closed from another PC is the exception — same hand-off as a
+        // refused create above.
+        if (isJobClosedError(err) && onJobClosed) {
+          if (isCurrent()) onJobClosed();
+        } else {
+          toast.error(err.message || "Couldn't remove that part", { id: `item-remove-${item.id}` });
+        }
         return NOT_LANDED;
       }), { label });
-  }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, saveQueue, onJobStatusChange]);
+  }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, saveQueue, onJobStatusChange, onJobClosed]);
 
   // JobCardModal returns null when closed rather than unmounting, so these marks
   // outlive a close. Without clearing them, a box left empty on one job would keep

@@ -28,6 +28,16 @@ export async function resolveJobContactId({ canManage, isEdit, contactHook, show
   let companyId = form.companyId;
   let contactId = form.contactId;
 
+  // A company typed out exactly as an existing customer's name is that customer,
+  // even if its row was never clicked (leaving the box normally adopts it already).
+  if (!companyId) {
+    const match = contactHook.findExactCompany(form.companyName);
+    if (match) {
+      companyId = match.id;
+      contactHook.registerCompany(match);
+    }
+  }
+
   // A company that was typed but never picked from the list is a new customer.
   // Ask first — this creates a folder and a record that everyone else will see.
   if (!companyId) {

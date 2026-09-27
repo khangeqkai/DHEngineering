@@ -236,7 +236,9 @@ export function buildJobcardPayload({
     description: formData.description,
     dueDate: formData.dueDate,
     isRepeatJob: formData.isRepeatJob,
-    repeatJobReference: formData.repeatJobReference,
+    // A previous-job reference only exists on a repeat job (the server holds the
+    // same rule), so a reference typed before unticking the box never travels.
+    repeatJobReference: formData.isRepeatJob ? formData.repeatJobReference : null,
     // Assignees and parts are only sent here on a brand-new job — there's nobody to
     // write to yet, so both travel in the create payload as a one-shot. On an
     // existing job each tick and each row edit already wrote itself through the
