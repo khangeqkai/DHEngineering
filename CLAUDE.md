@@ -22,11 +22,13 @@ The user is not reading the code. They need to understand what's happening, not 
 - For a fix: describe the new behavior the user will experience
 - Use everyday words: "the screen", "the button", "the form", "the list", "the message", "the page", "saves", "shows", "remembers", "sends"
 
+A made-up illustration (the names below are invented and match nothing in this codebase):
+
 **Example — wrong (technical):**
-> `usePacketPrint.js` never passes `cardIncluded` to the `/printed` route, so `printed_at` is never stamped and the list's Print column stays false.
+> `useWidgetSave.js` never sends `isDone` to the `/widgets/:id/finish` route, so `finished_at` is never stamped and the list's Done column stays false.
 
 **Example — right (plain):**
-> When someone prints a job's paperwork, the job list never shows the green tick in the Print column. So everyone thinks the job card was never printed when it was.
+> When someone finishes a widget, the list never shows the tick in the Done column. So everyone thinks the widget is still unfinished when it isn't.
 
 The only exception is code comments and commit messages, where technical terms are appropriate because the audience is a future reader of the code itself.
 

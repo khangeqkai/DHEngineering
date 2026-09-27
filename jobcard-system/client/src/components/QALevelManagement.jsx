@@ -10,6 +10,7 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useManagedListPage } from '../hooks/useManagedListPage';
 import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
 import FieldError from './common/FieldError';
+import { NAME_MAX } from '../../../server/src/shared/names';
 
 // Which box on the new-level form each field named in a server refusal belongs to.
 const QA_FORM_BOXES = { name: 'name' };
@@ -57,6 +58,12 @@ export default function QALevelManagement() {
       scrollFieldIntoView('name');
       return;
     }
+    // Same length limit the server applies.
+    if (formData.name.trim().length > NAME_MAX) {
+      setFieldErrors({ name: `Name cannot exceed ${NAME_MAX} characters` });
+      scrollFieldIntoView('name');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -88,6 +95,12 @@ export default function QALevelManagement() {
       // helper focuses the field, which would bounce the caret straight back in
       // and trap it. The row is already on screen, so the mark is enough.
       setFieldErrors({ renameName: 'Name is required' });
+      return;
+    }
+    // Same limit as the new-level form; a level already saved with a longer name
+    // still saves as long as the name is left as it was.
+    if (name.length > NAME_MAX && name !== level.name) {
+      setFieldErrors({ renameName: `Name cannot exceed ${NAME_MAX} characters` });
       return;
     }
     setEditingNameId(null);

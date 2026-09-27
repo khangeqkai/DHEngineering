@@ -380,6 +380,7 @@ module.exports = {
   isBaseReachable,
   JOB_FOLDERS_UNREACHABLE,
   idSlug,
+  folderSlugOf,
   resolveCompanyFolder,
   ensureCompanyFolder,
   renameCompanyFolder,

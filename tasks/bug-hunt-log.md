@@ -12,11 +12,11 @@ Every agent in the hunt reads this file first. It is the memory between rounds.
 - **Anything listed under "Decided — leave alone" or "Fixed" is not re-reported** unless the fix itself is wrong.
 
 ## Waiting for the owner (design decisions)
-- **R6 — Customer name on pre-filled quality forms.** Workers are not meant to see customer names, but quality forms come pre-filled with the customer's company name and workers open and print them. Options: (1) allow it and write it down as an exception, since workers handle these forms anyway; (2) never pre-fill the customer box; (3) office copy filled, worker copy blank.
-- **R8 — Quality forms are frozen when the level is set.** Pre-filled forms are copied once (on job create / level change); later parts, due date, PO changes and the "date" box never update. Options: (1) fill forms fresh at print/view time and stop keeping pre-filled copies; (2) keep copies but refill on every job change; (3) accept it, drop the auto date box, add a "Refresh forms" button.
-- **R8 — Old level's forms stay after a level change.** The old level's blank forms stay in the job and print by default, and a form handed back under the old level counts as returned for the new level (so the job can be invoiced). Proposal: on a level change remove the old untouched blanks (never returned forms), move old returned forms to an "Earlier level" sub-folder, and count a returned form only for the level it was returned under.
+_None._
 
 ## Decided — leave alone
+- **R6/R8 — Quality forms.** Owner: the uploaded quality-form template system was a leftover. Removed completely, with the per-job QA Forms folder; old jobs' QA Forms files move into Job Files at start-up. Quality is the level name plus the Critical stop-timer sign-off. This settles all three quality-form questions.
+- **R10 — Restart.** Owner agreed: the app starts at Windows sign-in and hides to the tray on close. Done.
 - **R4 — Reused machine numbers.** Owner: machine numbers are never reused in this workshop, so statistics crediting hours by machine number is fine. Leave as is.
 
 ## Fixed

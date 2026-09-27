@@ -12,7 +12,7 @@ const { scheduleToWholeHours } = require('../shared/overtimeSchedule');
 const { readOvertimeSettings } = require('../utils/overtimeSettings');
 const { isCalendarDate } = require('../shared/calendarDate');
 const { officeDateString } = require('../utils/officeTime');
-const { isBaseReachable, isWithinBase, resolveCompanyFolder, sanitizeFolderName } = require('../utils/folderCreation');
+const { isBaseReachable, isWithinBase, idSlug, folderSlugOf, sanitizeFolderName } = require('../utils/folderCreation');
 
 // One-time conversions for databases (and restored backups) that predate a rule the
 // rest of the app now assumes. Every conversion here fixes a shape only an old
@@ -141,43 +141,130 @@ const PART_TAG = / \[p[0-9a-f]{32}\](?: \(\d+\))?$/;
 // A whole-job file's timestamp tag at the end of a stored name (optionally " (n)").
 const TIMESTAMP_TAG = / \[\d{14}\](?: \(\d+\))?$/;
 
-// Pick a name in `destDir` that nothing already uses. A clash gets " (QA form)", then
-// " (QA form 2)" and so on — placed before the timestamp tag when the name carries one
-// (so the Files panel still reads the tag and shows the clean name), otherwise before
-// the extension.
-function freeJobFilesName(destDir, fileName) {
+// The name to try for the n-th attempt at placing `fileName` in Job Files: attempt 0 is
+// the name itself, then " (QA form)", " (QA form 2)" and so on — placed before the
+// timestamp tag when the name carries one (so the Files panel still reads the tag and
+// shows the clean name), otherwise before the extension.
+function jobFilesName(fileName, attempt) {
   const ext = path.extname(fileName);
   let base = fileName.slice(0, fileName.length - ext.length).replace(PART_TAG, '');
   if (!base.trim()) base = 'QA form';
   const tagMatch = base.match(TIMESTAMP_TAG);
   const tag = tagMatch ? tagMatch[0] : '';
   const head = tag ? base.slice(0, base.length - tag.length) : base;
-  const taken = (name) => fs.existsSync(path.join(destDir, name));
-  let candidate = `${head}${tag}${ext}`;
-  for (let n = 1; taken(candidate); n++) {
-    candidate = `${head} (QA form${n === 1 ? '' : ` ${n}`})${tag}${ext}`;
-  }
-  return candidate;
+  if (attempt === 0) return `${head}${tag}${ext}`;
+  return `${head} (QA form${attempt === 1 ? '' : ` ${attempt}`})${tag}${ext}`;
 }
 
-// Each job's folder on disk, keyed by its resolved path, so a QA Forms folder found on
-// disk can be tied back to its job for the trail. Resolved exactly the way the file
-// routes resolve it: the customer's current name, the company folder found by the code
-// in its name, the job number as the folder name.
-function jobsByFolder(base) {
-  const byFolder = new Map();
-  const rows = db.prepare(`
-    SELECT j.id, j.job_number, j.company_id, COALESCE(c.name, j.company_name) AS company_name
-      FROM jobcards j LEFT JOIN companies c ON c.id = j.company_id
-  `).all();
-  for (const row of rows) {
-    if (!row.company_name) continue;
-    const companyFolder = resolveCompanyFolder(base, row.company_id || null, row.company_name);
-    const jobFolder = sanitizeFolderName(row.job_number);
-    if (!companyFolder || !jobFolder) continue;
-    byFolder.set(path.resolve(companyFolder, jobFolder), row.id);
+// Errors meaning "this drive can't make hard links" (some network shares, a FAT drive),
+// not "that name is taken" — the move then falls back to an exclusive copy.
+const LINK_UNSUPPORTED = new Set(['EPERM', 'ENOTSUP', 'EOPNOTSUPP', 'EXDEV', 'ENOSYS', 'EINVAL']);
+
+// Write `from` at `to` only if nothing is at `to` — atomically, so a file someone copies
+// into Job Files by hand at the same moment is never replaced. Throws EEXIST when the
+// name is taken. A hard link is tried first (instant, no second copy of the bytes); a
+// drive that can't make one gets an exclusive copy instead.
+function placeWithoutOverwrite(from, to) {
+  try {
+    fs.linkSync(from, to);
+    return;
+  } catch (err) {
+    if (!LINK_UNSUPPORTED.has(err.code)) throw err;
   }
-  return byFolder;
+  try {
+    fs.copyFileSync(from, to, fs.constants.COPYFILE_EXCL);
+  } catch (err) {
+    // Not EEXIST means the name was ours when the copy started, so a half-written copy
+    // is ours too — take it away rather than leave a broken file for the next pass to
+    // step around.
+    if (err.code !== 'EEXIST') {
+      try { fs.unlinkSync(to); } catch { /* nothing was written */ }
+    }
+    throw err;
+  }
+}
+
+// Move one file into Job Files under the first free name, never overwriting anything.
+// The original is deleted only after the new copy exists; if it can't be deleted, the
+// new copy is taken back out, so the file is never lost and never ends up in both
+// places (which would duplicate it on the next pass). Returns the name it was given.
+const MAX_NAME_ATTEMPTS = 1000;
+function moveFileWithoutOverwrite(from, destDir, fileName) {
+  for (let attempt = 0; attempt < MAX_NAME_ATTEMPTS; attempt++) {
+    const toName = jobFilesName(fileName, attempt);
+    const to = path.join(destDir, toName);
+    try {
+      placeWithoutOverwrite(from, to);
+    } catch (err) {
+      if (err.code === 'EEXIST') continue;
+      throw err;
+    }
+    try {
+      fs.unlinkSync(from);
+    } catch (err) {
+      try { fs.unlinkSync(to); } catch (undoErr) {
+        logger.error({ err: undoErr, path: to }, 'Migration: Could not take back a moved QA form after its original could not be removed');
+      }
+      throw err;
+    }
+    return toName;
+  }
+  throw new Error(`No free name in Job Files for ${fileName}`);
+}
+
+// Ties a QA Forms folder found on disk back to its job, for the trail. Built only when
+// the first QA Forms folder is actually found (most installs have none, and then this
+// costs nothing), and never lists the disk itself: the company folder's own name carries
+// the company's code ("Name [code]"), which maps to a company id with one read of the
+// companies table, and the job is then looked up by (company id, job number). Only a job
+// with no linked company — whose folder is the plain company name, with no code — is
+// matched by name.
+function makeJobLookup() {
+  let companyIdByCode = null;
+  let unlinkedJobByFolder = null;
+  let byNumber = null;
+  let byCompany = null;
+  const key = (companyFolder, jobFolder) => `${companyFolder}\u0000${jobFolder}`;
+
+  function build() {
+    companyIdByCode = new Map();
+    for (const { id } of db.prepare('SELECT id FROM companies').all()) {
+      const code = idSlug(id);
+      if (code) companyIdByCode.set(code, id);
+    }
+    unlinkedJobByFolder = new Map();
+    const unlinked = db.prepare(`
+      SELECT id, job_number, company_name FROM jobcards
+       WHERE company_id IS NULL OR company_id = ''
+    `).all();
+    for (const row of unlinked) {
+      const companyFolder = sanitizeFolderName(row.company_name);
+      const jobFolder = sanitizeFolderName(row.job_number);
+      if (companyFolder && jobFolder) unlinkedJobByFolder.set(key(companyFolder, jobFolder), row.id);
+    }
+    byNumber = db.prepare('SELECT id FROM jobcards WHERE company_id = ? AND job_number = ?');
+    byCompany = db.prepare('SELECT id, job_number FROM jobcards WHERE company_id = ?');
+  }
+
+  return function jobIdFor(companyFolder, jobFolder) {
+    if (!companyIdByCode) build();
+    const code = folderSlugOf(companyFolder);
+    const companyId = code ? companyIdByCode.get(code) : null;
+    if (!companyId) return unlinkedJobByFolder.get(key(companyFolder, jobFolder)) || null;
+    const exact = byNumber.get(companyId, jobFolder);
+    if (exact) return exact.id;
+    // A job number holding a character a folder name can't (a slash, say) was
+    // sanitized on its way to disk, so compare that customer's jobs the same way.
+    const match = byCompany.all(companyId).find(row => sanitizeFolderName(row.job_number) === jobFolder);
+    return match ? match.id : null;
+  };
+}
+
+// Top-level entries in the job-folders location that belong to the drive, not to a
+// customer — the recycle bin, "System Volume Information", hidden folders. They are
+// usually unreadable, and counting that as a failure would stop the pass ever finishing.
+function isDriveSystemFolder(name) {
+  return name.startsWith('$') || name.startsWith('.') || name.toLowerCase() === 'system volume information';
 }
 
 // Move one job folder's QA Forms into its Job Files. Returns { moved, failed } — the
@@ -189,7 +276,14 @@ function moveOneQaFormsFolder(base, jobDir) {
   let failed = 0;
   if (!isWithinBase(base, qaDir) || !isWithinBase(base, destDir)) return { moved, failed: 1 };
 
-  fs.mkdirSync(destDir, { recursive: true });
+  // Deliberately not recursive: the job folder is already there (its QA Forms folder was
+  // just found in it), so only Job Files itself may be made. If the drive vanished in
+  // between, this fails instead of building a stray chain of local folders.
+  try {
+    fs.mkdirSync(destDir);
+  } catch (err) {
+    if (err.code !== 'EEXIST') throw err;
+  }
   for (const entry of fs.readdirSync(qaDir, { withFileTypes: true })) {
     const from = path.join(qaDir, entry.name);
     if (!entry.isFile()) {
@@ -198,9 +292,7 @@ function moveOneQaFormsFolder(base, jobDir) {
       continue;
     }
     try {
-      const toName = freeJobFilesName(destDir, entry.name);
-      fs.renameSync(from, path.join(destDir, toName));
-      moved.push(toName);
+      moved.push(moveFileWithoutOverwrite(from, destDir, entry.name));
     } catch (err) {
       failed++;
       logger.error({ err, path: from }, 'Migration: Could not move a file out of an old QA Forms folder — left where it is, will retry next start');
@@ -227,12 +319,12 @@ function moveQaFormsIntoJobFiles() {
     return;
   }
 
-  const jobIdByFolder = jobsByFolder(base);
+  const jobIdFor = makeJobLookup();
   let failed = 0;
   let jobsMoved = 0;
   // [base]/[Company]/[Job]/QA Forms — two folder levels down, whatever the names.
   for (const company of fs.readdirSync(base, { withFileTypes: true })) {
-    if (!company.isDirectory()) continue;
+    if (!company.isDirectory() || isDriveSystemFolder(company.name)) continue;
     const companyDir = path.join(base, company.name);
     let jobs;
     try {
@@ -261,7 +353,7 @@ function moveQaFormsIntoJobFiles() {
       if (result.moved.length === 0) continue;
 
       jobsMoved++;
-      const jobcardId = jobIdByFolder.get(path.resolve(jobDir));
+      const jobcardId = jobIdFor(company.name, job.name);
       if (jobcardId) {
         const count = result.moved.length;
         recordHistory('jobcard', jobcardId, 'update', null, 'system', {
