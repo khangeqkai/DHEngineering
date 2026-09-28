@@ -380,7 +380,7 @@ async function archiveBackupWithRetry({ metadata, tables, collected, outputPath,
 // STAGE — unpack the archive and validate its shape. No live data (database or
 // job folders) is touched yet, so a rejection here needs no rollback of anything.
 // Returns { error, status } to send as-is, or { data } to continue with.
-async function stageBackupArchive(inputPath, tempDir, schemaVersion, tableOrder) {
+async function stageBackupArchive(inputPath, tempDir, schemaVersion, dataVersion, tableOrder) {
   // A damaged or partly copied zip fails to unpack or to parse — a plain refusal,
   // not the raw system error, since nothing live has been touched yet.
   const unreadable = { error: 'This file is not a readable backup — it may be damaged or only partly copied. Nothing was changed.', status: 400 };
@@ -411,6 +411,13 @@ async function stageBackupArchive(inputPath, tempDir, schemaVersion, tableOrder)
   if (data._metadata.schemaVersion !== schemaVersion) {
     return {
       error: `Incompatible backup schema version ${data._metadata.schemaVersion} (expected ${schemaVersion})`,
+      status: 400
+    };
+  }
+  // A backup made before the data version was stamped counts as 0 (older).
+  if ((Number(data._metadata.dataVersion) || 0) > dataVersion) {
+    return {
+      error: 'This backup was made by a newer version of the app — update this computer first. Nothing was changed.',
       status: 400
     };
   }

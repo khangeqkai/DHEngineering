@@ -11,7 +11,7 @@ Every agent in the hunt reads this file first. It is the memory between rounds a
 - **Intended behaviour lives in docs/notes.** A behaviour written there as intended is not a bug. The owner's past decisions (fixed Standard/Critical levels, per-run Critical sign-off, quality forms removed, auto-start to tray, machine numbers never reused) are recorded there.
 
 ## Waiting for the owner (design decisions)
-- **(Round 20) Restoring a backup made by a newer version of the app.** If a computer running an older version restores a backup from a newer one, the restore goes through and quietly drops anything the older version doesn't know about. Proposal: stamp each backup with a "data version" number, raised with every release that changes stored data; a restore refuses a backup with a higher number ("update this computer first — nothing was changed"). Costs a release habit. Only matters if an older installer is ever put back on a PC. Recommendation: do it, it is cheap.
+_None._
 
 ## Decided — leave alone
 Owner decisions not yet written into docs/notes. Move each into the matching note at the end of the hunt, then delete it here.
@@ -46,6 +46,7 @@ Round 20 — start-up, backup/restore, settings:
 - Restore works when the job-folders folder is missing (files put straight back); a folder in use gets a plain "close the files and try again".
 - A leftover "__restore_old" folder (possibly the only copy of the originals) now blocks a new restore with a plain message instead of being deleted.
 - A damaged or partly copied backup gets a plain refusal, not a raw system error.
+- (Owner approved) Backups carry a data version; a restore refuses a backup from a newer app version ("update this computer first").
 
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
 |---|---|---|---|---|---|

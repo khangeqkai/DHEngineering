@@ -249,6 +249,7 @@ const TABLE_ORDER = [
 ];
 
 const SCHEMA_VERSION = 1;
+const { DATA_VERSION } = require('../db/dataVersion');
 
 // Get valid column names for a table
 function getTableColumns(table) {
@@ -334,6 +335,7 @@ router.post('/export-backup', requirePermission('systemData'), [
       exportedAt: new Date().toISOString(),
       appVersion,
       schemaVersion: SCHEMA_VERSION,
+      dataVersion: DATA_VERSION,
       jobFoldersRead
     };
 
@@ -461,7 +463,7 @@ router.post('/import-backup', requirePermission('systemData'), [
   let filesUnrecoverable = false;
 
   try {
-    const staged = await stageBackupArchive(inputPath, tempDir, SCHEMA_VERSION, TABLE_ORDER);
+    const staged = await stageBackupArchive(inputPath, tempDir, SCHEMA_VERSION, DATA_VERSION, TABLE_ORDER);
     if (staged.error) {
       return res.status(staged.status).json({ error: staged.error });
     }
