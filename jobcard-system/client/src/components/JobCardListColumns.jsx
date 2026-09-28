@@ -39,25 +39,40 @@ export function getJobCardColumns({
     {
       id: 'jobNumber',
       label: 'Job #',
+      renderCell: (card) => {
+        // A Critical QA job wears its level on the number itself — red instead
+        // of the usual link blue — so it reads from across the list without a
+        // badge crowding the cell. The hidden text and the hover title carry
+        // the same meaning for anyone who can't tell the red from the blue.
+        const critical = isCriticalLevel(card.qualityLevel);
+        return (
+          <td key="jobNumber" className="job-number-cell">
+            <a
+              href="#"
+              className={critical ? 'job-number-critical' : undefined}
+              title={critical ? 'Critical QA' : undefined}
+              onClick={(e) => {
+                e.preventDefault();
+                openEditModal(card.id);
+              }}
+            >
+              <strong className="mono-num">{card.jobNumber}</strong>
+              {critical && <span className="sr-only"> (Critical QA)</span>}
+            </a>
+          </td>
+        );
+      }
+    },
+    {
+      id: 'timer',
+      label: 'Timer',
       renderCell: (card) => (
-        <td key="jobNumber">
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              openEditModal(card.id);
-            }}
-          >
-            <strong className="mono-num">{card.jobNumber}</strong>
-          </a>
+        <td key="timer" className="timer-cell">
           {card.id === activeTimerJobcardId && (
-            <span className="timer-indicator">
-              <span className="timer-dot" />
+            <span className="timer-indicator" aria-label={`Timer running: ${formattedElapsed}`}>
+              <span className="timer-dot" aria-hidden="true" />
               {formattedElapsed}
             </span>
-          )}
-          {isCriticalLevel(card.qualityLevel) && (
-            <span className="critical-badge">Critical QA</span>
           )}
         </td>
       )

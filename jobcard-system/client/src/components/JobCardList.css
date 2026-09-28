@@ -156,12 +156,33 @@
   text-decoration: underline;
 }
 
-/* Active-timer indicator on job rows */
+/* The job number stays on one line — it is an id, and a break at its dash
+   reads as two different numbers */
+.job-number-cell {
+  white-space: nowrap;
+}
+
+/* A Critical QA job's number: red in place of the link blue. Ink token, not
+   the fill — it is words on the table surface. Two classes so it outranks the
+   shared `.table td a` rule without reaching for !important. */
+.table td a.job-number-critical {
+  color: var(--danger-ink);
+}
+
+.table td a.job-number-critical:hover {
+  color: var(--danger-ink);
+  text-decoration: underline;
+}
+
+/* Active-timer indicator — its own column, so it never shoulders the job number */
+.timer-cell {
+  white-space: nowrap;
+}
+
 .timer-indicator {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  margin-left: var(--space-2);
   padding: var(--space-0-5) var(--space-2);
   border-radius: 999px;
   background: rgba(34, 197, 94, 0.12);

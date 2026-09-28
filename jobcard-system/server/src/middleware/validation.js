@@ -172,7 +172,7 @@ const PRIORITY_OPTIONS = jobStatuses.priorities.map(p => p.value);
 // a column added there must be added here too, or saving a reordered/hidden
 // column list fails validation for every user.
 const JOBCARD_COLUMN_IDS = [
-  'jobNumber', 'description', 'company', 'customer', 'assignedTo',
+  'jobNumber', 'timer', 'description', 'company', 'customer', 'assignedTo',
   'status', 'latestNote', 'priority', 'attachments', 'print', 'dueDate', 'createdAt', 'updatedAt', 'actions'
 ];
 
