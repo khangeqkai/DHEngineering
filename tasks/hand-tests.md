@@ -100,3 +100,15 @@ Nothing here has an automatic test, so click through these once on a real PC. Ea
 67. Settings → Change PIN with a wrong current PIN → the Current PIN box is marked "Your current PIN is not right", no pop-up; a right one says "PIN updated".
 68. Users → add a user with no PIN → the PIN box says "PIN is required".
 69. Add a user with an email, a customer with an address, a person with a phone, a supplier with services → each one's Activity entry lists those details.
+70. Unplug the job-folders drive (or clear the location), export a backup → a warning says the backup holds only the records, not the job files.
+71. Export a backup, then export again to the same file and pull the drive / cancel midway → the first backup is still there and opens.
+72. Rename the job-folders folder away, then restore a backup → the files come back in place; with a file from the job folders open, restore → plain "in use, close them and try again", nothing changed.
+73. Leave a folder named like "<job folders>__restore_old" beside the job folders, then restore → refused, naming that folder; nothing is deleted.
+74. Restore a random or half-copied .zip → "This file is not a readable backup… Nothing was changed."
+75. Edit a backup's database.json so its _metadata dataVersion is 99, zip it back, restore → "made by a newer version of the app — update this computer first".
+76. Statistics: a job with no logged work, set to Cust. Notified last month and invoiced this month → it counts as finished last month, on time if it was due then.
+77. Equipment: log work on a machine with a backdated start, then try to renumber the machine → refused.
+78. Customers → open a customer → Add Person → type, press Escape → only the person box closes; the customer window stays with what was typed.
+79. Users → PIN of 3 digits → "PIN must be exactly 4 digits".
+80. Add a supplier, person or machine with the name box blank → its Activity entry has no "(empty) → (empty)" line.
+81. Statistics → set a bad custom range (end before start), switch Trend to Yearly → the monthly rows keep their monthly titles.
