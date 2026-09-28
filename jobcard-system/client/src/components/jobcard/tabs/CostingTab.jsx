@@ -4,9 +4,15 @@ import CostingBreakdown from './CostingBreakdown';
 import FieldError from '../../common/FieldError';
 import { formatMoney } from '../../../utils/formatters';
 
-// Format a multiplier for the read-only chips at a fixed two decimals, so the whole
+// Format a multiplier for the read-only chips at at least two decimals, so the whole
 // multiplier column lines up spreadsheet-style: 1 → "1.00", 2.5 → "2.50", 1.75 → "1.75".
-const mult = (n) => (Number(n) || 0).toFixed(2);
+// Padding only ever adds digits — a finer figure shows in full (1.125 → "1.125"), since
+// that exact figure is what gets charged.
+const mult = (n) => {
+  const v = Number(n) || 0;
+  const padded = v.toFixed(2);
+  return Number(padded) === v ? padded : String(v);
+};
 
 // How each manual money field's "was X" hint reads — money fields in dollars, the
 // margins as a percentage, the special-labour hours as a plain figure.

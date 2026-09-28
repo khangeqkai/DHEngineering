@@ -47,10 +47,16 @@ function normalize(raw) {
 
 export function useLabourRates() {
   const [loading, setLoading] = useState(true);
+  // Set when the last load failed. The page then shows a Try again message instead of
+  // the cards: the starting blanks below never came from the server, and every Save
+  // here replaces the stored figure (the whole schedule, the whole holiday list) with
+  // what's on screen.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [schedule, setSchedule] = useState(emptySchedule());
   // Blank until the real settings load — the server is the only source of the company
   // rates. LabourRatesSettings.jsx shows "Loading..." in place of the whole grid while
-  // `loading` is true, so these blanks are never shown, edited or saved.
+  // `loading` is true, and a Try again message while `loadFailed` is, so these blanks
+  // are never shown, edited or saved.
   const [defaultRate, setDefaultRateState] = useState('');
   const [ot1Mult, setOt1MultState] = useState('');
   const [ot2Mult, setOt2MultState] = useState('');
@@ -88,8 +94,10 @@ export function useLabourRates() {
       if (typeof hol === 'string') { try { hol = JSON.parse(hol); } catch { hol = []; } }
       setHolidays(Array.isArray(hol) ? hol : []);
       if (data.timezone) setTimezone(data.timezone);
+      setLoadFailed(false);
     } catch (err) {
-      toast.error('Failed to load labour rate settings');
+      setLoadFailed(true);
+      toast.error('Failed to load labour rate settings', { id: 'labour-rates-load' });
     } finally {
       setLoading(false);
     }
@@ -240,7 +248,7 @@ export function useLabourRates() {
   }, [timezone, setFieldErrors]);
 
   return {
-    loading,
+    loading, loadFailed, load,
     defaultRate, setDefaultRate, handleSaveDefaultRate, savingDefaultRate,
     schedule, paintHour, copyDayToAll,
     handleSaveSchedule, savingSchedule,

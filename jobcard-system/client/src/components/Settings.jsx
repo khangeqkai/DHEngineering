@@ -8,6 +8,7 @@ import FoldersCard from './settings/FoldersCard';
 import HomeAccessCard from './settings/HomeAccessCard';
 import DataBackupCard from './settings/DataBackupCard';
 import FieldError from './common/FieldError';
+import EmptyState from './common/EmptyState';
 import { pushModal, removeModal, isTopModal } from './common/modalStack';
 import './Settings.css';
 
@@ -179,16 +180,31 @@ export default function Settings() {
           </>
         )}
 
-        {s.canManage && <SecurityCard s={s} />}
+        {/* The cards below edit stored settings, so they only appear once those have
+            loaded — before that their boxes hold blanks that Save would write over the
+            real settings. A failed load offers another try in their place. */}
+        {s.canManage && s.loadFailed && (
+          <div className="card full-width">
+            <EmptyState
+              icon="cpu"
+              title="Couldn't load the settings"
+              description="The security, job number, home access and folder settings can't be changed until they load."
+              actionLabel="Try again"
+              onAction={s.loadSettings}
+            />
+          </div>
+        )}
+
+        {s.canManage && s.settings && <SecurityCard s={s} />}
 
         {/* Home access: the tunnel's public address (any manager can read it out)
             and the home access code (admin-only to set, like any security setting). */}
-        {s.canManage && <HomeAccessCard s={s} />}
+        {s.canManage && s.settings && <HomeAccessCard s={s} />}
 
         {/* The job-folders base path stays admin-only: it decides where every job's
             files (and backups) are written, so a manager can't repoint it to a
             personal/removable drive. */}
-        {s.canSeeSystemData && <FoldersCard s={s} />}
+        {s.canSeeSystemData && s.settings && <FoldersCard s={s} />}
 
         {/* Backups stay admin-only: a backup carries the whole database, pricing included. */}
         {s.canSeeSystemData && <DataBackupCard s={s} />}

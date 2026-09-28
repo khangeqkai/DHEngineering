@@ -1,4 +1,5 @@
 import PageHeader from './common/PageHeader';
+import EmptyState from './common/EmptyState';
 import { useLabourRates } from '../hooks/useLabourRates';
 import ScheduleEditor from './settings/labour/ScheduleEditor';
 import DefaultRateCard from './settings/labour/DefaultRateCard';
@@ -15,6 +16,23 @@ export default function LabourRatesSettings() {
       <div className="page-container page-enter">
         <PageHeader title="Labour Rates & Overtime" />
         <div className="loading">Loading...</div>
+      </div>
+    );
+  }
+
+  // A failed load leaves nothing real to show — offer another try rather than cards
+  // holding made-up starting figures that Save would write over the stored ones.
+  if (lr.loadFailed) {
+    return (
+      <div className="page-container page-enter">
+        <PageHeader title="Labour Rates & Overtime" />
+        <EmptyState
+          icon="cpu"
+          title="Couldn't load the labour rate settings"
+          description="Nothing here can be changed until they load."
+          actionLabel="Try again"
+          onAction={lr.load}
+        />
       </div>
     );
   }

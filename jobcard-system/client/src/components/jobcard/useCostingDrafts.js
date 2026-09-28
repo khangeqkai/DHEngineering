@@ -167,15 +167,16 @@ export function useCostingDrafts({ markEdited, requestImmediateSave }) {
       return { ok: false };
     }
 
-    // Valid — commit it, but only actually save when it changed. Leaving a box that was
-    // typed in and then put back exactly as it was is not an edit.
+    // Valid — commit it, but only actually save when the figure changed. Leaving a box
+    // that was typed in and then put back exactly as it was is not an edit — and on a
+    // box still following the logged/company figure, retyping that same figure must not
+    // pin it as hand-typed, or later logged work would never be billed.
     setDrafts(prev => {
       const next = { ...prev };
       delete next[name];
       return next;
     });
-    const changed = costingForm[name] !== parsed || (flag ? costingForm[flag] !== true : false);
-    if (changed) {
+    if (costingForm[name] !== parsed) {
       markEdited();
       setCostingForm(prev => ({ ...prev, [name]: parsed, ...(flag ? { [flag]: true } : {}) }));
       requestImmediateSave();

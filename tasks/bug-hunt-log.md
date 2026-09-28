@@ -43,9 +43,17 @@ Hunt 4 started 2026-09-28 at commit 286f86a — 3 rounds (16–18), single-user 
 - Search results step back to the last real page when a job drops out.
 - Job list search ignores spaces around the text.
 
+### Round 17 — pricing sheet, new job, invoicing
+- Retyping the figure already shown in an Hours or multiplier box no longer pins it as hand-typed (later logged work kept being left off).
+- Labour Rates and Settings pages show "Couldn't load — Try again" after a failed load instead of blank boxes that Save would write over the real settings.
+- Money on exactly half a cent rounds up (1.5 h at $50.05 = $75.08, was $75.07).
+- Search > Activity Field Changed lists the missing recorded names (normal hours/total, multipliers, cost notes, skipped sign-off, printing).
+- Overtime multipliers show the exact figure charged (1.125, not 1.13).
+
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
 |---|---|---|---|---|---|
 | 16 | Job list, search, activity | 15 | 7 | 7 | 0 |
+| 17 | Pricing sheet, new job, invoicing | 5 | 5 | 5 | 0 |
 
 ## Past hunts
 What was fixed in each earlier hunt (history only — not needed to hunt):

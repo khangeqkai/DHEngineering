@@ -30,6 +30,10 @@ export function useSettings() {
 
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Set when the last load failed. The cards that edit stored settings are then
+  // replaced by a Try again message: their boxes start blank, and saving a blank would
+  // write it over the real setting (a blank home access code switches home access off).
+  const [loadFailed, setLoadFailed] = useState(false);
   const [appInfo, setAppInfo] = useState(null);
   const [printers, setPrinters] = useState([]);
   const [loadingPrinters, setLoadingPrinters] = useState(canManage);
@@ -96,8 +100,10 @@ export function useSettings() {
         setJobNumberNext(data.jobNumberNext || '');
         setHomeAddress(data.homeAddress || '');
       }
+      setLoadFailed(false);
     } catch (err) {
-      toast.error('Failed to load settings');
+      setLoadFailed(true);
+      toast.error('Failed to load settings', { id: 'settings-load' });
     } finally {
       setLoading(false);
     }
@@ -362,7 +368,7 @@ export function useSettings() {
 
   return {
     user, canSeeSystemData, canManage,
-    settings, loading, appInfo, printers, loadingPrinters,
+    settings, loading, loadFailed, loadSettings, appInfo, printers, loadingPrinters,
     darkMode, toggleDarkMode,
     jobFoldersBase, setJobFoldersBase, handleSelectJobFolders, handleSaveJobFolders, savingJobFolders,
     inactivityTimeout, setInactivityTimeout, handleSaveInactivityTimeout, savingTimeout,
