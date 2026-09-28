@@ -1,6 +1,6 @@
 # Claude Code
 .claude/*
-!.claude/skills/
+!.claude/bug-hunt/
 
 # Agent tool scratch state
 .codewhale/

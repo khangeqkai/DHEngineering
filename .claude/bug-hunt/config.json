@@ -1,0 +1,40 @@
+{
+  "app": "the DH Engineering job card app (app code under jobcard-system/: an Electron + React client and an Express + SQLite server)",
+  "check": {
+    "command": ".claude/bug-hunt/check.sh",
+    "describe": "syntax-checks changed server files, builds the client and boots the server on throwaway data",
+    "expect": ["BUILD OK", "SERVER BOOT OK"]
+  },
+  "tests": false,
+  "rules": "CLAUDE.md and docs/notes/*.md",
+  "intendedBehaviour": "the matching docs/notes/*.md file(s) for this area",
+  "permissions": "the Roles and permissions section of CLAUDE.md — admin, manager and user (worker); watch pricing, the activity trail, contact details, deleting jobs, admin accounts, system data and status changes. Check what the server actually sends and accepts.",
+  "angles": {
+    "userFlow": "the path is screen -> request -> server -> database -> reply -> screen.",
+    "badData": "every stored moment must be UTC ISO-8601; a history entry missing or not in the {from,to} shape is a bug; a startup conversion that is not idempotent is a bug; archived or invoiced jobs and running timers matter.",
+    "awkward": "archived or invoiced jobs, a running timer, archived customers and options.",
+    "houseRules": "saving while the person is still typing or on a timer, a write retried automatically, a pop-up where a field should be marked (or both), a modal setting page scroll itself, a clickable non-button, a suggestion list that loses keyboard behaviour, a missing audit record, inline SQL."
+  },
+  "fixStyle": "camelCase everywhere in JavaScript; shared rule files in server/src/shared for rules both sides need; prepared statements in database.js; recordHistory with {from,to}; a startup conversion in runLegacyMigrations plus a DATA_VERSION bump if a stored value's shape changes, and the seed scripts updated too.",
+  "setup": "On the owner's WSL machine never run npm install — node_modules is shared with Windows. In a cloud sandbox, install packages in jobcard-system/server and jobcard-system/client if node_modules is missing.",
+  "plainLanguage": true,
+  "log": "tasks/bug-hunt-log.md",
+  "handTests": "tasks/hand-tests.md",
+  "archive": "tasks/bug-hunts/",
+  "areas": [
+    "Pricing sheet (costing) and the job screen",
+    "Job details: customer box, suggestion lists, parts, suppliers",
+    "Database start-up, upgrades, backup and restore, settings",
+    "Workshop Statistics",
+    "Management pages: customers, suppliers, users, quality levels, tags, equipment",
+    "Sign-in, sessions and who-can-see-what across the whole app",
+    "Timers, logged work, overtime, job status",
+    "Files, folders, printing, Excel exports",
+    "Job list, numbering, search, comments, activity record",
+    "Delivery and speed: installer, first start, offline, serving, ~3 years of data"
+  ],
+  "lessons": [
+    "A fix that creates a new wrong case is worse than the bug: round 4's 'credit reused machine numbers to the right machine' was reverted and asked instead (machine numbers are never reused).",
+    "Data-moving startup conversions get extra scrutiny: never delete or overwrite a person's file, retry until a full pass succeeds, stay cheap on a slow network drive, and re-run after a backup restore."
+  ]
+}

@@ -121,7 +121,7 @@ field marks not pop-ups, icons from lucide-react, ink tokens for coloured words)
 ## Gate
 - Allowed files: the ones named above, plus any other writer of `end_time` or time-entry
   formatter that step 2/4 finds (list them in the report with why).
-- Run `.claude/skills/bug-hunt/check.sh` — must print `BUILD OK` and `SERVER BOOT OK`.
+- Run `.claude/bug-hunt/check.sh` — must print `BUILD OK` and `SERVER BOOT OK`.
   Also `node --check` every changed server file.
 - Report: each step → the files and hunks that do it; anything you could not do as written
   (report it, do not improvise); `git diff --stat`.
