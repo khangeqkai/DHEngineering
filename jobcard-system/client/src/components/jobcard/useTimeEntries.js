@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { getDefaultTimeEntryForm, isoToLocalInput, localInputToIso } from './mappers';
 import { formatDate } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
-import { useFieldErrors, scrollFieldIntoView, fieldErrorsFromRefusal } from '../../hooks/useFieldErrors';
+import { useFieldErrors, scrollFieldIntoView, fieldErrorsFromRefusal, showSaveRefusal } from '../../hooks/useFieldErrors';
 import { INSPECTION_FIELDS, CRITICAL_INSPECTION_REFUSED } from '../../../../server/src/shared/qualityLevels';
 import { isJobClosedError } from '../../utils/jobLock';
 import { isTimeLocked, showTimeLockedToast } from './timeLock';
@@ -11,6 +11,16 @@ import { isTimeLocked, showTimeLockedToast } from './timeLock';
 // A Critical-inspection refusal names each missing answer by the field name this
 // form already uses for it.
 const INSPECTION_BOXES = Object.fromEntries(INSPECTION_FIELDS.map(field => [field, field]));
+
+// Every box on this form that shows a mark of its own, by the server field name that
+// lands on it (the same names). A refusal naming anything else stays a pop-up.
+const FORM_BOXES = {
+  workerId: 'workerId',
+  itemId: 'itemId',
+  startTime: 'startTime',
+  endTime: 'endTime',
+  ...INSPECTION_BOXES
+};
 
 export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, showConfirm, isInvoiced = false, onJobClosed }) {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
@@ -171,6 +181,12 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       scrollFieldIntoView('startTime');
       return;
     }
+    // Same 15-minute allowance for clock drift as the server gives.
+    if (start > Date.now() + 15 * 60 * 1000) {
+      setFieldErrors({ startTime: 'Start time cannot be in the future' });
+      scrollFieldIntoView('startTime');
+      return;
+    }
     if (endTime) {
       const end = new Date(endTime).getTime();
       if (isNaN(end)) {
@@ -230,7 +246,9 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
         const { marks } = fieldErrorsFromRefusal(err, INSPECTION_BOXES);
         if (marks) setFieldErrors(marks);
       }
-      else toast.error(err.message || 'Failed to save time entry');
+      // Anything else the server refused on a named box (e.g. a start or finish that
+      // this PC's clock thought was fine) marks that box; the rest is a pop-up.
+      else showSaveRefusal(err, { boxFor: FORM_BOXES, setFieldErrors, fallback: 'Failed to save time entry' });
     }
   }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry, isInvoiced, setFieldErrors, onJobClosed]);
 

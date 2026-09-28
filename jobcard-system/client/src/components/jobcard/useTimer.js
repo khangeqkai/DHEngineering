@@ -6,6 +6,7 @@ import { discardToastIcon, infoToastIcon } from '../common/toastIcons';
 import { describeItemPosition } from './workMatch.mjs';
 import { joinMachineCodes } from '../../../../server/src/shared/machineList';
 import { CRITICAL_INSPECTION_REFUSED } from '../../../../server/src/shared/qualityLevels';
+import { RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN } from '../../../../server/src/shared/runRefusals';
 import { isJobClosedError } from '../../utils/jobLock';
 
 const emptyEntryForm = () => ({
@@ -321,15 +322,40 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
   }, [jobcardId, activeTimer]);
 
   // Close the stop form for good when its save or resume was refused in a way no retry
-  // can fix: the job was invoiced and closed, or the block itself was deleted. The form
-  // offers only Save and Resume (no Escape), so leaving it open would cover the job
-  // screen with two buttons that can never work. Any other failure keeps it open.
-  // Returns true when it closed the form.
-  const closeFormIfBlockGone = useCallback((err, entryJobcardId) => {
+  // can fix — the run can no longer be filled in from this form: the job was invoiced
+  // and closed, the block was deleted, it was handed to another worker, or it is running
+  // again. The server marks each of those with a code (shared/runRefusals.js) rather
+  // than this guessing from the wording. The form offers only Save and Resume (no
+  // Escape), so leaving it open would cover the job screen with two buttons that can
+  // never work. Any other failure keeps it open. Resolves true when it closed the form.
+  // (A Save refused as already filled in is not a failure — submitEntryForm carries on
+  // as saved, so a queued Stop & Start still starts.)
+  const closeFormIfRunUnfillable = useCallback(async (err, entry) => {
+    const entryJobcardId = entry.jobcardId || jobcardId;
+    const code = err?.data?.code;
     const jobClosed = isJobClosedError(err);
-    if (!jobClosed && err?.status !== 404) return false;
-    if (!(jobClosed && handledAsJobClosed(err, entryJobcardId))) {
-      toast.error('That work block can no longer be changed — it was deleted, or its job was invoiced, from another screen.', { id: 'stopped-block-gone' });
+    if (jobClosed) {
+      if (!handledAsJobClosed(err, entryJobcardId)) {
+        toast.error('That work block can no longer be changed — its job was invoiced from another screen.', { id: 'stopped-block-gone' });
+      }
+    } else if (err?.status === 404) {
+      toast.error('That work block can no longer be changed — it was deleted from another screen.', { id: 'stopped-block-gone' });
+    } else if (code === RUN_NOT_YOURS) {
+      toast.error('That work block was handed to another worker from another screen, so it can no longer be filled in here.', { id: 'stopped-block-gone' });
+    } else if (code === RUN_STILL_RUNNING) {
+      // Already resumed — from another screen, or by a resume whose reply never came
+      // back. When it is this person's own run on this job, pick the running timer back
+      // up so the screen shows it, rather than leaving them with no timer at all.
+      let current = null;
+      try { current = await api.getActiveTimer(); } catch { /* shown as not ours below */ }
+      if (current && current.id === entry.id && current.jobcardId === jobcardId) {
+        setActiveTimer(current);
+        toast('Your timer is already running again', { id: 'stopped-block-gone', icon: infoToastIcon });
+      } else {
+        toast('That work block is running again — it was resumed from another screen.', { id: 'stopped-block-gone', icon: infoToastIcon });
+      }
+    } else {
+      return false;
     }
     setShowEntryForm(false);
     setStoppedEntry(null);
@@ -337,7 +363,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     setEntryForm(emptyEntryForm());
     setPendingStartItem(null);
     return true;
-  }, [handledAsJobClosed]);
+  }, [jobcardId, handledAsJobClosed]);
 
   const handleEntryFieldChange = useCallback((field, value) => {
     setEntryForm(prev => ({ ...prev, [field]: value }));
@@ -369,31 +395,41 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
 
     setLoading(true);
     try {
-      // Only the fields this form owns go out — never the rest of the stop-time copy
-      // of the run (its part, worker, or anything a manager corrected while the form
-      // was open). The start and finish go only because the server requires them; it
-      // keeps the stored ones for this form's writes (detailsConfirmed).
-      await api.updateTimeEntry(entryJobcardId, stoppedEntry.id, {
-        startTime: stoppedEntry.startTime,
-        endTime: stoppedEntry.endTime,
-        qty,
-        scrapBinQty,
-        scrapRecycleQty,
-        machineNumber: machines,
-        description,
-        // Inspection answers ride along; the server stores whatever is sent, and on a
-        // Critical job it requires all four answered before it will save.
-        firstOffInspection: entryForm.firstOffInspection,
-        inProcessValidation: entryForm.inProcessValidation,
-        measuringEquipmentVerification: entryForm.measuringEquipmentVerification,
-        equipmentChecks: entryForm.equipmentChecks,
-        equipmentChecksComments: (entryForm.equipmentChecksComments || '').trim(),
-        // Tells the server this is the worker's own stop-timer form being saved, so
-        // it can clear the "still filling in the form" flag that blocks invoicing.
-        // Only this form's own writes send it (this save, and the resumes below);
-        // the server also keeps the run's stored times for them.
-        detailsConfirmed: true
-      });
+      // Set when the server says the run's details were already saved — this same
+      // Save retried after its reply was lost, or the run saved from another screen.
+      // The run is filled in either way, so carry on exactly as a successful save:
+      // close the form and start any queued Stop & Start timer.
+      let alreadySaved = false;
+      try {
+        // Only the fields this form owns go out — never the rest of the stop-time copy
+        // of the run (its part, worker, or anything a manager corrected while the form
+        // was open). The start and finish go only because the server requires them; it
+        // keeps the stored ones for this form's writes (detailsConfirmed).
+        await api.updateTimeEntry(entryJobcardId, stoppedEntry.id, {
+          startTime: stoppedEntry.startTime,
+          endTime: stoppedEntry.endTime,
+          qty,
+          scrapBinQty,
+          scrapRecycleQty,
+          machineNumber: machines,
+          description,
+          // Inspection answers ride along; the server stores whatever is sent, and on a
+          // Critical job it requires all four answered before it will save.
+          firstOffInspection: entryForm.firstOffInspection,
+          inProcessValidation: entryForm.inProcessValidation,
+          measuringEquipmentVerification: entryForm.measuringEquipmentVerification,
+          equipmentChecks: entryForm.equipmentChecks,
+          equipmentChecksComments: (entryForm.equipmentChecksComments || '').trim(),
+          // Tells the server this is the worker's own stop-timer form being saved, so
+          // it can clear the "still filling in the form" flag that blocks invoicing.
+          // Only this form's own writes send it (this save, and the resumes below);
+          // the server also keeps the run's stored times for them.
+          detailsConfirmed: true
+        });
+      } catch (saveErr) {
+        if (saveErr?.data?.code !== RUN_ALREADY_FILLED_IN) throw saveErr;
+        alreadySaved = true;
+      }
 
       setShowEntryForm(false);
       setStoppedEntry(null);
@@ -423,6 +459,8 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
         } catch (startErr) {
           toast.error(startErr.message || 'Failed to start new timer', { id: 'start-new-timer-failed' });
         }
+      } else if (alreadySaved) {
+        toast('That work block\'s details were already saved.', { id: 'stopped-block-gone', icon: infoToastIcon });
       } else {
         toast.success('Time entry updated');
       }
@@ -430,7 +468,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       if (reloadEntries) await reloadEntries();
       return { startedNewTimer };
     } catch (err) {
-      if (closeFormIfBlockGone(err, entryJobcardId)) return { startedNewTimer: false };
+      if (await closeFormIfRunUnfillable(err, stoppedEntry)) return { startedNewTimer: false };
       // The job was made Critical after this form opened: hand the refusal back so
       // the form switches its checklist on and marks the unanswered checks, instead
       // of a pop-up that every retry would repeat.
@@ -440,7 +478,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, stoppedEntry, entryForm, pendingStartItem, closeFormIfBlockGone]);
+  }, [jobcardId, stoppedEntry, entryForm, pendingStartItem, closeFormIfRunUnfillable]);
 
   const cancelEntryForm = useCallback(async (reloadEntries) => {
     if (!stoppedEntry) return;
@@ -480,12 +518,12 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       if (reloadEntries) await reloadEntries();
       toast.success('Timer resumed');
     } catch (err) {
-      if (closeFormIfBlockGone(err, entryJobcardId)) return;
+      if (await closeFormIfRunUnfillable(err, stoppedEntry)) return;
       toast.error(err.message || 'Failed to resume timer', { id: 'resume-timer-failed' });
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, stoppedEntry, currentUserId, closeFormIfBlockGone]);
+  }, [jobcardId, stoppedEntry, currentUserId, closeFormIfRunUnfillable]);
 
   // Resume timer if user gets auto-logged out while filling StopTimerForm — but only
   // their own run. A manager may be holding another worker's block here (stopped from

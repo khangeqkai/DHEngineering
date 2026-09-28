@@ -32,8 +32,16 @@ Checked and rejected (or accepted as-is). One line each; kept for good.
 ## This hunt
 Hunt 3 (2026-09-28), 2 rounds: 14 — timers, logged work, Critical sign-off, status and invoicing; 15 — job details: customer box, suggestion lists, parts, supplier picker. Each round adds a "Round N" list of what it fixed here, plus a row in the table below.
 
+### Round 14 — timers, logged work, sign-off, status
+- Stop form no longer gets stuck when its run was handed to someone else or is already running again — it closes (or picks the running timer back up) with a message.
+- A worker can only write a run while it is waiting for its stop form; rewriting an old run's pieces or sign-off answers is management-only on the server too.
+- Add/Edit Time marks the Start box for a future start instead of a pop-up; other server refusals naming a box mark that box.
+- Deleting a run keeps its Critical sign-off answers in the activity record (add, edit and delete now read one field list).
+- Rejected: a manager clearing End Time on an old run reopens it as a running timer.
+
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
 |---|---|---|---|---|---|
+| 14 | Timers, logged work, sign-off, status | 6 | 4 | 4 | 0 |
 
 ## Past hunts
 What was fixed in each earlier hunt (history only — not needed to hunt):

@@ -23,8 +23,40 @@ const {
   checkCriticalInspection,
   toCamelCase
 } = require('../utils/timeEntryHelpers');
+const { RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN } = require('../shared/runRefusals');
 
 const router = express.Router();
+
+// A run's recorded fields, as [column, trail key] — the one list the add, edit and
+// delete trail entries are all built from, so a field added later can't be left out
+// of one of them (the delete entry once dropped the Critical sign-off answers).
+const RUN_TRAIL_FIELDS = [
+  ['machine_number', 'machineNumber'],
+  ['qty', 'qty'],
+  ['description', 'description'],
+  ['scrap_bin_qty', 'scrapBin'],
+  ['scrap_recycle_qty', 'scrapRecycle'],
+  ['first_off_inspection', 'firstOffInspection'],
+  ['in_process_validation', 'inProcessValidation'],
+  ['measuring_equipment_verification', 'measuringEquipmentVerification'],
+  ['equipment_checks', 'equipmentChecks'],
+  ['equipment_checks_comments', 'equipmentChecksComments'],
+  ['start_time', 'startTime'],
+  ['end_time', 'endTime'],
+];
+
+// The trail changes for a whole run being added (`{ from: null, to }`) or deleted
+// (`{ from, to: null }`), read from its stored row. Blank fields are left out — a
+// non-Critical run has no inspection answers, and "null → null" rows are only noise.
+function runTrail(row, { deleted = false } = {}) {
+  const changes = {};
+  for (const [column, key] of RUN_TRAIL_FIELDS) {
+    const value = row[column];
+    if (value === null || value === undefined || value === '') continue;
+    changes[key] = deleted ? { from: value, to: null } : { from: null, to: value };
+  }
+  return changes;
+}
 
 // Get user's active timer across all jobs
 router.get('/active-timer', authenticate, (req, res) => {
@@ -312,39 +344,16 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
     // fold any change into the add-time-entry record so it reads as one event.
     const statusChange = syncStatusToWork(id, req.user);
 
-    // Record the Critical-job inspection answers too (same keys/values as the edit
-    // route), but only the ones actually set — a non-Critical block has all four as
-    // null and would otherwise spam the log with empty "null → null" rows.
-    const inspectionChanges = {};
-    for (const [key, value] of [
-      ['firstOffInspection', inspection.firstOffInspection],
-      ['inProcessValidation', inspection.inProcessValidation],
-      ['measuringEquipmentVerification', inspection.measuringEquipmentVerification],
-      ['equipmentChecks', inspection.equipmentChecks],
-      ['equipmentChecksComments', equipmentChecksComments],
-    ]) {
-      if (value !== null && value !== undefined && value !== '') {
-        inspectionChanges[key] = { from: null, to: value };
-      }
-    }
-
+    const entry = timeEntryQueries.getById.get(entryId);
     const workerRecord = userQueries.getById.get(workerId);
     const workerName = workerRecord.name || workerRecord.username;
     recordHistory('jobcard', id, 'add_time_entry', req.user.userId, actorName(req), {
       worker: { from: null, to: workerName },
       item: { from: null, to: itemRecord.description },
-      machineNumber: { from: null, to: data.machineNumber || null },
-      description: { from: null, to: data.description || null },
-      qty: { from: null, to: wholeQty(data.qty) },
-      scrapBin: { from: null, to: scrapBinQty },
-      scrapRecycle: { from: null, to: scrapRecycleQty },
-      ...inspectionChanges,
-      startTime: { from: null, to: startTime },
-      endTime: { from: null, to: endTime },
+      ...runTrail(entry),
       ...(statusChange ? { status: statusChange } : {})
     }, { timeEntryId: entryId });
 
-    const entry = timeEntryQueries.getById.get(entryId);
     res.status(201).json(toCamelCase(entry));
   } catch (err) {
     logger.error({ err }, 'Add time entry error');
@@ -352,11 +361,14 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
   }
 });
 
-// Update time entry (owner or management — a worker may edit their own record, e.g.
-// filling in qty/machines/description after stopping their timer; editing anyone
-// else's stays management-only since manual time records affect labour hours and costs).
-// A worker owner can never hand-edit the start/finish times (only management may
-// correct the clock) — see the role guard below.
+// Update time entry (owner or management — a worker may write their own run only
+// through its stop-timer form: filling in qty/machines/description while the run is
+// still waiting for that form, or resuming the run they just stopped; correcting any
+// run after that, or anyone else's, stays management-only since manual time records
+// affect labour hours and costs). A worker owner can never hand-edit the start/finish
+// times (only management may correct the clock) — see the role guard below.
+// The refusals no retry can get past carry a code (shared/runRefusals.js), so the
+// stop form can close itself on them instead of sticking.
 router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntry, (req, res) => {
   try {
     const { id, entryId } = req.params;
@@ -367,11 +379,11 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
 
     // Only the owner or an admin/manager may edit a time entry
     if (existing.user_id !== req.user.userId && !isManagement(req.user.role)) {
-      return res.status(403).json({ error: 'You can only edit your own time entries' });
+      return res.status(403).json({ error: 'You can only edit your own time entries', code: RUN_NOT_YOURS });
     }
 
     if (!existing.end_time) {
-      return res.status(400).json({ error: 'Stop the timer before editing this entry' });
+      return res.status(400).json({ error: 'Stop the timer before editing this entry', code: RUN_STILL_RUNNING });
     }
 
     let startTime, endTime;
@@ -402,6 +414,18 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       startTime = existing.start_time;
       const isResuming = endTime === null;
       endTime = isResuming ? null : existing.end_time;
+
+      // Anything but a resume is the stop form's Save, which only has a job while the
+      // run is still waiting for it (the stop marks it, the Save clears it). Once filled
+      // in, the pieces and the Critical sign-off answers are a record only management
+      // corrects — otherwise a worker could rewrite an old run's count or sign-off by
+      // sending the save straight to the server, long after the fact.
+      if (!isResuming && existing.awaiting_details !== 1) {
+        return res.status(403).json({
+          error: 'The details of that run were already saved — ask a manager to correct them.',
+          code: RUN_ALREADY_FILLED_IN
+        });
+      }
 
       // Resuming reopens a finished block — a worker may only reopen the run they
       // JUST stopped, never reach back into an older block of their own. All three
@@ -560,21 +584,22 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       autoAssignWorker(id, workerId, req.user);
     }
 
-    // Build proper diff of changed fields
-    const changes = diffFields(existing, [
-      ['machine_number', 'machineNumber', machineNumber],
-      ['qty', 'qty', qty],
-      ['description', 'description', description],
-      ['scrap_bin_qty', 'scrapBin', scrapBinQty],
-      ['scrap_recycle_qty', 'scrapRecycle', scrapRecycleQty],
-      ['first_off_inspection', 'firstOffInspection', inspection.firstOffInspection],
-      ['in_process_validation', 'inProcessValidation', inspection.inProcessValidation],
-      ['measuring_equipment_verification', 'measuringEquipmentVerification', inspection.measuringEquipmentVerification],
-      ['equipment_checks', 'equipmentChecks', inspection.equipmentChecks],
-      ['equipment_checks_comments', 'equipmentChecksComments', equipmentChecksComments],
-      ['start_time', 'startTime', startTime],
-      ['end_time', 'endTime', endTime],
-    ]);
+    // Build proper diff of changed fields — every recorded field, from the one list.
+    const saved = {
+      machine_number: machineNumber,
+      qty,
+      description,
+      scrap_bin_qty: scrapBinQty,
+      scrap_recycle_qty: scrapRecycleQty,
+      first_off_inspection: inspection.firstOffInspection,
+      in_process_validation: inspection.inProcessValidation,
+      measuring_equipment_verification: inspection.measuringEquipmentVerification,
+      equipment_checks: inspection.equipmentChecks,
+      equipment_checks_comments: equipmentChecksComments,
+      start_time: startTime,
+      end_time: endTime
+    };
+    const changes = diffFields(existing, RUN_TRAIL_FIELDS.map(([column, key]) => [column, key, saved[column]]));
 
     // The entry's line is decided by its stable id, not its position number, so only
     // log a line change when it actually points at a different line. Named by
@@ -645,13 +670,7 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
       timeEntryId: { from: entryId, to: null },
       worker: { from: existing.user_name, to: null },
       item: { from: itemRecord ? itemRecord.description : null, to: null },
-      machineNumber: { from: existing.machine_number, to: null },
-      description: { from: existing.description, to: null },
-      qty: { from: existing.qty, to: null },
-      scrapBin: { from: existing.scrap_bin_qty, to: null },
-      scrapRecycle: { from: existing.scrap_recycle_qty, to: null },
-      startTime: { from: existing.start_time, to: null },
-      endTime: { from: existing.end_time, to: null }
+      ...runTrail(existing, { deleted: true })
     };
     if (statusChange) changes.status = statusChange;
 
