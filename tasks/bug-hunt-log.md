@@ -30,7 +30,7 @@ Checked and rejected (or accepted as-is). One line each; kept for good.
 - Accepted leftover: typing a previous-job reference then instantly unticking Repeat Job can briefly show the reference until the job reloads; stored data is always right.
 
 ## This hunt
-_No hunt running._ While a hunt runs, each round adds a "Round N" list of what it fixed here, plus a row in the table below.
+Hunt 3 (2026-09-28), 2 rounds: 14 — timers, logged work, Critical sign-off, status and invoicing; 15 — job details: customer box, suggestion lists, parts, supplier picker. Each round adds a "Round N" list of what it fixed here, plus a row in the table below.
 
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
 |---|---|---|---|---|---|
