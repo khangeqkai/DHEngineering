@@ -166,10 +166,21 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
     // ticked off (removeServiceTagIds) compared with what their form opened with —
     // never as a whole list. A whole list from a copy older than a service linked
     // meanwhile (the job screen links them in the background) would quietly undo it.
-    const { name, contactName, contactPhone, contactEmail, address, notes, addServiceTagIds, removeServiceTagIds } = req.body;
+    const { addServiceTagIds, removeServiceTagIds } = req.body;
 
     const existing = findOr404(res, supplierQueries.getById.get(id), 'Supplier not found');
     if (!existing) return;
+
+    // The same goes for the supplier's own details: a field left out of the request
+    // keeps the stored value, and only a sent one (blank included, except the name)
+    // replaces it — the form sends only what the person changed.
+    const sentOr = (field, stored) => (req.body[field] === undefined ? stored : req.body[field]);
+    const name = sentOr('name', existing.name);
+    const contactName = sentOr('contactName', existing.contact_name);
+    const contactPhone = sentOr('contactPhone', existing.contact_phone);
+    const contactEmail = sentOr('contactEmail', existing.contact_email);
+    const address = sentOr('address', existing.address);
+    const notes = sentOr('notes', existing.notes);
 
     // Same name rule as companies. Only checked when the name actually changes: a
     // database from before this check may already hold two suppliers with one name,

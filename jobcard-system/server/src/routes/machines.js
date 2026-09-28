@@ -8,6 +8,7 @@ const { diffFields } = require('../utils/historyChanges');
 const { splitMachineCodes } = require('../shared/machineList');
 const { setArchived } = require('../utils/archiveToggle');
 const { findOr404 } = require('../utils/findOr404');
+const { refuseField } = require('./name-conflict');
 
 const router = express.Router();
 
@@ -49,7 +50,7 @@ router.post('/', requireManagement, validateCreateMachine, (req, res) => {
     // Check if an active machine already uses this number (archived ones don't count)
     const existing = machineQueries.getActiveByNumber.get(machineNumber);
     if (existing) {
-      return res.status(400).json({ error: 'Machine number already exists' });
+      return refuseField(res, 400, 'machineNumber', 'Machine number already exists');
     }
 
     const id = uuidv4();
@@ -74,11 +75,18 @@ router.post('/', requireManagement, validateCreateMachine, (req, res) => {
 // Update machine (admin or manager)
 router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
   const { id } = req.params;
-  const { machineNumber, name, description } = req.body;
 
   try {
     const existing = findOr404(res, machineQueries.getById.get(id), 'Machine not found');
     if (!existing) return;
+
+    // A field left out of the request keeps the stored value — only a sent value
+    // (blank included, except the number, which can't be blank) replaces it. The
+    // Equipment form sends only what the person changed, so an edit made elsewhere
+    // while it was open isn't put back from the form's older copy.
+    const machineNumber = req.body.machineNumber === undefined ? existing.machine_number : req.body.machineNumber;
+    const name = req.body.name === undefined ? (existing.name || '') : (req.body.name || '');
+    const nextDescription = req.body.description === undefined ? (existing.description || '') : (req.body.description || '');
 
     // Check for duplicate machine number among active machines (archived ones don't count)
     // A capitals-only change ("cnc-01" → "CNC-01") is not a renumber: the check
@@ -89,7 +97,7 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
     if (numberChanged) {
       const duplicate = machineQueries.getActiveByNumber.get(machineNumber);
       if (duplicate && duplicate.id !== id) {
-        return res.status(400).json({ error: 'Machine number already exists' });
+        return refuseField(res, 400, 'machineNumber', 'Machine number already exists');
       }
 
       // Time entries store machine numbers as a free-text list (e.g. "01, 02") that
@@ -102,24 +110,19 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
       const loggedAgainstOldNumber = timeEntryQueries.getDistinctMachineNumbersSince.all(existing.created_at || '')
         .some((row) => splitMachineCodes(row.machine_number).some((tok) => tok.toLowerCase() === oldKey));
       if (loggedAgainstOldNumber) {
-        return res.status(400).json({
-          error: 'This machine has logged work; archive it and add a new one instead.'
-        });
+        return refuseField(res, 400, 'machineNumber',
+          'This machine has logged work; archive it and add a new one instead.');
       }
     }
 
-    // A description left out of the request keeps the stored one — only a sent
-    // value (blank included) replaces it, so a caller that doesn't carry the field
-    // can't erase it.
-    const nextDescription = description === undefined ? (existing.description || '') : (description || '');
-    machineQueries.update.run(machineNumber, name || '', nextDescription, id);
+    machineQueries.update.run(machineNumber, name, nextDescription, id);
 
     const machine = machineQueries.getById.get(id);
 
     // Build proper diff of changed fields
     const changes = diffFields(existing, [
       ['machine_number', 'machineNumber', machineNumber],
-      ['name', 'name', name || ''],
+      ['name', 'name', name],
       ['description', 'description', nextDescription],
     ]);
 

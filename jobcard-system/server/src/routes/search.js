@@ -426,8 +426,10 @@ function searchTime(req, res, canManage) {
     // drops entries where this machine was used alongside others. Normalize out
     // spaces and wrap both sides in commas for a boundary-safe membership test.
     // The picked machine loses its spaces too, or "CNC 1" never matches "CNC1".
-    conditions.push(`(',' || REPLACE(te.machine_number, ' ', '') || ',') LIKE ?`);
-    params.push(`%,${String(machineId).replace(/ /g, '')},%`);
+    // Escaped like every other LIKE here, or the _ in "CNC_01" matches any
+    // character and pulls in CNC-01's hours too.
+    conditions.push(`(',' || REPLACE(te.machine_number, ' ', '') || ',') LIKE ? ESCAPE '\\'`);
+    params.push(`%,${escapeLikeChars(String(machineId).replace(/ /g, ''))},%`);
   }
   if (jobNumber) { conditions.push("j.job_number LIKE ? ESCAPE '\\'"); params.push(likeTerm(jobNumber.trim())); }
   pushMomentRange(conditions, params, 'te.start_time', dateFrom, dateTo);

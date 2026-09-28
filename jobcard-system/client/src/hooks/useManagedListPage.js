@@ -15,9 +15,12 @@ export function useManagedListPage({ initialShowArchived = false } = {}) {
   const [showActivityLog, setShowActivityLog] = useState(false);
 
   // Every load takes a number; only the latest may touch the page. Ticking "show
-  // archived" twice quickly (or a refresh after a save crossing a toggle) can
-  // leave an older load in flight, and its reply landing last would otherwise
-  // put the wrong list on screen and turn the spinner off early.
+  // archived" twice quickly can leave an older load in flight, and its reply
+  // landing last would otherwise put the wrong list on screen and turn the spinner
+  // off early. This judges only when a load started, not which view it is for —
+  // so a reload after a save must run the page's newest load function (see
+  // useLatestCallback), not the one captured when the button was pressed, or a
+  // toggle made while the save was out reloads the view that has been left.
   const loadRequestIdRef = useRef(0);
 
   // Runs `fetchFn` (which only fetches, and returns what it got), keeping

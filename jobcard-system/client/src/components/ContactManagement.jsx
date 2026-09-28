@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase, capitalizeFirst, autoResize } from '../utils/formatters';
@@ -15,6 +15,8 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useManagedListPage } from '../hooks/useManagedListPage';
 import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
 import FieldError from './common/FieldError';
+import { useLatestCallback } from '../hooks/useLatestCallback';
+import { changedFields } from '../utils/changedFields';
 import { NAME_MAX } from '../../../server/src/shared/names';
 import './ContactManagement.css';
 
@@ -47,6 +49,12 @@ export default function ContactManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [formData, setFormData] = useState(blankCompany());
+  // What the customer form held when it opened on this customer (or was last
+  // saved) — an edit sends only the boxes changed since, so an address or note
+  // someone else saved meanwhile isn't put back from this form's older copy.
+  // Kept apart from the open customer's row, which refreshes whenever its people
+  // change while the form's boxes stay as they were.
+  const openedFormRef = useRef(blankCompany());
   const [saving, setSaving] = useState(false);
   const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
     (box) => formData[COMPANY_BOX_VALUE[box]]
@@ -75,14 +83,17 @@ export default function ContactManagement() {
 
   useEffect(() => { loadCompanies(); }, [loadCompanies]);
 
-  // Keep the open customer's panel in step after a change to its people.
-  const refresh = async () => {
+  // Keep the open customer's panel in step after a change to its people. Always
+  // the newest version: a save waits on the server first, and it must reload with
+  // "Show archived" (and the open customer) as they are now, not as they were
+  // when the button was pressed.
+  const refresh = useLatestCallback(async () => {
     const data = await loadCompanies();
     bumpActivity();
     if (data && editingCompany) {
       setEditingCompany(data.find(c => c.id === editingCompany.id) || null);
     }
-  };
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -100,10 +111,13 @@ export default function ContactManagement() {
       scrollFieldIntoView('companyName');
       return;
     }
+    // An edit sends only the boxes changed since the form opened (see openedFormRef).
+    const payload = editingCompany ? changedFields(formData, openedFormRef.current) : { ...formData };
     // The name box only tidies itself on blur — hitting Enter from inside it
     // submits the form directly and never fires that blur, so the same formatter
     // is applied here too before the name goes out.
-    const payload = { ...formData, name: toTitleCase(formData.name) };
+    if ('name' in payload) payload.name = toTitleCase(payload.name);
+    const saved = { ...formData };
     setSaving(true);
     try {
       if (editingCompany) {
@@ -114,6 +128,8 @@ export default function ContactManagement() {
         toast.success('Customer updated', { id: 'customer-updated' });
         setEditingCompany({ ...created, people: [] });
       }
+      // The form stays open, so what it now holds is the new starting point.
+      openedFormRef.current = saved;
       resetFieldErrors();
       await refresh();
     } catch (err) {
@@ -126,11 +142,13 @@ export default function ContactManagement() {
   const handleEdit = (company) => {
     setEditingCompany(company);
     resetFieldErrors();
-    setFormData({
+    const opened = {
       name: company.name || '',
       address: company.address || '',
       notes: company.notes || ''
-    });
+    };
+    openedFormRef.current = opened;
+    setFormData(opened);
     setShowForm(true);
   };
 

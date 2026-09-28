@@ -56,6 +56,24 @@ function requiredString(field, label) {
 }
 
 /**
+ * A field an edit may leave out (the record keeps what it has), but which can't
+ * be blanked when it is sent — a customer's or supplier's name, a machine number.
+ * The management edit forms send only the fields the person changed, so an edit
+ * that doesn't touch the name doesn't carry it at all.
+ * @param {string} field - Field name to validate
+ * @param {string} label - Human-readable field label for error messages
+ */
+function requiredIfSent(field, label) {
+  return body(field)
+    .optional()
+    .isString()
+    .withMessage(`${label} must be a string`)
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage(`${label} is required`);
+}
+
+/**
  * Name-length cap (NAME_MAX) for customers, reported as a
  * field error on the name box. Only what is sent is checked: on an edit, a name identical to the stored one
  * passes even if it is longer (an older record re-saved without touching its
@@ -231,9 +249,9 @@ const validateCreateCompany = [
   handleValidationErrors
 ];
 
-// PUT /companies/:id
+// PUT /companies/:id — every field optional: a field left out keeps its value.
 const validateUpdateCompany = [
-  requiredString('name', 'Company name'),
+  requiredIfSent('name', 'Company name'),
   nameLength('name', 'Company name', storedCompanyName),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
@@ -266,9 +284,9 @@ const validateCreateSupplier = [
   handleValidationErrors
 ];
 
-// PUT /suppliers/:id
+// PUT /suppliers/:id — every field optional: a field left out keeps its value.
 const validateUpdateSupplier = [
-  requiredString('name', 'Supplier name'),
+  requiredIfSent('name', 'Supplier name'),
   optionalEmail('contactEmail'),
   optionalPhone('contactPhone'),
   handleValidationErrors
@@ -278,20 +296,20 @@ const validateUpdateSupplier = [
 // comma that separates machines in logged work — otherwise "CNC,01" reads back as
 // two machines); name and description are optional free text, unvalidated here (as
 // before). Mirrors validateCreateSupplier.
-function machineNumberRule() {
-  return requiredString('machineNumber', 'Machine number')
+function machineNumberRule(chain) {
+  return chain
     .custom((value) => !hasMachineSeparator(value))
     .withMessage(MACHINE_SEPARATOR_MESSAGE);
 }
 
 const validateCreateMachine = [
-  machineNumberRule(),
+  machineNumberRule(requiredString('machineNumber', 'Machine number')),
   handleValidationErrors
 ];
 
-// PUT /machines/:id
+// PUT /machines/:id — the number may be left out (the machine keeps it).
 const validateUpdateMachine = [
-  machineNumberRule(),
+  machineNumberRule(requiredIfSent('machineNumber', 'Machine number')),
   handleValidationErrors
 ];
 

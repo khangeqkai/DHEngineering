@@ -8,6 +8,14 @@ const { diffFields } = require('../utils/historyChanges');
 const { toContactApi: toApiFormat } = require('./customer-format');
 const { setArchived } = require('../utils/archiveToggle');
 const { findOr404 } = require('../utils/findOr404');
+const { refuseField } = require('./name-conflict');
+
+// A person has to carry something that says who they are or how to reach them.
+// Any one of the three is enough — a front desk with only a phone number is a
+// fair entry — but a person with none of them would be an "Unnamed" nobody offered
+// on every new job (and picked for it automatically when they're the only one).
+const BLANK_PERSON_MESSAGE = 'Enter a name, phone or email';
+const isBlankPerson = (...values) => values.every(v => !v || !String(v).trim());
 
 const router = express.Router();
 
@@ -22,6 +30,10 @@ router.use(authenticate);
 router.post('/', requireManagement, validateCreateContact, (req, res) => {
   try {
     const { companyId, contactName, phone, email } = req.body;
+
+    if (isBlankPerson(contactName, phone, email)) {
+      return refuseField(res, 400, 'contactName', BLANK_PERSON_MESSAGE);
+    }
 
     const company = companyQueries.getById.get(companyId);
     if (!company) {
@@ -53,10 +65,19 @@ router.post('/', requireManagement, validateCreateContact, (req, res) => {
 router.put('/:id', requireManagement, validateUpdateContact, (req, res) => {
   try {
     const { id } = req.params;
-    const { contactName, phone, email } = req.body;
-
     const existing = findOr404(res, contactQueries.getById.get(id), 'Contact not found');
     if (!existing) return;
+
+    // A field left out of the request keeps the stored value; only a sent one
+    // (blank included) replaces it. The person form sends only what was changed,
+    // so an edit made elsewhere while it was open isn't put back from its older copy.
+    const contactName = req.body.contactName === undefined ? existing.contact_name : req.body.contactName;
+    const phone = req.body.phone === undefined ? existing.phone : req.body.phone;
+    const email = req.body.email === undefined ? existing.email : req.body.email;
+
+    if (isBlankPerson(contactName, phone, email)) {
+      return refuseField(res, 400, 'contactName', BLANK_PERSON_MESSAGE);
+    }
 
     const changes = diffFields(existing, [
       ['contact_name', 'contactName', contactName || null],

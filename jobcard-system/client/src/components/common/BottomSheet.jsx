@@ -29,6 +29,10 @@ export default function BottomSheet({
     if (!isTopModal(modalId)) return;
 
     if (e.key === 'Escape') {
+      // A control inside that already dealt with this Escape (closing its own
+      // small box or list) marks it handled; closing the whole window as well
+      // would throw away everything typed in it.
+      if (e.defaultPrevented) return;
       onClose();
       return;
     }

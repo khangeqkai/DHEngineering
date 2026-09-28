@@ -92,6 +92,11 @@
   color: var(--primary-color);
 }
 
+/* The "+ Other" box and its mark underneath, taking the row's full width. */
+.custom-tag-field {
+  width: 100%;
+}
+
 .custom-tag-input {
   display: flex;
   gap: var(--gap-tight);

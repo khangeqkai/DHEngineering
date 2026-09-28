@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Plus, Archive, ArchiveRestore, Save, X } from 'lucide-react';
 import { toTitleCase } from '../../utils/formatters';
-import { useFieldErrors } from '../../hooks/useFieldErrors';
+import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
 import FieldError from '../common/FieldError';
+import { changedFields } from '../../utils/changedFields';
 
 const blankPerson = () => ({ contactName: '', phone: '', email: '' });
 
@@ -20,6 +21,9 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
   const [editingId, setEditingId] = useState(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(blankPerson());
+  // What the form held when it opened on a person — an edit sends only the boxes
+  // changed since, so a detail saved elsewhere meanwhile isn't put back.
+  const openedFormRef = useRef(blankPerson());
   const { setFieldErrors, clearAll, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
     (box) => form[PERSON_BOX_VALUE[box]]
   );
@@ -28,16 +32,26 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
   const startEdit = (p) => {
     setAdding(false);
     setEditingId(p.id);
-    setForm({ contactName: p.contactName || '', phone: p.phone || '', email: p.email || '' });
+    const opened = { contactName: p.contactName || '', phone: p.phone || '', email: p.email || '' };
+    openedFormRef.current = opened;
+    setForm(opened);
     clearAll();
   };
   const cancel = () => { setAdding(false); setEditingId(null); setForm(blankPerson()); clearAll(); };
 
   const submit = async (e) => {
     e.preventDefault();
+    // A person needs something that says who they are or how to reach them — any
+    // one of the three will do (the server applies the same rule).
+    if (![form.contactName, form.phone, form.email].some(v => v.trim())) {
+      setFieldErrors({ companyPersonName: 'Enter a name, phone or email' });
+      scrollFieldIntoView('companyPersonName');
+      return;
+    }
+    const person = adding ? { ...form } : changedFields(form, openedFormRef.current);
     // The name box only tidies itself on blur — Enter from inside it submits
     // without that blur, so the same tidy-up is applied here too.
-    const person = { ...form, contactName: toTitleCase(form.contactName) };
+    if ('contactName' in person) person.contactName = toTitleCase(person.contactName);
     const ok = adding ? await onCreate(person, setFieldErrors) : await onUpdate(editingId, person, setFieldErrors);
     if (ok) cancel();
   };

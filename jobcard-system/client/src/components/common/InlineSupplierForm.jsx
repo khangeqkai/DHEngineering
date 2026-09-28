@@ -2,7 +2,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { toTitleCase, capitalizeFirst } from '../../utils/formatters';
-import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
+import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../../hooks/useFieldErrors';
 import FieldError from './FieldError';
 
 // The full add-supplier form, shown inline inside a line item so a supplier can be
@@ -11,6 +11,12 @@ import FieldError from './FieldError';
 // the inline time-entry form). On save it creates the supplier already linked to the
 // given treatment (so the treatment lands in the new supplier's "Services Provided"),
 // then hands the created supplier back to the caller.
+// Which box on this form each field named in a server refusal belongs to (a name
+// clash names 'name'; a malformed phone or email names its own field), and which
+// form value each box shows.
+const SUPPLIER_BOXES = { name: 'supplierName', contactPhone: 'supplierContactPhone', contactEmail: 'supplierContactEmail' };
+const BOX_VALUE = { supplierName: 'name', supplierContactPhone: 'contactPhone', supplierContactEmail: 'contactEmail' };
+
 export default function InlineSupplierForm({ initialName = '', treatmentTagId, onCreated, onCancel }) {
   const [form, setForm] = useState({
     name: initialName,
@@ -22,7 +28,7 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
   });
   const [saving, setSaving] = useState(false);
   const { setFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
-    (name) => (name === 'supplierName' ? form.name : undefined)
+    (box) => form[BOX_VALUE[box]]
   );
 
   const set = (field, val) => setForm(prev => ({ ...prev, [field]: val }));
@@ -55,7 +61,7 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
       toast.success('Supplier updated');
       onCreated(supplier);
     } catch (err) {
-      toast.error(err.message || 'Could not add that supplier');
+      showSaveRefusal(err, { boxFor: SUPPLIER_BOXES, setFieldErrors, fallback: 'Could not add that supplier' });
     } finally {
       setSaving(false);
     }
@@ -95,17 +101,19 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
           />
         </div>
 
-        <div className="form-group">
+        <div className={groupClass('supplierContactPhone')}>
           <label htmlFor="supplierContactPhone">Phone</label>
-          <input type="tel" id="supplierContactPhone" value={form.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} />
+          <input type="tel" {...fieldProps('supplierContactPhone')} value={form.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} />
+          <FieldError {...errorProps('supplierContactPhone')} message={errorFor('supplierContactPhone')} />
         </div>
 
-        <div className="form-group">
+        <div className={groupClass('supplierContactEmail')}>
           <label htmlFor="supplierContactEmail">Email</label>
           {/* Plain text, not type="email" (and no `required` on the name above): this
               form sits inside the job form, and a browser-checked box would veto the
               job's own Create with a native bubble. The name check is the app's own. */}
-          <input type="text" inputMode="email" id="supplierContactEmail" value={form.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} />
+          <input type="text" inputMode="email" {...fieldProps('supplierContactEmail')} value={form.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} />
+          <FieldError {...errorProps('supplierContactEmail')} message={errorFor('supplierContactEmail')} />
         </div>
 
         <div className="form-group">

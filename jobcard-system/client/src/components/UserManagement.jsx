@@ -16,9 +16,21 @@ import { useManagedListPage } from '../hooks/useManagedListPage';
 import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
 import { isManagement, can } from '../utils/roles';
 import FieldError from './common/FieldError';
+import { useLatestCallback } from '../hooks/useLatestCallback';
+import { changedFields } from '../utils/changedFields';
 
 // Which box on the form each field named in a server refusal belongs to.
 const USER_FORM_BOXES = { username: 'username', password: 'password', name: 'name', email: 'email' };
+
+// The form as it opens on an existing account — also what an edit is judged
+// against, so only the boxes the person actually changed are sent.
+const formFromUser = (user) => ({
+  username: user.username,
+  password: '',
+  name: user.name,
+  email: user.email || '',
+  role: user.role
+});
 
 export default function UserManagement() {
   const { user: currentUser, applyIdentity } = useAuth();
@@ -67,6 +79,9 @@ export default function UserManagement() {
       { resetLoading: false }
     );
   };
+  // After a save: reload with "Show archived" as it is now, not as it was when
+  // the button was pressed.
+  const reloadUsers = useLatestCallback(loadUsers);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -101,9 +116,13 @@ export default function UserManagement() {
 
     setSaving(true);
 
+    // An edit sends only the boxes changed since the form opened: the rest of the
+    // form is a copy from when the page loaded, and sending it back would quietly
+    // undo a role (or name, or email) someone else changed in the meantime.
+    const payload = editingUser ? changedFields(formData, formFromUser(editingUser)) : { ...formData };
     // The display name only tidies itself on blur — Enter from inside the box
     // submits without that blur, so the same tidy-up is applied here too.
-    const payload = { ...formData, name: toTitleCase(formData.name) };
+    if ('name' in payload) payload.name = toTitleCase(payload.name);
 
     try {
       let ownNewRole = null;
@@ -134,7 +153,7 @@ export default function UserManagement() {
         return;
       }
 
-      await loadUsers();
+      await reloadUsers();
       bumpActivity();
       resetForm();
     } catch (err) {
@@ -147,13 +166,7 @@ export default function UserManagement() {
   const handleEdit = (user) => {
     resetFieldErrors();
     setEditingUser(user);
-    setFormData({
-      username: user.username,
-      password: '',
-      name: user.name,
-      email: user.email || '',
-      role: user.role
-    });
+    setFormData(formFromUser(user));
     setShowForm(true);
   };
 
@@ -171,7 +184,7 @@ export default function UserManagement() {
       try {
         await api.deactivateUser(user.id);
         toast.success('User archived');
-        await loadUsers();
+        await reloadUsers();
         bumpActivity();
       } catch (err) {
         toast.error(err.message || 'Failed to archive user');
@@ -185,7 +198,7 @@ export default function UserManagement() {
       try {
         await api.activateUser(user.id);
         toast.success('User restored');
-        await loadUsers();
+        await reloadUsers();
         bumpActivity();
       } catch (err) {
         toast.error(err.message || 'Failed to restore user');

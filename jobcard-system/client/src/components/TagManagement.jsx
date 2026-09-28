@@ -15,9 +15,15 @@ import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/u
 import FieldError from './common/FieldError';
 import { hasMachineSeparator, MACHINE_SEPARATOR_MESSAGE } from '../../../server/src/shared/machineList';
 import { TAG_CATEGORY_INFO as CATEGORY_INFO } from '../utils/tagCategories';
+import { useLatestCallback } from '../hooks/useLatestCallback';
+import { changedFields } from '../utils/changedFields';
 import './TagManagement.css';
 
 const CATEGORIES = Object.keys(CATEGORY_INFO);
+
+// A machine's boxes as the form opens on it — also what an edit is judged
+// against, so a box left alone is never sent.
+const machineForm = (m) => ({ name: m.name || '', machineNumber: m.machineNumber || '', description: m.description || '' });
 
 // Which form value each box on the shared form shows.
 const BOX_VALUE = { machineNumber: 'machineNumber', machineName: 'name', machineDescription: 'description', tagName: 'name' };
@@ -108,6 +114,13 @@ export default function TagManagement() {
 
   useEffect(() => { if (isEquipment) loadMachines(); }, [isEquipment, loadMachines]);
 
+  // After a save, archive or restore: reload with the tab and "Show archived" as
+  // they are now. The load captured when the button was pressed would reload the
+  // tab left meanwhile, and — being the newest load — knock out the showing tab's
+  // own load, putting the old category's options under the new heading.
+  const reloadTags = useLatestCallback(loadTags);
+  const reloadMachines = useLatestCallback(loadMachines);
+
   // --- Form handlers ---
   const resetForm = () => {
     setShowForm(false);
@@ -157,13 +170,17 @@ export default function TagManagement() {
       if (isFormEquipment) {
         if (!machineNumber) return;
         if (editingItem) {
-          await api.updateMachine(editingItem.id, { machineNumber, name, description });
+          // Only the boxes changed since the form opened: the rest is a copy from
+          // when it opened, and sending it back would undo an edit made elsewhere.
+          const tidied = { machineNumber, name, description };
+          const edited = Object.keys(changedFields(formData, machineForm(editingItem)));
+          await api.updateMachine(editingItem.id, Object.fromEntries(edited.map(key => [key, tidied[key]])));
           toast.success('Machine updated');
         } else {
           await api.createMachine({ machineNumber, name, description });
           toast.success('Machine updated');
         }
-        await loadMachines();
+        await reloadMachines();
       } else {
         if (!name) return;
         if (editingItem) {
@@ -175,7 +192,7 @@ export default function TagManagement() {
           await tagActions.create({ category: formCategory, name });
           toast.success('Tag updated');
         }
-        if (formCategory === selectedCategory) await loadTags();
+        await reloadTags();
       }
       bumpActivity();
       resetForm();
@@ -207,7 +224,7 @@ export default function TagManagement() {
     });
     if (!confirmed) return;
     setPendingTagId(tag.id);
-    try { await tagActions.archive(tag); toast.success('Option archived'); bumpActivity(); await loadTags(); }
+    try { await tagActions.archive(tag); toast.success('Option archived'); bumpActivity(); await reloadTags(); }
     catch (err) { toast.error(err.message || 'Failed to archive option'); }
     finally { setPendingTagId(null); }
   };
@@ -215,7 +232,7 @@ export default function TagManagement() {
   const handleRestoreTag = async (tag) => {
     if (pendingTagId !== null) return;
     setPendingTagId(tag.id);
-    try { await tagActions.restore(tag); toast.success('Option restored'); bumpActivity(); await loadTags(); }
+    try { await tagActions.restore(tag); toast.success('Option restored'); bumpActivity(); await reloadTags(); }
     catch (err) { toast.error(err.message || 'Failed to restore option'); }
     finally { setPendingTagId(null); }
   };
@@ -224,7 +241,7 @@ export default function TagManagement() {
   const handleEditMachine = (m) => {
     resetFieldErrors();
     setEditingItem(m);
-    setFormData({ name: m.name || '', machineNumber: m.machineNumber || '', description: m.description || '' });
+    setFormData(machineForm(m));
     setFormCategory('equipment');
     setShowForm(true);
   };
@@ -240,7 +257,7 @@ export default function TagManagement() {
     });
     if (!confirmed) return;
     setPendingMachineId(m.id);
-    try { await api.archiveMachine(m.id); toast.success('Machine archived'); bumpActivity(); await loadMachines(); }
+    try { await api.archiveMachine(m.id); toast.success('Machine archived'); bumpActivity(); await reloadMachines(); }
     catch (err) { toast.error(err.message || 'Failed to archive machine'); }
     finally { setPendingMachineId(null); }
   };
@@ -248,7 +265,7 @@ export default function TagManagement() {
   const handleRestoreMachine = async (m) => {
     if (pendingMachineId !== null) return;
     setPendingMachineId(m.id);
-    try { await api.activateMachine(m.id); toast.success('Machine restored'); bumpActivity(); await loadMachines(); }
+    try { await api.activateMachine(m.id); toast.success('Machine restored'); bumpActivity(); await reloadMachines(); }
     catch (err) { toast.error(err.message || 'Failed to restore machine'); }
     finally { setPendingMachineId(null); }
   };

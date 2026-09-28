@@ -14,11 +14,10 @@ Every agent in the hunt reads this file first. It is the memory between rounds.
 - **Anything listed under "Decided — leave alone" or "Fixed" is not re-reported** unless the fix itself is wrong.
 
 ## Waiting for the owner (design decisions)
-- **R11 — Which work does the Critical sign-off cover?** Two linked questions:
-  1. *Abandoned sign-off.* On a Critical job the stop saves the finish time first, then the stop form adds the four inspection answers. If that form is never saved (a manager stops a worker's timer and signs out, or the app is closed), the run stays finished with no answers, and the job can still be invoiced and archived with no warning. Options: (a) invoicing a Critical job with unanswered runs warns, names the runs and asks a manager to confirm or fill them in (like the missing-attachment question); (b) invoicing is refused until every run is answered. Recommendation: (a).
-  2. *Switching a job to Critical later.* Work logged while the job was Standard can't then be corrected without ticking four inspection answers that never happened. Proposal: each run remembers whether the job was Critical when it finished; only those runs need the answers. Optionally, warn when switching a job with logged work to Critical.
+_None._
 
 ## Decided — leave alone
+- **R11 — Critical sign-off (owner, 2026-09-28).** Each work run remembers whether the job was Critical when it finished; only those runs need the four answers. Invoicing a job with such runs unanswered warns, names them and asks a manager to confirm; the job screen marks them "Sign-off missing". Being built from tasks/critical-signoff-2026-09-28.md — don't re-report the old behaviour.
 - **R6/R8 — Quality forms.** Owner: the uploaded quality-form template system was a leftover. Removed completely, with the per-job QA Forms folder; old jobs' QA Forms files move into Job Files at start-up. Quality is the level name plus the Critical stop-timer sign-off. This settles all three quality-form questions.
 - **2026-09-28 — Quality levels are fixed.** Owner: a job is Standard (default) or Critical, nothing else; the QA Levels page and its table are gone, old level names are folded in at start-up. Don't report the missing page or ask for custom levels.
 - **R10 — Restart.** Owner agreed: the app starts at Windows sign-in and hides to the tray on close. Done.
@@ -140,6 +139,14 @@ Every agent in the hunt reads this file first. It is the memory between rounds.
 - The "Restoring…" cover didn't hold the keyboard, so people could Tab away and leave Settings mid-restore.
 - Seed data made Critical jobs whose finished work had no inspection answers.
 - Rejected: clicking an old Quality Level entry in Search > Activity does nothing (the page is gone on purpose).
+### Round 12 — management pages and search
+- Editing a user from a page opened earlier put back their old role (undoing someone else's demotion or promotion), and the same for names/emails: every management edit form (Users, Customers, customer people, Suppliers, Equipment) now sends only the boxes that changed; the server keeps anything not sent.
+- Escape in the supplier form's "+ Other" box closed the whole supplier window and lost the typing: a window now ignores an Escape an inner box has already handled.
+- A refresh after archive/restore came back with the tab or "Show archived" from when the button was pressed: it reloads whatever is showing now.
+- The job screen's New supplier form showed name clashes and bad phone/email as pop-ups, and offered to create names the server refuses: it marks the box; the list doesn't offer those names.
+- Tags & Equipment: a duplicate machine number or clashing option name popped up instead of marking the box.
+- Search > Time: the machine filter treated _ and % as wildcards.
+- A completely blank person could be added to a customer.
 
 ## Rounds
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
@@ -155,6 +162,7 @@ Every agent in the hunt reads this file first. It is the memory between rounds.
 | 9 | Job list, search, activity | 19 | 12 | 10 (2 carried) | 0 |
 | 10 | Delivery + speed | 18 | 8 (+3 carried) | 9 | 1 |
 | 11 | Quality levels + settings | 11 | 7 | 5 | 2 |
+| 12 | Management pages + search | 13 | 7 | 7 | 0 |
 
 ## Test these by hand before delivery
 Nothing here has an automatic test, so click through these once on a real PC. Each line is a screen the hunt changed.

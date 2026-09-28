@@ -7,6 +7,7 @@ const { setArchived } = require('../utils/archiveToggle');
 const { nameToValue } = require('../utils/tagSlug');
 const { findOr404 } = require('../utils/findOr404');
 const { sameName } = require('../shared/names');
+const { refuseField } = require('./name-conflict');
 
 const router = express.Router();
 
@@ -104,7 +105,7 @@ router.post('/', requireManagement, (req, res) => {
     }
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Tag name is required' });
+      return refuseField(res, 400, 'name', 'Tag name is required');
     }
 
     const trimmedName = name.trim();
@@ -113,7 +114,7 @@ router.post('/', requireManagement, (req, res) => {
     // Symbol/emoji-only names strip down to an empty internal key, which would
     // collide with any other empty-key tag and never match a job line. Reject up front.
     if (!value) {
-      return res.status(400).json({ error: 'Tag name must include at least one letter or number' });
+      return refuseField(res, 400, 'name', 'Tag name must include at least one letter or number');
     }
 
     // Check if tag already exists in this category. Creating is idempotent: the same
@@ -124,7 +125,7 @@ router.post('/', requireManagement, (req, res) => {
     // below). A different name that only shares the code is refused.
     const existing = tagQueries.getByValue.get(category, value);
     if (existing && !sameName(existing.name, trimmedName)) {
-      return res.status(400).json({ error: codeClashMessage(trimmedName, existing) });
+      return refuseField(res, 400, 'name', codeClashMessage(trimmedName, existing));
     }
     if (existing) {
       if (existing.archived) {
@@ -171,7 +172,7 @@ router.put('/:id', requireManagement, (req, res) => {
     if (!existing) return;
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Tag name is required' });
+      return refuseField(res, 400, 'name', 'Tag name is required');
     }
 
     const trimmedName = name.trim();
@@ -180,7 +181,7 @@ router.put('/:id', requireManagement, (req, res) => {
     // Symbol/emoji-only names strip down to an empty internal key, which would
     // collide with any other empty-key tag and never match a job line. Reject up front.
     if (!value) {
-      return res.status(400).json({ error: 'Tag name must include at least one letter or number' });
+      return refuseField(res, 400, 'name', 'Tag name must include at least one letter or number');
     }
 
     // Check for duplicate value in same category (different id). getByValue
@@ -190,14 +191,13 @@ router.put('/:id', requireManagement, (req, res) => {
     const duplicate = tagQueries.getByValue.get(existing.category, value);
     if (duplicate && duplicate.id !== id) {
       if (!sameName(duplicate.name, trimmedName)) {
-        return res.status(400).json({ error: codeClashMessage(trimmedName, duplicate) });
+        return refuseField(res, 400, 'name', codeClashMessage(trimmedName, duplicate));
       }
       if (duplicate.archived) {
-        return res.status(400).json({
-          error: `A retired option named "${duplicate.name}" already uses this name. Turn on "Show archived" and restore it instead of renaming.`
-        });
+        return refuseField(res, 400, 'name',
+          `A retired option named "${duplicate.name}" already uses this name. Turn on "Show archived" and restore it instead of renaming.`);
       }
-      return res.status(400).json({ error: `Another option, "${duplicate.name}", already has this name in this category` });
+      return refuseField(res, 400, 'name', `Another option, "${duplicate.name}", already has this name in this category`);
     }
 
     // Jobs reference an option by its value, which is derived from the name.
@@ -209,9 +209,8 @@ router.put('/:id', requireManagement, (req, res) => {
       const usageQuery = USAGE_COUNT_BY_CATEGORY[existing.category];
       const usage = usageQuery ? usageQuery.get(existing.value) : { count: 0 };
       if (usage.count > 0) {
-        return res.status(400).json({
-          error: `Cannot rename: ${usage.count} job part(s) still use the "${existing.name}" option`
-        });
+        return refuseField(res, 400, 'name',
+          `Cannot rename: ${usage.count} job part(s) still use the "${existing.name}" option`);
       }
     }
 

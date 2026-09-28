@@ -3,6 +3,7 @@ import { ChevronDown, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../../../services/api';
 import { isActiveRecord } from '../../../../../server/src/shared/records';
+import { sameName, nameMatchKey } from '../../../../../server/src/shared/names';
 import { useComboboxNav } from '../useComboboxNav';
 
 // Search/select control for one line item's supplier. By default it lists only the
@@ -43,12 +44,17 @@ export default function LineItemSupplierPicker({
   // Empty box shows the treatment's providers; typing searches all suppliers.
   const matches = useMemo(() => {
     if (!typed) return providers;
-    const q = typed.toLowerCase();
-    return activeSuppliers.filter(s => (s.name || '').toLowerCase().includes(q));
+    // Same name rule as below, so "acme  coatings" still finds "Acme Coatings".
+    const q = nameMatchKey(typed);
+    return activeSuppliers.filter(s => nameMatchKey(s.name).includes(q));
   }, [typed, providers, activeSuppliers]);
 
-  const exactMatch = activeSuppliers.some(s => (s.name || '').toLowerCase() === typed.toLowerCase());
-  const canCreate = typed.length > 0 && !exactMatch;
+  // A typed name already taken — by any supplier, archived ones included — under
+  // the same name rule the server refuses a duplicate with (capitals and spacing
+  // ignored), so "Create …" is never offered for a name the save would refuse.
+  const nameTakenBy = typed ? suppliers.find(s => sameName(s.name, typed)) || null : null;
+  const archivedMatch = nameTakenBy && !isActiveRecord(nameTakenBy) ? nameTakenBy : null;
+  const canCreate = typed.length > 0 && !nameTakenBy;
 
   // Attach a treatment onto a supplier that doesn't already list it, so future
   // filtering surfaces them. Fire-and-forget; the selection still stands if it fails.
@@ -127,48 +133,56 @@ export default function LineItemSupplierPicker({
   };
 
   return (
-    <div className="autocomplete-container">
-      <input
-        id={id}
-        type="text"
-        value={inputValue}
-        onChange={(e) => { setQuery(e.target.value); setFocused(true); }}
-        onFocus={() => { setFocused(true); setQuery(''); }}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        role="combobox"
-        aria-expanded={showDropdown}
-        aria-controls={listId}
-        aria-autocomplete="list"
-        aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
-        autoComplete="off"
-        placeholder={required ? 'Choose or add a supplier…' : 'No supplier'}
-        className={selectedRetired ? 'has-retired' : ''}
-      />
-      <ChevronDown size={14} className={`autocomplete-caret${focused ? ' is-open' : ''}`} />
-      {showDropdown && (
-        <div className="customer-dropdown" id={listId} role="listbox" aria-label="Matching suppliers">
-          {options.map((opt, i) => (
-            <div
-              key={opt.key}
-              id={`${listId}-${i}`}
-              role="option"
-              aria-selected={i === activeIndex}
-              className={`customer-option${i === activeIndex ? ' is-active' : ''}`}
-              onMouseEnter={() => setActiveIndex(i)}
-              onMouseDown={() => choose(i)}
-            >
-              {opt.kind === 'supplier' && <strong>{opt.supplier.name}</strong>}
-              {opt.kind === 'none' && <em>No supplier</em>}
-              {opt.kind === 'create' && (
-                <span className="customer-option-create">
-                  <Plus size={14} /> Create &ldquo;{typed}&rdquo; as a new supplier
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
+    <>
+      <div className="autocomplete-container">
+        <input
+          id={id}
+          type="text"
+          value={inputValue}
+          onChange={(e) => { setQuery(e.target.value); setFocused(true); }}
+          onFocus={() => { setFocused(true); setQuery(''); }}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          role="combobox"
+          aria-expanded={showDropdown}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
+          autoComplete="off"
+          placeholder={required ? 'Choose or add a supplier…' : 'No supplier'}
+          className={selectedRetired ? 'has-retired' : ''}
+        />
+        <ChevronDown size={14} className={`autocomplete-caret${focused ? ' is-open' : ''}`} />
+        {showDropdown && (
+          <div className="customer-dropdown" id={listId} role="listbox" aria-label="Matching suppliers">
+            {options.map((opt, i) => (
+              <div
+                key={opt.key}
+                id={`${listId}-${i}`}
+                role="option"
+                aria-selected={i === activeIndex}
+                className={`customer-option${i === activeIndex ? ' is-active' : ''}`}
+                onMouseEnter={() => setActiveIndex(i)}
+                onMouseDown={() => choose(i)}
+              >
+                {opt.kind === 'supplier' && <strong>{opt.supplier.name}</strong>}
+                {opt.kind === 'none' && <em>No supplier</em>}
+                {opt.kind === 'create' && (
+                  <span className="customer-option-create">
+                    <Plus size={14} /> Create &ldquo;{typed}&rdquo; as a new supplier
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Outside the box's own wrapper, so the caret and the list stay placed on the box. */}
+      {focused && archivedMatch && (
+        <p className="field-hint" role="status">
+          &ldquo;{archivedMatch.name}&rdquo; is an archived supplier. Restore it on the Suppliers page to use it here.
+        </p>
       )}
-    </div>
+    </>
   );
 }

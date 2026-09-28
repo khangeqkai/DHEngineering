@@ -25,8 +25,17 @@ function nameConflictOr409(res, existingRow, currentId, { entityLabel, nameLabel
   const message = isArchived(existingRow)
     ? `A ${entityLabel} with this ${nameLabel} already exists in the archive. Restore it from the archived list instead.`
     : `A ${entityLabel} with this ${nameLabel} already exists`;
-  res.status(409).json({ error: message, fields: [{ field, message }] });
+  refuseField(res, 409, field, message);
   return true;
+}
+
+// The one shape for any refusal about a single box (a name clash, a blank or
+// symbol-only name, a machine number already in use): the message, plus `fields`
+// naming the box — the same shape the validation step sends — so the screen marks
+// that box instead of popping the message up. Every such refusal goes through
+// here, so a route can't send the message and forget which box it belongs to.
+function refuseField(res, status, field, message) {
+  return res.status(status).json({ error: message, fields: [{ field, message }] });
 }
 
 // The first row in `rows` (other than `currentId`, the record being edited) whose
@@ -37,4 +46,4 @@ function findNameClash(rows, name, currentId) {
   return rows.find(r => r.id !== currentId && sameName(r.name, name)) || null;
 }
 
-module.exports = { nameConflictOr409, findNameClash };
+module.exports = { nameConflictOr409, findNameClash, refuseField };

@@ -81,10 +81,17 @@ router.post('/', requireManagement, validateCreateCompany, (req, res) => {
 router.put('/:id', requireManagement, validateUpdateCompany, (req, res) => {
   try {
     const { id } = req.params;
-    const { name, address, notes } = req.body;
 
     const existing = findOr404(res, companyQueries.getById.get(id), 'Company not found');
     if (!existing) return;
+
+    // A field left out of the request keeps the stored value; only a sent one
+    // (blank included, except the name) replaces it. The Customers form sends only
+    // what the person changed, so an edit made elsewhere while it was open isn't
+    // put back from the form's older copy.
+    const name = req.body.name === undefined ? existing.name : req.body.name;
+    const address = req.body.address === undefined ? existing.address : req.body.address;
+    const notes = req.body.notes === undefined ? existing.notes : req.body.notes;
 
     // Only checked when the name really changes: an older database may hold two
     // customers whose names differ only in spacing, and editing either one's

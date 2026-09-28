@@ -15,10 +15,25 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useManagedListPage } from '../hooks/useManagedListPage';
 import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
 import FieldError from './common/FieldError';
+import { useLatestCallback } from '../hooks/useLatestCallback';
+import { changedFields } from '../utils/changedFields';
 import './SupplierManagement.css';
 
 // Which box on the form each field named in a server refusal belongs to.
 const SUPPLIER_FORM_BOXES = { name: 'name', contactEmail: 'contactEmail', contactPhone: 'contactPhone' };
+// The "+ Other" new-service box: an option refusal (a name clash, say) names 'name'.
+const CUSTOM_SERVICE_BOXES = { name: 'customTagName' };
+
+// The contact details as the form opens on a supplier — also what an edit is
+// judged against, so only the boxes the person actually changed are sent.
+const detailsFromSupplier = (supplier) => ({
+  name: supplier.name || '',
+  contactName: supplier.contactName || '',
+  contactPhone: supplier.contactPhone || '',
+  contactEmail: supplier.contactEmail || '',
+  address: supplier.address || '',
+  notes: supplier.notes || ''
+});
 
 export default function SupplierManagement() {
   const [suppliers, setSuppliers] = useState([]);
@@ -43,11 +58,11 @@ export default function SupplierManagement() {
     serviceTagIds: []
   });
   const [saving, setSaving] = useState(false);
-  const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
-    (name) => formData[name]
-  );
   const [showCustomTagInput, setShowCustomTagInput] = useState(false);
   const [customTagName, setCustomTagName] = useState('');
+  const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
+    (name) => (name === 'customTagName' ? customTagName : formData[name])
+  );
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   // What the table is actually showing right now (after its own search box has
   // filtered it) — kept separate so "Export Current View" sends exactly those
@@ -75,6 +90,9 @@ export default function SupplierManagement() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+  // After a save: reload with "Show archived" as it is now, not as it was when
+  // the button was pressed.
+  const reloadData = useLatestCallback(loadData);
 
   // Refresh just the service options. Called when opening the supplier form so a
   // treatment that was archived/restored elsewhere shows up without a page reload.
@@ -101,14 +119,15 @@ export default function SupplierManagement() {
     }
     setSaving(true);
 
+    // An edit sends only the details changed since the form opened: the rest is a
+    // copy from when it opened, and sending it back would undo a phone number or
+    // email someone else changed in the meantime.
+    const { serviceTagIds, ...fields } = formData;
+    const tidied = editingSupplier ? changedFields(fields, detailsFromSupplier(editingSupplier)) : fields;
     // Each name box only tidies itself on blur — Enter from inside the box submits
     // without that blur, so the same tidy-up is applied here before anything goes out.
-    const { serviceTagIds, ...fields } = formData;
-    const tidied = {
-      ...fields,
-      name: toTitleCase(fields.name),
-      contactName: toTitleCase(fields.contactName)
-    };
+    if ('name' in tidied) tidied.name = toTitleCase(tidied.name);
+    if ('contactName' in tidied) tidied.contactName = toTitleCase(tidied.contactName);
 
     try {
       if (editingSupplier) {
@@ -125,7 +144,7 @@ export default function SupplierManagement() {
         await api.createSupplier({ ...tidied, serviceTagIds });
         toast.success('Supplier updated');
       }
-      await loadData();
+      await reloadData();
       bumpActivity();
       resetForm();
     } catch (err) {
@@ -149,12 +168,7 @@ export default function SupplierManagement() {
     setEditingSupplier(supplier);
     resetFieldErrors();
     setFormData({
-      name: supplier.name || '',
-      contactName: supplier.contactName || '',
-      contactPhone: supplier.contactPhone || '',
-      contactEmail: supplier.contactEmail || '',
-      address: supplier.address || '',
-      notes: supplier.notes || '',
+      ...detailsFromSupplier(supplier),
       serviceTagIds: (supplier.serviceTags || []).map(t => t.id)
     });
     setShowForm(true);
@@ -174,7 +188,7 @@ export default function SupplierManagement() {
       try {
         await api.deactivateSupplier(supplier.id);
         toast.success('Supplier archived');
-        await loadData();
+        await reloadData();
         bumpActivity();
       } catch (err) {
         toast.error(err.message || 'Failed to archive supplier');
@@ -188,7 +202,7 @@ export default function SupplierManagement() {
       try {
         await api.activateSupplier(supplier.id);
         toast.success('Supplier restored');
-        await loadData();
+        await reloadData();
         bumpActivity();
       } catch (err) {
         toast.error(err.message || 'Failed to restore supplier');
@@ -223,7 +237,8 @@ export default function SupplierManagement() {
       setShowCustomTagInput(false);
       toast.success('Service updated');
     } catch (err) {
-      toast.error(err.message || 'Failed to create tag');
+      // A refusal about the name (a clash with another option, say) marks the box.
+      showSaveRefusal(err, { boxFor: CUSTOM_SERVICE_BOXES, setFieldErrors, fallback: 'Failed to create tag' });
     }
   };
 
@@ -432,42 +447,50 @@ export default function SupplierManagement() {
                     + Other
                   </button>
                 ) : (
-                  <div className="custom-tag-input">
-                    <input
-                      type="text"
-                      value={customTagName}
-                      onChange={(e) => setCustomTagName(e.target.value)}
-                      onBlur={(e) => {
-                        const formatted = toTitleCase(e.target.value);
-                        if (formatted !== e.target.value) {
-                          setCustomTagName(formatted);
-                        }
-                      }}
-                      placeholder="New service name..."
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddCustomTag();
-                        } else if (e.key === 'Escape') {
+                  <div className={`custom-tag-field${errorFor('customTagName') ? ' field-error' : ''}`}>
+                    <div className="custom-tag-input">
+                      <input
+                        type="text"
+                        {...fieldProps('customTagName')}
+                        aria-label="New service name"
+                        value={customTagName}
+                        onChange={(e) => setCustomTagName(e.target.value)}
+                        onBlur={(e) => {
+                          const formatted = toTitleCase(e.target.value);
+                          if (formatted !== e.target.value) {
+                            setCustomTagName(formatted);
+                          }
+                        }}
+                        placeholder="New service name..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCustomTag();
+                          } else if (e.key === 'Escape') {
+                            // Handled here: only the small box closes, not the
+                            // whole supplier window (it skips a handled Escape).
+                            e.preventDefault();
+                            setShowCustomTagInput(false);
+                            setCustomTagName('');
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <button type="button" className="btn btn-sm btn-primary" onClick={handleAddCustomTag}>
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => {
                           setShowCustomTagInput(false);
                           setCustomTagName('');
-                        }
-                      }}
-                      autoFocus
-                    />
-                    <button type="button" className="btn btn-sm btn-primary" onClick={handleAddCustomTag}>
-                      Add
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-secondary"
-                      onClick={() => {
-                        setShowCustomTagInput(false);
-                        setCustomTagName('');
-                      }}
-                    >
-                      Cancel
-                    </button>
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <FieldError {...errorProps('customTagName')} message={errorFor('customTagName')} />
                   </div>
                 )}
               </div>
