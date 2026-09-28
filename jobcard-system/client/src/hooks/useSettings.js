@@ -20,6 +20,12 @@ const SETTINGS_BOXES = {
   homeAddress: 'homeAddress'
 };
 
+// Change PIN's server refusals, by the name they carry → the box they mark.
+const PIN_BOXES = {
+  currentPassword: 'currentPin',
+  newPassword: 'newPin'
+};
+
 export function useSettings() {
   const { user, refreshInactivityTimeout } = useAuth();
   // Managers see the management settings cards; the job-folders path, backups
@@ -72,6 +78,7 @@ export function useSettings() {
   // The Change PIN form keeps its own marks, so opening or resetting it clears
   // only its boxes and never the marks on the page's other cards.
   const pinFieldErrors = useFieldErrors((name) => {
+    if (name === 'currentPin') return currentPassword;
     if (name === 'newPin') return newPassword;
     if (name === 'confirmPin') return confirmPassword;
     return undefined;
@@ -270,10 +277,10 @@ export function useSettings() {
     setSavingPassword(true);
     try {
       await api.changePassword(currentPassword, newPassword);
-      toast.success('Password updated');
+      toast.success('PIN updated');
       resetPasswordForm();
     } catch (err) {
-      toast.error(err.message || 'Failed to change password');
+      showSaveRefusal(err, { boxFor: PIN_BOXES, setFieldErrors: setPinFieldErrors, fallback: 'Failed to change PIN' });
     } finally {
       setSavingPassword(false);
     }

@@ -295,11 +295,11 @@ export default function Settings() {
         size="small"
       >
         <BottomSheet.Body>
-          <form id="change-password-form" onSubmit={s.handleChangePassword}>
-            <div className="form-group">
+          <form id="change-password-form" onSubmit={s.handleChangePassword} noValidate>
+            <div className={s.pinFieldErrors.groupClass('currentPin')}>
               <label className="form-label" htmlFor="currentPin">Current PIN</label>
               <input
-                id="currentPin"
+                {...s.pinFieldErrors.fieldProps('currentPin')}
                 type="password"
                 inputMode="numeric"
                 maxLength={4}
@@ -309,6 +309,7 @@ export default function Settings() {
                 placeholder="Enter current 4-digit PIN"
                 required
               />
+              <FieldError {...s.pinFieldErrors.errorProps('currentPin')} message={s.pinFieldErrors.errorFor('currentPin')} />
             </div>
             <div className={s.pinFieldErrors.groupClass('newPin')}>
               <label className="form-label" htmlFor="newPin">New PIN</label>

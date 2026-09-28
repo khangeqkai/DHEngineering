@@ -34,6 +34,19 @@ function PrivateRoute({ children }) {
   return user ? children : <Navigate to="/login" replace />;
 }
 
+// The sign-in page is only for someone who isn't signed in. Reaching it with a
+// live session (Back, a typed address) goes straight to the app instead, so the
+// sign-in form never sits over a session whose inactivity timer isn't running.
+function SignedOutRoute({ children }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div className="loading">Loading...</div>;
+  }
+
+  return user ? <Navigate to="/" replace /> : children;
+}
+
 // Gated on a named permission rather than the admin role itself, so each route
 // carries the reason it's locked down (pricing, the activity trail, ...) instead
 // of a bare "admin only" that can't tell the two apart.
@@ -117,7 +130,7 @@ function App() {
       </Toaster>
       <Suspense fallback={<div className="loading"><Spinner size={24} /></div>}>
         <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<SignedOutRoute><Login /></SignedOutRoute>} />
         <Route
           path="/"
           element={

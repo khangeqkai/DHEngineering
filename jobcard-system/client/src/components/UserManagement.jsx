@@ -109,7 +109,7 @@ export default function UserManagement() {
         return;
       }
     } else if (!editingUser) {
-      setFieldErrors({ password: 'Password is required' });
+      setFieldErrors({ password: 'PIN is required' });
       scrollFieldIntoView('password');
       return;
     }

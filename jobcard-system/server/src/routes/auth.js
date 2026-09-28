@@ -8,7 +8,7 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, can, ALL_ROLES } = require('../middleware/auth');
 const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences, PIN_REGEX, PIN_MESSAGE } = require('../middleware/validation');
-const { db, userQueries, jobNoteQueries, recordHistory, actorName, getSettings } = require('../db/database');
+const { db, userQueries, jobNoteQueries, timeEntryQueries, recordHistory, actorName, getSettings } = require('../db/database');
 const { diffFields } = require('../utils/historyChanges');
 const { isViaTunnel, clientIp } = require('../utils/homeAccess');
 const { setArchived } = require('../utils/archiveToggle');
@@ -301,7 +301,8 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
     recordHistory('user', userId, 'create', req.user.userId, actorName(req), {
       username: { from: null, to: username },
       role: { from: null, to: role || 'user' },
-      name: { from: null, to: name }
+      name: { from: null, to: name },
+      ...(email ? { email: { from: null, to: email } } : {})
     });
 
     res.status(201).json({
@@ -448,10 +449,22 @@ router.post('/users/:id/deactivate', authenticate, requireManagement, (req, res)
     load: () => userQueries.getById.get(id),
     notFound: 'User not found',
     isArchived: (row) => !row.active,
-    // Admin accounts can only be archived by another admin.
-    refuse: (row) => (row.role === 'admin' && !can(req.user.role, 'adminAccounts')
-      ? { status: 403, error: 'Only admins can archive admin accounts' }
-      : null),
+    // Admin accounts can only be archived by another admin. A running timer
+    // refuses too, like invoicing does: timers outlive sign-out, so an archived
+    // worker's block would keep counting labour with nobody told it was there.
+    refuse: (row) => {
+      if (row.role === 'admin' && !can(req.user.role, 'adminAccounts')) {
+        return { status: 403, error: 'Only admins can archive admin accounts' };
+      }
+      const running = timeEntryQueries.getActiveByUser.get(row.id);
+      if (running) {
+        const where = running.item_number
+          ? `job ${running.job_number}, part ${running.item_number}`
+          : `job ${running.job_number}`;
+        return { status: 409, error: `This person has a timer running on ${where}. Stop it before archiving.` };
+      }
+      return null;
+    },
     archive: true,
     write: (row) => {
       userQueries.deactivate.run(row.id);
@@ -489,12 +502,17 @@ router.put('/change-password', authenticate, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
+    // Each refusal names the box it belongs to, so the Change PIN form marks
+    // that box instead of popping up a message.
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Current password and new password are required' });
+      const fields = [];
+      if (!currentPassword) fields.push({ field: 'currentPassword', message: 'Enter your current PIN' });
+      if (!newPassword) fields.push({ field: 'newPassword', message: 'Enter a new PIN' });
+      return res.status(400).json({ error: 'Your current PIN and a new PIN are both needed', fields });
     }
 
     if (!PIN_REGEX.test(newPassword)) {
-      return res.status(400).json({ error: PIN_MESSAGE });
+      return res.status(400).json({ error: PIN_MESSAGE, fields: [{ field: 'newPassword', message: PIN_MESSAGE }] });
     }
 
     const user = findOr404(res, userQueries.getById.get(req.user.userId), 'User not found');
@@ -519,7 +537,8 @@ router.put('/change-password', authenticate, async (req, res) => {
       recordHistory('user', pinKey, 'pin_change_failed', pinKey, actorName(req), {
         reason: { from: null, to: 'invalid_current_password' }
       }, { username: user.username, name: user.name });
-      return res.status(401).json({ error: 'Current password is incorrect' });
+      const message = 'Your current PIN is not right';
+      return res.status(401).json({ error: message, fields: [{ field: 'currentPassword', message }] });
     }
     changePinAttempts.forgive(pinKey, pinKey);
 
@@ -545,10 +564,10 @@ router.put('/change-password', authenticate, async (req, res) => {
       password: { from: '(hidden)', to: '(changed)' }
     }, { username: user.username, name: user.name });
 
-    res.json({ success: true, message: 'Password changed successfully', token });
+    res.json({ success: true, message: 'PIN changed', token });
   } catch (err) {
     logger.error({ err }, 'Change password error');
-    res.status(500).json({ error: 'Failed to change password' });
+    res.status(500).json({ error: 'Failed to change PIN' });
   }
 });
 

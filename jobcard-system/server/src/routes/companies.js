@@ -67,7 +67,9 @@ router.post('/', requireManagement, validateCreateCompany, (req, res) => {
 
     const company = companyQueries.getById.get(id);
     recordHistory('company', id, 'create', req.user.userId, actorName(req), {
-      name: { from: null, to: company.name }
+      name: { from: null, to: company.name },
+      ...(company.address ? { address: { from: null, to: company.address } } : {}),
+      ...(company.notes ? { notes: { from: null, to: company.notes } } : {})
     });
 
     res.status(201).json(toApiFormat(company));

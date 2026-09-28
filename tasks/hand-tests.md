@@ -93,3 +93,10 @@ Nothing here has an automatic test, so click through these once on a real PC. Ea
 62. Open an Excel export in Excel, export again over the same file → a plain "file is open" message.
 63. Upload a file whose name was changed on saving (a duplicate) → the activity shows the name it was kept under.
 64. Export job cards to Excel → the Type column no longer shows "JOB_CARD" on every row.
+
+**Added by the fifth hunt (rounds 19–21)**
+65. Web mode: sign in, land on the job list, press the browser's Back → you stay in the app (no sign-in form); typing the sign-in address while signed in also lands in the app.
+66. Start a worker's timer, then as a manager archive that worker → refused with a message naming the job and part; stop the timer → archiving now works.
+67. Settings → Change PIN with a wrong current PIN → the Current PIN box is marked "Your current PIN is not right", no pop-up; a right one says "PIN updated".
+68. Users → add a user with no PIN → the PIN box says "PIN is required".
+69. Add a user with an email, a customer with an address, a person with a phone, a supplier with services → each one's Activity entry lists those details.

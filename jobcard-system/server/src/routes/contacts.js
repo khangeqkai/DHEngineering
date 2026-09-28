@@ -49,7 +49,9 @@ router.post('/', requireManagement, validateCreateContact, (req, res) => {
     const contact = contactQueries.getById.get(id);
     recordHistory('contact', id, 'create', req.user.userId, actorName(req), {
       contactName: { from: null, to: contact.contact_name },
-      companyName: { from: null, to: company.name }
+      companyName: { from: null, to: company.name },
+      ...(contact.phone ? { phone: { from: null, to: contact.phone } } : {}),
+      ...(contact.email ? { email: { from: null, to: contact.email } } : {})
     });
 
     res.status(201).json(toApiFormat(contact));

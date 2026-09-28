@@ -79,7 +79,9 @@ export default function Login() {
 
     try {
       await login(username, password, viaTunnel ? homeAccessCode : undefined);
-      navigate('/');
+      // Replace, not push: Back from the job list must never land on the
+      // sign-in form while the session is still live.
+      navigate('/', { replace: true });
     } catch (err) {
       const message = err.message || 'Login failed';
       if (err.code === 'SERVER_UNREACHABLE') {
