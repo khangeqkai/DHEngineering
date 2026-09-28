@@ -149,7 +149,7 @@ router.post('/', requireManagement, validateCreateSupplier, (req, res) => {
     const serviceNames = supplier.serviceTags.map(t => t.name).sort().join(', ');
     recordHistory('supplier', id, 'create', req.user.userId, actorName(req), {
       name: { from: null, to: supplier.name },
-      contactName: { from: null, to: supplier.contactName },
+      ...(supplier.contactName ? { contactName: { from: null, to: supplier.contactName } } : {}),
       ...(contactPhone ? { contactPhone: { from: null, to: contactPhone } } : {}),
       ...(contactEmail ? { contactEmail: { from: null, to: contactEmail } } : {}),
       ...(supplier.address ? { address: { from: null, to: supplier.address } } : {}),

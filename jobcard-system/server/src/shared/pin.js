@@ -5,7 +5,7 @@
 // this instead of each carrying their own regex and wording.
 
 const PIN_REGEX = /^\d{4}$/;
-const PIN_MESSAGE = 'Password must be exactly 4 digits';
+const PIN_MESSAGE = 'PIN must be exactly 4 digits';
 
 function isValidPin(value) {
   return typeof value === 'string' && PIN_REGEX.test(value);

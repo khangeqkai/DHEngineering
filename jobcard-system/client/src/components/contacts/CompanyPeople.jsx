@@ -61,8 +61,17 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
     if (formatted !== e.target.value) setForm(prev => ({ ...prev, contactName: formatted }));
   };
 
+  // Escape closes only this small person box, like its Cancel button — marking the
+  // key handled so the customer window around it (which skips a handled Escape)
+  // stays open with everything typed in it.
+  const handleEditorKeyDown = (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    e.preventDefault();
+    cancel();
+  };
+
   const editor = (
-    <form className="company-person-form" onSubmit={submit} noValidate>
+    <form className="company-person-form" onSubmit={submit} onKeyDown={handleEditorKeyDown} noValidate>
       <div className="form-row">
         <div className={groupClass('companyPersonName')}>
           <label htmlFor="companyPersonName">Name</label>

@@ -150,18 +150,16 @@ const timeEntryQueries = {
     WHERE jobcard_id IN (SELECT value FROM json_each(?)) AND end_time IS NOT NULL
   `),
 
-  // Every distinct machine-number string logged from a given moment on.
-  // machine_number is free text that can hold several machines at once (e.g.
-  // "01, 02"), so it can't be exactly matched or safely rewritten token-by-token
-  // for every format in the wild — used to check whether a machine being
-  // renumbered has any logged work before refusing the renumber outright (see
-  // machines.js). The moment is the machine's creation: an archived machine's
-  // number can be reused, so work logged before this machine existed belongs to
-  // the retired one. Both columns are UTC ISO-8601, so they compare as text.
-  getDistinctMachineNumbersSince: db.prepare(`
+  // Every distinct machine-number string ever logged. machine_number is free
+  // text that can hold several machines at once (e.g. "01, 02"), so it can't be
+  // exactly matched or safely rewritten token-by-token for every format in the
+  // wild — used to check whether a machine being renumbered has any logged work
+  // before refusing the renumber outright (see machines.js). No date cut-off:
+  // machine numbers are never reused in this workshop, and a run's start time
+  // says nothing about which machine it names (picked at stop, or backdated).
+  getDistinctMachineNumbers: db.prepare(`
     SELECT DISTINCT machine_number FROM time_entries
     WHERE machine_number IS NOT NULL AND machine_number != ''
-      AND start_time >= ?
   `)
 };
 

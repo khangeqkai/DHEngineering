@@ -218,7 +218,7 @@ const validateCreateUser = [
     .isLength({ max: USERNAME_MAX_LENGTH }).withMessage(`Username cannot exceed ${USERNAME_MAX_LENGTH} characters`),
   body('password')
     .exists({ checkFalsy: true })
-    .withMessage('Password is required')
+    .withMessage('PIN is required')
     .isString()
     .matches(PIN_REGEX)
     .withMessage(PIN_MESSAGE),

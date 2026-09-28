@@ -217,7 +217,9 @@ export default function Statistics() {
           <div className={`stats-tab-panel ${activeTab === 'overview' ? 'tab-active' : 'tab-hidden'}`}>
             <TrendsTab
               periodTrends={data?.periodTrends || []}
-              groupBy={groupBy}
+              // The grouping the shown rows were built with, not the dropdown's:
+              // a refused load keeps the earlier rows, which must keep their title.
+              groupBy={data?.range?.groupBy}
               loading={loading}
             />
           </div>

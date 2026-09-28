@@ -61,7 +61,7 @@ router.post('/', requireManagement, validateCreateMachine, (req, res) => {
     const created = toResponseFormat(machine);
     recordHistory('machine', id, 'create', req.user.userId, actorName(req), {
       machineNumber: { from: null, to: created.machineNumber },
-      name: { from: null, to: created.name },
+      ...(created.name ? { name: { from: null, to: created.name } } : {}),
       ...(created.description ? { description: { from: null, to: created.description } } : {})
     }, created);
 
@@ -104,10 +104,11 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
       // can't be exactly matched, or safely rewritten token-by-token, for every
       // format logged over the years — so a renumber is refused outright once any
       // logged work references the old number, rather than risking a rewrite that
-      // silently misses or mangles an entry. Only work logged since this machine
-      // was added counts: a reused number's older work is a retired machine's.
+      // silently misses or mangles an entry. Any work naming the old number counts,
+      // whenever it started: numbers are never reused here, and a run can start
+      // before the machine was added (it is picked at stop, or backdated).
       const oldKey = String(existing.machine_number).trim().toLowerCase();
-      const loggedAgainstOldNumber = timeEntryQueries.getDistinctMachineNumbersSince.all(existing.created_at || '')
+      const loggedAgainstOldNumber = timeEntryQueries.getDistinctMachineNumbers.all()
         .some((row) => splitMachineCodes(row.machine_number).some((tok) => tok.toLowerCase() === oldKey));
       if (loggedAgainstOldNumber) {
         return refuseField(res, 400, 'machineNumber',

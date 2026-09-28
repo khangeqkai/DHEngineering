@@ -153,15 +153,21 @@ function getJobFinishDate(job, maxTimeEntryEnd, fmt) {
   // The finish day is when the shop actually finished the work — the end of the
   // last logged time block — not when the office got around to invoicing it.
   // Using the invoice date flipped an on-time job to late the moment it was
-  // invoiced days or weeks after the work was done. Fall back to the
-  // invoice/done date only when a job has no logged work to date from at all.
+  // invoiced days or weeks after the work was done. A job with no logged work
+  // is dated by the last time it moved from an unfinished status into a finished
+  // one (settled_history_at) — a later Done → Cust. Notified → Invoiced step is
+  // not a finish, so invoicing never moves the day — then by the invoice date,
+  // and by its last edit only when neither is on record. fetchStatsJobs's
+  // pre-filter repeats this order and must change with it.
   let raw = null;
   if (maxTimeEntryEnd) {
     raw = maxTimeEntryEnd;
+  } else if (job.settled_history_at) {
+    raw = job.settled_history_at;
   } else if (job.invoiced_date) {
     raw = job.invoiced_date;
-  } else if (job.status === 'DONE' || job.status === 'CUST_NOTIFIED') {
-    raw = job.done_history_at || job.updated_at;
+  } else if (FINISHED_STATUSES.includes(job.status)) {
+    raw = job.updated_at;
   }
   if (!raw) return null;
   if (fmt) {
@@ -234,8 +240,8 @@ function measureTimeEntry(te) {
 //   (b) created inside the (buffered) range — feeds totalJobsCreated, the QA/priority
 //       distributions, repeat-job count, and the "jobsCreated" trend/customer buckets;
 //   (c) possibly finished inside the (buffered) range — a job's finish date is
-//       COALESCE(last logged time-entry end, invoiced_date, the DONE history
-//       timestamp, updated_at), the exact same fallback order getJobFinishDate uses
+//       COALESCE(last logged time-entry end, the last move into a finished
+//       status, invoiced_date, updated_at), the exact same fallback order getJobFinishDate uses
 //       (see getJobFinishDate above) — feeds completedJobsCount, on-time/late, and the
 //       "jobsCompleted"/customer buckets.
 // The WHERE below is a strict superset of that (2-day buffer either side, and the
@@ -244,30 +250,35 @@ function measureTimeEntry(te) {
 // count for which figure — no figure can change, only the row count fetched shrinks.
 // For the "all" preset (both null) no bound is applied at all, matching today exactly.
 function fetchStatsJobs(startDate, endDate, bufferedStartIso, bufferedEndIso) {
+  const settledPlaceholders = FINISHED_STATUSES.map(() => '?').join(', ');
   let jobsSql = `
     WITH job_calc AS (
       SELECT
         j.*,
         c.name AS resolved_company_name,
         (SELECT MAX(te.end_time) FROM time_entries te WHERE te.jobcard_id = j.id AND te.end_time IS NOT NULL) AS max_entry_end,
-        (SELECT MAX(h.created_at) FROM history h WHERE h.entity_type = 'jobcard' AND h.entity_id = j.id AND (h.changes LIKE '%"to":"DONE"%' OR h.changes LIKE '%"to": "DONE"%')) AS done_history_at
+        (SELECT MAX(h.created_at) FROM history h
+          WHERE h.entity_type = 'jobcard' AND h.entity_id = j.id
+            AND json_extract(CASE WHEN json_valid(h.changes) THEN h.changes END, '$.status.to') IN (${settledPlaceholders})
+            AND (json_extract(CASE WHEN json_valid(h.changes) THEN h.changes END, '$.status.from') IS NULL
+              OR json_extract(CASE WHEN json_valid(h.changes) THEN h.changes END, '$.status.from') NOT IN (${settledPlaceholders}))
+        ) AS settled_history_at
       FROM jobcards j
       LEFT JOIN companies c ON j.company_id = c.id
     )
     SELECT * FROM job_calc
   `;
-  const jobsParams = [];
+  const jobsParams = [...FINISHED_STATUSES, ...FINISHED_STATUSES];
   if (startDate || endDate) {
-    const finishedPlaceholders = FINISHED_STATUSES.map(() => '?').join(', ');
     const createdCond = [];
     if (bufferedStartIso) { createdCond.push('created_at >= ?'); }
     if (bufferedEndIso) { createdCond.push('created_at <= ?'); }
-    const finishExpr = 'COALESCE(max_entry_end, invoiced_date, done_history_at, updated_at)';
+    const finishExpr = 'COALESCE(max_entry_end, settled_history_at, invoiced_date, updated_at)';
     const finishCond = [];
     if (bufferedStartIso) { finishCond.push(`${finishExpr} >= ?`); }
     if (bufferedEndIso) { finishCond.push(`${finishExpr} <= ?`); }
     jobsSql += `
-      WHERE (archived = 0 AND status NOT IN (${finishedPlaceholders}))
+      WHERE (archived = 0 AND status NOT IN (${settledPlaceholders}))
          OR (${createdCond.join(' AND ')})
          OR (${finishCond.join(' AND ')})
     `;
