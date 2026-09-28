@@ -11,19 +11,14 @@ function parseQty(v) {
 }
 
 function computeProgress(entries, targetQty) {
-  // Cumulative-after-each-session, walking oldest → newest among completed entries.
+  // Totals across every completed session.
   const completed = entries.filter(e => e.endTime);
-  const oldestFirst = [...completed].sort(
-    (a, b) => new Date(a.startTime) - new Date(b.startTime)
-  );
-  const cumulativeMap = new Map();
   let running = 0;
   let scrapTotal = 0;
-  for (const e of oldestFirst) {
+  for (const e of completed) {
     running += parseQty(e.qty);
     // Total scrap for the line = pieces binned + pieces recycled, across every session.
     scrapTotal += parseQty(e.scrapBinQty) + parseQty(e.scrapRecycleQty);
-    cumulativeMap.set(e.id, running);
   }
   const completedQty = running;
   const target = parseFloat(targetQty);
@@ -50,8 +45,7 @@ function computeProgress(entries, targetQty) {
     overage,
     percent,
     state,
-    hasActive,
-    cumulativeMap
+    hasActive
   };
 }
 
@@ -114,8 +108,6 @@ export default function LineItemProgress({
       <TimeEntryCard
         key={e.id}
         entry={e}
-        cumulativeAfter={progress.cumulativeMap.get(e.id)}
-        target={progress.hasTarget ? progress.target : null}
         {...cardProps}
       />
     );

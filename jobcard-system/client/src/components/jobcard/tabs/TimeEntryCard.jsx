@@ -1,5 +1,5 @@
 import { useState, useEffect, useId, useRef } from 'react';
-import { MoreVertical, Pencil, Trash2, ChevronDown, ArrowRight, AlertTriangle } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, ChevronDown, AlertTriangle } from 'lucide-react';
 import ScrapStat from './ScrapStat';
 import { pushModal, removeModal, isTopModal } from '../../common/modalStack';
 import { formatDate, formatTime, formatCount, formatElapsed, elapsedSecondsSince } from '../../../utils/formatters';
@@ -25,8 +25,6 @@ function LiveElapsed({ startTime }) {
 
 export default function TimeEntryCard({
   entry,
-  cumulativeAfter,
-  target = null,
   readOnly = false,
   onEdit,
   onDelete,
@@ -66,8 +64,6 @@ export default function TimeEntryCard({
   const inspectionAllPass = inspectionNoCount === 0;
   const equipmentComments = entry.equipmentChecksComments ? String(entry.equipmentChecksComments).trim() : '';
   const [inspectionOpen, setInspectionOpen] = useState(false);
-  const showCumulative =
-    showQty && qtyNum > 0 && target != null && Number.isFinite(cumulativeAfter);
   const noteText = entry.description ? entry.description.trim() : '';
 
   const showActions = !readOnly && (onEdit || onDelete || onStop);
@@ -137,28 +133,10 @@ export default function TimeEntryCard({
                 <div
                   className={'te-qty-done' + (qtyNum === 0 ? ' te-qty-done--zero' : '')}
                 >
-                  {qtyNum > 0 ? (
-                    <>
-                      <span className="te-qty-delta">+{formatCount(qtyNum)}</span>
-                      {showCumulative && (
-                        <>
-                          <ArrowRight size={14} className="te-qty-arrow" aria-hidden="true" />
-                          <span className="te-qty-cumul">
-                            <span className="te-qty-cumul-num">{formatCount(cumulativeAfter)}</span>
-                            <span className="te-qty-cumul-divider">/</span>
-                            <span className="te-qty-cumul-target">{formatCount(target)}</span>
-                          </span>
-                        </>
-                      )}
-                      <span className="te-qty-unit">pcs</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="te-qty-num">0</span>
-                      <span className="te-qty-unit">pcs</span>
-                      <span className="te-qty-label">no output</span>
-                    </>
-                  )}
+                  {/* Just the pieces this run made — the part's total made and
+                      required count already show in its header above. */}
+                  <span className="te-qty-num">{formatCount(qtyNum)}</span>
+                  <span className="te-qty-unit">pcs</span>
                 </div>
               )}
               {showScrap && <ScrapStat bin={scrapBin} recycle={scrapRecycle} good={goodNum} />}

@@ -2312,53 +2312,6 @@
   border-color: var(--border-color);
 }
 
-/* Delta: "+12" — this session's contribution */
-.te-qty-delta {
-  font-size: var(--text-sm);
-  font-weight: var(--font-bold);
-  color: var(--success-ink);
-  letter-spacing: -0.01em;
-  line-height: 1;
-}
-
-/* Arrow connecting delta to running total — a drawn icon, so it matches the rest
-   of the icons on the card on every machine instead of taking whatever arrow the
-   system font happens to have. */
-.te-qty-arrow {
-  color: var(--text-tertiary);
-  flex-shrink: 0;
-  /* The row aligns on the text baseline; an icon's baseline is its bottom edge,
-     so it would hang low. Centre it against the numbers instead. */
-  align-self: center;
-  margin: 0 -0.05rem;
-}
-
-/* Running total: "42/100" */
-.te-qty-cumul {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-0-5);
-}
-
-.te-qty-cumul-num {
-  font-size: var(--text-sm);
-  font-weight: var(--font-bold);
-  color: var(--text-primary);
-  line-height: 1;
-}
-
-.te-qty-cumul-divider {
-  color: var(--text-tertiary);
-  font-weight: var(--font-regular);
-}
-
-.te-qty-cumul-target {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  font-weight: var(--font-regular);
-}
-
-/* Zero-output fallback fields */
 .te-qty-num {
   font-size: var(--text-sm);
   font-weight: var(--font-bold);
@@ -2384,14 +2337,6 @@
   color: var(--text-tertiary);
 }
 
-.te-qty-label {
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-left: var(--space-0-5);
-}
 
 .te-active-hint {
   margin: 0;
