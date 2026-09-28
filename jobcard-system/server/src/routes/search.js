@@ -257,9 +257,10 @@ function searchJobs(req, res, canManage) {
     conditions.push(sql);
     params.push(...matchParams);
   }
-  if (status) {
-    const arr = status.split(',').filter(Boolean);
-    if (arr.length) { conditions.push(`j.status IN (${arr.map(() => '?').join(',')})`); params.push(...arr); }
+  const statuses = status ? status.split(',').filter(Boolean) : [];
+  if (statuses.length) {
+    conditions.push(`j.status IN (${statuses.map(() => '?').join(',')})`);
+    params.push(...statuses);
   }
   if (assigneeId === 'UNASSIGNED') {
     conditions.push('j.id NOT IN (SELECT jobcard_id FROM job_assignees)');
@@ -278,7 +279,13 @@ function searchJobs(req, res, canManage) {
   } else {
     pushMomentRange(conditions, params, 'j.created_at', dateFrom, dateTo);
   }
-  if (includeArchived !== 'true') conditions.push('j.archived = 0');
+  // Invoicing always files a job away, so an invoiced job is never unarchived —
+  // hiding archived jobs outright would make the Invoiced status filter a dead
+  // end. Asking for Invoiced brings the filed-away invoiced jobs in; every other
+  // status still leaves archived jobs out.
+  if (includeArchived !== 'true') {
+    conditions.push(statuses.includes('INVOICED') ? "(j.archived = 0 OR j.status = 'INVOICED')" : 'j.archived = 0');
+  }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const from = 'FROM jobcards j';

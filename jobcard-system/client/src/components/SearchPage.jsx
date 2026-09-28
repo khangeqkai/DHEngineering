@@ -403,12 +403,14 @@ export default function SearchPage() {
             </>}
 
             {scope === 'time' && <>
-              <FilterRow label="Worker">
+              {/* A worker's time search is limited to their own entries, so
+                  picking a colleague could only ever come back empty. */}
+              {canManage && <FilterRow label="Worker">
                 <select className="search-select" value={filters.workerId} onChange={e => updateFilter('workerId', e.target.value)}>
                   <option value="">All workers</option>
                   {employeeOptions.map(e => <option key={e.id} value={e.id}>{e.displayName}</option>)}
                 </select>
-              </FilterRow>
+              </FilterRow>}
               <FilterRow label="Machine">
                 <select className="search-select" value={filters.machineId} onChange={e => updateFilter('machineId', e.target.value)}>
                   <option value="">All machines</option>

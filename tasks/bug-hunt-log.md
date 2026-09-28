@@ -34,8 +34,18 @@ Checked and rejected (or accepted as-is). One line each; kept for good.
 ## This hunt
 Hunt 4 started 2026-09-28 at commit 286f86a — 3 rounds (16–18), single-user situations only.
 
+### Round 16 — job list, search, activity
+- Changing status from the list badge now updates Last Edited straight away.
+- Search > Jobs: the Invoiced chip finds invoiced jobs (they are always archived).
+- Job list empty screen says "No archived jobs" / "No results" / "Couldn't load" instead of "No job cards yet".
+- Columns menu Reset also puts the column order back.
+- Search > Time: workers no longer see a Worker filter that can only return nothing.
+- Search results step back to the last real page when a job drops out.
+- Job list search ignores spaces around the text.
+
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
 |---|---|---|---|---|---|
+| 16 | Job list, search, activity | 15 | 7 | 7 | 0 |
 
 ## Past hunts
 What was fixed in each earlier hunt (history only — not needed to hunt):

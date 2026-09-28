@@ -117,7 +117,14 @@ export default function useSearch(role) {
         }
 
         const data = await api.search(params);
-        if (id === requestId.current) setResults(data);
+        if (id === requestId.current) {
+          setResults(data);
+          // A re-run (a job opened from here changed and dropped out) can
+          // shrink the results below the page being shown. The pager hides
+          // itself at one page, so stepping back is the only way out of an
+          // empty "No results" page — move to the last page that still exists.
+          if (data.totalPages >= 1 && page > data.totalPages) setPage(data.totalPages);
+        }
       } catch (err) {
         if (id === requestId.current) toast.error('Search failed');
       } finally {

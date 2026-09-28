@@ -10,9 +10,11 @@ export default function useTableFilter(data, searchKeys = []) {
 
   const filteredData = useMemo(() => {
     const keys = keysSignature ? keysSignature.split('\u0000') : [];
-    if (!searchTerm || !data || keys.length === 0) return data;
+    // Spaces around the text (a pasted job number, a stray space bar) are not
+    // part of what's being looked for; a box holding only spaces is empty.
+    const term = searchTerm.trim().toLowerCase();
+    if (!term || !data || keys.length === 0) return data;
 
-    const term = searchTerm.toLowerCase();
     return data.filter(item =>
       keys.some(key => {
         const value = item[key];

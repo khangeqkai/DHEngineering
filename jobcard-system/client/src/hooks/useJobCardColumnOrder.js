@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { mergeColumnOrder } from '../components/JobCardList.constants';
+import { mergeColumnOrder, DEFAULT_COLUMN_ORDER } from '../components/JobCardList.constants';
 
 export default function useJobCardColumnOrder() {
   const { user, updatePreferences } = useAuth();
@@ -86,5 +86,18 @@ export default function useJobCardColumnOrder() {
     });
   };
 
-  return { columnOrder, handleDragStart, handleDragEnd, handleDragOver, handleDrop, moveColumn };
+  // The Columns menu's Reset puts the order back as well as the hidden set.
+  // The full default list is saved, not an empty one — an empty saved order is
+  // ignored on load, so it would leave the old order on the account. Shown
+  // straight away; if the save fails the previous order comes back.
+  const resetColumnOrder = () => {
+    const previous = columnOrder;
+    setColumnOrder(DEFAULT_COLUMN_ORDER);
+    updatePreferences({ jobcardColumnOrder: DEFAULT_COLUMN_ORDER }).catch(() => {
+      toast.error('Failed to save column order preference', { id: 'column-order-failed' });
+      setColumnOrder(previous);
+    });
+  };
+
+  return { columnOrder, handleDragStart, handleDragEnd, handleDragOver, handleDrop, moveColumn, resetColumnOrder };
 }

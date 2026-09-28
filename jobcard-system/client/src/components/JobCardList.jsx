@@ -54,6 +54,7 @@ export default function JobCardList() {
   const [editingCardId, setEditingCardId] = useState(null);
   const [jobcards, setJobcards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusPopoverId, setStatusPopoverId] = useState(null);
   const popoverRef = useRef(null);
@@ -69,7 +70,7 @@ export default function JobCardList() {
   const { activeTimerJobcardId, formattedElapsed, refresh: refreshTimer } = useActiveTimerIndicator();
   const { warningsById: missingFilesIds, checkedIds: attachmentCheckedIds, ensure: ensureMissingFiles, refresh: refreshMissingFiles } = useMissingFilesIndicator();
 
-  const { columnOrder, handleDragStart, handleDragEnd, handleDragOver, handleDrop, moveColumn } = useJobCardColumnOrder();
+  const { columnOrder, handleDragStart, handleDragEnd, handleDragOver, handleDrop, moveColumn, resetColumnOrder } = useJobCardColumnOrder();
   const { hiddenColumns, toggleColumn, resetColumns } = useJobCardColumnVisibility();
 
   const hasLoadedOnceRef = useRef(false);
@@ -77,21 +78,33 @@ export default function JobCardList() {
   // stale reply land after the newer one — a request counter lets a reply ignore
   // itself once a newer request has been made, instead of racing to overwrite it.
   const loadRequestIdRef = useRef(0);
+  // Which server-side view (archived or not, and the employee filter) the rows
+  // on screen were fetched for. A failed load for a different view must not
+  // leave the previous view's rows sitting under the new view's heading.
+  const loadedViewRef = useRef(null);
   const loadJobcards = useCallback(async () => {
     const requestId = ++loadRequestIdRef.current;
+    const filters = {};
+    if (showArchived) filters.archived = true;
+    if (canManage && assigneeFilter !== 'all' && !showArchived) {
+      filters.assigneeId = assigneeFilter;
+    }
+    const viewKey = JSON.stringify(filters);
     try {
       if (!hasLoadedOnceRef.current) setLoading(true);
-      const filters = {};
-      if (showArchived) filters.archived = true;
-      if (canManage && assigneeFilter !== 'all' && !showArchived) {
-        filters.assigneeId = assigneeFilter;
-      }
       const data = await api.getJobcards(filters);
       if (requestId !== loadRequestIdRef.current) return;
       setJobcards(data);
+      loadedViewRef.current = viewKey;
+      setLoadFailed(false);
     } catch (err) {
       if (requestId !== loadRequestIdRef.current) return;
-      toast.error(err.message || 'Failed to load job cards');
+      setLoadFailed(true);
+      if (loadedViewRef.current !== viewKey) {
+        setJobcards([]);
+        loadedViewRef.current = null;
+      }
+      toast.error(err.message || 'Failed to load job cards', { id: 'load-jobcards-failed' });
     } finally {
       if (requestId === loadRequestIdRef.current) {
         hasLoadedOnceRef.current = true;
@@ -187,15 +200,20 @@ export default function JobCardList() {
       jobId: cardId,
       newStatus,
       showConfirm,
-      onApplied: async () => {
+      onApplied: async (updated) => {
         // Invoicing files the job away, so it drops out of the active list —
         // reload rather than leaving a stale row. Other status changes update
-        // in place for snappiness.
+        // in place for snappiness, taking the status and the Last Edited stamp
+        // from the job the server sent back — the same write moves both, and
+        // when the job already had that status the server's answer is the truth.
         if (newStatus === 'INVOICED') {
           await loadJobcards();
           return;
         }
-        setJobcards(prev => prev.map(c => c.id === cardId ? { ...c, status: newStatus } : c));
+        setJobcards(prev => prev.map(c => c.id === cardId
+          ? { ...c, status: updated.status, updatedAt: updated.updatedAt, updatedBy: updated.updatedBy }
+          : c
+        ));
         refreshMissingFiles([cardId]);
       },
       onFailed: loadJobcards
@@ -256,9 +274,11 @@ export default function JobCardList() {
         matchesFilter = card.status === filter;
       }
       const matchesMine = !myJobsOnly || showArchived || card.assignees?.some(a => a.userId === user?.id);
-      const lowerSearch = search.toLowerCase();
+      // Spaces around the text are not part of what's being looked for, and a
+      // box holding only spaces is empty — the same as every other list's box.
+      const lowerSearch = search.trim().toLowerCase();
       const matchesSearch =
-        !search ||
+        !lowerSearch ||
         card.jobNumber?.toLowerCase().includes(lowerSearch) ||
         (canManage && card.contactName?.toLowerCase().includes(lowerSearch)) ||
         (canManage && card.companyName?.toLowerCase().includes(lowerSearch)) ||
@@ -427,7 +447,7 @@ export default function JobCardList() {
             columns={toggleableColumns}
             hiddenColumns={hiddenColumns}
             onToggle={toggleColumn}
-            onReset={resetColumns}
+            onReset={() => { resetColumns(); resetColumnOrder(); }}
             onMove={(colId, direction) => moveColumn(colId, direction, isColumnVisible)}
           />
         }
@@ -436,7 +456,24 @@ export default function JobCardList() {
       <div className="card">
           <div className="card-body" style={{ padding: 0 }}>
             {filteredCards.length === 0 ? (
-              jobcards.length === 0 ? (
+              // The rows are already narrowed by the server (archived view,
+              // employee filter), so "nothing came back" only means "no jobs
+              // at all" in the unfiltered active view after a load that worked.
+              jobcards.length === 0 && loadFailed ? (
+                <EmptyState
+                  icon="jobcards"
+                  title="Couldn't load job cards"
+                  description="Something went wrong fetching the list."
+                  actionLabel="Try again"
+                  onAction={loadJobcards}
+                />
+              ) : jobcards.length === 0 && showArchived ? (
+                <EmptyState
+                  icon="jobcards"
+                  title="No archived jobs"
+                  description="Nothing has been filed away yet."
+                />
+              ) : jobcards.length === 0 && !(canManage && assigneeFilter !== 'all') ? (
                 <EmptyState
                   icon="jobcards"
                   title="No job cards yet"
