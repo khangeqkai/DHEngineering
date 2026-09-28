@@ -4,7 +4,6 @@ import { X, Minus, Plus, RotateCw } from 'lucide-react';
 import { api } from '../../services/api';
 import { capitalizeFirst, formatTime } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
-import { isCriticalLevel } from '../../../../server/src/shared/qualityLevels';
 import ToggleTiles from '../common/ToggleTiles';
 import FieldError from '../common/FieldError';
 import { useFieldErrors, fieldErrorsFromRefusal, scrollFieldIntoView } from '../../hooks/useFieldErrors';
@@ -129,10 +128,10 @@ export default function StopTimerForm({
     return () => removeModal(modalId);
   }, [isOpen, modalId]);
 
-  // The job's own details — item, part position, and whether it's Critical. A
-  // failure here must NOT be read as "not Critical": it leaves isCritical at
-  // whatever it already was (false on the first attempt) and blocks Submit via
-  // jobError instead, so the sign-off can never be silently skipped.
+  // The job's own details — just the item and its part position now. Whether the
+  // checklist is needed no longer comes from here (see the effect below); a
+  // failure here only ever blocks Submit via jobError, since there's nothing left
+  // it could silently get wrong about the sign-off.
   const loadJob = useCallback(() => {
     if (!jobCard?.id) return;
     const requestId = ++jobLoadRequestIdRef.current;
@@ -149,8 +148,6 @@ export default function StopTimerForm({
       setItem(found);
       // The server states each part's position directly — never recounted here.
       setDisplayNumber(found ? (found.position != null ? found.position : idx + 1) : null);
-      // Only Critical jobs get the extra inspection checklist.
-      setIsCritical(isCriticalLevel(jobcardRes?.qualityLevel));
     }).catch(() => {
       if (requestId !== jobLoadRequestIdRef.current) return;
       setJobError(true);
@@ -181,9 +178,15 @@ export default function StopTimerForm({
     if (!isOpen || !jobCard?.id) return;
     setMachineFilter('');
     clearFieldErrors();
+    // The run this form is about was JUST finished by this very stop, and it
+    // already carries whether it needs the sign-off — decided once, at that same
+    // moment (see docs/notes/files-and-qa.md's Critical sign-off note). Read that,
+    // not the job's live level: the level can change afterwards and must never
+    // re-open a decision already recorded against this run.
+    setIsCritical(stoppedEntry?.signOffRequired === true);
     loadJob();
     loadMachines();
-  }, [isOpen, jobCard?.id, itemId, loadJob, loadMachines, clearFieldErrors]);
+  }, [isOpen, jobCard?.id, itemId, stoppedEntry, loadJob, loadMachines, clearFieldErrors]);
 
   // Bring the first marked check into view once it is on screen — the checklist
   // may only just have appeared, below the fold, when the refusal switched it on.
@@ -239,8 +242,10 @@ export default function StopTimerForm({
   const hasDescription = entryForm.description && String(entryForm.description).trim() !== '';
   const inspectionComplete = !isCritical ||
     INSPECTION_ITEMS.every(i => entryForm[i.field] === true || entryForm[i.field] === false);
-  // A failed (or still-loading) job load means the Critical decision can't be
-  // trusted, so Submit stays disabled no matter what else is filled in.
+  // A failed (or still-loading) job load means the part's own details (its
+  // description, target quantity) aren't known yet, so Submit stays disabled no
+  // matter what else is filled in — the sign-off decision itself no longer waits
+  // on this load (see the effect above).
   const jobReady = !jobLoading && !jobError;
   const canSubmit = jobReady && hasDescription && inspectionComplete;
 

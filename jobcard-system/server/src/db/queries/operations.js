@@ -21,22 +21,28 @@ const timeEntryQueries = {
     WHERE te.id = ?
   `),
 
+  // criticalAtFinish is computed by the caller (timeEntryHelpers.js's
+  // criticalAtFinishForWrite): null while the block has no finish time yet, else
+  // decided once at the moment it first gets one and never recomputed after.
   create: db.prepare(`
     INSERT INTO time_entries (
       id, jobcard_id, user_id, item_id, machine_number, qty, description,
-      start_time, end_time,
+      start_time, end_time, critical_at_finish,
       scrap_bin_qty, scrap_recycle_qty,
       first_off_inspection, in_process_validation, measuring_equipment_verification,
       equipment_checks, equipment_checks_comments,
       created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   // awaitingDetails is computed by the caller (jobcard-time-entries.js): cleared to 0
   // only by the worker's own stop-timer form save (detailsConfirmed) or by a resume
   // (the finish time being cleared) — a manager editing the block's fields no longer
   // ends the wait on its own, so invoicing can't slip through mid-form.
+  // criticalAtFinish is likewise computed by the caller (criticalAtFinishForWrite) —
+  // set once at first finish, kept as-is while it stays finished, cleared back to
+  // NULL if the edit removes the finish time (a resume).
   update: db.prepare(`
     UPDATE time_entries SET
       user_id = ?, item_id = ?, machine_number = ?, qty = ?, description = ?,
@@ -44,6 +50,7 @@ const timeEntryQueries = {
       first_off_inspection = ?, in_process_validation = ?,
       measuring_equipment_verification = ?, equipment_checks = ?, equipment_checks_comments = ?,
       start_time = ?, end_time = ?,
+      critical_at_finish = ?,
       awaiting_details = ?,
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
@@ -73,6 +80,21 @@ const timeEntryQueries = {
     'SELECT COUNT(*) as count FROM time_entries WHERE jobcard_id = ? AND awaiting_details = 1 AND end_time >= ?'
   ),
 
+  // Finished runs on this job that needed the Critical sign-off (critical_at_finish
+  // = 1) but are still missing one of the four inspection answers — the invoicing
+  // checkpoint warns and names these before filing the job away. Joins the worker's
+  // name and the part's CURRENT position (a display number only, like every other
+  // item_number join here) so the confirm can name each run without a second round trip.
+  getMissingInspectionByJobcard: db.prepare(`
+    SELECT te.id, u.name as user_name, te.start_time, te.end_time, ji.item_number as item_number
+    FROM time_entries te
+    JOIN users u ON te.user_id = u.id
+    LEFT JOIN job_items ji ON te.item_id = ji.id
+    WHERE te.jobcard_id = ? AND te.critical_at_finish = 1 AND te.end_time IS NOT NULL
+      AND (te.first_off_inspection IS NULL OR te.in_process_validation IS NULL
+        OR te.measuring_equipment_verification IS NULL OR te.equipment_checks IS NULL)
+  `),
+
   // Whether this worker has started a MORE RECENT block than the given one, on any
   // job — used to confirm a block being resumed is the worker's own most recently
   // started run, not some older block they still happen to own.
@@ -93,9 +115,11 @@ const timeEntryQueries = {
 
   // Marks the block awaiting_details = 1 — the stop route is the one place that
   // opens a fill-in form nobody has saved yet; countAwaitingDetailsByJobcard below
-  // reads this back, and the update statement above is what clears it.
+  // reads this back, and the update statement above is what clears it. A stop
+  // always gives the block its FIRST finish time (it only runs on an open timer),
+  // so criticalAtFinish is always the freshly-decided value here, never a kept one.
   stop: db.prepare(`
-    UPDATE time_entries SET end_time = ?, awaiting_details = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    UPDATE time_entries SET end_time = ?, critical_at_finish = ?, awaiting_details = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 

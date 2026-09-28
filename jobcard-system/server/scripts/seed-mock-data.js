@@ -164,20 +164,35 @@ const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, us
 const insertNote = db.prepare('INSERT INTO job_notes (id, jobcard_id, user_id, user_name, text, created_at) VALUES (?, ?, ?, ?, ?, ?)');
 const insertTimeEntry = db.prepare(`INSERT INTO time_entries (
   id, jobcard_id, user_id, item_id, machine_number, qty, scrap_bin_qty, scrap_recycle_qty, description, start_time, end_time,
-  first_off_inspection, in_process_validation, measuring_equipment_verification, equipment_checks, equipment_checks_comments
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  first_off_inspection, in_process_validation, measuring_equipment_verification, equipment_checks, equipment_checks_comments,
+  critical_at_finish
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
 // A finished run on a Critical job must carry all four inspection answers (the
-// server refuses to save one without them), so seeded runs do too: mostly Yes,
-// with every fifth run answering No on equipment checks and saying why. Runs on
-// Standard jobs, and runs still going, have none — exactly as the app stores them.
-// Deterministic like the scenarios, so re-seeding always yields the same answers.
+// server refuses to save one without them through the app), so seeded runs do
+// too: mostly Yes, with every fifth run answering No on equipment checks and
+// saying why. Every seventh Critical run is left completely unanswered on
+// purpose — seeding bypasses the app's own save route, so this is safe here —
+// so a fresh install has real runs for the "Sign-off missing" mark and the
+// invoicing question to be tried against. Runs on Standard jobs, and runs still
+// going, have none — exactly as the app stores them. Deterministic like the
+// scenarios, so re-seeding always yields the same answers.
 let criticalRunCount = 0;
 function inspectionAnswers(qualityLevel, finished) {
   if (!finished || !isCriticalLevel(qualityLevel)) return [null, null, null, null, null];
   criticalRunCount += 1;
+  if (criticalRunCount % 7 === 0) return [null, null, null, null, null];
   const equipmentOk = criticalRunCount % 5 !== 0;
   return [1, 1, 1, equipmentOk ? 1 : 0, equipmentOk ? null : 'Coolant nozzle loose — tightened before the run'];
+}
+
+// The run's own critical_at_finish, exactly as the app would decide it at the
+// moment of finish (see timeEntryHelpers.js's criticalAtFinishForWrite): 1 on a
+// finished Critical-job run, 0 on a finished Standard-job run, NULL while still
+// running (no finish decision to make yet).
+function criticalAtFinishSeed(qualityLevel, endIso) {
+  if (endIso == null) return null;
+  return isCriticalLevel(qualityLevel) ? 1 : 0;
 }
 const insertCosting = db.prepare(`INSERT INTO job_costings (
   id, jobcard_id,
@@ -305,7 +320,8 @@ const createJobs = db.transaction(() => {
         itemIdByNumber[parseInt(e.item, 10)] || null, e.machine, e.qty,
         e.scrap || 0, 0, e.desc,
         start.toISOString(), endIso,
-        ...inspectionAnswers(s.qualityLevel, endIso != null)
+        ...inspectionAnswers(s.qualityLevel, endIso != null),
+        criticalAtFinishSeed(s.qualityLevel, endIso)
       );
       if (endIso) {
         timerHistory.push({ workerId: workers[e.worker].id, workerName: workers[e.worker].name, desc: e.desc, at: endIso });

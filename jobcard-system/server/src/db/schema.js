@@ -193,6 +193,12 @@ db.exec(`
     description TEXT,
     start_time TEXT NOT NULL,
     end_time TEXT,
+    -- Whether the job was on the Critical quality level the moment this run got its
+    -- finish time: 1 = yes, 0 = no, NULL = the run has no finish time yet. Decided
+    -- once, at that moment, and never re-decided afterwards — moving a finished
+    -- run's times, or correcting its other fields, must not re-judge it against
+    -- today's level (see docs/notes/files-and-qa.md's Critical sign-off note).
+    critical_at_finish INTEGER,
     -- Scrap is split into two destinations: pieces binned vs pieces sent to recycling.
     scrap_bin_qty INTEGER DEFAULT 0,
     scrap_recycle_qty INTEGER DEFAULT 0,

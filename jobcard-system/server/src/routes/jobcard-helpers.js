@@ -8,6 +8,7 @@ const {
   jobItemQueries,
   jobAssigneeQueries,
   tagQueries,
+  timeEntryQueries,
   getSettings
 } = require('../db/database');
 const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
@@ -169,7 +170,7 @@ function computeAttachmentWarnings(jobcardId, items = []) {
 // one shared step. Returns `refusal` (a `{ status, body }` to send as-is) when the
 // transition must be blocked, otherwise `shouldArchive`/`invoicedDate` for the
 // caller to act on inside its own write transaction via applyInvoicingArchive.
-function checkInvoicing(existing, newStatus, confirmMissingAttachments) {
+function checkInvoicing(existing, newStatus, confirmMissingAttachments, confirmMissingInspection) {
   const shouldArchive = newStatus === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
   if (!shouldArchive) {
     return { shouldArchive: false, invoicedDate: null, refusal: null };
@@ -201,21 +202,58 @@ function checkInvoicing(existing, newStatus, confirmMissingAttachments) {
     }
   }
 
-  return { shouldArchive, invoicedDate: new Date().toISOString(), refusal: null };
+  // Second soft close-out checkpoint, same shape as the attachments one above:
+  // finished runs that needed the Critical sign-off (critical_at_finish = 1) but
+  // are still missing one of the four inspection answers. This is a warning, not a
+  // hard block — only management can invoice, so this is the manager's own confirm.
+  const missingInspectionRows = timeEntryQueries.getMissingInspectionByJobcard.all(existing.id);
+  if (missingInspectionRows.length > 0 && confirmMissingInspection !== true) {
+    const inspectionWarnings = missingInspectionRows.map(row => ({
+      id: row.id,
+      workerName: row.user_name,
+      startTime: row.start_time,
+      endTime: row.end_time,
+      itemNumber: row.item_number
+    }));
+    return {
+      shouldArchive,
+      invoicedDate: null,
+      refusal: { status: 409, body: { error: 'MISSING_INSPECTION', inspectionWarnings } }
+    };
+  }
+
+  return {
+    shouldArchive,
+    invoicedDate: new Date().toISOString(),
+    refusal: null,
+    // 0 when nothing was missing (so applyInvoicingArchive knows not to note it);
+    // > 0 only when the manager just confirmed past runs that were missing answers.
+    inspectionConfirmedCount: missingInspectionRows.length
+  };
 }
 
 // Writes the archive row — call from inside the caller's own write transaction,
 // in the same position the inline `if (shouldArchive) jobcardQueries.archive.run(...)`
 // used to sit — and returns the history change entries to fold into the
 // caller's own `changes` object. No-ops (and returns {}) when this update isn't
-// an invoicing transition.
-function applyInvoicingArchive(shouldArchive, invoicedDate, userId, jobcardId) {
+// an invoicing transition. `inspectionConfirmedCount` (from checkInvoicing) folds an
+// extra change into the trail entry only when the job was invoiced anyway with
+// unanswered Critical sign-offs — the same idea as the missing-attachments confirm,
+// which isn't separately recorded anywhere so there is nothing to mirror there.
+function applyInvoicingArchive(shouldArchive, invoicedDate, userId, jobcardId, inspectionConfirmedCount = 0) {
   if (!shouldArchive) return {};
   jobcardQueries.archive.run(invoicedDate, userId, jobcardId);
-  return {
+  const changes = {
     archived: { from: false, to: true },
     invoicedDate: { from: null, to: invoicedDate }
   };
+  if (inspectionConfirmedCount > 0) {
+    changes.inspectionSignOff = {
+      from: `${inspectionConfirmedCount} run(s) unanswered`,
+      to: 'invoiced anyway'
+    };
+  }
+  return changes;
 }
 
 // The one "hide customer details" step — the six customer/contact fields off a

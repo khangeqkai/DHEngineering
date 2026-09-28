@@ -150,6 +150,9 @@ function formatTimeEntry(row) {
     description: row.description,
     startTime: row.start_time,
     endTime: row.end_time,
+    // Whether this finished run needed the Critical sign-off — see
+    // timeEntryHelpers.js's toCamelCase, the other time-entry formatter.
+    signOffRequired: row.critical_at_finish === 1,
     // null stays null rather than rounding to 0 — an in-progress entry has no
     // end time yet, and that must read as "still running", not "zero hours".
     durationHours: row.duration_hours != null ? roundTo(row.duration_hours, 2) : null

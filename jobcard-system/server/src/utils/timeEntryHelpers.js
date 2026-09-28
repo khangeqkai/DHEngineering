@@ -182,14 +182,35 @@ function isCriticalJob(jobcardId) {
   return !!row && isCriticalLevel(row.quality_level);
 }
 
-// On a Critical job, a finished time block must carry all four inspection answers.
-// `completed` is whether the block has a finish time (an open timer hasn't been
-// answered yet, so it's never blocked). Returns the 400 body to send, or null if
-// fine. The body names each missing answer in `fields` and carries a recognisable
-// `code`, because the form may have opened before a manager made the job Critical
-// and only this refusal can tell it to show the checklist.
-function checkCriticalInspection(jobcardId, completed, flags) {
-  if (!completed || !isCriticalJob(jobcardId)) return null;
+// Decide a run's `critical_at_finish` for a write that may be giving it a finish
+// time, per the rule in schema.js: decided ONCE, the moment a run first gets a
+// finish time, and never re-decided afterwards. `existing` is the row as it stood
+// before this write (null/undefined for a brand-new entry); `hasFinishNow` is
+// whether the write leaves the row with a finish time at all.
+//   - no finish time now (still running, or an edit that reopened it) → NULL
+//   - had no finish time before, but does now (a stop, or a block created/edited
+//     already finished) → decide fresh, from today's job level
+//   - already had a finish time (the edit only moved the times, or touched
+//     unrelated fields) → keep whatever was already stored, never recompute
+function criticalAtFinishForWrite(jobcardId, existing, hasFinishNow) {
+  if (!hasFinishNow) return null;
+  const hadFinishBefore = !!(existing && existing.end_time);
+  if (hadFinishBefore) return existing.critical_at_finish;
+  return isCriticalJob(jobcardId) ? 1 : 0;
+}
+
+// A finished block whose run needed the Critical sign-off must carry all four
+// inspection answers. `criticalAtFinish` is the run's OWN decided value — as it
+// will be stored by this write (criticalAtFinishForWrite above), not today's job
+// level — so a run finished while the job was Standard is never blocked here even
+// if the job has since turned Critical, and one finished under Critical keeps
+// needing answers even if the job later goes back to Standard. Returns the 400
+// body to send, or null if fine. The body names each missing answer in `fields`
+// and carries a recognisable `code`, because the form may have opened before a
+// manager made the job Critical and only this refusal can tell it to show the
+// checklist.
+function checkCriticalInspection(criticalAtFinish, flags) {
+  if (criticalAtFinish !== 1) return null;
   const missing = INSPECTION_FIELDS.filter(field => flags[field] === null || flags[field] === undefined);
   if (missing.length === 0) return null;
   return {
@@ -223,6 +244,10 @@ function toCamelCase(e) {
     equipmentChecksComments: e.equipment_checks_comments || null,
     startTime: e.start_time,
     endTime: e.end_time,
+    // Whether this finished run needed the Critical sign-off — decided once, at
+    // the moment it got its finish time, and read back here rather than from
+    // today's job level (see criticalAtFinishForWrite / docs/notes/files-and-qa.md).
+    signOffRequired: e.critical_at_finish === 1,
     createdAt: e.created_at
   };
 }
@@ -257,6 +282,7 @@ module.exports = {
   invoiceBlockedByTime,
   flagToBool,
   isCriticalJob,
+  criticalAtFinishForWrite,
   checkCriticalInspection,
   toCamelCase
 };

@@ -17,7 +17,7 @@ Every agent in the hunt reads this file first. It is the memory between rounds.
 _None._
 
 ## Decided — leave alone
-- **R11 — Critical sign-off (owner, 2026-09-28).** Each work run remembers whether the job was Critical when it finished; only those runs need the four answers. Invoicing a job with such runs unanswered warns, names them and asks a manager to confirm; the job screen marks them "Sign-off missing". Being built from tasks/critical-signoff-2026-09-28.md — don't re-report the old behaviour.
+- **R11 — Critical sign-off (owner, 2026-09-28).** Each work run remembers whether the job was Critical when it finished; only those runs need the four answers. Invoicing a job with such runs unanswered warns, names them and asks a manager to confirm; the job screen marks them "Sign-off missing". Built from tasks/critical-signoff-2026-09-28.md (new per-run column set at finish, filled in for old runs from each job's trail at start-up) — don't re-report the old behaviour.
 - **R6/R8 — Quality forms.** Owner: the uploaded quality-form template system was a leftover. Removed completely, with the per-job QA Forms folder; old jobs' QA Forms files move into Job Files at start-up. Quality is the level name plus the Critical stop-timer sign-off. This settles all three quality-form questions.
 - **2026-09-28 — Quality levels are fixed.** Owner: a job is Standard (default) or Critical, nothing else; the QA Levels page and its table are gone, old level names are folded in at start-up. Don't report the missing page or ask for custom levels.
 - **R10 — Restart.** Owner agreed: the app starts at Windows sign-in and hides to the tray on close. Done.

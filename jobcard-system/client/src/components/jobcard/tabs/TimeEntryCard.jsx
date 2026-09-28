@@ -1,5 +1,5 @@
 import { useState, useEffect, useId, useRef } from 'react';
-import { MoreVertical, Pencil, Trash2, ChevronDown, ArrowRight } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, ChevronDown, ArrowRight, AlertTriangle } from 'lucide-react';
 import ScrapStat from './ScrapStat';
 import { pushModal, removeModal, isTopModal } from '../../common/modalStack';
 import { formatDate, formatTime, formatCount, formatElapsed, elapsedSecondsSince } from '../../../utils/formatters';
@@ -55,6 +55,11 @@ export default function TimeEntryCard({
     { label: 'Equipment', value: entry.equipmentChecks }
   ];
   const hasInspection = !isActive && inspectionChecks.some(c => c.value === true || c.value === false);
+  // The run itself remembers whether it needed the Critical sign-off (decided once,
+  // at the moment it finished) — read that, not today's job level, so a run finished
+  // under Standard is never marked even if the job has since turned Critical.
+  const signOffMissing = !isActive && entry.signOffRequired &&
+    inspectionChecks.some(c => c.value !== true && c.value !== false);
   const inspectionTotal = inspectionChecks.length;
   const inspectionYesCount = inspectionChecks.filter(c => c.value === true).length;
   const inspectionNoCount = inspectionChecks.filter(c => c.value === false).length;
@@ -220,6 +225,13 @@ export default function TimeEntryCard({
             ) : (
               <p className="te-no-note">No comment left</p>
             )
+          )}
+
+          {signOffMissing && (
+            <span className="te-signoff-missing">
+              <AlertTriangle size={14} aria-hidden="true" />
+              Sign-off missing
+            </span>
           )}
 
           {hasInspection && (

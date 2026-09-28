@@ -1784,6 +1784,19 @@
   min-width: 0;
 }
 
+/* A finished run that needed the Critical sign-off but still has an unanswered
+   check — shown regardless of whether the Inspection toggle itself is present
+   (a run with every answer still null never shows a summary chip to expand). */
+.te-signoff-missing {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-inline);
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  color: var(--warning-ink);
+}
+
 /* Collapsed by default so a finished Critical block doesn't shout four chips at
    once — a one-line summary you can expand for the full answers. */
 .te-insp-toggle {

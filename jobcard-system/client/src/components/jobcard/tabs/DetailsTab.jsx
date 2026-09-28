@@ -76,6 +76,7 @@ export default function DetailsTab({
   handleStopEntryWithForm,
   resetTimeEntryForm,
   timeEntryInspectionRequired = false,
+  timeEntryEditingSignOffRequired = false,
   timeEntryGroupClass,
   timeEntryErrorFor,
   // Per-item timer
@@ -252,7 +253,16 @@ export default function DetailsTab({
         machines={machines}
         employees={employees}
         canManage={canManage && isEdit}
-        isCritical={isCriticalLevel(formData.qualityLevel) || timeEntryInspectionRequired}
+        // Editing an existing (finished) run goes by THAT run's own decided
+        // sign-off flag, never the job's current level — a run finished under
+        // Standard stays freely correctable even if the job has since turned
+        // Critical, and one finished under Critical keeps needing answers even if
+        // the job later goes back to Standard. A brand-new hand entry has no run
+        // to read yet, so it still goes by the job's current level.
+        isCritical={
+          (editingTimeEntryId ? timeEntryEditingSignOffRequired : isCriticalLevel(formData.qualityLevel)) ||
+          timeEntryInspectionRequired
+        }
         showTimeEntryForm={showTimeEntryForm}
         editingTimeEntryId={editingTimeEntryId}
         timeEntryForm={timeEntryForm}

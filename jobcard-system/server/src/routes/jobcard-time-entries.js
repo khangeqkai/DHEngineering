@@ -19,6 +19,7 @@ const {
   toBoolFlag,
   wholeQty,
   findEntryForJob,
+  criticalAtFinishForWrite,
   checkCriticalInspection,
   toCamelCase
 } = require('../utils/timeEntryHelpers');
@@ -106,6 +107,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
         null, // description
         startTime,
         null, // endTime
+        null, // criticalAtFinish — no finish time yet
         0,    // scrapBinQty — recorded by the worker when they stop the timer
         0,    // scrapRecycleQty
         null, // firstOffInspection — answered on the stop-timer form (Critical jobs)
@@ -185,7 +187,11 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
     if (discarded) return res.json(discarded);
 
     const endTime = new Date().toISOString();
-    timeEntryQueries.stop.run(endTime, entryId);
+    // A stop always gives the block its FIRST finish time (it only runs on an open
+    // timer, and existing.end_time is checked null just above), so this is always
+    // the fresh decision, never a kept one.
+    const criticalAtFinish = criticalAtFinishForWrite(id, existing, true);
+    timeEntryQueries.stop.run(endTime, criticalAtFinish, entryId);
 
     // Recompute the job's status from the logged work (Done if fully counted), and
     // fold any change into the stop-timer entry so it reads as one event.
@@ -264,7 +270,10 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
       equipmentChecks: toBoolFlag(data.equipmentChecks)
     };
     const equipmentChecksComments = data.equipmentChecksComments || null;
-    const inspectionRefusal = checkCriticalInspection(id, endTime != null, inspection);
+    // A brand-new block (no `existing` row) that arrives already finished decides
+    // critical_at_finish fresh, from today's job level — exactly like a stop.
+    const criticalAtFinish = criticalAtFinishForWrite(id, null, endTime != null);
+    const inspectionRefusal = checkCriticalInspection(criticalAtFinish, inspection);
     if (inspectionRefusal) {
       return res.status(400).json(inspectionRefusal);
     }
@@ -280,6 +289,7 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
         data.description || null,
         startTime,
         endTime,
+        criticalAtFinish,
         scrapBinQty,
         scrapRecycleQty,
         inspection.firstOffInspection,
@@ -450,8 +460,15 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       ? (data.equipmentChecksComments || null)
       : (existing.equipment_checks_comments || null);
 
-    // On a finished block on a Critical job, all four answers must be present.
-    const inspectionRefusal = checkCriticalInspection(id, endTime != null, inspection);
+    // The run's own critical_at_finish, as it will be stored by this write: kept as
+    // whatever was already there if it already had a finish time, decided fresh
+    // (from today's job level) if this write is the one giving it its FIRST finish
+    // time, or cleared to NULL if this write removes the finish time (a resume).
+    const criticalAtFinish = criticalAtFinishForWrite(id, existing, endTime != null);
+
+    // On a block whose run needed the Critical sign-off, all four answers must be
+    // present before it can be saved finished.
+    const inspectionRefusal = checkCriticalInspection(criticalAtFinish, inspection);
     if (inspectionRefusal) {
       return res.status(400).json(inspectionRefusal);
     }
@@ -515,6 +532,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
         equipmentChecksComments,
         startTime,
         endTime,
+        criticalAtFinish,
         awaitingDetails,
         entryId
       );

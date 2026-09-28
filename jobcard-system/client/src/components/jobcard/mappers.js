@@ -23,7 +23,11 @@ export function mapTimeEntryFromApi(e) {
     equipmentChecksComments: e.equipmentChecksComments || '',
     description: e.description,
     startTime: e.startTime,
-    endTime: e.endTime
+    endTime: e.endTime,
+    // Whether this finished run needed the Critical sign-off — decided once, at the
+    // moment it got its finish time, never the job's current level (see
+    // docs/notes/files-and-qa.md's Critical sign-off note).
+    signOffRequired: e.signOffRequired === true
   };
 }
 

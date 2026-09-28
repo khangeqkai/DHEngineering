@@ -2,7 +2,7 @@ import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { STATUS_LABELS } from '../JobCardList.constants';
 import { isJobClosedError } from '../../utils/jobLock';
-import { confirmInvoiceAnyway, confirmMarkInvoiced } from './jobCardPrompts';
+import { confirmInvoiceAnyway, confirmInvoiceWithoutSignOff, confirmMarkInvoiced } from './jobCardPrompts';
 
 // One status-change flow, shared by the job screen's own status control
 // (JobIdentityStrip) and the job list's status badge — both used to run this
@@ -47,38 +47,49 @@ export async function changeJobStatus({
 
     await beforeSend?.();
 
-    const send = async (confirmMissingAttachments) => {
+    const send = async (confirmMissingAttachments, confirmMissingInspection) => {
       // onApplied gets the server's reply — the job as it now stands. Invoicing
       // archives the job server-side, and a caller that applies the change locally
       // needs that archived flag to lock itself (JobIdentityStrip).
-      const updated = await api.updateJobcardStatus(jobId, newStatus, confirmMissingAttachments);
+      const updated = await api.updateJobcardStatus(jobId, newStatus, confirmMissingAttachments, confirmMissingInspection);
       await onApplied?.(updated);
       toast.success(`Status updated to ${STATUS_LABELS[newStatus]}`);
     };
 
-    try {
-      await send(false);
-    } catch (err) {
-      // Invoicing with declared-but-missing files: confirm once, then resend.
-      if (err.status === 409 && err.data?.attachmentWarnings) {
-        const confirmed = await confirmInvoiceAnyway(err.data.attachmentWarnings, showConfirm);
-        if (!confirmed) return;
-        try {
-          await send(true);
-        } catch (e2) {
-          if (onJobClosed && isJobClosedError(e2)) { await onJobClosed(); return; }
-          toast.error(e2.message || 'Failed to update status', { id: 'status-update-failed' });
-          await onFailed?.();
+    // Handles either invoicing warning 409 in turn — attachments first, then
+    // inspection sign-off — resending with each confirmed flag kept set, so
+    // answering both questions ends up sending both flags true. Going back on
+    // either stops here and sends nothing more. A resend goes through the exact
+    // same closed-job/failure handling as the very first attempt.
+    const attempt = async (confirmMissingAttachments, confirmMissingInspection) => {
+      try {
+        await send(confirmMissingAttachments, confirmMissingInspection);
+      } catch (err) {
+        // Invoicing with declared-but-missing files: confirm once, then resend.
+        if (err.status === 409 && err.data?.attachmentWarnings) {
+          const confirmed = await confirmInvoiceAnyway(err.data.attachmentWarnings, showConfirm);
+          if (!confirmed) return;
+          await attempt(true, confirmMissingInspection);
+          return;
         }
-        return;
+        // Invoicing with finished runs still missing their Critical sign-off:
+        // confirm once, then resend.
+        if (err.status === 409 && err.data?.inspectionWarnings) {
+          const confirmed = await confirmInvoiceWithoutSignOff(err.data.inspectionWarnings, showConfirm);
+          if (!confirmed) return;
+          await attempt(confirmMissingAttachments, true);
+          return;
+        }
+        // The job was invoiced/archived elsewhere while this screen still had it
+        // open — this write reached the server after that. A caller with no
+        // onJobClosed gets the ordinary failure toast and onFailed instead.
+        if (onJobClosed && isJobClosedError(err)) { await onJobClosed(); return; }
+        toast.error(err.message || 'Failed to update status', { id: 'status-update-failed' });
+        await onFailed?.();
       }
-      // The job was invoiced/archived elsewhere while this screen still had it
-      // open — this write reached the server after that. A caller with no
-      // onJobClosed gets the ordinary failure toast and onFailed instead.
-      if (onJobClosed && isJobClosedError(err)) { await onJobClosed(); return; }
-      toast.error(err.message || 'Failed to update status', { id: 'status-update-failed' });
-      await onFailed?.();
-    }
+    };
+
+    await attempt(false, false);
   } finally {
     jobsInFlight.delete(jobId);
   }

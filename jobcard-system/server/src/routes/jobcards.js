@@ -378,7 +378,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
 
     // Shared invoicing step (see jobcard-helpers.js) — the hard running-timer
     // refusal and the soft missing-attachments checkpoint, both before any write.
-    const invoicing = checkInvoicing(existing, status, req.body.confirmMissingAttachments);
+    const invoicing = checkInvoicing(existing, status, req.body.confirmMissingAttachments, req.body.confirmMissingInspection);
     if (invoicing.refusal) {
       return res.status(invoicing.refusal.status).json(invoicing.refusal.body);
     }
@@ -390,7 +390,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
     // between the two left a job reading INVOICED while still sitting in the open list.
     db.transaction(() => {
       jobcardQueries.updateStatus.run(status, req.user.userId, id);
-      Object.assign(changes, applyInvoicingArchive(shouldArchive, invoicedDate, req.user.userId, id));
+      Object.assign(changes, applyInvoicingArchive(shouldArchive, invoicedDate, req.user.userId, id, invoicing.inspectionConfirmedCount));
       // Invoicing just files the job away — no costing snapshot needed. The job owns its
       // own overtime rules and rate, so its costing always recomputes to the billed
       // number; a later settings change can't move it.

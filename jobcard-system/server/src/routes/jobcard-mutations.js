@@ -288,7 +288,7 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     // write. Parts and their attachments are never part of this route any more
     // (see jobcard-items.js and the files routes), so the attachment check
     // always reads the job's current, already-saved items.
-    const invoicing = checkInvoicing(existing, newStatus, data.confirmMissingAttachments);
+    const invoicing = checkInvoicing(existing, newStatus, data.confirmMissingAttachments, data.confirmMissingInspection);
     if (invoicing.refusal) {
       return res.status(invoicing.refusal.status).json(invoicing.refusal.body);
     }
@@ -322,7 +322,7 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
         id
       );
 
-      invoicingChanges = applyInvoicingArchive(shouldArchive, invoicedDate, req.user.userId, id);
+      invoicingChanges = applyInvoicingArchive(shouldArchive, invoicedDate, req.user.userId, id, invoicing.inspectionConfirmedCount);
     });
     applyUpdate();
 

@@ -64,6 +64,9 @@ const migrations = [
   // Set by the stop-timer route, cleared by any edit of the block; invoicing
   // waits on it (see the CREATE TABLE comment in schema.js).
   { table: 'time_entries', column: 'awaiting_details', type: 'INTEGER DEFAULT 0' },
+  // Whether the job was Critical the moment this run got its finish time — decided
+  // once and never re-decided (see the CREATE TABLE comment in schema.js).
+  { table: 'time_entries', column: 'critical_at_finish', type: 'INTEGER' },
   { table: 'job_items', column: 'material', type: 'TEXT' },
   // Added 2026-04-29 (per-line treatments). Every database made since the
   // June 2026 install already has it; this only guards a pre-April file.

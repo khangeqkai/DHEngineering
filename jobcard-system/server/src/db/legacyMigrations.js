@@ -11,7 +11,7 @@ const { DEFAULT_VIC_PUBLIC_HOLIDAYS_2026 } = require('../utils/defaultHolidays')
 const { scheduleToWholeHours } = require('../shared/overtimeSchedule');
 const { readOvertimeSettings } = require('../utils/overtimeSettings');
 const { isCalendarDate } = require('../shared/calendarDate');
-const { QUALITY_LEVELS } = require('../shared/qualityLevels');
+const { QUALITY_LEVELS, isCriticalLevel } = require('../shared/qualityLevels');
 const { officeDateString } = require('../utils/officeTime');
 const { isBaseReachable, isWithinBase, idSlug, folderSlugOf, sanitizeFolderName } = require('../utils/folderCreation');
 
@@ -535,6 +535,87 @@ function foldQualityLevels() {
   }
 }
 
+// The level a job read as at one moment, from its own activity trail's
+// qualityLevel changes (ascending by created_at): the `to` of the latest change
+// at or before that moment; if there is none before it but there are later ones,
+// the `from` of the earliest later one; if the job has no such changes at all,
+// its current stored level. `qualityChanges` is `[{ to, from, created_at }]`
+// ascending by created_at.
+function qualityLevelAtMoment(qualityChanges, momentIso, currentLevel) {
+  if (qualityChanges.length === 0) return currentLevel;
+  let atOrBefore = null;
+  for (const c of qualityChanges) {
+    if (c.created_at <= momentIso) atOrBefore = c;
+    else break; // ascending order — everything from here on is later still
+  }
+  return atOrBefore ? atOrBefore.to : qualityChanges[0].from;
+}
+
+// Existing time entries predate critical_at_finish (see schema.js / timeEntryHelpers.js's
+// criticalAtFinishForWrite) — every finished run needs it decided once, from the job's
+// OWN level at the moment it finished, not today's. Reconstructed from the job's own
+// activity trail (its qualityLevel changes), since that is the only record of what the
+// job's level actually was at any past moment. One read of a job's history per job, not
+// per run; all writes in one transaction; no trail entry per run (a derived fact, not a
+// change anyone made) and updated_at is left alone. Idempotent — only rows still NULL are
+// touched, so a second run (including at the end of a backup restore, which re-runs this
+// whole pass) finds nothing left to do.
+function backfillCriticalAtFinish() {
+  const rows = db.prepare(
+    'SELECT id, jobcard_id, end_time FROM time_entries WHERE end_time IS NOT NULL AND critical_at_finish IS NULL'
+  ).all();
+  if (rows.length === 0) return;
+
+  const byJob = new Map();
+  for (const row of rows) {
+    if (!byJob.has(row.jobcard_id)) byJob.set(row.jobcard_id, []);
+    byJob.get(row.jobcard_id).push(row);
+  }
+
+  const historyStmt = db.prepare(
+    "SELECT changes, created_at FROM history WHERE entity_type = 'jobcard' AND entity_id = ? ORDER BY created_at ASC, id ASC"
+  );
+  const currentLevelStmt = db.prepare('SELECT quality_level FROM jobcards WHERE id = ?');
+  const setCriticalAtFinish = db.prepare('UPDATE time_entries SET critical_at_finish = ? WHERE id = ?');
+
+  let updated = 0;
+  const runUpdate = db.transaction(() => {
+    for (const [jobcardId, entries] of byJob) {
+      const historyRows = historyStmt.all(jobcardId);
+      const qualityChanges = [];
+      for (const h of historyRows) {
+        let parsed;
+        try {
+          parsed = JSON.parse(h.changes);
+        } catch {
+          continue; // skip unparseable, per the spec — not this job's problem to fix
+        }
+        if (parsed && parsed.qualityLevel) {
+          qualityChanges.push({
+            to: parsed.qualityLevel.to,
+            from: parsed.qualityLevel.from,
+            created_at: h.created_at
+          });
+        }
+      }
+      const currentRow = currentLevelStmt.get(jobcardId);
+      const currentLevel = currentRow ? currentRow.quality_level : null;
+
+      for (const entry of entries) {
+        const level = qualityLevelAtMoment(qualityChanges, entry.end_time, currentLevel);
+        // Trimmed like foldQualityLevels: an old free-text name such as "Critical " counts.
+        setCriticalAtFinish.run(isCriticalLevel(String(level || '').trim()) ? 1 : 0, entry.id);
+        updated++;
+      }
+    }
+  });
+  runUpdate();
+
+  if (updated > 0) {
+    logger.info({ updated }, 'Migration: Backfilled critical_at_finish on existing finished runs from each job\'s own activity trail');
+  }
+}
+
 function runLegacyMigrations() {
   logger.info('Running migrations...');
 
@@ -602,6 +683,14 @@ function runLegacyMigrations() {
     foldQualityLevels();
   } catch (err) {
     logger.error({ err }, 'Migration: Failed to fold stored quality levels onto Standard/Critical');
+  }
+
+  // Runs after foldQualityLevels so the current-level fallback it reads is always
+  // one of the two fixed values.
+  try {
+    backfillCriticalAtFinish();
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to backfill critical_at_finish on existing finished runs');
   }
 
   try {

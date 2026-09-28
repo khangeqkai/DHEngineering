@@ -38,6 +38,12 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   // the server's (a manager changed it after the screen loaded), so this switches
   // the checklist on regardless, until the form is closed.
   const [inspectionRequired, setInspectionRequired] = useState(false);
+  // Whether the run being EDITED itself needs the sign-off — decided once, at the
+  // moment it got its finish time, and read from the entry rather than the job's
+  // live level (see docs/notes/files-and-qa.md's Critical sign-off note). Only set
+  // while editing an existing entry; a brand-new hand entry still goes by the
+  // job's current level, so this stays false for that case.
+  const [editingSignOffRequired, setEditingSignOffRequired] = useState(false);
 
   const resetTimeEntryForm = useCallback(() => {
     setTimeEntryForm({
@@ -48,6 +54,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     setShowTimeEntryForm(false);
     resetFieldErrors();
     setInspectionRequired(false);
+    setEditingSignOffRequired(false);
     originalTimesRef.current = { startTime: null, endTime: null };
     touchedTimesRef.current = { startTime: true, endTime: true };
     openedFormRef.current = null;
@@ -90,6 +97,9 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     }
     resetFieldErrors();
     setInspectionRequired(false);
+    // This run's own decided value, not the job's current level — set once, kept
+    // for as long as this edit form stays open on this entry.
+    setEditingSignOffRequired(entry.signOffRequired === true);
     setEditingTimeEntryId(entry.id);
     const opened = {
       workerId: entry.userId || '',
@@ -276,6 +286,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     handleDeleteTimeEntry,
     resetTimeEntries,
     inspectionRequired,
+    editingSignOffRequired,
     groupClass,
     errorFor
   };
