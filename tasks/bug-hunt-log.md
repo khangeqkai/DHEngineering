@@ -8,6 +8,7 @@ Every agent in the hunt reads this file first. It is the memory between rounds a
 - **Fix the cause, not the symptom.** Ask why the mistake was possible and whether the same mistake exists elsewhere; fix the kind of bug, not just the instance.
 - **Design change needed → do not patch.** It goes under "Waiting for the owner" with a plain proposal.
 - **Anything listed under "Decided — leave alone", "Not bugs" or "This hunt" is not re-reported** unless the fix itself is wrong.
+- **Hunt 4 only: ignore two people using the app at the same time.** Anything that needs two people (or two windows) acting on the same thing at once is out of scope — assume one person at a time.
 - **Intended behaviour lives in docs/notes.** A behaviour written there as intended is not a bug. The owner's past decisions (fixed Standard/Critical levels, per-run Critical sign-off, quality forms removed, auto-start to tray, machine numbers never reused) are recorded there.
 
 ## Waiting for the owner (design decisions)
@@ -31,7 +32,7 @@ Checked and rejected (or accepted as-is). One line each; kept for good.
 - Accepted leftover: typing a previous-job reference then instantly unticking Repeat Job can briefly show the reference until the job reloads; stored data is always right.
 
 ## This hunt
-_No hunt running._ While a hunt runs, each round adds a "Round N" list of what it fixed here, plus a row in the table below.
+Hunt 4 started 2026-09-28 at commit 286f86a — 3 rounds (16–18), single-user situations only.
 
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
 |---|---|---|---|---|---|
