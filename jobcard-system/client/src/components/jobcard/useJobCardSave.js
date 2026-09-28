@@ -13,7 +13,10 @@ import { fieldErrorsFromRefusal } from '../../hooks/useFieldErrors';
 // "Update contact" / "Add as new person" (contactName / phone / email). Both land on
 // the same three boxes in DetailsTab.jsx, so both spellings are normalised to the
 // box's own key here rather than the caller having to know which route it was.
+// `name` is the new-customer step's (POST /companies): an archived customer's name,
+// a name taken meanwhile, or one over the length cap — it lands on the Company box.
 const CONTACT_FIELD_TO_BOX = {
+  name: 'companyName',
   contactName: 'contactName',
   contactPhone: 'contactPhone',
   phone: 'contactPhone',

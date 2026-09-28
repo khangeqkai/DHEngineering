@@ -44,6 +44,15 @@ export async function resolveJobContactId({ canManage, isEdit, contactHook, show
     const typed = form.companyName.trim();
     if (!typed) return null;
 
+    // An archived customer already owns this name, so the server would refuse it.
+    // Stopped here in the same shape as that refusal (a message naming the name),
+    // so the save marks the Company box exactly as it would for the server's own.
+    const archived = contactHook.findArchivedCompany(typed);
+    if (archived) {
+      const message = `"${archived.name}" is an archived customer. Restore it on the Customers page to use it here.`;
+      throw Object.assign(new Error(message), { data: { error: message, fields: [{ field: 'name', message }] } });
+    }
+
     const addIt = await showConfirm({
       title: 'New customer',
       message: `"${typed}" isn't in the customer list yet. Add it?`,
@@ -107,11 +116,13 @@ export async function resolveJobContactId({ canManage, isEdit, contactHook, show
     }
 
     if (answer === true) {
-      const updated = await api.updateContact(contactId, {
-        contactName: form.contactName.trim() || null,
-        phone: form.phone.trim() || null,
-        email: form.email.trim() || null
-      });
+      // Only the details the prompt just listed travel — the record keeps anything
+      // left out (customers-and-tags.md, "Edits send only what changed"). Sending all
+      // three from this screen's older copy would put back a colleague's edit to a
+      // detail nobody touched here, and the job would then be filed with it too.
+      const updated = await api.updateContact(contactId, Object.fromEntries(
+        Object.entries(changes).map(([field, { to }]) => [field, to || null])
+      ));
       contactHook.adoptPerson(updated);
       toast.success('Contact updated');
     }

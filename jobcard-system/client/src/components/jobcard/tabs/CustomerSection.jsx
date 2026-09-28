@@ -23,6 +23,7 @@ export default function CustomerSection({
   noteCompanyTyping,
   adoptExactCompany,
   typedCompanyMatch,
+  typedCompanyArchived,
   handleFieldFocus,
   handleFieldBlur,
   companyMatches,
@@ -136,7 +137,14 @@ export default function CustomerSection({
               )}
             </div>
             <FieldError {...contactErrorProps('companyName')} message={contactErrorFor('companyName')} />
-            {!selectedCompany && !typedCompanyMatch && contactFormData.companyName.trim() && (
+            {/* An archived customer still owns its name, so it can't be added again —
+                say so instead of promising a new customer the save would refuse. */}
+            {!selectedCompany && typedCompanyArchived && !contactErrorFor('companyName') && (
+              <span className="field-hint" role="status">
+                &ldquo;{typedCompanyArchived.name}&rdquo; is an archived customer. Restore it on the Customers page to use it here.
+              </span>
+            )}
+            {!selectedCompany && !typedCompanyMatch && !typedCompanyArchived && contactFormData.companyName.trim() && (
               <span className="field-hint">Not on the list — it will be added as a new customer.</span>
             )}
           </div>

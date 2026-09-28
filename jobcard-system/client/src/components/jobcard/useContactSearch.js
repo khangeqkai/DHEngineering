@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { useSuggestionLifecycle } from './useSuggestionLifecycle';
@@ -32,9 +32,17 @@ export function useContactSearch() {
   const [companyMatches, setCompanyMatches] = useState([]);
 
   // The whole customer list, loaded once on first focus and filtered in the
-  // browser — one call beats one per keystroke, and the list is small.
-  const [companies, setCompanies] = useState([]);
+  // browser — one call beats one per keystroke, and the list is small. Archived
+  // customers (and retired people) come too, but only so a typed name can be
+  // recognised as an archived customer's: the server refuses a new customer by
+  // that name, so offering to add it would only end in a refusal. Everything
+  // offered or adopted reads `companies` — active customers and their active
+  // people only.
+  const [allCompanies, setAllCompanies] = useState([]);
   const companiesLoaded = useRef(false);
+  const companies = useMemo(() => allCompanies
+    .filter(c => !c.archived)
+    .map(c => ({ ...c, people: (c.people || []).filter(p => !p.archived) })), [allCompanies]);
 
   // The person's details as they are on the saved record, so the save can tell
   // what was changed on this job. Null when nobody is picked.
@@ -43,8 +51,8 @@ export function useContactSearch() {
   const loadCompanies = useCallback(async () => {
     if (companiesLoaded.current) return;
     try {
-      const results = await api.getCompanies({ withPeople: true });
-      setCompanies(results || []);
+      const results = await api.getCompanies({ withPeople: true, includeArchived: true });
+      setAllCompanies(results || []);
       companiesLoaded.current = true;
     } catch (err) {
       toast.error('Could not load the customer list', { id: 'customer-list-load-failed' });
@@ -130,12 +138,20 @@ export function useContactSearch() {
   // spaces — the shared sameName rule), or null. The server refuses a new customer
   // by that same rule, so a name typed out in full without clicking its row is that
   // customer, not a new one — otherwise the screen offered to add it and the save
-  // then failed as a duplicate. The loaded list holds active customers only.
+  // then failed as a duplicate. Active customers only — see findArchivedCompany.
   const findExactCompany = useCallback((name) => {
     if (!nameMatchKey(name)) return null;
     const hits = companies.filter(c => sameName(c.name, name));
     return hits.length === 1 ? hits[0] : null;
   }, [companies]);
+
+  // An archived customer whose name is this text, by the same shared rule — or
+  // null. An archived customer still owns its name, so the server refuses a new
+  // one by it; the screen says so instead of offering to add it.
+  const findArchivedCompany = useCallback((name) => {
+    if (!nameMatchKey(name) || findExactCompany(name)) return null;
+    return allCompanies.find(c => c.archived && sameName(c.name, name)) || null;
+  }, [allCompanies, findExactCompany]);
 
   // On leaving the company box: a name typed out exactly is taken as that
   // customer. Nothing was picked, so only the company is adopted — person details
@@ -162,6 +178,8 @@ export function useContactSearch() {
   // What the typed, unpicked company text already names, for the "Not on the
   // list" hint — which must not show for a customer that is on the list.
   const typedCompanyMatch = contactFormData.companyId ? null : findExactCompany(contactFormData.companyName);
+  // ...and the archived customer it names, for the "restore it" hint in its place.
+  const typedCompanyArchived = contactFormData.companyId ? null : findArchivedCompany(contactFormData.companyName);
 
   const selectPerson = useCallback((personId, setFormData) => {
     applyPerson(people.find(p => p.id === personId) || null, setFormData);
@@ -201,7 +219,7 @@ export function useContactSearch() {
   // list, so the next job can pick it without a reload. It deliberately doesn't
   // touch what's on screen — the details typed for the job are still in play.
   const registerCompany = useCallback((company) => {
-    setCompanies(prev => (
+    setAllCompanies(prev => (
       prev.some(c => c.id === company.id)
         ? prev
         : [...prev, { ...company, people: [] }].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
@@ -211,7 +229,7 @@ export function useContactSearch() {
 
   // Adopt a person that was just created (or updated) on the saved record.
   const adoptPerson = useCallback((person) => {
-    setCompanies(prev => prev.map(c => {
+    setAllCompanies(prev => prev.map(c => {
       if (c.id !== person.companyId) return c;
       const people = (c.people || []).filter(p => p.id !== person.id);
       return { ...c, people: [...people, person].sort((a, b) => (a.contactName || '').localeCompare(b.contactName || '')) };
@@ -278,11 +296,13 @@ export function useContactSearch() {
     pickedPerson,
     detailChanges,
     typedCompanyMatch,
+    typedCompanyArchived,
     contactSearchRef,
     // Actions
     selectCompany,
     selectPerson,
     findExactCompany,
+    findArchivedCompany,
     adoptExactCompany,
     handleContactFieldChange,
     noteCompanyTyping,

@@ -4,10 +4,13 @@ import { api } from '../../services/api';
 import { isActiveRecord } from '../../../../server/src/shared/records';
 
 /**
- * The lists every picker on this screen draws from — suppliers, workers, machines —
- * loaded once, because JobCardModal stays mounted behind the job list rather than
- * unmounting on close. Also covers a failed load's retry: only the moment the modal
- * is next opened retries, never a re-render while it's already up. Pulled out of
+ * The lists every picker on this screen draws from — suppliers, workers, machines.
+ * JobCardModal stays mounted behind the job list rather than unmounting on close, so
+ * a list loaded once would go stale for the whole visit: a supplier added or archived
+ * elsewhere, a new worker, a retired machine. So they are loaded when the job list
+ * appears and again every time a job window opens (the customer list does the same,
+ * useContactSearch.js) — only the moment of opening, never a re-render while the
+ * window is already up. The same reload is what retries a failed load. Pulled out of
  * JobCardModal.jsx purely to keep that file from growing further, the same reason
  * useJobCardTimerActions.js and useJobCardCloseGuard.js exist; the only thing this
  * needs from the modal is `isOpen`.
@@ -16,13 +19,16 @@ export function useJobCardReferenceData({ isOpen }) {
   const [suppliers, setSuppliers] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [machines, setMachines] = useState([]);
-  const [referenceLoadFailed, setReferenceLoadFailed] = useState(false);
+  // Only the newest load may land — the one fired when the list appears can still
+  // be on its way when a job window opens and fires another.
+  const loadSeqRef = useRef(0);
   // Whether the job window is actually up. The load below runs as soon as the job
   // list appears, so it can fail before anyone has opened anything — and what to
   // do about it is different in the two places.
   const wasOpenRef = useRef(false);
 
   const loadReferenceData = useCallback(async () => {
+    const seq = ++loadSeqRef.current;
     try {
       const [suppliersRes, usersRes, machinesRes] = await Promise.all([
         // Include archived suppliers: the pickers filter to active themselves, but a job
@@ -35,19 +41,19 @@ export function useJobCardReferenceData({ isOpen }) {
         // to show it "(retired)" instead of silently hiding it.
         api.getMachines(true)
       ]);
+      if (seq !== loadSeqRef.current) return;
       setSuppliers(suppliersRes || []);
       const activeEmployees = (usersRes || [])
         .filter(isActiveRecord)
         .sort((a, b) => (a.name || a.username || '').localeCompare(b.name || b.username || ''));
       setEmployees(activeEmployees);
       setMachines(machinesRes || []);
-      setReferenceLoadFailed(false);
     } catch (err) {
+      if (seq !== loadSeqRef.current) return;
       // Every picker on this screen — suppliers, workers, machines — is empty
       // until this lands, which on its own just looks like an app with nothing
       // in it. Say what is missing, and say what gets it back — which is
       // opening a job card, whether or not one is open now.
-      setReferenceLoadFailed(true);
       toast.error(
         wasOpenRef.current
           ? 'Could not load the suppliers, workers and machines. Close this job card and open it again to retry.'
@@ -61,15 +67,14 @@ export function useJobCardReferenceData({ isOpen }) {
     loadReferenceData();
   }, [loadReferenceData]);
 
-  // ...and that reopen really does retry: this component stays mounted while the job
-  // list is up, so without this the first failure left every picker empty for the rest
-  // of the session with no way back. Only the moment of opening retries — a failure
-  // while the window is already up must not re-fire on its own state change.
+  // ...and again on every opening, so each job window starts from the current lists
+  // (and a failed load gets its retry). Only the moment of opening — never a re-render
+  // while the window is already up.
   useEffect(() => {
     const justOpened = isOpen && !wasOpenRef.current;
     wasOpenRef.current = isOpen;
-    if (justOpened && referenceLoadFailed) loadReferenceData();
-  }, [isOpen, referenceLoadFailed, loadReferenceData]);
+    if (justOpened) loadReferenceData();
+  }, [isOpen, loadReferenceData]);
 
   // Re-fetch suppliers after one is created or linked to a treatment on a line item,
   // so the new name and its updated services show up in the pickers right away.

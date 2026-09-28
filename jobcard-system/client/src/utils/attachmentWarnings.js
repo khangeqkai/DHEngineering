@@ -61,11 +61,20 @@ export function attachmentSeverity(warnings) {
 }
 
 // Build the per-line-item lookup the line-item view uses to decide which fields
-// to flag. Keyed by item number → { missingDrawing, missingCustomerProperty }.
+// to flag. Keyed by the part's permanent id → { missingDrawing, missingCustomerProperty }
+// — never its sort number, which a new part still only on screen can share with a
+// saved one (files-and-qa.md: parts are matched by id).
 export function itemWarningMap(warnings) {
   const map = {};
   for (const it of (warnings?.items || [])) {
-    map[it.itemNumber] = it;
+    if (it.id) map[it.id] = it;
   }
   return map;
+}
+
+// True when the job's files were never looked at — no job-folders location is set,
+// or it couldn't be reached. Not flagging a part then means nothing, so a screen
+// must not read it as a file being there.
+export function filesNotChecked(warnings) {
+  return Boolean(warnings?.filesUnreachable || warnings?.filesNotConfigured);
 }

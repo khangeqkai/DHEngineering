@@ -1423,6 +1423,20 @@
   text-overflow: ellipsis;
 }
 
+/* Neutral note in place of the green chip when the part's files were never
+   checked (no job-folders location, or it can't be reached) — no claim either way. */
+.lit-attach-unchecked {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-0-5) var(--space-1-5);
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-bold);
+  white-space: nowrap;
+}
+
 .lit-attach--add {
   background: transparent;
   color: var(--accent-text);

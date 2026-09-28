@@ -9,7 +9,7 @@ import LineItemTagSelect from './LineItemTagSelect';
 import CreatableTagSelect from '../../common/CreatableTagSelect';
 import TimeEntryForm from './TimeEntryForm';
 import FieldError from '../../common/FieldError';
-import { itemWarningMap } from '../../../utils/attachmentWarnings';
+import { itemWarningMap, filesNotChecked } from '../../../utils/attachmentWarnings';
 import { workBelongsToItem } from '../workMatch.mjs';
 import { fieldErrorKey } from '../fieldRules.mjs';
 import { NA_ANSWER } from '../../../../../server/src/shared/lineItemAnswers';
@@ -58,6 +58,7 @@ export default function ItemsTab({
   itemErrorFor,
   suppliers = [],
   onSuppliersChanged,
+  onSupplierDraftChange,
   employees = [],
   timeEntries = [],
   canManage = false,
@@ -118,6 +119,9 @@ export default function ItemsTab({
     () => attachmentWarnings?.attachedByItem || EMPTY_OBJECT,
     [attachmentWarnings]
   );
+  // The files were never looked at (no location set, or it can't be reached) — a
+  // part with no warning then shows "Files not checked", never a green tick.
+  const filesUnchecked = filesNotChecked(attachmentWarnings);
 
   // Dropdowns, tags and toggles write the moment they change. A still-local row's
   // change just stays in local state — see useInstantItems.js's handleItemFieldChange.
@@ -215,6 +219,7 @@ export default function ItemsTab({
               customerPropertyLabelOf={customerPropertyLabelOf}
               warningByItem={warningByItem}
               attachedByItem={attachedByItem}
+              filesUnchecked={filesUnchecked}
               activeTimer={activeTimer}
               timerElapsed={timerElapsed}
               timerLoading={timerLoading}
@@ -226,6 +231,7 @@ export default function ItemsTab({
               onFieldBlur={onItemFieldBlur}
               fieldError={fieldError}
               onSuppliersChanged={onSuppliersChanged}
+              onSupplierDraftChange={onSupplierDraftChange}
               onAttachItemFile={onAttachItemFile}
               handleAddTimeEntry={handleAddTimeEntry}
               handleEditTimeEntry={handleEditTimeEntry}
@@ -267,6 +273,7 @@ const LineItemCard = memo(function LineItemCard({
   customerPropertyLabelOf,
   warningByItem,
   attachedByItem,
+  filesUnchecked,
   activeTimer,
   timerElapsed,
   timerLoading,
@@ -278,6 +285,7 @@ const LineItemCard = memo(function LineItemCard({
   onFieldBlur,
   fieldError,
   onSuppliersChanged,
+  onSupplierDraftChange,
   onAttachItemFile,
   handleAddTimeEntry,
   handleEditTimeEntry,
@@ -417,6 +425,7 @@ const LineItemCard = memo(function LineItemCard({
               treatments={Array.isArray(item.treatments) ? item.treatments : []}
               suppliers={suppliers}
               onSuppliersChanged={onSuppliersChanged}
+              onSupplierDraftChange={onSupplierDraftChange}
               onChange={(arr) => onFieldChange(item, 'treatments', arr)}
             />
           </div>
@@ -432,8 +441,9 @@ const LineItemCard = memo(function LineItemCard({
           labelOf={drawingsLabelOf}
           naValue={NA_ANSWER}
           onChange={(v) => onFieldChange(item, 'drawingsType', v)}
-          warning={!!warningByItem[item.itemNumber]?.missingDrawing}
-          attachedFiles={attachedByItem[item.itemNumber]?.drawings || []}
+          warning={!!warningByItem[item.id]?.missingDrawing}
+          attachedFiles={attachedByItem[item.id]?.drawings || []}
+          filesUnchecked={filesUnchecked}
           onAttach={onAttachItemFile && isPersisted(item) ? () => onAttachItemFile(item.id, displayNumber, 'job-files') : undefined}
           error={fieldError(item, 'drawingsType')}
         />
@@ -448,8 +458,9 @@ const LineItemCard = memo(function LineItemCard({
           labelOf={customerPropertyLabelOf}
           naValue={NA_ANSWER}
           onChange={(v) => onFieldChange(item, 'customerProperty', v)}
-          warning={!!warningByItem[item.itemNumber]?.missingCustomerProperty}
-          attachedFiles={attachedByItem[item.itemNumber]?.customerProperty || []}
+          warning={!!warningByItem[item.id]?.missingCustomerProperty}
+          attachedFiles={attachedByItem[item.id]?.customerProperty || []}
+          filesUnchecked={filesUnchecked}
           onAttach={onAttachItemFile && isPersisted(item) ? () => onAttachItemFile(item.id, displayNumber, 'customer-property-files') : undefined}
           error={fieldError(item, 'customerProperty')}
         />

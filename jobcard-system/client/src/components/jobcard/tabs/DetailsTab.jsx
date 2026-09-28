@@ -27,6 +27,7 @@ export default function DetailsTab({
   selectCompany,
   adoptExactCompany,
   typedCompanyMatch,
+  typedCompanyArchived,
   selectPerson,
   selectedCompany,
   people,
@@ -51,6 +52,7 @@ export default function DetailsTab({
   itemErrorFor,
   suppliers,
   onSuppliersChanged,
+  onSupplierDraftChange,
   attachmentWarnings,
   onAttachItemFile,
   // Notes props
@@ -225,6 +227,7 @@ export default function DetailsTab({
           noteCompanyTyping={noteCompanyTyping}
           adoptExactCompany={adoptExactCompany}
           typedCompanyMatch={typedCompanyMatch}
+          typedCompanyArchived={typedCompanyArchived}
           handleFieldFocus={handleFieldFocus}
           handleFieldBlur={handleFieldBlur}
           companyMatches={companyMatches}
@@ -247,6 +250,7 @@ export default function DetailsTab({
         itemErrorFor={itemErrorFor}
         suppliers={suppliers}
         onSuppliersChanged={onSuppliersChanged}
+        onSupplierDraftChange={onSupplierDraftChange}
         attachmentWarnings={attachmentWarnings}
         onAttachItemFile={onAttachItemFile}
         timeEntries={timeEntries}

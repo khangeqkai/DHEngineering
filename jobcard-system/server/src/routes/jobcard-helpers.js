@@ -87,17 +87,24 @@ function itemFileDisplayNames(names, itemId) {
 // No-ops safely (hasAny:false) when job-folders storage isn't configured, and
 // the same when the storage location can't be reached (drive or share offline)
 // — then nothing is known about the files, so nothing is flagged; that result
-// also carries `filesUnreachable: true`.
+// also carries `filesUnreachable: true` (and the not-configured one
+// `filesNotConfigured: true`).
 function computeAttachmentWarnings(jobcardId, items = []) {
   const { listCategoryFileNames, partFileCode } = require('./jobcard-files');
   const settings = getSettings();
+  // No location set: nothing was looked at. Said plainly (filesNotConfigured),
+  // the same way an unreachable drive says filesUnreachable below, so a screen
+  // can tell "checked and fine" apart from "never checked" — never read as a
+  // file being there. Invoicing does not stop for this one: with no location
+  // set there is nowhere a file could ever have been attached.
   if (!settings.job_folders_base || !settings.job_folders_base.trim()) {
-    return { items: [], hasAny: false, attachedByItem: {} };
+    return { items: [], hasAny: false, attachedByItem: {}, filesNotConfigured: true };
   }
 
   // Normalise items once — they may be DB rows (snake_case) or formatted/request
-  // items (camelCase). itemNumber is only carried back so the UI can line each
-  // warning up with the row it's showing; files are matched by the part's id.
+  // items (camelCase). Files are matched by the part's id, and each flagged part
+  // carries that id so a screen lines the warning up with its row by id too;
+  // itemNumber is only carried back for older readers.
   // `items` always arrives as the job's full list ordered by item_number ascending
   // (jobItemQueries.getByJobcard.all, or a route's own freshly-formatted items),
   // so this array's own index IS the part's 1-based position — the server states
@@ -132,7 +139,8 @@ function computeAttachmentWarnings(jobcardId, items = []) {
 
   const flagged = [];
   // Per-part list of the file names actually attached (id tag stripped back to the
-  // name the user uploaded), keyed by item number, so the line-item view can show
+  // name the user uploaded), keyed by the part's permanent id — never its sort
+  // number, which a new part still on screen can share — so the line-item view can show
   // "✓ ABC.pdf" under each Drawings / Customer Property field instead of a bare
   // "Attached". Only carries parts that have at least one attached file.
   const attachedByItem = {};
@@ -147,7 +155,7 @@ function computeAttachmentWarnings(jobcardId, items = []) {
     const missingDrawing = declaresAnswer(it.drawings) && !hasItemFile(jobFileNames, it.id);
     const missingCustomerProperty = declaresAnswer(it.customerProperty) && !hasItemFile(customerPropertyNames, it.id);
     if (missingDrawing || missingCustomerProperty) {
-      flagged.push({ itemNumber: it.itemNumber, position: it.position, missingDrawing, missingCustomerProperty });
+      flagged.push({ id: it.id, itemNumber: it.itemNumber, position: it.position, missingDrawing, missingCustomerProperty });
     }
 
     // Collect the names of files already attached to this part, so the field can
@@ -156,7 +164,7 @@ function computeAttachmentWarnings(jobcardId, items = []) {
     const drawingFiles = anyDrawing ? itemFileDisplayNames(jobFileNames, it.id) : [];
     const propertyFiles = anyProperty ? itemFileDisplayNames(customerPropertyNames, it.id) : [];
     if (drawingFiles.length || propertyFiles.length) {
-      attachedByItem[it.itemNumber] = { drawings: drawingFiles, customerProperty: propertyFiles };
+      attachedByItem[it.id] = { drawings: drawingFiles, customerProperty: propertyFiles };
     }
   });
 

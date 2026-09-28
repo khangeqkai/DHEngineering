@@ -27,6 +27,9 @@ export default function LineItemTagSelect({
   onChange,
   warning = false,
   attachedFiles = [],
+  // The job's files were never looked at (no job-folders location set, or it
+  // can't be reached right now) — see utils/attachmentWarnings.js.
+  filesUnchecked = false,
   onAttach,
   error = null
 }) {
@@ -36,8 +39,10 @@ export default function LineItemTagSelect({
   // When the parent supplies an attach handler and this field declares something,
   // show an actionable button: amber "Attach file" while missing, or — once files
   // for this part exist — the attached file names as green chips plus a small
-  // "Add" button to attach another. Without an attach handler (e.g. the create
-  // form), fall back to a passive nudge.
+  // "Add" button to attach another. The green tick needs real file names: no
+  // warning with no names (the files were never checked) is a neutral "Files not
+  // checked", never a claim that something is attached. Without an attach handler
+  // (e.g. the create form), fall back to a passive nudge.
   let warningPill = null;
   if (onAttach && isDeclared) {
     warningPill = warning ? (
@@ -50,7 +55,14 @@ export default function LineItemTagSelect({
           ? attachedFiles.map((name, i) => (
               <span key={i} className="lit-attach-file" title={name}><Check size={14} aria-hidden="true" /> {name}</span>
             ))
-          : <span className="lit-attach-file"><Check size={14} aria-hidden="true" /> Attached</span>}
+          : (
+            <span
+              className="lit-attach-unchecked"
+              title={filesUnchecked ? "The job folders location isn't set or can't be reached, so this part's files couldn't be checked" : "This part's files haven't been checked yet"}
+            >
+              Files not checked
+            </span>
+          )}
         <button type="button" className="lit-attach lit-attach--add" onClick={onAttach} title="Attach another file">
           + Add
         </button>

@@ -98,6 +98,28 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
   // the rows themselves, because the answer has to be right within a single tick.
   const creatingRef = useRef(new Set());
 
+  // Which fields were committed (a pick made, a box left) on a local row while its
+  // create was travelling, per placeholder id. Only those are sent once the create
+  // lands — a box still being typed in is left to save on its own leave, never sent
+  // from under the cursor (CLAUDE.md: a typed box saves when the person leaves it).
+  const editedDuringCreateRef = useRef(new Map());
+  const noteEditDuringCreate = useCallback((localId, field) => {
+    const fields = editedDuringCreateRef.current.get(localId) || new Set();
+    fields.add(field);
+    editedDuringCreateRef.current.set(localId, fields);
+  }, []);
+
+  // A part edit carries the id the row had when its card last drew. A new part's
+  // placeholder id stops existing the moment its create lands — applyItemReply
+  // swaps in the stored id and hands the placeholder on as the row's rowKey — so an
+  // edit that arrives later (a supplier or service created on the spot, a pick made
+  // just as the reply came in) would look for a row that is gone and go nowhere.
+  // Resolved here to the row as it stands now, found by either id.
+  const liveRowFor = useCallback((item) => {
+    const rows = lineItemsRef.current;
+    return rows.find(r => r.id === item.id) || rows.find(r => r.rowKey != null && r.rowKey === item.id) || null;
+  }, []);
+
   // One landing point for every part write's reply (Contract B, tasks/instant-
   // save-root-causes.md) — the screen rows, the saved baseline, the file notes and
   // the job's own status all move together here, so no call site can forget one
@@ -114,7 +136,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
   // the file notes alone, exactly what every call site did on its own before
   // this existed. Returns the mapped single touched row when the reply named
   // one, for the mid-create reconciliation below.
-  const applyItemReply = useCallback((reply, { dropLocalId } = {}) => {
+  const applyItemReply = useCallback((reply, { dropLocalId, sent } = {}) => {
     if (!reply || typeof reply !== 'object') return null;
     const items = Array.isArray(reply.items) ? reply.items : null;
     const bareSingle = reply.item || (!items && reply.id ? reply : null);
@@ -134,21 +156,32 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     // moment THIS reply arrived.
     const baseAtReply = savedItemFieldsRef.current;
 
-    // A row the user is part-way through editing keeps what is on screen; only its
-    // server-owned numbering moves (the stored sort number AND the display
-    // position — both change when a sibling is added or removed). Taking the server's copy wholesale would throw
-    // away typing that hasn't been sent yet — including in the box the cursor is
-    // still sitting in — just because an earlier write on this same row came back.
-    // A row with no baseline yet (one that has only just been created) has nothing
-    // to diverge from, so it takes the server's copy and createItemFromRow's own
-    // reconciliation re-sends anything typed since. Only ever called for the row
-    // this reply is about — see the touchedId branch below.
+    // Field by field, never the whole row at once. A field nobody has touched since
+    // this write left — still exactly what this write sent, or (for a field it
+    // didn't send) still what was stored before — takes the server's stored copy,
+    // so a value the server rewrote on save (a supplier's current name, a tidied
+    // quantity) lands on screen and matches the new baseline instead of leaving the
+    // part stuck reading "not saved". A field typed or picked since keeps what is
+    // on screen: taking the server's copy there would throw away work not yet sent,
+    // or refill the box the cursor is still in. The id and the server-owned
+    // numbering (sort number and display position) always move. On a create the
+    // row is still under its placeholder id and has no baseline; `sent` is then the
+    // whole row as created, so typing done while it travelled stays put (and
+    // createItemFromRow sends only what was committed meanwhile). Only ever called
+    // for the row this reply is about — see the touchedId branch below.
     const keepLocalEdits = (serverRow, currentRow) => {
       if (!currentRow) return serverRow;
       const base = baseAtReply[serverRow.id];
-      if (base === undefined) return serverRow;
-      if (JSON.stringify(buildItemPayload(currentRow)) === JSON.stringify(base)) return serverRow;
-      return { ...currentRow, itemNumber: serverRow.itemNumber, position: serverRow.position };
+      const screen = buildItemPayload(currentRow);
+      const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+      const merged = { ...currentRow, id: serverRow.id, itemNumber: serverRow.itemNumber, position: serverRow.position };
+      for (const field of Object.keys(screen)) {
+        const untouchedSince = sent && Object.prototype.hasOwnProperty.call(sent, field)
+          ? same(screen[field], sent[field])
+          : base !== undefined && same(screen[field], base[field]);
+        if (untouchedSince) merged[field] = serverRow[field];
+      }
+      return merged;
     };
 
     // A part card's on-screen identity (rowKey, see ItemsTab.jsx) must survive
@@ -178,7 +211,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
             if (row.id !== touchedId) return current ? { ...current, itemNumber: row.itemNumber, position: row.position } : row;
             // On a create the row on screen is still under its placeholder id.
             const replaced = current || (dropLocalId != null ? onScreen.get(dropLocalId) : undefined);
-            return keepScreenKey(keepLocalEdits(row, current), replaced);
+            return keepScreenKey(keepLocalEdits(row, replaced), replaced);
           }),
           ...prev.filter(row => !isSavedLineItem(row) && row.id !== dropLocalId)
         ];
@@ -190,7 +223,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     } else if (bareSingle) {
       const row = mapLineItemFromApi(bareSingle);
       setLineItems(prev => prev.map(it => {
-        if (it.id === dropLocalId) return keepScreenKey(row, it); // create: the id swap itself
+        if (it.id === dropLocalId) return keepScreenKey(keepLocalEdits(row, it), it); // create: the id swap itself
         if (it.id === row.id) return keepScreenKey(keepLocalEdits(row, it), it);
         return it;
       }));
@@ -223,10 +256,13 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     const lineNo = lineItem ? (lineItem.position != null ? lineItem.position : lineIdx + 1) : null;
     const noun = ITEM_FIELD_NOUN[field] || field;
     const label = lineNo != null ? `part ${lineNo}'s ${noun}` : `that part's ${noun}`;
+    // What this write sends, in the row's own payload shape, so its reply can tell
+    // a box left alone since (takes the server's copy) from one changed again.
+    const sent = { [field]: buildItemPayload({ [field]: value })[field] };
     saveQueue.enqueue(`item:${itemId}`, (isCurrent) => api.updateJobItem(forJobCardId, itemId, { [field]: value })
       .then((reply) => {
         if (!isCurrent()) return;
-        applyItemReply(reply);
+        applyItemReply(reply, { sent });
       })
       .catch(err => {
         // The row was removed between this write being queued and its turn
@@ -266,12 +302,14 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
       // anything typed after it is reconciled below once the reply lands.
       if (!current || isSavedLineItem(current)) {
         creatingRef.current.delete(localId);
+        editedDuringCreateRef.current.delete(localId);
         // Nothing was sent — already real (an earlier queued create won) or removed
         // since this was queued — so this must not count toward landedCount or arm
         // the green saved flash for a create that never happened.
         return Promise.resolve(NOT_LANDED);
       }
-      return api.addJobItem(forJobCardId, buildItemPayload(row))
+      const sent = buildItemPayload(row);
+      return api.addJobItem(forJobCardId, sent)
         .then((reply) => {
           if (!isCurrent()) return;
           const nowOnScreen = lineItemsRef.current.find(it => it.id === localId);
@@ -284,16 +322,20 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
             if (createdId) api.deleteJobItem(forJobCardId, createdId).catch(() => {});
             return;
           }
-          const created = applyItemReply(reply, { dropLocalId: localId });
+          const created = applyItemReply(reply, { dropLocalId: localId, sent });
           if (!created) return; // an old-shape reply with nothing usable — nothing to reconcile
-          // An edit made to this row while its create was travelling is still only
-          // on screen — nothing sent it. Reconcile now, field by field, against what
-          // the server actually stored (applyItemReply just recorded that as the
-          // baseline, so a field that still differs correctly reads as unsaved until
-          // its own write below lands).
+          // A pick made, or a box left, on this row while its create was travelling
+          // is still only on screen — nothing sent it. Send those now, field by
+          // field, against what the server actually stored (applyItemReply just
+          // recorded that as the baseline, so a field that still differs correctly
+          // reads as unsaved until its own write below lands). A box still being
+          // typed in is not among them: it kept its text through the reply and
+          // saves on its own leave, now onto the real part.
           const confirmed = buildItemPayload(created);
           const onScreen = buildItemPayload(nowOnScreen);
+          const committed = editedDuringCreateRef.current.get(localId) || new Set();
           for (const field of Object.keys(confirmed)) {
+            if (!committed.has(field)) continue;
             if (JSON.stringify(onScreen[field]) === JSON.stringify(confirmed[field])) continue;
             // A required box cleared while the create was travelling is never sent,
             // for the same reason clearing one on an already-real row isn't: the
@@ -318,7 +360,10 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
           // arm the green saved flash for a part that was never created.
           return NOT_LANDED;
         })
-        .finally(() => creatingRef.current.delete(localId));
+        .finally(() => {
+          creatingRef.current.delete(localId);
+          editedDuringCreateRef.current.delete(localId);
+        });
     }, { label: 'a new part' });
   }, [saveQueue, applyItemReply, writeItemField, onJobClosed]);
 
@@ -327,7 +372,14 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
   // whole has every required field filled (createItemFromRow), so a change here
   // before that stays local-only and is never marked either.
   const handleItemFieldChange = useCallback((item, field, value) => {
+    const live = liveRowFor(item);
+    if (live && live.id !== item.id) item = live; // created since this card drew
     if (!isSavedLineItem(item)) {
+      // Its create is already on its way: note the pick, sent once that lands.
+      if (creatingRef.current.has(item.id)) {
+        noteEditDuringCreate(item.id, field);
+        return;
+      }
       const merged = { ...item, [field]: value };
       if (isItemRowComplete(merged)) createItemFromRow(merged);
       return;
@@ -345,11 +397,18 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
       return;
     }
     writeItemField(item.id, field, value);
-  }, [createItemFromRow, writeItemField, setFieldErrors]);
+  }, [createItemFromRow, writeItemField, setFieldErrors, liveRowFor, noteEditDuringCreate]);
 
   // Text and number boxes: called from onBlur, after any blur-formatting has run.
   const commitItemFieldBlur = useCallback((item, field, value) => {
+    const live = liveRowFor(item);
+    if (live && live.id !== item.id) item = live; // created since this card drew
     if (!isSavedLineItem(item)) {
+      // Left while its create is on its way: sent once that lands.
+      if (creatingRef.current.has(item.id)) {
+        noteEditDuringCreate(item.id, field);
+        return;
+      }
       // Same completeness check as handleItemFieldChange above, for the boxes
       // that commit on blur instead of on change — whichever one is filled last
       // is the one that turns the row real, not description specifically.
@@ -382,7 +441,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
       return;
     }
     writeItemField(item.id, field, value);
-  }, [createItemFromRow, writeItemField, setFieldErrors, saveQueue]);
+  }, [createItemFromRow, writeItemField, setFieldErrors, saveQueue, liveRowFor, noteEditDuringCreate]);
 
   const itemErrorFor = useCallback((itemId, field) => errorFor(fieldErrorKey(itemId, field)), [errorFor]);
 
@@ -399,6 +458,8 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
   // "not found" pointed at a line that no longer existed, and a field write
   // landing last after a removal resurrected the deleted row on screen.
   const removeItem = useCallback((item) => {
+    const live = liveRowFor(item);
+    if (live && live.id !== item.id) item = live; // created since this card drew
     if (!isSavedLineItem(item)) {
       removeLineItem(item.id);
       return;
@@ -453,7 +514,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
         }
         return NOT_LANDED;
       }), { label });
-  }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, saveQueue, onJobStatusChange, onJobClosed]);
+  }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, saveQueue, onJobStatusChange, onJobClosed, liveRowFor]);
 
   // JobCardModal returns null when closed rather than unmounting, so these marks
   // outlive a close. Without clearing them, a box left empty on one job would keep

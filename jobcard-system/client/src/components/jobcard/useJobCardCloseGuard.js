@@ -49,6 +49,8 @@ export function useJobCardCloseGuard({
   jobCardId,
   canSeePricing,
   isDirty,
+  // A part's New supplier form holds typing (JobCardModal.jsx's supplierDrafts).
+  supplierDraftOpen = false,
   formHook,
   instantItems,
   saveQueue,
@@ -101,6 +103,7 @@ export function useJobCardCloseGuard({
     saving,
     hasUnpostedNote: jobNotes.newNote.trim() !== '',
     stopFormOpen: timer.showEntryForm,
+    supplierDraftOpen,
     costingDirty: canSeePricing ? costingHook.costingDirty : false,
     // A box still being typed in (including a red one) — see costingHasDraft in
     // useCosting.js. Counted as work to lose alongside costingDirty, so a page refresh

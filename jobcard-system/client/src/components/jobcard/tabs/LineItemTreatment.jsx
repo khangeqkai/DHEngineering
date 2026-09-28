@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useId } from 'react';
+import { useState, useEffect, useRef, useId, useCallback } from 'react';
 import CreatableTagSelect from '../../common/CreatableTagSelect';
 import LineItemSupplierPicker from './LineItemSupplierPicker';
 import InlineSupplierForm from '../../common/InlineSupplierForm';
@@ -12,13 +12,20 @@ import { isActiveRecord } from '../../../../../server/src/shared/records';
 // spot (attaching the treatment to it). A brand-new treatment requires a supplier.
 // One pair per part, stored as the line item's `treatments` array (length 0 or 1)
 // so the rest of the system (costing, PDF fill, history) is unchanged.
-export default function LineItemTreatment({ treatments = [], suppliers = [], onChange, onSuppliersChanged }) {
+export default function LineItemTreatment({ treatments = [], suppliers = [], onChange, onSuppliersChanged, onSupplierDraftChange }) {
   const { rawTags } = useTags('treatment');
   // Ties each label to its own box, the way the rest of the part's fields are tied.
   // Generated rather than built from the part's id because this pair renders once per
   // part and both boxes must stay distinct across every part on the job.
   const treatmentFieldId = useId();
   const supplierFieldId = useId();
+  // The New supplier form keeps its typing only inside itself; this part reports it
+  // up under its own key so the job screen can count it as unsaved work.
+  const draftKey = useId();
+  const reportSupplierDraft = useCallback(
+    (hasTyping) => onSupplierDraftChange?.(draftKey, hasTyping),
+    [onSupplierDraftChange, draftKey]
+  );
   const current = (Array.isArray(treatments) && treatments[0]) || null;
   const value = current?.value || '';
   const supplierId = current?.supplierId || '';
@@ -104,6 +111,7 @@ export default function LineItemTreatment({ treatments = [], suppliers = [], onC
               treatmentTagId={treatmentTagId}
               onCreated={handleSupplierCreated}
               onCancel={() => { dismissedRef.current = true; setCreating(false); }}
+              onDraftChange={reportSupplierDraft}
             />
           </div>
         ) : (

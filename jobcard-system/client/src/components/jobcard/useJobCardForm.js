@@ -221,9 +221,13 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed } = {}) {
     });
   }, []);
 
+  // Matched by either id a row has had: a new part's placeholder id is handed on as
+  // its rowKey when its create lands (useInstantItems.js), so an edit that arrives
+  // after that — a supplier created on the spot, say — still lands on the part it
+  // was meant for rather than on nothing.
   const updateLineItem = useCallback((id, field, value) => {
     setLineItems(prev => prev.map(item =>
-      item.id === id ? { ...item, [field]: value } : item
+      (item.id === id || (item.rowKey != null && item.rowKey === id)) ? { ...item, [field]: value } : item
     ));
   }, []);
 

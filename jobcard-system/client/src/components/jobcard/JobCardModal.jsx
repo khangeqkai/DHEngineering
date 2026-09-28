@@ -108,7 +108,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const costingHook = useJobCardCosting({ isOpen, isEdit, canSeePricing, jobCardId, activeTab, onJobClosed: handleJobClosedWrite });
 
   // The lists every picker on this screen draws from — suppliers, workers, machines —
-  // loaded once (with its own retry-on-reopen and failure toast), because this
+  // reloaded every time the window opens (with its own failure toast), because this
   // component stays mounted behind the list rather than unmounting on close. Pulled
   // into its own hook (useJobCardReferenceData.js) purely to keep this file from
   // growing further, the same reason useJobCardTimerActions.js and
@@ -319,7 +319,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   // Marks a contact box instead of a pop-up when Create (or the "Update contact" /
   // "Add as new person" prompt it can run first) comes back with a 400 naming
-  // contactName/contactPhone/contactEmail — see useJobCardSave.js's
+  // companyName (the new-customer step)/contactName/contactPhone/contactEmail — see useJobCardSave.js's
   // fieldErrorsFromRefusal (hooks/useFieldErrors.js). Declared before useJobCardSave so its callback can
   // close over it.
   const contactFieldErrors = useFieldErrors((name) => {
@@ -335,9 +335,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   useEffect(() => { clearContactFieldErrors(); }, [isOpen, jobCardId, clearContactFieldErrors]);
   const handleContactFieldErrors = useCallback((errors) => {
     contactFieldErrors.setFieldErrors(errors);
-    const order = ['contactName', 'contactPhone', 'contactEmail'];
+    const order = ['companyName', 'contactName', 'contactPhone', 'contactEmail'];
     const first = order.find(k => errors[k]);
-    const boxId = { contactName: 'jc-contact', contactPhone: 'jc-phone', contactEmail: 'jc-email' }[first];
+    const boxId = { companyName: 'jc-company-name', contactName: 'jc-contact', contactPhone: 'jc-phone', contactEmail: 'jc-email' }[first];
     if (boxId) scrollFieldIntoView(boxId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contactFieldErrors.setFieldErrors]);
@@ -387,6 +387,22 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   );
   const isDirty = formHook.isDirty || isContactDirty;
 
+  // A part's New supplier form keeps what is typed only inside itself, so each open
+  // one reports here under its own key whether it holds typing (LineItemTreatment.jsx).
+  // Counted as unsaved work by the close question, the leave-page question and the
+  // inactivity sign-out, and asked about before leaving the Details tab — the form
+  // goes with the tab. A form reports false as it goes, so nothing outlives a close.
+  const [supplierDrafts, setSupplierDrafts] = useState(() => new Set());
+  const reportSupplierDraft = useCallback((key, hasTyping) => {
+    setSupplierDrafts(prev => {
+      if (prev.has(key) === hasTyping) return prev;
+      const next = new Set(prev);
+      if (hasTyping) next.add(key); else next.delete(key);
+      return next;
+    });
+  }, []);
+  const supplierDraftOpen = supplierDrafts.size > 0;
+
   // Work that would be lost if this screen went away: the close question (which
   // box is empty vs. what failed to save — closeReasons.js), the refresh guard,
   // and the inactivity countdown (useUnsavedGuard.js).
@@ -406,10 +422,20 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       const { proceed } = await costingHook.guardLeaveCosting(showConfirm);
       if (!proceed) return;
     }
+    if (activeTab === 'details' && tab !== 'details' && supplierDraftOpen) {
+      const leave = await showConfirm({
+        title: 'Unsaved supplier',
+        message: "The new supplier you started hasn't been saved. Leave it and lose it?",
+        confirmLabel: 'Discard supplier',
+        cancelLabel: 'Keep editing',
+        confirmVariant: 'danger'
+      });
+      if (!leave) return;
+    }
     setActiveTab(tab);
-  }, [activeTab, canSeePricing, costingHook, showConfirm]);
+  }, [activeTab, canSeePricing, costingHook, showConfirm, supplierDraftOpen]);
   const { handleRequestClose } = useJobCardCloseGuard({
-    isOpen, isEdit, jobCardId, canSeePricing, isDirty,
+    isOpen, isEdit, jobCardId, canSeePricing, isDirty, supplierDraftOpen,
     formHook, instantItems, saveQueue: formHook.saveQueue, jobNotes, timer, costingHook,
     saving, showConfirm, onClose: closeAndRefresh, revealDetails: showDetailsTab, revealCosting
   });
@@ -596,6 +622,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   selectCompany={selectCompany}
                   adoptExactCompany={adoptExactCompany}
                   typedCompanyMatch={contactHook.typedCompanyMatch}
+                  typedCompanyArchived={contactHook.typedCompanyArchived}
                   showContactDropdown={contactHook.showContactDropdown}
                   contactSearchRef={contactHook.contactSearchRef}
                   fieldFocused={contactHook.fieldFocused}
@@ -616,6 +643,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   itemErrorFor={instantItems.itemErrorFor}
                   suppliers={suppliers || []}
                   onSuppliersChanged={reloadSuppliers}
+                  onSupplierDraftChange={reportSupplierDraft}
                   attachmentWarnings={attachmentWarnings}
                   onAttachItemFile={isEdit && !jobClosed ? handleAttachItemFile : undefined}
                   notes={jobNotes.notes}
