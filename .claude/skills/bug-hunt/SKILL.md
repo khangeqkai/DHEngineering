@@ -11,7 +11,7 @@ The owner reads plain language only (CLAUDE.md God Rule #2). Every message to th
 
 ## Why it works — keep these properties
 
-1. **One memory file.** `tasks/bug-hunt-log.md` holds the rules, everything fixed, everything decided "leave alone", and everything waiting for the owner. Every agent reads it first, so nobody re-reports or undoes a decision. It is the memory; the coordinator's context is not.
+1. **One short memory file.** `tasks/bug-hunt-log.md` holds the rules, what is waiting for the owner, decisions not yet in docs/notes, known non-bugs, and what the current hunt has fixed. Every agent reads it first, so nobody re-reports or undoes a decision. It is the memory; the coordinator's context is not. It stays short because finished hunts are archived (see Finishing) — lasting decisions move into docs/notes, which hunters already treat as intended behaviour.
 2. **Bugs only.** Tidying, renaming, repeated code and paper speed-ups are out unless they are the *cause* of a real bug. A reviewer always finds *something*; "zero findings" is the wrong finish line.
 3. **Exact steps or it isn't a finding.** "Looks risky" is rejected.
 4. **A sceptic before any fix.** The checker tries to prove each finding wrong, finds the root cause and whether the same mistake exists elsewhere, and sorts it: fix / owner / reject.
@@ -23,7 +23,7 @@ The owner reads plain language only (CLAUDE.md God Rule #2). Every message to th
 1. Pull the latest work onto the development branch (fast-forward from main if the branch is behind).
 2. Install packages in `jobcard-system/server` and `jobcard-system/client` if `node_modules` is missing (cloud sandbox only — on the owner's WSL machine never run `npm install`; `node_modules` is shared with Windows).
 3. Run `.claude/skills/bug-hunt/check.sh` once. It must print `BUILD OK` and `SERVER BOOT OK`. Set `BUG_HUNT_SCRATCH` to a scratch folder if you have one.
-4. Create `tasks/bug-hunt-log.md` if it doesn't exist (sections: Rules of the hunt, Waiting for the owner, Decided — leave alone, Fixed, Rounds table). If it exists from an earlier hunt, keep it — its "Fixed" and "Decided" lists stop repeats. Commit it.
+4. Create `tasks/bug-hunt-log.md` if it doesn't exist (sections: Rules of the hunt, Waiting for the owner, Decided — leave alone, Not bugs, This hunt, Past hunts). If it exists from an earlier hunt, keep it — just note the new hunt's start commit under "This hunt". Commit it.
 5. Agree with the owner: number of rounds (default 10), and confirm small fixes may be committed straight to the branch while design changes wait for them.
 
 ## Areas (one per round, riskiest / most recently changed first)
@@ -71,12 +71,17 @@ The fixer batch is capped at 10, most severe first; the rest come back as `carri
 2. **Fixes that still fail review after the retry:** read the fix checker's exact problem. If it is precise and small, send one focused fixer (Agent tool) with those exact instructions, then one short independent re-check. If the proper fix needs a design change, **revert that fix completely** (keep the others) and put it under "Waiting for the owner" with a plain proposal. Never commit a fix that failed review.
 3. **Owner items** → add to "Waiting for the owner" in the log with the options in plain words; send one phone notification (PushNotification) per round that adds any. Don't stop the loop — keep going with other areas.
 4. **Carried items** → pass as `args.carried` to the next round. If the same low-severity items get pushed back two rounds running, clear them with one focused fixer between rounds instead.
-5. Run `check.sh` yourself. Update the log (a "Round N" section under Fixed, a row in the Rounds table). Commit (one or two commits per round, grouped by area; technical commit messages are fine) and push.
+5. Run `check.sh` yourself. Update the log (a "Round N" list under This hunt, a row in its table; rejected findings go straight into "Not bugs", one line each). Commit (one or two commits per round, grouped by area; technical commit messages are fine) and push.
 6. Tell the owner in plain language: the most important bugs as "expected X, but Y happened → now Z", the count so far, and the next area.
 
 ## Finishing
 
-- After the last round, append a **"Test these by hand"** list to the log: one click-through per screen the hunt changed, written as "do this → you should see that". No automated tests exist, so this is the gap-filler.
+- After the last round, append this hunt's **hand-test steps** to `tasks/hand-tests.md`: one click-through per screen the hunt changed, written as "do this → you should see that". No automated tests exist, so this is the gap-filler. The owner deletes lines once tested.
+- **Compact the log** so it never grows:
+  1. Move "This hunt" (round lists + table) into `tasks/bug-hunts/<start-date>-<short-name>.md` and link it under "Past hunts". Reset "This hunt" to empty.
+  2. Write each "Decided — leave alone" item into the matching `docs/notes/*.md` as intended behaviour (same commit), then delete it from the log. Only questions still being built stay.
+  3. Check "Not bugs" is one line per item; drop any that a later fix made moot.
+  4. The log should be well under 100 lines. Commit.
 - Send one final phone notification. Summarise: total fixed, questions waiting, where the hand-test list is. Offer a pull request; don't open one unless asked.
 - When the owner answers a waiting question: move it to "Decided — leave alone" (or implement it, then have it independently reviewed like any fix).
 

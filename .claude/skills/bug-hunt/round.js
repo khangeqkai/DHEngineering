@@ -16,7 +16,7 @@ const LOG = A.log
 const CHECK = A.check
 
 const CONTEXT = `You are part of round ${A.round} of a bug hunt on the DH Engineering job card app (repo ${REPO}, app code under jobcard-system/). Scope: ${A.scope || 'bugs only — wrong behaviour, permission leaks, wrong or lost data, crashes, broken house rules'}.
-First read ${LOG} (the hunt's memory: rules, fixed bugs, decisions to leave alone, items waiting for the owner). Never re-report anything listed there.
+First read ${LOG} (the hunt's memory: rules, items waiting for the owner, decisions to leave alone, known non-bugs, and what this hunt already fixed). Never re-report anything listed there.
 AREA FOR THIS ROUND: ${A.area}
 Where to start: ${A.focus}
 Also read the matching docs/notes/*.md file(s) for this area before judging behaviour — they record intended behaviour and the reasons behind traps. Behaviour documented there as intended is NOT a bug.
