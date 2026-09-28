@@ -11,12 +11,12 @@ Every agent in the hunt reads this file first. It is the memory between rounds a
 - **Intended behaviour lives in docs/notes.** A behaviour written there as intended is not a bug. The owner's past decisions (fixed Standard/Critical levels, per-run Critical sign-off, quality forms removed, auto-start to tray, machine numbers never reused) are recorded there.
 
 ## Waiting for the owner (design decisions)
-- **(Round 19) Inactivity sign-out while a drawing is open.** Scrolling or zooming a drawing opened from a job, or the job card preview, does not count as activity, so a worker reading a drawing gets the "about to sign out" warning. Options: (a) leave it — one click on the warning keeps them in; (b) count an open drawing as activity, but only up to a limit (e.g. twice the normal timeout) so a drawing left open on a shared PC still signs out in the end; (c) show drawings in the app's own viewer so scrolling counts like anywhere else (bigger change). Recommendation: (b).
+_None._
 
 ## Decided — leave alone
 Owner decisions not yet written into docs/notes. Move each into the matching note at the end of the hunt, then delete it here.
 
-_None._
+- Scrolling or zooming an open drawing (or the job card preview) does not count as activity for the inactivity sign-out — the warning shows and one click keeps the person in. Owner chose to keep it as is (2026-09-28). → auth-and-security.md
 
 ## Not bugs — don't report again
 Checked and rejected (or accepted as-is). One line each; kept for good.
