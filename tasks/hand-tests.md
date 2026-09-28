@@ -73,3 +73,23 @@ Nothing here has an automatic test, so click through these once on a real PC. Ea
 44. Rename a supplier on PC B; on PC A change that supplier's part → the part stops showing unsaved after it saves.
 45. Add a new part and keep typing in it straight away → nothing jumps back under the cursor.
 46. PC B unticks Repeat Job; PC A (still ticked) types a previous-job reference and leaves the box → the box is marked "no longer a repeat job", not "Saved".
+
+**Added by the fourth hunt (rounds 16–18)**
+47. Job list: change a job's status from its badge → Last Edited says "just now" straight away.
+48. Search > Jobs → pick only the Invoiced chip → invoiced jobs appear, not "No results".
+49. Job list → Show Archived before anything is invoiced → "No archived jobs", no create button; filter to a worker with no jobs → "No results".
+50. Columns menu: move a column, then Reset to default → the original order comes back, hidden columns too.
+51. Sign in as a worker → Search > Time has no Worker filter.
+52. Search with two pages of jobs → go to page 2 → open its only job and invoice it → you land back on page 1.
+53. Job list search: type a job number with a space before it → the job is still found.
+54. Pricing sheet: in an Hours box that follows logged work, retype the same figure and leave → then log more work → the new hours are billed.
+55. Pricing sheet: 1.5 hours at $50.05 → the line says $75.08.
+56. Set an overtime multiplier of 1.125 → the sheet shows 1.125, not 1.13.
+57. Stop the server, open Labour Rates (or Settings) → "Couldn't load" with Try again, no blank boxes to save.
+58. Rename the job-folders folder (drive still there), then save a job → no empty replacement folder appears; files say not checked.
+59. With no job-folders location set, print a job card with drawing-required parts → "Files not checked", not red "Missing".
+60. On a part, press Attach and pick a too-large file → then pick a good one → it lands on that part.
+61. Add a locked (secured) supplier PDF to a job and build the packet → the packet leaves it out and names it.
+62. Open an Excel export in Excel, export again over the same file → a plain "file is open" message.
+63. Upload a file whose name was changed on saving (a duplicate) → the activity shows the name it was kept under.
+64. Export job cards to Excel → the Type column no longer shows "JOB_CARD" on every row.
