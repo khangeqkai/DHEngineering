@@ -388,6 +388,16 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
     // Keep their stored start time as-is, and honour a finish-time change only when it
     // clears the field (resuming/reopening their own timer), never a different time.
     // Only admins/managers may set an arbitrary start/finish time (manual corrections).
+    //
+    // The stop-timer form's own writes (detailsConfirmed — its Save, its Resume, and
+    // the resume at sign-out) carry the times as they were when the run stopped. They
+    // never mean to change them, so for everyone — management included — the stored
+    // start is kept, and the stored finish too unless the write is a resume. Otherwise
+    // a stop form left open would put back the old times over a correction made meanwhile.
+    if (data.detailsConfirmed === true) {
+      startTime = existing.start_time;
+      if (endTime !== null) endTime = existing.end_time;
+    }
     if (!isManagement(req.user.role)) {
       startTime = existing.start_time;
       const isResuming = endTime === null;

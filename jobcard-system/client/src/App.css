@@ -1462,20 +1462,30 @@ select.has-retired option.retired-option {
   max-width: 400px;
   width: 90%;
   box-shadow: var(--shadow-lg);
+  /* A message built from a list (one line per unanswered sign-off, one per part
+     missing an attachment) can outgrow the window: cap the dialog at the window's
+     height and let only the message scroll, so the title and buttons stay reachable. */
+  max-height: calc(100vh - 2 * var(--space-6));
+  display: flex;
+  flex-direction: column;
 }
 
 .confirm-dialog h2 {
   margin: 0 0 var(--gap-field);
   font-size: var(--text-xl);
   color: var(--text-primary);
+  flex-shrink: 0;
 }
 
 .confirm-dialog p {
   margin: 0 0 var(--space-6);
   color: var(--text-secondary);
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .confirm-dialog-buttons {
+  flex-shrink: 0;
   display: flex;
   gap: var(--space-3);
   justify-content: flex-end;

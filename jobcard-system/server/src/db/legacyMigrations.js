@@ -541,6 +541,10 @@ function foldQualityLevels() {
 // the `from` of the earliest later one; if the job has no such changes at all,
 // its current stored level. `qualityChanges` is `[{ to, from, created_at }]`
 // ascending by created_at.
+// An empty `from` on that earliest later change is the job's creation entry
+// (`{ from: null, to: <level> }`) — there was no level before it, so a run
+// hand-dated before the job was created takes the job's first level (its `to`),
+// never "not Critical".
 function qualityLevelAtMoment(qualityChanges, momentIso, currentLevel) {
   if (qualityChanges.length === 0) return currentLevel;
   let atOrBefore = null;
@@ -548,7 +552,9 @@ function qualityLevelAtMoment(qualityChanges, momentIso, currentLevel) {
     if (c.created_at <= momentIso) atOrBefore = c;
     else break; // ascending order — everything from here on is later still
   }
-  return atOrBefore ? atOrBefore.to : qualityChanges[0].from;
+  if (atOrBefore) return atOrBefore.to;
+  const earliest = qualityChanges[0];
+  return earliest.from ? earliest.from : earliest.to;
 }
 
 // Existing time entries predate critical_at_finish (see schema.js / timeEntryHelpers.js's

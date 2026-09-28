@@ -369,8 +369,13 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
 
     setLoading(true);
     try {
+      // Only the fields this form owns go out — never the rest of the stop-time copy
+      // of the run (its part, worker, or anything a manager corrected while the form
+      // was open). The start and finish go only because the server requires them; it
+      // keeps the stored ones for this form's writes (detailsConfirmed).
       await api.updateTimeEntry(entryJobcardId, stoppedEntry.id, {
-        ...stoppedEntry,
+        startTime: stoppedEntry.startTime,
+        endTime: stoppedEntry.endTime,
         qty,
         scrapBinQty,
         scrapRecycleQty,
@@ -385,9 +390,8 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
         equipmentChecksComments: (entryForm.equipmentChecksComments || '').trim(),
         // Tells the server this is the worker's own stop-timer form being saved, so
         // it can clear the "still filling in the form" flag that blocks invoicing.
-        // Only the two saves this form itself makes (this one, and the resume below
-        // when the worker cancels instead) send it — a background resume forced by
-        // an auto-logout never does, since the worker never actually confirmed it.
+        // Only this form's own writes send it (this save, and the resumes below);
+        // the server also keeps the run's stored times for them.
         detailsConfirmed: true
       });
 
@@ -444,12 +448,14 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     const isSameJob = entryJobcardId === jobcardId;
     setLoading(true);
     try {
+      // A resume sends only the times (the server keeps the stored start) — never
+      // the stop-time copy of the run's pieces, notes, answers or part, which would
+      // undo a correction made while the form was open.
       await api.updateTimeEntry(entryJobcardId, stoppedEntry.id, {
-        ...stoppedEntry,
+        startTime: stoppedEntry.startTime,
         endTime: null,
         // Same as the submit path above: this resume is the worker's own stop-timer
-        // form being answered (they chose to cancel and keep working), not a
-        // background resume forced by something else.
+        // form being answered (they chose to cancel and keep working).
         detailsConfirmed: true
       });
       // Re-adopt the resumed timer as our own only when it's actually ours. An admin
@@ -497,7 +503,12 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       // Use entry.jobcardId (not jobcardId) so cross-job stops resume on the correct job.
       // Handed back so signing out waits for it: the session is cancelled server-side
       // now, and a resume that arrives after that is refused and the run stays stopped.
-      return api.updateTimeEntry(entry.jobcardId || jobcardId, entry.id, { ...entry, endTime: null }).catch(() => {});
+      // Like the form's own Resume: only the times, and the stored start is kept.
+      return api.updateTimeEntry(entry.jobcardId || jobcardId, entry.id, {
+        startTime: entry.startTime,
+        endTime: null,
+        detailsConfirmed: true
+      }).catch(() => {});
     });
   }, [showEntryForm, hasStoppedEntry, jobcardId, currentUserId, registerBeforeLogout]);
 

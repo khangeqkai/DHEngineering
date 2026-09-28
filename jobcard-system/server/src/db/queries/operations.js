@@ -2,8 +2,10 @@ const { db } = require('../connection');
 
 // Time entry queries
 const timeEntryQueries = {
-  // item_number is derived from the line's CURRENT position via its stable id, so
-  // it always reflects where the line sits now (or null if the line was removed).
+  // item_number here is the part's stored sort number (joined via its permanent id,
+  // or null if the part was removed) — NOT its position on screen, since the sort
+  // number keeps its gaps after a part is removed. The screen pairs these rows to
+  // its parts by item_id and numbers them itself.
   getByJobcard: db.prepare(`
     SELECT te.*, u.name as user_name, ji.item_number as item_number
     FROM time_entries te
@@ -83,10 +85,12 @@ const timeEntryQueries = {
   // Finished runs on this job that needed the Critical sign-off (critical_at_finish
   // = 1) but are still missing one of the four inspection answers — the invoicing
   // checkpoint warns and names these before filing the job away. Joins the worker's
-  // name and the part's CURRENT position (a display number only, like every other
-  // item_number join here) so the confirm can name each run without a second round trip.
+  // name and the part's CURRENT 1-based position (counted from the job's parts, the
+  // same way search.js does — the stored sort number keeps its gaps after a part is
+  // removed) so the confirm can name each run without a second round trip.
   getMissingInspectionByJobcard: db.prepare(`
-    SELECT te.id, u.name as user_name, te.start_time, te.end_time, ji.item_number as item_number
+    SELECT te.id, u.name as user_name, te.start_time, te.end_time,
+      (CASE WHEN ji.id IS NOT NULL THEN (SELECT COUNT(*) FROM job_items p WHERE p.jobcard_id = ji.jobcard_id AND p.item_number <= ji.item_number) END) as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
     LEFT JOIN job_items ji ON te.item_id = ji.id
@@ -102,8 +106,11 @@ const timeEntryQueries = {
     'SELECT COUNT(*) as count FROM time_entries WHERE user_id = ? AND start_time > ?'
   ),
 
+  // item_number is the part's CURRENT 1-based position (as above), because the
+  // "timer running on job X, part N" message shows it as-is for another job.
   getActiveByUser: db.prepare(`
-    SELECT te.*, u.name as user_name, j.job_number, ji.item_number as item_number
+    SELECT te.*, u.name as user_name, j.job_number,
+      (CASE WHEN ji.id IS NOT NULL THEN (SELECT COUNT(*) FROM job_items p WHERE p.jobcard_id = ji.jobcard_id AND p.item_number <= ji.item_number) END) as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
     JOIN jobcards j ON te.jobcard_id = j.id

@@ -147,6 +147,12 @@ _None._
 - Tags & Equipment: a duplicate machine number or clashing option name popped up instead of marking the box.
 - Search > Time: the machine filter treated _ and % as wildcards.
 - A completely blank person could be added to a customer.
+### Round 13 — job screen and the new Critical sign-off
+- Start-up fill-in read a job's creation entry as "was Standard before", so back-dated work on a job created Critical lost its sign-off requirement: a creation entry now means the job's first level applies.
+- The stop form's Save and Resume sent the whole run as it was at the stop, undoing a colleague's corrections made meanwhile: Save sends only what the form owns, Resume only reopens the timer; the server keeps the stored times.
+- The sign-off warning (and "timer running on another job") named parts by an internal sort number instead of the number the screen shows.
+- A long confirm message (many unanswered runs) pushed the buttons off screen: the dialog scrolls inside.
+- Rejected: judge old runs by when they were typed in rather than when they finished (owner's rule says finished).
 
 ## Rounds
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
@@ -163,6 +169,7 @@ _None._
 | 10 | Delivery + speed | 18 | 8 (+3 carried) | 9 | 1 |
 | 11 | Quality levels + settings | 11 | 7 | 5 | 2 |
 | 12 | Management pages + search | 13 | 7 | 7 | 0 |
+| 13 | Job screen + Critical sign-off | 7 | 4 | 4 | 0 |
 
 ## Test these by hand before delivery
 Nothing here has an automatic test, so click through these once on a real PC. Each line is a screen the hunt changed.
@@ -212,3 +219,15 @@ Nothing here has an automatic test, so click through these once on a real PC. Ea
 24. Close the app window → it hides to the tray; right-click the tray icon → Quit → confirm → it really stops.
 25. Open an old job that had quality forms → Files shows only Job Files and Customer Property, and the old forms are in Job Files.
 26. Quality Levels page → only add / rename / delete; no upload button. A Critical job's stop-timer form still asks the 4 inspection questions.
+
+**Added by the second hunt (rounds 11–13)**
+27. Open a Standard job, stop a timer and leave the form open; on another PC switch the job to Critical; press Save → the four inspection questions appear and the empty ones are marked.
+28. Change a job's quality level → its activity shows "Standard → Critical", not capital codes.
+29. On a Critical job, stop a timer and close the form without saving → the run shows "Sign-off missing"; mark the job Invoiced → a question lists that run; Go back stops, Invoice anyway invoices it.
+30. Log work on a Standard job, then switch it to Critical and edit that work → it saves without inspection questions.
+31. Two admins on Users: one demotes someone, the other (page opened earlier) changes only their email → the demotion stays.
+32. New supplier → "+ Other" → type → Escape → only the small box closes.
+33. Tags & Equipment: restore an option, switch tab straight away → the list matches the tab you're on.
+34. Stop a timer and leave the form open; a manager corrects that run's part or pieces elsewhere; press Resume → the correction stays.
+35. After a restore of an old backup, open an old Critical job → runs finished while it was Critical show "Sign-off missing" if unanswered; earlier Standard runs don't.
+
