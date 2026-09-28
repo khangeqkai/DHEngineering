@@ -21,4 +21,14 @@ function qualityLevelLabel(value) {
   return isCriticalLevel(value) ? QUALITY_LEVEL_LABELS.CRITICAL : QUALITY_LEVEL_LABELS.STANDARD;
 }
 
-module.exports = { QUALITY_LEVELS, QUALITY_LEVEL_LABELS, isCriticalLevel, qualityLevelLabel };
+// The four Yes/No inspection answers a finished run on a Critical job must carry,
+// by the name both sides use for them.
+const INSPECTION_FIELDS = ['firstOffInspection', 'inProcessValidation', 'measuringEquipmentVerification', 'equipmentChecks'];
+
+// The `code` on the server's refusal of a finished run on a Critical job with an
+// inspection answer missing. The refusal also lists the missing answers in the
+// usual validation `fields` shape, so a form that opened before the job turned
+// Critical can switch its checklist on and mark the boxes instead of failing blind.
+const CRITICAL_INSPECTION_REFUSED = 'CRITICAL_INSPECTION_REQUIRED';
+
+module.exports = { QUALITY_LEVELS, QUALITY_LEVEL_LABELS, isCriticalLevel, qualityLevelLabel, INSPECTION_FIELDS, CRITICAL_INSPECTION_REFUSED };

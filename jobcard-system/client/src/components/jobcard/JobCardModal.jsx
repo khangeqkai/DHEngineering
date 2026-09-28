@@ -638,6 +638,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   handleDeleteTimeEntry={timeEntry.handleDeleteTimeEntry}
                   handleStopEntryWithForm={handleStopEntryWithForm}
                   resetTimeEntryForm={timeEntry.resetTimeEntryForm}
+                  timeEntryInspectionRequired={timeEntry.inspectionRequired}
                   timeEntryGroupClass={timeEntry.groupClass}
                   timeEntryErrorFor={timeEntry.errorFor}
                 />

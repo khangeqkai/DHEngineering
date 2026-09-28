@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
 import Spinner from './common/Spinner';
@@ -8,16 +8,34 @@ import FoldersCard from './settings/FoldersCard';
 import HomeAccessCard from './settings/HomeAccessCard';
 import DataBackupCard from './settings/DataBackupCard';
 import FieldError from './common/FieldError';
-import { pushModal, removeModal } from './common/modalStack';
+import { pushModal, removeModal, isTopModal } from './common/modalStack';
 import './Settings.css';
 
 export default function Settings() {
   const s = useSettings();
+  const restoreOverlayRef = useRef(null);
 
+  // While a restore runs the cover owns the keyboard: it takes focus when it
+  // appears and, while it is the top layer, swallows Tab so nothing behind it
+  // (the sidebar, this page's buttons) can be reached and pressed — leaving the
+  // page mid-restore would pull the cover down while the restore is still going.
+  // Escape does nothing either: a restore can't be cancelled.
   useEffect(() => {
-    if (!s.importing) return;
+    if (!s.importing) return undefined;
     pushModal('restore-overlay');
-    return () => removeModal('restore-overlay');
+    restoreOverlayRef.current?.focus();
+    const handleKeyDown = (e) => {
+      if (!isTopModal('restore-overlay')) return;
+      if (e.key === 'Tab' || e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      removeModal('restore-overlay');
+    };
   }, [s.importing]);
 
   return (
@@ -361,14 +379,17 @@ export default function Settings() {
 
       {s.importing && (
         <div
+          ref={restoreOverlayRef}
+          tabIndex={-1}
           role="alertdialog"
           aria-modal="true"
           aria-label="Restoring backup"
+          aria-describedby="restore-overlay-desc"
           className="restore-overlay"
         >
           <Spinner size={40} />
           <h2>Restoring…</h2>
-          <p>
+          <p id="restore-overlay-desc">
             Please wait and don't close the app. The screen will return to the login page when it's done.
           </p>
         </div>

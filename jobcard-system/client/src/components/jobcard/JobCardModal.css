@@ -1884,9 +1884,15 @@
 
 .te-inspection-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--gap-tight);
+}
+
+.te-inspection-item .field-error-message {
+  flex-basis: 100%;
+  margin-top: 0;
 }
 
 .te-inspection-name {

@@ -75,6 +75,9 @@ export default function DetailsTab({
   handleDeleteTimeEntry,
   handleStopEntryWithForm,
   resetTimeEntryForm,
+  timeEntryInspectionRequired = false,
+  timeEntryGroupClass,
+  timeEntryErrorFor,
   // Per-item timer
   activeTimer,
   timerElapsed,
@@ -249,7 +252,7 @@ export default function DetailsTab({
         machines={machines}
         employees={employees}
         canManage={canManage && isEdit}
-        isCritical={isCriticalLevel(formData.qualityLevel)}
+        isCritical={isCriticalLevel(formData.qualityLevel) || timeEntryInspectionRequired}
         showTimeEntryForm={showTimeEntryForm}
         editingTimeEntryId={editingTimeEntryId}
         timeEntryForm={timeEntryForm}
@@ -260,6 +263,8 @@ export default function DetailsTab({
         handleDeleteTimeEntry={handleDeleteTimeEntry}
         handleStopEntryWithForm={handleStopEntryWithForm}
         resetTimeEntryForm={resetTimeEntryForm}
+        timeEntryGroupClass={timeEntryGroupClass}
+        timeEntryErrorFor={timeEntryErrorFor}
         activeTimer={isEdit ? activeTimer : null}
         timerElapsed={timerElapsed}
         timerLoading={timerLoading}

@@ -61,7 +61,8 @@ export default function UserManagement() {
 
   const loadUsers = async () => {
     await runLoad(
-      async () => { setUsers(await api.getUsers(showInactive)); },
+      () => api.getUsers(showInactive),
+      (data) => { setUsers(data); },
       (err) => toast.error(err.message || 'Failed to load users', { id: 'user-list-load-failed' }),
       { resetLoading: false }
     );

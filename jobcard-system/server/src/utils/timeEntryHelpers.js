@@ -2,7 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('./logger');
 const { isActiveRecord } = require('../shared/records');
-const { isCriticalLevel } = require('../shared/qualityLevels');
+const { isCriticalLevel, INSPECTION_FIELDS, CRITICAL_INSPECTION_REFUSED } = require('../shared/qualityLevels');
 const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, recordHistory } = require('../db/database');
 
 // Normalise a hand-entered time into a full ISO timestamp with time zone, so
@@ -184,16 +184,19 @@ function isCriticalJob(jobcardId) {
 
 // On a Critical job, a finished time block must carry all four inspection answers.
 // `completed` is whether the block has a finish time (an open timer hasn't been
-// answered yet, so it's never blocked). Returns an error string, or null if fine.
+// answered yet, so it's never blocked). Returns the 400 body to send, or null if
+// fine. The body names each missing answer in `fields` and carries a recognisable
+// `code`, because the form may have opened before a manager made the job Critical
+// and only this refusal can tell it to show the checklist.
 function checkCriticalInspection(jobcardId, completed, flags) {
   if (!completed || !isCriticalJob(jobcardId)) return null;
-  const missing = [flags.firstOffInspection, flags.inProcessValidation,
-    flags.measuringEquipmentVerification, flags.equipmentChecks]
-    .some(v => v === null || v === undefined);
-  if (missing) {
-    return 'This is a Critical job — please answer all the inspection checks (first-off, in-process, measuring equipment, and equipment) before saving.';
-  }
-  return null;
+  const missing = INSPECTION_FIELDS.filter(field => flags[field] === null || flags[field] === undefined);
+  if (missing.length === 0) return null;
+  return {
+    error: 'This is a Critical job — please answer all the inspection checks (first-off, in-process, measuring equipment, and equipment) before saving.',
+    code: CRITICAL_INSPECTION_REFUSED,
+    fields: missing.map(field => ({ field, message: 'This is a Critical job — please answer this check' }))
+  };
 }
 
 // Convert database row (snake_case) to API response (camelCase)

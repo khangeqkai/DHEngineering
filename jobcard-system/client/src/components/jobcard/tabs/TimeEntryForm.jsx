@@ -1,8 +1,16 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { capitalizeFirst } from '../../../utils/formatters';
 import CheckboxDropdown from '../../common/CheckboxDropdown';
 import FieldError from '../../common/FieldError';
+import { scrollFieldIntoView } from '../../../hooks/useFieldErrors';
 import { splitMachineCodes, joinMachineCodes } from '../../../../../server/src/shared/machineList';
+
+const INSPECTION_ITEMS = [
+  { field: 'firstOffInspection', label: 'First-Off Inspection' },
+  { field: 'inProcessValidation', label: 'In-Process Validation' },
+  { field: 'measuringEquipmentVerification', label: 'Measuring Equipment Verification' },
+  { field: 'equipmentChecks', label: 'Equipment Checks' }
+];
 
 // The admin's add/edit time-entry form. Rendered inline, directly under the line
 // item it belongs to, so opening it never yanks the screen away from the button
@@ -32,6 +40,14 @@ export default function TimeEntryForm({
   // by hand: groupClass/errorFor arrive as plain functions from the caller's own
   // hook instance, not the hook object itself, so there's no fieldProps to spread.
   const errorIdFor = (name) => `${idFor(name)}-error`;
+
+  // A refused save on a job that turned Critical after the screen loaded switches
+  // the checklist on and marks the unanswered checks; bring the first into view
+  // once it is actually on screen.
+  const firstMarkedCheck = INSPECTION_ITEMS.find(({ field }) => errorFor(field))?.field || null;
+  useEffect(() => {
+    if (firstMarkedCheck) scrollFieldIntoView(firstMarkedCheck);
+  }, [firstMarkedCheck]);
 
   // The active-workers list won't carry someone who's since been archived, so
   // an edit on their block would otherwise show a blank "Select worker…" even
@@ -174,17 +190,18 @@ export default function TimeEntryForm({
         <div className="form-group te-inspection-admin">
           <label>Critical Job — Inspection Checks</label>
           <div className="te-inspection-grid">
-            {[
-              { field: 'firstOffInspection', label: 'First-Off Inspection' },
-              { field: 'inProcessValidation', label: 'In-Process Validation' },
-              { field: 'measuringEquipmentVerification', label: 'Measuring Equipment Verification' },
-              { field: 'equipmentChecks', label: 'Equipment Checks' }
-            ].map(({ field, label }) => (
+            {INSPECTION_ITEMS.map(({ field, label }) => (
               <div key={field} className="te-inspection-item">
                 <span className="te-inspection-name">{label}</span>
-                <div className="te-yesno" role="group" aria-label={label}>
+                <div
+                  className="te-yesno"
+                  role="group"
+                  aria-label={label}
+                  aria-describedby={errorFor(field) ? errorIdFor(field) : undefined}
+                >
                   <button
                     type="button"
+                    name={field}
                     className={`te-yesno-btn${timeEntryForm[field] === true ? ' is-yes' : ''}`}
                     aria-pressed={timeEntryForm[field] === true}
                     onClick={() => handleTimeEntryChange({ target: { name: field, value: true } })}
@@ -200,6 +217,7 @@ export default function TimeEntryForm({
                     No
                   </button>
                 </div>
+                <FieldError id={errorIdFor(field)} message={errorFor(field)} />
               </div>
             ))}
           </div>

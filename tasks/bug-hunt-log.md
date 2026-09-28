@@ -14,7 +14,9 @@ Every agent in the hunt reads this file first. It is the memory between rounds.
 - **Anything listed under "Decided — leave alone" or "Fixed" is not re-reported** unless the fix itself is wrong.
 
 ## Waiting for the owner (design decisions)
-_None._
+- **R11 — Which work does the Critical sign-off cover?** Two linked questions:
+  1. *Abandoned sign-off.* On a Critical job the stop saves the finish time first, then the stop form adds the four inspection answers. If that form is never saved (a manager stops a worker's timer and signs out, or the app is closed), the run stays finished with no answers, and the job can still be invoiced and archived with no warning. Options: (a) invoicing a Critical job with unanswered runs warns, names the runs and asks a manager to confirm or fill them in (like the missing-attachment question); (b) invoicing is refused until every run is answered. Recommendation: (a).
+  2. *Switching a job to Critical later.* Work logged while the job was Standard can't then be corrected without ticking four inspection answers that never happened. Proposal: each run remembers whether the job was Critical when it finished; only those runs need the answers. Optionally, warn when switching a job with logged work to Critical.
 
 ## Decided — leave alone
 - **R6/R8 — Quality forms.** Owner: the uploaded quality-form template system was a leftover. Removed completely, with the per-job QA Forms folder; old jobs' QA Forms files move into Job Files at start-up. Quality is the level name plus the Critical stop-timer sign-off. This settles all three quality-form questions.
@@ -131,6 +133,13 @@ _None._
 - Home Access, starting job number and new-job Create now mark the box instead of pop-ups.
 - Not a bug: "Company Name" in Field Changed is recorded after all.
 - Rejected: "already running" message when another program holds the secure port.
+### Round 11 — fixed quality levels and settings screens
+- A job switched to Critical while a stop form (or hand-entry form) was open: every Save was refused, but the four inspection questions never appeared. The refusal now names the inspection boxes; the form shows the checklist and marks them.
+- The activity trail showed quality levels as raw codes: it now says Standard / Critical.
+- Tags & Equipment (and the other list pages): a slow reply could show one category's options under another tab; a late reply for a tab you've left is ignored.
+- The "Restoring…" cover didn't hold the keyboard, so people could Tab away and leave Settings mid-restore.
+- Seed data made Critical jobs whose finished work had no inspection answers.
+- Rejected: clicking an old Quality Level entry in Search > Activity does nothing (the page is gone on purpose).
 
 ## Rounds
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
@@ -145,6 +154,7 @@ _None._
 | 8 | Files, printing, QA forms, Excel | 21 | 11 | 9 | 2 |
 | 9 | Job list, search, activity | 19 | 12 | 10 (2 carried) | 0 |
 | 10 | Delivery + speed | 18 | 8 (+3 carried) | 9 | 1 |
+| 11 | Quality levels + settings | 11 | 7 | 5 | 2 |
 
 ## Test these by hand before delivery
 Nothing here has an automatic test, so click through these once on a real PC. Each line is a screen the hunt changed.

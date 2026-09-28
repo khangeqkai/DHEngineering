@@ -60,11 +60,11 @@ export default function SupplierManagement() {
 
   const loadData = useCallback(async () => {
     await runLoad(
-      async () => {
-        const [suppliersData, tagsData] = await Promise.all([
-          api.getSuppliers(showInactive),
-          api.getTags('treatment')
-        ]);
+      () => Promise.all([
+        api.getSuppliers(showInactive),
+        api.getTags('treatment')
+      ]),
+      ([suppliersData, tagsData]) => {
         setSuppliers(suppliersData);
         setServiceTags(tagsData);
       },

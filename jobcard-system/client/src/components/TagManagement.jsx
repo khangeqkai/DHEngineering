@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase, capitalizeFirst } from '../utils/formatters';
@@ -60,20 +60,31 @@ export default function TagManagement() {
     ? { machineNumber: 'machineNumber', name: 'machineName', description: 'machineDescription' }
     : { name: 'tagName' };
 
+  // Switching tab or "Show archived" quickly can leave an older load still in
+  // flight; each load takes a number and only the latest one may touch the list,
+  // its loading flag or its error pop-up (same pattern as StopTimerForm's loads).
+  // Otherwise an older reply landing last would put one category's options under
+  // another tab's name (and into that tab's export).
+  const tagLoadRequestIdRef = useRef(0);
+  const machineLoadRequestIdRef = useRef(0);
+
   // --- Load tags ---
   const loadTags = useCallback(async () => {
     if (isEquipment) return;
+    const requestId = ++tagLoadRequestIdRef.current;
     try {
       setTagLoading(true);
       // Drop the previous tab's rows first, so a slow or failed load never leaves
       // them on screen (or in an export) under the newly chosen category's name.
       setTags([]);
       const data = await api.getTags(selectedCategory, showArchivedTags);
+      if (requestId !== tagLoadRequestIdRef.current) return;
       setTags(data);
     } catch (err) {
+      if (requestId !== tagLoadRequestIdRef.current) return;
       toast.error('Failed to load tags', { id: 'tag-list-load-failed' });
     } finally {
-      setTagLoading(false);
+      if (requestId === tagLoadRequestIdRef.current) setTagLoading(false);
     }
   }, [selectedCategory, isEquipment, showArchivedTags]);
 
@@ -81,14 +92,17 @@ export default function TagManagement() {
 
   // --- Load machines ---
   const loadMachines = useCallback(async () => {
+    const requestId = ++machineLoadRequestIdRef.current;
     try {
       setEquipLoading(true);
       const data = await api.getMachines(showInactiveMachines);
+      if (requestId !== machineLoadRequestIdRef.current) return;
       setMachines(data);
     } catch (err) {
+      if (requestId !== machineLoadRequestIdRef.current) return;
       toast.error('Failed to load machines', { id: 'machine-list-load-failed' });
     } finally {
-      setEquipLoading(false);
+      if (requestId === machineLoadRequestIdRef.current) setEquipLoading(false);
     }
   }, [showInactiveMachines]);
 

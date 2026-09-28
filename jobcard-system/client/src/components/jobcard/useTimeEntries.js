@@ -3,9 +3,14 @@ import toast from 'react-hot-toast';
 import { getDefaultTimeEntryForm, isoToLocalInput, localInputToIso } from './mappers';
 import { formatDate } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
-import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
+import { useFieldErrors, scrollFieldIntoView, fieldErrorsFromRefusal } from '../../hooks/useFieldErrors';
+import { INSPECTION_FIELDS, CRITICAL_INSPECTION_REFUSED } from '../../../../server/src/shared/qualityLevels';
 import { isJobClosedError } from '../../utils/jobLock';
 import { isTimeLocked, showTimeLockedToast } from './timeLock';
+
+// A Critical-inspection refusal names each missing answer by the field name this
+// form already uses for it.
+const INSPECTION_BOXES = Object.fromEntries(INSPECTION_FIELDS.map(field => [field, field]));
 
 export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, showConfirm, isInvoiced = false, onJobClosed }) {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
@@ -28,6 +33,11 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   // fields that differ from it, so pieces, machines or notes the worker saved on the
   // block while this form was open aren't overwritten by the copy taken at Edit.
   const openedFormRef = useRef(null);
+  // Set when the server refused a save because the job is Critical and inspection
+  // answers are missing. The job screen's own copy of the level can be older than
+  // the server's (a manager changed it after the screen loaded), so this switches
+  // the checklist on regardless, until the form is closed.
+  const [inspectionRequired, setInspectionRequired] = useState(false);
 
   const resetTimeEntryForm = useCallback(() => {
     setTimeEntryForm({
@@ -37,6 +47,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     setEditingTimeEntryId(null);
     setShowTimeEntryForm(false);
     resetFieldErrors();
+    setInspectionRequired(false);
     originalTimesRef.current = { startTime: null, endTime: null };
     touchedTimesRef.current = { startTime: true, endTime: true };
     openedFormRef.current = null;
@@ -78,6 +89,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       return;
     }
     resetFieldErrors();
+    setInspectionRequired(false);
     setEditingTimeEntryId(entry.id);
     const opened = {
       workerId: entry.userId || '',
@@ -201,6 +213,13 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       resetTimeEntryForm();
     } catch (err) {
       if (isJobClosedError(err)) onJobClosed?.();
+      else if (err?.data?.code === CRITICAL_INSPECTION_REFUSED) {
+        // The job is Critical on the server even if this screen's copy says not:
+        // show the checklist and mark each unanswered check instead of a pop-up.
+        setInspectionRequired(true);
+        const { marks } = fieldErrorsFromRefusal(err, INSPECTION_BOXES);
+        if (marks) setFieldErrors(marks);
+      }
       else toast.error(err.message || 'Failed to save time entry');
     }
   }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry, isInvoiced, setFieldErrors, onJobClosed]);
@@ -256,6 +275,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     handleSaveTimeEntry,
     handleDeleteTimeEntry,
     resetTimeEntries,
+    inspectionRequired,
     groupClass,
     errorFor
   };

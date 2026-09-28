@@ -16,7 +16,7 @@ const { normalizeStoredTimestamps } = require('../src/db/normalizeTimestamps');
 const { seedHistory } = require('./seed-history');
 const { buildScenarios } = require('./seed-scenarios');
 const refData = require('./seed-data');
-const { QUALITY_LEVELS } = require('../src/shared/qualityLevels');
+const { QUALITY_LEVELS, isCriticalLevel } = require('../src/shared/qualityLevels');
 
 const uid = (prefix) => `${prefix}:${uuidv4()}`;
 
@@ -162,7 +162,23 @@ const insertJobcard = db.prepare(`INSERT INTO jobcards (
 const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments, drawings_type, customer_property) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
 const insertNote = db.prepare('INSERT INTO job_notes (id, jobcard_id, user_id, user_name, text, created_at) VALUES (?, ?, ?, ?, ?, ?)');
-const insertTimeEntry = db.prepare(`INSERT INTO time_entries (id, jobcard_id, user_id, item_id, machine_number, qty, scrap_bin_qty, scrap_recycle_qty, description, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+const insertTimeEntry = db.prepare(`INSERT INTO time_entries (
+  id, jobcard_id, user_id, item_id, machine_number, qty, scrap_bin_qty, scrap_recycle_qty, description, start_time, end_time,
+  first_off_inspection, in_process_validation, measuring_equipment_verification, equipment_checks, equipment_checks_comments
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+
+// A finished run on a Critical job must carry all four inspection answers (the
+// server refuses to save one without them), so seeded runs do too: mostly Yes,
+// with every fifth run answering No on equipment checks and saying why. Runs on
+// Standard jobs, and runs still going, have none — exactly as the app stores them.
+// Deterministic like the scenarios, so re-seeding always yields the same answers.
+let criticalRunCount = 0;
+function inspectionAnswers(qualityLevel, finished) {
+  if (!finished || !isCriticalLevel(qualityLevel)) return [null, null, null, null, null];
+  criticalRunCount += 1;
+  const equipmentOk = criticalRunCount % 5 !== 0;
+  return [1, 1, 1, equipmentOk ? 1 : 0, equipmentOk ? null : 'Coolant nozzle loose — tightened before the run'];
+}
 const insertCosting = db.prepare(`INSERT INTO job_costings (
   id, jobcard_id,
   labour_hours, labour_rate, labour_total,
@@ -288,7 +304,8 @@ const createJobs = db.transaction(() => {
         uid('timeentry'), jobId, workers[e.worker].id,
         itemIdByNumber[parseInt(e.item, 10)] || null, e.machine, e.qty,
         e.scrap || 0, 0, e.desc,
-        start.toISOString(), endIso
+        start.toISOString(), endIso,
+        ...inspectionAnswers(s.qualityLevel, endIso != null)
       );
       if (endIso) {
         timerHistory.push({ workerId: workers[e.worker].id, workerName: workers[e.worker].name, desc: e.desc, at: endIso });

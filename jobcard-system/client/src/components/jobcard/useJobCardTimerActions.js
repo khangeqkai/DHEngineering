@@ -70,6 +70,8 @@ export function useJobCardTimerActions({
     // The header's running-timer badge and the job list aren't tied to the open
     // job, so they refresh even when the screen has since moved to another one.
     if (onTimerChange) onTimerChange();
+    // The form reads this back for a Critical-inspection refusal (StopTimerForm.jsx).
+    return result;
   }, [timer, reloadTimeEntriesAndCosting, onTimerChange, isStillThisJob, creditAssignee, currentUserId, employees]);
 
   const handleCancelEntryForm = useCallback(async () => {

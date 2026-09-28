@@ -158,6 +158,11 @@
   padding: var(--space-8);
 }
 
+.restore-overlay:focus {
+  /* Holds focus only so nothing behind it can be reached; it isn't a control. */
+  outline: none;
+}
+
 .restore-overlay h2 {
   margin: 0;
   color: #fff;

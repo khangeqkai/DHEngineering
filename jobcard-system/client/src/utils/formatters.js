@@ -1,6 +1,7 @@
 import { STATUS_LABELS, PRIORITY_LABELS } from '../components/JobCardList.constants';
 import { isValidPin, PIN_MESSAGE } from '../../../server/src/shared/pin';
 import { isCalendarDate } from '../../../server/src/shared/calendarDate';
+import { QUALITY_LEVEL_LABELS } from '../../../server/src/shared/qualityLevels';
 
 export function toTitleCase(str) {
   if (!str) return str;
@@ -90,8 +91,12 @@ export function formatTime(value, options) {
 }
 
 // History/activity-log values are stored as raw 1/0 (or true/false) for some
-// flags. These read better as Yes/No in the change list.
-const YES_NO_FIELDS = new Set(['isRepeatJob', 'is_repeat_job', 'repeatJob']);
+// flags. These read better as Yes/No in the change list. The four Critical-job
+// inspection answers are stored the same way (1 = yes, 0 = no).
+const YES_NO_FIELDS = new Set([
+  'isRepeatJob', 'is_repeat_job', 'repeatJob',
+  'firstOffInspection', 'inProcessValidation', 'measuringEquipmentVerification', 'equipmentChecks'
+]);
 
 // A job's status and priority are stored in the trail as their internal codes
 // (e.g. "AWAITING_MATERIAL", "SAME_DAY") — the same codes the job list's status
@@ -120,6 +125,13 @@ export function formatHistoryValue(field, value) {
     const labels = field === 'status' ? STATUS_LABELS : PRIORITY_LABELS;
     const known = labels[value];
     if (known) return known;
+  }
+  // A job's quality level is stored as its code ('STANDARD' / 'CRITICAL'). Only a
+  // known code is translated: the free-text level names from before the levels
+  // were fixed survive as the "from" side of the start-up conversion's entries and
+  // stay exactly as typed, so the trail still shows what the conversion changed.
+  if (field === 'qualityLevel' && Object.prototype.hasOwnProperty.call(QUALITY_LEVEL_LABELS, value)) {
+    return QUALITY_LEVEL_LABELS[value];
   }
   if (typeof value === 'string') {
     if (STORED_MOMENT.test(value)) return formatDateTime(value);

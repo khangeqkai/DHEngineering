@@ -6,6 +6,8 @@ import { capitalizeFirst, formatTime } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
 import { isCriticalLevel } from '../../../../server/src/shared/qualityLevels';
 import ToggleTiles from '../common/ToggleTiles';
+import FieldError from '../common/FieldError';
+import { useFieldErrors, fieldErrorsFromRefusal, scrollFieldIntoView } from '../../hooks/useFieldErrors';
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import './StopTimerForm.css';
 
@@ -21,6 +23,10 @@ const INSPECTION_ITEMS = [
   { field: 'measuringEquipmentVerification', label: 'Measuring equipment verified' },
   { field: 'equipmentChecks', label: 'Equipment checks', comments: true }
 ];
+
+// A Critical-inspection refusal names each missing answer by the same field name
+// this form's checks already use.
+const INSPECTION_BOXES = Object.fromEntries(INSPECTION_ITEMS.map(({ field }) => [field, field]));
 
 const toInt = (v) => Math.max(0, parseInt(v, 10) || 0);
 
@@ -107,6 +113,11 @@ export default function StopTimerForm({
   // JobCardList's loadJobcards), instead of racing to overwrite the current state.
   const jobLoadRequestIdRef = useRef(0);
   const machinesLoadRequestIdRef = useRef(0);
+  // Marks on unanswered inspection checks, raised only by the server's refusal
+  // (the job turned Critical after this form opened). Each mark clears itself the
+  // moment its check is answered.
+  const { setFieldErrors, clearAll: clearFieldErrors, errorFor } = useFieldErrors((name) => entryForm[name]);
+  const firstMarkedCheck = INSPECTION_ITEMS.find(({ field }) => errorFor(field))?.field || null;
 
   // Join the shared modal stack while open. This form opens on top of the job
   // card (itself a dialog with its own Tab trap); registering here makes this the
@@ -169,9 +180,16 @@ export default function StopTimerForm({
   useEffect(() => {
     if (!isOpen || !jobCard?.id) return;
     setMachineFilter('');
+    clearFieldErrors();
     loadJob();
     loadMachines();
-  }, [isOpen, jobCard?.id, itemId, loadJob, loadMachines]);
+  }, [isOpen, jobCard?.id, itemId, loadJob, loadMachines, clearFieldErrors]);
+
+  // Bring the first marked check into view once it is on screen — the checklist
+  // may only just have appeared, below the fold, when the refusal switched it on.
+  useEffect(() => {
+    if (firstMarkedCheck) scrollFieldIntoView(firstMarkedCheck);
+  }, [firstMarkedCheck]);
 
   useEffect(() => {
     if (isOpen && !jobLoading && firstInputRef.current) {
@@ -279,9 +297,18 @@ export default function StopTimerForm({
     onFieldChange('description', String(entryForm.description || '').trim() === text ? '' : text);
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (canSubmit && !loading) onSubmit();
+    if (!canSubmit || loading) return;
+    const result = await onSubmit();
+    // The server judges Critical at save time. If the job was made Critical after
+    // this form loaded it, show the checklist now and mark what still needs an
+    // answer, so the worker can finish here instead of retrying blind.
+    if (result?.inspectionRefusal) {
+      setIsCritical(true);
+      const { marks } = fieldErrorsFromRefusal(result.inspectionRefusal, INSPECTION_BOXES);
+      if (marks) setFieldErrors(marks);
+    }
   };
 
   return createPortal(
@@ -446,9 +473,15 @@ export default function StopTimerForm({
                   {INSPECTION_ITEMS.map(({ field, label, comments }) => (
                     <div key={field} className="stf-check-row">
                       <span className="stf-check-label">{label}</span>
-                      <div className="stf-yesno" role="group" aria-label={label}>
+                      <div
+                        className="stf-yesno"
+                        role="group"
+                        aria-label={label}
+                        aria-describedby={errorFor(field) ? `${modalId}-${field}-error` : undefined}
+                      >
                         <button
                           type="button"
+                          name={field}
                           className={`stf-yesno-btn${entryForm[field] === true ? ' is-yes' : ''}`}
                           aria-pressed={entryForm[field] === true}
                           onClick={() => onFieldChange(field, true)}
@@ -464,6 +497,7 @@ export default function StopTimerForm({
                           No
                         </button>
                       </div>
+                      <FieldError id={`${modalId}-${field}-error`} message={errorFor(field)} />
                       {comments && (
                         <input
                           type="text"

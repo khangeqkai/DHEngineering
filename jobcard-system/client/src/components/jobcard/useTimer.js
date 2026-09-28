@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { discardToastIcon, infoToastIcon } from '../common/toastIcons';
 import { describeItemPosition } from './workMatch.mjs';
 import { joinMachineCodes } from '../../../../server/src/shared/machineList';
+import { CRITICAL_INSPECTION_REFUSED } from '../../../../server/src/shared/qualityLevels';
 import { isJobClosedError } from '../../utils/jobLock';
 
 const emptyEntryForm = () => ({
@@ -426,6 +427,10 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       return { startedNewTimer };
     } catch (err) {
       if (closeFormIfBlockGone(err, entryJobcardId)) return { startedNewTimer: false };
+      // The job was made Critical after this form opened: hand the refusal back so
+      // the form switches its checklist on and marks the unanswered checks, instead
+      // of a pop-up that every retry would repeat.
+      if (err?.data?.code === CRITICAL_INSPECTION_REFUSED) return { startedNewTimer: false, inspectionRefusal: err };
       toast.error(err.message || 'Failed to update time entry', { id: 'update-time-entry-failed' });
       return { startedNewTimer: false };
     } finally {

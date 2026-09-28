@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 // The shared skeleton behind the admin list pages (Users, Suppliers, Customers):
 // a loading flag around a fetch, a "show archived" toggle, the
@@ -14,20 +14,32 @@ export function useManagedListPage({ initialShowArchived = false } = {}) {
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [showActivityLog, setShowActivityLog] = useState(false);
 
-  // Runs `fetchFn`, keeping `loading` true for its duration, and reports any
-  // failure through `onError` instead of throwing. Returns whatever `fetchFn`
-  // returns, or null on failure. `resetLoading: false` skips flipping `loading`
-  // back to true first — one page only shows the spinner on its very first
-  // load, not on every "show archived" toggle, and this preserves that.
-  const runLoad = useCallback(async (fetchFn, onError, { resetLoading = true } = {}) => {
+  // Every load takes a number; only the latest may touch the page. Ticking "show
+  // archived" twice quickly (or a refresh after a save crossing a toggle) can
+  // leave an older load in flight, and its reply landing last would otherwise
+  // put the wrong list on screen and turn the spinner off early.
+  const loadRequestIdRef = useRef(0);
+
+  // Runs `fetchFn` (which only fetches, and returns what it got), keeping
+  // `loading` true for its duration, then hands the result to `apply` — which
+  // puts it on the page — only if no newer load has started since. A failure is
+  // reported through `onError` instead of throwing, again only for the latest
+  // load. Returns what `apply` returns, or null on failure or when superseded.
+  // `resetLoading: false` skips flipping `loading` back to true first — one page
+  // only shows the spinner on its very first load, not on every "show archived"
+  // toggle, and this preserves that.
+  const runLoad = useCallback(async (fetchFn, apply, onError, { resetLoading = true } = {}) => {
+    const requestId = ++loadRequestIdRef.current;
+    const isLatest = () => requestId === loadRequestIdRef.current;
     if (resetLoading) setLoading(true);
     try {
-      return await fetchFn();
+      const data = await fetchFn();
+      return isLatest() ? apply(data) : null;
     } catch (err) {
-      onError(err);
+      if (isLatest()) onError(err);
       return null;
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
   }, []);
 

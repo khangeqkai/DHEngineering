@@ -264,9 +264,9 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
       equipmentChecks: toBoolFlag(data.equipmentChecks)
     };
     const equipmentChecksComments = data.equipmentChecksComments || null;
-    const inspectionError = checkCriticalInspection(id, endTime != null, inspection);
-    if (inspectionError) {
-      return res.status(400).json({ error: inspectionError });
+    const inspectionRefusal = checkCriticalInspection(id, endTime != null, inspection);
+    if (inspectionRefusal) {
+      return res.status(400).json(inspectionRefusal);
     }
 
     try {
@@ -451,9 +451,9 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       : (existing.equipment_checks_comments || null);
 
     // On a finished block on a Critical job, all four answers must be present.
-    const inspectionError = checkCriticalInspection(id, endTime != null, inspection);
-    if (inspectionError) {
-      return res.status(400).json({ error: inspectionError });
+    const inspectionRefusal = checkCriticalInspection(id, endTime != null, inspection);
+    if (inspectionRefusal) {
+      return res.status(400).json(inspectionRefusal);
     }
 
     // Only management may re-credit a block to a different worker, and only when they

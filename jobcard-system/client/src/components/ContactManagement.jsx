@@ -58,8 +58,8 @@ export default function ContactManagement() {
   // come to in order to bring one back, so hiding them would strand them.
   const loadCompanies = useCallback(async () => {
     return await runLoad(
-      async () => {
-        const data = await api.getCompanies({ includeArchived: true, withPeople: true });
+      () => api.getCompanies({ includeArchived: true, withPeople: true }),
+      (data) => {
         // The "Show archived" box is about customers; a retired person still shows
         // under their (live) customer so they can be restored.
         const visible = (showArchived ? data : data.filter(c => !c.archived))
