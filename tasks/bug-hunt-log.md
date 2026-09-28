@@ -31,7 +31,7 @@ Checked and rejected (or accepted as-is). One line each; kept for good.
 - Accepted leftover: typing a previous-job reference then instantly unticking Repeat Job can briefly show the reference until the job reloads; stored data is always right.
 
 ## This hunt
-_No hunt running._ While a hunt runs, each round adds a "Round N" list of what it fixed here, plus a row in the table below.
+Hunt 5 — rounds 19–21, started at commit 4a9e732 (2026-09-28). **Single-user only: two people working on the same record at the same time is out of scope — do not report it.** Areas: sign-in and permissions; start-up, backup/restore and settings; Workshop Statistics and management pages.
 
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
 |---|---|---|---|---|---|
