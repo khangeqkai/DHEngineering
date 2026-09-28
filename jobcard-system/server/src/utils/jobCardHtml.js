@@ -92,11 +92,13 @@ const CSS = `
 // passes each item's own `position` (buildJobCardView states it, once, for
 // every consumer) straight through.
 // What a declared drawing / customer property with no file shows: a red
-// "Missing" — unless the job-folders location couldn't be reached, in which case
-// nothing is known about the files and the card must not claim they're missing.
+// "Missing" — unless no job-folders location is set or it couldn't be reached,
+// in which case nothing is known about the files and the card must not claim
+// they're missing.
+const NOT_CHECKED_REASON = { 'not set': 'no folders location set', unreachable: 'folders unreachable' };
 function noFileMark(it) {
-  return it.filesUnreachable
-    ? `<div class="file">Files not checked (folders unreachable)</div>`
+  return it.filesNotChecked
+    ? `<div class="file">Files not checked (${NOT_CHECKED_REASON[it.filesNotChecked]})</div>`
     : `<div class="file missing">Missing</div>`;
 }
 

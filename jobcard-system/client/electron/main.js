@@ -553,8 +553,18 @@ ipcMain.handle('save-file', async (event, { defaultName, buffer, filters }) => {
     fs.writeFileSync(result.filePath, Buffer.from(buffer));
     return { canceled: false, filePath: result.filePath };
   } catch (err) {
+    // Answer with a plain message instead of throwing: a thrown error crosses to
+    // the screen as "Error invoking remote method…" plus the raw system text and
+    // full path. Saving over a file Excel or a PDF viewer holds open is the
+    // everyday case.
     logger.error({ err }, 'Failed to save file');
-    throw new Error(`Failed to save file: ${err.message}`);
+    const locked = ['EBUSY', 'EPERM', 'EACCES'].includes(err.code);
+    return {
+      canceled: false,
+      error: locked
+        ? 'That file is open in another program or can’t be written — close it or pick another name, then try again.'
+        : 'The file couldn’t be saved — try another name or folder.'
+    };
   }
 });
 

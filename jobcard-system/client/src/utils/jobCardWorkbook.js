@@ -36,7 +36,6 @@ const JOBCARD_SUMMARY_COLS = [
   { label: 'Contact Name', value: r => r.contactName },
   { label: 'Contact Phone', value: r => r.contactPhone },
   { label: 'Contact Email', value: r => r.contactEmail },
-  { label: 'Type', value: r => r.cardType },
   // Export the words people read on screen, not the stored codes.
   { label: 'Status', value: r => STATUS_LABELS[r.status] || r.status },
   { label: 'Priority', value: r => PRIORITY_LABELS[r.priority] || r.priority },

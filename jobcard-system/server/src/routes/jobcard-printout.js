@@ -8,7 +8,7 @@ const { authenticate, isManagement } = require('../middleware/auth');
 const { handleValidationErrors } = require('../middleware/validation');
 const { buildJobCardView } = require('./jobcard-helpers');
 const { renderJobCardHtml } = require('../utils/jobCardHtml');
-const { resolveCategoryFolder, listCategoryFileNames } = require('./jobcard-files');
+const { resolveCategoryFolder, listCategoryFileNames, stripStorageTag } = require('./jobcard-files');
 const { isWithinBase } = require('../utils/folderCreation');
 const { isPlainFileName } = require('../utils/fileValidation');
 const { buildPacketPdf } = require('../utils/pdfPacket');
@@ -143,23 +143,27 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
     // each file as we read it) and stop before crossing the input ceiling.
     let totalBytes = cardBuf ? cardBuf.length : 0;
     for (const { category, filename } of items) {
+      // What a person reads in the "left out" message is the name the Files panel
+      // shows, without the stored name's internal tag; the stored name is only
+      // for reading from disk and for the log.
+      const name = stripStorageTag(filename);
       const ext = path.extname(filename).toLowerCase();
-      if (!VALID_PACKET_EXT.has(ext)) { skipped.push({ name: filename, reason: 'unsupported' }); continue; }
+      if (!VALID_PACKET_EXT.has(ext)) { skipped.push({ name, reason: 'unsupported' }); continue; }
 
       const allowed = listing[category];
-      if (!allowed || !allowed.includes(filename)) { skipped.push({ name: filename, reason: 'missing' }); continue; }
+      if (!allowed || !allowed.includes(filename)) { skipped.push({ name, reason: 'missing' }); continue; }
 
       const folderPath = folderByCategory[category];
       const filePath = path.join(folderPath, filename);
-      if (!isWithinBase(folderPath, filePath)) { skipped.push({ name: filename, reason: 'missing' }); continue; }
-      if (!fs.existsSync(filePath)) { skipped.push({ name: filename, reason: 'missing' }); continue; }
+      if (!isWithinBase(folderPath, filePath)) { skipped.push({ name, reason: 'missing' }); continue; }
+      if (!fs.existsSync(filePath)) { skipped.push({ name, reason: 'missing' }); continue; }
 
       totalBytes += fs.statSync(filePath).size;
       if (totalBytes > MAX_PACKET_INPUT_BYTES) {
         return res.status(413).json({ error: 'Selected files are too large to combine at once; print in smaller batches' });
       }
 
-      files.push({ name: filename, ext, bytes: fs.readFileSync(filePath) });
+      files.push({ name, storedName: filename, ext, bytes: fs.readFileSync(filePath) });
     }
 
     let pdf, buildSkipped, cardIncluded;

@@ -21,6 +21,8 @@ export async function saveWorkbook(wb, defaultName) {
   if (window.electronAPI?.saveFile) {
     const result = await window.electronAPI.saveFile(defaultName, buf);
     if (result.canceled) return 'canceled';
+    // The file couldn't be written (e.g. open in Excel) — nothing was saved.
+    if (result.error) throw new Error(result.error);
     return true;
   }
 

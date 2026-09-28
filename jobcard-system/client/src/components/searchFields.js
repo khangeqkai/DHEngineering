@@ -59,4 +59,6 @@ export const ACTIVITY_FIELDS = [
   { value: 'jobCardPrinted', label: 'Job Card Printed' },
   { value: 'attachmentsPrinted', label: 'Attachments Printed' },
   { value: 'packetSaved', label: 'Print Packet Saved' },
+  // Only ever written by the startup conversion (old entries), never by live code.
+  { value: 'packetBuilt', label: 'Print Packet Built' },
 ];

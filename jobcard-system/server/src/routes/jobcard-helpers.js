@@ -425,13 +425,17 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
 
   // Read the Job Files and Customer Property folders once so each part's drawing
   // and customer-property field can show the actual file(s) attached to it (or
-  // flag a missing one). Empty when storage isn't set up or a folder is missing —
-  // in which case every declared drawing / property shows missing. When the
-  // storage location can't be reached at all nothing is known, so the card says
-  // the files couldn't be checked instead of calling them missing.
+  // flag a missing one). A folder that is missing or empty means every declared
+  // drawing / property there shows missing. When no storage location is set, or
+  // it can't be reached, nothing is known — so the card says the files weren't
+  // checked (and why) instead of calling them missing, the same as the job screen.
   const { listCategoryFileNames } = require('./jobcard-files');
   const listing = listCategoryFileNames(jobcardId, ['job-files', 'customer-property-files']);
-  const filesUnreachable = listing === null;
+  let filesNotChecked = null;
+  if (listing === null) {
+    const base = getSettings().job_folders_base;
+    filesNotChecked = base && base.trim() ? 'unreachable' : 'not set';
+  }
   const folderNames = listing || {};
   const jobFileNames = folderNames['job-files'] || [];
   const customerPropertyNames = folderNames['customer-property-files'] || [];
@@ -448,7 +452,7 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
     // For a declared drawing, find the file(s) attached to this exact part and
     // show their human-readable names; "missing" when none are on disk yet.
     const drawingFiles = drawingsIsNa ? [] : itemFileDisplayNames(jobFileNames, r.id);
-    const drawingsMissing = !filesUnreachable && !drawingsIsNa && drawingFiles.length === 0;
+    const drawingsMissing = !filesNotChecked && !drawingsIsNa && drawingFiles.length === 0;
     const treatments = parseTreatments(r.treatments).map(t => {
       const name = tagName('treatment', t.value);
       return t.supplierName ? `${name} - ${t.supplierName}` : name;
@@ -463,7 +467,7 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
     // For declared customer property, list the file(s) attached to this exact part
     // (or flag "missing"), the same way drawings does.
     const propertyFiles = customerPropertyIsNa ? [] : itemFileDisplayNames(customerPropertyNames, r.id);
-    const customerPropertyMissing = !filesUnreachable && !customerPropertyIsNa && propertyFiles.length === 0;
+    const customerPropertyMissing = !filesNotChecked && !customerPropertyIsNa && propertyFiles.length === 0;
     return {
       number: r.item_number,
       position: idx + 1,
@@ -480,7 +484,7 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
       customerPropertyIsNa,
       propertyFiles,
       customerPropertyMissing,
-      filesUnreachable
+      filesNotChecked
     };
   });
 

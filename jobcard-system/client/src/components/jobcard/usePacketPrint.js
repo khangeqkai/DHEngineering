@@ -18,7 +18,14 @@ function reportSkipped(skipped) {
     toast('Couldn’t start the PDF engine — the job card was left out of the packet. Ask an admin to set it up.',
       { icon: warningToastIcon, duration: 8000 });
   }
-  const others = skipped.filter(s => s.reason !== 'engine');
+  // A secured PDF can't be merged at all, but it opens and prints fine on its
+  // own — say that, rather than lumping it in with files that couldn't be read.
+  const secured = skipped.filter(s => s.reason === 'secured');
+  if (secured.length) {
+    toast(`These are locked PDFs and were left out of the packet; open and print them on their own: ${secured.map(s => s.name).join(', ')}`,
+      { icon: warningToastIcon, duration: 8000 });
+  }
+  const others = skipped.filter(s => s.reason !== 'engine' && s.reason !== 'secured');
   if (others.length) {
     const names = others.map(s => s.name).join(', ');
     toast(`Left out of the packet (couldn't be added): ${names}`, { icon: warningToastIcon, duration: 6000 });
@@ -31,22 +38,23 @@ function reportSkipped(skipped) {
 // PDF viewer (and print()) inside one, failing with nothing shown. If the browser
 // blocked the tab anyway, fall back to downloading the file so the user always
 // gets the packet rather than a silent no-op.
-// Returns whether the packet actually opened in a viewer — a blocked pop-up is a
-// download, i.e. a save, and must not be recorded as a print.
+// Returns what happened: 'opened' (a viewer has it — a print), 'downloaded' (a
+// blocked pop-up fell back to a download — a save, not a print) or 'refused' (the
+// browser blocked the download too, so no file exists).
 function showPdfInBrowser(win, bytes, filename) {
-  const blob = new Blob([bytes], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  const opened = !!(win && !win.closed);
-  if (opened) {
+  if (win && !win.closed) {
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
     win.location = url;
-  } else {
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.click();
-    toast('Pop-up blocked — the packet was downloaded instead, so it isn’t recorded as a print',
-      { icon: infoToastIcon, duration: 6000 });
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    return 'opened';
   }
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-  return opened;
+  if (downloadBytes(bytes, filename)) {
+    toast('Pop-up blocked — the packet was downloaded instead, so it’s recorded as a save, not a print',
+      { icon: infoToastIcon, duration: 6000 });
+    return 'downloaded';
+  }
+  toast.error('The browser blocked the packet — nothing was printed or saved');
+  return 'refused';
 }
 
 // Hands the packet to the browser and reports whether the browser took it. This fires
@@ -92,6 +100,7 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
     try {
       const { pdf, skipped, cardIncluded } = await build({ items, includeJobCard });
       let opened = false;
+      let downloaded = false;
       if (pdf) {
         const bytes = base64ToBytes(pdf);
         if (window.electronAPI?.openPdf) {
@@ -103,7 +112,9 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
             toast.success('Opening print preview…');
           }
         } else {
-          opened = showPdfInBrowser(win, bytes, `${jobNumber || 'Job'} packet.pdf`);
+          const outcome = showPdfInBrowser(win, bytes, `${jobNumber || 'Job'} packet.pdf`);
+          opened = outcome === 'opened';
+          downloaded = outcome === 'downloaded';
         }
       } else if (win && !win.closed) {
         win.close();
@@ -132,6 +143,15 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
             : 'Printed, but it couldn’t be recorded in this job’s activity',
             { icon: warningToastIcon, duration: 7000 });
         }
+      } else if (downloaded) {
+        // The fallback download is a save — the packet left the app — so record
+        // it as one, the same as the Save button does (and, like it, never re-sent).
+        try {
+          await api.markPacketSaved(jobcardId);
+        } catch {
+          toast('Saved, but it couldn’t be recorded in the job’s activity',
+            { icon: warningToastIcon, duration: 7000 });
+        }
       }
     } catch (err) {
       if (win && !win.closed) win.close();
@@ -157,7 +177,10 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
       let saved = false;
       if (window.electronAPI?.saveFile) {
         const res = await window.electronAPI.saveFile(name, bytes, [{ name: 'PDF', extensions: ['pdf'] }]);
-        if (res && !res.canceled) { saved = true; toast.success('Packet saved'); }
+        // A write that failed (file open in another program) comes back as a
+        // plain message, not a throw — nothing landed, so nothing is recorded.
+        if (res?.error) toast.error(res.error);
+        else if (res && !res.canceled) { saved = true; toast.success('Packet saved'); }
       } else {
         // In the browser there is no save window to cancel, but the download itself can
         // be refused — and the user is told either way, so a refused one isn't invisible.

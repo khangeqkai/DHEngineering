@@ -168,8 +168,10 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
   // If this section is the one a part's Attach button pointed us at, new files
   // added here belong to that part; otherwise they're whole-job.
   const ownerForCategory = (cat) => (attachTarget && attachTarget.category === cat ? attachTarget.itemId : null);
-  // Once a file is added to the targeted section, drop the target so later,
-  // unrelated uploads default back to whole-job.
+  // Once a file is actually saved to the targeted section, drop the target so
+  // later, unrelated uploads default back to whole-job. A try that left anything
+  // unsaved (too big, wrong type, refused, offline) keeps it, so the retry of
+  // what's left still goes to the part.
   const clearTargetIfMatches = (cat) => { if (attachTarget && attachTarget.category === cat) setAttachTarget(null); };
 
   // --- Upload (file picker) ---
@@ -177,9 +179,9 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
   const onFilesChosen = async (e) => {
     const chosen = e.target.files;
     const cat = pendingUploadCat.current;
-    await files.uploadPickedFiles(chosen, cat, () => { if (fileInputRef.current) fileInputRef.current.value = ''; }, ownerForCategory(cat));
+    const { saved, failed } = await files.uploadPickedFiles(chosen, cat, () => { if (fileInputRef.current) fileInputRef.current.value = ''; }, ownerForCategory(cat));
     afterChange(cat);
-    clearTargetIfMatches(cat);
+    if (saved > 0 && failed === 0) clearTargetIfMatches(cat);
   };
 
   // --- Camera ---
@@ -190,9 +192,9 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
     if (camera.photos.length === 0) return;
     // Removes each photo from the strip as it finishes uploading (by id), not the
     // whole strip once the batch ends — see useJobFiles.savePhotos.
-    await files.savePhotos(camera.photos, cameraCategory, camera.removePhoto, ownerForCategory(cameraCategory));
+    const { saved, failed } = await files.savePhotos(camera.photos, cameraCategory, camera.removePhoto, ownerForCategory(cameraCategory));
     afterChange(cameraCategory);
-    clearTargetIfMatches(cameraCategory);
+    if (saved > 0 && failed === 0) clearTargetIfMatches(cameraCategory);
   };
   const leaveCamera = () => { camera.stopCamera(); setView('hub'); setCameraCategory(null); };
 

@@ -9,7 +9,9 @@ const logger = require('./logger');
 // are normalised through sharp to PNG (so every input format works and CMYK /
 // progressive JPEGs that pdf-lib can't embed directly are handled) and placed
 // one per A4 page, scaled to fit. A file that can't be read or decoded is skipped
-// and reported rather than failing the whole packet.
+// and reported rather than failing the whole packet. So is a secured
+// (encrypted) PDF: pdf-lib can't decrypt, and copying its still-encrypted pages
+// into the unencrypted packet prints them blank or garbled.
 
 const [A4_W, A4_H] = PageSizes.A4; // points (595.28 x 841.89)
 const MARGIN = 18; // ~6.3mm white border around drawn images
@@ -18,7 +20,14 @@ const PDF_EXT = '.pdf';
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp', '.gif']);
 
 async function appendPdf(out, bytes) {
+  // ignoreEncryption only lets the load get far enough to ask; an encrypted file
+  // is refused here rather than welded in unreadable.
   const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+  if (src.isEncrypted) {
+    const err = new Error('PDF is secured (encrypted)');
+    err.reason = 'secured';
+    throw err;
+  }
   const pages = await out.copyPages(src, src.getPageIndices());
   pages.forEach(p => out.addPage(p));
 }
@@ -46,7 +55,9 @@ async function appendImage(out, bytes) {
  * Build the combined packet PDF.
  * @param {Object} opts
  * @param {Buffer|null} opts.jobCardPdf  rendered job-card PDF (placed first)
- * @param {Array<{name: string, ext: string, bytes: Buffer}>} opts.files
+ * @param {Array<{name: string, storedName?: string, ext: string, bytes: Buffer}>} opts.files
+ *        `name` is what a person reads (reported in `skipped`); `storedName` is
+ *        the on-disk name, for the log only.
  * @returns {Promise<{ pdf: Buffer, skipped: Array<{name: string, reason: string}>, cardIncluded: boolean }>}
  *          `cardIncluded` is true only when the job card is actually in the
  *          finished document — a card that was handed in but failed to merge
@@ -77,8 +88,8 @@ async function buildPacketPdf({ jobCardPdf, files }) {
         skipped.push({ name: f.name, reason: 'unsupported' });
       }
     } catch (err) {
-      logger.error({ err, file: f.name }, 'Packet: file failed, skipping');
-      skipped.push({ name: f.name, reason: 'corrupt' });
+      logger.error({ err, file: f.storedName || f.name }, 'Packet: file failed, skipping');
+      skipped.push({ name: f.name, reason: err.reason === 'secured' ? 'secured' : 'corrupt' });
     }
   }
 

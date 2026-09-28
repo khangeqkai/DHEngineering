@@ -62,7 +62,9 @@ function resolveJobFolder(jobcardId) {
   const settings = getSettings();
   const basePath = settings.job_folders_base;
   if (!basePath || !basePath.trim()) {
-    return { error: 'Job folders base path not configured', status: 400 };
+    // `notConfigured` lets callers that don't send the reply themselves tell
+    // "nothing was looked at" apart from "looked, and the folder is empty".
+    return { error: 'Job folders base path not configured', status: 400, notConfigured: true };
   }
 
   const jobcard = jobcardQueries.getById.get(jobcardId);
@@ -295,9 +297,9 @@ function listFolderFiles(folderPath) {
 // expensive part, so we don't repeat it per category). Returns a map of
 // category → filenames; categories whose folder is missing/empty, or any job
 // that can't be resolved, come back as empty arrays. Returns null instead when
-// the job-folders location itself can't be reached (an offline drive or share):
-// then nothing is known about the files, and callers must not report any of
-// them as missing. Used by the
+// no job-folders location is set, or when it can't be reached (an offline drive
+// or share): then nothing is known about the files, and callers must not report
+// any of them as missing. Used by the
 // attachment-warnings detector to tell whether a declared drawing / customer
 // property actually has a file.
 function listCategoryFileNames(jobcardId, categories) {
@@ -305,7 +307,7 @@ function listCategoryFileNames(jobcardId, categories) {
   const empty = Object.fromEntries(wanted.map(c => [c, []]));
 
   const jobRes = resolveJobFolder(jobcardId);
-  if (jobRes.unreachable) return null;
+  if (jobRes.unreachable || jobRes.notConfigured) return null;
   if (jobRes.error) return empty;
 
   const out = {};
@@ -453,8 +455,10 @@ function saveFile({ jobcardId, category, displayName, buffer, source, itemId, re
   fs.writeFileSync(targetPath, buffer);
 
   recordHistory('jobcard', jobcardId, 'upload_file', req.user.userId, actorName(req),
-    { file: { from: null, to: displayName } },
-    { destination: CATEGORY_FOLDER[category], source, itemId: itemId ?? null }
+    // The name actually kept (cleaned and length-capped), as the Files panel
+    // shows it and the delete entry records it — not the raw name that was sent.
+    { file: { from: null, to: stripStorageTag(storageFilename) } },
+    { destination: CATEGORY_FOLDER[category], source, itemId: itemId ?? null, storedName: storageFilename }
   );
 
   const stat = fs.statSync(targetPath);
@@ -632,3 +636,4 @@ module.exports.listCategoryFileNames = listCategoryFileNames;
 module.exports.partFileCode = partFileCode;
 module.exports.resolveJobFolder = resolveJobFolder;
 module.exports.resolveCategoryFolder = resolveCategoryFolder;
+module.exports.stripStorageTag = stripStorageTag;

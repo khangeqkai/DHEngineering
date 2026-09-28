@@ -134,8 +134,11 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
     }
   }, [jobcardId, fetchList, loadThumbnails]);
 
+  // Returns { saved, failed }: how many files were actually saved, and how many
+  // were skipped or refused, so the caller can tell a clean try from one that
+  // left something to retry.
   const uploadPickedFiles = useCallback(async (fileList, category, onDone, itemId = null) => {
-    if (!jobcardId || !fileList || fileList.length === 0) return;
+    if (!jobcardId || !fileList || fileList.length === 0) return { saved: 0, failed: 0 };
     const chosen = Array.from(fileList);
 
     const tooBig = chosen.filter(f => f.size > MAX_UPLOAD_BYTES);
@@ -144,7 +147,8 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
 
     if (badType.length) toast.error(`Skipped (unsupported type): ${badType.map(f => f.name).join(', ')}`);
     if (tooBig.length) toast.error(`Skipped (over 30 MB): ${tooBig.map(f => f.name).join(', ')}`);
-    if (valid.length === 0) { if (onDone) onDone(); return; }
+    const skipped = tooBig.length + badType.length;
+    if (valid.length === 0) { if (onDone) onDone(); return { saved: 0, failed: skipped }; }
 
     setUploading(true);
     // A loading toast shows for the length of the upload, not just after it finishes.
@@ -163,7 +167,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
           if (handledAsJobClosed(err, onJobClosedRef.current)) {
             toast.dismiss(toastId);
             if (saved > 0) refreshCount(category);
-            return;
+            return { saved: 0, failed: 0 };
           }
           failed.push({ name: file.name, message: err.message });
         }
@@ -181,6 +185,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
         const lines = failed.map(f => `${f.name}: ${f.message || "couldn't be uploaded, try again in a moment."}`);
         toast.error(`Failed to upload — ${lines.join('; ')}`);
       }
+      return { saved, failed: failed.length + skipped };
     } finally {
       setUploading(false);
       if (onDone) onDone();
@@ -194,8 +199,9 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
   // (instead of being wiped by a blanket clear); and if an upload partway through
   // fails, everything before it is already gone from the strip, so a retry only
   // re-sends what didn't go up the first time.
+  // Returns { saved, failed }, the same as uploadPickedFiles.
   const savePhotos = useCallback(async (photos, category, removePhoto, itemId = null) => {
-    if (!jobcardId || !photos || photos.length === 0) return;
+    if (!jobcardId || !photos || photos.length === 0) return { saved: 0, failed: 0 };
     setSavingPhotos(true);
     // Photos go up one at a time and can take a while on a phone. Say so while it
     // runs, the same as picking files from disk already does.
@@ -221,7 +227,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
           if (handledAsJobClosed(err, onJobClosedRef.current)) {
             toast.dismiss(toastId);
             if (saved > 0) refreshCount(category);
-            return;
+            return { saved: 0, failed: 0 };
           }
           failed.push({ photo, message: err.message });
         }
@@ -236,6 +242,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
         // "try again" would send the user retrying something that can never work.
         toast.error(failed[0].message || 'Could not save the photos — try again in a moment.', { id: toastId });
       }
+      return { saved, failed: failed.length };
     } finally {
       setSavingPhotos(false);
     }

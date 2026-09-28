@@ -57,6 +57,24 @@ function getBasePath() {
   }
 }
 
+/**
+ * The configured base, but only when it can be reached right now — the one
+ * entry point for every automatic folder write (customer add/rename, job
+ * create/save). A base that has gone missing is logged and skipped, never
+ * rebuilt: a recursive mkdir would otherwise recreate it as an empty stand-in
+ * folder, after which every declared file reads as missing and uploads land in
+ * the stand-in. Returns null when not configured or unreachable.
+ */
+function getWritableBasePath() {
+  const basePath = getBasePath();
+  if (!basePath) return null;
+  if (!isBaseReachable(basePath)) {
+    logger.warn({ basePath }, 'Job folders location unreachable; skipping automatic folder write');
+    return null;
+  }
+  return basePath;
+}
+
 // The plain message every file route gives when the base below can't be reached.
 const JOB_FOLDERS_UNREACHABLE = "The job folders location can't be reached right now. Check the drive or network connection, then try again.";
 
@@ -154,7 +172,8 @@ function findCodedFolder(basePath, id, kind) {
  */
 function ensureCodedFolder(basePath, id, name, kind) {
   try {
-    if (!basePath || !id) return null;
+    // Never write under a base that can't be reached — see getWritableBasePath.
+    if (!basePath || !id || !isBaseReachable(basePath)) return null;
 
     const existing = findCodedFolder(basePath, id, kind);
     if (existing) return existing;
@@ -186,7 +205,7 @@ function ensureCodedFolder(basePath, id, name, kind) {
  */
 function renameCodedFolder(basePath, id, newName, kind) {
   try {
-    if (!basePath || !id) return;
+    if (!basePath || !id || !isBaseReachable(basePath)) return;
 
     const desired = codedFolderName(newName, id);
     if (!desired) return;
@@ -274,7 +293,7 @@ function resolveCompanyFolder(basePath, companyId, companyName) {
  * but never throws.
  */
 function ensureCompanyFolder(companyId, companyName) {
-  const basePath = getBasePath();
+  const basePath = getWritableBasePath();
   return ensureCodedFolder(basePath, companyId, companyName, 'company');
 }
 
@@ -285,7 +304,7 @@ function ensureCompanyFolder(companyId, companyName) {
  * regardless of the on-disk name. Fire-and-forget: never throws.
  */
 function renameCompanyFolder(companyId, oldName, newName) {
-  const basePath = getBasePath();
+  const basePath = getWritableBasePath();
   renameCodedFolder(basePath, companyId, newName, 'company');
 }
 
@@ -314,7 +333,7 @@ function companyPathByName(basePath, companyName) {
  */
 function createJobCardFolders(companyId, companyName, jobNumber) {
   try {
-    const basePath = getBasePath();
+    const basePath = getWritableBasePath();
     if (!basePath) return;
 
     const companyFolder = companyId
