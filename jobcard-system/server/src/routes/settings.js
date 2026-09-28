@@ -261,6 +261,10 @@ router.post('/export-backup', requirePermission('systemData'), [
   handleValidationErrors
 ], async (req, res) => {
   const { outputPath } = req.body;
+  // The zip is built beside the chosen file under a temporary name and only
+  // renamed over it once it is complete (a same-folder rename), so a failed
+  // export never empties or deletes a backup already saved at that path.
+  const partialPath = `${outputPath}.partial`;
 
   try {
     const settings = db.getSettings();
@@ -298,7 +302,12 @@ router.post('/export-backup', requirePermission('systemData'), [
     // that was refused). They are left out of this backup, and a restore would
     // delete them, so the reply names them and the admin is asked to move them.
     const backupsLeftOut = [];
-    if (jobBase && fs.existsSync(jobBase)) {
+    // Why the job folders were not read, for the reply — the admin has to be told
+    // the backup holds only the records, not the job files.
+    let filesLeftOutReason = null;
+    if (!jobBase) filesLeftOutReason = 'not-set';
+    else if (!fs.existsSync(jobBase)) filesLeftOutReason = 'unreachable';
+    else {
       const files = [];
       walkSkipped += listFilesRecursive(jobBase, jobBase, files, backupsLeftOut);
       jobFoldersRead = true;
@@ -335,11 +344,12 @@ router.post('/export-backup', requirePermission('systemData'), [
       metadata,
       tables,
       collected: readableFiles,
-      outputPath,
+      outputPath: partialPath,
       walkSkipped,
       preSkipped
     });
 
+    fs.renameSync(partialPath, outputPath);
     const stats = fs.statSync(outputPath);
     logger.info({ outputPath, size: stats.size }, 'Backup exported successfully');
 
@@ -355,9 +365,14 @@ router.post('/export-backup', requirePermission('systemData'), [
     if (backupsLeftOut.length > 0) {
       logger.warn({ backupsLeftOut }, 'Earlier backups inside the job folders left out of backup export');
     }
-    res.json({ success: true, size: stats.size, filesSkipped: skipped, backupsLeftOut });
+    res.json({
+      success: true, size: stats.size, filesSkipped: skipped, backupsLeftOut,
+      filesIncluded: jobFoldersRead, filesLeftOutReason
+    });
   } catch (err) {
-    try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch (_) { /* ignore */ }
+    // Only the half-built temporary file is removed — never the chosen path, which
+    // may hold an earlier, good backup.
+    try { if (fs.existsSync(partialPath)) fs.unlinkSync(partialPath); } catch (_) { /* ignore */ }
     logger.error({ err }, 'Error exporting backup');
     res.status(500).json({ error: 'Failed to export backup: ' + err.message });
   }
@@ -418,7 +433,6 @@ router.post('/import-backup', requirePermission('systemData'), [
     });
   }
 
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dh-backup-'));
   // Staging + "old" folders sit beside the live job folders (same volume), so
   // the final switch is an instant rename rather than a slow, failure-prone copy.
   const parentDir = path.dirname(currentJobBase);
@@ -426,8 +440,22 @@ router.post('/import-backup', requirePermission('systemData'), [
   const stagingDir = path.join(parentDir, `${baseName}__restore_staging`);
   const oldDir = path.join(parentDir, `${baseName}__restore_old`);
 
+  // An "old" folder is only ever left behind when an earlier restore's undo could
+  // not put the original files back — it may then hold the only copy of them, so
+  // it is never cleared automatically. The admin checks it and moves it by hand.
+  if (fs.existsSync(oldDir)) {
+    return res.status(409).json({
+      error: `An earlier restore did not finish, and this folder may hold the original job files: ${oldDir}. Check it, then move or delete it yourself before restoring again. Nothing was changed.`
+    });
+  }
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dh-backup-'));
+
   let maintenanceOn = false;
   let filesSwapped = false;
+  // False when the live job-folders location was missing before the swap, so a
+  // rollback has no original folder to put back.
+  let hadOriginal = true;
   // Set if an automatic rollback could not put the original files back, leaving
   // the files on disk and the database records out of sync — admin must review.
   let filesUnrecoverable = false;
@@ -444,16 +472,16 @@ router.post('/import-backup', requirePermission('systemData'), [
     setMaintenance(true);
     maintenanceOn = true;
 
-    // Clear leftovers from any previously interrupted restore.
+    // Clear a staging leftover from an interrupted restore — it only ever holds a
+    // copy of a backup's files. (An "old" leftover was refused above.)
     bestEffortRemove(stagingDir);
-    bestEffortRemove(oldDir);
 
     // 1-2. Stage the backup's files off to the side, confirm every file in the
     //    manifest unpacked correctly, then swap them into place with instant
     //    renames. If a rename fails, undo it and abort with the live folders
     //    untouched.
     try {
-      ({ filesSwapped } = swapJobFolders({
+      ({ filesSwapped, hadOriginal = true } = swapJobFolders({
         tempDir, currentJobBase, stagingDir, oldDir,
         fileManifest: data._metadata.fileManifest,
         jobFoldersRead: data._metadata.jobFoldersRead
@@ -477,7 +505,7 @@ router.post('/import-backup', requirePermission('systemData'), [
     } catch (dbErr) {
       // Records rolled back on their own; put the original files back too.
       if (filesSwapped) {
-        const { unrecoverable } = rollbackJobFolderSwap({ currentJobBase, stagingDir, oldDir });
+        const { unrecoverable } = rollbackJobFolderSwap({ currentJobBase, stagingDir, oldDir, hadOriginal });
         if (unrecoverable) filesUnrecoverable = true;
         filesSwapped = false;
       }
@@ -529,6 +557,8 @@ router.post('/import-backup', requirePermission('systemData'), [
           + 'Check the server logs and the leftover restore folders, and review the data manually before continuing. '
           + 'Details: ' + err.message
       });
+    } else if (err.plainMessage) {
+      res.status(err.status || 500).json({ error: err.message });
     } else {
       res.status(500).json({ error: 'Failed to import backup: ' + err.message });
     }

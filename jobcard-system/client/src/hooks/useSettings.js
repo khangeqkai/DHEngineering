@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import { validatePassword, todayIsoDate } from '../utils/formatters';
 import { isManagement, can } from '../utils/roles';
 import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from './useFieldErrors';
+import { warningToastIcon } from '../components/common/toastIcons';
 import {
   INACTIVITY_MINUTES, isInactivityMinutes, isStartingJobNumber, STARTING_JOB_NUMBER_MESSAGE,
   homeAccessCodeProblem, homeAddressProblem
@@ -306,7 +307,21 @@ export function useSettings() {
       const result = await api.exportBackup(outputPath);
       const sizeMB = result?.size ? (result.size / 1024 / 1024).toFixed(1) : null;
       const backupsLeftOut = result?.backupsLeftOut || [];
-      if (backupsLeftOut.length > 0) {
+      if (result && result.filesIncluded === false) {
+        // The job folders were never read, so this backup holds only the records.
+        // Checked first: it matters more than any per-file note below.
+        const where = result.filesLeftOutReason === 'not-set'
+          ? 'no job folders location is set'
+          : "the job folders location can't be reached";
+        const setNote = result.filesLeftOutReason === 'not-set'
+          ? 'Set it in Settings and export again.'
+          : 'Reconnect it and export again.';
+        const unreadNote = result.filesSkipped > 0
+          ? ` Also, ${result.filesSkipped} file(s) couldn't be read and were left out.`
+          : '';
+        toast(`Backup saved, but it holds only the records, not the job files: ${where}. ${setNote}${unreadNote}`,
+          { id: toastId, icon: warningToastIcon, duration: 20000 });
+      } else if (backupsLeftOut.length > 0) {
         // Earlier backups kept inside the job folders are not in this backup, and a
         // restore replaces everything in there — the admin has to move them out.
         const unreadNote = result.filesSkipped > 0

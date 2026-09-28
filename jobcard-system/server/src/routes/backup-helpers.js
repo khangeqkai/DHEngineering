@@ -223,6 +223,10 @@ function partitionReadableFiles(collected) {
 // failures live in `walkSkipped`; files dropped by the readable pre-flight live
 // in `preSkipped`). The `collected` array passed here is the readable-only list.
 //
+// `outputPath` is the route's temporary file beside the chosen destination, never
+// the destination itself — this step and the retry below empty and delete it
+// freely, and the route renames it into place only once it is complete.
+//
 // Returns the accurate total skipped count (walk-time failures + pre-flight
 // unreadable files).
 function archiveBackup({ metadata, tables, collected, outputPath, walkSkipped, preSkipped = 0 }) {
@@ -377,14 +381,29 @@ async function archiveBackupWithRetry({ metadata, tables, collected, outputPath,
 // job folders) is touched yet, so a rejection here needs no rollback of anything.
 // Returns { error, status } to send as-is, or { data } to continue with.
 async function stageBackupArchive(inputPath, tempDir, schemaVersion, tableOrder) {
-  await extractZip(inputPath, { dir: tempDir });
+  // A damaged or partly copied zip fails to unpack or to parse — a plain refusal,
+  // not the raw system error, since nothing live has been touched yet.
+  const unreadable = { error: 'This file is not a readable backup — it may be damaged or only partly copied. Nothing was changed.', status: 400 };
+  try {
+    await extractZip(inputPath, { dir: tempDir });
+  } catch (err) {
+    logger.error({ err, inputPath }, 'Backup import: could not unpack the archive');
+    return unreadable;
+  }
 
   const dbJsonPath = path.join(tempDir, 'database.json');
   if (!fs.existsSync(dbJsonPath)) {
     return { error: 'Invalid backup: missing database.json', status: 400 };
   }
 
-  const data = splitCustomersInBackup(JSON.parse(fs.readFileSync(dbJsonPath, 'utf-8')));
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(dbJsonPath, 'utf-8'));
+  } catch (err) {
+    logger.error({ err, inputPath }, 'Backup import: could not read database.json');
+    return unreadable;
+  }
+  const data = splitCustomersInBackup(parsed);
 
   if (!data._metadata) {
     return { error: 'Invalid backup: missing _metadata', status: 400 };
@@ -416,6 +435,12 @@ async function stageBackupArchive(inputPath, tempDir, schemaVersion, tableOrder)
 // found nothing. Without that record (older backups, or one taken while the
 // folder was missing) an empty backup can't be told apart from one that simply
 // never looked, so the live files are left as they are (filesSwapped false).
+//
+// When the live location is missing (moved, deleted, never created) there is
+// nothing to move aside: the backup's files are renamed straight into place —
+// putting them back is the restore's whole purpose — and `hadOriginal: false`
+// tells the rollback there is no original folder to return. A live folder that
+// can't be moved because something has it open is refused in plain words.
 function swapJobFolders({ tempDir, currentJobBase, stagingDir, oldDir, fileManifest, jobFoldersRead }) {
   const filesDir = path.join(tempDir, 'files');
   if (fs.existsSync(filesDir)) {
@@ -427,7 +452,24 @@ function swapJobFolders({ tempDir, currentJobBase, stagingDir, oldDir, fileManif
   }
   verifyStagedFiles(stagingDir, fileManifest);
 
-  fs.renameSync(currentJobBase, oldDir);
+  if (!fs.existsSync(currentJobBase)) {
+    fs.mkdirSync(path.dirname(currentJobBase), { recursive: true });
+    fs.renameSync(stagingDir, currentJobBase);
+    return { filesSwapped: true, hadOriginal: false };
+  }
+
+  try {
+    fs.renameSync(currentJobBase, oldDir);
+  } catch (err) {
+    if (['EPERM', 'EBUSY', 'EACCES'].includes(err.code)) {
+      logger.error({ err, from: currentJobBase, to: oldDir }, 'Backup restore: live job folders could not be moved aside');
+      const inUse = new Error('The job folders are in use — close any files or folder windows open from them, then try again. Nothing was changed.');
+      inUse.plainMessage = true;
+      inUse.status = 409;
+      throw inUse;
+    }
+    throw err;
+  }
   try {
     fs.renameSync(stagingDir, currentJobBase);
   } catch (swapErr) {
@@ -446,7 +488,7 @@ function swapJobFolders({ tempDir, currentJobBase, stagingDir, oldDir, fileManif
     throw swapErr;
   }
 
-  return { filesSwapped: true };
+  return { filesSwapped: true, hadOriginal: true };
 }
 
 // RESTORE TABLES — reload every table as one all-or-nothing transaction, then run
@@ -541,8 +583,10 @@ function restoreTables({ data, tableOrder, tableColumns, currentJobBase, current
 // newly-restored files out of the live folder, then put the originals (still
 // sitting in oldDir) back. Every failure here is logged as it happens (mirroring
 // today's inline code exactly); the return value only tells the caller whether
-// manual review is now needed.
-function rollbackJobFolderSwap({ currentJobBase, stagingDir, oldDir }) {
+// manual review is now needed. With `hadOriginal` false the live location was
+// missing before the restore, so only the restored files are moved back out —
+// there is no original in oldDir to return, and its absence is not a failure.
+function rollbackJobFolderSwap({ currentJobBase, stagingDir, oldDir, hadOriginal }) {
   let movedNewAside = false;
   let unrecoverable = false;
   try {
@@ -555,7 +599,7 @@ function rollbackJobFolderSwap({ currentJobBase, stagingDir, oldDir }) {
       'Backup restore rollback failed: could not move restored files out of live folder; disk holds NEW files while database holds OLD records — manual review required'
     );
   }
-  if (movedNewAside) {
+  if (movedNewAside && hadOriginal) {
     try {
       fs.renameSync(oldDir, currentJobBase);
     } catch (rbErr) {
