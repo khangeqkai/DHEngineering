@@ -16,6 +16,7 @@ const {
   actorName
 } = require('../db/database');
 const { formatJobcard, buildChanges, createRelatedRecords, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
+const { refuseField } = require('./name-conflict');
 const { itemSummary, describePart, assigneeNames } = require('./jobcard-audit-text');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { readOvertimeSettings } = require('../utils/overtimeSettings');
@@ -276,8 +277,21 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     // not being one (unticked now, or already not one), the reference is cleared —
     // set on `data` so the write below stores it and the trail records it.
     const endsRepeatJob = data.isRepeatJob !== undefined ? !!data.isRepeatJob : existing.is_repeat_job === 1;
-    if (!endsRepeatJob && (data.repeatJobReference !== undefined || existing.repeat_job_reference != null)) {
-      data.repeatJobReference = null;
+    if (!endsRepeatJob) {
+      // A reference can't be honoured on a job that isn't (and this request isn't
+      // making) a repeat job — this is the single-field instant-save path, so the
+      // stored `is_repeat_job` may have just been unticked from another screen
+      // while this one still shows it ticked. Refuse rather than silently store
+      // null and answer success: the box would read "Saved" with nothing stored.
+      // A request that unticks Repeat Job in the same write (or sends no
+      // reference at all) still falls through to the silent clear below — that
+      // is the intended path.
+      if (data.isRepeatJob === undefined && data.repeatJobReference) {
+        return refuseField(res, 400, 'repeatJobReference', 'This job is no longer a repeat job — tick Repeat Job first.');
+      }
+      if (data.repeatJobReference !== undefined || existing.repeat_job_reference != null) {
+        data.repeatJobReference = null;
+      }
     }
     const changes = buildChanges(existing, data);
 

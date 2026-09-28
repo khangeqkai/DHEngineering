@@ -1,6 +1,16 @@
 import { useRef, useState, useMemo, useCallback } from 'react';
 import { api } from '../../services/api';
 import { JOB_FIELD_LABEL } from './closeReasons';
+import { fieldErrorsFromRefusal } from '../../hooks/useFieldErrors';
+import { NOT_LANDED } from './useSaveQueue';
+
+// The single-value fields a server refusal can name here today (the same box-name
+// shape fieldErrorsFromRefusal expects everywhere else in the app): a previous-job
+// reference sent for a job that isn't — and this write isn't making — a repeat job
+// (jobcard-mutations.js refuses it rather than silently storing null). This is the
+// one field this can happen to, since it's the only single-value field whose
+// validity depends on another field's stored value rather than its own content.
+const FIELD_BOXES = { repeatJobReference: 'repeatJobReference' };
 
 // What the shared status line beside a group of instant-save fields shows. There is
 // deliberately no 'idle' entry — the line only appears once something in the group
@@ -38,7 +48,7 @@ export function summarizeFieldStates(fieldStates, names) {
  * jobCardId is null on a brand-new job. Every call site only reaches saveField once
  * `isEdit && jobCardId` is true — everything stays local-only before that.
  */
-export function useInstantSave(jobCardId, saveQueue, { onSaved, onAttachmentWarnings } = {}) {
+export function useInstantSave(jobCardId, saveQueue, { onSaved, onAttachmentWarnings, fieldErrors } = {}) {
   const jobCardIdRef = useRef(jobCardId);
   jobCardIdRef.current = jobCardId;
 
@@ -92,8 +102,24 @@ export function useInstantSave(jobCardId, saveQueue, { onSaved, onAttachmentWarn
         // The reply's file notes were worked out against the job as it now
         // stands, so hand them on the same way a part write's reply does.
         if (result?.attachmentWarnings !== undefined) onAttachmentWarnings?.(result.attachmentWarnings);
+      })
+      .catch((err) => {
+        // A check that belongs to a named box marks that box instead of a pop-up
+        // (CLAUDE.md) — the same rule a form with a Save button follows via
+        // showSaveRefusal, applied here to a field that saves itself. Anything
+        // the server didn't name a box for (or a reply for a job/opening the user
+        // has since left) still falls through to the queue's own generic failure
+        // toast below, unchanged.
+        const { marks } = fieldErrorsFromRefusal(err, FIELD_BOXES);
+        if (marks && isCurrent()) {
+          fieldErrors?.setFieldErrors(marks, { [name]: value });
+          // Nothing was stored — say so with the mark, not a second toast on top
+          // of it — so this must not count toward landedCount or read 'failed'.
+          return NOT_LANDED;
+        }
+        throw err;
       }), { label: JOB_FIELD_LABEL[name] || `the ${name}` });
-  }, [saveQueue, onSaved, onAttachmentWarnings]);
+  }, [saveQueue, onSaved, onAttachmentWarnings, fieldErrors]);
 
   // Live queued/inFlight/failed state layered over the "ever saved" record — a
   // field currently in the queue always wins (it's the authoritative, recorded

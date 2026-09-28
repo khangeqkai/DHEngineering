@@ -1,5 +1,6 @@
 import { INSTANT_SAVE_STATUS_TEXT } from '../useInstantSave';
 import { QUALITY_LEVELS, QUALITY_LEVEL_LABELS } from '../../../../../server/src/shared/qualityLevels';
+import FieldError from '../../common/FieldError';
 
 // The Customer Input card: PO number, quote reference, quality level, repeat-job
 // toggle and (once that's ticked) the previous-job-reference combobox. Split out
@@ -13,6 +14,9 @@ export default function JobReferenceFields({
   canWriteInstantly,
   saveField,
   detailsStatus,
+  groupClass = () => 'form-group',
+  errorFor = () => null,
+  errorProps = (name) => ({ id: `${name}-error` }),
   jobSearch,
   jobRefListOpen,
   jobRefNav
@@ -100,7 +104,7 @@ export default function JobReferenceFields({
         </div>
       </div>
       {formData.isRepeatJob && (
-        <div className="form-group" ref={jobSearch.containerRef}>
+        <div className={groupClass('repeatJobReference')} ref={jobSearch.containerRef}>
           <label htmlFor="jc-repeat-job-reference">Previous Job Reference</label>
           <div className="autocomplete-container">
             <input
@@ -132,6 +136,8 @@ export default function JobReferenceFields({
               aria-controls={jobRefNav.listId}
               aria-autocomplete="list"
               aria-activedescendant={jobRefNav.activeIndex >= 0 ? `${jobRefNav.listId}-${jobRefNav.activeIndex}` : undefined}
+              aria-invalid={errorFor('repeatJobReference') ? true : undefined}
+              aria-describedby={errorFor('repeatJobReference') ? errorProps('repeatJobReference').id : undefined}
               placeholder="DH-00001"
               autoComplete="off"
             />
@@ -155,6 +161,7 @@ export default function JobReferenceFields({
               </div>
             )}
           </div>
+          <FieldError {...errorProps('repeatJobReference')} message={errorFor('repeatJobReference')} />
         </div>
       )}
     </div>

@@ -60,3 +60,16 @@ Nothing here has an automatic test, so click through these once on a real PC. Ea
 34. Stop a timer and leave the form open; a manager corrects that run's part or pieces elsewhere; press Resume → the correction stays.
 35. After a restore of an old backup, open an old Critical job → runs finished while it was Critical show "Sign-off missing" if unanswered; earlier Standard runs don't.
 
+
+**Added by the third hunt (rounds 14–15)**
+36. Stop a timer and leave the form open; a manager gives that run to another worker on another PC; press Save → the form closes with a message instead of refusing forever.
+37. As a worker, save a stop form; that run's card stays read-only and can't be changed again (a manager still can).
+38. Add Time with tomorrow as the start → the Start box is marked, no pop-up.
+39. On a Critical job, delete a run that had sign-off answers → the activity entry lists those answers.
+40. New job → type an archived customer's exact name → the screen says it is archived; no "Add it?" question, and the Company box is marked.
+41. Unplug or rename the job-folders drive, open a job with drawing-required parts → parts say "Files not checked", not a green "Attached".
+42. Start a New supplier on a part, type a name, then close the job or switch tab → you're asked first.
+43. Open New supplier on two parts; click a label in the second → the cursor lands in the second form.
+44. Rename a supplier on PC B; on PC A change that supplier's part → the part stops showing unsaved after it saves.
+45. Add a new part and keep typing in it straight away → nothing jumps back under the cursor.
+46. PC B unticks Repeat Job; PC A (still ticked) types a previous-job reference and leaves the box → the box is marked "no longer a repeat job", not "Saved".

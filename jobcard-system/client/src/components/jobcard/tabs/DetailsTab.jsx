@@ -21,6 +21,9 @@ export default function DetailsTab({
   savedForm = {},
   saveField,
   fieldStates = {},
+  detailGroupClass = () => 'form-group',
+  detailErrorFor = () => null,
+  detailErrorProps = (name) => ({ id: `${name}-error` }),
   contactFormData,
   handleContactFieldChange,
   noteCompanyTyping,
@@ -296,6 +299,9 @@ export default function DetailsTab({
         canWriteInstantly={canWriteInstantly}
         saveField={saveField}
         detailsStatus={detailsStatus}
+        groupClass={detailGroupClass}
+        errorFor={detailErrorFor}
+        errorProps={detailErrorProps}
         jobSearch={jobSearch}
         jobRefListOpen={jobRefListOpen}
         jobRefNav={jobRefNav}

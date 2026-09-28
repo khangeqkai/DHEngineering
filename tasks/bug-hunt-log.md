@@ -50,11 +50,12 @@ Hunt 3 (2026-09-28), 2 rounds: 14 — timers, logged work, Critical sign-off, st
 - Typing into a new part while it is being created is no longer knocked back or half-saved.
 - A blank new part no longer shows another part's "No file yet" warning.
 - The job screen's supplier, worker and machine lists load once, not once per visit to the job list.
+- (Carried, fixed after the round) A previous-job reference typed after another PC unticked Repeat Job is refused with a box mark instead of showing "Saved" and being thrown away.
 
 | # | Area | Found | Confirmed | Fixed | Sent to owner |
 |---|---|---|---|---|---|
 | 14 | Timers, logged work, sign-off, status | 6 | 4 | 4 | 0 |
-| 15 | Job details, parts, supplier picker | 21 | 11 | 10 (1 carried) | 0 |
+| 15 | Job details, parts, supplier picker | 21 | 11 | 11 | 0 |
 
 ## Past hunts
 What was fixed in each earlier hunt (history only — not needed to hunt):

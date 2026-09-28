@@ -78,7 +78,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // notes here (Contract B) — setAttachmentWarnings is the one landing point,
   // whether the write came from a part being added, edited or removed, or a
   // field such as the quality level.
-  const { instantSave, instantItems, resetInstantSaves } = useJobCardInstantSaves(formHook, isEdit, jobCardId, formHook.saveQueue, {
+  const { instantSave, instantItems, resetInstantSaves, detailFieldErrors } = useJobCardInstantSaves(formHook, isEdit, jobCardId, formHook.saveQueue, {
     onAttachmentWarnings: setAttachmentWarnings,
     onJobClosed: handleJobClosedWrite
   });
@@ -612,6 +612,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   savedForm={formHook.savedForm}
                   saveField={instantSave.saveField}
                   fieldStates={instantSave.fieldStates}
+                  detailGroupClass={detailFieldErrors.groupClass}
+                  detailErrorFor={detailFieldErrors.errorFor}
+                  detailErrorProps={detailFieldErrors.errorProps}
                   contactFormData={contactHook.contactFormData}
                   selectedCompany={contactHook.selectedCompany}
                   people={contactHook.people}
