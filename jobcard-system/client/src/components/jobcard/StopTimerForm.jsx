@@ -10,10 +10,6 @@ import { useFieldErrors, fieldErrorsFromRefusal, scrollFieldIntoView } from '../
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import './StopTimerForm.css';
 
-// One-tap notes for the most common things a worker reports. Free typing still
-// works; tapping a chip just fills the note for them.
-const NOTE_PRESETS = ['Finished run', 'Setup', 'Tool change', 'Re-work', 'Paused — end of shift'];
-
 // The four Yes/No inspection checks shown on Critical jobs. Equipment Checks also
 // carries an optional comments box.
 const INSPECTION_ITEMS = [
@@ -298,10 +294,6 @@ export default function StopTimerForm({
     }
   };
 
-  const toggleChip = (text) => {
-    onFieldChange('description', String(entryForm.description || '').trim() === text ? '' : text);
-  };
-
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!canSubmit || loading) return;
@@ -446,18 +438,6 @@ export default function StopTimerForm({
                 <div className="stf-section-head">
                   <span className="stf-label">Description</span>
                   <span className="required">required</span>
-                </div>
-                <div className="stf-chips">
-                  {NOTE_PRESETS.map((text) => (
-                    <button
-                      key={text}
-                      type="button"
-                      className={`stf-chip${String(entryForm.description || '').trim() === text ? ' is-active' : ''}`}
-                      onClick={() => toggleChip(text)}
-                    >
-                      {text}
-                    </button>
-                  ))}
                 </div>
                 <input
                   type="text"
