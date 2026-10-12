@@ -13,6 +13,7 @@ const { PIN_REGEX, PIN_MESSAGE } = require('../shared/pin');
 // split on — read from the one shared copy of that split.
 const { hasMachineSeparator, MACHINE_SEPARATOR_MESSAGE } = require('../shared/machineList');
 const { QUALITY_LEVELS } = require('../shared/qualityLevels');
+const { FUTURE_LEEWAY_MS } = require('../shared/finishAnswer');
 
 /**
  * Middleware to handle validation errors
@@ -507,12 +508,12 @@ const manualTimeEntryRules = ({ startRequired }) => {
       .custom(v => v !== null && !isNaN(new Date(v).getTime()))
       .withMessage('Start time is not a valid date'),
     // The form fills its start box from the office PC's own clock, which can run
-    // several minutes ahead of this one, so up to 15 minutes ahead is taken as
+    // several minutes ahead of this one, so up to FUTURE_LEEWAY_MS (15 minutes) ahead is taken as
     // "now". Further than that is a mistyped hour or day, not clock drift. A Stop
     // on a block that still starts ahead of the clock is discarded as a tap (see
     // startTimerUndo.js), so the leeway can never produce a negative block.
     start()
-      .custom(v => new Date(v).getTime() <= Date.now() + 15 * 60 * 1000)
+      .custom(v => new Date(v).getTime() <= Date.now() + FUTURE_LEEWAY_MS)
       .withMessage('Start time cannot be in the future'),
     body('endTime')
       .optional({ nullable: true, checkFalsy: true })
@@ -528,7 +529,7 @@ const manualTimeEntryRules = ({ startRequired }) => {
     // stop form never trips this — its finish is the real stop time the server stored.
     body('endTime')
       .optional({ nullable: true, checkFalsy: true })
-      .custom(v => new Date(v).getTime() <= Date.now() + 15 * 60 * 1000)
+      .custom(v => new Date(v).getTime() <= Date.now() + FUTURE_LEEWAY_MS)
       .withMessage('Finish time cannot be in the future'),
     body('qty').custom(wholeNonNegative).withMessage('Good pieces must be a whole number, 0 or more'),
     body('scrapBinQty').custom(wholeNonNegative).withMessage('Scrap (bin) must be a whole number, 0 or more'),

@@ -126,7 +126,9 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       equipmentChecksComments: entry.equipmentChecksComments || '',
       description: entry.description || '',
       startTime: isoToLocalInput(entry.startTime),
-      endTime: isoToLocalInput(entry.endTime)
+      endTime: isoToLocalInput(entry.endTime),
+      // Only drives the hint under the finish box; never sent.
+      finishUnconfirmed: entry.finishUnconfirmed === true
     };
     setTimeEntryForm(opened);
     openedFormRef.current = opened;
@@ -205,7 +207,8 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     }
 
     try {
-      const { workerName, ...rest } = timeEntryForm;
+      // confirmFinish is the form-only tick "this finish is right"; like the two above it is never sent.
+      const { workerName, finishUnconfirmed, confirmFinish, ...rest } = timeEntryForm;
       // An edit sends only what changed since the form opened — the start and finish
       // included, each only when it was touched (the server judges the pair it will
       // store); a new block sends everything.
@@ -217,7 +220,8 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       if ('itemId' in entryData || !opened) entryData.itemId = timeEntryForm.itemId || null;
       // A cleared finish goes as null (a resume by hand), never left out.
       if (touchedTimesRef.current.startTime) entryData.startTime = localInputToIso(startBox);
-      if (touchedTimesRef.current.endTime) entryData.endTime = localInputToIso(endBox);
+      // The tick counts as touching the finish, so the stored finish can be confirmed as-is.
+      if (touchedTimesRef.current.endTime || confirmFinish) entryData.endTime = localInputToIso(endBox);
 
       if (editingTimeEntryId) {
         await updateTimeEntry(editingTimeEntryId, entryData);

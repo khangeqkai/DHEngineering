@@ -1,6 +1,7 @@
 import { useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { pushModal, removeModal, isTopModal } from './modalStack';
+import { handleDialogKey } from './dialogKeys';
 
 export default function ConfirmDialog({
   isOpen,
@@ -31,26 +32,10 @@ export default function ConfirmDialog({
       // Only the top-most open dialog reacts to global keys.
       if (!isTopModal(modalId)) return;
 
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onCancel();
-        return;
-      }
-
-      // Tab key - trap focus within modal
-      if (e.key === 'Tab') {
-        const focusableElements = [cancelButtonRef.current, altButtonRef.current, confirmButtonRef.current].filter(Boolean);
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (e.shiftKey && document.activeElement === firstElement) {
-          e.preventDefault();
-          lastElement?.focus();
-        } else if (!e.shiftKey && document.activeElement === lastElement) {
-          e.preventDefault();
-          firstElement?.focus();
-        }
-      }
+      handleDialogKey(e, {
+        escape: onCancel,
+        focusable: () => [cancelButtonRef.current, altButtonRef.current, confirmButtonRef.current].filter(Boolean)
+      });
     };
 
     document.addEventListener('keydown', handleKeyDown);

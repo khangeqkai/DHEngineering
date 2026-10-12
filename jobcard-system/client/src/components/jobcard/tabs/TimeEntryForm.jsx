@@ -280,6 +280,22 @@ export default function TimeEntryForm({
             aria-describedby={errorFor('endTime') ? errorIdFor('endTime') : undefined}
           />
           <FieldError id={errorIdFor('endTime')} message={errorFor('endTime')} />
+          {timeEntryForm.finishUnconfirmed && (
+            <>
+              <span className="field-hint">
+                {timeEntryForm.workerName || 'The worker'} hasn't confirmed this finish yet. Changing it here confirms it for them.
+              </span>
+              <label className="show-inactive-label">
+                <input
+                  type="checkbox"
+                  name="confirmFinish"
+                  checked={!!timeEntryForm.confirmFinish}
+                  onChange={handleTimeEntryChange}
+                />
+                This finish is right — confirm it for them
+              </label>
+            </>
+          )}
         </div>
       </div>
 

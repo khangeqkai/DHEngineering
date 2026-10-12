@@ -5,6 +5,7 @@ const {
   db,
   settingsQueries,
   timeEntryQueries,
+  historyQueries,
   recordHistory
 } = require('./database');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
@@ -653,6 +654,40 @@ function clearStaleAwaitingDetails() {
   if (cleared > 0) logger.info({ cleared }, 'Migration: Cleared old abandoned stop-form marks');
 }
 
+// Blocks the office opened by hand before the forgotten-clock roll existed. The roll leaves
+// out blocks flagged auto_stop_exempt (hand-entered time is never cut), but the flag is new:
+// an already-open block entered by hand (added with no finish, or reopened by management
+// clearing its finish) carries nothing, and the first boot would cut it like a forgotten
+// clock. Mark each open block whose latest opening, by the job's trail, was by hand: a manual
+// add with no finish, or an edit that cleared the finish made by someone other than the
+// block's own worker. A block whose latest opening is a Start (or its own worker's reopen)
+// is an ordinary clock and stays cuttable; a block with no trail entry stays unmarked.
+// Done once, flag and marks in one transaction — NOT a self-bounding query, on purpose: once
+// this version runs, a manager can make an ordinary, cuttable clock for another worker
+// through the stop form's own Resume, which the trail cannot tell apart from a hand reopen,
+// so the trail heuristic is only safe for rows that predate the column.
+const AUTO_STOP_EXEMPT_BACKFILL_KEY = 'auto_stop_exempt_backfill_at';
+
+function backfillAutoStopExempt() {
+  if (settingsQueries.getByKey.get(AUTO_STOP_EXEMPT_BACKFILL_KEY)) return;
+  const run = db.transaction(() => {
+    let marked = 0;
+    for (const row of timeEntryQueries.getAllOpen.all()) {
+      const opening = historyQueries.getLatestOpeningOfBlock.get(row.jobcard_id, row.id, row.id, row.start_time);
+      if (!opening) continue;
+      const byHand = opening.action === 'add_time_entry' ||
+        (opening.action === 'update_time_entry' && opening.user_id !== row.user_id);
+      if (!byHand) continue;
+      timeEntryQueries.markAutoStopExempt.run(row.id);
+      marked++;
+    }
+    settingsQueries.upsert.run(AUTO_STOP_EXEMPT_BACKFILL_KEY, new Date().toISOString());
+    return marked;
+  });
+  const marked = run();
+  if (marked > 0) logger.info({ marked }, 'Migration: Marked open blocks the office entered by hand as never auto-stopped');
+}
+
 function runLegacyMigrations() {
   logger.info('Running migrations...');
 
@@ -971,6 +1006,12 @@ function runLegacyMigrations() {
     clearStaleAwaitingDetails();
   } catch (err) {
     logger.error({ err }, 'Migration: Failed to clear old abandoned stop-form marks');
+  }
+
+  try {
+    backfillAutoStopExempt();
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to mark hand-entered open blocks as never auto-stopped');
   }
 
   logger.info('Migrations complete');

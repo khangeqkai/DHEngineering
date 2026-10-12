@@ -14,6 +14,8 @@ export function useActiveTimerIndicator() {
   const finishQuestion = useFinishQuestion();
   const refreshFinishQuestionRef = useRef(finishQuestion?.refresh);
   refreshFinishQuestionRef.current = finishQuestion?.refresh;
+  const takeOwnStopRef = useRef(finishQuestion?.takeOwnStop);
+  takeOwnStopRef.current = finishQuestion?.takeOwnStop;
   const hadTimerRef = useRef(false);
 
   const fetchTimer = useCallback(async () => {
@@ -24,7 +26,11 @@ export function useActiveTimerIndicator() {
       const timer = await api.getActiveTimer();
       if (id === requestId.current) {
         const next = timer || null;
-        if (hadTimerRef.current && !next) refreshFinishQuestionRef.current?.();
+        if (hadTimerRef.current && !next) {
+          // A stop this very screen just made is never the server's doing: no need to ask.
+          const ownStop = takeOwnStopRef.current?.() === true;
+          if (!ownStop) refreshFinishQuestionRef.current?.();
+        }
         hadTimerRef.current = Boolean(next);
         setActiveTimer(next);
       }

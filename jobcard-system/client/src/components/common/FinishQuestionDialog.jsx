@@ -10,6 +10,7 @@ import FieldError from './FieldError';
 import Spinner from './Spinner';
 import { infoToastIcon } from './toastIcons';
 import { pushModal, removeModal, isTopModal } from './modalStack';
+import { handleDialogKey } from './dialogKeys';
 import { FINISH_ALREADY_CONFIRMED, RESTART_REFUSED } from '../../../../server/src/shared/runRefusals';
 import { checkFinishAnswer } from '../../../../server/src/shared/finishAnswer';
 import './FinishQuestionDialog.css';
@@ -49,28 +50,13 @@ export default function FinishQuestionDialog({ item, onAnswered, onRecheck }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!isTopModal(modalId)) return;
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      const focusable = dialogRef.current
-        ? Array.from(dialogRef.current.querySelectorAll('input, button')).filter(el => !el.disabled)
-        : [];
-      if (focusable.length === 0) {
-        e.preventDefault();
-        return;
-      }
-      const firstEl = focusable[0];
-      const lastEl = focusable[focusable.length - 1];
-      if (e.shiftKey && (document.activeElement === firstEl || !dialogRef.current.contains(document.activeElement))) {
-        e.preventDefault();
-        lastEl.focus();
-      } else if (!e.shiftKey && (document.activeElement === lastEl || !dialogRef.current.contains(document.activeElement))) {
-        e.preventDefault();
-        firstEl.focus();
-      }
+      handleDialogKey(e, {
+        container: dialogRef.current,
+        holdWhenEmpty: true,
+        focusable: () => (dialogRef.current
+          ? Array.from(dialogRef.current.querySelectorAll('input, button')).filter(el => !el.disabled)
+          : [])
+      });
     };
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);

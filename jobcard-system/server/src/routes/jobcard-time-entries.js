@@ -28,7 +28,7 @@ const {
   RESTART_REFUSED, RESUME_AFTER_HOURS
 } = require('../shared/runRefusals');
 const { readOpeningRules, nextOpening, officeDayEndAfter } = require('../utils/openingHours');
-const { checkFinishAnswer } = require('../shared/finishAnswer');
+const { checkFinishAnswer, CARRIED_ON_GAP_MS } = require('../shared/finishAnswer');
 const { cutIsDue } = require('../utils/timerPause');
 
 const router = express.Router();
@@ -580,13 +580,19 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
     }
 
     // A hand edit's start and finish are judged as the pair that will be stored — one may
-    // be the manager's and the other the stored one, which the validator never saw. (A
-    // block the roll finished at its own start, finish unknown, lands here too: the office
-    // has to type the real finish to settle it.)
+    // be the manager's and the other the stored one, which the validator never saw. Only a
+    // request that sent a time is judged, and the mark goes on the box it sent (the finish
+    // when it sent that, else the start). A note-only correction on a block the roll finished
+    // at its own start (zero length, finish unknown) therefore goes through and leaves the
+    // block still waiting for its answer; typing a real finish is what settles it.
     if (isManagement(req.user.role) && data.detailsConfirmed !== true &&
+        (data.startTime !== undefined || data.endTime !== undefined) &&
         endTime !== null && Date.parse(endTime) <= Date.parse(startTime)) {
-      const message = 'Finish time must be after the start time';
-      return res.status(400).json({ error: message, fields: [{ field: 'endTime', message }] });
+      const field = data.endTime !== undefined ? 'endTime' : 'startTime';
+      const message = field === 'endTime'
+        ? 'Finish time must be after the start time'
+        : 'Start time must be before the finish time';
+      return res.status(400).json({ error: message, fields: [{ field, message }] });
     }
 
     // The 31-day cap catches a mistyped date on a hand-entered/edited block. It must
@@ -694,12 +700,15 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
       ? 0
       : existing.awaiting_details;
 
-    // Management saving a block settles a finish its worker never confirmed (the office
-    // answering for an absent worker), in the same write. A worker's save leaves it alone.
-    // The flag is cleared for a resume too (the block is open again), but only a save that is
-    // not a resume counts as the office confirming the finish in the trail.
-    const clearsUnconfirmedFlag = isManagement(req.user.role) && existing.finish_unconfirmed === 1;
-    const officeConfirmsFinish = clearsUnconfirmedFlag && !isResume;
+    // A finish its worker never confirmed is settled by the office only when the office gives
+    // a finish: a management hand edit (not the stop form's detailsConfirmed) whose request
+    // carries a finish — the stored value sent back counts, it is the office saying that
+    // finish is right. A resume clears the flag too (the block is open again) but is not the
+    // office confirming anything, so only the first is written to the trail. Any other save,
+    // a note corrected or a worker's, leaves the flag exactly as it was.
+    const officeConfirmsFinish = isManagement(req.user.role) && existing.finish_unconfirmed === 1 &&
+      data.detailsConfirmed !== true && data.endTime !== undefined && endTime !== null;
+    const clearsUnconfirmedFlag = existing.finish_unconfirmed === 1 && (isResume || officeConfirmsFinish);
 
     // Management clearing a stopped block's finish through the edit form (without the stop
     // form's own detailsConfirmed) is the office reopening time by hand: the roll must never
@@ -859,7 +868,7 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
       return res.status(400).json({ error: refusal, fields: [{ field: 'finishTime', message: refusal }] });
     }
 
-    // An answer that closed the old block off (no sign-off, no stop form) with no new clock
+    // An answer that carried the old block on (no sign-off, no stop form) with no new clock
     // behind it lost the work's record, so "still working" is refused before any write when the
     // new clock could not be started.
     const jobIsArchived = jobcardQueries.getById.get(id)?.archived === 1;
@@ -884,18 +893,24 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
     // so no block ever ends in the future.
     const storedEndMs = Math.min(finishMs, nowMs);
     const storedEnd = new Date(storedEndMs).toISOString();
-    const criticalAtFinish = stillWorking ? 0 : existing.critical_at_finish;
-    const description = stillWorking && !(existing.description && existing.description.trim())
+    // The old run and the new clock are ONE run only when the finish given is close to now.
+    // Then the new clock carries the sign-off and the stop form. An older finish is a run of
+    // its own: it is answered like "done" (sign-off and note kept, stop form owed) while the
+    // new clock still starts.
+    const carriedOn = stillWorking && (nowMs - storedEndMs) <= CARRIED_ON_GAP_MS;
+    const criticalAtFinish = carriedOn ? 0 : existing.critical_at_finish;
+    const description = carriedOn && !(existing.description && existing.description.trim())
       ? 'Carried on in a later run'
       : existing.description;
     // A job archived since the clock stopped can't have its stop form saved (closed jobs refuse
-    // every write), so no form is left waiting there whatever the worker said.
+    // every write), so no form is left waiting there whatever the worker said. A carried-on run
+    // owes none either: the new clock's form covers it.
     // For "still working" the answer and the new clock are one all-or-nothing step: a lost
     // race on the answer, or a refused insert (the one-open-clock rule), rolls both back.
     let restarted = null;
     const answerAndRestart = db.transaction(() => {
       const answered = timeEntryQueries.confirmFinish.run(
-        storedEnd, new Date().toISOString(), stillWorking || jobIsArchived ? 0 : 1, criticalAtFinish, description, entryId
+        storedEnd, new Date().toISOString(), carriedOn || jobIsArchived ? 0 : 1, criticalAtFinish, description, entryId
       );
       // Another answer got there first (the statement only matches a still-unconfirmed block).
       if (answered.changes === 0) {
@@ -926,7 +941,7 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
       ? { finish: { from: 'not confirmed', to: 'confirmed' } }
       : { endTime: { from: existing.end_time, to: storedEnd }, reportedBy: { from: null, to: 'worker' } };
     // Everything else this answer wrote goes in the same entry: the note, through the one
-    // list of a run's trailed fields, and the sign-off a "still working" answer lifted.
+    // list of a run's trailed fields, and the sign-off a carried-on answer lifted.
     // (awaiting_details is not a trailed field anywhere.)
     const saved = { description };
     Object.assign(changes, diffFields(existing, RUN_TRAIL_FIELDS

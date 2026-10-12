@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useFinishQuestion } from '../../context/FinishQuestionContext';
 import { discardToastIcon, infoToastIcon } from '../common/toastIcons';
 import { describeItemPosition } from './workMatch.mjs';
-import { joinMachineCodes } from '../../../../server/src/shared/machineList';
+import { joinMachineCodes, splitMachineCodes } from '../../../../server/src/shared/machineList';
 import { CRITICAL_INSPECTION_REFUSED } from '../../../../server/src/shared/qualityLevels';
 import {
   RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN, FINISH_UNCONFIRMED, RUN_STOPPED_ITSELF
@@ -26,6 +26,26 @@ const emptyEntryForm = () => ({
   equipmentChecksComments: ''
 });
 
+// The stop form's starting boxes: whatever the run already stores. A run just stopped
+// stores nothing yet, so it starts blank; a run the office filled in by hand while its
+// worker still owed the form starts from what they typed, so saving never wipes it.
+const entryFormFromEntry = (entry) => {
+  const answer = (v) => (v === true || v === false ? v : null);
+  const count = (v) => (Number(v) > 0 ? String(parseInt(v, 10)) : '');
+  return {
+    qty: count(entry?.qty),
+    scrapBinQty: count(entry?.scrapBinQty),
+    scrapRecycleQty: count(entry?.scrapRecycleQty),
+    machineNumbers: splitMachineCodes(entry?.machineNumber),
+    description: entry?.description || '',
+    firstOffInspection: answer(entry?.firstOffInspection),
+    inProcessValidation: answer(entry?.inProcessValidation),
+    measuringEquipmentVerification: answer(entry?.measuringEquipmentVerification),
+    equipmentChecks: answer(entry?.equipmentChecks),
+    equipmentChecksComments: entry?.equipmentChecksComments || ''
+  };
+};
+
 // onJobClosed (optional) is the job screen's shared closed-job handler: a start, or a
 // stop-form save/resume on this job, refused because the job was invoiced and closed
 // from another PC calls it instead of the ordinary failure toast.
@@ -37,6 +57,13 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
   const finishQuestion = useFinishQuestion();
   const refreshFinishQuestionRef = useRef(finishQuestion?.refresh);
   refreshFinishQuestionRef.current = finishQuestion?.refresh;
+  // Says "this screen is stopping its own clock" around the worker's own stop, so the
+  // header indicator does not re-read the flagged clocks for it (the poll below already
+  // knows, through selfStoppedRef).
+  const noteOwnStopRef = useRef(finishQuestion?.noteOwnStop);
+  noteOwnStopRef.current = finishQuestion?.noteOwnStop;
+  const clearOwnStopRef = useRef(finishQuestion?.clearOwnStop);
+  clearOwnStopRef.current = finishQuestion?.clearOwnStop;
   const stopFormDoneRef = useRef(finishQuestion?.stopFormDone);
   stopFormDoneRef.current = finishQuestion?.stopFormDone;
   // Read the live parts list from a ref, not the argument closed over below — the
@@ -245,6 +272,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
             });
             if (shouldSwitch) {
               selfStoppedRef.current = true;
+              noteOwnStopRef.current?.();
               const entry = await api.stopTimer(currentTimer.jobcardId, currentTimer.id);
               setActiveTimer(null);
               // If the old run was under 15s it's discarded — don't ask about it, just
@@ -268,7 +296,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
                   jobNumber: currentTimer.jobNumber
                 });
               }
-              setEntryForm(emptyEntryForm());
+              setEntryForm(entryFormFromEntry(entry));
               setShowEntryForm(true);
               setPendingStartItem({ itemId, displayNumber });
               // Not started yet — it only starts once the fill-in form for the old
@@ -279,6 +307,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
             return false;
           }
         } catch (innerErr) {
+          clearOwnStopRef.current?.();
           if (handledAsFinishUnconfirmed(innerErr)) return false;
           toast.error(innerErr.message || 'Failed to switch timer', { id: 'switch-timer-failed' });
           return false;
@@ -298,6 +327,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     setLoading(true);
     try {
       selfStoppedRef.current = true;
+      noteOwnStopRef.current?.();
       const entry = await api.stopTimer(jobcardId, activeTimer.id);
       setActiveTimer(null);
       // A run under 15s is discarded server-side — no block, no form, just a heads-up.
@@ -306,12 +336,14 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
         return entry;
       }
       setStoppedEntry(entry);
-      setEntryForm(emptyEntryForm());
+      setEntryForm(entryFormFromEntry(entry));
       setShowEntryForm(true);
       toast.success('Timer stopped', { id: 'timer-stopped' });
       return entry;
     } catch (err) {
       selfStoppedRef.current = false;
+      // Not our stop after all (refused, or the server had cut it first): the question must still be asked.
+      clearOwnStopRef.current?.();
       if (err?.data?.code === RUN_STOPPED_ITSELF) {
         // The server had already stopped this clock by itself: show the worker's question
         // rather than an error, and let the work list reload.
@@ -339,7 +371,10 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       const entryJobcardId = entry.jobcardId || jobcardId;
       // Stopping our own running timer here behaves like the normal stop — clear it
       // and stop the background poller crying "stopped by an admin".
-      if (isOwnActive) selfStoppedRef.current = true;
+      if (isOwnActive) {
+        selfStoppedRef.current = true;
+        noteOwnStopRef.current?.();
+      }
       const result = await api.stopTimer(entryJobcardId, entry.id);
       if (isOwnActive) setActiveTimer(null);
       // A run under 15s is discarded server-side — no block, no form, just a heads-up.
@@ -351,12 +386,15 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       setStoppedEntryJobCard(entryJobcardId !== jobcardId
         ? { id: entryJobcardId, jobNumber: entry.jobNumber }
         : null);
-      setEntryForm(emptyEntryForm());
+      setEntryForm(entryFormFromEntry(result));
       setShowEntryForm(true);
       toast.success('Timer stopped', { id: 'timer-stopped' });
       return result;
     } catch (err) {
-      if (isOwnActive) selfStoppedRef.current = false;
+      if (isOwnActive) {
+        selfStoppedRef.current = false;
+        clearOwnStopRef.current?.();
+      }
       if (err?.data?.code === RUN_STOPPED_ITSELF) {
         if (isOwnActive) {
           // Already stopped by the server on its own: the worker's question explains it.
@@ -454,7 +492,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     setStoppedEntryJobCard(entryJobcardId !== jobcardId
       ? { id: entryJobcardId, jobNumber: entry.jobNumber }
       : null);
-    setEntryForm(emptyEntryForm());
+    setEntryForm(entryFormFromEntry(entry));
     setShowEntryForm(true);
   }, [jobcardId]);
 
@@ -496,11 +534,9 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       try {
         // Only the fields this form owns go out — never the rest of the stop-time copy
         // of the run (its part, worker, or anything a manager corrected while the form
-        // was open). The start and finish go only because the server requires them; it
-        // keeps the stored ones for this form's writes (detailsConfirmed).
+        // was open). No start or finish goes either: the server keeps the stored times
+        // for this form's writes (detailsConfirmed).
         await api.updateTimeEntry(entryJobcardId, stoppedEntry.id, {
-          startTime: stoppedEntry.startTime,
-          endTime: stoppedEntry.endTime,
           qty,
           scrapBinQty,
           scrapRecycleQty,
@@ -584,11 +620,10 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     const isSameJob = entryJobcardId === jobcardId;
     setLoading(true);
     try {
-      // A resume sends only the times (the server keeps the stored start) — never
-      // the stop-time copy of the run's pieces, notes, answers or part, which would
-      // undo a correction made while the form was open.
+      // A resume sends only the cleared finish (the server keeps the stored start) —
+      // never the stop-time copy of the run's pieces, notes, answers or part, which
+      // would undo a correction made while the form was open.
       await api.updateTimeEntry(entryJobcardId, stoppedEntry.id, {
-        startTime: stoppedEntry.startTime,
         endTime: null,
         // Same as the submit path above: this resume is the worker's own stop-timer
         // form being answered (they chose to cancel and keep working).
@@ -656,9 +691,8 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       // Use entry.jobcardId (not jobcardId) so cross-job stops resume on the correct job.
       // Handed back so signing out waits for it: the session is cancelled server-side
       // now, and a resume that arrives after that is refused and the run stays stopped.
-      // Like the form's own Resume: only the times, and the stored start is kept.
+      // Like the form's own Resume: only the cleared finish, and the stored start is kept.
       return api.updateTimeEntry(entry.jobcardId || jobcardId, entry.id, {
-        startTime: entry.startTime,
         endTime: null,
         detailsConfirmed: true
       }).catch(() => {});

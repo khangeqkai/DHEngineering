@@ -8,6 +8,7 @@ import ToggleTiles from '../common/ToggleTiles';
 import FieldError from '../common/FieldError';
 import { useFieldErrors, fieldErrorsFromRefusal, scrollFieldIntoView } from '../../hooks/useFieldErrors';
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
+import { handleDialogKey } from '../common/dialogKeys';
 import './StopTimerForm.css';
 
 // The four Yes/No inspection checks shown on Critical jobs. Equipment Checks also
@@ -202,31 +203,18 @@ export default function StopTimerForm({
     // Only the top-most dialog reacts to global keys (a confirmation layered over
     // this form should win), matching how the other dialogs behave.
     if (!isTopModal(modalId)) return;
-    if (e.key === 'Escape') {
-      // Deliberately swallowed, not forwarded: the run has already stopped and this
-      // form holds the machine, quantities and checks about to be recorded against
-      // it. Escape here would either close the job card behind (losing all of it) or
-      // put the timer back on the clock without the person meaning to, so the way
-      // out is the form's own buttons.
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-    if (e.key === 'Tab' && formRef.current) {
-      const focusable = formRef.current.querySelectorAll(
-        'input, textarea, button:not(:disabled):not([tabindex="-1"])'
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
+    // Escape is deliberately swallowed, not forwarded: the run has already stopped and
+    // this form holds the machine, quantities and checks about to be recorded against
+    // it. Escape here would either close the job card behind (losing all of it) or
+    // put the timer back on the clock without the person meaning to, so the way
+    // out is the form's own buttons.
+    handleDialogKey(e, {
+      focusable: () => (formRef.current
+        ? Array.from(formRef.current.querySelectorAll(
+            'input, textarea, button:not(:disabled):not([tabindex="-1"])'
+          ))
+        : [])
+    });
   }, [modalId]);
 
   useEffect(() => {
@@ -269,11 +257,19 @@ export default function StopTimerForm({
   // many machines we add a filter box and a scrollable area. Picked machines are
   // always shown (pinned on top) so they never scroll out of reach while filtering.
   const selectedMachines = entryForm.machineNumbers || [];
-  const manyMachines = machines.length > 12;
+  // A machine the run already names that is no longer in the active list (retired
+  // since) is still shown, picked, so it is kept — or switched off on purpose — rather
+  // than silently dropped by the save.
+  const knownMachines = machines.map(m => m.machineNumber);
+  const orphanMachines = selectedMachines
+    .filter(code => !knownMachines.includes(code))
+    .map(code => ({ machineNumber: code }));
+  const allMachines = [...machines, ...orphanMachines];
+  const manyMachines = allMachines.length > 12;
   const mq = machineFilter.trim().toLowerCase();
   const machineOptions = !manyMachines
-    ? machines
-    : [...machines.filter(m =>
+    ? allMachines
+    : [...allMachines.filter(m =>
         selectedMachines.includes(m.machineNumber) ||
         (!mq ||
           String(m.machineNumber).toLowerCase().includes(mq) ||
@@ -400,7 +396,7 @@ export default function StopTimerForm({
                 </div>
               </section>
 
-              {(machines.length > 0 || machinesError) && (
+              {(allMachines.length > 0 || machinesError) && (
                 <section className="stf-section">
                   <div className="stf-section-head">
                     <span className="stf-label">Machines used</span>

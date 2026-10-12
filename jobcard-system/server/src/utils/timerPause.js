@@ -27,6 +27,9 @@
 // for up to a minute, but the rules are always re-read, once per call, before any clock is
 // cut and that clock's cut moment is checked again, so a clock is never cut on stale rules. Saving the schedule, holidays or
 // time zone calls forgetRollCache, so a rule change is seen on the very next roll.
+//
+// A clock whose cut keeps throwing is not retried on every roll: its entry remembers a
+// retry moment a minute ahead (FAILED_CUT_RETRY_MS) and the row is left alone until then.
 
 const logger = require('./logger');
 const { db, timeEntryQueries, recordHistory } = require('../db/database');
@@ -37,8 +40,12 @@ const { syncStatusToWork } = require('./jobStatusAuto');
 // How long the company's rules are remembered between rolls before being read again.
 const RULES_MEMORY_MS = 60 * 1000;
 
-// Each open block's cut moment, remembered between rolls: { key, cutMs, finishMs,
-// zeroLength } by row id. Working it out walks the calendar day by day (up to 60 days
+// How long a clock whose cut threw is left alone before the cut is tried again (real clock).
+const FAILED_CUT_RETRY_MS = 60 * 1000;
+
+// Each open block's cut moment, remembered between rolls: { startTime, key, cut,
+// retryAtMs? } by row id (cut is { cutMs, finishMs, zeroLength }; retryAtMs is set only
+// while a failed cut is backing off). Working it out walks the calendar day by day (up to 60 days
 // when normal hours never end), and the roll runs on every poll of the running clock,
 // so it is worked out once per block and again only when the block's start or the
 // company's rules change (the key).
@@ -96,6 +103,10 @@ const rollRowInTransaction = db.transaction(rollRow);
 // The rules are remembered between calls, but a clock is never cut on remembered rules:
 // before any cut the rules are read afresh (once per call at most) and that row's cut
 // moment is checked again against them. Rows whose cut is not due cost a map lookup.
+// A row whose cut throws is logged and backed off for FAILED_CUT_RETRY_MS: its remembered
+// entry carries retryAtMs, and until then later rolls skip it before any rules read or cut
+// attempt. A changed start or rules key discards the entry (and so the back-off), as does
+// forgetRollCache; a success needs nothing, the row is no longer open.
 // Never throws: a failed roll is logged and the request carries on.
 function rollOpenTimers(nowMs = Date.now()) {
   try {
@@ -122,8 +133,13 @@ function rollOpenTimers(nowMs = Date.now()) {
 
     const seen = new Map();
     for (const row of rows) {
+      let entry;
       try {
-        let entry = entryFor(row);
+        entry = entryFor(row);
+        if (entry.retryAtMs !== undefined && Date.now() < entry.retryAtMs) {
+          seen.set(row.id, entry);
+          continue;
+        }
         if (isDue(entry.cut)) {
           // Never cut on remembered rules: read them afresh (once per call) and re-judge this row.
           if (!fresh) {
@@ -137,6 +153,10 @@ function rollOpenTimers(nowMs = Date.now()) {
         seen.set(row.id, entry);
       } catch (err) {
         logger.error({ err, timeEntryId: row.id }, 'Forgotten-clock roll failed for one block');
+        // Back off: keep the entry (when it was worked out) so the next rolls skip this row for a while.
+        if (entry) {
+          seen.set(row.id, { startTime: entry.startTime, key: entry.key, cut: entry.cut, retryAtMs: Date.now() + FAILED_CUT_RETRY_MS });
+        }
       }
     }
     // Only blocks still open are kept.

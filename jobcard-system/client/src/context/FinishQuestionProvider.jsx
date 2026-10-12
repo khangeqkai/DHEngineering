@@ -7,6 +7,10 @@ import { FinishQuestionContext } from './FinishQuestionContext';
 import FinishQuestionDialog from '../components/common/FinishQuestionDialog';
 import JobCardModal from '../components/jobcard/JobCardModal';
 
+// How long a note of "this screen is stopping its own clock" can excuse a vanished clock.
+// Past this it is ignored, so a stale note can only ever cost an extra read, never a question.
+const OWN_STOP_NOTE_MS = 30000;
+
 // The question a worker must answer before doing anything else: a clock they left
 // running was stopped by the server, and it needs the time they really finished.
 // Mounted inside the signed-in shell. While the server lists one or more such clocks
@@ -48,6 +52,19 @@ export function FinishQuestionProvider({ children }) {
     } catch {
       return null;
     }
+  }, []);
+
+  // A screen that is about to stop the worker's own clock says so here, so the watchers
+  // that ask "did the server cut it?" when a clock disappears do not ask about a stop
+  // the worker just made (the answer is always no). The note is taken once by whichever
+  // watcher sees the clock go, expires on its own, and is withdrawn if the stop fails.
+  const ownStopAtRef = useRef(0);
+  const noteOwnStop = useCallback(() => { ownStopAtRef.current = Date.now(); }, []);
+  const clearOwnStop = useCallback(() => { ownStopAtRef.current = 0; }, []);
+  const takeOwnStop = useCallback(() => {
+    const at = ownStopAtRef.current;
+    ownStopAtRef.current = 0;
+    return at > 0 && Date.now() - at < OWN_STOP_NOTE_MS;
   }, []);
 
   // The same read for the screens that only ask "is anything flagged?": [] when it failed.
@@ -203,8 +220,8 @@ export function FinishQuestionProvider({ children }) {
   }, [stopJob]);
 
   const value = useMemo(
-    () => ({ refresh, registerJobScreen, stopFormDone, subscribeJobChanged }),
-    [refresh, registerJobScreen, stopFormDone, subscribeJobChanged]
+    () => ({ refresh, registerJobScreen, stopFormDone, subscribeJobChanged, noteOwnStop, clearOwnStop, takeOwnStop }),
+    [refresh, registerJobScreen, stopFormDone, subscribeJobChanged, noteOwnStop, clearOwnStop, takeOwnStop]
   );
   const first = flagged[0] || null;
 
