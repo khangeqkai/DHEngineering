@@ -44,6 +44,9 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   // fields that differ from it, so pieces, machines or notes the worker saved on the
   // block while this form was open aren't overwritten by the copy taken at Edit.
   const openedFormRef = useRef(null);
+  // Counts every opening and closing of this form. A save's reply only touches the form it
+  // was sent from: if the session moved on while it was in flight, the reply writes nothing to it.
+  const formSessionRef = useRef(0);
   // Set when the server refused a save because the job is Critical and inspection
   // answers are missing. The job screen's own copy of the level can be older than
   // the server's (a manager changed it after the screen loaded), so this switches
@@ -57,6 +60,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
   const [editingSignOffRequired, setEditingSignOffRequired] = useState(false);
 
   const resetTimeEntryForm = useCallback(() => {
+    formSessionRef.current += 1;
     setTimeEntryForm({
       ...getDefaultTimeEntryForm(),
       startTime: isoToLocalInput(new Date().toISOString())
@@ -105,6 +109,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       showTimeLockedToast();
       return;
     }
+    formSessionRef.current += 1;
     resetFieldErrors();
     setInspectionRequired(false);
     // This run's own decided value, not the job's current level — set once, kept
@@ -134,7 +139,13 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       // The stored finish exactly as it was when the form opened (seconds kept), so a save
       // that sends a finish can tell the server which finish it was looking at.
       // Never sent as a field of its own.
-      storedEndTime: entry.endTime || null
+      storedEndTime: entry.endTime || null,
+      // When the worker confirmed that finish, as the form saw it; sent beside it so a
+      // confirmation of the same time is noticed too. Never sent as a field of its own.
+      storedFinishConfirmedAt: entry.finishConfirmedAt || null,
+      // The stored start, kept beside it only so the form can tell a block stored with
+      // finish == start (cut at midnight, finish not known). Never sent.
+      storedStartTime: entry.startTime || null
     };
     setTimeEntryForm(opened);
     openedFormRef.current = opened;
@@ -221,9 +232,10 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       }
     }
 
+    const session = formSessionRef.current;
     try {
       // confirmFinish is the form-only tick "this finish is right"; like the two above it is never sent.
-      const { workerName, finishUnconfirmed, confirmFinish, storedEndTime, ...rest } = timeEntryForm;
+      const { workerName, finishUnconfirmed, confirmFinish, storedEndTime, storedFinishConfirmedAt, storedStartTime, ...rest } = timeEntryForm;
       // An edit sends only what changed since the form opened — the start and finish
       // included, each only when it was touched (the server judges the pair it will
       // store); a new block sends everything.
@@ -238,9 +250,14 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       // The tick counts as touching the finish, so the stored finish can be confirmed as-is.
       if (touchedTimesRef.current.endTime || confirmFinish) entryData.endTime = localInputToIso(endBox);
       // Whenever an edit sends the finish, however the box came to hold it, the server is
-      // told which stored finish this form was opened on, so a worker's answer (or another
-      // correction) made in the meantime is refused rather than overwritten.
-      if (opened && 'endTime' in entryData) entryData.expectedEndTime = opened.storedEndTime;
+      // told which stored finish this form was opened on (time, worker's confirmation stamp,
+      // unconfirmed flag), so a worker's answer (or another correction) made in the meantime
+      // is refused rather than overwritten.
+      if (opened && 'endTime' in entryData) {
+        entryData.expectedEndTime = opened.storedEndTime;
+        entryData.expectedFinishConfirmedAt = opened.storedFinishConfirmedAt;
+        entryData.expectedFinishUnconfirmed = opened.finishUnconfirmed === true;
+      }
 
       if (editingTimeEntryId) {
         await updateTimeEntry(editingTimeEntryId, entryData);
@@ -248,15 +265,31 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
         await addTimeEntry(entryData);
       }
 
-      resetTimeEntryForm();
+      if (session === formSessionRef.current) resetTimeEntryForm();
     } catch (err) {
       if (isJobClosedError(err)) onJobClosed?.();
-      else if (err?.status === 409 && err?.data?.code === FINISH_CHANGED) {
-        // The finish this form was opened on is gone: show the list as it is now and
-        // drop the stale form rather than leave it ready to save the old time again.
-        toast.error(err.message, { id: 'time-entry-finish-changed' });
+      else if (session !== formSessionRef.current) {
+        toast.error(err.message || 'Failed to save time entry', { id: 'time-entry-save-refused' });
+        if (err?.status === 409 && err?.data?.code === FINISH_CHANGED) reloadTimeEntries?.()?.catch?.(() => {});
+      }
+      else if (err?.status === 409 && err?.data?.code === FINISH_CHANGED && err.data.current) {
+        // The stored finish moved since this form opened. Keep everything the manager
+        // typed; only the finish box (and what it was opened on) takes the current values,
+        // and carries the message.
+        const { current } = err.data;
+        const refreshed = {
+          endTime: isoToLocalInput(current.endTime),
+          storedEndTime: current.endTime || null,
+          storedFinishConfirmedAt: current.finishConfirmedAt || null,
+          finishUnconfirmed: current.finishUnconfirmed === true
+        };
+        setTimeEntryForm(prev => ({ ...prev, ...refreshed, confirmFinish: false }));
+        openedFormRef.current = { ...openedFormRef.current, ...refreshed };
+        touchedTimesRef.current.endTime = false;
+        // Raised against the new text: the box has not re-rendered yet, so its live value is still the old one.
+        setFieldErrors({ endTime: err.message }, { endTime: refreshed.endTime });
+        scrollFieldIntoView('endTime');
         reloadTimeEntries?.()?.catch?.(() => {});
-        resetTimeEntryForm();
       }
       else if (err?.data?.code === CRITICAL_INSPECTION_REFUSED) {
         // The job is Critical on the server even if this screen's copy says not:

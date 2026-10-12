@@ -220,6 +220,8 @@ db.exec(`
     finish_unconfirmed INTEGER DEFAULT 0,
     -- 1 = the office opened this block by hand (reopened through the edit form, or added with
     -- no finish): the forgotten-clock roll never cuts it. Hand-entered time is never touched.
+    -- Every clock already open when self-stopping clocks first arrive on a database (startup
+    -- conversion, also run on a restored older backup) is marked the same way and never cut.
     auto_stop_exempt INTEGER DEFAULT 0,
     -- The UTC moment the worker answered "when did you really finish?" for such a block
     -- (NULL until then, and again after a resume or a fresh automatic finish).

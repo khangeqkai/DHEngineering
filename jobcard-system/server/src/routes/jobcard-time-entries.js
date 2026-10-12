@@ -525,10 +525,15 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
     }
 
     // Every hand edit that sends a finish (typed, ticked "this finish is right", or cleared)
-    // also sends the finish its form was opened on, as expectedEndTime. If the stored finish
-    // is a different time now, the worker answered or another correction landed meanwhile,
-    // and writing this one would undo it. Only the time is compared: a worker who confirmed
-    // the very same finish changed nothing this save was looking at, so it goes through.
+    // also sends what its form saw when it opened: the stored finish (expectedEndTime),
+    // when the worker confirmed it (expectedFinishConfirmedAt, or null) and whether it was
+    // still unconfirmed (expectedFinishUnconfirmed). A finish is those three stored values,
+    // and each is compared only when the form sent it: a save judges only what it sends, so
+    // a page that predates one of them is not refused forever over a value it never saw.
+    // Any one having moved means the worker answered or another correction landed meanwhile,
+    // and writing this finish would undo it. That includes a worker who confirmed the very
+    // same time: the confirmation stamp differs even though the time does not. Nothing is
+    // written; the refusal carries the current values so the form can show them and stay open.
     if (data.expectedEndTime !== undefined) {
       // Both sides go through normalizeTime, so the same moment written two ways still matches.
       let expectedEnd = null;
@@ -539,10 +544,38 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
       } catch (e) {
         expectedEnd = null;
       }
-      if (expectedEnd === null || expectedEnd !== storedEnd) {
+      const stampMoved = data.expectedFinishConfirmedAt !== undefined &&
+        (existing.finish_confirmed_at || null) !== (data.expectedFinishConfirmedAt || null);
+      // Another manager ticking the same finish clears only the flag, not the time or stamp.
+      const flagMoved = data.expectedFinishUnconfirmed !== undefined &&
+        (existing.finish_unconfirmed === 1) !== (data.expectedFinishUnconfirmed === true);
+      // A stamp that is there now is the worker's answer; one that has gone was taken off
+      // by another correction, which is refused too but is not the worker answering.
+      const answeredSince = stampMoved && !!existing.finish_confirmed_at;
+      if (stampMoved || flagMoved || expectedEnd === null || expectedEnd !== storedEnd) {
+        const worker = userQueries.getById.get(existing.user_id);
+        const name = (worker && (worker.name || worker.username)) || 'The worker';
+        // No expected finish: the form was opened while the clock was still running, and it
+        // has been stopped since. There was no finish to change, so the message says that.
+        const openedRunning = data.expectedEndTime === null || data.expectedEndTime === '';
+        let message;
+        if (answeredSince) {
+          message = `${name} has answered since you opened this. The finish box now shows their time \u2014 change it and save again if it is still wrong.`;
+        } else if (openedRunning) {
+          message = 'This clock was stopped since you opened it. The finish box now shows its finish time.';
+        } else if (flagMoved && existing.finish_unconfirmed !== 1 && expectedEnd === storedEnd) {
+          message = 'This finish was confirmed since you opened it. Change it and save again if it is still wrong.';
+        } else {
+          message = 'This finish was changed since you opened it. The finish box now shows the current time.';
+        }
         return res.status(409).json({
-          error: 'This finish was changed since you opened it. Reopen it to see the current time.',
-          code: FINISH_CHANGED
+          error: message,
+          code: FINISH_CHANGED,
+          current: {
+            endTime: existing.end_time,
+            finishUnconfirmed: existing.finish_unconfirmed === 1,
+            finishConfirmedAt: existing.finish_confirmed_at || null
+          }
         });
       }
     }

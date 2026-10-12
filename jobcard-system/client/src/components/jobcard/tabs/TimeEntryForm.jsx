@@ -285,9 +285,11 @@ export default function TimeEntryForm({
               <span className="field-hint">
                 {timeEntryForm.workerName || 'The worker'} hasn't confirmed this finish yet. Changing it here confirms it for them.
               </span>
-              {/* Offered only while the finish is after the start: a clock cut at midnight is
-                  stored with finish == start, which can't be confirmed as it stands. */}
-              {timeEntryForm.endTime > timeEntryForm.startTime && (
+              {/* Not offered on a block STORED with finish == start (a clock cut at midnight):
+                  that finish is a placeholder, never the real one, so it must be typed. Judged
+                  from the stored moments, not the boxes — moving the start box must not make
+                  the placeholder confirmable. */}
+              {!(Date.parse(timeEntryForm.storedEndTime) <= Date.parse(timeEntryForm.storedStartTime)) && (
                 <label className="show-inactive-label">
                   <input
                     type="checkbox"

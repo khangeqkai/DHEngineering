@@ -653,6 +653,26 @@ function clearStaleAwaitingDetails() {
   if (cleared > 0) logger.info({ cleared }, 'Migration: Cleared old abandoned stop-form marks');
 }
 
+// Clocks already open when self-stopping clocks first arrive on a database stay running:
+// they are marked auto_stop_exempt, so the forgotten-clock roll never cuts them. The marker
+// is the stored fact that this marking has happened on this database; no guess is made at
+// who opened a clock. A database or restored backup without the marker predates
+// self-stopping clocks (or comes from the brief builds before the marker existed, where
+// marking too errs on the side of never cutting). A database that already has the marker
+// is untouched. Marks and marker are written in one transaction.
+const AUTO_STOP_EXEMPT_BACKFILL_KEY = 'auto_stop_exempt_backfill_at';
+
+function exemptClocksOpenBeforeAutoStop() {
+  if (settingsQueries.getByKey.get(AUTO_STOP_EXEMPT_BACKFILL_KEY)) return;
+  const run = db.transaction(() => {
+    const { changes } = timeEntryQueries.exemptAllOpen.run();
+    settingsQueries.upsert.run(AUTO_STOP_EXEMPT_BACKFILL_KEY, new Date().toISOString());
+    return changes;
+  });
+  const marked = run();
+  if (marked > 0) logger.info({ marked }, 'Migration: Marked clocks open before self-stopping clocks as never auto-stopped');
+}
+
 function runLegacyMigrations() {
   logger.info('Running migrations...');
 
@@ -971,6 +991,12 @@ function runLegacyMigrations() {
     clearStaleAwaitingDetails();
   } catch (err) {
     logger.error({ err }, 'Migration: Failed to clear old abandoned stop-form marks');
+  }
+
+  try {
+    exemptClocksOpenBeforeAutoStop();
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to mark clocks open before self-stopping clocks as never auto-stopped');
   }
 
   logger.info('Migrations complete');

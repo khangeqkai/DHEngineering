@@ -14,7 +14,10 @@
 // With an all-normal grid and no holidays nothing ever closes, so the roll does nothing.
 //
 // Blocks the office opened by hand (auto_stop_exempt) are never cut: hand-entered time is
-// never touched. The cut also brings the job's status up to date, as an ordinary stop would.
+// never touched. Clocks already open when self-stopping clocks first arrive on a database
+// (startup conversion, also run on a restored older backup) are marked the same way and
+// never cut either: they stay running until someone stops them by hand. The cut also
+// brings the job's status up to date, as an ordinary stop would.
 //
 // Nothing runs on a timer of its own: the roll is called when the server boots, on every
 // API request (index.js, before any route runs, at most once a second — see

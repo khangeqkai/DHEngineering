@@ -33,9 +33,11 @@ const RESTART_REFUSED = 'RESTART_REFUSED';
 // A resume was refused because normal hours have already ended: a clock restarted from
 // its old start would be cut again at once. The stop form stays for Save.
 const RESUME_AFTER_HOURS = 'RESUME_AFTER_HOURS';
-// A hand edit that sends a finish says which stored finish its form was opened on. The
-// stored finish is a different time now (the worker answered, or another correction
-// landed), so nothing was written. The edit form closes and the list reloads.
+// A hand edit that sends a finish says which stored finish its form was opened on, when
+// the worker had confirmed it, and whether it was still unconfirmed (each compared only
+// if sent). The stored finish is a different time now, the worker has answered since
+// (even with the same time), or the unconfirmed mark has gone, so nothing was written. The edit
+// form stays open with everything typed and refreshes only its finish box.
 const FINISH_CHANGED = 'FINISH_CHANGED';
 
 module.exports = { RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN, FINISH_ALREADY_CONFIRMED, FINISH_UNCONFIRMED, RUN_STOPPED_ITSELF, RESTART_REFUSED, RESUME_AFTER_HOURS, FINISH_CHANGED };

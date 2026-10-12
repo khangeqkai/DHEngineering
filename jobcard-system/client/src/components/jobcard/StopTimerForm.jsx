@@ -5,6 +5,7 @@ import { api } from '../../services/api';
 import { capitalizeFirst, formatTime } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
 import ToggleTiles from '../common/ToggleTiles';
+import Spinner from '../common/Spinner';
 import FieldError from '../common/FieldError';
 import { useFieldErrors, fieldErrorsFromRefusal, scrollFieldIntoView } from '../../hooks/useFieldErrors';
 import { pushModal, removeModal, isTopModal } from '../common/modalStack';
@@ -95,10 +96,16 @@ export default function StopTimerForm({
   // item_number, which is only a sort order the server owns and may have gaps.
   const [displayNumber, setDisplayNumber] = useState(null);
   const [machines, setMachines] = useState([]);
-  // False while the first machine list load is still out, so a stored machine isn't drawn
-  // as a tile of its own for the moment before its active tile arrives. True once that
-  // load has ended either way: when it failed, the stored machines are all there is to show.
-  const [machinesSettled, setMachinesSettled] = useState(false);
+  // Where the machine list load stands, as one value:
+  //  'loading'  - a fresh load for this opening is out and nothing is known yet; stored
+  //               machines aren't drawn as tiles of their own (they'd flash as retired
+  //               before their active tile arrives) and there is no error line.
+  //  'loaded'   - the list arrived.
+  //  'failed'   - the load failed: error line plus Try again, and the run's stored
+  //               machines are drawn as picked tiles since they're all there is to show.
+  //  'retrying' - Try again was pressed after a failure: shown exactly as 'failed'
+  //               (error line and stored tiles stay) except the button is disabled and spins.
+  const [machinesStatus, setMachinesStatus] = useState('loading');
   const [machineFilter, setMachineFilter] = useState('');
   const [isCritical, setIsCritical] = useState(false);
   // The job details load (which decides Critical) and the machines load are
@@ -106,7 +113,6 @@ export default function StopTimerForm({
   // gets its own loading/error flags instead of one combined flag standing in for both.
   const [jobLoading, setJobLoading] = useState(false);
   const [jobError, setJobError] = useState(false);
-  const [machinesError, setMachinesError] = useState(false);
   const formRef = useRef(null);
   const firstInputRef = useRef(null);
   const modalId = useId();
@@ -162,20 +168,22 @@ export default function StopTimerForm({
 
   // The machine list is independent of the Critical decision — a failure here only
   // ever costs the machine picker, so it gets its own short message and never
-  // touches Submit or the sign-off.
-  const loadMachines = useCallback(() => {
+  // touches Submit or the sign-off. A fresh load (the open-time call) sets 'loading'; a
+  // retry from the Try again button sets 'retrying', which keeps the error line and the
+  // stored tiles on screen until the new result arrives, so the section doesn't blink
+  // away and back. Success ends 'loaded', failure 'failed'. Only the latest call's reply counts.
+  const loadMachines = useCallback(({ retry } = {}) => {
     if (!jobCard?.id) return;
     const requestId = ++machinesLoadRequestIdRef.current;
-    setMachinesError(false);
+    setMachinesStatus(retry ? 'retrying' : 'loading');
     api.getMachines().then((machinesRes) => {
       if (requestId !== machinesLoadRequestIdRef.current) return;
       setMachines((machinesRes || []).filter(m => m.active !== 0 && m.active !== false));
-      setMachinesSettled(true);
+      setMachinesStatus('loaded');
     }).catch(() => {
       if (requestId !== machinesLoadRequestIdRef.current) return;
       setMachines([]);
-      setMachinesError(true);
-      setMachinesSettled(true);
+      setMachinesStatus('failed');
     });
   }, [jobCard?.id]);
 
@@ -273,10 +281,11 @@ export default function StopTimerForm({
     const active = machines.find(m => sameMachine(m.machineNumber, code));
     return active ? active.machineNumber : code;
   });
-  // Until the load has ended every stored machine would look retired, so none is yet.
-  const orphanMachines = !machinesSettled ? [] : selectedMachines
+  // While a fresh load is out every stored machine would look retired, so none is yet.
+  const orphanMachines = machinesStatus === 'loading' ? [] : selectedMachines
     .filter(code => !machines.some(m => sameMachine(m.machineNumber, code)))
     .map(code => ({ machineNumber: code }));
+  const machinesFailed = machinesStatus === 'failed' || machinesStatus === 'retrying';
   const allMachines = [...machines, ...orphanMachines];
   const manyMachines = allMachines.length > 12;
   const mq = machineFilter.trim().toLowerCase();
@@ -409,7 +418,7 @@ export default function StopTimerForm({
                 </div>
               </section>
 
-              {(allMachines.length > 0 || machinesError) && (
+              {(allMachines.length > 0 || machinesFailed) && (
                 <section className="stf-section">
                   <div className="stf-section-head">
                     <span className="stf-label">Machines used</span>
@@ -417,8 +426,19 @@ export default function StopTimerForm({
                       <span className="stf-target">{selectedMachines.length} selected</span>
                     )}
                   </div>
-                  {machinesError && (
-                    <p className="stf-machine-empty">Couldn't load machines.</p>
+                  {machinesFailed && (
+                    <div className="stf-machine-error">
+                      <p className="stf-machine-empty">Couldn't load machines.</p>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => loadMachines({ retry: true })}
+                        disabled={machinesStatus === 'retrying'}
+                      >
+                        {machinesStatus === 'retrying' ? <Spinner size={16} /> : <RotateCw size={16} />}
+                        Try again
+                      </button>
+                    </div>
                   )}
                   {/* After a failed load the run's own stored machines are still drawn, picked,
                       so they can be seen and switched off rather than saved unseen. */}

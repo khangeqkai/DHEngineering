@@ -10,6 +10,8 @@
 //
 // A number once issued is never lowered, even when the change behind it is taken
 // out again (3 was a one-time marking pass, since removed): backups stamped with it exist.
-const DATA_VERSION = 3;
+// 4: clocks open before self-stopping clocks existed are left running (marked
+// auto_stop_exempt) by a marker-guarded startup conversion.
+const DATA_VERSION = 4;
 
 module.exports = { DATA_VERSION };
