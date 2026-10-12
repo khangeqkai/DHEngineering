@@ -8,7 +8,8 @@ import FinishQuestionDialog from '../components/common/FinishQuestionDialog';
 import JobCardModal from '../components/jobcard/JobCardModal';
 
 // How long a note of "this screen is stopping its own clock" can excuse a vanished clock.
-// Past this it is ignored, so a stale note can only ever cost an extra read, never a question.
+// Past this it is ignored. A stale note skips a read, so it can delay a question; the header
+// indicator spends the note as soon as it sees a different clock than the last one it saw.
 const OWN_STOP_NOTE_MS = 30000;
 
 // The question a worker must answer before doing anything else: a clock they left

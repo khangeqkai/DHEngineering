@@ -95,6 +95,8 @@ export default function StopTimerForm({
   // item_number, which is only a sort order the server owns and may have gaps.
   const [displayNumber, setDisplayNumber] = useState(null);
   const [machines, setMachines] = useState([]);
+  // False until the machine list has come back, so a stored machine isn't drawn as retired meanwhile.
+  const [machinesLoaded, setMachinesLoaded] = useState(false);
   const [machineFilter, setMachineFilter] = useState('');
   const [isCritical, setIsCritical] = useState(false);
   // The job details load (which decides Critical) and the machines load are
@@ -166,6 +168,7 @@ export default function StopTimerForm({
     api.getMachines().then((machinesRes) => {
       if (requestId !== machinesLoadRequestIdRef.current) return;
       setMachines((machinesRes || []).filter(m => m.active !== 0 && m.active !== false));
+      setMachinesLoaded(true);
     }).catch(() => {
       if (requestId !== machinesLoadRequestIdRef.current) return;
       setMachines([]);
@@ -260,9 +263,16 @@ export default function StopTimerForm({
   // A machine the run already names that is no longer in the active list (retired
   // since) is still shown, picked, so it is kept — or switched off on purpose — rather
   // than silently dropped by the save.
-  const knownMachines = machines.map(m => m.machineNumber);
-  const orphanMachines = selectedMachines
-    .filter(code => !knownMachines.includes(code))
+  // Capitals don't matter when matching a stored number to a machine (same as the edit
+  // form): a stored 'cnc1' shows picked under the active 'CNC1' tile, not as a second one.
+  const sameMachine = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+  const pickedMachines = selectedMachines.map(code => {
+    const active = machines.find(m => sameMachine(m.machineNumber, code));
+    return active ? active.machineNumber : code;
+  });
+  // Until the list has loaded every stored machine would look retired, so none is yet.
+  const orphanMachines = !machinesLoaded ? [] : selectedMachines
+    .filter(code => !machines.some(m => sameMachine(m.machineNumber, code)))
     .map(code => ({ machineNumber: code }));
   const allMachines = [...machines, ...orphanMachines];
   const manyMachines = allMachines.length > 12;
@@ -270,13 +280,13 @@ export default function StopTimerForm({
   const machineOptions = !manyMachines
     ? allMachines
     : [...allMachines.filter(m =>
-        selectedMachines.includes(m.machineNumber) ||
+        pickedMachines.includes(m.machineNumber) ||
         (!mq ||
           String(m.machineNumber).toLowerCase().includes(mq) ||
           String(m.name || '').toLowerCase().includes(mq))
       )].sort((a, b) =>
-        (selectedMachines.includes(a.machineNumber) ? 0 : 1) -
-        (selectedMachines.includes(b.machineNumber) ? 0 : 1)
+        (pickedMachines.includes(a.machineNumber) ? 0 : 1) -
+        (pickedMachines.includes(b.machineNumber) ? 0 : 1)
       );
 
   const targetQty = item && parseFloat(item.qty) > 0 ? item.qty : null;
@@ -425,7 +435,7 @@ export default function StopTimerForm({
                             label: String(m.machineNumber),
                             sublabel: m.name || undefined
                           }))}
-                          selectedValues={selectedMachines}
+                          selectedValues={pickedMachines}
                           onToggle={onMachineToggle}
                         />
                         {manyMachines && machineOptions.length === 0 && (

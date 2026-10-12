@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { getDefaultTimeEntryForm, isoToLocalInput, localInputToIso } from './mappers';
 import { formatDate } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
+import { FUTURE_LEEWAY_MS } from '../../../../server/src/shared/finishAnswer';
 import { useFieldErrors, scrollFieldIntoView, fieldErrorsFromRefusal, showSaveRefusal } from '../../hooks/useFieldErrors';
 import { INSPECTION_FIELDS, CRITICAL_INSPECTION_REFUSED } from '../../../../server/src/shared/qualityLevels';
 import { isJobClosedError } from '../../utils/jobLock';
@@ -11,6 +12,9 @@ import { isTimeLocked, showTimeLockedToast } from './timeLock';
 // A Critical-inspection refusal names each missing answer by the field name this
 // form already uses for it.
 const INSPECTION_BOXES = Object.fromEntries(INSPECTION_FIELDS.map(field => [field, field]));
+
+// The code the server puts on a refusal because the finish being confirmed changed meanwhile.
+const FINISH_CHANGED = 'FINISH_CHANGED';
 
 // Every box on this form that shows a mark of its own, by the server field name that
 // lands on it (the same names). A refusal naming anything else stays a pop-up.
@@ -22,7 +26,7 @@ const FORM_BOXES = {
   ...INSPECTION_BOXES
 };
 
-export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, showConfirm, isInvoiced = false, onJobClosed }) {
+export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, reloadTimeEntries, showConfirm, isInvoiced = false, onJobClosed }) {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
   const [editingTimeEntryId, setEditingTimeEntryId] = useState(null);
   const [timeEntryForm, setTimeEntryForm] = useState(getDefaultTimeEntryForm());
@@ -128,7 +132,11 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       startTime: isoToLocalInput(entry.startTime),
       endTime: isoToLocalInput(entry.endTime),
       // Only drives the hint under the finish box; never sent.
-      finishUnconfirmed: entry.finishUnconfirmed === true
+      finishUnconfirmed: entry.finishUnconfirmed === true,
+      // The stored finish exactly as it was when the form opened (seconds kept), so the
+      // "this finish is right" tick can tell the server which finish it was looking at.
+      // Never sent as a field of its own.
+      storedEndTime: entry.endTime || null
     };
     setTimeEntryForm(opened);
     openedFormRef.current = opened;
@@ -174,21 +182,30 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       scrollFieldIntoView('startTime');
       return;
     }
+    // An edit judges a time only when it is going to be sent: a time left alone is not
+    // re-checked (a block cut at midnight is stored with finish == start, and its
+    // description must still be correctable). A new block judges everything.
+    const editing = !!openedFormRef.current;
+    const confirmingFinish = !!timeEntryForm.confirmFinish;
+    const startSent = !editing || touchedTimesRef.current.startTime;
+    const endSent = !editing || touchedTimesRef.current.endTime || confirmingFinish;
     const start = new Date(startTime).getTime();
-    if (isNaN(start)) {
-      setFieldErrors({ startTime: 'Start time is not a valid date' });
-      scrollFieldIntoView('startTime');
-      return;
+    if (startSent) {
+      if (isNaN(start)) {
+        setFieldErrors({ startTime: 'Start time is not a valid date' });
+        scrollFieldIntoView('startTime');
+        return;
+      }
+      // Same allowance for clock drift as the server gives.
+      if (start > Date.now() + FUTURE_LEEWAY_MS) {
+        setFieldErrors({ startTime: 'Start time cannot be in the future' });
+        scrollFieldIntoView('startTime');
+        return;
+      }
     }
-    // Same 15-minute allowance for clock drift as the server gives.
-    if (start > Date.now() + 15 * 60 * 1000) {
-      setFieldErrors({ startTime: 'Start time cannot be in the future' });
-      scrollFieldIntoView('startTime');
-      return;
-    }
-    if (endTime) {
+    if (endTime && (startSent || endSent)) {
       const end = new Date(endTime).getTime();
-      if (isNaN(end)) {
+      if (endSent && isNaN(end)) {
         setFieldErrors({ endTime: 'Finish time is not a valid date' });
         scrollFieldIntoView('endTime');
         return;
@@ -198,8 +215,8 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
         scrollFieldIntoView('endTime');
         return;
       }
-      // Same 15-minute allowance for clock drift as the server gives.
-      if (end > Date.now() + 15 * 60 * 1000) {
+      // Same allowance for clock drift as the server gives.
+      if (endSent && end > Date.now() + FUTURE_LEEWAY_MS) {
         setFieldErrors({ endTime: 'Finish time cannot be in the future' });
         scrollFieldIntoView('endTime');
         return;
@@ -208,7 +225,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
 
     try {
       // confirmFinish is the form-only tick "this finish is right"; like the two above it is never sent.
-      const { workerName, finishUnconfirmed, confirmFinish, ...rest } = timeEntryForm;
+      const { workerName, finishUnconfirmed, confirmFinish, storedEndTime, ...rest } = timeEntryForm;
       // An edit sends only what changed since the form opened — the start and finish
       // included, each only when it was touched (the server judges the pair it will
       // store); a new block sends everything.
@@ -222,6 +239,9 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       if (touchedTimesRef.current.startTime) entryData.startTime = localInputToIso(startBox);
       // The tick counts as touching the finish, so the stored finish can be confirmed as-is.
       if (touchedTimesRef.current.endTime || confirmFinish) entryData.endTime = localInputToIso(endBox);
+      // When the tick is the only reason the finish goes, the server is told which stored
+      // finish was being confirmed, so a worker's answer in the meantime is not overwritten.
+      if (opened && confirmFinish && !touchedTimesRef.current.endTime) entryData.expectedEndTime = opened.storedEndTime;
 
       if (editingTimeEntryId) {
         await updateTimeEntry(editingTimeEntryId, entryData);
@@ -232,6 +252,13 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       resetTimeEntryForm();
     } catch (err) {
       if (isJobClosedError(err)) onJobClosed?.();
+      else if (err?.status === 409 && err?.data?.code === FINISH_CHANGED) {
+        // The finish this tick was confirming is gone: show the list as it is now and
+        // drop the stale form rather than leave it ready to save the old time again.
+        toast.error(err.message, { id: 'time-entry-finish-changed' });
+        reloadTimeEntries?.()?.catch?.(() => {});
+        resetTimeEntryForm();
+      }
       else if (err?.data?.code === CRITICAL_INSPECTION_REFUSED) {
         // The job is Critical on the server even if this screen's copy says not:
         // show the checklist and mark each unanswered check instead of a pop-up.
@@ -243,7 +270,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       // this PC's clock thought was fine) marks that box; the rest is a pop-up.
       else showSaveRefusal(err, { boxFor: FORM_BOXES, setFieldErrors, fallback: 'Failed to save time entry' });
     }
-  }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry, isInvoiced, setFieldErrors, onJobClosed]);
+  }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry, reloadTimeEntries, isInvoiced, setFieldErrors, onJobClosed]);
 
   const handleDeleteTimeEntry = useCallback(async (entry) => {
     if (!jobCardId) return;

@@ -275,6 +275,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   const timeEntry = useTimeEntries(jobCardId, {
     ...apiTimeEntryOperations,
+    reloadTimeEntries: reloadTimeEntriesAndCosting,
     showConfirm,
     isInvoiced,
     onJobClosed: handleJobClosedWrite

@@ -55,16 +55,17 @@ const historyQueries = {
   // null/blank; same snapshot), or the block's Start (found by its start time, like
   // getStartTimer, since Start's entry carries no block id).
   getLatestOpeningOfBlock: db.prepare(`
-    SELECT action, user_id FROM history
-    WHERE entity_type = 'jobcard' AND entity_id = ? AND (
-      (action = 'add_time_entry' AND json_extract(snapshot, '$.timeEntryId') = ?
-        AND json_type(changes, '$.endTime') IS NULL)
-      OR (action = 'update_time_entry' AND json_extract(snapshot, '$.timeEntryId') = ?
-        AND json_type(changes, '$.endTime') = 'object'
-        AND (json_type(changes, '$.endTime.to') = 'null' OR json_extract(changes, '$.endTime.to') = ''))
-      OR (action = 'start_timer' AND json_extract(changes, '$.timer.to') = ?)
+    SELECT h.action, h.user_id, u.role AS actor_role FROM history h
+    LEFT JOIN users u ON u.id = h.user_id
+    WHERE h.entity_type = 'jobcard' AND h.entity_id = ? AND (
+      (h.action = 'add_time_entry' AND json_extract(h.snapshot, '$.timeEntryId') = ?
+        AND json_type(h.changes, '$.endTime') IS NULL)
+      OR (h.action = 'update_time_entry' AND json_extract(h.snapshot, '$.timeEntryId') = ?
+        AND json_type(h.changes, '$.endTime') = 'object'
+        AND (json_type(h.changes, '$.endTime.to') = 'null' OR json_extract(h.changes, '$.endTime.to') = ''))
+      OR (h.action = 'start_timer' AND json_extract(h.changes, '$.timer.to') = ?)
     )
-    ORDER BY created_at DESC, id DESC
+    ORDER BY h.created_at DESC, h.id DESC
     LIMIT 1
   `),
 

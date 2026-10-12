@@ -17,6 +17,7 @@ export function useActiveTimerIndicator() {
   const takeOwnStopRef = useRef(finishQuestion?.takeOwnStop);
   takeOwnStopRef.current = finishQuestion?.takeOwnStop;
   const hadTimerRef = useRef(false);
+  const lastTimerIdRef = useRef(null);
 
   const fetchTimer = useCallback(async () => {
     // Tag each poll so a slow response that resolves out of order can't
@@ -26,12 +27,17 @@ export function useActiveTimerIndicator() {
       const timer = await api.getActiveTimer();
       if (id === requestId.current) {
         const next = timer || null;
+        // A different clock being here proves any earlier note of this screen's own stop is
+        // spent (that stop was never seen vanishing, e.g. a part switch between two polls).
+        // Left live, it would excuse the next vanish — maybe a real server cut — for 30s.
+        if (next && next.id !== lastTimerIdRef.current) takeOwnStopRef.current?.();
         if (hadTimerRef.current && !next) {
           // A stop this very screen just made is never the server's doing: no need to ask.
           const ownStop = takeOwnStopRef.current?.() === true;
           if (!ownStop) refreshFinishQuestionRef.current?.();
         }
         hadTimerRef.current = Boolean(next);
+        if (next) lastTimerIdRef.current = next.id;
         setActiveTimer(next);
       }
     } catch {

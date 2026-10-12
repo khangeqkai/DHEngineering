@@ -503,8 +503,11 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
   const handleEntryMachineToggle = useCallback((machineNumber) => {
     setEntryForm(prev => {
       const current = prev.machineNumbers || [];
-      const next = current.includes(machineNumber)
-        ? current.filter(m => m !== machineNumber)
+      // Capitals don't matter: 'cnc1' stored and 'CNC1' picked are the same machine, so
+      // picking it off removes the stored one and adding never leaves two that differ by case.
+      const same = (m) => String(m).toLowerCase() === String(machineNumber).toLowerCase();
+      const next = current.some(same)
+        ? current.filter(m => !same(m))
         : [...current, machineNumber];
       return { ...prev, machineNumbers: next };
     });

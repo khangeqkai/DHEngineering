@@ -13,6 +13,7 @@ const { DEFAULT_VIC_PUBLIC_HOLIDAYS_2026 } = require('../utils/defaultHolidays')
 const { scheduleToWholeHours } = require('../shared/overtimeSchedule');
 const { readOvertimeSettings } = require('../utils/overtimeSettings');
 const { isCalendarDate } = require('../shared/calendarDate');
+const permissions = require('../shared/permissions.json');
 const { QUALITY_LEVELS, isCriticalLevel } = require('../shared/qualityLevels');
 const { officeDateString } = require('../utils/officeTime');
 const { isBaseReachable, isWithinBase, idSlug, folderSlugOf, sanitizeFolderName } = require('../utils/folderCreation');
@@ -659,9 +660,13 @@ function clearStaleAwaitingDetails() {
 // an already-open block entered by hand (added with no finish, or reopened by management
 // clearing its finish) carries nothing, and the first boot would cut it like a forgotten
 // clock. Mark each open block whose latest opening, by the job's trail, was by hand: a manual
-// add with no finish, or an edit that cleared the finish made by someone other than the
-// block's own worker. A block whose latest opening is a Start (or its own worker's reopen)
-// is an ordinary clock and stays cuttable; a block with no trail entry stays unmarked.
+// add with no finish, or an edit that cleared the finish made by management. That mirrors the
+// live reopened-by-hand rule (a reopen by an admin or manager is by hand, even of their own
+// block). If the actor's role can't be read (no user row), fall back to "someone other than
+// the block's own worker". A block whose latest opening is a Start (or a worker's own reopen)
+// is an ordinary clock and stays cuttable; a block with no trail entry stays unmarked. A
+// manager's Resume of a worker's clock looks the same in the trail as a hand reopen and is
+// deliberately left on the side of never cutting.
 // Done once, flag and marks in one transaction — NOT a self-bounding query, on purpose: once
 // this version runs, a manager can make an ordinary, cuttable clock for another worker
 // through the stop form's own Resume, which the trail cannot tell apart from a hand reopen,
@@ -675,8 +680,12 @@ function backfillAutoStopExempt() {
     for (const row of timeEntryQueries.getAllOpen.all()) {
       const opening = historyQueries.getLatestOpeningOfBlock.get(row.jobcard_id, row.id, row.id, row.start_time);
       if (!opening) continue;
+      // permissions.json read directly: middleware/auth.js requires the db layer, so
+      // importing its isManagement from here would be a require cycle.
+      const actorKnown = opening.actor_role != null;
       const byHand = opening.action === 'add_time_entry' ||
-        (opening.action === 'update_time_entry' && opening.user_id !== row.user_id);
+        (opening.action === 'update_time_entry' &&
+          (actorKnown ? permissions.management.includes(opening.actor_role) : opening.user_id !== row.user_id));
       if (!byHand) continue;
       timeEntryQueries.markAutoStopExempt.run(row.id);
       marked++;

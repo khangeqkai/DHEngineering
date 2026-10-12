@@ -524,6 +524,27 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
       return res.status(400).json({ error: 'Invalid start or finish time' });
     }
 
+    // The edit form's "this finish is right" tick sends the finish it was looking at as
+    // expectedEndTime. If the worker has answered since (flag cleared, finish changed), the
+    // stored finish is no longer that one and writing it back would undo their answer.
+    if (data.expectedEndTime !== undefined) {
+      // Both sides go through normalizeTime, so the same moment written two ways still matches.
+      let expectedEnd = null;
+      let storedEnd = null;
+      try {
+        expectedEnd = normalizeTime(data.expectedEndTime);
+        storedEnd = normalizeTime(existing.end_time);
+      } catch (e) {
+        expectedEnd = null;
+      }
+      if (existing.finish_unconfirmed !== 1 || expectedEnd === null || expectedEnd !== storedEnd) {
+        return res.status(409).json({
+          error: 'This finish was changed since you opened it. Reopen it to see the current time.',
+          code: 'FINISH_CHANGED'
+        });
+      }
+    }
+
     // Start/finish times are the raw measurement of how long the job took and feed
     // directly into labour hours and cost, so a non-admin owner may never hand-edit
     // them — they may only fill in qty/scrap/machine/description on their own record.
@@ -709,6 +730,14 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
     const officeConfirmsFinish = isManagement(req.user.role) && existing.finish_unconfirmed === 1 &&
       data.detailsConfirmed !== true && data.endTime !== undefined && endTime !== null;
     const clearsUnconfirmedFlag = existing.finish_unconfirmed === 1 && (isResume || officeConfirmsFinish);
+
+    // The question about an unconfirmed finish belongs to the worker who owes it; moving the
+    // block to someone else without settling the finish would hand them a question about
+    // time they never worked.
+    if (workerId !== existing.user_id && existing.finish_unconfirmed === 1 && !officeConfirmsFinish && !isResume) {
+      const message = 'Confirm the finish before moving this to another worker — tick "This finish is right" or correct the time';
+      return res.status(400).json({ error: message, fields: [{ field: 'endTime', message }] });
+    }
 
     // Management clearing a stopped block's finish through the edit form (without the stop
     // form's own detailsConfirmed) is the office reopening time by hand: the roll must never
