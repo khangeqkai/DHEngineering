@@ -145,9 +145,6 @@ settingsQueries.upsert.run('labour_schedule_whole_hours_at', seededAt);
 // Seeded costings already carry their own captured overtime rules (below), so the
 // one-time rule-capture migration has nothing to do — stamp its flag so it never runs.
 settingsQueries.upsert.run('overtime_ownership_at', seededAt);
-// Seeded open blocks are ordinary running clocks (none entered by hand), so the backfill that
-// marks hand-entered open blocks as never auto-stopped has nothing to do.
-settingsQueries.upsert.run('auto_stop_exempt_backfill_at', seededAt);
 console.log(`Settings configured (prefix: ${refData.settings.job_number_prefix}, starting: ${refData.settings.job_number_next}).`);
 
 // ─── JOB CARDS ───

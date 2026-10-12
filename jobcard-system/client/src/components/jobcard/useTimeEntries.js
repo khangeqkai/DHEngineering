@@ -6,15 +6,13 @@ import { roundTo } from '../../../../server/src/shared/round';
 import { FUTURE_LEEWAY_MS } from '../../../../server/src/shared/finishAnswer';
 import { useFieldErrors, scrollFieldIntoView, fieldErrorsFromRefusal, showSaveRefusal } from '../../hooks/useFieldErrors';
 import { INSPECTION_FIELDS, CRITICAL_INSPECTION_REFUSED } from '../../../../server/src/shared/qualityLevels';
+import { FINISH_CHANGED } from '../../../../server/src/shared/runRefusals';
 import { isJobClosedError } from '../../utils/jobLock';
 import { isTimeLocked, showTimeLockedToast } from './timeLock';
 
 // A Critical-inspection refusal names each missing answer by the field name this
 // form already uses for it.
 const INSPECTION_BOXES = Object.fromEntries(INSPECTION_FIELDS.map(field => [field, field]));
-
-// The code the server puts on a refusal because the finish being confirmed changed meanwhile.
-const FINISH_CHANGED = 'FINISH_CHANGED';
 
 // Every box on this form that shows a mark of its own, by the server field name that
 // lands on it (the same names). A refusal naming anything else stays a pop-up.
@@ -133,8 +131,8 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       endTime: isoToLocalInput(entry.endTime),
       // Only drives the hint under the finish box; never sent.
       finishUnconfirmed: entry.finishUnconfirmed === true,
-      // The stored finish exactly as it was when the form opened (seconds kept), so the
-      // "this finish is right" tick can tell the server which finish it was looking at.
+      // The stored finish exactly as it was when the form opened (seconds kept), so a save
+      // that sends a finish can tell the server which finish it was looking at.
       // Never sent as a field of its own.
       storedEndTime: entry.endTime || null
     };
@@ -239,9 +237,10 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       if (touchedTimesRef.current.startTime) entryData.startTime = localInputToIso(startBox);
       // The tick counts as touching the finish, so the stored finish can be confirmed as-is.
       if (touchedTimesRef.current.endTime || confirmFinish) entryData.endTime = localInputToIso(endBox);
-      // When the tick is the only reason the finish goes, the server is told which stored
-      // finish was being confirmed, so a worker's answer in the meantime is not overwritten.
-      if (opened && confirmFinish && !touchedTimesRef.current.endTime) entryData.expectedEndTime = opened.storedEndTime;
+      // Whenever an edit sends the finish, however the box came to hold it, the server is
+      // told which stored finish this form was opened on, so a worker's answer (or another
+      // correction) made in the meantime is refused rather than overwritten.
+      if (opened && 'endTime' in entryData) entryData.expectedEndTime = opened.storedEndTime;
 
       if (editingTimeEntryId) {
         await updateTimeEntry(editingTimeEntryId, entryData);
@@ -253,7 +252,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     } catch (err) {
       if (isJobClosedError(err)) onJobClosed?.();
       else if (err?.status === 409 && err?.data?.code === FINISH_CHANGED) {
-        // The finish this tick was confirming is gone: show the list as it is now and
+        // The finish this form was opened on is gone: show the list as it is now and
         // drop the stale form rather than leave it ready to save the old time again.
         toast.error(err.message, { id: 'time-entry-finish-changed' });
         reloadTimeEntries?.()?.catch?.(() => {});

@@ -285,15 +285,19 @@ export default function TimeEntryForm({
               <span className="field-hint">
                 {timeEntryForm.workerName || 'The worker'} hasn't confirmed this finish yet. Changing it here confirms it for them.
               </span>
-              <label className="show-inactive-label">
-                <input
-                  type="checkbox"
-                  name="confirmFinish"
-                  checked={!!timeEntryForm.confirmFinish}
-                  onChange={handleTimeEntryChange}
-                />
-                This finish is right — confirm it for them
-              </label>
+              {/* Offered only while the finish is after the start: a clock cut at midnight is
+                  stored with finish == start, which can't be confirmed as it stands. */}
+              {timeEntryForm.endTime > timeEntryForm.startTime && (
+                <label className="show-inactive-label">
+                  <input
+                    type="checkbox"
+                    name="confirmFinish"
+                    checked={!!timeEntryForm.confirmFinish}
+                    onChange={handleTimeEntryChange}
+                  />
+                  This finish is right — confirm it for them
+                </label>
+              )}
             </>
           )}
         </div>

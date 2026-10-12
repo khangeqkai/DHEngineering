@@ -7,6 +7,9 @@
 // the app, and restoring it here would quietly drop whatever this version
 // doesn't know about. Older backups (a lower number, or none at all) restore as
 // before, and the startup conversions bring them up to date.
+//
+// A number once issued is never lowered, even when the change behind it is taken
+// out again (3 was a one-time marking pass, since removed): backups stamped with it exist.
 const DATA_VERSION = 3;
 
 module.exports = { DATA_VERSION };

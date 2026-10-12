@@ -49,26 +49,6 @@ const historyQueries = {
     LIMIT 1
   `),
 
-  // The latest trail entry that OPENED one work block, read once by the auto-stop-exempt
-  // backfill (db/legacyMigrations.js). Params: job id, block id, block id, block start time. An opening is the manual add with no finish (snapshot carries
-  // the block id), a management edit that cleared the finish (changes.endTime went to
-  // null/blank; same snapshot), or the block's Start (found by its start time, like
-  // getStartTimer, since Start's entry carries no block id).
-  getLatestOpeningOfBlock: db.prepare(`
-    SELECT h.action, h.user_id, u.role AS actor_role FROM history h
-    LEFT JOIN users u ON u.id = h.user_id
-    WHERE h.entity_type = 'jobcard' AND h.entity_id = ? AND (
-      (h.action = 'add_time_entry' AND json_extract(h.snapshot, '$.timeEntryId') = ?
-        AND json_type(h.changes, '$.endTime') IS NULL)
-      OR (h.action = 'update_time_entry' AND json_extract(h.snapshot, '$.timeEntryId') = ?
-        AND json_type(h.changes, '$.endTime') = 'object'
-        AND (json_type(h.changes, '$.endTime.to') = 'null' OR json_extract(h.changes, '$.endTime.to') = ''))
-      OR (h.action = 'start_timer' AND json_extract(h.changes, '$.timer.to') = ?)
-    )
-    ORDER BY h.created_at DESC, h.id DESC
-    LIMIT 1
-  `),
-
   getByUser: db.prepare(`
     SELECT h.*, ${HISTORY_JOB_NUMBER_SQL} AS job_number FROM history h
     WHERE user_id = ?

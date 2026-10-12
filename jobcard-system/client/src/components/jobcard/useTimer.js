@@ -57,13 +57,6 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
   const finishQuestion = useFinishQuestion();
   const refreshFinishQuestionRef = useRef(finishQuestion?.refresh);
   refreshFinishQuestionRef.current = finishQuestion?.refresh;
-  // Says "this screen is stopping its own clock" around the worker's own stop, so the
-  // header indicator does not re-read the flagged clocks for it (the poll below already
-  // knows, through selfStoppedRef).
-  const noteOwnStopRef = useRef(finishQuestion?.noteOwnStop);
-  noteOwnStopRef.current = finishQuestion?.noteOwnStop;
-  const clearOwnStopRef = useRef(finishQuestion?.clearOwnStop);
-  clearOwnStopRef.current = finishQuestion?.clearOwnStop;
   const stopFormDoneRef = useRef(finishQuestion?.stopFormDone);
   stopFormDoneRef.current = finishQuestion?.stopFormDone;
   // Read the live parts list from a ref, not the argument closed over below — the
@@ -272,7 +265,6 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
             });
             if (shouldSwitch) {
               selfStoppedRef.current = true;
-              noteOwnStopRef.current?.();
               const entry = await api.stopTimer(currentTimer.jobcardId, currentTimer.id);
               setActiveTimer(null);
               // If the old run was under 15s it's discarded — don't ask about it, just
@@ -307,7 +299,6 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
             return false;
           }
         } catch (innerErr) {
-          clearOwnStopRef.current?.();
           if (handledAsFinishUnconfirmed(innerErr)) return false;
           toast.error(innerErr.message || 'Failed to switch timer', { id: 'switch-timer-failed' });
           return false;
@@ -327,7 +318,6 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     setLoading(true);
     try {
       selfStoppedRef.current = true;
-      noteOwnStopRef.current?.();
       const entry = await api.stopTimer(jobcardId, activeTimer.id);
       setActiveTimer(null);
       // A run under 15s is discarded server-side — no block, no form, just a heads-up.
@@ -342,8 +332,6 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       return entry;
     } catch (err) {
       selfStoppedRef.current = false;
-      // Not our stop after all (refused, or the server had cut it first): the question must still be asked.
-      clearOwnStopRef.current?.();
       if (err?.data?.code === RUN_STOPPED_ITSELF) {
         // The server had already stopped this clock by itself: show the worker's question
         // rather than an error, and let the work list reload.
@@ -373,7 +361,6 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       // and stop the background poller crying "stopped by an admin".
       if (isOwnActive) {
         selfStoppedRef.current = true;
-        noteOwnStopRef.current?.();
       }
       const result = await api.stopTimer(entryJobcardId, entry.id);
       if (isOwnActive) setActiveTimer(null);
@@ -393,7 +380,6 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     } catch (err) {
       if (isOwnActive) {
         selfStoppedRef.current = false;
-        clearOwnStopRef.current?.();
       }
       if (err?.data?.code === RUN_STOPPED_ITSELF) {
         if (isOwnActive) {

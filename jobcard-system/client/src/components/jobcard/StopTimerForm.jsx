@@ -95,8 +95,10 @@ export default function StopTimerForm({
   // item_number, which is only a sort order the server owns and may have gaps.
   const [displayNumber, setDisplayNumber] = useState(null);
   const [machines, setMachines] = useState([]);
-  // False until the machine list has come back, so a stored machine isn't drawn as retired meanwhile.
-  const [machinesLoaded, setMachinesLoaded] = useState(false);
+  // False while the first machine list load is still out, so a stored machine isn't drawn
+  // as a tile of its own for the moment before its active tile arrives. True once that
+  // load has ended either way: when it failed, the stored machines are all there is to show.
+  const [machinesSettled, setMachinesSettled] = useState(false);
   const [machineFilter, setMachineFilter] = useState('');
   const [isCritical, setIsCritical] = useState(false);
   // The job details load (which decides Critical) and the machines load are
@@ -168,11 +170,12 @@ export default function StopTimerForm({
     api.getMachines().then((machinesRes) => {
       if (requestId !== machinesLoadRequestIdRef.current) return;
       setMachines((machinesRes || []).filter(m => m.active !== 0 && m.active !== false));
-      setMachinesLoaded(true);
+      setMachinesSettled(true);
     }).catch(() => {
       if (requestId !== machinesLoadRequestIdRef.current) return;
       setMachines([]);
       setMachinesError(true);
+      setMachinesSettled(true);
     });
   }, [jobCard?.id]);
 
@@ -270,8 +273,8 @@ export default function StopTimerForm({
     const active = machines.find(m => sameMachine(m.machineNumber, code));
     return active ? active.machineNumber : code;
   });
-  // Until the list has loaded every stored machine would look retired, so none is yet.
-  const orphanMachines = !machinesLoaded ? [] : selectedMachines
+  // Until the load has ended every stored machine would look retired, so none is yet.
+  const orphanMachines = !machinesSettled ? [] : selectedMachines
     .filter(code => !machines.some(m => sameMachine(m.machineNumber, code)))
     .map(code => ({ machineNumber: code }));
   const allMachines = [...machines, ...orphanMachines];
@@ -414,9 +417,12 @@ export default function StopTimerForm({
                       <span className="stf-target">{selectedMachines.length} selected</span>
                     )}
                   </div>
-                  {machinesError ? (
+                  {machinesError && (
                     <p className="stf-machine-empty">Couldn't load machines.</p>
-                  ) : (
+                  )}
+                  {/* After a failed load the run's own stored machines are still drawn, picked,
+                      so they can be seen and switched off rather than saved unseen. */}
+                  {allMachines.length > 0 && (
                     <>
                       {manyMachines && (
                         <input

@@ -14,10 +14,7 @@ export function useActiveTimerIndicator() {
   const finishQuestion = useFinishQuestion();
   const refreshFinishQuestionRef = useRef(finishQuestion?.refresh);
   refreshFinishQuestionRef.current = finishQuestion?.refresh;
-  const takeOwnStopRef = useRef(finishQuestion?.takeOwnStop);
-  takeOwnStopRef.current = finishQuestion?.takeOwnStop;
   const hadTimerRef = useRef(false);
-  const lastTimerIdRef = useRef(null);
 
   const fetchTimer = useCallback(async () => {
     // Tag each poll so a slow response that resolves out of order can't
@@ -27,17 +24,11 @@ export function useActiveTimerIndicator() {
       const timer = await api.getActiveTimer();
       if (id === requestId.current) {
         const next = timer || null;
-        // A different clock being here proves any earlier note of this screen's own stop is
-        // spent (that stop was never seen vanishing, e.g. a part switch between two polls).
-        // Left live, it would excuse the next vanish — maybe a real server cut — for 30s.
-        if (next && next.id !== lastTimerIdRef.current) takeOwnStopRef.current?.();
-        if (hadTimerRef.current && !next) {
-          // A stop this very screen just made is never the server's doing: no need to ask.
-          const ownStop = takeOwnStopRef.current?.() === true;
-          if (!ownStop) refreshFinishQuestionRef.current?.();
-        }
+        // A clock this screen was showing is gone. Always ask whether the server cut it:
+        // the read is small, and guessing "that was our own stop" from timing has hidden
+        // real cuts before. Deliberately not skipped for a stop made on this screen.
+        if (hadTimerRef.current && !next) refreshFinishQuestionRef.current?.();
         hadTimerRef.current = Boolean(next);
-        if (next) lastTimerIdRef.current = next.id;
         setActiveTimer(next);
       }
     } catch {

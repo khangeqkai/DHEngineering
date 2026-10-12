@@ -25,7 +25,7 @@ const {
 } = require('../utils/timeEntryHelpers');
 const {
   RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN, FINISH_ALREADY_CONFIRMED, FINISH_UNCONFIRMED, RUN_STOPPED_ITSELF,
-  RESTART_REFUSED, RESUME_AFTER_HOURS
+  RESTART_REFUSED, RESUME_AFTER_HOURS, FINISH_CHANGED
 } = require('../shared/runRefusals');
 const { readOpeningRules, nextOpening, officeDayEndAfter } = require('../utils/openingHours');
 const { checkFinishAnswer, CARRIED_ON_GAP_MS } = require('../shared/finishAnswer');
@@ -524,9 +524,11 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
       return res.status(400).json({ error: 'Invalid start or finish time' });
     }
 
-    // The edit form's "this finish is right" tick sends the finish it was looking at as
-    // expectedEndTime. If the worker has answered since (flag cleared, finish changed), the
-    // stored finish is no longer that one and writing it back would undo their answer.
+    // Every hand edit that sends a finish (typed, ticked "this finish is right", or cleared)
+    // also sends the finish its form was opened on, as expectedEndTime. If the stored finish
+    // is a different time now, the worker answered or another correction landed meanwhile,
+    // and writing this one would undo it. Only the time is compared: a worker who confirmed
+    // the very same finish changed nothing this save was looking at, so it goes through.
     if (data.expectedEndTime !== undefined) {
       // Both sides go through normalizeTime, so the same moment written two ways still matches.
       let expectedEnd = null;
@@ -537,10 +539,10 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
       } catch (e) {
         expectedEnd = null;
       }
-      if (existing.finish_unconfirmed !== 1 || expectedEnd === null || expectedEnd !== storedEnd) {
+      if (expectedEnd === null || expectedEnd !== storedEnd) {
         return res.status(409).json({
           error: 'This finish was changed since you opened it. Reopen it to see the current time.',
-          code: 'FINISH_CHANGED'
+          code: FINISH_CHANGED
         });
       }
     }
@@ -735,7 +737,11 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
     // block to someone else without settling the finish would hand them a question about
     // time they never worked.
     if (workerId !== existing.user_id && existing.finish_unconfirmed === 1 && !officeConfirmsFinish && !isResume) {
-      const message = 'Confirm the finish before moving this to another worker — tick "This finish is right" or correct the time';
+      // A block cut at midnight is stored with finish == start: that finish can never be
+      // confirmed as it stands (the pair check refuses it), so the tick is not offered.
+      const message = existing.end_time === existing.start_time
+        ? 'Enter the real finish time before moving this to another worker'
+        : 'Confirm the finish before moving this to another worker — tick "This finish is right" or correct the time';
       return res.status(400).json({ error: message, fields: [{ field: 'endTime', message }] });
     }
 
