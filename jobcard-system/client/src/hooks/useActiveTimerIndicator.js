@@ -1,12 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
 import { formatElapsed, elapsedSecondsSince } from '../utils/formatters';
+import { useFinishQuestion } from '../context/FinishQuestionContext';
 
 export function useActiveTimerIndicator() {
   const [activeTimer, setActiveTimer] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const intervalRef = useRef(null);
   const requestId = useRef(0);
+  // A clock that vanishes may have been stopped by the server itself (a forgotten
+  // clock) — the signed-in shell is asked to re-check for its "when did you finish?"
+  // question the moment that happens. No toast here; the question explains itself.
+  const finishQuestion = useFinishQuestion();
+  const refreshFinishQuestionRef = useRef(finishQuestion?.refresh);
+  refreshFinishQuestionRef.current = finishQuestion?.refresh;
+  const hadTimerRef = useRef(false);
 
   const fetchTimer = useCallback(async () => {
     // Tag each poll so a slow response that resolves out of order can't
@@ -14,7 +22,12 @@ export function useActiveTimerIndicator() {
     const id = ++requestId.current;
     try {
       const timer = await api.getActiveTimer();
-      if (id === requestId.current) setActiveTimer(timer || null);
+      if (id === requestId.current) {
+        const next = timer || null;
+        if (hadTimerRef.current && !next) refreshFinishQuestionRef.current?.();
+        hadTimerRef.current = Boolean(next);
+        setActiveTimer(next);
+      }
     } catch {
       if (id === requestId.current) setActiveTimer(null);
     }

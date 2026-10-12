@@ -7,7 +7,7 @@ const timeEntryQueries = {
   // number keeps its gaps after a part is removed. The screen pairs these rows to
   // its parts by item_id and numbers them itself.
   getByJobcard: db.prepare(`
-    SELECT te.*, u.name as user_name, ji.item_number as item_number
+    SELECT te.*, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name, ji.item_number as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
     LEFT JOIN job_items ji ON te.item_id = ji.id
@@ -16,7 +16,7 @@ const timeEntryQueries = {
   `),
 
   getById: db.prepare(`
-    SELECT te.*, u.name as user_name, ji.item_number as item_number
+    SELECT te.*, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name, ji.item_number as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
     LEFT JOIN job_items ji ON te.item_id = ji.id
@@ -77,9 +77,11 @@ const timeEntryQueries = {
   // 30-minute window (applied by the caller) still frees a form someone walked
   // away from, rather than blocking the job for good. A hand-added block never
   // carries the flag (only the stop route sets it), so it never trips this.
-  // end_time is ISO-8601 UTC, so the string comparison is chronological.
+  // The window runs from the finish, or from the worker's answer for a clock that stopped
+  // itself (its finish can be far in the past while the form was only just opened). Both are
+  // ISO-8601 UTC, so the string comparison is chronological. The caller passes the cutoff twice.
   countAwaitingDetailsByJobcard: db.prepare(
-    'SELECT COUNT(*) as count FROM time_entries WHERE jobcard_id = ? AND awaiting_details = 1 AND end_time >= ?'
+    'SELECT COUNT(*) as count FROM time_entries WHERE jobcard_id = ? AND awaiting_details = 1 AND (end_time >= ? OR finish_confirmed_at >= ?)'
   ),
 
   // Finished runs on this job that needed the Critical sign-off (critical_at_finish
@@ -89,7 +91,7 @@ const timeEntryQueries = {
   // same way search.js does — the stored sort number keeps its gaps after a part is
   // removed) so the confirm can name each run without a second round trip.
   getMissingInspectionByJobcard: db.prepare(`
-    SELECT te.id, u.name as user_name, te.start_time, te.end_time,
+    SELECT te.id, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name, te.start_time, te.end_time,
       (CASE WHEN ji.id IS NOT NULL THEN (SELECT COUNT(*) FROM job_items p WHERE p.jobcard_id = ji.jobcard_id AND p.item_number <= ji.item_number) END) as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
@@ -109,7 +111,7 @@ const timeEntryQueries = {
   // item_number is the part's CURRENT 1-based position (as above), because the
   // "timer running on job X, part N" message shows it as-is for another job.
   getActiveByUser: db.prepare(`
-    SELECT te.*, u.name as user_name, j.job_number,
+    SELECT te.*, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name, j.job_number,
       (CASE WHEN ji.id IS NOT NULL THEN (SELECT COUNT(*) FROM job_items p WHERE p.jobcard_id = ji.jobcard_id AND p.item_number <= ji.item_number) END) as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
@@ -126,9 +128,120 @@ const timeEntryQueries = {
   // always gives the block its FIRST finish time (it only runs on an open timer),
   // so criticalAtFinish is always the freshly-decided value here, never a kept one.
   stop: db.prepare(`
-    UPDATE time_entries SET end_time = ?, critical_at_finish = ?, awaiting_details = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    UPDATE time_entries SET end_time = ?, critical_at_finish = ?, awaiting_details = 1, auto_stop_exempt = 0, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
+
+  // Every open block the roll may cut, with its worker's name — the forgotten-clock roll
+  // (utils/timerPause.js) walks these. Hand-opened blocks (auto_stop_exempt) are left out. Oldest first so the work is deterministic.
+  getAllOpen: db.prepare(`
+    SELECT te.*, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name
+    FROM time_entries te
+    JOIN users u ON te.user_id = u.id
+    WHERE te.end_time IS NULL AND COALESCE(te.auto_stop_exempt, 0) = 0
+    ORDER BY te.start_time ASC
+  `),
+
+  // Time the office opened by hand (management reopening a stopped block through the edit
+  // form, or adding a block with no finish) is never cut by the roll: hand-entered time is
+  // never touched. A clock started through Start, and a stop-form Resume, stay ordinary.
+  // The exemption lasts only while the block is open: the stop statement resets it, so a later
+  // resume is cuttable again. (Only an open block ever carries it, and the edit route refuses open blocks.)
+  markAutoStopExempt: db.prepare('UPDATE time_entries SET auto_stop_exempt = 1 WHERE id = ?'),
+
+  // Finish an open block automatically (a clock left running past the end of normal
+  // hours). Not a stop: no fill-in form waits on it (awaiting_details 0), the description
+  // is left alone, and the worker is asked when they really finished (finish_unconfirmed 1).
+  // critical_at_finish is decided by the caller, as a real finish decides it.
+  finishUnconfirmed: db.prepare(`
+    UPDATE time_entries SET end_time = ?, finish_unconfirmed = 1, finish_confirmed_at = NULL, awaiting_details = 0, critical_at_finish = ?,
+      updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    WHERE id = ? AND end_time IS NULL
+  `),
+
+  // A worker's automatically finished blocks still awaiting their answer, oldest first, with
+  // the job number and the part's current 1-based position (the way getActiveByUser reports it).
+  getUnconfirmedByUser: db.prepare(`
+    SELECT te.*, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name, j.job_number,
+      (CASE WHEN ji.id IS NOT NULL THEN (SELECT COUNT(*) FROM job_items p WHERE p.jobcard_id = ji.jobcard_id AND p.item_number <= ji.item_number) END) as item_number
+    FROM time_entries te
+    JOIN users u ON te.user_id = u.id
+    JOIN jobcards j ON te.jobcard_id = j.id
+    LEFT JOIN job_items ji ON te.item_id = ji.id
+    WHERE te.user_id = ? AND te.finish_unconfirmed = 1 AND te.end_time IS NOT NULL
+    ORDER BY te.start_time ASC
+  `),
+
+  countUnconfirmedByUser: db.prepare(
+    'SELECT COUNT(*) as count FROM time_entries WHERE user_id = ? AND finish_unconfirmed = 1 AND end_time IS NOT NULL'
+  ),
+
+  // The same count without one block (reopening the flagged block itself clears its own flag).
+  countUnconfirmedByUserExcluding: db.prepare(
+    'SELECT COUNT(*) as count FROM time_entries WHERE user_id = ? AND id != ? AND finish_unconfirmed = 1 AND end_time IS NOT NULL'
+  ),
+
+  // The first block on a job awaiting its worker's answer, with that worker's name —
+  // invoicing waits on it.
+  getFirstUnconfirmedByJobcard: db.prepare(`
+    SELECT te.id, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name
+    FROM time_entries te
+    JOIN users u ON te.user_id = u.id
+    WHERE te.jobcard_id = ? AND te.finish_unconfirmed = 1 AND te.end_time IS NOT NULL
+    ORDER BY te.start_time ASC
+    LIMIT 1
+  `),
+
+  // The worker's answer to an automatically finished block: the finish they gave (earlier,
+  // later or the same), the flag cleared, the moment they answered, and the stop-form / Critical state the answer leaves it in.
+  confirmFinish: db.prepare(`
+    UPDATE time_entries SET end_time = ?, finish_unconfirmed = 0, finish_confirmed_at = ?, awaiting_details = ?, critical_at_finish = ?, description = ?,
+      updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    WHERE id = ? AND finish_unconfirmed = 1
+  `),
+
+  // Management saving a block settles its unconfirmed finish (the office answering for an absent worker).
+  clearUnconfirmed: db.prepare(`
+    UPDATE time_entries SET finish_unconfirmed = 0 WHERE id = ?
+  `),
+
+  // A resume reopens the block, so the worker's earlier answer about its finish no longer stands.
+  clearFinishConfirmedAt: db.prepare(`
+    UPDATE time_entries SET finish_confirmed_at = NULL WHERE id = ?
+  `),
+
+  // The caller's own finished blocks whose stop form is still waiting (awaiting_details
+  // = 1), oldest first, with the job number and the part's current 1-based position —
+  // offered again at sign-in until saved, whatever the description says (a block drops out
+  // when the worker's own save clears awaiting_details). Every such block counts, whether
+  // the worker stopped it themselves and walked away or answered the forgotten-clock
+  // question and then left the form. Blocks that finished before this behaviour shipped
+  // had their mark cleared once by the startup conversion (clearStaleAwaitingDetails), so
+  // an old abandoned form never comes back. An archived job's are left out: its form could
+  // never be saved, so it would be offered forever.
+  getUnfilledStopFormsByUser: db.prepare(`
+    SELECT te.*, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name, j.job_number,
+      (CASE WHEN ji.id IS NOT NULL THEN (SELECT COUNT(*) FROM job_items p WHERE p.jobcard_id = ji.jobcard_id AND p.item_number <= ji.item_number) END) as item_number
+    FROM time_entries te
+    JOIN users u ON te.user_id = u.id
+    JOIN jobcards j ON te.jobcard_id = j.id
+    LEFT JOIN job_items ji ON te.item_id = ji.id
+    WHERE te.user_id = ? AND te.end_time IS NOT NULL AND te.finish_unconfirmed = 0
+      AND te.awaiting_details = 1
+      AND COALESCE(j.archived, 0) = 0
+    ORDER BY te.start_time ASC
+  `),
+
+  // One-time conversion (legacyMigrations.js): blocks that finished before the given
+  // moment and never went through the forgotten-clock question lose their stop-form
+  // mark, so old abandoned forms are not all offered at once. Only touches rows still marked.
+  clearStaleAwaitingDetails: db.prepare(`
+    UPDATE time_entries SET awaiting_details = 0
+    WHERE awaiting_details = 1 AND finish_confirmed_at IS NULL AND end_time IS NOT NULL AND end_time < ?
+  `),
+
+  // Marks a clock as started by a "still working" answer (see the continues_run column).
+  markContinuesRun: db.prepare('UPDATE time_entries SET continues_run = 1 WHERE id = ?'),
 
   getHoursByJobcard: db.prepare(`
     SELECT

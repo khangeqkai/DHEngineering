@@ -67,6 +67,15 @@ const migrations = [
   // Whether the job was Critical the moment this run got its finish time — decided
   // once and never re-decided (see the CREATE TABLE comment in schema.js).
   { table: 'time_entries', column: 'critical_at_finish', type: 'INTEGER' },
+  // 1 while an automatically finished clock awaits its worker's confirmation (see the
+  // CREATE TABLE comment in schema.js).
+  { table: 'time_entries', column: 'finish_unconfirmed', type: 'INTEGER DEFAULT 0' },
+  // The moment the worker answered the question about such a block (see schema.js).
+  { table: 'time_entries', column: 'finish_confirmed_at', type: 'TEXT' },
+  // 1 for a block the office opened by hand — the forgotten-clock roll skips it (see schema.js).
+  { table: 'time_entries', column: 'auto_stop_exempt', type: 'INTEGER DEFAULT 0' },
+  // 1 for a clock started by a "still working" answer (see schema.js).
+  { table: 'time_entries', column: 'continues_run', type: 'INTEGER DEFAULT 0' },
   { table: 'job_items', column: 'material', type: 'TEXT' },
   // Added 2026-04-29 (per-line treatments). Every database made since the
   // June 2026 install already has it; this only guards a pre-April file.

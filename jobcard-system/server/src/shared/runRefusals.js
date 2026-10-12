@@ -13,5 +13,25 @@
 const RUN_NOT_YOURS = 'RUN_NOT_YOURS';
 const RUN_STILL_RUNNING = 'RUN_STILL_RUNNING';
 const RUN_ALREADY_FILLED_IN = 'RUN_ALREADY_FILLED_IN';
+// The two codes of the "a forgotten clock stops itself and asks its worker" flow:
+//   - FINISH_ALREADY_CONFIRMED: the confirm-finish answer arrived for a clock that is
+//     no longer waiting for one (answered already, or settled by the office). The
+//     screen treats it as the answer having gone through.
+//   - FINISH_UNCONFIRMED: a new clock was refused because its worker still owes an
+//     answer about their last automatically finished clock.
+const FINISH_ALREADY_CONFIRMED = 'FINISH_ALREADY_CONFIRMED';
+const FINISH_UNCONFIRMED = 'FINISH_UNCONFIRMED';
+// A Stop was pressed on a clock the server had already stopped by itself (a forgotten
+// clock): the screen drops its running timer and shows the worker's question instead of
+// an error.
+const RUN_STOPPED_ITSELF = 'RUN_STOPPED_ITSELF';
+// The worker answered "still working" to the question about a clock that stopped itself,
+// but a new clock could not be started on that job (it is archived, the part is gone, or
+// they already have another clock running), so nothing was saved. The screen offers the
+// other answer instead.
+const RESTART_REFUSED = 'RESTART_REFUSED';
+// A resume was refused because normal hours have already ended: a clock restarted from
+// its old start would be cut again at once. The stop form stays for Save.
+const RESUME_AFTER_HOURS = 'RESUME_AFTER_HOURS';
 
-module.exports = { RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN };
+module.exports = { RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN, FINISH_ALREADY_CONFIRMED, FINISH_UNCONFIRMED, RUN_STOPPED_ITSELF, RESTART_REFUSED, RESUME_AFTER_HOURS };

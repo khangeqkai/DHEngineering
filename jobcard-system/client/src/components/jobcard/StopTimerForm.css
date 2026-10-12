@@ -483,3 +483,9 @@
     flex-direction: column;
   }
 }
+
+.stf-must-fill {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}

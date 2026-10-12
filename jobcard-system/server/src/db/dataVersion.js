@@ -7,6 +7,6 @@
 // the app, and restoring it here would quietly drop whatever this version
 // doesn't know about. Older backups (a lower number, or none at all) restore as
 // before, and the startup conversions bring them up to date.
-const DATA_VERSION = 1;
+const DATA_VERSION = 2;
 
 module.exports = { DATA_VERSION };

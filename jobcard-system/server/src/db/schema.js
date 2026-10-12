@@ -214,6 +214,20 @@ db.exec(`
     -- Invoicing waits on this — it names a block whose fill-in form is still open,
     -- rather than guessing it from a blank description or a timing window.
     awaiting_details INTEGER DEFAULT 0,
+    -- 1 = this block was finished automatically (a clock left running past the end of
+    -- normal hours) and its worker has not yet confirmed when they really finished.
+    -- See docs/notes/time-and-costing.md, "A forgotten clock stops itself and asks its worker".
+    finish_unconfirmed INTEGER DEFAULT 0,
+    -- 1 = the office opened this block by hand (reopened through the edit form, or added with
+    -- no finish): the forgotten-clock roll never cuts it. Hand-entered time is never touched.
+    auto_stop_exempt INTEGER DEFAULT 0,
+    -- The UTC moment the worker answered "when did you really finish?" for such a block
+    -- (NULL until then, and again after a resume or a fresh automatic finish).
+    finish_confirmed_at TEXT,
+    -- 1 = this clock was started by a "still working" answer to the forgotten-clock
+    -- question, in the same step that closed the old run. The stop route never throws such
+    -- a clock away as an accidental tap, so its stretch of work always gets a stop form.
+    continues_run INTEGER DEFAULT 0,
 
     created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),

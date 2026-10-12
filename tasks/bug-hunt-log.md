@@ -45,6 +45,7 @@ What was fixed in each earlier hunt (history only — not needed to hunt):
 - [Hunt 3 — timers and job details, rounds 14–15](bug-hunts/2026-09-28-third-hunt.md)
 - [Hunt 4 — job list, pricing, files, rounds 16–18 (single-user only)](bug-hunts/2026-09-28-fourth-hunt.md)
 - [Hunt 5 — sign-in, backup, statistics, management pages, rounds 19–21 (single-user only)](bug-hunts/2026-09-28-fifth-hunt.md)
+- [Hunt 6 — a clock left running stops itself, round 22](bug-hunts/2026-10-12-sixth-hunt.md)
 
 Hand-test steps from every hunt: [hand-tests.md](hand-tests.md).
 

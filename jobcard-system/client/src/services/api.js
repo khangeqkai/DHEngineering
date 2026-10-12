@@ -302,6 +302,11 @@ class ApiService {
     return this._post(`/jobcards/${jobcardId}/time-entries/start`, body);
   }
   stopTimer(jobcardId, entryId) { return this._post(`/jobcards/${jobcardId}/time-entries/${entryId}/stop`); }
+  // A clock the server stopped by itself and flagged, waiting for its worker to say when they really finished.
+  getUnconfirmedFinish() { return this.request('/jobcards/unconfirmed-finish'); }
+  // The caller's own "I'm done" runs whose stop form was closed unfilled, offered again at sign-in.
+  getUnfilledStopForms() { return this.request('/jobcards/unfilled-stop-forms'); }
+  confirmFinish(jobcardId, entryId, body) { return this._post(`/jobcards/${jobcardId}/time-entries/${entryId}/confirm-finish`, body); }
 
   // Job Notes
   getJobNotes(jobcardId) { return this.request(`/jobcards/${jobcardId}/notes`); }

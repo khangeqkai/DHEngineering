@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Minus, Plus, RotateCw } from 'lucide-react';
+import { X, Minus, Plus, RotateCw, LogOut } from 'lucide-react';
 import { api } from '../../services/api';
 import { capitalizeFirst, formatTime } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
@@ -85,6 +85,8 @@ export default function StopTimerForm({
   onMachineToggle,
   onSubmit,
   onCancel,
+  mustFillIn = false,
+  onSignOut,
   loading
 }) {
   const [item, setItem] = useState(null);
@@ -320,22 +322,27 @@ export default function StopTimerForm({
                 {partTitle && <><span className="stf-head-sep">·</span>{partTitle}</>}
               </h3>
             </div>
-            <button
-              type="button"
-              className="stop-timer-close-btn"
-              onClick={onCancel}
-              disabled={loading}
-              aria-label="Resume timer"
-              title="Resume timer"
-            >
-              <X size={18} />
-            </button>
+            {!mustFillIn && (
+              <button
+                type="button"
+                className="stop-timer-close-btn"
+                onClick={onCancel}
+                disabled={loading}
+                aria-label="Resume timer"
+                title="Resume timer"
+              >
+                <X size={18} />
+              </button>
+            )}
           </div>
           <p id="stop-timer-desc" className="stf-logged">
             {durationText
               ? <>Logged <strong>{durationText}</strong>{startClock && endClock && <span className="stf-logged-clock"> · {startClock} → {endClock}</span>}</>
               : 'Tell us what you worked on'}
           </p>
+          {mustFillIn && (
+            <p className="stf-must-fill">Fill this in to carry on. You can sign out and do it when you next sign in.</p>
+          )}
         </div>
 
         {jobLoading ? (
@@ -509,6 +516,17 @@ export default function StopTimerForm({
                     ? 'Add a description of what you worked on to finish.'
                     : 'Answer all the inspection checks to finish.'}
                 </span>
+              )}
+              {mustFillIn && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={onSignOut}
+                  disabled={loading}
+                >
+                  <LogOut size={16} />
+                  Sign out
+                </button>
               )}
               <button
                 type="submit"

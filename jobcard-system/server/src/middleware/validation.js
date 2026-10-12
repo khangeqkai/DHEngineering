@@ -461,6 +461,22 @@ const validateStartTimer = [
   handleValidationErrors
 ];
 
+// The worker's answer about a clock that stopped itself: when they really finished and
+// whether they are still working. Whether the finish is after the start and not later than
+// it could have been depends on the row, so the route judges that.
+const validateConfirmFinish = [
+  body('finishTime')
+    .custom(v => typeof v === 'string' && v.trim() !== '')
+    .withMessage('Enter the time you finished.')
+    .bail()
+    .custom(v => !isNaN(new Date(v).getTime()))
+    .withMessage('Finish time is not a valid date'),
+  body('stillWorking')
+    .isBoolean({ strict: true })
+    .withMessage('stillWorking must be true or false'),
+  handleValidationErrors
+];
+
 // Validate the start/finish on the time-log add + edit routes.
 // Guards against backwards or garbled hand-entered times poisoning the
 // labour-hour totals. The Start/Stop timer's own start/stop routes are
@@ -478,41 +494,51 @@ const wholeNonNegative = (value) => {
   return true;
 };
 
-const validateManualTimeEntry = [
-  body('startTime')
-    .exists({ checkNull: true })
-    .withMessage('Start time is required')
-    .bail()
-    .custom(v => !isNaN(new Date(v).getTime()))
-    .withMessage('Start time is not a valid date'),
-  // The form fills its start box from the office PC's own clock, which can run
-  // several minutes ahead of this one, so up to 15 minutes ahead is taken as
-  // "now". Further than that is a mistyped hour or day, not clock drift. A Stop
-  // on a block that still starts ahead of the clock is discarded as a tap (see
-  // startTimerUndo.js), so the leeway can never produce a negative block.
-  body('startTime')
-    .custom(v => new Date(v).getTime() <= Date.now() + 15 * 60 * 1000)
-    .withMessage('Start time cannot be in the future'),
-  body('endTime')
-    .optional({ nullable: true, checkFalsy: true })
-    .custom(v => !isNaN(new Date(v).getTime()))
-    .withMessage('Finish time is not a valid date'),
-  body('endTime')
-    .optional({ nullable: true, checkFalsy: true })
-    .custom((v, { req }) => new Date(v).getTime() > new Date(req.body.startTime).getTime())
-    .withMessage('Finish time must be after the start time'),
-  // Same leeway as the start: a finish further ahead than clock drift is a mistyped
-  // hour or day, and would be billed and counted toward Done straight away. The
-  // stop form never trips this — its finish is the real stop time the server stored.
-  body('endTime')
-    .optional({ nullable: true, checkFalsy: true })
-    .custom(v => new Date(v).getTime() <= Date.now() + 15 * 60 * 1000)
-    .withMessage('Finish time cannot be in the future'),
-  body('qty').custom(wholeNonNegative).withMessage('Good pieces must be a whole number, 0 or more'),
-  body('scrapBinQty').custom(wholeNonNegative).withMessage('Scrap (bin) must be a whole number, 0 or more'),
-  body('scrapRecycleQty').custom(wholeNonNegative).withMessage('Scrap (recycle) must be a whole number, 0 or more'),
-  handleValidationErrors
-];
+// The edit route takes the same rules with the start optional (startRequired false): the
+// manual edit form sends a time only when the manager changed it, and the route keeps the
+// stored one for a time left out — so there the finish is compared with the start only
+// when both were sent, and the route judges the pair it will actually store.
+const manualTimeEntryRules = ({ startRequired }) => {
+  const start = () => (startRequired ? body('startTime') : body('startTime').optional());
+  return [
+    (startRequired
+      ? body('startTime').exists({ checkNull: true }).withMessage('Start time is required').bail()
+      : start())
+      .custom(v => v !== null && !isNaN(new Date(v).getTime()))
+      .withMessage('Start time is not a valid date'),
+    // The form fills its start box from the office PC's own clock, which can run
+    // several minutes ahead of this one, so up to 15 minutes ahead is taken as
+    // "now". Further than that is a mistyped hour or day, not clock drift. A Stop
+    // on a block that still starts ahead of the clock is discarded as a tap (see
+    // startTimerUndo.js), so the leeway can never produce a negative block.
+    start()
+      .custom(v => new Date(v).getTime() <= Date.now() + 15 * 60 * 1000)
+      .withMessage('Start time cannot be in the future'),
+    body('endTime')
+      .optional({ nullable: true, checkFalsy: true })
+      .custom(v => !isNaN(new Date(v).getTime()))
+      .withMessage('Finish time is not a valid date'),
+    body('endTime')
+      .optional({ nullable: true, checkFalsy: true })
+      .custom((v, { req }) => req.body.startTime === undefined ||
+        new Date(v).getTime() > new Date(req.body.startTime).getTime())
+      .withMessage('Finish time must be after the start time'),
+    // Same leeway as the start: a finish further ahead than clock drift is a mistyped
+    // hour or day, and would be billed and counted toward Done straight away. The
+    // stop form never trips this — its finish is the real stop time the server stored.
+    body('endTime')
+      .optional({ nullable: true, checkFalsy: true })
+      .custom(v => new Date(v).getTime() <= Date.now() + 15 * 60 * 1000)
+      .withMessage('Finish time cannot be in the future'),
+    body('qty').custom(wholeNonNegative).withMessage('Good pieces must be a whole number, 0 or more'),
+    body('scrapBinQty').custom(wholeNonNegative).withMessage('Scrap (bin) must be a whole number, 0 or more'),
+    body('scrapRecycleQty').custom(wholeNonNegative).withMessage('Scrap (recycle) must be a whole number, 0 or more'),
+    handleValidationErrors
+  ];
+};
+
+const validateManualTimeEntry = manualTimeEntryRules({ startRequired: true });
+const validateTimeEntryEdit = manualTimeEntryRules({ startRequired: false });
 
 module.exports = {
   // Error handler
@@ -547,7 +573,9 @@ module.exports = {
   validateJobcardContactFields,
   validateJobcardDescriptionRequired,
   validateStartTimer,
+  validateConfirmFinish,
   validateManualTimeEntry,
+  validateTimeEntryEdit,
 
   JOBCARD_STATUSES,
   PRIORITY_OPTIONS

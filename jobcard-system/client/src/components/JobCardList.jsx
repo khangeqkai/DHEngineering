@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Plus } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useFinishQuestion } from '../context/FinishQuestionContext';
 import { isManagement, can } from '../utils/roles';
 import { useLocalToday } from '../hooks/useLocalToday';
 import PageHeader from './common/PageHeader';
@@ -345,6 +346,10 @@ export default function JobCardList() {
     setEditingCardId(cardId);
     setIsModalOpen(true);
   };
+
+  // A stop form saved on the finish question's own job screen changes a job in this list.
+  const subscribeJobChanged = useFinishQuestion()?.subscribeJobChanged;
+  useEffect(() => subscribeJobChanged?.(loadJobcards), [subscribeJobChanged, loadJobcards]);
 
   const handleModalSuccess = () => {
     loadJobcards();

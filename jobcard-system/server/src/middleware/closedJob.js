@@ -19,6 +19,10 @@ const ALLOWED_ON_CLOSED_JOB = [
   // CLAUDE.md invariant: stopping a timer always works, even on a job that
   // somehow got archived while one was still running.
   { method: 'POST', pattern: /^\/time-entries\/[^/]+\/stop$/, reason: 'stopping a running timer always works' },
+  // A clock left running on a job that then got archived stopped itself and still needs its
+  // worker's answer about when they finished; refuse it and they are locked behind a question
+  // nothing can answer (a new clock is refused until it is answered).
+  { method: 'POST', pattern: /^\/time-entries\/[^/]+\/confirm-finish$/, reason: 'a clock that stopped itself still needs its worker\'s answer' },
   // These two build the printout (the preview, and the combined PDF of the
   // paperwork) from the job's current data — they are sent as POST but only
   // read. A closed job's paperwork must still be viewable and printable.

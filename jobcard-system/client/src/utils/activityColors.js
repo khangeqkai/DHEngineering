@@ -14,6 +14,7 @@ export const ACTION_COLORS = {
   archive: 'var(--accent-safety)', unarchive: 'var(--primary-accent)',
   assign: 'var(--accent-ready)', unassign: 'var(--accent-caution)', self_assign: 'var(--accent-ready)', self_unassign: 'var(--accent-caution)',
   start_timer: 'var(--accent-ready)', stop_timer: 'var(--primary-accent)', discard_timer: 'var(--accent-caution)',
+  auto_stop_timer: 'var(--accent-caution)', confirm_finish: 'var(--primary-accent)',
   add_time_entry: 'var(--accent-ready)', update_time_entry: 'var(--primary-accent)', delete_time_entry: 'var(--accent-caution)',
   add_note: 'var(--accent-ready)', delete_note: 'var(--accent-caution)',
   update_costing: 'var(--primary-accent)',

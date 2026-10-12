@@ -212,6 +212,13 @@ export default function TimeEntryCard({
             </span>
           )}
 
+          {entry.finishUnconfirmed && (
+            <span className="te-signoff-missing">
+              <AlertTriangle size={14} aria-hidden="true" />
+              Waiting for {entry.userName} to confirm their finish
+            </span>
+          )}
+
           {hasInspection && (
             <button
               type="button"

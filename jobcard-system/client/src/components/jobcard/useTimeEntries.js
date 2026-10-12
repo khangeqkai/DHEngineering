@@ -30,14 +30,13 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     (name) => timeEntryForm[name]
   );
 
-  // The stored start/finish this form opened with, and whether the user has
-  // actually touched each one since. A datetime-local input only carries
-  // minute precision, so re-deriving an untouched field from it on save would
-  // quietly drop any seconds/ms the stored value had — only a field the user
-  // actually edited should be rebuilt from the input; an untouched one is sent
-  // back exactly as it was stored. A brand-new entry has no original, so both
-  // start out "touched" (there's nothing to fall back to).
-  const originalTimesRef = useRef({ startTime: null, endTime: null });
+  // Whether the user has actually touched the start and the finish since the form
+  // opened. An edit sends a time only when it was touched; the server keeps the stored
+  // one for a time left out. So a time someone else changed while this form was open
+  // (the worker answering "when did you finish?", another manager's correction) is not
+  // put back by the copy taken at Edit, and an untouched time never loses the seconds
+  // a datetime-local input (minute precision) can't carry. A brand-new entry has
+  // nothing stored, so both start out "touched".
   const touchedTimesRef = useRef({ startTime: true, endTime: true });
   // The edit form as it opened (null for a new block). Saving an edit sends only the
   // fields that differ from it, so pieces, machines or notes the worker saved on the
@@ -65,7 +64,6 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     resetFieldErrors();
     setInspectionRequired(false);
     setEditingSignOffRequired(false);
-    originalTimesRef.current = { startTime: null, endTime: null };
     touchedTimesRef.current = { startTime: true, endTime: true };
     openedFormRef.current = null;
   }, [resetFieldErrors]);
@@ -132,7 +130,6 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     };
     setTimeEntryForm(opened);
     openedFormRef.current = opened;
-    originalTimesRef.current = { startTime: entry.startTime || null, endTime: entry.endTime || null };
     touchedTimesRef.current = { startTime: false, endTime: false };
     setShowTimeEntryForm(true);
   }, [resetFieldErrors, isInvoiced]);
@@ -209,26 +206,18 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
 
     try {
       const { workerName, ...rest } = timeEntryForm;
-      // An edit sends only what changed since the form opened (the start and finish
-      // always go, as the server judges them as a pair); a new block sends everything.
+      // An edit sends only what changed since the form opened — the start and finish
+      // included, each only when it was touched (the server judges the pair it will
+      // store); a new block sends everything.
       const opened = openedFormRef.current;
-      const fields = opened
-        ? Object.fromEntries(Object.entries(rest).filter(([key, value]) => value !== opened[key]))
-        : rest;
-      if ('itemId' in fields || !opened) fields.itemId = timeEntryForm.itemId || null;
-      const entryData = {
-        ...fields,
-        // Only a field the user actually changed is rebuilt from the
-        // minute-precision input — an untouched one is sent back exactly as
-        // it was stored, so editing one end of a block never truncates the
-        // other end's seconds.
-        startTime: touchedTimesRef.current.startTime
-          ? localInputToIso(timeEntryForm.startTime)
-          : originalTimesRef.current.startTime,
-        endTime: touchedTimesRef.current.endTime
-          ? localInputToIso(timeEntryForm.endTime)
-          : originalTimesRef.current.endTime
-      };
+      const { startTime: startBox, endTime: endBox, ...others } = rest;
+      const entryData = opened
+        ? Object.fromEntries(Object.entries(others).filter(([key, value]) => value !== opened[key]))
+        : others;
+      if ('itemId' in entryData || !opened) entryData.itemId = timeEntryForm.itemId || null;
+      // A cleared finish goes as null (a resume by hand), never left out.
+      if (touchedTimesRef.current.startTime) entryData.startTime = localInputToIso(startBox);
+      if (touchedTimesRef.current.endTime) entryData.endTime = localInputToIso(endBox);
 
       if (editingTimeEntryId) {
         await updateTimeEntry(editingTimeEntryId, entryData);

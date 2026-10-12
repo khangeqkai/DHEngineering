@@ -27,7 +27,9 @@ export function mapTimeEntryFromApi(e) {
     // Whether this finished run needed the Critical sign-off — decided once, at the
     // moment it got its finish time, never the job's current level (see
     // docs/notes/files-and-qa.md's Critical sign-off note).
-    signOffRequired: e.signOffRequired === true
+    signOffRequired: e.signOffRequired === true,
+    // A clock the server stopped by itself, still waiting for its worker to say when they finished.
+    finishUnconfirmed: e.finishUnconfirmed === true
   };
 }
 

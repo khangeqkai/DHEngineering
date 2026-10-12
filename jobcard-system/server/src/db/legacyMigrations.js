@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 const {
   db,
   settingsQueries,
+  timeEntryQueries,
   recordHistory
 } = require('./database');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
@@ -622,6 +623,36 @@ function backfillCriticalAtFinish() {
   }
 }
 
+// The stop-form reminder at sign-in used to cover only runs that went through the
+// forgotten-clock question; it now covers every finished run still marked awaiting_details.
+// Older databases hold runs whose form was abandoned long ago and still carry the mark, so
+// the mark is cleared once on every finished run that never went through the question and
+// finished before the moment this version first booted.
+//
+// Bounded by a stored baseline moment, not by a done-once flag (same reasoning as the
+// print-naming cutover above): the baseline is written only when absent, so later boots
+// reuse it and clear only runs that finished before it — a run finished afterwards, with a
+// form genuinely waiting, is never touched. A second run finds no row to change. A restore
+// brings the backup's own baseline with the rest of the settings (a backup from before this
+// version has none, and gets now, as a first boot would).
+const STOP_FORM_BASELINE_KEY = 'stop_form_reminder_baseline_at';
+
+function clearStaleAwaitingDetails() {
+  const run = db.transaction(() => {
+    let baseline = settingsQueries.getByKey.get(STOP_FORM_BASELINE_KEY)?.value;
+    if (!baseline) {
+      // Half an hour back, not now: a stop form open on someone's screen while this
+      // version first boots is still genuinely owed (the same 30 minutes invoicing waits
+      // for it). Clearing its mark would have its Save refused as already filled in.
+      baseline = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      settingsQueries.upsert.run(STOP_FORM_BASELINE_KEY, baseline);
+    }
+    return timeEntryQueries.clearStaleAwaitingDetails.run(baseline).changes;
+  });
+  const cleared = run();
+  if (cleared > 0) logger.info({ cleared }, 'Migration: Cleared old abandoned stop-form marks');
+}
+
 function runLegacyMigrations() {
   logger.info('Running migrations...');
 
@@ -936,7 +967,13 @@ function runLegacyMigrations() {
     logger.error({ err }, 'Migration: Failed to rename pre-cutover print trail entries');
   }
 
+  try {
+    clearStaleAwaitingDetails();
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to clear old abandoned stop-form marks');
+  }
+
   logger.info('Migrations complete');
 }
 
-module.exports = { runLegacyMigrations, PRINT_NAMING_CUTOVER_KEY, QA_FORMS_MOVED_KEY };
+module.exports = { runLegacyMigrations, clearStaleAwaitingDetails, PRINT_NAMING_CUTOVER_KEY, QA_FORMS_MOVED_KEY };

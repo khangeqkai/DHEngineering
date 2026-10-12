@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import BottomSheet from '../common/BottomSheet';
 import Spinner from '../common/Spinner';
@@ -28,14 +28,15 @@ import CostingTab from './tabs/CostingTab';
 import ActivityLogTab from './tabs/ActivityLogTab';
 import { useActivityLog } from './useActivityLog';
 import { useTimer } from './useTimer';
+import { useFinishQuestion } from '../../context/FinishQuestionContext';
 import { useJobNotes } from './useJobNotes';
 import StopTimerForm from './StopTimerForm';
 import JobPaperworkHub from './JobPaperworkHub';
 import JobIdentityStrip from './JobIdentityStrip';
 import { mapTimeEntryFromApi } from './mappers';
 
-export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onPrinted, initialTab = null }) {
-  const { user } = useAuth();
+export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onPrinted, initialTab = null, initialStopEntry = null, ownsStopForm = false }) {
+  const { user, logout } = useAuth();
   const isEdit = Boolean(jobCardId);
   // Two permissions, both admin-only today: pricing gates the Costing tab and its
   // countdown, activityTrail gates the Activity tab. Everything else managerial on
@@ -92,6 +93,24 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // lineItems is handed in so the timer's own toasts and switch-timer prompts can
   // name a part by its position in this job's list, never by its stored number.
   const timer = useTimer(isEdit ? jobCardId : null, { onExternalStop, lineItems: formHook.lineItems, onJobClosed: handleJobClosedWrite });
+  const showStopFormForEntry = timer.showStopFormForEntry;
+  const shownStopEntryIds = timer.shownStopEntryIds;
+  // While this screen is open on an existing job, the shell shows that job's stop form here
+  // instead of opening a second copy, and tells it to reload when an answer to the "when
+  // did you finish?" question changed this job's clock and work from outside this screen.
+  // The shell's own copy (ownsStopForm) never registers.
+  const finishQuestion = useFinishQuestion();
+  const registerJobScreen = finishQuestion?.registerJobScreen;
+  const reloadAfterAnswerRef = useRef(null);
+  const jobScreen = useMemo(() => ({
+    showStopForm: showStopFormForEntry,
+    shownStopEntryIds,
+    reload: () => reloadAfterAnswerRef.current?.()
+  }), [showStopFormForEntry, shownStopEntryIds]);
+  useEffect(() => {
+    if (!registerJobScreen || ownsStopForm || !isOpen || !isEdit || !jobCardId) return undefined;
+    return registerJobScreen(jobCardId, jobScreen);
+  }, [registerJobScreen, ownsStopForm, isOpen, isEdit, jobCardId, jobScreen]);
   const { dialogState, showConfirm, handleCancel, handleConfirm, handleAlt, cancelConfirms } = useConfirmDialog();
 
   // Questions belong to the open card. Once it closes nothing renders the box any more,
@@ -229,6 +248,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // from growing further; every dependency here is something this component
   // already holds.
   const {
+    reloadTimeEntriesAndCosting,
     apiTimeEntryOperations,
     handleStartItemTimer,
     handleStopItemTimer,
@@ -241,6 +261,17 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     employees, currentUserId: user?.id, setFormData, onTimerChange, onWorkSaved: flagInstantSave,
     currentJobIdRef
   });
+
+  // What the shell asks for after an answer: the running clock (a "still working" answer
+  // started one), then the work list, the pricing hours and the job's status. Only what
+  // the answer can have moved — the form on screen, a stop form included, is left alone.
+  const { loadActiveTimer } = timer;
+  reloadAfterAnswerRef.current = () => {
+    loadActiveTimer();
+    reloadTimeEntriesAndCosting().catch(() => {
+      // Non-fatal — the work list catches up next time the job is opened.
+    });
+  };
 
   const timeEntry = useTimeEntries(jobCardId, {
     ...apiTimeEntryOperations,
@@ -286,6 +317,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const resetFormRef = useRef(resetForm);
   const loadJobCardRef = useRef(loadJobCard);
   const loadActiveTimerRef = useRef(timer.loadActiveTimer);
+  // The stop form this opening was handed (from the shell's "when did you finish?"
+  // question: the clock the server stopped by itself now needs the usual form).
+  const initialStopEntryRef = useRef(initialStopEntry);
+  const showStopFormForEntryRef = useRef(showStopFormForEntry);
+  initialStopEntryRef.current = initialStopEntry;
+  showStopFormForEntryRef.current = showStopFormForEntry;
   resetFormRef.current = resetForm;
   loadJobCardRef.current = loadJobCard;
   loadActiveTimerRef.current = timer.loadActiveTimer;
@@ -310,6 +347,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       // card after a close would otherwise keep activeTimer cleared by reset.
       loadActiveTimerRef.current();
     }
+    // Shown here, straight after the reset that wipes the timer's forms, and nowhere else:
+    // whenever the reset runs (once per opening — twice under development's strict mode)
+    // the handed-in form is put back by the same pass, so the two can't fall out of step.
+    if (initialStopEntryRef.current) showStopFormForEntryRef.current(initialStopEntryRef.current);
   }, [isOpen, isEdit, jobCardId]);
 
   const selectCompany = (company) => contactHook.selectCompany(company, formHook.setFormData);
@@ -749,6 +790,8 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         onMachineToggle={timer.handleEntryMachineToggle}
         onSubmit={handleSubmitEntryForm}
         onCancel={handleCancelEntryForm}
+        mustFillIn={timer.mustFillIn}
+        onSignOut={logout}
         loading={timer.loading}
       />
 

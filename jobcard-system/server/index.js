@@ -41,6 +41,7 @@ const { authenticate } = require('./src/middleware/auth');
 const { closedJobGuard } = require('./src/middleware/closedJob');
 const { verifyPdfEngine, getPdfEngineStatus } = require('./src/utils/pdfEngine');
 const { isViaTunnel } = require('./src/utils/homeAccess');
+const { rollOpenTimers, rollOpenTimersForRequest } = require('./src/utils/timerPause');
 
 const app = express();
 
@@ -86,6 +87,17 @@ app.use(maintenanceGuard);
 // shown to whoever signs in next.
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
+  next();
+});
+
+// A forgotten clock stops itself: cut any clock left running past the end of normal hours,
+// on requests, before the routes read the running timers, but at most once a second (every
+// screen polls every few seconds and a clock is cut at a whole hour, so a second's lag is
+// invisible). This is the one place the roll runs per request (the routes do not repeat it).
+// It is cheap: it reads the open clocks and only re-reads the rules when a cut is due or the
+// remembered rules are a minute old. A failed roll is logged inside and never fails the request.
+app.use('/api', (req, res, next) => {
+  rollOpenTimersForRequest();
   next();
 });
 
@@ -178,6 +190,9 @@ async function start() {
   try {
     // Initialize the database with default data
     await initializeDatabase();
+
+    // Cut any clock left running past the end of normal hours while the server was off.
+    rollOpenTimers();
 
     // Start the server and wait for it to be ready
     await new Promise((resolve, reject) => {

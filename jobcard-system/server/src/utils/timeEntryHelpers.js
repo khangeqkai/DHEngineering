@@ -134,14 +134,21 @@ const AWAITING_DETAILS_WINDOW_MS = 30 * 60 * 1000;
 
 // Why a job can't be invoiced yet because of its time, or null when it can. A
 // running timer can't be confirmed away like a missing attachment can, and nor can
+// a clock that stopped itself and still awaits its worker's answer, or
 // a just-stopped block whose worker is still filling in their form — invoicing
 // files the job away, after which that form's save is refused.
 function invoiceBlockedByTime(jobcardId) {
   if (timeEntryQueries.countRunningByJobcard.get(jobcardId).count > 0) {
     return 'A timer is still running on this job. Stop it before marking the job invoiced.';
   }
+  const unconfirmed = timeEntryQueries.getFirstUnconfirmedByJobcard.get(jobcardId);
+  if (unconfirmed) {
+    return `${unconfirmed.user_name} has not confirmed when their clock on this job finished. Ask them to sign in and answer, or correct the time yourself.`;
+  }
+  // The wait is measured from the finish or from the worker's answer (a clock that stopped
+  // itself is answered long after its finish), whichever is later — hence `since` twice.
   const since = new Date(Date.now() - AWAITING_DETAILS_WINDOW_MS).toISOString();
-  if (timeEntryQueries.countAwaitingDetailsByJobcard.get(jobcardId, since).count > 0) {
+  if (timeEntryQueries.countAwaitingDetailsByJobcard.get(jobcardId, since, since).count > 0) {
     return 'Someone has just stopped a timer on this job and is still filling in their pieces. Try again once they have saved it.';
   }
   return null;
@@ -248,6 +255,13 @@ function toCamelCase(e) {
     // the moment it got its finish time, and read back here rather than from
     // today's job level (see criticalAtFinishForWrite / docs/notes/files-and-qa.md).
     signOffRequired: e.critical_at_finish === 1,
+    // True while this block was finished automatically and its worker has not yet
+    // confirmed when they really finished.
+    finishUnconfirmed: e.finish_unconfirmed === 1,
+    // True while the worker's stop form (qty, machine, description) is still to be filled in.
+    awaitingDetails: e.awaiting_details === 1,
+    // The UTC moment the worker answered the question about an automatic finish, or null.
+    finishConfirmedAt: e.finish_confirmed_at || null,
     createdAt: e.created_at
   };
 }

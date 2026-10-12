@@ -29,6 +29,7 @@ const {
   restoreTables,
   rollbackJobFolderSwap
 } = require('./backup-helpers');
+const { forgetRollCache } = require('../utils/timerPause');
 const { collectOvertimeUpdates, OVERTIME_BODY_KEYS, OVERTIME_DB_KEYS } = require('./settings-overtime');
 const {
   INACTIVITY_MINUTES, isInactivityMinutes, isStartingJobNumber, STARTING_JOB_NUMBER_MESSAGE
@@ -203,6 +204,9 @@ router.put('/', requireManagement, async (req, res) => {
 
     if (Object.keys(updates).length > 0) {
       db.updateSettings(updates);
+      // A changed schedule, holiday list or time zone moves where running clocks are
+      // cut; drop the roll's remembered rules so the next roll uses the new ones.
+      forgetRollCache();
     }
     // Every other setting that actually changed leaves one trail entry, before and
     // after — rates, overtime, time zone, job numbering and the folders path decide
@@ -513,6 +517,8 @@ router.post('/import-backup', requirePermission('systemData'), [
       }
       throw dbErr;
     }
+    // The restored database brings its own schedule, holidays and time zone.
+    forgetRollCache();
 
     // 4. Success — discard the old files and any staging leftovers. The restore
     //    has already committed, so a leftover-folder lock must never report failure.

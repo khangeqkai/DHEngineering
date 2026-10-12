@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Search, X, ChevronLeft, ChevronRight, Briefcase, Users as UsersIcon, Clock, Timer, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useFinishQuestion } from '../context/FinishQuestionContext';
 import { isManagement, can } from '../utils/roles';
 import useSearch from '../hooks/useSearch';
 import PageHeader from './common/PageHeader';
@@ -101,6 +102,7 @@ function Pagination({ page, totalPages, total, onPageChange }) {
 // Map activity entity types + actions to a tab in JobCardModal
 const ACTION_TO_TAB = {
   start_timer: 'details', stop_timer: 'details', discard_timer: 'details',
+  auto_stop_timer: 'details', confirm_finish: 'details',
   add_time_entry: 'details', update_time_entry: 'details', delete_time_entry: 'details',
   add_note: 'details',  delete_note: 'details',
   update_costing: 'costing',
@@ -121,6 +123,10 @@ export default function SearchPage() {
     employees, machines, jobTypes,
     filtersError, retryFilters, refresh,
   } = useSearch(user?.role);
+
+  // A stop form saved on the finish question's own job screen changes a job in these results.
+  const subscribeJobChanged = useFinishQuestion()?.subscribeJobChanged;
+  useEffect(() => subscribeJobChanged?.(refresh), [subscribeJobChanged, refresh]);
 
   // Archived workers/machines/job types still filter on old data, so the lists come
   // back with them included — sunk below the active ones and marked, so "currently

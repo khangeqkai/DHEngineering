@@ -3,8 +3,8 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
-const { validateStartTimer, validateManualTimeEntry } = require('../middleware/validation');
-const { db, timeEntryQueries, jobItemQueries, userQueries, recordHistory, actorName } = require('../db/database');
+const { validateStartTimer, validateConfirmFinish, validateManualTimeEntry, validateTimeEntryEdit } = require('../middleware/validation');
+const { db, timeEntryQueries, jobcardQueries, jobItemQueries, userQueries, recordHistory, actorName } = require('../db/database');
 const { blankEqual, diffFields } = require('../utils/historyChanges');
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
 const { discardIfAccidentalTap } = require('../utils/startTimerUndo');
@@ -23,7 +23,13 @@ const {
   checkCriticalInspection,
   toCamelCase
 } = require('../utils/timeEntryHelpers');
-const { RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN } = require('../shared/runRefusals');
+const {
+  RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN, FINISH_ALREADY_CONFIRMED, FINISH_UNCONFIRMED, RUN_STOPPED_ITSELF,
+  RESTART_REFUSED, RESUME_AFTER_HOURS
+} = require('../shared/runRefusals');
+const { readOpeningRules, nextOpening, officeDayEndAfter } = require('../utils/openingHours');
+const { checkFinishAnswer } = require('../shared/finishAnswer');
+const { cutIsDue } = require('../utils/timerPause');
 
 const router = express.Router();
 
@@ -58,6 +64,31 @@ function runTrail(row, { deleted = false } = {}) {
   return changes;
 }
 
+// The ceiling on when a worker can say they finished, for a clock that stopped itself: the
+// start of the first opening on a LATER office day than the one it stopped on (by then they
+// would have been on a new clock), in ms, or null when there is none. It is the next DAY, not
+// the next opening, because a grid can open and close inside one day (normal, overtime,
+// normal again) and a clock cut at the first close must still be able to say it ran on to
+// the end of that day. "Not in the future" is judged separately, at the moment of the answer.
+// The rules are passed in so a caller with several rows reads them once.
+function finishCeilingMs(row, rules) {
+  const stoppedMs = Math.max(Date.parse(row.end_time), Date.parse(row.start_time));
+  return nextOpening(officeDayEndAfter(stoppedMs, rules), rules);
+}
+
+// The refusal for an answer about a clock that no longer waits for one. It says who settled
+// it — the worker's own earlier answer (finish_confirmed_at is stamped only by that) or the
+// office (a management save or reopen) — and the finish now stored, so the screen can tell a
+// repeated press from an answer that was not kept.
+function alreadyConfirmedRefusal(row) {
+  return {
+    error: 'This clock has already been confirmed.',
+    code: FINISH_ALREADY_CONFIRMED,
+    settledBy: row.finish_confirmed_at ? 'worker' : 'office',
+    endTime: row.end_time
+  };
+}
+
 // Get user's active timer across all jobs
 router.get('/active-timer', authenticate, (req, res) => {
   try {
@@ -83,6 +114,136 @@ router.get('/active-timer', authenticate, (req, res) => {
   }
 });
 
+// The caller's own clocks that stopped themselves and still await their answer about when
+// they really finished, oldest first. Defined before the '/:id' routes so it isn't
+// captured by them.
+router.get('/unconfirmed-finish', authenticate, (req, res) => {
+  try {
+    const rows = timeEntryQueries.getUnconfirmedByUser.all(req.user.userId);
+    const rules = rows.length > 0 ? readOpeningRules() : null;
+    res.json(rows.map(row => {
+      const ceiling = finishCeilingMs(row, rules);
+      return {
+        id: row.id,
+        jobcardId: row.jobcard_id,
+        jobNumber: row.job_number,
+        itemId: row.item_id,
+        itemNumber: row.item_number,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        finishKnown: row.end_time !== row.start_time,
+        // The next opening after the stop, or null — the screen adds "not in the future" itself.
+        latestFinish: ceiling === null ? null : new Date(ceiling).toISOString()
+      };
+    }));
+  } catch (err) {
+    logger.error({ err }, 'Get unconfirmed finishes error');
+    res.status(500).json({ error: 'Failed to get unconfirmed clocks' });
+  }
+});
+
+// The caller's own finished blocks whose stop form is still waiting for a save (the worker
+// signed out instead), oldest first — every such block, whether the worker stopped it
+// themselves or answered the forgotten-clock question and left the form. Offered again
+// until saved, whatever the description says; a block drops out when the worker's own
+// save clears its awaiting-details mark. Each is shaped exactly like the entry
+// confirm-finish returns, plus the job number.
+router.get('/unfilled-stop-forms', authenticate, (req, res) => {
+  try {
+    const rows = timeEntryQueries.getUnfilledStopFormsByUser.all(req.user.userId);
+    res.json(rows.map(row => ({ ...toCamelCase(row), jobNumber: row.job_number })));
+  } catch (err) {
+    logger.error({ err }, 'Get unfilled stop forms error');
+    res.status(500).json({ error: 'Failed to get unfilled stop forms' });
+  }
+});
+
+// The refusal for a worker who still owes an answer about a clock that stopped itself,
+// worded for the office (it names the worker).
+function unconfirmedRefusalFor(userId) {
+  const owner = userQueries.getById.get(userId);
+  return {
+    error: `${owner.name || owner.username} has to confirm when their last clock finished first.`,
+    code: FINISH_UNCONFIRMED
+  };
+}
+
+// The core of starting a clock, shared by the Start route and a "still working" answer
+// (confirm-finish): insert the open row for a worker on a part of a job. Check-for-existing +
+// insert as one all-or-nothing step. The partial unique index (one open timer per user) is
+// the real guard against a double-tap or two devices slipping a second timer through; the
+// transaction keeps the check and insert atomic (and nests as a savepoint inside a caller's
+// own transaction). Throws when the worker already has a clock open (e.activeTimer, or the
+// index's own error). continuesRun marks a clock started by a "still working" answer.
+function insertOpenClock(jobcardId, workerId, item, continuesRun) {
+  const entryId = `timeentry:${uuidv4()}`;
+  const startTime = new Date().toISOString();
+  db.transaction(() => {
+    const active = timeEntryQueries.getActiveByUser.get(workerId);
+    if (active) {
+      const e = new Error('Timer already running');
+      e.activeTimer = active;
+      throw e;
+    }
+    timeEntryQueries.create.run(
+      entryId,
+      jobcardId,
+      workerId,
+      item.id,
+      null, // machineNumber
+      null, // qty
+      null, // description
+      startTime,
+      null, // endTime
+      null, // criticalAtFinish — no finish time yet
+      0,    // scrapBinQty — recorded by the worker when they stop the timer
+      0,    // scrapRecycleQty
+      null, // firstOffInspection — answered on the stop-timer form (Critical jobs)
+      null, // inProcessValidation
+      null, // measuringEquipmentVerification
+      null, // equipmentChecks
+      null  // equipmentChecksComments
+    );
+    if (continuesRun) timeEntryQueries.markContinuesRun.run(entryId);
+  })();
+  return { entryId, startTime };
+}
+
+// Everything a start does once its row exists, and the shape it answers with. `req` carries
+// the actor (whoever pressed the button); isSelf is whether the clock is the actor's own.
+function afterClockStarted(jobcardId, workerId, item, startTime, req, isSelf, entryId) {
+  // Starting work puts the job "In Progress" (or back to Done if it's already
+  // fully counted). Fold any resulting status change into the start-timer entry so
+  // the timeline shows one event. Never blocks the timer if it can't.
+  const statusChange = syncStatusToWork(jobcardId, req.user);
+
+  // The event is attributed to whoever pressed Start (the admin, for an on-behalf
+  // start); name the worker as well when it isn't the admin's own timer, so the
+  // timeline reads "started for <worker>".
+  const targetWorker = isSelf ? null : userQueries.getById.get(workerId);
+  recordHistory('jobcard', jobcardId, 'start_timer', req.user.userId, actorName(req), {
+    timer: { from: null, to: startTime },
+    // Named by description, not position — item_number is a sort order the
+    // server owns and isn't stable enough to identify a part in the trail.
+    item: { from: null, to: item.description },
+    ...(targetWorker ? { worker: { from: null, to: targetWorker.name || targetWorker.username } } : {}),
+    ...(statusChange ? { status: statusChange } : {})
+  }, null);
+
+  // Auto-assign the worker to this job if they aren't already an assignee — recorded
+  // as a self_assign when they started their own timer, otherwise as a management assign.
+  autoAssignWorker(jobcardId, workerId, req.user, isSelf ? 'self_assign' : 'assign');
+
+  return {
+    id: entryId,
+    jobcardId,
+    userId: workerId,
+    itemId: item.id,
+    itemNumber: item.item_number,
+    startTime
+  };
+}
+
 // Start timer (create entry with start_time only)
 router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req, res) => {
   try {
@@ -105,6 +266,14 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
     }
     const isSelf = targetWorkerId === req.user.userId;
 
+    // A worker who still owes an answer about a clock that stopped itself can't start
+    // another until they give it. Refused before any write.
+    if (timeEntryQueries.countUnconfirmedByUser.get(targetWorkerId).count > 0) {
+      return res.status(409).json(isSelf
+        ? { error: 'Answer the question about your last clock first.', code: FINISH_UNCONFIRMED }
+        : unconfirmedRefusalFor(targetWorkerId));
+    }
+
     // Verify the item exists on this jobcard, and bind the timer to the line's
     // stable id so it keeps pointing at the same line even if the lines are later
     // edited or reordered. The id is the part's identity — its item_number is only
@@ -115,43 +284,9 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
       return res.status(400).json({ error: 'That part does not exist on this job card' });
     }
 
-    const entryId = `timeentry:${uuidv4()}`;
-    const startTime = new Date().toISOString();
-
-    // Check-for-existing + insert as one all-or-nothing step. The partial unique
-    // index (one open timer per user) is the real guard against a double-tap or
-    // two devices slipping a second timer through; the transaction keeps the
-    // check and insert atomic.
-    const startTimer = db.transaction(() => {
-      const active = timeEntryQueries.getActiveByUser.get(targetWorkerId);
-      if (active) {
-        const e = new Error('Timer already running');
-        e.activeTimer = active;
-        throw e;
-      }
-      timeEntryQueries.create.run(
-        entryId,
-        id,
-        targetWorkerId,
-        targetItem.id,
-        null, // machineNumber
-        null, // qty
-        null, // description
-        startTime,
-        null, // endTime
-        null, // criticalAtFinish — no finish time yet
-        0,    // scrapBinQty — recorded by the worker when they stop the timer
-        0,    // scrapRecycleQty
-        null, // firstOffInspection — answered on the stop-timer form (Critical jobs)
-        null, // inProcessValidation
-        null, // measuringEquipmentVerification
-        null, // equipmentChecks
-        null  // equipmentChecksComments
-      );
-    });
-
+    let started;
     try {
-      startTimer();
+      started = insertOpenClock(id, targetWorkerId, targetItem, false);
     } catch (e) {
       if ((e.activeTimer || isOpenTimerConflict(e)) &&
           sendOpenTimerConflict(res, targetWorkerId, e.activeTimer)) {
@@ -160,36 +295,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
       throw e;
     }
 
-    // Starting work puts the job "In Progress" (or back to Done if it's already
-    // fully counted). Fold any resulting status change into the start-timer entry so
-    // the timeline shows one event. Never blocks the timer if it can't.
-    const statusChange = syncStatusToWork(id, req.user);
-
-    // The event is attributed to whoever pressed Start (the admin, for an on-behalf
-    // start); name the worker as well when it isn't the admin's own timer, so the
-    // timeline reads "started for <worker>".
-    const targetWorker = isSelf ? null : userQueries.getById.get(targetWorkerId);
-    recordHistory('jobcard', id, 'start_timer', req.user.userId, actorName(req), {
-      timer: { from: null, to: startTime },
-      // Named by description, not position — item_number is a sort order the
-      // server owns and isn't stable enough to identify a part in the trail.
-      item: { from: null, to: targetItem.description },
-      ...(targetWorker ? { worker: { from: null, to: targetWorker.name || targetWorker.username } } : {}),
-      ...(statusChange ? { status: statusChange } : {})
-    }, null);
-
-    // Auto-assign the worker to this job if they aren't already an assignee — recorded
-    // as a self_assign when they started their own timer, otherwise as a management assign.
-    autoAssignWorker(id, targetWorkerId, req.user, isSelf ? 'self_assign' : 'assign');
-
-    res.status(201).json({
-      id: entryId,
-      jobcardId: id,
-      userId: targetWorkerId,
-      itemId: targetItem.id,
-      itemNumber: targetItem.item_number,
-      startTime
-    });
+    res.status(201).json(afterClockStarted(id, targetWorkerId, targetItem, started.startTime, req, isSelf, started.entryId));
   } catch (err) {
     logger.error({ err }, 'Start timer error');
     res.status(500).json({ error: 'Failed to start timer' });
@@ -210,12 +316,22 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
     }
 
     if (existing.end_time) {
+      if (existing.finish_unconfirmed === 1) {
+        const error = existing.user_id === req.user.userId
+          ? 'Your clock had already stopped by itself.'
+          : `That clock had already stopped by itself. ${existing.user_name} needs to confirm when they finished.`;
+        return res.status(409).json({ error, code: RUN_STOPPED_ITSELF });
+      }
       return res.status(400).json({ error: 'Timer already stopped' });
     }
 
     // A start/stop tap inside seconds is an accident: discard the block and put back
     // what the Start changed, rather than logging it. See startTimerUndo.js.
-    const discarded = discardIfAccidentalTap(id, existing, req.user);
+    // A clock started by a "still working" answer is exempt: it continues work the worker
+    // just said was still going, so a quick stop is a real (if short) stretch of work, and
+    // discarding it would skip the stop form — and with it the Critical sign-off that
+    // stretch of work always has to be asked for.
+    const discarded = existing.continues_run === 1 ? null : discardIfAccidentalTap(id, existing, req.user);
     if (discarded) return res.json(discarded);
 
     const endTime = new Date().toISOString();
@@ -285,6 +401,12 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
       return res.status(400).json({ error: workerError });
     }
 
+    // The office can't open a clock by hand for a worker who still owes an answer about a
+    // clock that stopped itself (the same rule the worker's own Start follows).
+    if (endTime == null && timeEntryQueries.countUnconfirmedByUser.get(workerId).count > 0) {
+      return res.status(409).json(unconfirmedRefusalFor(workerId));
+    }
+
     const entryId = `timeentry:${uuidv4()}`;
 
     // Scrap is normally entered by the worker's stop-timer form, but an admin adding
@@ -311,6 +433,7 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
     }
 
     try {
+      db.transaction(() => {
       timeEntryQueries.create.run(
         entryId,
         id,
@@ -330,6 +453,9 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
         inspection.equipmentChecks,
         equipmentChecksComments
       );
+      // A block the office adds with no finish is hand-entered open time: the roll never cuts it.
+      if (endTime == null) timeEntryQueries.markAutoStopExempt.run(entryId);
+      })();
     } catch (e) {
       // A manual block with no finish time counts as an open timer; if the credited
       // worker already has one running, the one-timer rule rejects it — tell them clearly.
@@ -369,7 +495,7 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
 // times (only management may correct the clock) — see the role guard below.
 // The refusals no retry can get past carry a code (shared/runRefusals.js), so the
 // stop form can close itself on them instead of sticking.
-router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntry, (req, res) => {
+router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit, (req, res) => {
   try {
     const { id, entryId } = req.params;
     const data = req.body;
@@ -386,10 +512,14 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       return res.status(400).json({ error: 'Stop the timer before editing this entry', code: RUN_STILL_RUNNING });
     }
 
+    // A time left out keeps the stored one, like every other field of an edit: the manual
+    // edit form sends a start or finish only when the manager changed it, so a form opened
+    // before the worker answered "when did you finish?" (or before another correction)
+    // can't put the old time back. A finish sent blank is a resume, not "left out".
     let startTime, endTime;
     try {
-      startTime = normalizeTime(data.startTime);
-      endTime = normalizeTime(data.endTime);
+      startTime = data.startTime !== undefined ? normalizeTime(data.startTime) : existing.start_time;
+      endTime = data.endTime !== undefined ? normalizeTime(data.endTime) : existing.end_time;
     } catch (e) {
       return res.status(400).json({ error: 'Invalid start or finish time' });
     }
@@ -439,10 +569,24 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
         const isMostRecentStart =
           timeEntryQueries.hasLaterStartByUser.get(existing.user_id, existing.start_time).count === 0;
         const noOtherRunning = !timeEntryQueries.getActiveByUser.get(existing.user_id);
-        if (!(withinLast12h && isMostRecentStart && noOtherRunning)) {
+        // A run whose finish the worker already confirmed (from the question) is not
+        // "just stopped" any more: resuming it would undo their answer. One still waiting
+        // for its answer (finish_unconfirmed) can't be resumed either: the question comes first.
+        const notAnswered = !existing.finish_confirmed_at && existing.finish_unconfirmed !== 1;
+        if (!(withinLast12h && isMostRecentStart && noOtherRunning && notAnswered)) {
           return res.status(403).json({ error: 'Only the run you just stopped can be resumed.' });
         }
       }
+    }
+
+    // A hand edit's start and finish are judged as the pair that will be stored — one may
+    // be the manager's and the other the stored one, which the validator never saw. (A
+    // block the roll finished at its own start, finish unknown, lands here too: the office
+    // has to type the real finish to settle it.)
+    if (isManagement(req.user.role) && data.detailsConfirmed !== true &&
+        endTime !== null && Date.parse(endTime) <= Date.parse(startTime)) {
+      const message = 'Finish time must be after the start time';
+      return res.status(400).json({ error: message, fields: [{ field: 'endTime', message }] });
     }
 
     // The 31-day cap catches a mistyped date on a hand-entered/edited block. It must
@@ -550,26 +694,60 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       ? 0
       : existing.awaiting_details;
 
+    // Management saving a block settles a finish its worker never confirmed (the office
+    // answering for an absent worker), in the same write. A worker's save leaves it alone.
+    // The flag is cleared for a resume too (the block is open again), but only a save that is
+    // not a resume counts as the office confirming the finish in the trail.
+    const clearsUnconfirmedFlag = isManagement(req.user.role) && existing.finish_unconfirmed === 1;
+    const officeConfirmsFinish = clearsUnconfirmedFlag && !isResume;
+
+    // Management clearing a stopped block's finish through the edit form (without the stop
+    // form's own detailsConfirmed) is the office reopening time by hand: the roll must never
+    // cut it. The stop form's Resume carries detailsConfirmed and stays an ordinary clock.
+    // (CLAUDE.md: hand-entered time is never touched.)
+    const reopenedByHand = isResume && isManagement(req.user.role) && data.detailsConfirmed !== true;
+
+    // The office can't reopen a block for a worker who owes an answer about a different clock
+    // (reopening the flagged block itself is fine: it clears its own flag).
+    if (isResume && timeEntryQueries.countUnconfirmedByUserExcluding.get(workerId, entryId).count > 0) {
+      return res.status(409).json(unconfirmedRefusalFor(workerId));
+    }
+
+    // A worker's resume, or the stop form's own Resume by anyone, makes an ordinary clock that
+    // the roll would cut at once if normal hours have already ended since its start. Refused
+    // instead of pretending to succeed; a hand reopen by the office is never cut, so is exempt.
+    if (isResume && !reopenedByHand && cutIsDue(existing, Date.now())) {
+      return res.status(409).json({
+        error: 'Normal hours have ended, so this clock can\'t be resumed. Save the form instead.',
+        code: RESUME_AFTER_HOURS
+      });
+    }
+
     try {
-      timeEntryQueries.update.run(
-        workerId,
-        itemId,
-        machineNumber,
-        qty,
-        description,
-        scrapBinQty,
-        scrapRecycleQty,
-        inspection.firstOffInspection,
-        inspection.inProcessValidation,
-        inspection.measuringEquipmentVerification,
-        inspection.equipmentChecks,
-        equipmentChecksComments,
-        startTime,
-        endTime,
-        criticalAtFinish,
-        awaitingDetails,
-        entryId
-      );
+      db.transaction(() => {
+        timeEntryQueries.update.run(
+          workerId,
+          itemId,
+          machineNumber,
+          qty,
+          description,
+          scrapBinQty,
+          scrapRecycleQty,
+          inspection.firstOffInspection,
+          inspection.inProcessValidation,
+          inspection.measuringEquipmentVerification,
+          inspection.equipmentChecks,
+          equipmentChecksComments,
+          startTime,
+          endTime,
+          criticalAtFinish,
+          awaitingDetails,
+          entryId
+        );
+        if (clearsUnconfirmedFlag) timeEntryQueries.clearUnconfirmed.run(entryId);
+        if (isResume) timeEntryQueries.clearFinishConfirmedAt.run(entryId);
+        if (reopenedByHand) timeEntryQueries.markAutoStopExempt.run(entryId);
+      })();
     } catch (e) {
       // Reopening an entry (clearing its finish time, e.g. resuming a timer) makes
       // it an open timer; if the credited worker already has one running elsewhere,
@@ -613,6 +791,10 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
       changes.item = { from: oldItem ? oldItem.description : null, to: newItem ? newItem.description : null };
     }
 
+    if (officeConfirmsFinish) {
+      changes.finish = { from: 'not confirmed', to: 'confirmed by the office' };
+    }
+
     // Show who the block was re-credited to, by name, when an admin changed the owner.
     if (workerId !== existing.user_id) {
       const toName = userQueries.getById.get(workerId).name;
@@ -638,6 +820,137 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateManualTimeEntr
   } catch (err) {
     logger.error({ err }, 'Update time entry error');
     res.status(500).json({ error: 'Failed to update time entry' });
+  }
+});
+
+// The worker's answer about a clock that stopped itself: when did they really finish, and are
+// they still working. Every refusal comes before any write. A "still working" answer closes the
+// old run AND starts the new clock in one step (one transaction), so there is no moment where
+// the old run is closed and no clock runs; the screen does not call Start afterwards.
+router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...validateConfirmFinish, (req, res) => {
+  try {
+    const { id, entryId } = req.params;
+    const { stillWorking } = req.body;
+
+    const existing = findEntryForJob(res, id, entryId);
+    if (!existing) return;
+
+    if (!existing.end_time || existing.finish_unconfirmed !== 1) {
+      return res.status(409).json(alreadyConfirmedRefusal(existing));
+    }
+    if (existing.user_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Only the worker whose clock it was can answer this.' });
+    }
+
+    // Earlier or later than the stored finish are both fine. "Not in the future" is judged at
+    // this moment of pressing, and the ceiling (the start of the next office day's first
+    // opening) caps it. The one shared rule (shared/finishAnswer.js) holds the wording.
+    // A missing or empty finishTime never reaches here: the validator refuses it.
+    const newEnd = normalizeTime(req.body.finishTime);
+    const finishMs = Date.parse(newEnd);
+    const nowMs = Date.now();
+    const refusal = checkFinishAnswer({
+      finishMs,
+      startMs: Date.parse(existing.start_time),
+      nowMs,
+      ceilingMs: finishCeilingMs(existing, readOpeningRules())
+    });
+    if (refusal) {
+      return res.status(400).json({ error: refusal, fields: [{ field: 'finishTime', message: refusal }] });
+    }
+
+    // An answer that closed the old block off (no sign-off, no stop form) with no new clock
+    // behind it lost the work's record, so "still working" is refused before any write when the
+    // new clock could not be started.
+    const jobIsArchived = jobcardQueries.getById.get(id)?.archived === 1;
+    const restartRefusal = {
+      error: 'Your clock can\'t be started again on this job. Choose "No, I\'m done with it" instead.',
+      code: RESTART_REFUSED
+    };
+    let partToRestart = null;
+    if (stillWorking) {
+      partToRestart = existing.item_id
+        ? jobItemQueries.getByJobcard.all(id).find(item => item.id === existing.item_id) || null
+        : null;
+      // Another unanswered clock of theirs would have refused the ordinary Start too: the
+      // questions are answered before any new clock runs.
+      if (jobIsArchived || !partToRestart || timeEntryQueries.getActiveByUser.get(req.user.userId) ||
+          timeEntryQueries.countUnconfirmedByUserExcluding.get(req.user.userId, entryId).count > 0) {
+        return res.status(409).json(restartRefusal);
+      }
+    }
+
+    // An answer inside the clock-drift leeway but later than the server's now is stored as now,
+    // so no block ever ends in the future.
+    const storedEndMs = Math.min(finishMs, nowMs);
+    const storedEnd = new Date(storedEndMs).toISOString();
+    const criticalAtFinish = stillWorking ? 0 : existing.critical_at_finish;
+    const description = stillWorking && !(existing.description && existing.description.trim())
+      ? 'Carried on in a later run'
+      : existing.description;
+    // A job archived since the clock stopped can't have its stop form saved (closed jobs refuse
+    // every write), so no form is left waiting there whatever the worker said.
+    // For "still working" the answer and the new clock are one all-or-nothing step: a lost
+    // race on the answer, or a refused insert (the one-open-clock rule), rolls both back.
+    let restarted = null;
+    const answerAndRestart = db.transaction(() => {
+      const answered = timeEntryQueries.confirmFinish.run(
+        storedEnd, new Date().toISOString(), stillWorking || jobIsArchived ? 0 : 1, criticalAtFinish, description, entryId
+      );
+      // Another answer got there first (the statement only matches a still-unconfirmed block).
+      if (answered.changes === 0) {
+        const e = new Error('Finish already confirmed');
+        e.alreadyConfirmed = true;
+        throw e;
+      }
+      if (stillWorking) {
+        try {
+          restarted = insertOpenClock(id, req.user.userId, partToRestart, true);
+        } catch (e) {
+          e.restartRefused = true;
+          throw e;
+        }
+      }
+    });
+    try {
+      answerAndRestart();
+    } catch (e) {
+      if (e.alreadyConfirmed) {
+        return res.status(409).json(alreadyConfirmedRefusal(timeEntryQueries.getById.get(entryId) || existing));
+      }
+      if (e.restartRefused) return res.status(409).json(restartRefusal);
+      throw e;
+    }
+
+    const changes = storedEndMs === Date.parse(existing.end_time)
+      ? { finish: { from: 'not confirmed', to: 'confirmed' } }
+      : { endTime: { from: existing.end_time, to: storedEnd }, reportedBy: { from: null, to: 'worker' } };
+    // Everything else this answer wrote goes in the same entry: the note, through the one
+    // list of a run's trailed fields, and the sign-off a "still working" answer lifted.
+    // (awaiting_details is not a trailed field anywhere.)
+    const saved = { description };
+    Object.assign(changes, diffFields(existing, RUN_TRAIL_FIELDS
+      .filter(([column]) => column in saved)
+      .map(([column, key]) => [column, key, saved[column]])));
+    if (existing.critical_at_finish === 1 && criticalAtFinish === 0) {
+      changes.criticalSignOff = { from: 'needed', to: 'carried by the later run' };
+    }
+    const statusChange = syncStatusToWork(id, req.user);
+    if (statusChange) changes.status = statusChange;
+
+    recordHistory('jobcard', id, 'confirm_finish', req.user.userId, actorName(req), changes,
+      { timeEntryId: entryId, startTime: existing.start_time });
+
+    const confirmed = toCamelCase(timeEntryQueries.getById.get(entryId));
+    if (restarted) {
+      // The new clock's own trail entry, side effects and reply shape are the Start route's.
+      const restartedTimer = afterClockStarted(id, req.user.userId, partToRestart, restarted.startTime, req, true, restarted.entryId);
+      return res.json({ ...confirmed, restartedTimer });
+    }
+    res.json(confirmed);
+  } catch (err) {
+    logger.error({ err }, 'Confirm finish error');
+    res.status(500).json({ error: 'Failed to confirm the finish time' });
   }
 });
 

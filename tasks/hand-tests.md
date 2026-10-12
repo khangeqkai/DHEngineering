@@ -112,3 +112,24 @@ Nothing here has an automatic test, so click through these once on a real PC. Ea
 79. Users → PIN of 3 digits → "PIN must be exactly 4 digits".
 80. Add a supplier, person or machine with the name box blank → its Activity entry has no "(empty) → (empty)" line.
 81. Statistics → set a bad custom range (end before start), switch Trend to Yearly → the monthly rows keep their monthly titles.
+
+## Hunt 6 — a clock left running stops itself (rounds 22)
+82. Start a clock, leave it past the end of normal hours while signed in → "Your clock stopped by itself" appears with one time box pre-filled with the stop time.
+83. In that box enter a time later than the stop (but not in the future) → accepted. Enter a time earlier than the stop → accepted, hours shrink. Enter a time before the start → the box is marked.
+84. Answer "Yes, start my clock again" with that job open → the job screen shows the clock running on the part and the work list is up to date.
+85. Answer "No, I'm done with it" → the pieces form opens with no X, only Save and Sign out. Escape and clicking outside do nothing.
+86. On that form press Sign out, sign back in → the form is back; the finish time and hours are unchanged. Save it → it does not come back, the pop-up job closes itself and the job list shows the new status.
+87. Answer the question about an old clock, then try to invoice that job within 30 minutes → refused.
+88. Press Stop just after the clock stopped itself → straight to the question, no error, no stuck running clock.
+89. As a manager, press Stop on a worker's clock that already stopped itself → a message says it already stopped and names the worker who must confirm.
+90. As a manager, clear the End Time of an old block → it runs and is not stopped automatically; stop it, resume it from the pieces form, leave it past hours end → it stops itself.
+91. With a worker's question unanswered, as a manager add an open block for that worker → refused, naming the worker.
+92. Hours set to normal 07–12, overtime 12–13, normal 13–17: a clock stopped at 12:00, answer 16:30 → accepted.
+93. Stop a clock at 16:55, after hours end press the X on the pieces form → "Normal hours have ended… Save the form instead"; the form stays.
+94. Invoice a job, then have a clock on it stop itself (or answer for one that did) → the worker can answer; no pieces form follows.
+95. Let a clock stop itself on a part, remove that part, answer "Yes, start my clock again" → refused, nothing saved.
+96. As a manager open the edit form on a worker's auto-stopped block, have the worker answer with a different finish, then save the manager's form without touching the times → the worker's finish stays.
+97. While a worker's question is showing, have a manager delete that block → the worker's question goes away instead of being stuck.
+98. Press Stop, leave the pieces form unfilled, let the app sign you out (or close the window), sign in again → the pieces form comes back with only Save and Sign out.
+99. Answer "Yes, start my clock again", then stop the new clock within a few seconds → it is kept and the normal pieces form opens (with the sign-off on a Critical job).
+100. First start after updating: sign in as a worker who abandoned pieces forms weeks ago → none of those old forms appear.

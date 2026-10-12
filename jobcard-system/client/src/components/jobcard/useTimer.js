@@ -2,11 +2,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { useFinishQuestion } from '../../context/FinishQuestionContext';
 import { discardToastIcon, infoToastIcon } from '../common/toastIcons';
 import { describeItemPosition } from './workMatch.mjs';
 import { joinMachineCodes } from '../../../../server/src/shared/machineList';
 import { CRITICAL_INSPECTION_REFUSED } from '../../../../server/src/shared/qualityLevels';
-import { RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN } from '../../../../server/src/shared/runRefusals';
+import {
+  RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN, FINISH_UNCONFIRMED, RUN_STOPPED_ITSELF
+} from '../../../../server/src/shared/runRefusals';
 import { isJobClosedError } from '../../utils/jobLock';
 
 const emptyEntryForm = () => ({
@@ -29,6 +32,13 @@ const emptyEntryForm = () => ({
 export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } = {}) {
   const { registerBeforeLogout, user } = useAuth();
   const currentUserId = user?.id;
+  // The signed-in shell's "when did you finish?" question (null outside the shell). Held
+  // in a ref so the poll and the start paths below don't re-create on its changes.
+  const finishQuestion = useFinishQuestion();
+  const refreshFinishQuestionRef = useRef(finishQuestion?.refresh);
+  refreshFinishQuestionRef.current = finishQuestion?.refresh;
+  const stopFormDoneRef = useRef(finishQuestion?.stopFormDone);
+  stopFormDoneRef.current = finishQuestion?.stopFormDone;
   // Read the live parts list from a ref, not the argument closed over below — the
   // toasts and prompts below only need it at the moment they fire, and a ref keeps
   // this hook from re-creating its callbacks every time a keystroke changes a row.
@@ -63,6 +73,16 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     onJobClosedRef.current();
     return true;
   }, [jobcardId]);
+
+  // True (and handled) when a start was refused because the worker has a clock the
+  // server stopped by itself that they have not yet answered for. The shell's question
+  // is refreshed so it appears now rather than at the next sign-in.
+  const handledAsFinishUnconfirmed = useCallback((err) => {
+    if (err?.data?.code !== FINISH_UNCONFIRMED) return false;
+    toast.error(err.message, { id: 'finish-unconfirmed' });
+    refreshFinishQuestionRef.current?.();
+    return true;
+  }, []);
 
   const loadActiveTimer = useCallback(async () => {
     try {
@@ -124,7 +144,17 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
         const current = await api.getActiveTimer();
         if (!current || current.id !== activeTimer.id) {
           if (!selfStoppedRef.current) {
-            toast('Your timer was stopped from another screen', { icon: infoToastIcon });
+            // The server may have stopped it itself (a forgotten clock) — then the
+            // shell's question explains what happened, so the toast is skipped.
+            let flagged = [];
+            try {
+              flagged = (await refreshFinishQuestionRef.current?.()) || [];
+            } catch {
+              // Treated as nothing flagged
+            }
+            if (flagged.length === 0) {
+              toast('Your timer was stopped from another screen', { icon: infoToastIcon });
+            }
             if (onExternalStopRef.current) onExternalStopRef.current();
           }
           selfStoppedRef.current = false;
@@ -180,6 +210,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     } catch (err) {
       // Checked first: it is a 409 too, and would otherwise read as a timer conflict.
       if (handledAsJobClosed(err)) return false;
+      if (handledAsFinishUnconfirmed(err)) return false;
       // On-behalf: the chosen worker already has a timer running elsewhere. This
       // is their conflict, not the admin's, so just report it — the admin's own
       // stop-and-switch flow below only makes sense for the admin's own timer.
@@ -248,6 +279,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
             return false;
           }
         } catch (innerErr) {
+          if (handledAsFinishUnconfirmed(innerErr)) return false;
           toast.error(innerErr.message || 'Failed to switch timer', { id: 'switch-timer-failed' });
           return false;
         }
@@ -259,7 +291,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, currentUserId, labelForRunningItem, handledAsJobClosed]);
+  }, [jobcardId, currentUserId, labelForRunningItem, handledAsJobClosed, handledAsFinishUnconfirmed]);
 
   const stopTimer = useCallback(async () => {
     if (!activeTimer) return;
@@ -279,7 +311,16 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       toast.success('Timer stopped', { id: 'timer-stopped' });
       return entry;
     } catch (err) {
-      toast.error(err.message || 'Failed to stop timer', { id: 'stop-timer-failed' });
+      selfStoppedRef.current = false;
+      if (err?.data?.code === RUN_STOPPED_ITSELF) {
+        // The server had already stopped this clock by itself: show the worker's question
+        // rather than an error, and let the work list reload.
+        setActiveTimer(null);
+        refreshFinishQuestionRef.current?.();
+        if (onExternalStopRef.current) onExternalStopRef.current();
+      } else {
+        toast.error(err.message || 'Failed to stop timer', { id: 'stop-timer-failed' });
+      }
     } finally {
       setLoading(false);
     }
@@ -293,9 +334,9 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
   const stopEntryWithForm = useCallback(async (entry) => {
     if (!entry?.id) return;
     setLoading(true);
+    const isOwnActive = !!activeTimer && activeTimer.id === entry.id;
     try {
       const entryJobcardId = entry.jobcardId || jobcardId;
-      const isOwnActive = activeTimer && activeTimer.id === entry.id;
       // Stopping our own running timer here behaves like the normal stop — clear it
       // and stop the background poller crying "stopped by an admin".
       if (isOwnActive) selfStoppedRef.current = true;
@@ -315,7 +356,20 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       toast.success('Timer stopped', { id: 'timer-stopped' });
       return result;
     } catch (err) {
-      toast.error(err.message || 'Failed to stop timer', { id: 'stop-timer-failed' });
+      if (isOwnActive) selfStoppedRef.current = false;
+      if (err?.data?.code === RUN_STOPPED_ITSELF) {
+        if (isOwnActive) {
+          // Already stopped by the server on its own: the worker's question explains it.
+          setActiveTimer(null);
+          refreshFinishQuestionRef.current?.();
+        } else {
+          // Someone else's clock: the refusal carries the sentence to show.
+          toast(err.message, { id: 'run-stopped-itself', icon: infoToastIcon });
+        }
+        if (onExternalStopRef.current) onExternalStopRef.current();
+      } else {
+        toast.error(err.message || 'Failed to stop timer', { id: 'stop-timer-failed' });
+      }
     } finally {
       setLoading(false);
     }
@@ -364,6 +418,45 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     setPendingStartItem(null);
     return true;
   }, [jobcardId, handledAsJobClosed]);
+
+  // The stop form on screen right now (kept current synchronously, so two hand-ins in one
+  // tick see each other) and the one hand-in waiting behind it.
+  const stoppedEntryRef = useRef(null);
+  const heldEntryRef = useRef(null);
+
+  // The ids of the stop-form entries this screen has right now: the one on screen (an
+  // ordinary stop or a stop form the worker owes) and the one held behind it. The shell
+  // reads it so it never offers a form that is already being filled in.
+  const shownStopEntryIds = useCallback(() => [stoppedEntryRef.current?.id, heldEntryRef.current?.id]
+    .filter(id => id != null), []);
+
+  // Shows the stop form for a run that is already stopped and handed in from outside —
+  // the clock the server stopped by itself, once its worker has said when they finished.
+  // From here the form behaves exactly as after a normal stop: Save, and X / Resume.
+  const showStopFormForEntry = useCallback((entry) => {
+    if (!entry?.id) return;
+    const shown = stoppedEntryRef.current;
+    // Already showing this very run: nothing to do.
+    if (shown?.id === entry.id) return;
+    // Another stop form is being filled in: keep this one (one slot, a later hand-in
+    // replaces it) and show it as soon as the current form has gone.
+    if (shown) {
+      heldEntryRef.current = entry;
+      return;
+    }
+    heldEntryRef.current = null;
+    const entryJobcardId = entry.jobcardId || jobcardId;
+    // Marked on the entry itself, so it stays true exactly as long as this entry is the one
+    // shown: closing the form without filling it in asks the server for nothing (the
+    // worker's answer stands) and it is offered again at the next sign-in.
+    stoppedEntryRef.current = { ...entry, fromQuestion: true };
+    setStoppedEntry({ ...entry, fromQuestion: true });
+    setStoppedEntryJobCard(entryJobcardId !== jobcardId
+      ? { id: entryJobcardId, jobNumber: entry.jobNumber }
+      : null);
+    setEntryForm(emptyEntryForm());
+    setShowEntryForm(true);
+  }, [jobcardId]);
 
   const handleEntryFieldChange = useCallback((field, value) => {
     setEntryForm(prev => ({ ...prev, [field]: value }));
@@ -457,7 +550,9 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
           toast.success(`Timer started on part ${nextDisplayNumber}`);
           startedNewTimer = true;
         } catch (startErr) {
-          toast.error(startErr.message || 'Failed to start new timer', { id: 'start-new-timer-failed' });
+          if (!handledAsFinishUnconfirmed(startErr)) {
+            toast.error(startErr.message || 'Failed to start new timer', { id: 'start-new-timer-failed' });
+          }
         }
       } else if (alreadySaved) {
         toast('That work block\'s details were already saved.', { id: 'stopped-block-gone', icon: infoToastIcon });
@@ -478,10 +573,13 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, stoppedEntry, entryForm, pendingStartItem, closeFormIfRunUnfillable]);
+  }, [jobcardId, stoppedEntry, entryForm, pendingStartItem, closeFormIfRunUnfillable, handledAsFinishUnconfirmed]);
 
   const cancelEntryForm = useCallback(async (reloadEntries) => {
     if (!stoppedEntry) return;
+    // The form from the "when did you finish?" question is blocking: the only ways out
+    // are saving it or signing out (the sign-out hook below leaves the run stopped).
+    if (stoppedEntry.fromQuestion) return;
     const entryJobcardId = stoppedEntry.jobcardId || jobcardId;
     const isSameJob = entryJobcardId === jobcardId;
     setLoading(true);
@@ -529,15 +627,32 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
   // their own run. A manager may be holding another worker's block here (stopped from
   // a part's progress list); signing out must not restart that worker's timer behind
   // their back, so it stays stopped, waiting for its pieces.
-  const stoppedEntryRef = useRef(null);
   useEffect(() => { stoppedEntryRef.current = stoppedEntry; }, [stoppedEntry]);
+
+  // The form from the question has gone away (saved, or closed as unfillable): tell the
+  // shell once, so it stops holding the next question back.
+  const hadQuestionFormRef = useRef(false);
+  useEffect(() => {
+    const hasQuestionForm = !!stoppedEntry?.fromQuestion;
+    if (hadQuestionFormRef.current && !hasQuestionForm) stopFormDoneRef.current?.();
+    hadQuestionFormRef.current = hasQuestionForm;
+  }, [stoppedEntry]);
+
+  // A form handed in while another was being filled in is shown once that one has gone
+  // (declared after the effect above, so the shell hears about the old form first).
+  useEffect(() => {
+    if (stoppedEntry || !heldEntryRef.current) return;
+    const held = heldEntryRef.current;
+    heldEntryRef.current = null;
+    showStopFormForEntry(held);
+  }, [stoppedEntry, showStopFormForEntry]);
 
   const hasStoppedEntry = !!stoppedEntry;
   useEffect(() => {
     if (!showEntryForm || !hasStoppedEntry) return;
     return registerBeforeLogout(() => {
       const entry = stoppedEntryRef.current;
-      if (!entry || entry.userId !== currentUserId) return;
+      if (!entry || entry.userId !== currentUserId || entry.fromQuestion) return;
       // Use entry.jobcardId (not jobcardId) so cross-job stops resume on the correct job.
       // Handed back so signing out waits for it: the session is cancelled server-side
       // now, and a resume that arrives after that is refused and the run stays stopped.
@@ -558,6 +673,10 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     setStoppedEntryJobCard(null);
     setEntryForm(emptyEntryForm());
     setPendingStartItem(null);
+    heldEntryRef.current = null;
+    stoppedEntryRef.current = null;
+    // A form wiped by this reset was not saved: it must not be reported to the shell as done.
+    hadQuestionFormRef.current = false;
   }, []);
 
   return {
@@ -567,10 +686,15 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     showEntryForm,
     stoppedEntry,
     stoppedEntryJobCard,
+    // True when the shown stop form is one the worker owes (from the question, or left
+    // unfilled earlier): it has no close button and cannot be cancelled; the worker saves it or signs out.
+    mustFillIn: !!stoppedEntry?.fromQuestion,
     entryForm,
     startTimerWithConflictCheck,
     stopTimer,
     stopEntryWithForm,
+    showStopFormForEntry,
+    shownStopEntryIds,
     handleEntryFieldChange,
     handleEntryMachineToggle,
     submitEntryForm,

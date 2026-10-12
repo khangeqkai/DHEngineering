@@ -7,6 +7,7 @@ import { isManagement, can } from './utils/roles';
 import Login from './components/Login';
 import JobCardList from './components/JobCardList';
 import Layout from './components/Layout';
+import { FinishQuestionProvider } from './context/FinishQuestionProvider';
 import Spinner from './components/common/Spinner';
 import './App.css';
 
@@ -135,7 +136,9 @@ function App() {
           path="/"
           element={
             <PrivateRoute>
-              <Layout />
+              <FinishQuestionProvider>
+                <Layout />
+              </FinishQuestionProvider>
             </PrivateRoute>
           }
         >
