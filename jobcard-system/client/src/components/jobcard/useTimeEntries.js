@@ -76,11 +76,11 @@ export function finishBoxShowsStored(form) {
 // The sentence a FINISH_CHANGED refusal is worded as. The server states facts (reason and the
 // current entry); the screen words them. The box adds what to do next after it.
 function finishRefusalHead(reason, current) {
-  const who = current.userName || 'The worker';
   const finish = formatDateTime(current.endTime);
-  // The worker's answer may itself have been corrected by the office since; nothing stored says
-  // whose time the current finish is, so the sentence doesn't credit it to the worker.
-  if (reason === 'workerAnswered') return `${who} has answered since you opened this. The stored finish is now ${finish} (theirs, or a later office correction).`;
+  // Names nobody: the block may have been moved to another worker since the answer, and the
+  // answer may itself have been corrected by the office. Nothing stored says who answered or
+  // whose time the current finish is.
+  if (reason === 'workerAnswered') return `The forgotten-clock question was answered since you opened this. The stored finish is now ${finish} (the worker's answer, or a later office correction).`;
   if (reason === 'clockStopped') return `This clock was stopped since you opened it. Its finish is now ${finish}.`;
   if (reason === 'confirmed') return 'This finish was confirmed since you opened it.';
   return `This finish was changed since you opened it. The stored finish is now ${finish}.`;
