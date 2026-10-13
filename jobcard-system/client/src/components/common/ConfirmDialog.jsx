@@ -33,7 +33,7 @@ export default function ConfirmDialog({
       // Only the top-most open dialog reacts to global keys.
       if (!isTopModal(modalId)) return;
 
-      if (!dialogRef.current) return;
+      // A missing node is passed on as it is: the helper holds Tab (focusable is not called), and Escape still cancels.
       handleDialogKey(e, {
         container: dialogRef.current,
         escape: onCancel,

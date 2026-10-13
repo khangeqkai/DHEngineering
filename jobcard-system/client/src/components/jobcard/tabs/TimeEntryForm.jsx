@@ -287,7 +287,7 @@ export default function TimeEntryForm({
           <FieldError id={errorIdFor('endTime')} message={errorFor('endTime')} />
           {/* After a refusal showed the stored finish moved, the stored time stays visible
               here once the box is edited and the mark has gone. */}
-          {timeEntryForm.storedFinishMoved && timeEntryForm.storedEndTime && !finishBoxShowsStored(timeEntryForm) && (
+          {timeEntryForm.storedFinishMoved && timeEntryForm.storedEndTime && !finishBoxShowsStored(timeEntryForm) && !errorFor('endTime') && (
             <span className="field-hint">Stored finish is now {formatDateTime(timeEntryForm.storedEndTime)}.</span>
           )}
           {timeEntryForm.finishUnconfirmed && (

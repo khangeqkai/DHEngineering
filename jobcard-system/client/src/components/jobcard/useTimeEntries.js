@@ -78,7 +78,9 @@ export function finishBoxShowsStored(form) {
 function finishRefusalHead(reason, current) {
   const who = current.userName || 'The worker';
   const finish = formatDateTime(current.endTime);
-  if (reason === 'workerAnswered') return `${who} has answered since you opened this. The stored finish is now ${finish}.`;
+  // The worker's answer may itself have been corrected by the office since; nothing stored says
+  // whose time the current finish is, so the sentence doesn't credit it to the worker.
+  if (reason === 'workerAnswered') return `${who} has answered since you opened this. The stored finish is now ${finish} (theirs, or a later office correction).`;
   if (reason === 'clockStopped') return `This clock was stopped since you opened it. Its finish is now ${finish}.`;
   if (reason === 'confirmed') return 'This finish was confirmed since you opened it.';
   return `This finish was changed since you opened it. The stored finish is now ${finish}.`;
