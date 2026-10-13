@@ -18,6 +18,7 @@ export default function ConfirmDialog({
   const confirmButtonRef = useRef(null);
   const cancelButtonRef = useRef(null);
   const altButtonRef = useRef(null);
+  const dialogRef = useRef(null);
   const modalId = useId();
 
   useEffect(() => {
@@ -32,7 +33,9 @@ export default function ConfirmDialog({
       // Only the top-most open dialog reacts to global keys.
       if (!isTopModal(modalId)) return;
 
+      if (!dialogRef.current) return;
       handleDialogKey(e, {
+        container: dialogRef.current,
         escape: onCancel,
         focusable: () => [cancelButtonRef.current, altButtonRef.current, confirmButtonRef.current].filter(Boolean)
       });
@@ -58,7 +61,7 @@ export default function ConfirmDialog({
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-message"
     >
-      <div className="confirm-dialog">
+      <div className="confirm-dialog" ref={dialogRef}>
         <h2 id="confirm-dialog-title">{title}</h2>
         <p id="confirm-dialog-message">{message}</p>
         <div className="confirm-dialog-buttons">

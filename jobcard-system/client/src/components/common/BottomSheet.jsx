@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { pushModal, removeModal, isTopModal } from './modalStack';
+import { handleDialogTab } from './dialogKeys';
 
 // Selector for elements that can receive keyboard focus via Tab.
 const FOCUSABLE_SELECTOR =
@@ -40,33 +41,14 @@ export default function BottomSheet({
     // Trap Tab focus inside the dialog. Query focusable elements live on each
     // press because the dialog's contents change (tab switches, loading state,
     // per-screen forms), so a cached list would go stale.
-    if (e.key === 'Tab') {
-      const dialog = dialogRef.current;
-      if (!dialog) return;
-
-      const focusable = Array.from(
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    handleDialogTab(e, {
+      container: dialog,
+      focusable: () => Array.from(
         dialog.querySelectorAll(FOCUSABLE_SELECTOR)
-      ).filter((el) => el.offsetParent !== null);
-      if (focusable.length === 0) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
-      const insideDialog = dialog.contains(active);
-
-      if (e.shiftKey) {
-        // active === dialog covers the just-opened state where focus sits on
-        // the container itself; !insideDialog recaptures focus that slipped out
-        // (safe here because this only runs when we're the top-most dialog).
-        if (active === first || active === dialog || !insideDialog) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else if (active === last || !insideDialog) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
+      ).filter((el) => el.offsetParent !== null)
+    });
   }, [onClose, modalId]);
 
   // Focus management — keyed only on open/close so a changing

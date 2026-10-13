@@ -12,6 +12,7 @@
 // out again (3 was a one-time marking pass, since removed): backups stamped with it exist.
 // 4: clocks open before self-stopping clocks existed are left running (marked
 // auto_stop_exempt) by a marker-guarded startup conversion.
-const DATA_VERSION = 4;
+// 5: that conversion's marker moved to a key no earlier build wrote (clocks_open_before_auto_stop_exempt_at); the old key is cleared.
+const DATA_VERSION = 5;
 
 module.exports = { DATA_VERSION };

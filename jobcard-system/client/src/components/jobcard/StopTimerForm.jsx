@@ -222,12 +222,13 @@ export default function StopTimerForm({
     // it. Escape here would either close the job card behind (losing all of it) or
     // put the timer back on the clock without the person meaning to, so the way
     // out is the form's own buttons.
+    const container = formRef.current;
+    if (!container) return;
     handleDialogKey(e, {
-      focusable: () => (formRef.current
-        ? Array.from(formRef.current.querySelectorAll(
-            'input, textarea, button:not(:disabled):not([tabindex="-1"])'
-          ))
-        : [])
+      container,
+      focusable: () => Array.from(container.querySelectorAll(
+        'input:not(:disabled), textarea:not(:disabled), button:not(:disabled):not([tabindex="-1"])'
+      ))
     });
   }, [modalId]);
 

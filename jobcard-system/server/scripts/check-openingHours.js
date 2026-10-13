@@ -16,6 +16,7 @@ const { db, updateSettings } = require('../src/db/database');
 const { windowAt, nextOpening, officeDayEndAfter } = require('../src/utils/openingHours');
 const { wallClockToIso } = require('../src/utils/officeTime');
 const { rollOpenTimers, forgetRollCache } = require('../src/utils/timerPause');
+const { releaseRoll } = require('../src/utils/rollHold');
 
 const TZ = 'Australia/Melbourne';
 const at = (wall) => Date.parse(wallClockToIso(wall, TZ));
@@ -93,6 +94,7 @@ const startRun = (wall) => {
 const rows = () => db.prepare('SELECT * FROM time_entries ORDER BY start_time').all();
 const trail = (action) => db.prepare('SELECT * FROM history WHERE action = ?').all(action);
 
+releaseRoll(); // this script builds its own database without the startup conversions, so nothing holds the roll
 updateSettings({ timezone: TZ, labour_public_holidays: '[]', labour_schedule: JSON.stringify(allNormal) });
 forgetRollCache();
 

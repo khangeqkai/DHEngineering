@@ -525,16 +525,22 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
     }
 
     // Every hand edit that sends a finish (typed, ticked "this finish is right", or cleared)
-    // also sends what its form saw when it opened: the stored finish (expectedEndTime),
-    // when the worker confirmed it (expectedFinishConfirmedAt, or null) and whether it was
-    // still unconfirmed (expectedFinishUnconfirmed). A finish is those three stored values,
-    // and each is compared only when the form sent it: a save judges only what it sends, so
-    // a page that predates one of them is not refused forever over a value it never saw.
-    // Any one having moved means the worker answered or another correction landed meanwhile,
-    // and writing this finish would undo it. That includes a worker who confirmed the very
-    // same time: the confirmation stamp differs even though the time does not. Nothing is
-    // written; the refusal carries the current values so the form can show them and stay open.
-    if (data.expectedEndTime !== undefined) {
+    // must also say what its form saw when it opened: the stored finish (expectedEndTime,
+    // null for a clock that was still running), when the worker confirmed it
+    // (expectedFinishConfirmedAt, or null) and whether it was still unconfirmed
+    // (expectedFinishUnconfirmed). All three are required; a request missing one is out of
+    // date and is refused 400. The stop form's own writes (detailsConfirmed) never set a
+    // finish time, so they carry none and skip the check.
+    // A finish is those three stored values. Any one having moved means the worker answered
+    // or another correction landed meanwhile, and writing this finish would undo it. That
+    // includes a worker who confirmed the very same time: the confirmation stamp differs even
+    // though the time does not. Nothing is written; the refusal carries the current entry so
+    // the form can show it and stay open.
+    if (data.endTime !== undefined && data.detailsConfirmed !== true) {
+      if (data.expectedEndTime === undefined || data.expectedFinishConfirmedAt === undefined ||
+          data.expectedFinishUnconfirmed === undefined) {
+        return res.status(400).json({ error: 'This page is out of date. Refresh it and try again.' });
+      }
       // Both sides go through normalizeTime, so the same moment written two ways still matches.
       let expectedEnd = null;
       let storedEnd = null;
@@ -544,38 +550,24 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
       } catch (e) {
         expectedEnd = null;
       }
-      const stampMoved = data.expectedFinishConfirmedAt !== undefined &&
-        (existing.finish_confirmed_at || null) !== (data.expectedFinishConfirmedAt || null);
+      const stampMoved = (existing.finish_confirmed_at || null) !== (data.expectedFinishConfirmedAt || null);
       // Another manager ticking the same finish clears only the flag, not the time or stamp.
-      const flagMoved = data.expectedFinishUnconfirmed !== undefined &&
-        (existing.finish_unconfirmed === 1) !== (data.expectedFinishUnconfirmed === true);
-      // A stamp that is there now is the worker's answer; one that has gone was taken off
-      // by another correction, which is refused too but is not the worker answering.
-      const answeredSince = stampMoved && !!existing.finish_confirmed_at;
+      const flagMoved = (existing.finish_unconfirmed === 1) !== (data.expectedFinishUnconfirmed === true);
       if (stampMoved || flagMoved || expectedEnd === null || expectedEnd !== storedEnd) {
-        const worker = userQueries.getById.get(existing.user_id);
-        const name = (worker && (worker.name || worker.username)) || 'The worker';
-        // No expected finish: the form was opened while the clock was still running, and it
-        // has been stopped since. There was no finish to change, so the message says that.
-        const openedRunning = data.expectedEndTime === null || data.expectedEndTime === '';
-        let message;
-        if (answeredSince) {
-          message = `${name} has answered since you opened this. The finish box now shows their time \u2014 change it and save again if it is still wrong.`;
-        } else if (openedRunning) {
-          message = 'This clock was stopped since you opened it. The finish box now shows its finish time.';
-        } else if (flagMoved && existing.finish_unconfirmed !== 1 && expectedEnd === storedEnd) {
-          message = 'This finish was confirmed since you opened it. Change it and save again if it is still wrong.';
-        } else {
-          message = 'This finish was changed since you opened it. The finish box now shows the current time.';
-        }
+        // A stamp that is there now means the worker answered; one that has gone was taken
+        // off by another correction. The stored finish may also have been corrected by the
+        // office after that answer, which is why the reply states facts (reason + the whole
+        // current entry) and the screen words them.
+        let reason;
+        if (stampMoved && existing.finish_confirmed_at) reason = 'workerAnswered';
+        else if (data.expectedEndTime === null || data.expectedEndTime === '') reason = 'clockStopped';
+        else if (flagMoved && existing.finish_unconfirmed !== 1 && expectedEnd === storedEnd) reason = 'confirmed';
+        else reason = 'changed';
         return res.status(409).json({
-          error: message,
+          error: 'This finish was changed since you opened it.',
           code: FINISH_CHANGED,
-          current: {
-            endTime: existing.end_time,
-            finishUnconfirmed: existing.finish_unconfirmed === 1,
-            finishConfirmedAt: existing.finish_confirmed_at || null
-          }
+          reason,
+          current: toCamelCase(existing)
         });
       }
     }

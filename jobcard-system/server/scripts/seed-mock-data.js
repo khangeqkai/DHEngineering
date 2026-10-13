@@ -147,7 +147,7 @@ settingsQueries.upsert.run('labour_schedule_whole_hours_at', seededAt);
 settingsQueries.upsert.run('overtime_ownership_at', seededAt);
 // Seeded open blocks are ordinary running clocks, so the conversion that marks clocks open
 // before self-stopping clocks arrived (and leaves them running) has nothing to do.
-settingsQueries.upsert.run('auto_stop_exempt_backfill_at', seededAt);
+settingsQueries.upsert.run('clocks_open_before_auto_stop_exempt_at', seededAt);
 console.log(`Settings configured (prefix: ${refData.settings.job_number_prefix}, starting: ${refData.settings.job_number_next}).`);
 
 // ─── JOB CARDS ───

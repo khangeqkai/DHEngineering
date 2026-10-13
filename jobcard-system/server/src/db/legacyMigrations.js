@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
+const { holdRoll, releaseRoll } = require('../utils/rollHold');
 const {
   db,
   settingsQueries,
@@ -656,17 +657,21 @@ function clearStaleAwaitingDetails() {
 // Clocks already open when self-stopping clocks first arrive on a database stay running:
 // they are marked auto_stop_exempt, so the forgotten-clock roll never cuts them. The marker
 // is the stored fact that this marking has happened on this database; no guess is made at
-// who opened a clock. A database or restored backup without the marker predates
-// self-stopping clocks (or comes from the brief builds before the marker existed, where
-// marking too errs on the side of never cutting). A database that already has the marker
-// is untouched. Marks and marker are written in one transaction.
-const AUTO_STOP_EXEMPT_BACKFILL_KEY = 'auto_stop_exempt_backfill_at';
+// who opened a clock. A database or restored backup without the marker is marked once. That
+// includes a database from the builds between self-stopping clocks and this marker: an
+// earlier, since-removed pass wrote a different key (auto_stop_exempt_backfill_at), which
+// says nothing about this one and is cleared here; its running clocks at that moment stay
+// running until stopped by hand. A database that already has the marker is untouched.
+// Marks, marker and the old key's removal are written in one transaction.
+const CLOCKS_EXEMPT_MARKER_KEY = 'clocks_open_before_auto_stop_exempt_at';
+const RETIRED_EXEMPT_MARKER_KEY = 'auto_stop_exempt_backfill_at';
 
 function exemptClocksOpenBeforeAutoStop() {
-  if (settingsQueries.getByKey.get(AUTO_STOP_EXEMPT_BACKFILL_KEY)) return;
+  if (settingsQueries.getByKey.get(CLOCKS_EXEMPT_MARKER_KEY)) return;
   const run = db.transaction(() => {
     const { changes } = timeEntryQueries.exemptAllOpen.run();
-    settingsQueries.upsert.run(AUTO_STOP_EXEMPT_BACKFILL_KEY, new Date().toISOString());
+    settingsQueries.upsert.run(CLOCKS_EXEMPT_MARKER_KEY, new Date().toISOString());
+    db.prepare('DELETE FROM settings WHERE key = ?').run(RETIRED_EXEMPT_MARKER_KEY);
     return changes;
   });
   const marked = run();
@@ -995,8 +1000,10 @@ function runLegacyMigrations() {
 
   try {
     exemptClocksOpenBeforeAutoStop();
+    releaseRoll();
   } catch (err) {
-    logger.error({ err }, 'Migration: Failed to mark clocks open before self-stopping clocks as never auto-stopped');
+    holdRoll();
+    logger.error({ err }, 'Migration: Failed to mark clocks open before self-stopping clocks as never auto-stopped; self-stopping clocks are held until the next successful start');
   }
 
   logger.info('Migrations complete');

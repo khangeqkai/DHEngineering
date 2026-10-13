@@ -1,8 +1,9 @@
 import { useEffect, useId, useState } from 'react';
-import { capitalizeFirst } from '../../../utils/formatters';
+import { capitalizeFirst, formatDateTime } from '../../../utils/formatters';
 import CheckboxDropdown from '../../common/CheckboxDropdown';
 import FieldError from '../../common/FieldError';
 import { scrollFieldIntoView } from '../../../hooks/useFieldErrors';
+import { finishBoxShowsStored } from '../useTimeEntries';
 import { splitMachineCodes, joinMachineCodes } from '../../../../../server/src/shared/machineList';
 
 const INSPECTION_ITEMS = [
@@ -280,16 +281,23 @@ export default function TimeEntryForm({
             aria-describedby={errorFor('endTime') ? errorIdFor('endTime') : undefined}
           />
           <FieldError id={errorIdFor('endTime')} message={errorFor('endTime')} />
+          {/* After a refusal showed the stored finish moved, the stored time stays visible
+              here once the box is edited and the mark has gone. */}
+          {timeEntryForm.storedFinishMoved && timeEntryForm.storedEndTime && !finishBoxShowsStored(timeEntryForm) && (
+            <span className="field-hint">Stored finish is now {formatDateTime(timeEntryForm.storedEndTime)}.</span>
+          )}
           {timeEntryForm.finishUnconfirmed && (
             <>
               <span className="field-hint">
                 {timeEntryForm.workerName || 'The worker'} hasn't confirmed this finish yet. Changing it here confirms it for them.
               </span>
-              {/* Not offered on a block STORED with finish == start (a clock cut at midnight):
-                  that finish is a placeholder, never the real one, so it must be typed. Judged
-                  from the stored moments, not the boxes — moving the start box must not make
-                  the placeholder confirmable. */}
-              {!(Date.parse(timeEntryForm.storedEndTime) <= Date.parse(timeEntryForm.storedStartTime)) && (
+              {/* The tick confirms the STORED finish as it stands, so it is offered only while
+                  the box still shows it. Not offered on a block STORED with finish == start (a
+                  clock cut at midnight): that finish is a placeholder, never the real one, so
+                  it must be typed. Judged from the stored moments, not the boxes — moving the
+                  start box must not make the placeholder confirmable. */}
+              {timeEntryForm.storedEndTime && finishBoxShowsStored(timeEntryForm) &&
+                !(Date.parse(timeEntryForm.storedEndTime) <= Date.parse(timeEntryForm.storedStartTime)) && (
                 <label className="show-inactive-label">
                   <input
                     type="checkbox"

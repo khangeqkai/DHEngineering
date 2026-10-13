@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { getDefaultTimeEntryForm, isoToLocalInput, localInputToIso } from './mappers';
-import { formatDate } from '../../utils/formatters';
+import { formatDate, formatDateTime } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
 import { FUTURE_LEEWAY_MS } from '../../../../server/src/shared/finishAnswer';
 import { useFieldErrors, scrollFieldIntoView, fieldErrorsFromRefusal, showSaveRefusal } from '../../hooks/useFieldErrors';
@@ -23,6 +23,71 @@ const FORM_BOXES = {
   endTime: 'endTime',
   ...INSPECTION_BOXES
 };
+
+// What the form knows about the stored finish as it stood when it opened (or was last
+// refreshed from a refusal's current entry). All form-only; none of it is sent as a field.
+function storedFactsFromEntry(entry) {
+  return {
+    // Only drives the hint under the finish box.
+    finishUnconfirmed: entry.finishUnconfirmed === true,
+    // The stored finish exactly as stored (seconds kept), so a save that sends a finish can
+    // tell the server which finish it was looking at, and the tick can send it back as is.
+    storedEndTime: entry.endTime || null,
+    // When the worker confirmed that finish, as the form saw it; sent beside it so a
+    // confirmation of the same time is noticed too.
+    storedFinishConfirmedAt: entry.finishConfirmedAt || null,
+    // The stored start, kept beside it only so the form can tell a block stored with
+    // finish == start (cut at midnight, finish not known).
+    storedStartTime: entry.startTime || null
+  };
+}
+
+// The edit form as it opens on a stored entry.
+function openedFormFromEntry(entry) {
+  return {
+    workerId: entry.userId || '',
+    // Fallback label for an archived worker, who won't be in the active
+    // dropdown any more — see TimeEntryForm.jsx.
+    workerName: entry.userName || '',
+    itemId: entry.itemId || '',
+    machineNumber: entry.machineNumber || '',
+    qty: entry.qty ?? '',
+    scrapBinQty: entry.scrapBinQty ?? '',
+    scrapRecycleQty: entry.scrapRecycleQty ?? '',
+    firstOffInspection: entry.firstOffInspection ?? null,
+    inProcessValidation: entry.inProcessValidation ?? null,
+    measuringEquipmentVerification: entry.measuringEquipmentVerification ?? null,
+    equipmentChecks: entry.equipmentChecks ?? null,
+    equipmentChecksComments: entry.equipmentChecksComments || '',
+    description: entry.description || '',
+    startTime: isoToLocalInput(entry.startTime),
+    endTime: isoToLocalInput(entry.endTime),
+    ...storedFactsFromEntry(entry),
+    // Set when a refusal showed the stored finish moved; drives the standing "Stored finish
+    // is now" line under the finish box. Never sent.
+    storedFinishMoved: false
+  };
+}
+
+// Whether the finish box still holds exactly the stored finish (to the minute the box can show).
+export function finishBoxShowsStored(form) {
+  return form.endTime === isoToLocalInput(form.storedEndTime);
+}
+
+// The sentence a FINISH_CHANGED refusal is worded as. The server states facts (reason and the
+// current entry); the screen words them. `tail` is what to do next, appended on the box only.
+function finishRefusalHead(reason, current) {
+  const who = current.userName || 'The worker';
+  const finish = formatDateTime(current.endTime);
+  if (reason === 'workerAnswered') return `${who} has answered since you opened this. The stored finish is now ${finish}.`;
+  if (reason === 'clockStopped') return `This clock was stopped since you opened it. Its finish is now ${finish}.`;
+  if (reason === 'confirmed') return 'This finish was confirmed since you opened it.';
+  return `This finish was changed since you opened it. The stored finish is now ${finish}.`;
+}
+
+function finishRefusalText(reason, current, tail) {
+  return finishRefusalHead(reason, current) + tail;
+}
 
 export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, reloadTimeEntries, showConfirm, isInvoiced = false, onJobClosed }) {
   const [showTimeEntryForm, setShowTimeEntryForm] = useState(false);
@@ -86,7 +151,9 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     }
     setTimeEntryForm(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : clean
+      [name]: type === 'checkbox' ? checked : clean,
+      // The tick confirms the stored finish as it stands, so any change to the box withdraws it.
+      ...(name === 'endTime' ? { confirmFinish: false } : {})
     }));
   }, []);
 
@@ -116,37 +183,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     // for as long as this edit form stays open on this entry.
     setEditingSignOffRequired(entry.signOffRequired === true);
     setEditingTimeEntryId(entry.id);
-    const opened = {
-      workerId: entry.userId || '',
-      // Fallback label for an archived worker, who won't be in the active
-      // dropdown any more — see TimeEntryForm.jsx.
-      workerName: entry.userName || '',
-      itemId: entry.itemId || '',
-      machineNumber: entry.machineNumber || '',
-      qty: entry.qty ?? '',
-      scrapBinQty: entry.scrapBinQty ?? '',
-      scrapRecycleQty: entry.scrapRecycleQty ?? '',
-      firstOffInspection: entry.firstOffInspection ?? null,
-      inProcessValidation: entry.inProcessValidation ?? null,
-      measuringEquipmentVerification: entry.measuringEquipmentVerification ?? null,
-      equipmentChecks: entry.equipmentChecks ?? null,
-      equipmentChecksComments: entry.equipmentChecksComments || '',
-      description: entry.description || '',
-      startTime: isoToLocalInput(entry.startTime),
-      endTime: isoToLocalInput(entry.endTime),
-      // Only drives the hint under the finish box; never sent.
-      finishUnconfirmed: entry.finishUnconfirmed === true,
-      // The stored finish exactly as it was when the form opened (seconds kept), so a save
-      // that sends a finish can tell the server which finish it was looking at.
-      // Never sent as a field of its own.
-      storedEndTime: entry.endTime || null,
-      // When the worker confirmed that finish, as the form saw it; sent beside it so a
-      // confirmation of the same time is noticed too. Never sent as a field of its own.
-      storedFinishConfirmedAt: entry.finishConfirmedAt || null,
-      // The stored start, kept beside it only so the form can tell a block stored with
-      // finish == start (cut at midnight, finish not known). Never sent.
-      storedStartTime: entry.startTime || null
-    };
+    const opened = openedFormFromEntry(entry);
     setTimeEntryForm(opened);
     openedFormRef.current = opened;
     touchedTimesRef.current = { startTime: false, endTime: false };
@@ -195,7 +232,8 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     // re-checked (a block cut at midnight is stored with finish == start, and its
     // description must still be correctable). A new block judges everything.
     const editing = !!openedFormRef.current;
-    const confirmingFinish = !!timeEntryForm.confirmFinish;
+    // The tick confirms the STORED finish, and only while the box still shows it.
+    const confirmingFinish = !!timeEntryForm.confirmFinish && finishBoxShowsStored(timeEntryForm);
     const startSent = !editing || touchedTimesRef.current.startTime;
     const endSent = !editing || touchedTimesRef.current.endTime || confirmingFinish;
     const start = new Date(startTime).getTime();
@@ -233,9 +271,14 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     }
 
     const session = formSessionRef.current;
+    // Names the block this save is about, for a refusal that arrives after the form moved on.
+    const blockLabel = editingTimeEntryId
+      ? `${timeEntryForm.workerName || 'The worker'}'s block from ${formatDateTime(timeEntryForm.storedStartTime)}`
+      : 'New time entry';
     try {
-      // confirmFinish is the form-only tick "this finish is right"; like the two above it is never sent.
-      const { workerName, finishUnconfirmed, confirmFinish, storedEndTime, storedFinishConfirmedAt, storedStartTime, ...rest } = timeEntryForm;
+      // The stored* facts, the worker's name, the moved flag and the tick (confirmFinish,
+      // "this finish is right") are form-only and never sent.
+      const { workerName, finishUnconfirmed, confirmFinish, storedEndTime, storedFinishConfirmedAt, storedStartTime, storedFinishMoved, ...rest } = timeEntryForm;
       // An edit sends only what changed since the form opened — the start and finish
       // included, each only when it was touched (the server judges the pair it will
       // store); a new block sends everything.
@@ -247,8 +290,10 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       if ('itemId' in entryData || !opened) entryData.itemId = timeEntryForm.itemId || null;
       // A cleared finish goes as null (a resume by hand), never left out.
       if (touchedTimesRef.current.startTime) entryData.startTime = localInputToIso(startBox);
-      // The tick counts as touching the finish, so the stored finish can be confirmed as-is.
-      if (touchedTimesRef.current.endTime || confirmFinish) entryData.endTime = localInputToIso(endBox);
+      // The tick sends the stored finish itself, seconds and all, never the minute-precision
+      // box; otherwise the finish goes only when it was touched (cleared goes as null).
+      if (confirmingFinish) entryData.endTime = opened.storedEndTime;
+      else if (touchedTimesRef.current.endTime) entryData.endTime = localInputToIso(endBox);
       // Whenever an edit sends the finish, however the box came to hold it, the server is
       // told which stored finish this form was opened on (time, worker's confirmation stamp,
       // unconfirmed flag), so a worker's answer (or another correction) made in the meantime
@@ -269,25 +314,47 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     } catch (err) {
       if (isJobClosedError(err)) onJobClosed?.();
       else if (session !== formSessionRef.current) {
-        toast.error(err.message || 'Failed to save time entry', { id: 'time-entry-save-refused' });
-        if (err?.status === 409 && err?.data?.code === FINISH_CHANGED) reloadTimeEntries?.()?.catch?.(() => {});
+        // The form this save came from is gone, so nothing is written to the form now open;
+        // the pop-up names the block so it can't be mistaken for the one on screen.
+        const refusedFinish = err?.status === 409 && err?.data?.code === FINISH_CHANGED;
+        const message = refusedFinish && err.data.current
+          ? `${blockLabel}: ${finishRefusalHead(err.data.reason, err.data.current)} Your change was not saved.`
+          : `${blockLabel}: ${err.message || 'Failed to save time entry'}`;
+        toast.error(message, { id: 'time-entry-save-refused' });
+        if (refusedFinish) reloadTimeEntries?.()?.catch?.(() => {});
       }
       else if (err?.status === 409 && err?.data?.code === FINISH_CHANGED && err.data.current) {
-        // The stored finish moved since this form opened. Keep everything the manager
-        // typed; only the finish box (and what it was opened on) takes the current values,
-        // and carries the message.
-        const { current } = err.data;
-        const refreshed = {
-          endTime: isoToLocalInput(current.endTime),
-          storedEndTime: current.endTime || null,
-          storedFinishConfirmedAt: current.finishConfirmedAt || null,
-          finishUnconfirmed: current.finishUnconfirmed === true
-        };
-        setTimeEntryForm(prev => ({ ...prev, ...refreshed, confirmFinish: false }));
-        openedFormRef.current = { ...openedFormRef.current, ...refreshed };
-        touchedTimesRef.current.endTime = false;
-        // Raised against the new text: the box has not re-rendered yet, so its live value is still the old one.
-        setFieldErrors({ endTime: err.message }, { endTime: refreshed.endTime });
+        // The stored finish moved since this form opened. The form stays open with everything
+        // the manager typed; the stored facts (and what the save is judged against) take the
+        // current values. The other opened fields are not rebased: a save sends only fields
+        // that differ from them, so rebasing would overwrite what the worker saved meanwhile.
+        const { current, reason } = err.data;
+        const facts = storedFactsFromEntry(current);
+        // The refused save sent a finish the office typed (or cleared), as opposed to the
+        // stored finish sent by the tick — which wins even over a box that was changed and
+        // changed back, so that case is not "typed" either.
+        const typed = touchedTimesRef.current.endTime && !confirmingFinish;
+        const currentBox = isoToLocalInput(current.endTime);
+        let boxAfter;
+        let tail;
+        if (typed) {
+          // Never overwrite what was typed: the box and the touched flag stay, and a second
+          // Save sends the typed finish against the new expected values on purpose.
+          boxAfter = timeEntryForm.endTime;
+          tail = boxAfter ? ' Save again to use your time instead.' : ' Save again to restart the clock anyway.';
+          setTimeEntryForm(prev => ({ ...prev, ...facts, confirmFinish: false, storedFinishMoved: true }));
+          openedFormRef.current = { ...openedFormRef.current, ...facts };
+        } else {
+          // Only the tick sent the finish, so the box follows the stored finish and counts
+          // as untouched again: a second Save sends no finish unless one is typed or ticked.
+          touchedTimesRef.current.endTime = false;
+          boxAfter = currentBox;
+          tail = reason === 'confirmed' ? ' Change it and save again if it is still wrong.' : ' The finish box now shows it.';
+          setTimeEntryForm(prev => ({ ...prev, ...facts, endTime: currentBox, confirmFinish: false, storedFinishMoved: true }));
+          openedFormRef.current = { ...openedFormRef.current, ...facts, endTime: currentBox };
+        }
+        // Raised against the text the box will hold: it has not re-rendered yet, so its live value is still the old one.
+        setFieldErrors({ endTime: finishRefusalText(reason, current, tail) }, { endTime: boxAfter });
         scrollFieldIntoView('endTime');
         reloadTimeEntries?.()?.catch?.(() => {});
       }
