@@ -21,7 +21,9 @@ const {
   findEntryForJob,
   criticalAtFinishForWrite,
   checkCriticalInspection,
-  toCamelCase
+  toCamelCase,
+  finishVersionOf,
+  finishChangeReason
 } = require('../utils/timeEntryHelpers');
 const {
   RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN, FINISH_ALREADY_CONFIRMED, FINISH_UNCONFIRMED, RUN_STOPPED_ITSELF,
@@ -512,63 +514,63 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
       return res.status(400).json({ error: 'Stop the timer before editing this entry', code: RUN_STILL_RUNNING });
     }
 
+    // A hand edit (the office's edit form) states what it does with the finish in finishAction:
+    //   'confirm' - the stored finish is right (carries no endTime),
+    //   'correct' - the finish is the endTime sent,
+    //   'reopen'  - the finish was cleared, the block is open again (carries no endTime).
+    // No finishAction means the finish is not part of the save. Any action also carries
+    // finishVersion, the server's own value for the finish (end, the worker's confirmation and
+    // the unconfirmed mark) as it was when the form opened; the form only echoes it back. If the
+    // block's version has moved, the worker answered or another correction landed meanwhile, and
+    // writing this finish would undo it: nothing is written and the reply carries the current
+    // entry so the form can show it and stay open. The stop form's own writes (detailsConfirmed)
+    // never state an action; they carry their times as the run stopped and are handled below.
+    const handEdit = data.detailsConfirmed !== true;
+    const finishAction = handEdit ? data.finishAction : undefined;
+    const staleMessage = 'This page is out of date. Refresh it and try again.';
+    const refuseEndTime = (message) =>
+      res.status(400).json({ error: message, fields: [{ field: 'endTime', message }] });
+    if (handEdit && data.endTime !== undefined && !finishAction) return refuseEndTime(staleMessage);
+    if (finishAction === 'correct' && !data.endTime) return refuseEndTime('Please enter a finish time');
+    if (finishAction && typeof data.finishVersion !== 'string') return refuseEndTime(staleMessage);
+
+    if (finishAction && !isManagement(req.user.role)) {
+      return res.status(403).json({ error: 'Only a manager can change a finish time' });
+    }
+    if (finishAction && data.finishVersion !== finishVersionOf(existing)) {
+      return res.status(409).json({
+        error: 'This finish was changed since you opened it.',
+        code: FINISH_CHANGED,
+        reason: finishChangeReason(existing, data.finishVersion),
+        current: toCamelCase(existing)
+      });
+    }
+
     // A time left out keeps the stored one, like every other field of an edit: the manual
-    // edit form sends a start or finish only when the manager changed it, so a form opened
-    // before the worker answered "when did you finish?" (or before another correction)
-    // can't put the old time back. A finish sent blank is a resume, not "left out".
+    // edit form sends a start only when the manager changed it and a finish only through a
+    // finish action, so a form opened before the worker answered "when did you finish?" (or
+    // before another correction) can't put the old time back. A finish sent blank by the stop
+    // form is a resume, not "left out".
     let startTime, endTime;
     try {
       startTime = data.startTime !== undefined ? normalizeTime(data.startTime) : existing.start_time;
-      endTime = data.endTime !== undefined ? normalizeTime(data.endTime) : existing.end_time;
+      if (handEdit) {
+        if (finishAction === 'correct') endTime = normalizeTime(data.endTime);
+        else if (finishAction === 'reopen') endTime = null;
+        else endTime = existing.end_time;
+      } else {
+        endTime = data.endTime !== undefined ? normalizeTime(data.endTime) : existing.end_time;
+      }
     } catch (e) {
       return res.status(400).json({ error: 'Invalid start or finish time' });
     }
 
-    // Every hand edit that sends a finish (typed, ticked "this finish is right", or cleared)
-    // must also say what its form saw when it opened: the stored finish (expectedEndTime,
-    // null for a clock that was still running), when the worker confirmed it
-    // (expectedFinishConfirmedAt, or null) and whether it was still unconfirmed
-    // (expectedFinishUnconfirmed). All three are required; a request missing one is out of
-    // date and is refused 400. The stop form's own writes (detailsConfirmed) never set a
-    // finish time, so they carry none and skip the check.
-    // A finish is those three stored values. Any one having moved means the worker answered
-    // or another correction landed meanwhile, and writing this finish would undo it. That
-    // includes a worker who confirmed the very same time: the confirmation stamp differs even
-    // though the time does not. Nothing is written; the refusal carries the current entry so
-    // the form can show it and stay open.
-    if (data.endTime !== undefined && data.detailsConfirmed !== true) {
-      if (data.expectedEndTime === undefined || data.expectedFinishConfirmedAt === undefined ||
-          data.expectedFinishUnconfirmed === undefined) {
-        return res.status(400).json({ error: 'This page is out of date. Refresh it and try again.' });
-      }
-      // Both sides go through normalizeTime, so the same moment written two ways still matches.
-      let expectedEnd = null;
-      let storedEnd = null;
-      try {
-        expectedEnd = normalizeTime(data.expectedEndTime);
-        storedEnd = normalizeTime(existing.end_time);
-      } catch (e) {
-        expectedEnd = null;
-      }
-      const stampMoved = (existing.finish_confirmed_at || null) !== (data.expectedFinishConfirmedAt || null);
-      // Another manager ticking the same finish clears only the flag, not the time or stamp.
-      const flagMoved = (existing.finish_unconfirmed === 1) !== (data.expectedFinishUnconfirmed === true);
-      if (stampMoved || flagMoved || expectedEnd === null || expectedEnd !== storedEnd) {
-        // A stamp that is there now means the worker answered; one that has gone was taken
-        // off by another correction. The stored finish may also have been corrected by the
-        // office after that answer, which is why the reply states facts (reason + the whole
-        // current entry) and the screen words them.
-        let reason;
-        if (stampMoved && existing.finish_confirmed_at) reason = 'workerAnswered';
-        else if (data.expectedEndTime === null || data.expectedEndTime === '') reason = 'clockStopped';
-        else if (flagMoved && existing.finish_unconfirmed !== 1 && expectedEnd === storedEnd) reason = 'confirmed';
-        else reason = 'changed';
-        return res.status(409).json({
-          error: 'This finish was changed since you opened it.',
-          code: FINISH_CHANGED,
-          reason,
-          current: toCamelCase(existing)
-        });
+    if (finishAction === 'confirm') {
+      if (existing.finish_unconfirmed !== 1) return refuseEndTime('This finish is already confirmed');
+      // A block cut at midnight is stored with finish == start; that finish is a placeholder.
+      // Judged from the stored moments alone: a start sent alongside must not make it confirmable.
+      if (Date.parse(existing.end_time) <= Date.parse(existing.start_time)) {
+        return refuseEndTime('Enter the real finish time');
       }
     }
 
@@ -633,10 +635,10 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
     // when it sent that, else the start). A note-only correction on a block the roll finished
     // at its own start (zero length, finish unknown) therefore goes through and leaves the
     // block still waiting for its answer; typing a real finish is what settles it.
-    if (isManagement(req.user.role) && data.detailsConfirmed !== true &&
-        (data.startTime !== undefined || data.endTime !== undefined) &&
+    if (isManagement(req.user.role) && handEdit &&
+        (data.startTime !== undefined || finishAction === 'correct' || finishAction === 'confirm') &&
         endTime !== null && Date.parse(endTime) <= Date.parse(startTime)) {
-      const field = data.endTime !== undefined ? 'endTime' : 'startTime';
+      const field = finishAction === 'correct' ? 'endTime' : 'startTime';
       const message = field === 'endTime'
         ? 'Finish time must be after the start time'
         : 'Start time must be before the finish time';
@@ -750,12 +752,12 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
 
     // A finish its worker never confirmed is settled by the office only when the office gives
     // a finish: a management hand edit (not the stop form's detailsConfirmed) whose request
-    // carries a finish — the stored value sent back counts, it is the office saying that
-    // finish is right. A resume clears the flag too (the block is open again) but is not the
+    // states a finish — confirming the stored one or correcting it; either is the office saying
+    // the finish is right. A resume clears the flag too (the block is open again) but is not the
     // office confirming anything, so only the first is written to the trail. Any other save,
     // a note corrected or a worker's, leaves the flag exactly as it was.
     const officeConfirmsFinish = isManagement(req.user.role) && existing.finish_unconfirmed === 1 &&
-      data.detailsConfirmed !== true && data.endTime !== undefined && endTime !== null;
+      (finishAction === 'confirm' || finishAction === 'correct');
     const clearsUnconfirmedFlag = existing.finish_unconfirmed === 1 && (isResume || officeConfirmsFinish);
 
     // The question about an unconfirmed finish belongs to the worker who owes it; moving the

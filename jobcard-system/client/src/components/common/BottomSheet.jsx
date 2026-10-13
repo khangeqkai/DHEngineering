@@ -41,8 +41,8 @@ export default function BottomSheet({
     // Trap Tab focus inside the dialog. Query focusable elements live on each
     // press because the dialog's contents change (tab switches, loading state,
     // per-screen forms), so a cached list would go stale.
+    // A missing node is passed on as it is: the helper holds Tab (focusable is not called).
     const dialog = dialogRef.current;
-    if (!dialog) return;
     handleDialogTab(e, {
       container: dialog,
       focusable: () => Array.from(

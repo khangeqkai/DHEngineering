@@ -149,9 +149,6 @@ const timeEntryQueries = {
   // resume is cuttable again. (Only an open block ever carries it, and the edit route refuses open blocks.)
   markAutoStopExempt: db.prepare('UPDATE time_entries SET auto_stop_exempt = 1 WHERE id = ?'),
 
-  // Marks every open clock never-cut; used once by the startup conversion for clocks that predate self-stopping clocks.
-  exemptAllOpen: db.prepare('UPDATE time_entries SET auto_stop_exempt = 1 WHERE end_time IS NULL'),
-
   // Finish an open block automatically (a clock left running past the end of normal
   // hours). Not a stop: no fill-in form waits on it (awaiting_details 0), the description
   // is left alone, and the worker is asked when they really finished (finish_unconfirmed 1).

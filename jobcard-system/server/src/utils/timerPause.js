@@ -13,16 +13,8 @@
 //     nothing is billed until the worker answers.
 // With an all-normal grid and no holidays nothing ever closes, so the roll does nothing.
 //
-// The roll cuts nothing until the startup conversion that protects clocks open before
-// self-stopping clocks has succeeded in this process (utils/rollHold.js): while it has
-// not, rollOpenTimers returns at once, so a failed conversion can never leave the clocks
-// it was meant to protect to be cut.
-//
 // Blocks the office opened by hand (auto_stop_exempt) are never cut: hand-entered time is
-// never touched. Clocks already open when self-stopping clocks first arrive on a database
-// (startup conversion, also run on a restored older backup) are marked the same way and
-// never cut either: they stay running until someone stops them by hand. The cut also
-// brings the job's status up to date, as an ordinary stop would.
+// never touched. The cut also brings the job's status up to date, as an ordinary stop would.
 //
 // Nothing runs on a timer of its own: the roll is called when the server boots, on every
 // API request (index.js, before any route runs, at most once a second — see
@@ -40,7 +32,6 @@
 // retry moment a minute ahead (FAILED_CUT_RETRY_MS) and the row is left alone until then.
 
 const logger = require('./logger');
-const { isRollHeld } = require('./rollHold');
 const { db, timeEntryQueries, recordHistory } = require('../db/database');
 const { readOpeningRules, windowAt, nextOpening, officeDayEndAfter } = require('./openingHours');
 const { criticalAtFinishForWrite } = require('./timeEntryHelpers');
@@ -119,7 +110,6 @@ const rollRowInTransaction = db.transaction(rollRow);
 // Never throws: a failed roll is logged and the request carries on.
 function rollOpenTimers(nowMs = Date.now()) {
   try {
-    if (isRollHeld()) return;
     const rows = timeEntryQueries.getAllOpen.all();
     if (rows.length === 0) {
       cutCache = new Map();

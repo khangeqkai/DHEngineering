@@ -227,6 +227,29 @@ function checkCriticalInspection(criticalAtFinish, flags) {
   };
 }
 
+// The one value that moves whenever a block's finish, its worker's confirmation or its
+// unconfirmed mark moves. The edit form echoes it back with a finish action and never reads it;
+// only finishChangeReason below takes it apart, so the layout is written and read in one place.
+function finishVersionOf(row) {
+  return JSON.stringify([row.end_time || null, row.finish_confirmed_at || null, row.finish_unconfirmed === 1]);
+}
+
+// Why a finish version no longer matches, from the version the form echoed and the block as it
+// is now. The reply states the fact and the screen words it. The version is this server's own
+// JSON, so a malformed one can only be a hand-made request and reads as a plain change.
+function finishChangeReason(existing, version) {
+  let seenEnd, seenStamp, seenFlag;
+  try {
+    [seenEnd, seenStamp, seenFlag] = JSON.parse(version);
+  } catch (e) {
+    return 'changed';
+  }
+  if ((existing.finish_confirmed_at || null) !== seenStamp && existing.finish_confirmed_at) return 'workerAnswered';
+  if (seenEnd === null) return 'clockStopped';
+  if (seenFlag === true && existing.finish_unconfirmed !== 1 && seenEnd === existing.end_time) return 'confirmed';
+  return 'changed';
+}
+
 // Convert database row (snake_case) to API response (camelCase)
 function toCamelCase(e) {
   return {
@@ -262,6 +285,7 @@ function toCamelCase(e) {
     awaitingDetails: e.awaiting_details === 1,
     // The UTC moment the worker answered the question about an automatic finish, or null.
     finishConfirmedAt: e.finish_confirmed_at || null,
+    finishVersion: finishVersionOf(e),
     createdAt: e.created_at
   };
 }
@@ -298,5 +322,7 @@ module.exports = {
   isCriticalJob,
   criticalAtFinishForWrite,
   checkCriticalInspection,
-  toCamelCase
+  toCamelCase,
+  finishVersionOf,
+  finishChangeReason
 };

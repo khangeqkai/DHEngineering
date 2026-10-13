@@ -531,6 +531,14 @@ const manualTimeEntryRules = ({ startRequired }) => {
       .optional({ nullable: true, checkFalsy: true })
       .custom(v => new Date(v).getTime() <= Date.now() + FUTURE_LEEWAY_MS)
       .withMessage('Finish time cannot be in the future'),
+    // Only an edit states what it does with the finish; adding a block has no stored finish to act on.
+    ...(startRequired ? [] : [
+      body('finishAction')
+        .optional()
+        .isIn(['confirm', 'correct', 'reopen'])
+        .withMessage('Unknown finish action'),
+      body('finishVersion').optional().isString().withMessage('Finish version must be text')
+    ]),
     body('qty').custom(wholeNonNegative).withMessage('Good pieces must be a whole number, 0 or more'),
     body('scrapBinQty').custom(wholeNonNegative).withMessage('Scrap (bin) must be a whole number, 0 or more'),
     body('scrapRecycleQty').custom(wholeNonNegative).withMessage('Scrap (recycle) must be a whole number, 0 or more'),

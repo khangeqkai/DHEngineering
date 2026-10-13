@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
-const { holdRoll, releaseRoll } = require('../utils/rollHold');
 const {
   db,
   settingsQueries,
@@ -654,30 +653,6 @@ function clearStaleAwaitingDetails() {
   if (cleared > 0) logger.info({ cleared }, 'Migration: Cleared old abandoned stop-form marks');
 }
 
-// Clocks already open when self-stopping clocks first arrive on a database stay running:
-// they are marked auto_stop_exempt, so the forgotten-clock roll never cuts them. The marker
-// is the stored fact that this marking has happened on this database; no guess is made at
-// who opened a clock. A database or restored backup without the marker is marked once. That
-// includes a database from the builds between self-stopping clocks and this marker: an
-// earlier, since-removed pass wrote a different key (auto_stop_exempt_backfill_at), which
-// says nothing about this one and is cleared here; its running clocks at that moment stay
-// running until stopped by hand. A database that already has the marker is untouched.
-// Marks, marker and the old key's removal are written in one transaction.
-const CLOCKS_EXEMPT_MARKER_KEY = 'clocks_open_before_auto_stop_exempt_at';
-const RETIRED_EXEMPT_MARKER_KEY = 'auto_stop_exempt_backfill_at';
-
-function exemptClocksOpenBeforeAutoStop() {
-  if (settingsQueries.getByKey.get(CLOCKS_EXEMPT_MARKER_KEY)) return;
-  const run = db.transaction(() => {
-    const { changes } = timeEntryQueries.exemptAllOpen.run();
-    settingsQueries.upsert.run(CLOCKS_EXEMPT_MARKER_KEY, new Date().toISOString());
-    db.prepare('DELETE FROM settings WHERE key = ?').run(RETIRED_EXEMPT_MARKER_KEY);
-    return changes;
-  });
-  const marked = run();
-  if (marked > 0) logger.info({ marked }, 'Migration: Marked clocks open before self-stopping clocks as never auto-stopped');
-}
-
 function runLegacyMigrations() {
   logger.info('Running migrations...');
 
@@ -996,14 +971,6 @@ function runLegacyMigrations() {
     clearStaleAwaitingDetails();
   } catch (err) {
     logger.error({ err }, 'Migration: Failed to clear old abandoned stop-form marks');
-  }
-
-  try {
-    exemptClocksOpenBeforeAutoStop();
-    releaseRoll();
-  } catch (err) {
-    holdRoll();
-    logger.error({ err }, 'Migration: Failed to mark clocks open before self-stopping clocks as never auto-stopped; self-stopping clocks are held until the next successful start');
   }
 
   logger.info('Migrations complete');

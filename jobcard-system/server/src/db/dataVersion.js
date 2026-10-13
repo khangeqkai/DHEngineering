@@ -9,10 +9,8 @@
 // before, and the startup conversions bring them up to date.
 //
 // A number once issued is never lowered, even when the change behind it is taken
-// out again (3 was a one-time marking pass, since removed): backups stamped with it exist.
-// 4: clocks open before self-stopping clocks existed are left running (marked
-// auto_stop_exempt) by a marker-guarded startup conversion.
-// 5: that conversion's marker moved to a key no earlier build wrote (clocks_open_before_auto_stop_exempt_at); the old key is cleared.
+// out again (3, 4 and 5 were a one-time pass that marked clocks open before self-stopping
+// clocks existed, and its marker; all since removed): backups stamped with them exist.
 const DATA_VERSION = 5;
 
 module.exports = { DATA_VERSION };

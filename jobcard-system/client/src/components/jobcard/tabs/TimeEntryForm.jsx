@@ -264,6 +264,9 @@ export default function TimeEntryForm({
             name="startTime"
             value={timeEntryForm.startTime}
             onChange={handleTimeEntryChange}
+            // The times are locked while a save is on its way, so a refusal is always applied to what was
+            // actually sent. Read-only, not disabled: a mark raised by that save still moves focus to its box.
+            readOnly={saving}
             aria-invalid={errorFor('startTime') ? true : undefined}
             aria-describedby={errorFor('startTime') ? errorIdFor('startTime') : undefined}
           />
@@ -277,6 +280,7 @@ export default function TimeEntryForm({
             name="endTime"
             value={timeEntryForm.endTime}
             onChange={handleTimeEntryChange}
+            readOnly={saving}
             aria-invalid={errorFor('endTime') ? true : undefined}
             aria-describedby={errorFor('endTime') ? errorIdFor('endTime') : undefined}
           />
@@ -304,6 +308,7 @@ export default function TimeEntryForm({
                     name="confirmFinish"
                     checked={!!timeEntryForm.confirmFinish}
                     onChange={handleTimeEntryChange}
+                    disabled={saving}
                   />
                   This finish is right — confirm it for them
                 </label>

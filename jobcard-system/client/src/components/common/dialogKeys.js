@@ -23,6 +23,12 @@
 //   holdWhenEmpty  optional; with no controls at all, Tab is held rather than let go
 export function handleDialogTab(e, { focusable, container, holdWhenEmpty = false }) {
   if (e.key !== 'Tab') return;
+  // A key that arrives before the dialog's node is committed, or after it has gone, has nothing
+  // to wrap — but it is still held, or it would walk the page behind.
+  if (!container) {
+    e.preventDefault();
+    return;
+  }
   const controls = focusable();
   if (controls.length === 0) {
     if (holdWhenEmpty) e.preventDefault();

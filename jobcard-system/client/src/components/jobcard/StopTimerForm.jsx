@@ -222,8 +222,8 @@ export default function StopTimerForm({
     // it. Escape here would either close the job card behind (losing all of it) or
     // put the timer back on the clock without the person meaning to, so the way
     // out is the form's own buttons.
+    // A missing node is passed on as it is: the helper holds the key (focusable is not called).
     const container = formRef.current;
-    if (!container) return;
     handleDialogKey(e, {
       container,
       focusable: () => Array.from(container.querySelectorAll(

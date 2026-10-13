@@ -29,7 +29,9 @@ export function mapTimeEntryFromApi(e) {
     // docs/notes/files-and-qa.md's Critical sign-off note).
     signOffRequired: e.signOffRequired === true,
     // A clock the server stopped by itself, still waiting for its worker to say when they finished.
-    finishUnconfirmed: e.finishUnconfirmed === true
+    finishUnconfirmed: e.finishUnconfirmed === true,
+    // The server's own value for the finish, echoed back with a finish action and never read.
+    finishVersion: e.finishVersion
   };
 }
 
