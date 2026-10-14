@@ -209,3 +209,4 @@ that still posted a whole-job payload on a timer would reproduce the same bug wi
 Each of these was decided (2026-10-14); a review or bug hunt does not raise it.
 
 - **The older reload-on-change screens keep their own request counters.** The job list, statistics, search (`useSearch`), tags/equipment and the list pages (`useManagedListPage`'s `runLoad`) each guard "newest answer wins" with a hand-written counter. They work and are deliberately not moved onto `hooks/useLatestRequest.js`; only new screens take the hook.
+- **Searching logged time by part number matches that exact part only.** "3" finds part 3, never 13 or 30, so the total hours at the top are that part's; "03" or "part 3" find nothing by part number. Every other field in that box still matches partial text.

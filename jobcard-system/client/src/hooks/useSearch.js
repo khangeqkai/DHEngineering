@@ -126,7 +126,7 @@ export default function useSearch(role) {
           if (data.totalPages >= 1 && page > data.totalPages) setPage(data.totalPages);
         }
       } catch (err) {
-        if (id === requestId.current) toast.error('Search failed');
+        if (id === requestId.current) toast.error('Search failed', { id: 'search-failed' }); // one message, replaced not stacked
       } finally {
         if (id === requestId.current) setLoading(false);
       }
