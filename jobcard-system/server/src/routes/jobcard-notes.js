@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
+const { body } = require('express-validator');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
 const { db, jobcardQueries, jobNoteQueries, recordHistory, actorName } = require('../db/database');
 const { findOr404 } = require('../utils/findOr404');
@@ -67,6 +68,32 @@ router.post('/:id/notes', authenticate, [
   } catch (err) {
     logger.error({ err }, 'Add job note error');
     res.status(500).json({ error: 'Failed to add note' });
+  }
+});
+
+// Mark a job's comments as read up to a moment (the person's own read mark).
+// Deliberately NOT recorded in the activity trail: reading is not an edit of the job and
+// every time the comments window opened would add an entry. Clamped to the newest comment
+// actually on the job and only ever moves forward, so a stale or invented value is harmless.
+router.put('/:id/notes/read', authenticate, [
+  body('seenUpTo').isString().matches(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/)
+    .withMessage('seenUpTo must be a UTC ISO timestamp'),
+  handleValidationErrors
+], (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!findOr404(res, jobcardQueries.getById.get(id), 'Job card not found')) return;
+
+    const params = { userId: req.user.userId, jobcardId: id };
+    const newest = jobNoteQueries.newestCreatedAt.get(id).newest;
+    if (newest) {
+      const seenUpTo = req.body.seenUpTo < newest ? req.body.seenUpTo : newest;
+      jobNoteQueries.markRead.run({ ...params, seenUpTo });
+    }
+    res.json({ commentsSeenUpTo: jobNoteQueries.getSeenUpTo.get(params).seen_up_to });
+  } catch (err) {
+    logger.error({ err }, 'Mark job notes read error');
+    res.status(500).json({ error: 'Failed to mark comments as read' });
   }
 });
 

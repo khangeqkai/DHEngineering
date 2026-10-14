@@ -389,6 +389,17 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_job_notes_jobcard ON job_notes(jobcard_id);
 
+  -- How far each person has read each job's comments: seen_up_to is the created_at
+  -- (UTC ISO, same shape as job_notes.created_at) of the newest comment they have seen.
+  -- Kept on the server per person, not in the browser, because workers share PCs.
+  CREATE TABLE IF NOT EXISTS job_note_reads (
+    user_id TEXT NOT NULL,
+    jobcard_id TEXT NOT NULL,
+    seen_up_to TEXT NOT NULL,
+    PRIMARY KEY (user_id, jobcard_id),
+    FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE
+  );
+
   -- Index for finding active timers (time entries with no end_time)
   CREATE INDEX IF NOT EXISTS idx_time_entries_active ON time_entries(user_id, end_time);
 `);

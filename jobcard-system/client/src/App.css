@@ -1268,6 +1268,55 @@ select.has-retired option.retired-option {
   max-height: 950px;
 }
 
+/* A window with a second window docked on its left (BottomSheet's aside). The window
+   keeps exactly the large window's size whether the aside is open or not; the aside
+   hangs outside its left edge (JobCommentsPanel.css). To make room, the open pair
+   slides right by --aside-shift: just enough for the aside to fit in the left margin,
+   never so far that the window's right edge leaves the screen. When the screen is too
+   narrow for both, the aside overlaps the window's left edge instead. */
+.modal-row {
+  --row-w: min(85vw, 1300px);
+  --side-margin: calc((100vw - var(--row-w)) / 2);
+  --aside-w: 360px;
+  --aside-gap: var(--gap-field);
+  --screen-edge: var(--space-8); /* the overlay's own padding */
+  --aside-shift: clamp(
+    0px,
+    calc(var(--aside-w) + var(--aside-gap) + var(--screen-edge) - var(--side-margin)),
+    calc(var(--side-margin) - var(--screen-edge))
+  );
+  --bubble-gutter: calc(52px + var(--space-4));
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: var(--row-w);
+  height: 85vh;
+  max-height: 950px;
+  transition: margin-left 320ms var(--ease-mechanical);
+}
+
+/* A left margin of twice the shift moves the centred row right by the shift. A margin,
+   not a transform: a transform would become the anchor for every fixed-position pop-up
+   inside the job window and throw them off. */
+.modal-row:has(.jc-aside-open) {
+  margin-left: calc(2 * var(--aside-shift));
+}
+
+.modal-row > .modal-popup {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-row {
+    transition: none;
+  }
+}
+
 /* A job card with edits that no Save has sent yet. The frame carries the signal so
    the title bar stays clear; the ring is drawn outside the border so nothing shifts.
    Three layers rather than one slab of amber: a 2px hard ring that reads instantly at
@@ -1395,6 +1444,13 @@ select.has-retired option.retired-option {
 @media (max-width: 768px) {
   .modal-overlay {
     padding: var(--space-4);
+  }
+
+  .modal-row {
+    --row-w: 95vw;
+    --screen-edge: var(--space-4);
+    height: 90vh;
+    max-height: none;
   }
 
   .modal-popup,

@@ -40,7 +40,7 @@ const machines = refData.machines.map(m => ({ ...m, id: uid('machine') }));
 console.log('Wiping all data...');
 const tables = [
   'history', 'job_costings',
-  'time_entries', 'job_notes', 'job_assignees', 'job_items',
+  'time_entries', 'job_note_reads', 'job_notes', 'job_assignees', 'job_items',
   'jobcards', 'supplier_service_tags', 'tags', 'machines', 'suppliers',
   'contacts', 'companies', 'users'
 ];

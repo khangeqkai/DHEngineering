@@ -276,6 +276,19 @@ const timeEntryQueries = {
   `)
 };
 
+// The ONE rule for "how far has this person read this job's comments": the greatest of
+// their own read mark (alias r, from job_note_reads), the launch baseline
+// (settings.comments_read_from, so comments that existed before the feature don't all
+// arrive as unread) and the day their account was made (a new worker inherits no
+// backlog). Each part is COALESCEd to '' because SQLite's multi-argument MAX returns
+// NULL if any argument is NULL. All are UTC ISO strings, so they compare as text.
+// Needs a named @userId parameter and the alias r in scope.
+const SEEN_UP_TO_SQL = `MAX(
+  COALESCE(r.seen_up_to, ''),
+  COALESCE((SELECT value FROM settings WHERE key = 'comments_read_from'), ''),
+  COALESCE((SELECT created_at FROM users WHERE id = @userId), '')
+)`;
+
 // Job note queries
 const jobNoteQueries = {
   // Newest first — the comment thread reads top-down like a feed, so the latest
@@ -300,8 +313,45 @@ const jobNoteQueries = {
   // still reads who wrote it even if that person later leaves), but that means a
   // rename leaves every past comment showing the old name unless it's kept in
   // sync — called from the user-update route whenever a name actually changes.
-  updateAuthorNameByUserId: db.prepare('UPDATE job_notes SET user_name = ? WHERE user_id = ?')
+  updateAuthorNameByUserId: db.prepare('UPDATE job_notes SET user_name = ? WHERE user_id = ?'),
+
+  // The moment of the newest comment on the job, or null when there are none.
+  newestCreatedAt: db.prepare('SELECT MAX(created_at) AS newest FROM job_notes WHERE jobcard_id = ?'),
+
+  // Moves a person's read mark forward, never back (an older PC's late reply can't
+  // un-read what a newer one already cleared).
+  markRead: db.prepare(`
+    INSERT INTO job_note_reads (user_id, jobcard_id, seen_up_to)
+    VALUES (@userId, @jobcardId, @seenUpTo)
+    ON CONFLICT(user_id, jobcard_id) DO UPDATE SET seen_up_to = MAX(seen_up_to, excluded.seen_up_to)
+  `),
+
+  // This person's effective "seen up to" for one job — see SEEN_UP_TO_SQL.
+  getSeenUpTo: db.prepare(`
+    SELECT ${SEEN_UP_TO_SQL} AS seen_up_to
+    FROM (SELECT 1)
+    LEFT JOIN job_note_reads r ON r.user_id = @userId AND r.jobcard_id = @jobcardId
+  `)
 };
+
+// Unread comment count per job for one person, in one pass for every listed job.
+// Same rule as the single-job value (SEEN_UP_TO_SQL) and never counts their own
+// comments. Jobs with nothing unread are absent from the map.
+function getUnreadNoteCountsForJobcards(jobcardIds, userId) {
+  if (jobcardIds.length === 0) return {};
+  const rows = db.prepare(`
+    SELECT n.jobcard_id AS jobcard_id, COUNT(*) AS unread
+    FROM job_notes n
+    LEFT JOIN job_note_reads r ON r.user_id = @userId AND r.jobcard_id = n.jobcard_id
+    WHERE n.jobcard_id IN (SELECT value FROM json_each(@ids))
+      AND n.user_id != @userId
+      AND n.created_at > ${SEEN_UP_TO_SQL}
+    GROUP BY n.jobcard_id
+  `).all({ userId, ids: JSON.stringify(jobcardIds) });
+  const map = {};
+  for (const row of rows) map[row.jobcard_id] = row.unread;
+  return map;
+}
 
 // Latest comment per job card, in one pass — the job list shows it as a column,
 // so fetching per row would be one query per visible job. Ranks each job's
@@ -416,5 +466,6 @@ module.exports = {
   timeEntryQueries,
   jobNoteQueries,
   getLatestNotesForJobcards,
+  getUnreadNoteCountsForJobcards,
   jobCostingQueries
 };

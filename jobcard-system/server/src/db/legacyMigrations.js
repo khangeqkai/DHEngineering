@@ -666,6 +666,16 @@ function trimJobFoldersBase() {
   }
 }
 
+// Comments written before unread tracking existed must not all arrive as unread. The
+// first boot with the feature stamps "now" as the launch baseline (see SEEN_UP_TO_SQL in
+// db/queries/operations.js); only comments newer than it can be unread. Stamped only when
+// absent, so later boots and a restore of a backup that already carries it change nothing.
+function stampCommentsReadFrom() {
+  if (settingsQueries.getByKey.get('comments_read_from')) return;
+  settingsQueries.upsert.run('comments_read_from', new Date().toISOString());
+  logger.info('Migration: Stamped the comments launch baseline');
+}
+
 function runLegacyMigrations() {
   logger.info('Running migrations...');
 
@@ -984,6 +994,12 @@ function runLegacyMigrations() {
     db.prepare("DELETE FROM settings WHERE key = 'history_print_names_converted_at'").run();
   } catch (err) {
     logger.error({ err }, 'Migration: Failed to rename pre-cutover print trail entries');
+  }
+
+  try {
+    stampCommentsReadFrom();
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to stamp the comments launch baseline');
   }
 
   try {

@@ -5,7 +5,6 @@ import { summarizeFieldStates } from '../useInstantSave';
 import { isCriticalLevel } from '../../../../../server/src/shared/qualityLevels';
 import ItemsTab from './ItemsTab';
 import DetailsReadOnlyView from './DetailsReadOnlyView';
-import NotesSection from './NotesSection';
 import ToggleTiles from '../../common/ToggleTiles';
 import CustomerSection from './CustomerSection';
 import JobReferenceFields from './JobReferenceFields';
@@ -58,15 +57,6 @@ export default function DetailsTab({
   onSupplierDraftChange,
   attachmentWarnings,
   onAttachItemFile,
-  // Notes props
-  notes,
-  newNote,
-  setNewNote,
-  onAddNote,
-  onDeleteNote,
-  notesLoading,
-  notesLoadError,
-  onRetryNotes,
   // Time entry props
   timeEntries = [],
   machines = [],
@@ -189,20 +179,6 @@ export default function DetailsTab({
           onStopTimer={onStopTimer}
           handleStopEntryWithForm={handleStopEntryWithForm}
         />
-        {isEdit && (
-          <NotesSection
-            notes={notes || []}
-            newNote={newNote || ''}
-            setNewNote={setNewNote}
-            onAddNote={onAddNote}
-            onDeleteNote={onDeleteNote}
-            loading={notesLoading}
-            loadError={notesLoadError}
-            onRetry={onRetryNotes}
-            canManage={canManage}
-            locked={jobClosed}
-          />
-        )}
       </>
     );
   }
@@ -341,22 +317,6 @@ export default function DetailsTab({
         />
       </div>
     </fieldset>
-
-      {/* Job Comments (shared, append-only) */}
-      {isEdit && (
-        <NotesSection
-          notes={notes || []}
-          newNote={newNote || ''}
-          setNewNote={setNewNote}
-          onAddNote={onAddNote}
-          onDeleteNote={onDeleteNote}
-          loading={notesLoading}
-          loadError={notesLoadError}
-          onRetry={onRetryNotes}
-          canManage={canManage}
-          locked={jobClosed}
-        />
-      )}
     </div>
   );
 }

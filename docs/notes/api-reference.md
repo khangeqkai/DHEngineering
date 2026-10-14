@@ -16,7 +16,7 @@ Any route guarded by a validator chain ending in `handleValidationErrors` (`midd
 
 ## One lock for a closed (invoiced/archived) job
 
-Every non-GET/HEAD/OPTIONS request under `/api/jobcards/:id` is checked by `closedJobGuard` (`server/src/middleware/closedJob.js`, mounted once in `index.js` ahead of every job route) before that route ever runs: if the job is archived, the request is refused with 409 `{ error: 'This job is invoiced and closed. Unarchive it to make changes.', code: 'JOB_CLOSED' }` unless it's one of a short, named allow-list — `POST /:id/unarchive`, `DELETE /:id`, `POST /:id/time-entries/:entryId/stop`, `POST /:id/time-entries/:entryId/confirm-finish`, `POST /:id/printed`, `POST /:id/saved`. See "One lock for a closed job" in `docs/notes/jobs-and-status.md` for the full rationale.
+Every non-GET/HEAD/OPTIONS request under `/api/jobcards/:id` is checked by `closedJobGuard` (`server/src/middleware/closedJob.js`, mounted once in `index.js` ahead of every job route) before that route ever runs: if the job is archived, the request is refused with 409 `{ error: 'This job is invoiced and closed. Unarchive it to make changes.', code: 'JOB_CLOSED' }` unless it's one of a short, named allow-list — `POST /:id/unarchive`, `DELETE /:id`, `POST /:id/time-entries/:entryId/stop`, `POST /:id/time-entries/:entryId/confirm-finish`, `POST /:id/printed`, `POST /:id/saved`, `PUT /:id/notes/read` (marking comments read). See "One lock for a closed job" in `docs/notes/jobs-and-status.md` for the full rationale.
 
 ## Suppliers
 

@@ -17,9 +17,14 @@ export default function BottomSheet({
   headerActions,
   unsaved = false,
   saved = false,
+  // Optional second window docked to the left of this one (the job card's comments).
+  // Absent, the output is exactly the plain window; present, both share one row that
+  // takes the large window's footprint, so opening the aside shrinks the window.
+  aside = null,
   children
 }) {
   const dialogRef = useRef(null);
+  const rowRef = useRef(null);
   const previousFocusRef = useRef(null);
   const modalId = useId();
 
@@ -42,12 +47,14 @@ export default function BottomSheet({
     // press because the dialog's contents change (tab switches, loading state,
     // per-screen forms), so a cached list would go stale.
     // A missing node is passed on as it is: the helper holds Tab (focusable is not called).
-    const dialog = dialogRef.current;
+    // With an aside the whole row is the trap, so focus can move into the side window.
+    // Anything inside a closed (inert) part of it is not a stop.
+    const dialog = rowRef.current || dialogRef.current;
     handleDialogTab(e, {
       container: dialog,
       focusable: () => Array.from(
         dialog.querySelectorAll(FOCUSABLE_SELECTOR)
-      ).filter((el) => el.offsetParent !== null)
+      ).filter((el) => el.offsetParent !== null && !el.closest('[inert]'))
     });
   }, [onClose, modalId]);
 
@@ -83,39 +90,48 @@ export default function BottomSheet({
   // Background clicks never close the dialog — only Escape or the close button
   // do (consistent across every full-screen window in the app), so an accidental
   // click outside can't discard an open form.
+  const popup = (
+    <div
+      ref={dialogRef}
+      className={`modal-popup modal-${size}${unsaved ? ' modal-unsaved' : ''}${saved ? ' modal-saved' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      tabIndex={-1}
+    >
+      <div className="modal-header">
+        {headerSlot ? (
+          headerSlot
+        ) : (
+          <h2 id="modal-title">{title}</h2>
+        )}
+        {headerActions && (
+          <div className="modal-header-actions">{headerActions}</div>
+        )}
+        <button
+          type="button"
+          className="modal-close"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="modal-content">
+        {children}
+      </div>
+    </div>
+  );
+
   return createPortal(
     <div className="modal-overlay">
-      <div
-        ref={dialogRef}
-        className={`modal-popup modal-${size}${unsaved ? ' modal-unsaved' : ''}${saved ? ' modal-saved' : ''}`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-title"
-        tabIndex={-1}
-      >
-        <div className="modal-header">
-          {headerSlot ? (
-            headerSlot
-          ) : (
-            <h2 id="modal-title">{title}</h2>
-          )}
-          {headerActions && (
-            <div className="modal-header-actions">{headerActions}</div>
-          )}
-          <button
-            type="button"
-            className="modal-close"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
+      {aside ? (
+        <div ref={rowRef} className="modal-row">
+          {aside}
+          {popup}
         </div>
-
-        <div className="modal-content">
-          {children}
-        </div>
-      </div>
+      ) : popup}
     </div>,
     document.body
   );

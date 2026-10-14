@@ -17,6 +17,8 @@ export function useJobNotes(jobcardId, showConfirm, onChange, onJobClosed) {
   const [newNote, setNewNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  // True once this opening's first read of the thread has come back.
+  const [notesLoaded, setNotesLoaded] = useState(false);
 
   const loadNotes = useCallback(async () => {
     if (!jobcardId) return;
@@ -25,6 +27,7 @@ export function useJobNotes(jobcardId, showConfirm, onChange, onJobClosed) {
       const result = await api.getJobNotes(jobcardId);
       setNotes(result || []);
       setLoadError(false);
+      setNotesLoaded(true);
       return result || [];
     } catch (err) {
       // Surface the failure instead of looking like an empty list
@@ -89,6 +92,7 @@ export function useJobNotes(jobcardId, showConfirm, onChange, onJobClosed) {
     setNotes([]);
     setNewNote('');
     setLoadError(false);
+    setNotesLoaded(false);
   }, []);
 
   return {
@@ -97,6 +101,7 @@ export function useJobNotes(jobcardId, showConfirm, onChange, onJobClosed) {
     setNewNote,
     loading,
     loadError,
+    notesLoaded,
     loadNotes,
     addNote,
     deleteNote,

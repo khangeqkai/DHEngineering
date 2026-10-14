@@ -316,6 +316,7 @@ class ApiService {
   // Job Notes
   getJobNotes(jobcardId) { return this.request(`/jobcards/${jobcardId}/notes`); }
   addJobNote(jobcardId, text) { return this._post(`/jobcards/${jobcardId}/notes`, { text }); }
+  markJobNotesRead(jobcardId, seenUpTo) { return this._put(`/jobcards/${jobcardId}/notes/read`, { seenUpTo }); }
   deleteJobNote(jobcardId, noteId) { return this._del(`/jobcards/${jobcardId}/notes/${noteId}`); }
 
   // Costing (admin only)

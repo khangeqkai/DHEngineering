@@ -254,6 +254,11 @@ export default function JobCardList() {
     setJobcards(prev => prev.map(c => c.id === editingCardId ? { ...c, latestNote } : c));
   }, [editingCardId]);
 
+  // Reading a job's comments clears that row's unread mark.
+  const handleCommentsRead = useCallback((jobId) => {
+    setJobcards(prev => prev.map(c => c.id === jobId ? { ...c, unreadNotes: 0 } : c));
+  }, []);
+
   // A real print of the job card only changes that job's Print mark, so patch the
   // one row rather than re-fetching the whole list.
   const handlePrinted = useCallback((printedAt) => {
@@ -558,6 +563,7 @@ export default function JobCardList() {
         onSuccess={handleModalSuccess}
         onTimerChange={() => { refreshTimer(); loadJobcards(); }}
         onNotesChange={handleNotesChange}
+        onCommentsRead={handleCommentsRead}
         onPrinted={handlePrinted}
       />
 

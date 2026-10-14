@@ -497,28 +497,6 @@
   border-bottom-color: var(--primary-accent);
 }
 
-/* Tab Count Badges */
-.tab-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 var(--space-1-5);
-  margin-left: var(--space-1-5);
-  font-size: var(--text-2xs);
-  font-weight: var(--font-bold);
-  line-height: 1;
-  border-radius: var(--radius-full);
-  background: var(--fill-accent);
-  color: var(--text-on-saturated);
-  vertical-align: middle;
-}
-
-.tab.active .tab-badge {
-  opacity: 0.85;
-}
-
 /* The window's own waiting state: it fills the body it sits in rather than
    reserving a viewport, so the window keeps the height it opened at. */
 .jc-modal-loading {
@@ -3576,80 +3554,6 @@
 .readonly-badge.treatment {
   background: var(--status-awaiting-material-bg);
   color: var(--status-awaiting-material-text);
-}
-
-/* =============================================
-   Job Notes Section
-   ============================================= */
-
-.notes-add {
-  display: flex;
-  gap: var(--gap-field);
-  align-items: flex-start;
-  margin-bottom: var(--space-4);
-}
-
-.notes-textarea {
-  flex: 1;
-  resize: vertical;
-  min-height: 2.5rem;
-  font-size: var(--text-sm);
-  padding: var(--pad-control);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-primary);
-}
-
-.notes-textarea:focus {
-  outline: none;
-  border-color: var(--primary-accent);
-  box-shadow: var(--focus-ring-sm);
-}
-
-.notes-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-inline);
-}
-
-.note-card {
-  padding: var(--space-2-5);
-  background: var(--surface-inset);
-  border-radius: var(--radius-sm);
-}
-
-.note-header {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-field);
-  margin-bottom: var(--space-1-5);
-}
-
-.note-author {
-  font-weight: var(--font-bold);
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-}
-
-.note-time {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.note-delete {
-  margin-left: auto;
-  padding: var(--space-0-5) var(--space-2);
-  font-size: var(--text-xs);
-}
-
-.note-text {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  line-height: 1.5;
-  white-space: pre-wrap;
 }
 
 /* =============================================

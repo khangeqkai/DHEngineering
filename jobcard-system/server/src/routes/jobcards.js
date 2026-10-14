@@ -17,6 +17,8 @@ const {
   getSettings,
   getAssigneesForJobcards,
   getLatestNotesForJobcards,
+  getUnreadNoteCountsForJobcards,
+  jobNoteQueries,
   historyQueries,
   recordHistory,
   actorName
@@ -63,6 +65,8 @@ router.get('/', authenticate, validateJobcardListQuery, (req, res) => {
     const assigneeMap = getAssigneesForJobcards(ids);
     // The list shows each job's newest comment as its own column.
     const latestNoteMap = getLatestNotesForJobcards(ids);
+    // How many of them this person has not read yet (own comments never count).
+    const unreadMap = getUnreadNoteCountsForJobcards(ids, req.user.userId);
 
     res.json(jobcards.map(jc => {
       const note = latestNoteMap[jc.id];
@@ -70,7 +74,8 @@ router.get('/', authenticate, validateJobcardListQuery, (req, res) => {
         ...formatJobcard(jc, [], assigneeMap[jc.id] || [], req.user.role),
         latestNote: note
           ? { text: note.text, userName: note.user_name, createdAt: note.created_at }
-          : null
+          : null,
+        unreadNotes: unreadMap[jc.id] || 0
       };
     }));
   } catch (err) {
@@ -131,6 +136,7 @@ router.get('/:id', authenticate, (req, res) => {
 
     const response = formatJobcard(jobcard, items, assignees, req.user.role);
     response.attachmentWarnings = computeAttachmentWarnings(req.params.id, items);
+    response.commentsSeenUpTo = jobNoteQueries.getSeenUpTo.get({ userId: req.user.userId, jobcardId: req.params.id }).seen_up_to;
     res.json(response);
   } catch (err) {
     logger.error({ err }, 'Get jobcard error');

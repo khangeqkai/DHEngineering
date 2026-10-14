@@ -563,6 +563,22 @@
   text-overflow: ellipsis;
 }
 
+/* A job with comments this person has not read: a small accent dot, and the text in bold. */
+.latest-note-unread-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--gap-inline);
+  border-radius: var(--radius-full);
+  background: var(--fill-accent);
+  vertical-align: middle;
+}
+
+.latest-note-unread-text {
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+}
+
 /* One line of the job's newest comment; the rest floats on hover. */
 .latest-note-cell {
   max-width: 220px;

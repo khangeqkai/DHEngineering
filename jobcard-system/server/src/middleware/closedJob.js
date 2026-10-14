@@ -31,7 +31,8 @@ const ALLOWED_ON_CLOSED_JOB = [
   // These two only record that paperwork was printed/saved — they never change
   // the job itself.
   { method: 'POST', pattern: /^\/printed$/, reason: 'records that paperwork was printed, does not change the job' },
-  { method: 'POST', pattern: /^\/saved$/, reason: 'records that paperwork was saved, does not change the job' }
+  { method: 'POST', pattern: /^\/saved$/, reason: 'records that paperwork was saved, does not change the job' },
+  { method: 'PUT', pattern: /^\/notes\/read$/, reason: "reading a closed job's comments changes nothing on the job" }
 ];
 
 function isAllowedOnClosedJob(method, path) {

@@ -421,6 +421,11 @@ async function stageBackupArchive(inputPath, tempDir, schemaVersion, dataVersion
       status: 400
     };
   }
+  // Backups made before data version 8 predate the comment read marks: nobody had read
+  // anything yet, so the table restores empty (the conversion pass then stamps the baseline).
+  if (!Array.isArray(data.job_note_reads) && (Number(data._metadata.dataVersion) || 0) < 8) {
+    data.job_note_reads = [];
+  }
   for (const table of tableOrder) {
     if (!Array.isArray(data[table])) {
       return { error: `Invalid backup: missing table "${table}"`, status: 400 };

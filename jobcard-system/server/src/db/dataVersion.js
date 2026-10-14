@@ -13,6 +13,8 @@
 // clocks existed, and its marker; all since removed): backups stamped with them exist.
 // 6 dropped the unused jobcards.photos column.
 // 7 trims a stored job folders location that ended in spaces.
-const DATA_VERSION = 7;
+// 8 adds the job_note_reads table (who has read which job's comments) and stamps the
+// comments_read_from launch baseline.
+const DATA_VERSION = 8;
 
 module.exports = { DATA_VERSION };

@@ -30,12 +30,13 @@ import { useActivityLog } from './useActivityLog';
 import { useTimer } from './useTimer';
 import { useFinishQuestion } from '../../context/FinishQuestionContext';
 import { useJobNotes } from './useJobNotes';
+import JobCommentsPanel from './JobCommentsPanel';
 import StopTimerForm from './StopTimerForm';
 import JobPaperworkHub from './JobPaperworkHub';
 import JobIdentityStrip from './JobIdentityStrip';
 import { mapTimeEntryFromApi } from './mappers';
 
-export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onPrinted, initialTab = null, initialStopEntry = null, ownsStopForm = false }) {
+export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onCommentsRead, onPrinted, initialTab = null, initialStopEntry = null, ownsStopForm = false }) {
   const { user, logout } = useAuth();
   const isEdit = Boolean(jobCardId);
   // Two permissions, both admin-only today: pricing gates the Costing tab and its
@@ -138,6 +139,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const { setContactFromJobCard, resetContact } = contactHook;
   const { loadHistory, resetHistory } = activityLog;
   const { loadNotes } = jobNotes;
+  // How far this person has read the job's comments (null until the job has loaded). Only
+  // ever moves forward: a late reply carrying an older value can't un-read anything.
+  const [commentsSeenUpTo, setCommentsSeenUpTo] = useState(null);
+  const newerMoment = (a, b) => (!a ? b : !b ? a : (a > b ? a : b));
   // Tracks which job's load should "win". A load only applies its result if the
   // modal is still showing the same job when the request resolves, so a slow
   // response for a just-closed job can't paint over a newly opened one.
@@ -159,6 +164,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       setFormDataFromJobCard(jobcardData);
       setContactFromJobCard(jobcardData);
       setAttachmentWarnings(jobcardData.attachmentWarnings || null);
+      setCommentsSeenUpTo(prev => newerMoment(prev, jobcardData.commentsSeenUpTo || null));
       setTimeEntries((timeEntriesRes || []).map(mapTimeEntryFromApi));
 
       loadNotes();
@@ -284,6 +290,21 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const { resetCosting } = costingHook;
   const { resetTimer } = timer;
   const { resetNotes } = jobNotes;
+  // Tells the server the person has read the thread up to this comment. Silent on failure
+  // (the panel tries again next time it is open with newer comments).
+  const jobCardIdRef = useRef(jobCardId);
+  jobCardIdRef.current = jobCardId;
+  const markCommentsRead = useCallback(async (seenUpTo) => {
+    const forJob = jobCardId;
+    try {
+      const res = await api.markJobNotesRead(forJob, seenUpTo);
+      if (jobCardIdRef.current !== forJob) return;
+      setCommentsSeenUpTo(prev => newerMoment(prev, res.commentsSeenUpTo));
+      onCommentsRead?.(forJob);
+    } catch {
+      // Not worth a pop-up: the unread mark simply stays until the next try.
+    }
+  }, [jobCardId, onCommentsRead]);
   const resetForm = useCallback(() => {
     resetFormHook();
     resetContact();
@@ -293,6 +314,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     resetCosting();
     resetTimer();
     resetNotes();
+    setCommentsSeenUpTo(null);
     resetHistory();
   }, [resetFormHook, resetContact, resetTimeEntries, resetCosting, resetTimer, resetNotes, resetHistory]);
   useEffect(() => {
@@ -577,6 +599,27 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         saved={savedFlash}
         headerSlot={headerStrip}
         size="large"
+        // The comments live in their own window to the left of the job, for every
+        // role and on every tab; a job that does not exist yet has no thread.
+        aside={isEdit && jobCardId ? (
+          <JobCommentsPanel
+            key={jobCardId}
+            jobNumber={formHook.jobNumber}
+            notes={jobNotes.notes}
+            newNote={jobNotes.newNote}
+            setNewNote={jobNotes.setNewNote}
+            onAddNote={jobNotes.addNote}
+            onDeleteNote={jobNotes.deleteNote}
+            loading={jobNotes.loading}
+            loadError={jobNotes.loadError}
+            onRetry={jobNotes.loadNotes}
+            notesLoaded={jobNotes.notesLoaded}
+            seenUpTo={commentsSeenUpTo}
+            onMarkRead={markCommentsRead}
+            canManage={canManage}
+            locked={jobClosed}
+          />
+        ) : null}
         headerActions={
           isEdit && jobCardId ? (
             <JobPaperworkHub
@@ -617,7 +660,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                 <div className="modal-tabs">
                   <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => handleTabChange('details')}>
                     Details
-                    {jobNotes.notes.length > 0 && <span className="tab-badge">{jobNotes.notes.length}</span>}
                   </button>
                   {/* Each tab button below only renders when its own permission
                       allows it, so the bar itself doesn't re-ask a question the
@@ -691,14 +733,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
                   onSupplierDraftChange={reportSupplierDraft}
                   attachmentWarnings={attachmentWarnings}
                   onAttachItemFile={isEdit && !jobClosed ? handleAttachItemFile : undefined}
-                  notes={jobNotes.notes}
-                  newNote={jobNotes.newNote}
-                  setNewNote={jobNotes.setNewNote}
-                  onAddNote={jobNotes.addNote}
-                  onDeleteNote={jobNotes.deleteNote}
-                  notesLoading={jobNotes.loading}
-                  notesLoadError={jobNotes.loadError}
-                  onRetryNotes={jobNotes.loadNotes}
                   timeEntries={timeEntries || []}
                   machines={machines || []}
                   showTimeEntryForm={timeEntry.showTimeEntryForm}

@@ -341,7 +341,15 @@ export function getJobCardColumns({
             }}
             onMouseLeave={() => setHoverDesc(null)}
           >
-            {note?.text || '-'}
+            {card.unreadNotes > 0 && (
+              <span
+                className="latest-note-unread-dot"
+                title={`${card.unreadNotes} new ${card.unreadNotes === 1 ? 'comment' : 'comments'}`}
+              />
+            )}
+            {card.unreadNotes > 0
+              ? <strong className="latest-note-unread-text">{note?.text || '-'}</strong>
+              : (note?.text || '-')}
           </td>
         );
       }

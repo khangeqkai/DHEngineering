@@ -148,7 +148,7 @@ Job card sub-routes: `/assignees`, `/items`, `/time-entries`, `/costing`, `/file
 
 ### Core tables
 
-Core tables: `users`, `companies`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `time_entries`, `job_costings` (carries the labour overtime tiers — `labour_ot1_*` / `labour_ot2_*` / `labour_holiday_*` hours/override/total/multiplier columns — see `docs/notes/time-and-costing.md`), `history`, `settings`, `machines`, `job_notes`, `tags`, `supplier_service_tags`. Files are not stored in the database — they live on disk under the configured job-folders base — see `docs/notes/files-and-qa.md`.
+Core tables: `users`, `companies`, `contacts`, `suppliers`, `jobcards`, `job_items`, `job_assignees`, `time_entries`, `job_costings` (carries the labour overtime tiers — `labour_ot1_*` / `labour_ot2_*` / `labour_holiday_*` hours/override/total/multiplier columns — see `docs/notes/time-and-costing.md`), `history`, `settings`, `machines`, `job_notes`, `job_note_reads` (how far each person has read each job's comments — see `docs/notes/jobs-and-status.md`), `tags`, `supplier_service_tags`. Files are not stored in the database — they live on disk under the configured job-folders base — see `docs/notes/files-and-qa.md`.
 
 All changes logged to `history` table for audit trail.
 
