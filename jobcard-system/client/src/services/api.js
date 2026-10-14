@@ -2,8 +2,12 @@ const API_URL = '/api';
 
 // One shared "the server isn't answering" error, so every caller shows the same
 // plain wording and can branch on the code instead of matching the text.
-function unreachableError() {
-  const err = new Error("The server isn't ready yet. Wait a moment and try again.");
+// A save may already have arrived before the answer went missing, so it is never told
+// to "try again" — that would make two of whatever was being saved.
+function unreachableError(isWrite = false) {
+  const err = new Error(isWrite
+    ? "The server didn't confirm this was saved. Check whether it went through before trying again."
+    : "The server isn't ready yet. Wait a moment and try again.");
   err.code = 'SERVER_UNREACHABLE';
   return err;
 }
@@ -76,6 +80,7 @@ class ApiService {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
+    const isWriteRequest = !!options.method && options.method.toUpperCase() !== 'GET';
     let response;
     try {
       response = await fetch(url, {
@@ -85,7 +90,7 @@ class ApiService {
     } catch {
       // The server isn't answering at all (still booting, restarted, or the
       // machine is off the network). fetch rejects before any status exists.
-      throw unreachableError();
+      throw unreachableError(isWriteRequest);
     }
 
     if (!response.ok) {
@@ -93,7 +98,7 @@ class ApiService {
       // JSON — same situation as the reject above, so report it the same way.
       if (response.status >= 500 &&
           !(response.headers.get('content-type') || '').includes('application/json')) {
-        throw unreachableError();
+        throw unreachableError(isWriteRequest);
       }
       const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
 
