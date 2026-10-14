@@ -369,51 +369,50 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
       return res.status(403).json({ error: 'To change your own PIN, use Change PIN in Settings — it asks for your current PIN first.' });
     }
 
-    // Validate the PIN and hash it FIRST, before the account is read or any check runs.
-    // Hashing waits, and nothing may wait between the checks below (the caller's own
-    // role, re-read after the hash, and the last-admin rule above all) and the write they guard — two admins demoting each other at
-    // once would both pass, or an older read of the account could overwrite a newer
-    // change. From the read onward the route runs straight through to the commit, so
-    // the new PIN, the sign-out of whoever holds the old one and the trail entry that
-    // says the PIN changed all land together.
+    // Every refusal that depends on who is asking and on the account being edited, in
+    // one place so it can be judged twice: once up front with the request's role (so a
+    // caller who may not edit this account is told so before anything else, and before
+    // the PIN is hashed), and again after the hash with the caller's live role and a
+    // fresh read of the account — the hash waits, and nothing may wait between these
+    // checks (the last-admin rule above all) and the write they guard: two admins
+    // demoting each other at once would both pass, and an older read of the account
+    // could overwrite a newer change. From the second judging onward the route runs
+    // straight through to the commit.
+    const refusalFor = (actorRole, target) => {
+      if (!isManagement(actorRole)) return { status: 403, error: 'Your account can no longer manage users' };
+      const canManageAdmins = can(actorRole, 'adminAccounts');
+      // A role must be a real one.
+      if (role && !ALL_ROLES.includes(role)) return { status: 400, error: 'Role must be "admin", "manager" or "user"' };
+      // A manager can never promote anyone to admin — that would let them grant
+      // themselves the costing access managers are barred from.
+      if (role === 'admin' && !canManageAdmins) return { status: 403, error: 'Only admins can grant the admin role' };
+      // Admin accounts are off-limits to managers (PIN resets, demotion, renames).
+      if (target.role === 'admin' && !canManageAdmins) return { status: 403, error: 'Only admins can modify admin accounts' };
+      // The last admin can't demote themselves (or be demoted) — with nobody left in
+      // the role, nobody could ever grant it back. Checked against OTHER active admins,
+      // so this only ever blocks the very last one.
+      if (target.role === 'admin' && role && role !== 'admin' &&
+          userQueries.countOtherActiveAdmins.get(id).count === 0) {
+        return { status: 400, error: 'This is the only admin account. Make another person an admin first.' };
+      }
+      return null;
+    };
+
+    const asked = findOr404(res, userQueries.getById.get(id), 'User not found');
+    if (!asked) return;
+    const refusedUpFront = refusalFor(req.user.role, asked);
+    if (refusedUpFront) return res.status(refusedUpFront.status).json({ error: refusedUpFront.error });
+
     if (password && !PIN_REGEX.test(password)) {
       return res.status(400).json({ error: PIN_MESSAGE });
     }
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
-    // Permissions from the caller's role as it stands after that wait — an admin demoted
-    // while the PIN was hashing must not finish resetting another admin's PIN.
-    const actorRole = liveRole(req);
-    if (!isManagement(actorRole)) {
-      return res.status(403).json({ error: 'Your account can no longer manage users' });
-    }
-    const canManageAdmins = can(actorRole, 'adminAccounts');
-
-    // A role must be a real one (requireManagement already limits this route to admins and managers).
-    if (role && !ALL_ROLES.includes(role)) {
-      return res.status(400).json({ error: 'Role must be "admin", "manager" or "user"' });
-    }
-    // A manager can never promote anyone to admin — that would let them grant
-    // themselves the costing access managers are barred from.
-    if (role === 'admin' && !canManageAdmins) {
-      return res.status(403).json({ error: 'Only admins can grant the admin role' });
-    }
-
+    // Judged again, from here straight through to the commit with nothing waiting.
     const user = findOr404(res, userQueries.getById.get(id), 'User not found');
     if (!user) return;
-
-    // Admin accounts are off-limits to managers (PIN resets, demotion, renames).
-    if (user.role === 'admin' && !canManageAdmins) {
-      return res.status(403).json({ error: 'Only admins can modify admin accounts' });
-    }
-
-    // The last admin can't demote themselves (or be demoted) — with nobody left in
-    // the role, nobody could ever grant it back. Checked against OTHER active admins,
-    // so this only ever blocks the very last one.
-    if (user.role === 'admin' && role && role !== 'admin' &&
-        userQueries.countOtherActiveAdmins.get(id).count === 0) {
-      return res.status(400).json({ error: 'This is the only admin account. Make another person an admin first.' });
-    }
+    const refusedNow = refusalFor(liveRole(req), user);
+    if (refusedNow) return res.status(refusedNow.status).json({ error: refusedNow.error });
 
     // Track changes for audit. Each field is only tracked when the caller actually
     // sent it — name/role only when truthy (a falsy value here means "not provided",
@@ -588,7 +587,10 @@ router.put('/change-password', authenticate, async (req, res) => {
     // writing now would undo the reset and sign this person straight back in.
     // (Nothing waits between this check and the write below.)
     const now = userQueries.getById.get(req.user.userId);
-    if (!now || now.active !== 1 || now.password !== user.password || now.session_token !== user.session_token) {
+    // The PIN and the account's active flag are what an office reset or archive change; the
+    // session marker is not compared, because the same person signing in on another PC in
+    // that instant would rotate it and refuse a change nobody else had touched.
+    if (!now || now.active !== 1 || now.password !== user.password) {
       return res.status(409).json({ error: 'Your account was just changed by the office. Sign in again to change your PIN.' });
     }
     db.transaction(() => {
