@@ -202,12 +202,6 @@ router.put('/', requireManagement, async (req, res) => {
     if (overtime.error) return res.status(400).json({ error: overtime.error });
     Object.assign(updates, overtime.updates);
 
-    if (Object.keys(updates).length > 0) {
-      db.updateSettings(updates);
-      // A changed schedule, holiday list or time zone moves where running clocks are
-      // cut; drop the roll's remembered rules so the next roll uses the new ones.
-      forgetRollCache();
-    }
     // Every other setting that actually changed leaves one trail entry, before and
     // after — rates, overtime, time zone, job numbering and the folders path decide
     // what gets billed and where files go, so each change must trace to a person.
@@ -220,11 +214,22 @@ router.put('/', requireManagement, async (req, res) => {
       if (String(from) === String(value ?? '')) continue;
       settingsChanges[snakeToCamel(key)] = { from, to: value };
     }
-    if (Object.keys(settingsChanges).length > 0) {
-      recordHistory('settings', 'general', 'update', req.user.userId, actorName(req), settingsChanges);
-    }
-    if (homeAccessChange) {
-      recordHistory('settings', 'home_access', 'update', req.user.userId, actorName(req), homeAccessChange);
+    // The saved settings and their trail entries commit together.
+    db.db.transaction(() => {
+      if (Object.keys(updates).length > 0) {
+        db.updateSettings(updates);
+      }
+      if (Object.keys(settingsChanges).length > 0) {
+        recordHistory('settings', 'general', 'update', req.user.userId, actorName(req), settingsChanges);
+      }
+      if (homeAccessChange) {
+        recordHistory('settings', 'home_access', 'update', req.user.userId, actorName(req), homeAccessChange);
+      }
+    })();
+    if (Object.keys(updates).length > 0) {
+      // A changed schedule, holiday list or time zone moves where running clocks are
+      // cut; drop the roll's remembered rules so the next roll uses the new ones.
+      forgetRollCache();
     }
     res.json({ success: true });
   } catch (err) {

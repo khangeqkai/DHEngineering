@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateCreateCompany, validateUpdateCompany } = require('../middleware/validation');
-const { companyQueries, contactQueries, recordHistory, actorName } = require('../db/database');
+const { db, companyQueries, contactQueries, recordHistory, actorName } = require('../db/database');
 const { diffFields } = require('../utils/historyChanges');
 const { ensureCompanyFolder, renameCompanyFolder } = require('../utils/folderCreation');
 const { toCompanyApi: toApiFormat, toContactApi } = require('./customer-format');
@@ -59,18 +59,21 @@ router.post('/', requireManagement, validateCreateCompany, (req, res) => {
     }
 
     const id = uuidv4();
-    companyQueries.create.run(id, name, address || null, notes || null);
+    let company;
+    // The new company and its trail entry commit together.
+    db.transaction(() => {
+      companyQueries.create.run(id, name, address || null, notes || null);
+      company = companyQueries.getById.get(id);
+      recordHistory('company', id, 'create', req.user.userId, actorName(req), {
+        name: { from: null, to: company.name },
+        ...(company.address ? { address: { from: null, to: company.address } } : {}),
+        ...(company.notes ? { notes: { from: null, to: company.notes } } : {})
+      });
+    })();
 
     // Create the company folder on disk, stamped with this company's permanent
     // id so it survives later name changes (fire-and-forget)
     ensureCompanyFolder(id, name);
-
-    const company = companyQueries.getById.get(id);
-    recordHistory('company', id, 'create', req.user.userId, actorName(req), {
-      name: { from: null, to: company.name },
-      ...(company.address ? { address: { from: null, to: company.address } } : {}),
-      ...(company.notes ? { notes: { from: null, to: company.notes } } : {})
-    });
 
     res.status(201).json(toApiFormat(company));
   } catch (err) {
@@ -109,18 +112,20 @@ router.put('/:id', requireManagement, validateUpdateCompany, (req, res) => {
       ['notes', 'notes', notes || null],
     ]);
 
-    companyQueries.update.run(name, address || null, notes || null, id);
-    const company = companyQueries.getById.get(id);
+    let company;
+    db.transaction(() => {
+      companyQueries.update.run(name, address || null, notes || null, id);
+      company = companyQueries.getById.get(id);
+      if (Object.keys(changes).length > 0) {
+        recordHistory('company', id, 'update', req.user.userId, actorName(req), changes, toApiFormat(company));
+      }
+    })();
 
     // Name changed → relabel the existing folder on disk, located by the permanent
     // code in its name so its job files follow the rename instead of being
     // stranded under the old name (fire-and-forget).
     if (changes.name && name) {
       renameCompanyFolder(id, existing.name, name);
-    }
-
-    if (Object.keys(changes).length > 0) {
-      recordHistory('company', id, 'update', req.user.userId, actorName(req), changes, toApiFormat(company));
     }
 
     res.json(toApiFormat(company));

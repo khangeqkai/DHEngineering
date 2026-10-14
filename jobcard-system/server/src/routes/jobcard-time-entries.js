@@ -286,9 +286,13 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
       return res.status(400).json({ error: 'That part does not exist on this job card' });
     }
 
-    let started;
+    let reply;
     try {
-      started = insertOpenClock(id, targetWorkerId, targetItem, false);
+      // The clock row, the status follow-up and the trail entries commit together.
+      db.transaction(() => {
+        const started = insertOpenClock(id, targetWorkerId, targetItem, false);
+        reply = afterClockStarted(id, targetWorkerId, targetItem, started.startTime, req, isSelf, started.entryId);
+      })();
     } catch (e) {
       if ((e.activeTimer || isOpenTimerConflict(e)) &&
           sendOpenTimerConflict(res, targetWorkerId, e.activeTimer)) {
@@ -297,7 +301,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
       throw e;
     }
 
-    res.status(201).json(afterClockStarted(id, targetWorkerId, targetItem, started.startTime, req, isSelf, started.entryId));
+    res.status(201).json(reply);
   } catch (err) {
     logger.error({ err }, 'Start timer error');
     res.status(500).json({ error: 'Failed to start timer' });
@@ -341,16 +345,19 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
     // timer, and existing.end_time is checked null just above), so this is always
     // the fresh decision, never a kept one.
     const criticalAtFinish = criticalAtFinishForWrite(id, existing, true);
-    timeEntryQueries.stop.run(endTime, criticalAtFinish, entryId);
+    // The stop, the status follow-up and the trail entry commit together.
+    db.transaction(() => {
+      timeEntryQueries.stop.run(endTime, criticalAtFinish, entryId);
 
-    // Recompute the job's status from the logged work (Done if fully counted), and
-    // fold any change into the stop-timer entry so it reads as one event.
-    const statusChange = syncStatusToWork(id, req.user);
+      // Recompute the job's status from the logged work (Done if fully counted), and
+      // fold any change into the stop-timer entry so it reads as one event.
+      const statusChange = syncStatusToWork(id, req.user);
 
-    recordHistory('jobcard', id, 'stop_timer', req.user.userId, actorName(req), {
-      endTime: { from: null, to: endTime },
-      ...(statusChange ? { status: statusChange } : {})
-    }, { timeEntryId: entryId, startTime: existing.start_time });
+      recordHistory('jobcard', id, 'stop_timer', req.user.userId, actorName(req), {
+        endTime: { from: null, to: endTime },
+        ...(statusChange ? { status: statusChange } : {})
+      }, { timeEntryId: entryId, startTime: existing.start_time });
+    })();
 
     const entry = timeEntryQueries.getById.get(entryId);
     res.json(toCamelCase(entry));
@@ -434,6 +441,7 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
       return res.status(400).json(inspectionRefusal);
     }
 
+    let entry;
     try {
       db.transaction(() => {
       timeEntryQueries.create.run(
@@ -457,6 +465,24 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
       );
       // A block the office adds with no finish is hand-entered open time: the roll never cuts it.
       if (endTime == null) timeEntryQueries.markAutoStopExempt.run(entryId);
+
+      // The worker assignment, status follow-up and trail entry commit with the block.
+      // Keep the job's assigned-people list accurate when crediting someone new.
+      autoAssignWorker(id, workerId, req.user);
+
+      // Recompute the job's status from the logged work (Done if fully counted), and
+      // fold any change into the add-time-entry record so it reads as one event.
+      const statusChange = syncStatusToWork(id, req.user);
+
+      entry = timeEntryQueries.getById.get(entryId);
+      const workerRecord = userQueries.getById.get(workerId);
+      const workerName = workerRecord.name || workerRecord.username;
+      recordHistory('jobcard', id, 'add_time_entry', req.user.userId, actorName(req), {
+        worker: { from: null, to: workerName },
+        item: { from: null, to: itemRecord.description },
+        ...runTrail(entry),
+        ...(statusChange ? { status: statusChange } : {})
+      }, { timeEntryId: entryId });
       })();
     } catch (e) {
       // A manual block with no finish time counts as an open timer; if the credited
@@ -464,23 +490,6 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
       if (isOpenTimerConflict(e) && sendOpenTimerConflict(res, workerId)) return;
       throw e;
     }
-
-    // Keep the job's assigned-people list accurate when crediting someone new.
-    autoAssignWorker(id, workerId, req.user);
-
-    // Recompute the job's status from the logged work (Done if fully counted), and
-    // fold any change into the add-time-entry record so it reads as one event.
-    const statusChange = syncStatusToWork(id, req.user);
-
-    const entry = timeEntryQueries.getById.get(entryId);
-    const workerRecord = userQueries.getById.get(workerId);
-    const workerName = workerRecord.name || workerRecord.username;
-    recordHistory('jobcard', id, 'add_time_entry', req.user.userId, actorName(req), {
-      worker: { from: null, to: workerName },
-      item: { from: null, to: itemRecord.description },
-      ...runTrail(entry),
-      ...(statusChange ? { status: statusChange } : {})
-    }, { timeEntryId: entryId });
 
     res.status(201).json(toCamelCase(entry));
   } catch (err) {
@@ -818,6 +827,66 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
         if (clearsUnconfirmedFlag) timeEntryQueries.clearUnconfirmed.run(entryId);
         if (isResume) timeEntryQueries.clearFinishConfirmedAt.run(entryId);
         if (reopenedByHand) timeEntryQueries.markAutoStopExempt.run(entryId);
+        // The worker assignment, status follow-up and trail entry commit with the edit.
+        // Keep the job's assigned-people list accurate when an admin re-credits a block
+        // to someone not already on the job.
+        if (workerId !== existing.user_id) {
+          autoAssignWorker(id, workerId, req.user);
+        }
+
+        // Build proper diff of changed fields — every recorded field, from the one list.
+        const saved = {
+          machine_number: machineNumber,
+          qty,
+          description,
+          scrap_bin_qty: scrapBinQty,
+          scrap_recycle_qty: scrapRecycleQty,
+          first_off_inspection: inspection.firstOffInspection,
+          in_process_validation: inspection.inProcessValidation,
+          measuring_equipment_verification: inspection.measuringEquipmentVerification,
+          equipment_checks: inspection.equipmentChecks,
+          equipment_checks_comments: equipmentChecksComments,
+          start_time: startTime,
+          end_time: endTime
+        };
+        const changes = diffFields(existing, RUN_TRAIL_FIELDS.map(([column, key]) => [column, key, saved[column]]));
+
+        // The entry's line is decided by its stable id, not its position number, so only
+        // log a line change when it actually points at a different line. Named by
+        // description, not number — item_number is a sort order the server owns and
+        // isn't stable enough to identify a part in the trail (nothing renumbers on
+        // delete, so two jobs' history could both say "part 2" about different parts).
+        if (!blankEqual(itemId, existing.item_id)) {
+          const jobItems = jobItemQueries.getByJobcard.all(id);
+          const oldItem = jobItems.find(it => it.id === existing.item_id);
+          const newItem = itemId ? jobItems.find(it => it.id === itemId) : null;
+          changes.item = { from: oldItem ? oldItem.description : null, to: newItem ? newItem.description : null };
+        }
+
+        if (officeConfirmsFinish) {
+          changes.finish = { from: 'not confirmed', to: 'confirmed by the office' };
+        }
+
+        // Show who the block was re-credited to, by name, when an admin changed the owner.
+        if (workerId !== existing.user_id) {
+          const toName = userQueries.getById.get(workerId).name;
+          changes.worker = { from: existing.user_name, to: toName };
+        }
+
+        // Filling in / correcting the finished quantity changes completion — recompute
+        // the job's status (Done if every line is now counted, else In Progress) and fold
+        // any change into this edit's history so it reads as one event.
+        const statusChange = syncStatusToWork(id, req.user);
+        if (statusChange) {
+          changes.status = statusChange;
+        }
+
+        if (Object.keys(changes).length > 0) {
+          recordHistory('jobcard', id, 'update_time_entry', req.user.userId, actorName(req), changes, {
+            timeEntryId: entryId
+          });
+        }
+
       })();
     } catch (e) {
       // Reopening an entry (clearing its finish time, e.g. resuming a timer) makes
@@ -825,65 +894,6 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
       // the one-timer rule rejects it — surface the stop & switch prompt, not a 500.
       if (isOpenTimerConflict(e) && sendOpenTimerConflict(res, workerId)) return;
       throw e;
-    }
-
-    // Keep the job's assigned-people list accurate when an admin re-credits a block
-    // to someone not already on the job.
-    if (workerId !== existing.user_id) {
-      autoAssignWorker(id, workerId, req.user);
-    }
-
-    // Build proper diff of changed fields — every recorded field, from the one list.
-    const saved = {
-      machine_number: machineNumber,
-      qty,
-      description,
-      scrap_bin_qty: scrapBinQty,
-      scrap_recycle_qty: scrapRecycleQty,
-      first_off_inspection: inspection.firstOffInspection,
-      in_process_validation: inspection.inProcessValidation,
-      measuring_equipment_verification: inspection.measuringEquipmentVerification,
-      equipment_checks: inspection.equipmentChecks,
-      equipment_checks_comments: equipmentChecksComments,
-      start_time: startTime,
-      end_time: endTime
-    };
-    const changes = diffFields(existing, RUN_TRAIL_FIELDS.map(([column, key]) => [column, key, saved[column]]));
-
-    // The entry's line is decided by its stable id, not its position number, so only
-    // log a line change when it actually points at a different line. Named by
-    // description, not number — item_number is a sort order the server owns and
-    // isn't stable enough to identify a part in the trail (nothing renumbers on
-    // delete, so two jobs' history could both say "part 2" about different parts).
-    if (!blankEqual(itemId, existing.item_id)) {
-      const jobItems = jobItemQueries.getByJobcard.all(id);
-      const oldItem = jobItems.find(it => it.id === existing.item_id);
-      const newItem = itemId ? jobItems.find(it => it.id === itemId) : null;
-      changes.item = { from: oldItem ? oldItem.description : null, to: newItem ? newItem.description : null };
-    }
-
-    if (officeConfirmsFinish) {
-      changes.finish = { from: 'not confirmed', to: 'confirmed by the office' };
-    }
-
-    // Show who the block was re-credited to, by name, when an admin changed the owner.
-    if (workerId !== existing.user_id) {
-      const toName = userQueries.getById.get(workerId).name;
-      changes.worker = { from: existing.user_name, to: toName };
-    }
-
-    // Filling in / correcting the finished quantity changes completion — recompute
-    // the job's status (Done if every line is now counted, else In Progress) and fold
-    // any change into this edit's history so it reads as one event.
-    const statusChange = syncStatusToWork(id, req.user);
-    if (statusChange) {
-      changes.status = statusChange;
-    }
-
-    if (Object.keys(changes).length > 0) {
-      recordHistory('jobcard', id, 'update_time_entry', req.user.userId, actorName(req), changes, {
-        timeEntryId: entryId
-      });
     }
 
     const entry = timeEntryQueries.getById.get(entryId);
@@ -970,6 +980,8 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
     // For "still working" the answer and the new clock are one all-or-nothing step: a lost
     // race on the answer, or a refused insert (the one-open-clock rule), rolls both back.
     let restarted = null;
+    let confirmed;
+    let restartedTimer;
     const answerAndRestart = db.transaction(() => {
       const answered = timeEntryQueries.confirmFinish.run(
         storedEnd, new Date().toISOString(), carriedOn || jobIsArchived ? 0 : 1, criticalAtFinish, description, entryId
@@ -988,6 +1000,33 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
           throw e;
         }
       }
+
+      // The trail entry, the status follow-up and the new clock's own entries commit with
+      // the answer.
+      const changes = storedEndMs === Date.parse(existing.end_time)
+        ? { finish: { from: 'not confirmed', to: 'confirmed' } }
+        : { endTime: { from: existing.end_time, to: storedEnd }, reportedBy: { from: null, to: 'worker' } };
+      // Everything else this answer wrote goes in the same entry: the note, through the one
+      // list of a run's trailed fields, and the sign-off a carried-on answer lifted.
+      // (awaiting_details is not a trailed field anywhere.)
+      const saved = { description };
+      Object.assign(changes, diffFields(existing, RUN_TRAIL_FIELDS
+        .filter(([column]) => column in saved)
+        .map(([column, key]) => [column, key, saved[column]])));
+      if (existing.critical_at_finish === 1 && criticalAtFinish === 0) {
+        changes.criticalSignOff = { from: 'needed', to: 'carried by the later run' };
+      }
+      const statusChange = syncStatusToWork(id, req.user);
+      if (statusChange) changes.status = statusChange;
+
+      recordHistory('jobcard', id, 'confirm_finish', req.user.userId, actorName(req), changes,
+        { timeEntryId: entryId, startTime: existing.start_time });
+
+      confirmed = toCamelCase(timeEntryQueries.getById.get(entryId));
+      if (restarted) {
+        // The new clock's own trail entry, side effects and reply shape are the Start route's.
+        restartedTimer = afterClockStarted(id, req.user.userId, partToRestart, restarted.startTime, req, true, restarted.entryId);
+      }
     });
     try {
       answerAndRestart();
@@ -999,31 +1038,7 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
       throw e;
     }
 
-    const changes = storedEndMs === Date.parse(existing.end_time)
-      ? { finish: { from: 'not confirmed', to: 'confirmed' } }
-      : { endTime: { from: existing.end_time, to: storedEnd }, reportedBy: { from: null, to: 'worker' } };
-    // Everything else this answer wrote goes in the same entry: the note, through the one
-    // list of a run's trailed fields, and the sign-off a carried-on answer lifted.
-    // (awaiting_details is not a trailed field anywhere.)
-    const saved = { description };
-    Object.assign(changes, diffFields(existing, RUN_TRAIL_FIELDS
-      .filter(([column]) => column in saved)
-      .map(([column, key]) => [column, key, saved[column]])));
-    if (existing.critical_at_finish === 1 && criticalAtFinish === 0) {
-      changes.criticalSignOff = { from: 'needed', to: 'carried by the later run' };
-    }
-    const statusChange = syncStatusToWork(id, req.user);
-    if (statusChange) changes.status = statusChange;
-
-    recordHistory('jobcard', id, 'confirm_finish', req.user.userId, actorName(req), changes,
-      { timeEntryId: entryId, startTime: existing.start_time });
-
-    const confirmed = toCamelCase(timeEntryQueries.getById.get(entryId));
-    if (restarted) {
-      // The new clock's own trail entry, side effects and reply shape are the Start route's.
-      const restartedTimer = afterClockStarted(id, req.user.userId, partToRestart, restarted.startTime, req, true, restarted.entryId);
-      return res.json({ ...confirmed, restartedTimer });
-    }
+    if (restartedTimer) return res.json({ ...confirmed, restartedTimer });
     res.json(confirmed);
   } catch (err) {
     logger.error({ err }, 'Confirm finish error');
@@ -1048,23 +1063,26 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
       ? jobItemQueries.getByJobcard.all(id).find(it => it.id === existing.item_id)
       : null;
 
-    timeEntryQueries.delete.run(entryId);
+    // The delete, the status follow-up and the trail entry commit together.
+    db.transaction(() => {
+      timeEntryQueries.delete.run(entryId);
 
-    // Removing finished pieces changes completion — recompute the job's status against the
-    // post-delete state and fold any change into this deletion's history so it reads as one
-    // event. Must run after the delete: isJobComplete sums the remaining blocks' pieces.
-    // workRemoved: deleting the last block must still undo the Done that block caused.
-    const statusChange = syncStatusToWork(id, req.user, { workRemoved: true });
+      // Removing finished pieces changes completion — recompute the job's status against the
+      // post-delete state and fold any change into this deletion's history so it reads as one
+      // event. Must run after the delete: isJobComplete sums the remaining blocks' pieces.
+      // workRemoved: deleting the last block must still undo the Done that block caused.
+      const statusChange = syncStatusToWork(id, req.user, { workRemoved: true });
 
-    const changes = {
-      timeEntryId: { from: entryId, to: null },
-      worker: { from: existing.user_name, to: null },
-      item: { from: itemRecord ? itemRecord.description : null, to: null },
-      ...runTrail(existing, { deleted: true })
-    };
-    if (statusChange) changes.status = statusChange;
+      const changes = {
+        timeEntryId: { from: entryId, to: null },
+        worker: { from: existing.user_name, to: null },
+        item: { from: itemRecord ? itemRecord.description : null, to: null },
+        ...runTrail(existing, { deleted: true })
+      };
+      if (statusChange) changes.status = statusChange;
 
-    recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, actorName(req), changes);
+      recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, actorName(req), changes);
+    })();
 
     res.json({ success: true });
   } catch (err) {

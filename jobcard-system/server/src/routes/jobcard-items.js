@@ -106,6 +106,8 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
     // the same transaction as the insert, so it can never collide with a number
     // another write picks at the same moment, and it never falls for a gap a
     // deleted part left behind (nothing renumbers on delete any more).
+    // The status follow-up and the trail entry commit with the insert.
+    let statusChange;
     const addItem = db.transaction(() => {
       const { maxNumber } = jobItemQueries.getMaxItemNumber.get(id);
       const itemNumber = (maxNumber || 0) + 1;
@@ -117,19 +119,19 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
         item.drawingsType || null, item.customerProperty || null
       );
       jobcardQueries.touch.run(req.user.userId, id);
+
+      // A new part changes what completion needs, so recompute the job's status
+      // (e.g. a job that read Done can drop back to In Progress) and fold any change
+      // into this add's own history entry, the same way the time routes do.
+      statusChange = syncStatusToWork(id, req.user);
+
+      const summary = itemSummary(item.qty, item.description, item.jobType, item.material, item.treatments, item.drawingsType, item.customerProperty);
+      recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
+        [`part ${label} added`]: { from: null, to: summary },
+        ...(statusChange ? { status: statusChange } : {})
+      });
     });
     addItem();
-
-    // A new part changes what completion needs, so recompute the job's status
-    // (e.g. a job that read Done can drop back to In Progress) and fold any change
-    // into this add's own history entry, the same way the time routes do.
-    const statusChange = syncStatusToWork(id, req.user);
-
-    const summary = itemSummary(item.qty, item.description, item.jobType, item.material, item.treatments, item.drawingsType, item.customerProperty);
-    recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
-      [`part ${label} added`]: { from: null, to: summary },
-      ...(statusChange ? { status: statusChange } : {})
-    });
 
     const allItems = jobItemQueries.getByJobcard.all(id);
     const items = formatItems(allItems);
@@ -188,6 +190,7 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
 
     // This route never moves a part — the stored position number is passed straight through.
     // The job's "Last Edited" moves only when the part actually changed.
+    let statusChange;
     db.transaction(() => {
       jobItemQueries.updateById.run(
         stored.item_number,
@@ -198,19 +201,19 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
         itemId
       );
       if (beforeSummary !== afterSummary) jobcardQueries.touch.run(req.user.userId, id);
+
+      // A changed quantity (or a line no longer matching what's been made) changes
+      // completion, so recompute the job's status and fold any change into this
+      // edit's own history entry, the same way the time routes do.
+      statusChange = syncStatusToWork(id, req.user);
+
+      if (beforeSummary !== afterSummary || statusChange) {
+        recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
+          ...(beforeSummary !== afterSummary ? { [`part ${label}`]: { from: beforeSummary, to: afterSummary } } : {}),
+          ...(statusChange ? { status: statusChange } : {})
+        });
+      }
     })();
-
-    // A changed quantity (or a line no longer matching what's been made) changes
-    // completion, so recompute the job's status and fold any change into this
-    // edit's own history entry, the same way the time routes do.
-    const statusChange = syncStatusToWork(id, req.user);
-
-    if (beforeSummary !== afterSummary || statusChange) {
-      recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
-        ...(beforeSummary !== afterSummary ? { [`part ${label}`]: { from: beforeSummary, to: afterSummary } } : {}),
-        ...(statusChange ? { status: statusChange } : {})
-      });
-    }
 
     const allItems = jobItemQueries.getByJobcard.all(id);
     const items = formatItems(allItems);
@@ -262,20 +265,21 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
     // survivors. Gaps are expected and fine; the number shown on screen is
     // worked out by the client from a part's position in the ordered list it
     // draws, never predicted or recomputed here.
+    let statusChange;
     db.transaction(() => {
       jobItemQueries.deleteById.run(itemId);
       jobcardQueries.touch.run(req.user.userId, id);
+
+      // Removing a part changes what completion needs (one fewer line to satisfy),
+      // so recompute the job's status and fold any change into this delete's own
+      // history entry, the same way the time routes do.
+      statusChange = syncStatusToWork(id, req.user);
+
+      recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
+        [`part ${label} removed`]: { from: summary, to: null },
+        ...(statusChange ? { status: statusChange } : {})
+      });
     })();
-
-    // Removing a part changes what completion needs (one fewer line to satisfy),
-    // so recompute the job's status and fold any change into this delete's own
-    // history entry, the same way the time routes do.
-    const statusChange = syncStatusToWork(id, req.user);
-
-    recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
-      [`part ${label} removed`]: { from: summary, to: null },
-      ...(statusChange ? { status: statusChange } : {})
-    });
 
     const items = formatItems(jobItemQueries.getByJobcard.all(id));
     const attachmentWarnings = computeAttachmentWarnings(id, items);

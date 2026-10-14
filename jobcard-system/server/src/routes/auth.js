@@ -286,24 +286,26 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = `user:${uuidv4()}`;
 
-    userQueries.create.run(
-      userId,
-      username,
-      hashedPassword,
-      role || 'user',
-      name,
-      email || null,
-      null,  // phone
-      null   // employee_id
-    );
+    // The new account and its trail entry commit together.
+    db.transaction(() => {
+      userQueries.create.run(
+        userId,
+        username,
+        hashedPassword,
+        role || 'user',
+        name,
+        email || null,
+        null,  // phone
+        null   // employee_id
+      );
 
-    // Record in history
-    recordHistory('user', userId, 'create', req.user.userId, actorName(req), {
-      username: { from: null, to: username },
-      role: { from: null, to: role || 'user' },
-      name: { from: null, to: name },
-      ...(email ? { email: { from: null, to: email } } : {})
-    });
+      recordHistory('user', userId, 'create', req.user.userId, actorName(req), {
+        username: { from: null, to: username },
+        role: { from: null, to: role || 'user' },
+        name: { from: null, to: name },
+        ...(email ? { email: { from: null, to: email } } : {})
+      });
+    })();
 
     res.status(201).json({
       id: userId,
@@ -393,6 +395,10 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     // actually changes, fold every one of that user's past job notes onto the new
     // name in the same transaction, so a rename doesn't leave old comments reading
     // whoever they used to be called.
+    // Hashed before the transaction (it can't wait inside one), so the new PIN, the
+    // sign-out of whoever still holds the old one and the trail entry that says the
+    // PIN changed all commit together.
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
     const updateUserAndNotes = db.transaction(() => {
       userQueries.update.run(
         newName,
@@ -405,20 +411,16 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
       if (changes.name) {
         jobNoteQueries.updateAuthorNameByUserId.run(newName, id);
       }
+      if (hashedPassword) {
+        userQueries.updatePassword.run(hashedPassword, id);
+        // A reset PIN must end whoever is currently signed in with the old one.
+        userQueries.updateSessionToken.run(null, id);
+      }
+      if (Object.keys(changes).length > 0) {
+        recordHistory('user', id, 'update', req.user.userId, actorName(req), changes, { username: user.username, name: user.name });
+      }
     });
     updateUserAndNotes();
-
-    if (password) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      userQueries.updatePassword.run(hashedPassword, id);
-      // A reset PIN must end whoever is currently signed in with the old one.
-      userQueries.updateSessionToken.run(null, id);
-    }
-
-    // Record in history
-    if (Object.keys(changes).length > 0) {
-      recordHistory('user', id, 'update', req.user.userId, actorName(req), changes, { username: user.username, name: user.name });
-    }
 
     const updatedUser = userQueries.getById.get(id);
 
@@ -543,12 +545,17 @@ router.put('/change-password', authenticate, async (req, res) => {
     changePinAttempts.forgive(pinKey, pinKey);
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    userQueries.updatePassword.run(hashedPassword, req.user.userId);
-
     // Rotate the session so any OTHER device still signed in with the old PIN is
     // kicked, while the person making the change stays logged in via a fresh token.
     const sessionToken = uuidv4();
-    userQueries.updateSessionToken.run(sessionToken, req.user.userId);
+    // PIN, session and trail entry commit together.
+    db.transaction(() => {
+      userQueries.updatePassword.run(hashedPassword, req.user.userId);
+      userQueries.updateSessionToken.run(sessionToken, req.user.userId);
+      recordHistory('user', req.user.userId, 'update', req.user.userId, actorName(req), {
+        password: { from: '(hidden)', to: '(changed)' }
+      }, { username: user.username, name: user.name });
+    })();
     const token = jwt.sign(
       {
         userId: user.id,
@@ -559,10 +566,6 @@ router.put('/change-password', authenticate, async (req, res) => {
       config.jwt.secret,
       { expiresIn: config.jwt.expiresIn }
     );
-
-    recordHistory('user', req.user.userId, 'update', req.user.userId, actorName(req), {
-      password: { from: '(hidden)', to: '(changed)' }
-    }, { username: user.username, name: user.name });
 
     res.json({ success: true, message: 'PIN changed', token });
   } catch (err) {

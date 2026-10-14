@@ -166,8 +166,18 @@ router.post('/:id/assignees/self', authenticate, (req, res) => {
 
     const assigneeId = `assignee:${uuidv4()}`;
     let inserted = true;
+    let after;
     try {
-      jobAssigneeQueries.create.run(assigneeId, id, userId);
+      // The trail entry commits with the assignment, or neither does.
+      db.transaction(() => {
+        jobAssigneeQueries.create.run(assigneeId, id, userId);
+        after = jobAssigneeQueries.getByJobcard.all(id);
+        const fromNames = before.map(a => a.user_name).join(', ') || 'none';
+        const toNames = after.map(a => a.user_name).join(', ') || 'none';
+        recordHistory('jobcard', id, 'self_assign', userId, actorName(req), {
+          assignees: { from: fromNames, to: toNames }
+        });
+      })();
     } catch (e) {
       if (e && e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
         inserted = false;
@@ -176,20 +186,12 @@ router.post('/:id/assignees/self', authenticate, (req, res) => {
       }
     }
 
-    const after = jobAssigneeQueries.getByJobcard.all(id);
-
     if (!inserted) {
+      after = jobAssigneeQueries.getByJobcard.all(id);
       return res.status(200).json({
         assignees: after.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
       });
     }
-
-    const fromNames = before.map(a => a.user_name).join(', ') || 'none';
-    const toNames = after.map(a => a.user_name).join(', ') || 'none';
-
-    recordHistory('jobcard', id, 'self_assign', userId, actorName(req), {
-      assignees: { from: fromNames, to: toNames }
-    });
 
     res.status(201).json({
       assignees: after.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
@@ -218,15 +220,16 @@ router.delete('/:id/assignees/self', authenticate, (req, res) => {
       });
     }
 
-    jobAssigneeQueries.deleteByJobcardAndUser.run(id, userId);
-
-    const after = jobAssigneeQueries.getByJobcard.all(id);
-    const fromNames = before.map(a => a.user_name).join(', ') || 'none';
-    const toNames = after.map(a => a.user_name).join(', ') || 'none';
-
-    recordHistory('jobcard', id, 'self_unassign', userId, actorName(req), {
-      assignees: { from: fromNames, to: toNames }
-    });
+    let after;
+    db.transaction(() => {
+      jobAssigneeQueries.deleteByJobcardAndUser.run(id, userId);
+      after = jobAssigneeQueries.getByJobcard.all(id);
+      const fromNames = before.map(a => a.user_name).join(', ') || 'none';
+      const toNames = after.map(a => a.user_name).join(', ') || 'none';
+      recordHistory('jobcard', id, 'self_unassign', userId, actorName(req), {
+        assignees: { from: fromNames, to: toNames }
+      });
+    })();
 
     res.status(200).json({
       assignees: after.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
@@ -260,11 +263,19 @@ router.put('/:id/assignees/:userId', authenticate, requireManagement, (req, res)
 
     const assigneeId = `assignee:${uuidv4()}`;
     let inserted = true;
+    let after;
     try {
-      // A worker put on the job moves its "Last Edited", in the same write.
+      // A worker put on the job moves its "Last Edited", in the same write,
+      // and the trail entry commits with them.
       db.transaction(() => {
         jobAssigneeQueries.create.run(assigneeId, id, userId);
         jobcardQueries.touch.run(req.user.userId, id);
+        after = jobAssigneeQueries.getByJobcard.all(id);
+        const fromNames = before.map(a => a.user_name).join(', ') || 'none';
+        const toNames = after.map(a => a.user_name).join(', ') || 'none';
+        recordHistory('jobcard', id, 'assign', req.user.userId, actorName(req), {
+          assignees: { from: fromNames, to: toNames }
+        });
       })();
     } catch (e) {
       if (e && e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -274,20 +285,12 @@ router.put('/:id/assignees/:userId', authenticate, requireManagement, (req, res)
       }
     }
 
-    const after = jobAssigneeQueries.getByJobcard.all(id);
-
     if (!inserted) {
+      after = jobAssigneeQueries.getByJobcard.all(id);
       return res.status(200).json({
         assignees: after.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
       });
     }
-
-    const fromNames = before.map(a => a.user_name).join(', ') || 'none';
-    const toNames = after.map(a => a.user_name).join(', ') || 'none';
-
-    recordHistory('jobcard', id, 'assign', req.user.userId, actorName(req), {
-      assignees: { from: fromNames, to: toNames }
-    });
 
     res.status(201).json({
       assignees: after.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
@@ -319,18 +322,17 @@ router.delete('/:id/assignees/:userId', authenticate, requireManagement, (req, r
     }
 
     // A worker taken off the job moves its "Last Edited", in the same write.
+    let after;
     db.transaction(() => {
       jobAssigneeQueries.deleteByJobcardAndUser.run(id, userId);
       jobcardQueries.touch.run(req.user.userId, id);
+      after = jobAssigneeQueries.getByJobcard.all(id);
+      const fromNames = before.map(a => a.user_name).join(', ') || 'none';
+      const toNames = after.map(a => a.user_name).join(', ') || 'none';
+      recordHistory('jobcard', id, 'unassign', req.user.userId, actorName(req), {
+        assignees: { from: fromNames, to: toNames }
+      });
     })();
-
-    const after = jobAssigneeQueries.getByJobcard.all(id);
-    const fromNames = before.map(a => a.user_name).join(', ') || 'none';
-    const toNames = after.map(a => a.user_name).join(', ') || 'none';
-
-    recordHistory('jobcard', id, 'unassign', req.user.userId, actorName(req), {
-      assignees: { from: fromNames, to: toNames }
-    });
 
     res.status(200).json({
       assignees: after.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
@@ -394,9 +396,8 @@ router.patch('/:id/status', authenticate, (req, res) => {
       // Invoicing just files the job away — no costing snapshot needed. The job owns its
       // own overtime rules and rate, so its costing always recomputes to the billed
       // number; a later settings change can't move it.
+      recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), changes, null);
     })();
-
-    recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), changes, null);
 
     sendJob();
   } catch (err) {
@@ -419,12 +420,14 @@ router.post('/:id/unarchive', authenticate, requireManagement, (req, res) => {
 
     // Un-filing also resets the status back to OPEN so the job returns as a
     // normal working job, never a back-in-the-list-but-still-INVOICED limbo.
-    jobcardQueries.unarchive.run(req.user.userId, id);
-    recordHistory('jobcard', id, 'unarchive', req.user.userId, actorName(req), {
-      archived: { from: true, to: false },
-      invoicedDate: { from: existing.invoiced_date, to: null },
-      status: { from: existing.status, to: 'OPEN' }
-    }, { jobNumber: existing.job_number });
+    db.transaction(() => {
+      jobcardQueries.unarchive.run(req.user.userId, id);
+      recordHistory('jobcard', id, 'unarchive', req.user.userId, actorName(req), {
+        archived: { from: true, to: false },
+        invoicedDate: { from: existing.invoiced_date, to: null },
+        status: { from: existing.status, to: 'OPEN' }
+      }, { jobNumber: existing.job_number });
+    })();
 
     res.json({ success: true });
   } catch (err) {
@@ -470,13 +473,15 @@ router.delete('/:id', authenticate, requirePermission('deleteJob'), (req, res) =
       return res.status(409).json({ error: 'CONFIRM_DELETE', workWarning });
     }
 
-    // Record deletion with snapshot
-    recordHistory('jobcard', id, 'delete', req.user.userId, actorName(req), {
-      jobNumber: { from: existing.job_number, to: null },
-      status: { from: existing.status, to: null }
-    });
+    // Trail entry and delete commit together: a failed delete leaves no false "deleted" entry
+    db.transaction(() => {
+      recordHistory('jobcard', id, 'delete', req.user.userId, actorName(req), {
+        jobNumber: { from: existing.job_number, to: null },
+        status: { from: existing.status, to: null }
+      });
 
-    jobcardQueries.delete.run(id);
+      jobcardQueries.delete.run(id);
+    })();
 
     // Delete job card folder (Company/JobNumber/) but keep the company folder
     deleteJobCardFolders(existing.company_id || null, existing.company_name, existing.job_number);

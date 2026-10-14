@@ -1,7 +1,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
-const { machineQueries, timeEntryQueries, recordHistory, actorName } = require('../db/database');
+const { db, machineQueries, timeEntryQueries, recordHistory, actorName } = require('../db/database');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateCreateMachine, validateUpdateMachine } = require('../middleware/validation');
 const { diffFields } = require('../utils/historyChanges');
@@ -54,16 +54,20 @@ router.post('/', requireManagement, validateCreateMachine, (req, res) => {
     }
 
     const id = uuidv4();
-    machineQueries.create.run(id, machineNumber, name || '', description || '');
+    let machine;
+    // The new machine and its trail entry commit together.
+    db.transaction(() => {
+      machineQueries.create.run(id, machineNumber, name || '', description || '');
 
-    const machine = machineQueries.getById.get(id);
+      machine = machineQueries.getById.get(id);
 
-    const created = toResponseFormat(machine);
-    recordHistory('machine', id, 'create', req.user.userId, actorName(req), {
-      machineNumber: { from: null, to: created.machineNumber },
-      ...(created.name ? { name: { from: null, to: created.name } } : {}),
-      ...(created.description ? { description: { from: null, to: created.description } } : {})
-    }, created);
+      const created = toResponseFormat(machine);
+      recordHistory('machine', id, 'create', req.user.userId, actorName(req), {
+        machineNumber: { from: null, to: created.machineNumber },
+        ...(created.name ? { name: { from: null, to: created.name } } : {}),
+        ...(created.description ? { description: { from: null, to: created.description } } : {})
+      }, created);
+    })();
 
     res.status(201).json(toResponseFormat(machine));
   } catch (err) {
@@ -116,10 +120,6 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
       }
     }
 
-    machineQueries.update.run(machineNumber, name, nextDescription, id);
-
-    const machine = machineQueries.getById.get(id);
-
     // Build proper diff of changed fields
     const changes = diffFields(existing, [
       ['machine_number', 'machineNumber', machineNumber],
@@ -127,10 +127,18 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
       ['description', 'description', nextDescription],
     ]);
 
-    if (Object.keys(changes).length > 0) {
-      recordHistory('machine', id, 'update', req.user.userId, actorName(req),
-        changes, toResponseFormat(machine));
-    }
+    let machine;
+    // The edit and its trail entry commit together.
+    db.transaction(() => {
+      machineQueries.update.run(machineNumber, name, nextDescription, id);
+
+      machine = machineQueries.getById.get(id);
+
+      if (Object.keys(changes).length > 0) {
+        recordHistory('machine', id, 'update', req.user.userId, actorName(req),
+          changes, toResponseFormat(machine));
+      }
+    })();
 
     res.json(toResponseFormat(machine));
   } catch (err) {

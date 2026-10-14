@@ -2,7 +2,7 @@ const express = require('express');
 
 const logger = require('../utils/logger');
 const { authenticate, requirePermission } = require('../middleware/auth');
-const { jobCostingQueries, recordHistory, actorName } = require('../db/database');
+const { db, jobCostingQueries, recordHistory, actorName } = require('../db/database');
 const {
   computeLiveCosting,
   persistCosting,
@@ -37,7 +37,6 @@ router.put('/:id/costing', authenticate, requirePermission('pricing'), (req, res
     // An invoiced job is not blocked here: the screen asks the user to confirm before
     // saving, and the edit simply recalculates from the job's own captured rules.
     const computed = computeLiveCosting(jobId, req.body);
-    persistCosting(computed);
 
     // Diff for the audit trail. The auto-tallied tier hours (labour_*_hours) are
     // excluded so an automatic recalculation isn't attributed to whoever saved; the
@@ -98,9 +97,13 @@ router.put('/:id/costing', authenticate, requirePermission('pricing'), (req, res
       }
     }
 
-    if (Object.keys(changes).length > 0) {
-      recordHistory('jobcard', jobId, 'update_costing', req.user.userId, actorName(req), changes, null);
-    }
+    // The stored figures and their trail entry commit together.
+    db.transaction(() => {
+      persistCosting(computed);
+      if (Object.keys(changes).length > 0) {
+        recordHistory('jobcard', jobId, 'update_costing', req.user.userId, actorName(req), changes, null);
+      }
+    })();
 
     // Hand back the freshly computed figures, not just an acknowledgement: the server
     // folds in any time logged since the screen loaded, so the totals it just stored can

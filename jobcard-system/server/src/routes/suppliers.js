@@ -127,7 +127,8 @@ router.post('/', requireManagement, validateCreateSupplier, (req, res) => {
     // The supplier row and its service tags are ONE all-or-nothing step: a tag id
     // that no longer exists trips a foreign-key error, and without the transaction
     // the supplier row was already committed, leaving a half-saved supplier behind
-    // an error message.
+    // an error message. The trail entry is part of the same step.
+    let supplier;
     db.transaction(() => {
       supplierQueries.create.run(
         id,
@@ -142,20 +143,20 @@ router.post('/', requireManagement, validateCreateSupplier, (req, res) => {
       for (const tagId of uniqueIds(serviceTagIds)) {
         tagQueries.addToSupplier.run(id, tagId);
       }
+
+      supplier = getSupplierWithTags(id);
+
+      const serviceNames = supplier.serviceTags.map(t => t.name).sort().join(', ');
+      recordHistory('supplier', id, 'create', req.user.userId, actorName(req), {
+        name: { from: null, to: supplier.name },
+        ...(supplier.contactName ? { contactName: { from: null, to: supplier.contactName } } : {}),
+        ...(contactPhone ? { contactPhone: { from: null, to: contactPhone } } : {}),
+        ...(contactEmail ? { contactEmail: { from: null, to: contactEmail } } : {}),
+        ...(supplier.address ? { address: { from: null, to: supplier.address } } : {}),
+        ...(supplier.notes ? { notes: { from: null, to: supplier.notes } } : {}),
+        ...(serviceNames ? { serviceTags: { from: null, to: serviceNames } } : {})
+      });
     })();
-
-    const supplier = getSupplierWithTags(id);
-
-    const serviceNames = supplier.serviceTags.map(t => t.name).sort().join(', ');
-    recordHistory('supplier', id, 'create', req.user.userId, actorName(req), {
-      name: { from: null, to: supplier.name },
-      ...(supplier.contactName ? { contactName: { from: null, to: supplier.contactName } } : {}),
-      ...(contactPhone ? { contactPhone: { from: null, to: contactPhone } } : {}),
-      ...(contactEmail ? { contactEmail: { from: null, to: contactEmail } } : {}),
-      ...(supplier.address ? { address: { from: null, to: supplier.address } } : {}),
-      ...(supplier.notes ? { notes: { from: null, to: supplier.notes } } : {}),
-      ...(serviceNames ? { serviceTags: { from: null, to: serviceNames } } : {})
-    });
 
     res.status(201).json(supplier);
   } catch (err) {
@@ -229,7 +230,8 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
     }
 
     // Same all-or-nothing rule as create: the supplier row and its service changes
-    // land together or not at all.
+    // land together or not at all, trail entry included.
+    let supplier;
     db.transaction(() => {
       supplierQueries.update.run(
         name,
@@ -256,13 +258,13 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
       if (name !== existing.name) {
         renameSupplierOnParts(id, name);
       }
+
+      supplier = getSupplierWithTags(id);
+
+      if (Object.keys(changes).length > 0) {
+        recordHistory('supplier', id, 'update', req.user.userId, actorName(req), changes, supplier);
+      }
     })();
-
-    const supplier = getSupplierWithTags(id);
-
-    if (Object.keys(changes).length > 0) {
-      recordHistory('supplier', id, 'update', req.user.userId, actorName(req), changes, supplier);
-    }
 
     res.json(supplier);
   } catch (err) {
@@ -294,15 +296,16 @@ router.post('/:id/service-tags', requireManagement, (req, res) => {
       return res.json(getSupplierWithTags(id));
     }
 
+    let supplier;
     db.transaction(() => {
       tagQueries.addToSupplier.run(id, tag.id);
-    })();
 
-    const supplier = getSupplierWithTags(id);
-    const names = (list) => list.map(t => t.name).sort().join(', ') || null;
-    recordHistory('supplier', id, 'update', req.user.userId, actorName(req), {
-      serviceTags: { from: names(oldTags), to: names(supplier.serviceTags) }
-    }, supplier);
+      supplier = getSupplierWithTags(id);
+      const names = (list) => list.map(t => t.name).sort().join(', ') || null;
+      recordHistory('supplier', id, 'update', req.user.userId, actorName(req), {
+        serviceTags: { from: names(oldTags), to: names(supplier.serviceTags) }
+      }, supplier);
+    })();
 
     res.json(supplier);
   } catch (err) {

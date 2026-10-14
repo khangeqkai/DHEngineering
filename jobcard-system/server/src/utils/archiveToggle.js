@@ -5,7 +5,7 @@
 // no-op when the row already sits in the target state, otherwise the write plus the
 // one archive/unarchive trail entry every route already left.
 const logger = require('../utils/logger');
-const { recordHistory, actorName } = require('../db/database');
+const { db, recordHistory, actorName } = require('../db/database');
 
 // spec = {
 //   entityType,           // history entity type ('company', 'machine', …)
@@ -40,18 +40,22 @@ function setArchived(req, res, spec) {
       return res.json(spec.respond(row));
     }
 
-    spec.write(row);
-    const freshRow = spec.load();
+    // The write and its trail entry commit together, or neither does.
+    let freshRow;
+    db.transaction(() => {
+      spec.write(row);
+      freshRow = spec.load();
 
-    recordHistory(
-      entityType,
-      row.id,
-      archive ? 'archive' : 'unarchive',
-      req.user.userId,
-      actorName(req),
-      { status: archive ? { from: 'Active', to: 'Archived' } : { from: 'Archived', to: 'Active' } },
-      spec.snapshot(row)
-    );
+      recordHistory(
+        entityType,
+        row.id,
+        archive ? 'archive' : 'unarchive',
+        req.user.userId,
+        actorName(req),
+        { status: archive ? { from: 'Active', to: 'Archived' } : { from: 'Archived', to: 'Active' } },
+        spec.snapshot(row)
+      );
+    })();
 
     res.json(spec.respond(freshRow));
   } catch (err) {

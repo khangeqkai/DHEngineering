@@ -11,7 +11,7 @@
 // nothing and there is no second copy of a fact the database already has.
 
 const {
-  jobcardQueries, jobAssigneeQueries, timeEntryQueries, historyQueries, recordHistory
+  db, jobcardQueries, jobAssigneeQueries, timeEntryQueries, historyQueries, recordHistory
 } = require('../db/database');
 const logger = require('./logger');
 
@@ -29,53 +29,56 @@ function discardIfAccidentalTap(jobcardId, entry, actor) {
   // entered (validation.js), so only clock drift ever reaches here.
   if (!Number.isFinite(ranMs) || ranMs >= MIN_LOGGED_MS) return null;
 
-  timeEntryQueries.delete.run(entry.id);
+  // The discard, what it puts back and its trail entry commit together.
+  return db.transaction(() => {
+    timeEntryQueries.delete.run(entry.id);
 
-  // Put back what the Start changed, in history's { field: { from, to } } shape so it
-  // folds into the discard entry below. Never throws — a failed undo must not fail the
-  // discard. Deliberately does NOT recompute the automatic status: that would just
-  // re-assert In Progress, the very thing the accidental tap left behind.
-  const changes = {};
-  let unassignedUserId = null;
-  try {
-    // The Start's own trail entry recorded the status move it made, if any.
-    const logged = historyQueries.getStartTimer.get(jobcardId, entry.start_time);
-    const status = logged && JSON.parse(logged.changes).status;
-    // Only put the status back if nothing else has moved it since the Start, and no
-    // OTHER timer is still running on this job (this block was already deleted above,
-    // so a count here is every timer besides it) — a colleague's still-running work
-    // earned that status honestly and an accidental tap from someone else must not
-    // undo it out from under them.
-    const otherTimerRunning = timeEntryQueries.countRunningByJobcard.get(jobcardId).count > 0;
-    if (status && !otherTimerRunning && jobcardQueries.getById.get(jobcardId)?.status === status.to) {
-      jobcardQueries.updateStatus.run(status.from, actor.userId, jobcardId);
-      changes.status = { from: status.to, to: status.from };
+    // Put back what the Start changed, in history's { field: { from, to } } shape so it
+    // folds into the discard entry below. Never throws — a failed undo must not fail the
+    // discard. Deliberately does NOT recompute the automatic status: that would just
+    // re-assert In Progress, the very thing the accidental tap left behind.
+    const changes = {};
+    let unassignedUserId = null;
+    try {
+      // The Start's own trail entry recorded the status move it made, if any.
+      const logged = historyQueries.getStartTimer.get(jobcardId, entry.start_time);
+      const status = logged && JSON.parse(logged.changes).status;
+      // Only put the status back if nothing else has moved it since the Start, and no
+      // OTHER timer is still running on this job (this block was already deleted above,
+      // so a count here is every timer besides it) — a colleague's still-running work
+      // earned that status honestly and an accidental tap from someone else must not
+      // undo it out from under them.
+      const otherTimerRunning = timeEntryQueries.countRunningByJobcard.get(jobcardId).count > 0;
+      if (status && !otherTimerRunning && jobcardQueries.getById.get(jobcardId)?.status === status.to) {
+        jobcardQueries.updateStatus.run(status.from, actor.userId, jobcardId);
+        changes.status = { from: status.to, to: status.from };
+      }
+
+      // This Start put the worker on the job if their place on it is no older than the
+      // block. Anyone assigned before that was already meant to be there.
+      const before = jobAssigneeQueries.getByJobcard.all(jobcardId);
+      const added = before.find(a => a.user_id === entry.user_id && a.assigned_at >= entry.start_time);
+      if (added) {
+        jobAssigneeQueries.delete.run(added.id);
+        changes.assignees = {
+          from: before.map(a => a.user_name).join(', ') || 'none',
+          to: before.filter(a => a.id !== added.id).map(a => a.user_name).join(', ') || 'none'
+        };
+        // Name them back so an open job screen unticks them too — otherwise the next
+        // Save would put them straight back.
+        unassignedUserId = entry.user_id;
+      }
+    } catch (err) {
+      logger.error({ err }, 'Undo of discarded start timer failed');
     }
 
-    // This Start put the worker on the job if their place on it is no older than the
-    // block. Anyone assigned before that was already meant to be there.
-    const before = jobAssigneeQueries.getByJobcard.all(jobcardId);
-    const added = before.find(a => a.user_id === entry.user_id && a.assigned_at >= entry.start_time);
-    if (added) {
-      jobAssigneeQueries.delete.run(added.id);
-      changes.assignees = {
-        from: before.map(a => a.user_name).join(', ') || 'none',
-        to: before.filter(a => a.id !== added.id).map(a => a.user_name).join(', ') || 'none'
-      };
-      // Name them back so an open job screen unticks them too — otherwise the next
-      // Save would put them straight back.
-      unassignedUserId = entry.user_id;
-    }
-  } catch (err) {
-    logger.error({ err }, 'Undo of discarded start timer failed');
-  }
+    recordHistory('jobcard', jobcardId, 'discard_timer', actor.userId, actor.name || actor.username, {
+      timer: { from: 'running', to: 'discarded (under 15s)' },
+      ...changes
+    }, { timeEntryId: entry.id, startTime: entry.start_time });
 
-  recordHistory('jobcard', jobcardId, 'discard_timer', actor.userId, actor.name || actor.username, {
-    timer: { from: 'running', to: 'discarded (under 15s)' },
-    ...changes
-  }, { timeEntryId: entry.id, startTime: entry.start_time });
-
-  return { discarded: true, unassignedUserId };
+    return { discarded: true, unassignedUserId };
+  })();
 }
 
 module.exports = { discardIfAccidentalTap };

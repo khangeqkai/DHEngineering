@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
-const { jobNoteQueries, recordHistory, actorName } = require('../db/database');
+const { db, jobNoteQueries, recordHistory, actorName } = require('../db/database');
 const { findOr404 } = require('../utils/findOr404');
 
 const router = express.Router();
@@ -38,17 +38,19 @@ router.post('/:id/notes', authenticate, [
 
     const noteId = `note:${uuidv4()}`;
 
-    jobNoteQueries.create.run(
-      noteId,
-      id,
-      req.user.userId,
-      actorName(req),
-      text.trim()
-    );
+    db.transaction(() => {
+      jobNoteQueries.create.run(
+        noteId,
+        id,
+        req.user.userId,
+        actorName(req),
+        text.trim()
+      );
 
-    recordHistory('jobcard', id, 'add_note', req.user.userId, actorName(req), {
-      note: { from: null, to: text.trim() }
-    }, null);
+      recordHistory('jobcard', id, 'add_note', req.user.userId, actorName(req), {
+        note: { from: null, to: text.trim() }
+      }, null);
+    })();
 
     const note = jobNoteQueries.getById.get(noteId);
     res.status(201).json({
@@ -77,12 +79,14 @@ router.delete('/:id/notes/:noteId', authenticate, requireManagement, (req, res) 
       return res.status(403).json({ error: 'Note does not belong to this job card' });
     }
 
-    recordHistory('jobcard', id, 'delete_note', req.user.userId, actorName(req), {
-      note: { from: existing.text, to: null },
-      'note author': { from: existing.user_name, to: null }
-    }, null);
+    db.transaction(() => {
+      recordHistory('jobcard', id, 'delete_note', req.user.userId, actorName(req), {
+        note: { from: existing.text, to: null },
+        'note author': { from: existing.user_name, to: null }
+      }, null);
 
-    jobNoteQueries.delete.run(noteId);
+      jobNoteQueries.delete.run(noteId);
+    })();
 
     res.json({ success: true });
   } catch (err) {

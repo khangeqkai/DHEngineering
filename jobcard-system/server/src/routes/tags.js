@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
-const { tagQueries, recordHistory, actorName } = require('../db/database');
+const { db, tagQueries, recordHistory, actorName } = require('../db/database');
 const { setArchived } = require('../utils/archiveToggle');
 const { nameToValue } = require('../utils/tagSlug');
 const { findOr404 } = require('../utils/findOr404');
@@ -129,15 +129,18 @@ router.post('/', requireManagement, (req, res) => {
     }
     if (existing) {
       if (existing.archived) {
-        tagQueries.update.run(trimmedName, value, existing.id);
-        tagQueries.unarchive.run(existing.id);
-        const restored = tagQueries.getById.get(existing.id);
-        const restoreChanges = { status: { from: 'Archived', to: 'Active' } };
-        if (trimmedName !== existing.name) {
-          restoreChanges.name = { from: existing.name, to: trimmedName };
-        }
-        recordHistory('tag', existing.id, 'unarchive', req.user.userId, actorName(req), restoreChanges,
-          { name: restored.name, category: restored.category });
+        let restored;
+        db.transaction(() => {
+          tagQueries.update.run(trimmedName, value, existing.id);
+          tagQueries.unarchive.run(existing.id);
+          restored = tagQueries.getById.get(existing.id);
+          const restoreChanges = { status: { from: 'Archived', to: 'Active' } };
+          if (trimmedName !== existing.name) {
+            restoreChanges.name = { from: existing.name, to: trimmedName };
+          }
+          recordHistory('tag', existing.id, 'unarchive', req.user.userId, actorName(req), restoreChanges,
+            { name: restored.name, category: restored.category });
+        })();
         return res.status(200).json(formatTag(restored));
       }
       return res.status(200).json(formatTag(existing));
@@ -147,13 +150,16 @@ router.post('/', requireManagement, (req, res) => {
     const maxSort = tagQueries.getMaxSortOrder.get(category);
     const sortOrder = (maxSort?.max_sort || 0) + 1;
 
-    tagQueries.create.run(id, category, trimmedName, value, sortOrder);
+    let tag;
+    db.transaction(() => {
+      tagQueries.create.run(id, category, trimmedName, value, sortOrder);
 
-    const tag = tagQueries.getById.get(id);
-    recordHistory('tag', id, 'create', req.user.userId, actorName(req), {
-      name: { from: null, to: tag.name },
-      category: { from: null, to: tag.category }
-    }, { name: tag.name, category: tag.category });
+      tag = tagQueries.getById.get(id);
+      recordHistory('tag', id, 'create', req.user.userId, actorName(req), {
+        name: { from: null, to: tag.name },
+        category: { from: null, to: tag.category }
+      }, { name: tag.name, category: tag.category });
+    })();
 
     res.status(201).json(formatTag(tag));
   } catch (err) {
@@ -214,17 +220,19 @@ router.put('/:id', requireManagement, (req, res) => {
       }
     }
 
-    tagQueries.update.run(trimmedName, value, id);
-
     const changes = {};
     if (trimmedName !== existing.name) {
       changes.name = { from: existing.name, to: trimmedName };
     }
 
-    if (Object.keys(changes).length > 0) {
-      recordHistory('tag', id, 'update', req.user.userId, actorName(req), changes,
-        { name: trimmedName, category: existing.category });
-    }
+    db.transaction(() => {
+      tagQueries.update.run(trimmedName, value, id);
+
+      if (Object.keys(changes).length > 0) {
+        recordHistory('tag', id, 'update', req.user.userId, actorName(req), changes,
+          { name: trimmedName, category: existing.category });
+      }
+    })();
 
     res.json(formatTag(tagQueries.getById.get(id)));
   } catch (err) {

@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { validateCreateContact, validateUpdateContact } = require('../middleware/validation');
-const { companyQueries, contactQueries, recordHistory, actorName } = require('../db/database');
+const { db, companyQueries, contactQueries, recordHistory, actorName } = require('../db/database');
 const { diffFields } = require('../utils/historyChanges');
 const { toContactApi: toApiFormat } = require('./customer-format');
 const { setArchived } = require('../utils/archiveToggle');
@@ -44,15 +44,18 @@ router.post('/', requireManagement, validateCreateContact, (req, res) => {
     }
 
     const id = uuidv4();
-    contactQueries.create.run(id, companyId, contactName || null, phone || null, email || null);
-
-    const contact = contactQueries.getById.get(id);
-    recordHistory('contact', id, 'create', req.user.userId, actorName(req), {
-      ...(contact.contact_name ? { contactName: { from: null, to: contact.contact_name } } : {}),
-      companyName: { from: null, to: company.name },
-      ...(contact.phone ? { phone: { from: null, to: contact.phone } } : {}),
-      ...(contact.email ? { email: { from: null, to: contact.email } } : {})
-    });
+    let contact;
+    // The new person and its trail entry commit together.
+    db.transaction(() => {
+      contactQueries.create.run(id, companyId, contactName || null, phone || null, email || null);
+      contact = contactQueries.getById.get(id);
+      recordHistory('contact', id, 'create', req.user.userId, actorName(req), {
+        ...(contact.contact_name ? { contactName: { from: null, to: contact.contact_name } } : {}),
+        companyName: { from: null, to: company.name },
+        ...(contact.phone ? { phone: { from: null, to: contact.phone } } : {}),
+        ...(contact.email ? { email: { from: null, to: contact.email } } : {})
+      });
+    })();
 
     res.status(201).json(toApiFormat(contact));
   } catch (err) {
@@ -87,12 +90,14 @@ router.put('/:id', requireManagement, validateUpdateContact, (req, res) => {
       ['email', 'email', email || null],
     ]);
 
-    contactQueries.update.run(contactName || null, phone || null, email || null, id);
-    const contact = contactQueries.getById.get(id);
-
-    if (Object.keys(changes).length > 0) {
-      recordHistory('contact', id, 'update', req.user.userId, actorName(req), changes, toApiFormat(contact));
-    }
+    let contact;
+    db.transaction(() => {
+      contactQueries.update.run(contactName || null, phone || null, email || null, id);
+      contact = contactQueries.getById.get(id);
+      if (Object.keys(changes).length > 0) {
+        recordHistory('contact', id, 'update', req.user.userId, actorName(req), changes, toApiFormat(contact));
+      }
+    })();
 
     res.json(toApiFormat(contact));
   } catch (err) {
