@@ -13,6 +13,7 @@ const {
   recordHistory,
   actorName
 } = require('../db/database');
+const { partTagRegex } = require('../shared/partFileTag');
 const { sanitizeFolderName, isWithinBase, isBaseReachable, JOB_FOLDERS_UNREACHABLE, resolveCompanyFolder, idSlug } = require('../utils/folderCreation');
 const { decodeBase64Strict, assertMatchesExtension, isPlainFileName } = require('../utils/fileValidation');
 const { handleValidationErrors } = require('../middleware/validation');
@@ -22,6 +23,7 @@ const { ALLOWED_FILE_EXTENSIONS, MAX_UPLOAD_BYTES, CATEGORY_FOLDER } = require('
 
 const router = express.Router();
 
+// One entry per ALLOWED_FILE_EXTENSIONS type — every reader checks the extension first.
 const MIME_TYPES = {
   '.pdf': 'application/pdf',
   '.jpg': 'image/jpeg',
@@ -30,16 +32,7 @@ const MIME_TYPES = {
   '.tiff': 'image/tiff',
   '.tif': 'image/tiff',
   '.bmp': 'image/bmp',
-  '.gif': 'image/gif',
-  '.txt': 'text/plain',
-  '.csv': 'text/csv',
-  '.html': 'text/html',
-  '.htm': 'text/html',
-  '.xml': 'text/xml',
-  '.doc': 'application/msword',
-  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  '.xls': 'application/vnd.ms-excel',
-  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  '.gif': 'image/gif'
 };
 
 const CATEGORIES = Object.keys(CATEGORY_FOLDER);
@@ -185,17 +178,6 @@ function currentFileTag(name) {
   const base = name.slice(0, name.length - ext.length);
   const m = base.match(TRAILING_STORAGE_TAG);
   return m ? m[1] : null;
-}
-
-/**
- * Regex that matches a part's "[p{code}]" tag only at the END of a base name
- * (optionally followed by a " (n)" clash suffix) — the exact spot the upload
- * route writes it, so a file whose human name merely contains the code can't
- * masquerade as that part's attachment.
- */
-function partTagRegex(code) {
-  const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`\\[${escaped}\\](?: \\(\\d+\\))?$`);
 }
 
 /**
