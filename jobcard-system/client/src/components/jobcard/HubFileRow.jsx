@@ -9,7 +9,7 @@ import Spinner from '../common/Spinner';
 export default function HubFileRow({
   nameText, subText, isImage, thumb, checked, onToggle,
   viewing, onView, onPrint, printDisabled,
-  showOwnerPicker, parts, currentItemId, assigning, onAssign,
+  showOwnerPicker, parts, currentItemId, assigning, onAssign, canMove,
   canDelete, deleting, onDelete
 }) {
   const FileIcon = isImage ? ImageIcon : FileText;
@@ -41,7 +41,9 @@ export default function HubFileRow({
           <select
             className="hub-forpick-select"
             value={currentItemId || ''}
-            disabled={assigning}
+            // Shown to everyone so they can see which part a file is for; only a
+            // manager can move it (the server refuses the rest).
+            disabled={assigning || !canMove}
             onChange={(e) => onAssign(e.target.value || null)}
           >
             <option value="">Whole job</option>

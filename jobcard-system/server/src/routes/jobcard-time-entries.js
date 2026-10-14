@@ -32,6 +32,7 @@ const {
 const { readOpeningRules, nextOpening, officeDayEndAfter } = require('../utils/openingHours');
 const { checkFinishAnswer, CARRIED_ON_GAP_MS } = require('../shared/finishAnswer');
 const { cutIsDue } = require('../utils/timerPause');
+const { partPositions } = require('../utils/partPositions');
 
 const router = express.Router();
 
@@ -244,7 +245,7 @@ function afterClockStarted(jobcardId, workerId, item, startTime, req, isSelf, en
     // The part's place in the list as the screens number it, not its stored sort
     // order (which keeps gaps after a part is removed) — the same number every
     // other view of a running timer shows.
-    itemNumber: jobItemQueries.getByJobcard.all(jobcardId).findIndex(p => p.id === item.id) + 1,
+    itemNumber: partPositions(jobcardId).get(item.id) || 0,
     startTime
   };
 }

@@ -57,7 +57,8 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
   const { user } = useAuth();
   // Anyone can add paperwork; only management can remove it (deleting a file can
   // silently re-open a part's missing-attachment warning).
-  const canDelete = isManagement(user);
+  // Deleting a saved file and moving it to another part are both management-only.
+  const canManageFiles = isManagement(user);
 
   const files = useJobFiles(jobcardId, { onJobClosed });
   const camera = useCamera();
@@ -332,7 +333,8 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
                 currentItemId={f.itemId}
                 assigning={files.assigningKeys.has(`${cat}/${f.name}`)}
                 onAssign={(itemId) => handleAssign(cat, f.name, itemId)}
-                canDelete={canDelete && !locked}
+                canMove={canManageFiles && !locked}
+                canDelete={canManageFiles && !locked}
                 deleting={files.deletingKeys.has(`${cat}/${f.name}`)}
                 onDelete={() => handleDelete(cat, f.name)}
               />

@@ -20,6 +20,7 @@ const { handleValidationErrors } = require('../middleware/validation');
 const { describePart } = require('./jobcard-audit-text');
 const { body, param } = require('express-validator');
 const { ALLOWED_FILE_EXTENSIONS, MAX_UPLOAD_BYTES, CATEGORY_FOLDER } = require('../shared/jobFiles');
+const { partPositions } = require('../utils/partPositions');
 
 const router = express.Router();
 
@@ -54,7 +55,7 @@ const MAX_FILE_DATA_CHARS = Math.ceil((MAX_UPLOAD_BYTES * 4) / 3);
 function resolveJobFolder(jobcardId) {
   const settings = getSettings();
   const basePath = settings.job_folders_base;
-  if (!basePath || !basePath.trim()) {
+  if (!basePath) {
     // `notConfigured` lets callers that don't send the reply themselves tell
     // "nothing was looked at" apart from "looked, and the folder is empty".
     return { error: 'Job folders base path not configured', status: 400, notConfigured: true };
@@ -185,12 +186,13 @@ function currentFileTag(name) {
  * by matching the stored "[p{code}]" tag against every part on the job. A file with
  * no matching part tag (e.g. a "[timestamp]" job-level file) comes back as
  * whole-job (itemId: null). Adds `displayName` (tag stripped), `itemId`, and
- * `itemNumber` to each file. All filename-tag knowledge stays server-side.
+ * `itemNumber` (the part's place in the list, not its stored sort order) to each file. All filename-tag knowledge stays server-side.
  */
 function resolveFileOwners(jobcardId, files) {
   const items = jobItemQueries.getByJobcard.all(jobcardId) || [];
+  const positions = partPositions(jobcardId);
   const parts = items
-    .map(it => ({ itemId: it.id, itemNumber: it.item_number, code: partFileCode(it.id) }))
+    .map(it => ({ itemId: it.id, itemNumber: positions.get(it.id), code: partFileCode(it.id) }))
     .filter(p => p.code)
     .map(p => ({ ...p, re: partTagRegex(p.code) }));
   return files.map(f => {
@@ -513,7 +515,9 @@ const validateAssignBody = [
   handleValidationErrors
 ];
 
-router.post('/:id/files/:category/:filename/assign', authenticate, validateCategory, validateFilenameParam, validateAssignBody, (req, res) => {
+// Management only, like delete: moving a part's only drawing to another part or the whole
+// job brings back or hides its missing-drawing warning, which invoicing checks.
+router.post('/:id/files/:category/:filename/assign', authenticate, requireManagement, validateCategory, validateFilenameParam, validateAssignBody, (req, res) => {
   try {
     const { id, category, filename } = req.params;
     const itemId = req.body.itemId || null;
