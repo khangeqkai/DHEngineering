@@ -4,11 +4,7 @@ const { jobcardQueries } = require('./queries/jobcard');
 
 // Helper to record history
 function recordHistory(entityType, entityId, action, userId, userName, changes, snapshot) {
-  const stmt = db.prepare(`
-    INSERT INTO history (entity_type, entity_id, action, user_id, user_name, changes, snapshot, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-  `);
-  stmt.run(
+  historyQueries.insert.run(
     entityType,
     entityId,
     action,

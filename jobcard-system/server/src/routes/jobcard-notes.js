@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const { requiredString, handleValidationErrors } = require('../middleware/validation');
-const { db, jobNoteQueries, recordHistory, actorName } = require('../db/database');
+const { db, jobcardQueries, jobNoteQueries, recordHistory, actorName } = require('../db/database');
 const { findOr404 } = require('../utils/findOr404');
 
 const router = express.Router();
@@ -35,6 +35,9 @@ router.post('/:id/notes', authenticate, [
   try {
     const { id } = req.params;
     const { text } = req.body;
+
+    // A job deleted from another PC while this one still had it open.
+    if (!findOr404(res, jobcardQueries.getById.get(id), 'Job card not found')) return;
 
     const noteId = `note:${uuidv4()}`;
 

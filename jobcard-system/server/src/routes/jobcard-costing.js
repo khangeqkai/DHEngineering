@@ -2,7 +2,8 @@ const express = require('express');
 
 const logger = require('../utils/logger');
 const { authenticate, requirePermission } = require('../middleware/auth');
-const { db, jobCostingQueries, recordHistory, actorName } = require('../db/database');
+const { db, jobcardQueries, jobCostingQueries, recordHistory, actorName } = require('../db/database');
+const { findOr404 } = require('../utils/findOr404');
 const {
   computeLiveCosting,
   persistCosting,
@@ -32,6 +33,8 @@ router.get('/:id/costing', authenticate, requirePermission('pricing'), (req, res
 router.put('/:id/costing', authenticate, requirePermission('pricing'), (req, res) => {
   try {
     const jobId = req.params.id;
+    // A job deleted from another PC while the sheet was still open: say so, once.
+    if (!findOr404(res, jobcardQueries.getById.get(jobId), 'Job card not found')) return;
     const existing = jobCostingQueries.getByJobcard.get(jobId);
 
     // An invoiced (archived) job never reaches here: closedJobGuard, mounted ahead of every

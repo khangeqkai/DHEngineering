@@ -16,6 +16,12 @@ const HISTORY_JOB_NUMBER_SQL = `(CASE WHEN h.entity_type = 'jobcard' THEN COALES
 
 // History queries
 const historyQueries = {
+  // The one trail-entry insert recordHistory runs (helpers.js) — prepared once here,
+  // not on every save.
+  insert: db.prepare(`
+    INSERT INTO history (entity_type, entity_id, action, user_id, user_name, changes, snapshot, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  `),
   getByEntity: db.prepare(`
     SELECT * FROM history
     WHERE entity_type = ? AND entity_id = ?

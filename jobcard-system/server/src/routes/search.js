@@ -427,8 +427,9 @@ function searchTime(req, res, canManage) {
 
   if (q) {
     const like = likeTerm(q.trim());
-    conditions.push(`(u.name LIKE ? ESCAPE '\\' OR te.description LIKE ? ESCAPE '\\' OR ${partPosition} LIKE ? ESCAPE '\\' OR te.machine_number LIKE ? ESCAPE '\\')`);
-    params.push(like, like, like, like);
+    // A part number matches only that exact part: "1" is part 1, never 10–19 or 21.
+    conditions.push(`(u.name LIKE ? ESCAPE '\\' OR te.description LIKE ? ESCAPE '\\' OR CAST(${partPosition} AS TEXT) = ? OR te.machine_number LIKE ? ESCAPE '\\')`);
+    params.push(like, like, q.trim(), like);
   }
   if (workerId) { conditions.push('te.user_id = ?'); params.push(workerId); }
   if (machineId) {
