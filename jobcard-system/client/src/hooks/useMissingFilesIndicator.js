@@ -6,6 +6,9 @@ import { warningToastIcon } from '../components/common/toastIcons';
 // How long to wait before retrying a row whose check failed (a connection blip),
 // so a row never sits on the loading hint forever when the visible set is static.
 const RETRY_DELAY_MS = 3000;
+// While the job files' drive can't be reached, the rows on screen are asked about
+// again this often, so their markers come back on their own once the drive returns.
+const UNREACHABLE_RECHECK_MS = 60000;
 
 // Tracks which job cards declared a drawing / customer property but have no
 // matching file attached, so the job list can mark those rows.
@@ -32,6 +35,8 @@ export function useMissingFilesIndicator() {
   // alone (the row keeps its loading hint) until a fresh ask — `ensure` for a new
   // list load, or `refresh` after a change to that job — clears the mark.
   const retriedRef = useRef(new Set());
+  // True once the "files could not be checked" notice has been shown for this outage.
+  const unreachableNotedRef = useRef(false);
   // Retry timers, cleared on unmount.
   const mountedRef = useRef(true);
   const timersRef = useRef(new Set());
@@ -55,10 +60,28 @@ export function useMissingFilesIndicator() {
       // jobs are NOT checked (a later load or refresh asks again), and one notice
       // says so instead of the rows quietly reading as clean.
       if (res?.filesUnreachable) {
-        toast('Job files could not be checked right now. Missing-file markers may be incomplete.',
-          { id: 'attachment-check-unreachable', icon: warningToastIcon });
+        // Said once per outage, not on every minute's re-check.
+        if (!unreachableNotedRef.current) {
+          unreachableNotedRef.current = true;
+          toast('Job files could not be checked right now. Missing-file markers may be incomplete.',
+            { id: 'attachment-check-unreachable', icon: warningToastIcon });
+        }
+        // Ask again in a minute (one request for the rows still unchecked), and keep
+        // doing so while the drive stays away; stops when the list closes.
+        if (mountedRef.current) {
+          const t = setTimeout(() => {
+            timersRef.current.delete(t);
+            const again = ids.filter(id => !checkedRef.current.has(id) && !inFlightRef.current.has(id));
+            if (again.length) {
+              for (const id of again) inFlightRef.current.add(id);
+              fetchFor(again);
+            }
+          }, UNREACHABLE_RECHECK_MS);
+          timersRef.current.add(t);
+        }
         return;
       }
+      unreachableNotedRef.current = false;
       const checked = res?.checked || ids;
       const flagged = res?.flagged || [];
       const flaggedMap = new Map(flagged.map(f => [f.jobcardId, f]));
