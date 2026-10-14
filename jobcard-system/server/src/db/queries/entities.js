@@ -179,15 +179,16 @@ const tagQueries = {
   // match) not LIKE, because tag values contain underscores and "_" is a LIKE
   // single-char wildcard — LIKE would over-count similar values. A NULL column makes
   // the concatenation NULL, so instr yields NULL and the row is excluded (correct).
-  // Spaces are stripped from both sides first, matching splitAnswer (shared/lineItemAnswers.js),
-  // which trims each value — so a stored "A, B" still counts as using "B".
+  // Spaces next to a comma are dropped from the stored list first, matching splitAnswer
+  // (shared/lineItemAnswers.js), which trims each value — so a stored "A, B" still counts
+  // as using "B". Spaces inside a value are kept: "FULL SET" and "FULLSET" stay different.
   countItemsByDrawingsValue: db.prepare(`
     SELECT COUNT(*) as count FROM job_items
-    WHERE instr(',' || replace(drawings_type, ' ', '') || ',', ',' || replace(?, ' ', '') || ',') > 0
+    WHERE instr(',' || replace(replace(drawings_type, ', ', ','), ' ,', ',') || ',', ',' || trim(?) || ',') > 0
   `),
   countItemsByCustomerPropertyValue: db.prepare(`
     SELECT COUNT(*) as count FROM job_items
-    WHERE instr(',' || replace(customer_property, ' ', '') || ',', ',' || replace(?, ' ', '') || ',') > 0
+    WHERE instr(',' || replace(replace(customer_property, ', ', ','), ' ,', ',') || ',', ',' || trim(?) || ',') > 0
   `),
 
   // Supplier tag operations (treatment tags for suppliers)
