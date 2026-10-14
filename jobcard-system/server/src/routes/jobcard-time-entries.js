@@ -339,8 +339,12 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
     // stretch of work always has to be asked for.
     // A closed (archived) job is frozen, and the discard would put its status and worker
     // list back — so a stop there is recorded as a normal block, never discarded.
+    // Time the office entered (or reopened) by hand is never touched either: its start is
+    // a typed moment, not a tap, so a quick stop on it is a real finish.
     const jobIsClosed = jobcardQueries.getById.get(id)?.archived === 1;
-    const discarded = existing.continues_run === 1 || jobIsClosed ? null : discardIfAccidentalTap(id, existing, req.user);
+    const handEntered = existing.auto_stop_exempt === 1;
+    const discarded = existing.continues_run === 1 || jobIsClosed || handEntered
+      ? null : discardIfAccidentalTap(id, existing, req.user);
     if (discarded) return res.json(discarded);
 
     // Never a finish before the start: a workstation clock running a few seconds fast
