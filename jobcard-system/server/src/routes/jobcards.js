@@ -2,6 +2,8 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
+const { assigneeNames } = require('../utils/historyChanges');
+const { syncStatusToWork } = require('../utils/jobStatusAuto');
 const { deleteJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireManagement, requirePermission, canSetStatus } = require('../middleware/auth');
 const { validateJobcardListQuery, JOBCARD_STATUSES } = require('../middleware/validation');
@@ -172,8 +174,8 @@ router.post('/:id/assignees/self', authenticate, (req, res) => {
       db.transaction(() => {
         jobAssigneeQueries.create.run(assigneeId, id, userId);
         after = jobAssigneeQueries.getByJobcard.all(id);
-        const fromNames = before.map(a => a.user_name).join(', ') || 'none';
-        const toNames = after.map(a => a.user_name).join(', ') || 'none';
+        const fromNames = assigneeNames(before);
+        const toNames = assigneeNames(after);
         recordHistory('jobcard', id, 'self_assign', userId, actorName(req), {
           assignees: { from: fromNames, to: toNames }
         });
@@ -224,8 +226,8 @@ router.delete('/:id/assignees/self', authenticate, (req, res) => {
     db.transaction(() => {
       jobAssigneeQueries.deleteByJobcardAndUser.run(id, userId);
       after = jobAssigneeQueries.getByJobcard.all(id);
-      const fromNames = before.map(a => a.user_name).join(', ') || 'none';
-      const toNames = after.map(a => a.user_name).join(', ') || 'none';
+      const fromNames = assigneeNames(before);
+      const toNames = assigneeNames(after);
       recordHistory('jobcard', id, 'self_unassign', userId, actorName(req), {
         assignees: { from: fromNames, to: toNames }
       });
@@ -271,8 +273,8 @@ router.put('/:id/assignees/:userId', authenticate, requireManagement, (req, res)
         jobAssigneeQueries.create.run(assigneeId, id, userId);
         jobcardQueries.touch.run(req.user.userId, id);
         after = jobAssigneeQueries.getByJobcard.all(id);
-        const fromNames = before.map(a => a.user_name).join(', ') || 'none';
-        const toNames = after.map(a => a.user_name).join(', ') || 'none';
+        const fromNames = assigneeNames(before);
+        const toNames = assigneeNames(after);
         recordHistory('jobcard', id, 'assign', req.user.userId, actorName(req), {
           assignees: { from: fromNames, to: toNames }
         });
@@ -327,8 +329,8 @@ router.delete('/:id/assignees/:userId', authenticate, requireManagement, (req, r
       jobAssigneeQueries.deleteByJobcardAndUser.run(id, userId);
       jobcardQueries.touch.run(req.user.userId, id);
       after = jobAssigneeQueries.getByJobcard.all(id);
-      const fromNames = before.map(a => a.user_name).join(', ') || 'none';
-      const toNames = after.map(a => a.user_name).join(', ') || 'none';
+      const fromNames = assigneeNames(before);
+      const toNames = assigneeNames(after);
       recordHistory('jobcard', id, 'unassign', req.user.userId, actorName(req), {
         assignees: { from: fromNames, to: toNames }
       });
@@ -418,14 +420,16 @@ router.post('/:id/unarchive', authenticate, requireManagement, (req, res) => {
       return res.status(400).json({ error: 'Job card is not archived' });
     }
 
-    // Un-filing also resets the status back to OPEN so the job returns as a
-    // normal working job, never a back-in-the-list-but-still-INVOICED limbo.
+    // Un-filing clears INVOICED (never a back-in-the-list-but-still-invoiced limbo) and
+    // then lets the logged work decide, like every other status move: finished work
+    // comes back Done, some work In Progress, none at all Open.
     db.transaction(() => {
       jobcardQueries.unarchive.run(req.user.userId, id);
+      const fromWork = syncStatusToWork(id, req.user);
       recordHistory('jobcard', id, 'unarchive', req.user.userId, actorName(req), {
         archived: { from: true, to: false },
         invoicedDate: { from: existing.invoiced_date, to: null },
-        status: { from: existing.status, to: 'OPEN' }
+        status: { from: existing.status, to: fromWork ? fromWork.to : 'OPEN' }
       }, { jobNumber: existing.job_number });
     })();
 
