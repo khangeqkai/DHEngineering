@@ -112,6 +112,9 @@ const jobcardQueries = {
     WHERE id = ?
   `),
 
+  // The 'OPEN' written here is only the base the unarchive route settles from: it runs
+  // syncStatusToWork in the same transaction, so the logged work decides the final status
+  // and nobody ever sees the interim OPEN.
   unarchive: db.prepare(`
     UPDATE jobcards SET archived = 0, invoiced_date = NULL, status = 'OPEN', updated_by = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?

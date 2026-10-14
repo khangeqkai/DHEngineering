@@ -376,7 +376,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
     if (status === existing.status) return sendJob();
 
     // Re-opening goes through the management-only unarchive action, which un-files
-    // the job and resets its status back to OPEN. An already-archived job never
+    // the job and lets the logged work decide its status again. An already-archived job never
     // reaches this line: closedJobGuard (mounted ahead of every /:id route) has
     // already refused any write to it except the allow-listed ones.
 

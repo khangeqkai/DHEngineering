@@ -10,8 +10,8 @@ import { TEXT_FIELDS } from './useCostingDrafts';
 // useCosting.js for how the two are composed — every guard here exists because it once
 // billed the wrong number, see docs/notes/time-and-costing.md.
 //
-// An invoiced job's pricing saves itself exactly like any other job's — see the note on
-// runSave below for why there is no question in front of it any more.
+// An invoiced job's pricing cannot be saved until it is unarchived (the sheet is locked) —
+// see the note on runSave below for why there is no question in front of a save.
 //
 // costingForm/drafts are the CURRENT values from useCostingDrafts.js, passed in fresh
 // every render; setCostingForm/setDrafts/clearAllFieldErrors, commitAllBoxes and
@@ -163,13 +163,11 @@ export function useCostingSave(jobCardId, {
   // save failed. Callers that gate an irreversible step on the save (invoicing files the
   // job away) rely on the false case to abort instead of proceeding with unsaved numbers.
   //
-  // An invoiced job is saved the same as any other. It used to ask "change an invoiced
-  // job?" first, once per opening — but with no Save button that question had to come off
-  // the one-second countdown, so it spoke a beat after the typing stopped and with nobody
-  // having clicked anything. The sheet is admin-only, the server accepts the change either
-  // way, and every figure is recorded in the activity trail with its old and new value, so
-  // the question was a speed bump rather than a gate. Saving straight through is the
-  // behaviour the rest of the sheet already has.
+  // There is no "change an invoiced job?" question. An invoiced job is closed: the
+  // server (closedJobGuard) refuses a save until it is unarchived, and the sheet is
+  // locked on screen meanwhile, so a save only ever runs on an open job and goes
+  // straight through, like the rest of the sheet. Every figure is recorded in the
+  // activity trail with its old and new value.
   const runSave = useCallback(async () => {
     if (!jobCardId) return true; // nothing to save (new card) — not a failure
 
