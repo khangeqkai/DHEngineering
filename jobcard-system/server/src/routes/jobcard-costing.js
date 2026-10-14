@@ -34,8 +34,8 @@ router.put('/:id/costing', authenticate, requirePermission('pricing'), (req, res
     const jobId = req.params.id;
     const existing = jobCostingQueries.getByJobcard.get(jobId);
 
-    // An invoiced job is not blocked here: the screen asks the user to confirm before
-    // saving, and the edit simply recalculates from the job's own captured rules.
+    // An invoiced (archived) job never reaches here: closedJobGuard, mounted ahead of every
+    // /:id route, refuses the save until the job is unarchived.
     const computed = computeLiveCosting(jobId, req.body);
 
     // Diff for the audit trail. The auto-tallied tier hours (labour_*_hours) are

@@ -113,6 +113,9 @@ export default function TimeEntryForm({
     else if (document.activeElement === document.body) saveButtonRef.current?.focus({ preventScroll: true });
   }, [saving, editingTimeEntryId]);
 
+  // Locked only while the save in flight is for the block this form now shows.
+  const lockedHere = saving && savingForRef.current === editingTimeEntryId;
+
   const handleSave = async () => {
     if (saving) return;
     savingForRef.current = editingTimeEntryId;
@@ -126,10 +129,11 @@ export default function TimeEntryForm({
 
   return (
     <div className="time-entry-form costing-entry-form" ref={formRef}>
-      {/* One lock for the whole form while a save is on its way, so a refusal is always applied to
+      {/* One lock for the whole form while ITS save is on its way, so a refusal is always applied to
           what was actually sent and nothing typed mid-save is lost to the reset. Every box and button
-          inside is covered, including any added later — no box carries its own saving lock. */}
-      <fieldset className="form-save-lock" disabled={saving}>
+          inside is covered, including any added later — no box carries its own saving lock. Another
+          block opened meanwhile stays editable; only its Save waits for the first save to finish. */}
+      <fieldset className="form-save-lock" disabled={lockedHere}>
       <div className="form-section-header">
         <h3 className="form-section-title">
           {editingTimeEntryId ? 'Edit Time Entry' : 'New Time Entry'}
@@ -338,7 +342,7 @@ export default function TimeEntryForm({
         </div>
       </div>
 
-      <button type="button" className="btn btn-primary" ref={saveButtonRef} onClick={handleSave}>
+      <button type="button" className="btn btn-primary" ref={saveButtonRef} onClick={handleSave} disabled={saving}>
         {saving ? 'Saving…' : editingTimeEntryId ? 'Update Entry' : 'Save Entry'}
       </button>
       </fieldset>

@@ -54,4 +54,10 @@ function diffFields(existing, fields) {
   return changes;
 }
 
-module.exports = { blankEqual, diffFields };
+// How a job's worker list reads in a trail entry's assignees from → to: names in the
+// order given, or 'none'. One wording for every route that adds or removes a worker.
+function assigneeNames(assignees) {
+  return assignees.map(a => a.user_name).join(', ') || 'none';
+}
+
+module.exports = { blankEqual, diffFields, assigneeNames };

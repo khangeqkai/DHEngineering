@@ -260,7 +260,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     // A finish that is being sent is judged against the start here in full.
     if (endTime && endSent) {
       const end = new Date(endTime).getTime();
-      if (endSent && isNaN(end)) {
+      if (isNaN(end)) {
         setFieldErrors({ endTime: 'Finish time is not a valid date' });
         scrollFieldIntoView('endTime');
         return;
@@ -271,7 +271,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
         return;
       }
       // Same allowance for clock drift as the server gives.
-      if (endSent && end > Date.now() + FUTURE_LEEWAY_MS) {
+      if (end > Date.now() + FUTURE_LEEWAY_MS) {
         setFieldErrors({ endTime: 'Finish time cannot be in the future' });
         scrollFieldIntoView('endTime');
         return;

@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 
 const logger = require('./logger');
+const { assigneeNames } = require('./historyChanges');
 const { isActiveRecord } = require('../shared/records');
 const { isCriticalLevel, INSPECTION_FIELDS, CRITICAL_INSPECTION_REFUSED } = require('../shared/qualityLevels');
 const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, recordHistory } = require('../db/database');
@@ -70,8 +71,8 @@ function autoAssignWorker(jobcardId, workerId, actor, action = 'assign') {
     db.transaction(() => {
       jobAssigneeQueries.create.run(`assignee:${uuidv4()}`, jobcardId, workerId);
       const after = jobAssigneeQueries.getByJobcard.all(jobcardId);
-      const fromNames = before.map(a => a.user_name).join(', ') || 'none';
-      const toNames = after.map(a => a.user_name).join(', ') || 'none';
+      const fromNames = assigneeNames(before);
+      const toNames = assigneeNames(after);
       recordHistory('jobcard', jobcardId, action, actor.userId, actor.name || actor.username, {
         assignees: { from: fromNames, to: toNames }
       });
