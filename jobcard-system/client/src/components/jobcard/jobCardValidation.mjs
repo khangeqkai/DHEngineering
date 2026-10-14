@@ -10,7 +10,7 @@ import { itemFieldMessage, jobFieldMessage, fieldErrorKey } from './fieldRules.m
 import { splitAnswer, hasMixedNa } from '../../../../server/src/shared/lineItemAnswers.js';
 
 // A line is "already saved" when it carries the server's stable "item:" id —
-// fresh rows only get a temporary local number. buildJobcardPayload (mappers.js)
+// fresh rows only get a temporary local "new:" id. buildJobcardPayload (mappers.js)
 // keys the save payload's ids off the same rule, so the two share this predicate.
 export const isSavedLineItem = (item) =>
   typeof item.id === 'string' && item.id.startsWith('item:');

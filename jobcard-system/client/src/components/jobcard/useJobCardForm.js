@@ -7,8 +7,16 @@ import { useSaveQueue } from './useSaveQueue';
 import { isJobClosed } from '../../utils/jobLock';
 import { useFieldErrors } from '../../hooks/useFieldErrors';
 
+// A part not yet stored carries a TEXT placeholder id ("new:<unique>"), the same
+// shape as a stored part's "item:<uuid>" — every part id is a string, so
+// ids split out of a field-error key ("<id>|<field>") match the row they came
+// from. The "new:" prefix keeps it apart from a stored id (isSavedLineItem looks
+// for "item:"), so a placeholder is never sent to the server as a real id.
+let localItemCounter = 0;
+const makeLocalItemId = () => `new:${Date.now().toString(36)}-${(localItemCounter++).toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
 const makeEmptyLineItem = (itemNumber = 1) => ({
-  id: Date.now() + Math.random(),
+  id: makeLocalItemId(),
   itemNumber,
   qty: '',
   description: '',
