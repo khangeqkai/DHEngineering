@@ -157,6 +157,18 @@ router.post('/logout', authenticate, (req, res) => {
   }
 });
 
+// A saved column layout that won't parse counts as no saved layout (the default
+// one shows) — a damaged value must never stop someone signing in.
+function parseSavedLayout(raw, userId) {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    logger.warn({ err, userId }, 'Saved column layout is damaged; using the default');
+    return null;
+  }
+}
+
 // Get current user
 router.get('/me', authenticate, (req, res) => {
   try {
@@ -168,8 +180,8 @@ router.get('/me', authenticate, (req, res) => {
       role: user.role,
       name: user.name,
       email: user.email,
-      jobcardColumnOrder: user.jobcard_column_order ? JSON.parse(user.jobcard_column_order) : null,
-      jobcardHiddenColumns: user.jobcard_hidden_columns ? JSON.parse(user.jobcard_hidden_columns) : null
+      jobcardColumnOrder: parseSavedLayout(user.jobcard_column_order, user.id),
+      jobcardHiddenColumns: parseSavedLayout(user.jobcard_hidden_columns, user.id)
     });
   } catch (err) {
     res.status(404).json({ error: 'User not found' });
