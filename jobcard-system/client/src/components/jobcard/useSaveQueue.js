@@ -219,7 +219,9 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
   const reset = useCallback(() => {
     setEntries({});
     setLandedCount(0);
-    chains.current = {};
+    // The per-key chains are kept: a write still on its way from the opening that just
+    // ended must stay ahead of the next write for the same field, or an older save
+    // landing last would overwrite a newer one. Only what the screen shows is cleared.
     // Anything already in the air belonged to the opening that just ended — see
     // openingRef's declaration above.
     openingRef.current += 1;
