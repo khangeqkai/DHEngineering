@@ -249,6 +249,13 @@ function buildStorageFilename(folderPath, displayName, partCode) {
   return candidate;
 }
 
+// The one rule for "is this file part of the job's paperwork": only the types
+// the app accepts. The list hides everything else and the view route refuses it,
+// so a name the list doesn't show can't be fetched by asking for it directly.
+function isListedFileName(name) {
+  return ALLOWED_FILE_EXTENSIONS.includes(path.extname(name).toLowerCase());
+}
+
 function listFolderFiles(folderPath) {
   if (!fs.existsSync(folderPath)) return [];
   return fs.readdirSync(folderPath)
@@ -261,8 +268,8 @@ function listFolderFiles(folderPath) {
         return null;
       }
       if (!stat.isFile()) return null;
+      if (!isListedFileName(name)) return null;
       const ext = path.extname(name).toLowerCase();
-      if (!ALLOWED_FILE_EXTENSIONS.includes(ext)) return null;
       return {
         name,
         size: stat.size,
@@ -387,7 +394,8 @@ router.get('/:id/files/:category/:filename', authenticate, validateCategory, val
     if (!isWithinBase(folderRes.folderPath, filePath)) {
       return res.status(403).json({ error: 'Path traversal detected' });
     }
-    if (!fs.existsSync(filePath)) {
+    // A name the list hides is answered exactly like a missing file.
+    if (!isListedFileName(filename) || !fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'File not found' });
     }
 
