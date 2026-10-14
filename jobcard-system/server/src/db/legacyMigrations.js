@@ -226,7 +226,8 @@ function makeJobLookup() {
   let unlinkedJobByFolder = null;
   let byNumber = null;
   let byCompany = null;
-  const key = (companyFolder, jobFolder) => `${companyFolder}\u0000${jobFolder}`;
+  // Lower-cased: Windows folder names ignore case, so a match must too.
+  const key = (companyFolder, jobFolder) => `${companyFolder.toLowerCase()}\u0000${jobFolder.toLowerCase()}`;
 
   function build() {
     companyIdByCode = new Map();
@@ -244,7 +245,8 @@ function makeJobLookup() {
       const jobFolder = sanitizeFolderName(row.job_number);
       if (companyFolder && jobFolder) unlinkedJobByFolder.set(key(companyFolder, jobFolder), row.id);
     }
-    byNumber = db.prepare('SELECT id FROM jobcards WHERE company_id = ? AND job_number = ?');
+    // Ignoring case, like every other job-number match: Windows folders do.
+    byNumber = db.prepare('SELECT id FROM jobcards WHERE company_id = ? AND lower(job_number) = lower(?)');
     byCompany = db.prepare('SELECT id, job_number FROM jobcards WHERE company_id = ?');
   }
 
@@ -257,7 +259,7 @@ function makeJobLookup() {
     if (exact) return exact.id;
     // A job number holding a character a folder name can't (a slash, say) was
     // sanitized on its way to disk, so compare that customer's jobs the same way.
-    const match = byCompany.all(companyId).find(row => sanitizeFolderName(row.job_number) === jobFolder);
+    const match = byCompany.all(companyId).find(row => sanitizeFolderName(row.job_number).toLowerCase() === jobFolder.toLowerCase());
     return match ? match.id : null;
   };
 }

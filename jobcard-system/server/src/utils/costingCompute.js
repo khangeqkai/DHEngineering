@@ -67,11 +67,14 @@ function computeCosting(jobId, existing, entries, ot, incoming) {
   // only the figures it changed, so another admin's saved figures are never overwritten
   // by this screen's out-of-date copy of them.
   const has = (key) => Object.prototype.hasOwnProperty.call(src, key);
-  // A figure only counts as sent when it is a real, finite number. One too long to fit
-  // (a pasted 400-digit figure reads as Infinity, which travels as null), an empty value
-  // or junk text is treated as not sent — the stored value stands — rather than read as 0
-  // (Number(null) and Number('') are both 0), or as "use the automatic figure". The screen
-  // never sends empty for a blank box: it commits and sends a real 0.
+  // A figure only counts as sent when it is a real, finite number. For a plain figure
+  // (rate, cost, profit percent, special hours) one too long to fit (a pasted 400-digit
+  // figure reads as Infinity, which travels as null), an empty value or junk text is
+  // treated as not sent — the stored value stands — rather than read as 0 (Number(null)
+  // and Number('') are both 0). The screen never sends empty for a blank plain box: it
+  // commits and sends a real 0. Override boxes are different (pickOverride below): null
+  // or empty there means "use the automatic figure", so an override that arrives as null
+  // — including an over-long paste — is cleared, not kept.
   const sentFigure = (key) => has(key) && src[key] != null && String(src[key]).trim() !== ''
     && Number.isFinite(Number(src[key]));
 
