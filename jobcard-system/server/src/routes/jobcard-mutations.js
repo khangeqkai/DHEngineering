@@ -18,7 +18,9 @@ const {
 } = require('../db/database');
 const { formatJobcard, buildChanges, createRelatedRecords, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
 const { refuseField } = require('./name-conflict');
-const { itemSummary, describePart, namesOfUserIds } = require('./jobcard-audit-text');
+const { isActiveRecord } = require('../shared/records');
+const { itemSummary, describePart } = require('./jobcard-audit-text');
+const { assigneeNames } = require('../utils/historyChanges');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { readOvertimeSettings } = require('../utils/overtimeSettings');
 const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
@@ -126,8 +128,11 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
     if (Array.isArray(data.assigneeIds)) {
       data.assigneeIds = [...new Set(data.assigneeIds)];
       for (const workerId of data.assigneeIds) {
+        if (typeof workerId !== 'string') {
+          return refuseField(res, 400, 'assigneeIds', 'A worker on this job is not valid — remove them and try again');
+        }
         const worker = userQueries.getById.get(workerId);
-        if (!worker || !worker.active) {
+        if (!isActiveRecord(worker)) {
           const who = worker ? (worker.name || worker.username) : 'A worker';
           return refuseField(res, 400, 'assigneeIds', `${who} can no longer be assigned — remove them and try again`);
         }
@@ -223,7 +228,8 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
       }
       // Record who was assigned at creation.
       if (Array.isArray(data.assigneeIds) && data.assigneeIds.length > 0) {
-        createChanges['assignees'] = { from: null, to: namesOfUserIds(data.assigneeIds) };
+        // Read back from the rows just written, worded like every later worker change.
+        createChanges['assignees'] = { from: 'none', to: assigneeNames(jobAssigneeQueries.getByJobcard.all(id)) };
       }
       recordHistory('jobcard', id, 'create', req.user.userId, actorName(req), createChanges);
 

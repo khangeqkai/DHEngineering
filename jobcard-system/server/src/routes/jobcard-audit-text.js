@@ -1,7 +1,6 @@
 // Compact human-readable strings for the job-card create/update audit log.
 // Kept beside jobcard-mutations.js the same way backup-helpers.js sits by settings.js.
 
-const { userQueries } = require('../db/database');
 // Tag codes resolve to names through the printout's own helpers, so the trail and
 // the job card never disagree on what a stored code means.
 const { parseTreatments, tagName, friendlyTagList } = require('./jobcard-helpers');
@@ -34,12 +33,5 @@ function itemSummary(qty, description, jobType, material, treatments, drawingsTy
   return `${qty || ''}x ${description}${jobTypeName ? ' <' + jobTypeName + '>' : ''}${materialName ? ' (' + materialName + ')' : ''}${tStr ? ' [' + tStr + ']' : ''}${draw}${prop}`;
 }
 
-// Resolve a list of assignee user IDs to a comma-separated display name string.
-function namesOfUserIds(userIds) {
-  return userIds.map(userId => {
-    const user = userQueries.getById.get(userId);
-    return user ? (user.name || user.username) : userId;
-  }).join(', ');
-}
 
-module.exports = { itemSummary, describePart, namesOfUserIds };
+module.exports = { itemSummary, describePart };
