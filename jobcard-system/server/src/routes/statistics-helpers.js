@@ -4,7 +4,7 @@ const { isCalendarDate } = require('../shared/calendarDate');
 const { roundTo } = require('../shared/round');
 const jobStatuses = require('../shared/jobStatuses.json');
 const logger = require('../utils/logger');
-const { db, getJobCostingOvertimeRowsByJobcardIds, jobCostingQueries, timeEntryQueries } = require('../db/database');
+const { db, getJobCostingOvertimeRowsByJobcardIds, jobCostingQueries, timeEntryQueries, machineQueries } = require('../db/database');
 const { splitMachineCodes } = require('../shared/machineList');
 const { computeCosting, jobOvertimeBaseline } = require('../utils/costingCompute');
 const { can } = require('../middleware/auth');
@@ -294,7 +294,7 @@ function fetchStatsJobs(startDate, endDate, bufferedStartIso, bufferedEndIso) {
 
 // 2. Fetch machines: active machines sorted first so they take priority in lookup
 function buildMachineMaps() {
-  const machinesList = db.prepare('SELECT * FROM machines ORDER BY active DESC, id DESC').all();
+  const machinesList = machineQueries.getAllActiveFirst.all();
   const activeMachinesMap = new Map();
   const machineStatsMap = new Map();
   for (const m of machinesList) {

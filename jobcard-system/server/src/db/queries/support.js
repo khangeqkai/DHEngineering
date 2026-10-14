@@ -66,6 +66,8 @@ const historyQueries = {
   // deleted-numbers half of highestUsedJobNumber (db/helpers.js). A deleted
   // job's number is never reused, so its own history entry is the only record
   // of it once the job row itself is gone.
+  // Backup restore: moves the trail's AUTOINCREMENT counter up to the highest restored id.
+  setSequence: db.prepare("UPDATE sqlite_sequence SET seq = ? WHERE name = 'history'"),
   getDeletedJobNumbers: db.prepare(
     "SELECT json_extract(changes, '$.jobNumber.from') AS job_number FROM history WHERE entity_type = 'jobcard' AND action = 'delete'"
   )
@@ -75,6 +77,7 @@ const historyQueries = {
 const settingsQueries = {
   get: db.prepare('SELECT key, value FROM settings'),
   getByKey: db.prepare('SELECT value FROM settings WHERE key = ?'),
+  deleteByKey: db.prepare('DELETE FROM settings WHERE key = ?'),
   upsert: db.prepare(`
     INSERT INTO settings (key, value, updated_at)
     VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))

@@ -32,6 +32,9 @@ const userQueries = {
     WHERE id = ?
   `),
 
+  // Backup restore: ends every session so no one stays signed in across a rewind.
+  clearAllSessionTokens: db.prepare('UPDATE users SET session_token = NULL'),
+
   updateSessionToken: db.prepare(`
     UPDATE users SET session_token = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
@@ -214,6 +217,8 @@ const machineQueries = {
   getById: db.prepare('SELECT * FROM machines WHERE id = ?'),
   getAll: db.prepare('SELECT * FROM machines WHERE active = 1 ORDER BY machine_number ASC'),
   getAllIncludeInactive: db.prepare('SELECT * FROM machines ORDER BY machine_number ASC'),
+  // Workshop Statistics: active machines first, so they take priority in its lookup.
+  getAllActiveFirst: db.prepare('SELECT * FROM machines ORDER BY active DESC, id DESC'),
   // Uniqueness only matters among active machines: an archived machine keeps its
   // number for history, but that number is free to reuse on a new active machine.
   // Case-insensitive so "cnc-01" and "CNC-01" collide (the same capitals rule as customer names).

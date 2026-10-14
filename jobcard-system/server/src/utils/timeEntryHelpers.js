@@ -4,7 +4,7 @@ const logger = require('./logger');
 const { assigneeNames } = require('./historyChanges');
 const { isActiveRecord } = require('../shared/records');
 const { isCriticalLevel, INSPECTION_FIELDS, CRITICAL_INSPECTION_REFUSED } = require('../shared/qualityLevels');
-const { db, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, recordHistory } = require('../db/database');
+const { db, jobcardQueries, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, recordHistory } = require('../db/database');
 
 // Normalise a hand-entered time into a full ISO timestamp with time zone, so
 // every stored time block is in the same format (a block's start and finish can
@@ -186,12 +186,10 @@ function flagToBool(v) {
   return v == null ? null : v === 1;
 }
 
-const qualityLevelOfJob = db.prepare('SELECT quality_level FROM jobcards WHERE id = ?');
-
 // A job sits on the Critical quality level when its stored label is 'CRITICAL'.
 // Only those jobs ask the worker the extra inspection checklist on finishing.
 function isCriticalJob(jobcardId) {
-  const row = qualityLevelOfJob.get(jobcardId);
+  const row = jobcardQueries.getById.get(jobcardId);
   return !!row && isCriticalLevel(row.quality_level);
 }
 

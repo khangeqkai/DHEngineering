@@ -531,11 +531,11 @@ function restoreTables({ data, tableOrder, tableColumns, currentJobBase, current
       // Fix sqlite_sequence for history table (AUTOINCREMENT)
       if (data.history.length > 0) {
         const maxId = data.history.reduce((max, r) => r.id > max ? r.id : max, 0);
-        db.db.prepare(`UPDATE sqlite_sequence SET seq = ? WHERE name = 'history'`).run(maxId);
+        db.historyQueries.setSequence.run(maxId);
       }
 
       // End every restored session so no one stays signed in across a rewind.
-      db.db.prepare('UPDATE users SET session_token = NULL').run();
+      db.userQueries.clearAllSessionTokens.run();
 
       // Keep THIS machine's folder locations (the backup may carry another
       // machine's paths). Done inside the transaction so the live paths never
@@ -561,7 +561,7 @@ function restoreTables({ data, tableOrder, tableColumns, currentJobBase, current
       // from the backup, not from these files. Clear it so the conversion pass below
       // moves them into Job Files now, rather than trusting a marker that describes
       // some other set of folders.
-      db.db.prepare('DELETE FROM settings WHERE key = ?').run(QA_FORMS_MOVED_KEY);
+      db.settingsQueries.deleteByKey.run(QA_FORMS_MOVED_KEY);
 
       // A restore must end in exactly the state a fresh restart would produce, so
       // run the SAME full conversion pass a boot runs — timestamp normalisation,
