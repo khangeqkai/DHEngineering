@@ -84,8 +84,8 @@ export default defineConfig({
       allow: [searchForWorkspaceRoot(process.cwd()), '../server/src/shared']
     },
     proxy: {
-      '/api': 'http://localhost:3000',
-      '/health': 'http://localhost:3000'
+      '/api': 'http://localhost:8888',
+      '/health': 'http://localhost:8888'
     }
   },
   build: {

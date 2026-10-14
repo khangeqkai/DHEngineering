@@ -136,7 +136,7 @@ function waitForHealth(timeoutMs = 20000) {
   return new Promise((resolve) => {
     const start = Date.now();
     const tick = () => {
-      const req = http.get('http://localhost:3000/health', (res) => {
+      const req = http.get('http://localhost:8888/health', (res) => {
         res.resume();
         if (res.statusCode === 200) resolve(true);
         else if (Date.now() - start > timeoutMs) resolve(false);
@@ -176,7 +176,7 @@ async function cmdLan() {
 
   const lanIp = findLanIp();
 
-  console.log('\nStarting server on port 3000...');
+  console.log('\nStarting server on port 8888...');
   // On Windows, modern Node refuses to spawn npm/npx (.cmd shims) directly
   // (throws EINVAL) unless routed through the shell. shell:true fixes that and
   // is harmless elsewhere.
@@ -200,9 +200,9 @@ async function cmdLan() {
   console.log('================================');
   console.log('  Server is up.');
   console.log('');
-  console.log('  On this machine:    http://localhost:3000');
+  console.log('  On this machine:    http://localhost:8888');
   if (lanIp) {
-    console.log(`  From another PC:    http://${lanIp}:3000`);
+    console.log(`  From another PC:    http://${lanIp}:8888`);
   } else {
     console.log('  From another PC:    (no LAN IP detected — check Wi-Fi)');
   }
@@ -219,7 +219,7 @@ async function cmdLan() {
     cwd: path.join(ROOT, 'client'),
     stdio: 'inherit',
     shell: isWindows,
-    env: { ...process.env, ELECTRON_LOAD_URL: 'http://localhost:3000' }
+    env: { ...process.env, ELECTRON_LOAD_URL: 'http://localhost:8888' }
   });
 
   let shuttingDown = false;

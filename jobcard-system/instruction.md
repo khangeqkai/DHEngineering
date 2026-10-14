@@ -24,7 +24,7 @@ What happens:
 
 1. The app builds itself (only if you changed code since last time).
 2. A desktop window opens — use it like any normal app.
-3. The terminal prints a web address, e.g. `http://192.168.1.42:3000`.
+3. The terminal prints a web address, e.g. `http://192.168.1.42:8888`.
 4. Anyone on the same Wi-Fi can open that address in Chrome / Edge and use the app at the same time.
 
 **First time only:** Mac may pop up a "Allow incoming connections?" prompt — click **Allow**, otherwise other PCs can't reach it.

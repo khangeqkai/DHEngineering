@@ -67,7 +67,7 @@ code and their PIN. Office computers never see that box.
 ## Testing from a development PC
 
 The tunnel expects the secure (HTTPS, port 443) server that the packaged app
-runs. Plain `npm start` is dev-only (HTTP on 3000), so for a home test run:
+runs. Plain `npm start` is dev-only (HTTP on 8888), so for a home test run:
 
 ```
 npm run prod

@@ -4,7 +4,7 @@
 
 ## Base
 
-Base URL: `/api` (relative; Vite dev server proxies to `http://localhost:3000`, production serves client statically from Express)
+Base URL: `/api` (relative; Vite dev server proxies to `http://localhost:8888`, production serves client statically from Express)
 
 ## Paged lists
 

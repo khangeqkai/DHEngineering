@@ -64,7 +64,7 @@ All commands run from `/jobcard-system/`:
 # Start full application (server + Electron client)
 npm start
 
-# Start server only (port 3000)
+# Start server only (port 8888)
 npm run server
 
 # Start client only (Electron + Vite dev server)
@@ -266,7 +266,7 @@ Short list of things that are easy to break by default and expensive to un-break
 ## Environment Variables
 
 ```
-PORT=3000                    # Server port (dev HTTP; also a plaintext→HTTPS redirect port in production)
+PORT=8888                    # Server port (dev HTTP; also a plaintext→HTTPS redirect port in production)
 HOST=0.0.0.0                 # Server host (0.0.0.0 for LAN access)
 HTTPS_PORT=443               # Production HTTPS port (see "Secure serving" below)
 MDNS_NAME=jobcards.local     # Friendly local-network name the app announces itself under (production, .local)

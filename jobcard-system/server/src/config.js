@@ -44,7 +44,8 @@ const secure = process.env.NODE_ENV === 'production';
 
 module.exports = {
   // Server settings
-  port: process.env.PORT || 3000,
+  // 8888, not 3000: on the dev PC a Windows port forward (netsh portproxy) holds 3000.
+  port: process.env.PORT || 8888,
   host: process.env.HOST || '0.0.0.0', // Listen on all interfaces for LAN access
 
   // HTTPS (production only)
