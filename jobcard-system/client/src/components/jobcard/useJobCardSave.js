@@ -40,6 +40,8 @@ export function useJobCardSave({
   onSuccess,
   onClose,
   setAttachmentWarnings,
+  // Whether the job window is still up — see useStillMounted.js.
+  isWindowUp,
   // Marks a contact box (JobCardModal.jsx's own useFieldErrors instance) instead of
   // a pop-up when a 400 names contactName/contactPhone/contactEmail — see
   // fieldErrorsFromRefusal in hooks/useFieldErrors.js.
@@ -76,14 +78,6 @@ export function useJobCardSave({
     }
 
     setSaving(true);
-    // Captured before anything travels: if the window is closed and reopened —
-    // on this same create or a different job entirely — before the reply lands,
-    // formHook's sessionRef has moved on by the time it does. The list still
-    // gets refreshed either way (the job really was created), but this reply is
-    // no longer allowed to close, or set file warnings on, whichever job happens
-    // to be open when it arrives.
-    const sessionToken = formHook.sessionRef.current;
-
     try {
       // Customer details are chosen once, at creation — resolve/create the contact.
       const customer = await resolveJobContactId({
@@ -108,9 +102,10 @@ export function useJobCardSave({
       const result = await api.createJobcard(jobcardData);
 
       onSuccess?.();
-      // The window may have moved on to another job while this one was saving;
-      // then nothing about this reply belongs on screen.
-      if (formHook.sessionRef.current !== sessionToken) return;
+      // The list is refreshed either way (the job really was created), but if the window
+      // has closed while this was saving, closing it again would close whichever job
+      // the person opened since.
+      if (!isWindowUp()) return;
       setAttachmentWarnings(result?.attachmentWarnings || null);
       onClose();
     } catch (err) {
@@ -126,7 +121,7 @@ export function useJobCardSave({
     } finally {
       setSaving(false);
     }
-  }, [canManage, isEdit, formHook, contactHook, showConfirm, onSuccess, onClose, setAttachmentWarnings, onContactFieldErrors, onFormMarks]);
+  }, [canManage, isEdit, formHook, contactHook, showConfirm, onSuccess, onClose, setAttachmentWarnings, isWindowUp, onContactFieldErrors, onFormMarks]);
 
   return { saving, handleSubmit };
 }

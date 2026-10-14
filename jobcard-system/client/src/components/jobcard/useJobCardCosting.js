@@ -11,7 +11,7 @@ import { useCosting } from './useCosting';
 // Wraps useCosting, which owns the figures themselves, and hands back its whole API
 // plus the load state the pricing tab needs.
 export function useJobCardCosting({
-  isOpen, isEdit, canSeePricing, jobCardId, activeTab, onJobClosed
+  isEdit, canSeePricing, jobCardId, jobNumber, activeTab, onJobClosed
 }) {
   const [costing, setCosting] = useState(null);
   // Set when the pricing couldn't be fetched. The screen shows a plain message and a
@@ -19,64 +19,50 @@ export function useJobCardCosting({
   // costs nothing", and the screen saves itself, so one keystroke on it would write
   // those zeros over the job's real figures.
   const [loadFailed, setLoadFailed] = useState(false);
-  // Whether the Costing tab has been opened this opening — gates both the pricing fetch
+  // Whether the Costing tab has been opened in this window — gates both the pricing fetch
   // below and the refresh after every timer/time-entry change, so neither one walks every
-  // logged minute unless there's an actual price sheet on screen (or there was, earlier
-  // this opening) for it to update. Derived, not just stored: true outright whenever the
-  // tab IS currently showing (checked straight off activeTab, not the stored flag), OR the
-  // stored flag says it was shown earlier. That "currently showing" half matters because
-  // the stored flag is cleared by resetCosting() on every open (see below) and only set
-  // again by the effect underneath — an admin who opens straight onto Costing from the
-  // activity list (activeTab arrives already 'costing') would otherwise see React skip
-  // that effect, since activeTab didn't change value from the previous, now-reset opening.
-  const [costingOpenedThisOpening, setCostingOpenedThisOpening] = useState(false);
+  // logged minute unless there's an actual price sheet on screen (or there was, earlier)
+  // for it to update. Derived, not just stored: true outright whenever the tab IS
+  // currently showing (checked straight off activeTab), OR the stored flag says it was
+  // shown earlier. The "currently showing" half makes the very render that lands on
+  // Costing — including a window opened straight onto it — count at once, instead of
+  // waiting a render for the effect to store it.
+  const [costingShownBefore, setCostingShownBefore] = useState(false);
   useEffect(() => {
-    if (activeTab === 'costing') setCostingOpenedThisOpening(true);
+    if (activeTab === 'costing') setCostingShownBefore(true);
   }, [activeTab]);
-  const costingOpened = activeTab === 'costing' || costingOpenedThisOpening;
-
-  // Bumped whenever the job screen closes or switches job. The fetch is slow — it walks
-  // every logged minute — so a reply can land after the job it was for has been closed
-  // and another opened. Without this check that reply painted the old job's figures
-  // onto the new one, and the next keystroke saved them there. Bumped in an effect
-  // CLEANUP, not in resetCosting: the load effect below runs before the modal's open
-  // effect calls resetCosting, so a bump there threw away the new job's own reply and
-  // left the tab on "Loading pricing…" for good. Cleanups run before any effect of the
-  // same commit, so the load effect always reads the fresh counter.
-  const loadSeq = useRef(0);
-  useEffect(() => () => { loadSeq.current += 1; }, [isOpen, jobCardId]);
+  const costingOpened = activeTab === 'costing' || costingShownBefore;
 
   const loadCosting = useCallback(async () => {
     if (!isEdit || !jobCardId || !canSeePricing) return;
-    const seq = loadSeq.current;
     try {
       const costingRes = await api.getCosting(jobCardId);
-      if (seq !== loadSeq.current) return; // a different opening now — not ours
       if (costingRes) {
         setCosting(mapCostingResponseToForm(costingRes));
         setLoadFailed(false);
       }
     } catch {
-      if (seq === loadSeq.current) setLoadFailed(true);
+      setLoadFailed(true);
     }
   }, [isEdit, jobCardId, canSeePricing]);
 
-  // Load only once the Costing tab has actually been opened this opening, not the instant
+  // Load only once the Costing tab has actually been opened in this window, not the instant
   // an admin opens any job — the fetch walks every logged minute, and most job opens never
   // touch pricing at all. The invoice confirm on the status control does not depend on this:
   // it shows costingDirty's own on-screen figure when there are unsaved edits (the sheet is
   // loaded by definition then) and otherwise fetches the stored total straight from the
   // server for whoever is allowed to see one — see JobIdentityStrip.jsx. Still only once per
-  // opening (costing stays non-null until the job is closed), still admin-only, and still
+  // window (costing stays non-null until the job is closed), still admin-only, and still
   // off a brand-new card (isEdit false).
   useEffect(() => {
-    if (isOpen && isEdit && canSeePricing && costingOpened && costing === null) {
+    if (isEdit && canSeePricing && costingOpened && costing === null) {
       loadCosting();
     }
-  }, [isOpen, isEdit, canSeePricing, costingOpened, costing, loadCosting]);
+  }, [isEdit, canSeePricing, costingOpened, costing, loadCosting]);
 
   const costingHook = useCosting(jobCardId, {
     costing,
+    jobNumber,
     // The job screen's shared closed-job handler — see useCostingSave.js.
     onJobClosed,
     // No re-fetch after the save: the reply carries the stored figures, and re-reading
@@ -93,7 +79,7 @@ export function useJobCardCosting({
 
   // Pricing saves itself when a box is left. The two paths below cover leaving with the
   // cursor still in a box. Closing the job normally saves pricing (and waits for it)
-  // in the close guard first — useJobCardCloseGuard.js — so the close effect is only a
+  // in the close guard first — useJobCardCloseGuard.js — so the unmount flush is only a
   // backstop for a close that never went through that guard. Held in a ref so they don't re-run (and re-save) on every render.
   const flushRef = useRef(null);
   flushRef.current = costingHook.flushCosting;
@@ -103,18 +89,11 @@ export function useJobCardCosting({
     flushRef.current?.();
   }, [activeTab]);
 
-  useEffect(() => {
-    if (isOpen) return;
-    flushRef.current?.();
-  }, [isOpen]);
-
-  const { resetCosting: resetFigures } = costingHook;
-  const resetCosting = useCallback(() => {
-    setCosting(null);
-    setLoadFailed(false);
-    setCostingOpenedThisOpening(false);
-    resetFigures();
-  }, [resetFigures]);
+  // The window closing is the window unmounting, and a pricing figure still waiting to be
+  // sent must go out as it goes. That backstop lives in useCostingSave.js (flushOnUnmount),
+  // not here: this flush commits a box and then sends one render later, and an unmounted
+  // window never renders again, so it would send nothing. The save half works the figures
+  // out synchronously from refs instead.
 
   // Asks the server for the job's grand total as it stands right now, without touching
   // anything on screen (costingForm, loadedRef, etc. are all left alone). The figure is
@@ -130,14 +109,13 @@ export function useJobCardCosting({
 
   return {
     ...costingHook,
-    resetCosting,
     // True once this job's stored pricing has arrived. Until then the tab shows a plain
     // message rather than a sheet of zeros that a keystroke would make real.
     costingLoaded: costing !== null,
     costingLoadFailed: loadFailed,
     retryLoadCosting: loadCosting,
-    // True whenever the Costing tab is showing right now, or was shown earlier this
-    // opening — see the derivation above.
+    // True whenever the Costing tab is showing right now, or was shown earlier in
+    // this window — see the derivation above.
     costingOpened,
     fetchCurrentTotal
   };

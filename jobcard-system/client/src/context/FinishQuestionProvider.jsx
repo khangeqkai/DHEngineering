@@ -32,6 +32,9 @@ export function FinishQuestionProvider({ children }) {
   const jobScreensRef = useRef(new Map());
   // Pages behind that list jobs, each reloading when a job is changed on this provider's own screen.
   const jobChangedRef = useRef(new Set());
+  // Pages behind that show a per-job unread mark, each told when the provider's own screen
+  // read a job's comments, so they patch that one row instead of reloading the whole list.
+  const commentsReadRef = useRef(new Set());
   const requestIdRef = useRef(0);
   const unfilledRequestIdRef = useRef(0);
   const userIdRef = useRef(userId);
@@ -194,6 +197,17 @@ export function FinishQuestionProvider({ children }) {
     return () => { jobChangedRef.current.delete(callback); };
   }, []);
 
+  // The provider's own screen read a job's comments: tell the pages showing unread marks
+  // the job and its new unread count, which is all they need to patch one row.
+  const notifyCommentsRead = useCallback((jobId, unreadNotes) => {
+    commentsReadRef.current.forEach(callback => callback(jobId, unreadNotes));
+  }, []);
+
+  const subscribeCommentsRead = useCallback((callback) => {
+    commentsReadRef.current.add(callback);
+    return () => { commentsReadRef.current.delete(callback); };
+  }, []);
+
   // Once the provider's own screen has finished closing, drop its job so it stops running
   // (polling, timers). Runs after the screen's own close-time effects in the same commit,
   // and the screen's saves were already finished before it asked to close.
@@ -203,8 +217,8 @@ export function FinishQuestionProvider({ children }) {
   }, [stopJob]);
 
   const value = useMemo(
-    () => ({ refresh, registerJobScreen, stopFormDone, subscribeJobChanged }),
-    [refresh, registerJobScreen, stopFormDone, subscribeJobChanged]
+    () => ({ refresh, registerJobScreen, stopFormDone, subscribeJobChanged, subscribeCommentsRead }),
+    [refresh, registerJobScreen, stopFormDone, subscribeJobChanged, subscribeCommentsRead]
   );
   const first = flagged[0] || null;
 
@@ -222,6 +236,8 @@ export function FinishQuestionProvider({ children }) {
       )}
       {stopJob.id && (
         <JobCardModal
+          // A window shows its stop entry only once, on mount, so each stop form gets a fresh window.
+          key={`${stopJob.id}:${stopJob.entry?.id ?? ''}`}
           isOpen={stopJob.open}
           onClose={closeStopJob}
           jobCardId={stopJob.id}
@@ -229,6 +245,7 @@ export function FinishQuestionProvider({ children }) {
           onSuccess={notifyJobChanged}
           onTimerChange={notifyJobChanged}
           onNotesChange={notifyJobChanged}
+          onCommentsRead={notifyCommentsRead}
           ownsStopForm
         />
       )}

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import { useUnsavedGuard } from './useUnsavedGuard';
 import { buildCloseReasons } from './closeReasons';
 
@@ -12,13 +12,9 @@ import { buildCloseReasons } from './closeReasons';
  * whole list mid-typing, so the flag is raised by useJobCardForm.js's onInstantSave
  * and read here when the job closes.
  *
- * The flag is cleared on every open for the same reason the instant-save hooks
- * clear theirs: JobCardModal returns null when closed rather than unmounting, so
- * it would otherwise outlive the close and refresh on behalf of the previous job.
  */
-export function useJobCardListRefresh({ isOpen, isEdit, onSuccess, onClose }) {
+export function useJobCardListRefresh({ isEdit, onSuccess, onClose }) {
   const savedSomethingRef = useRef(false);
-  useEffect(() => { if (isOpen) savedSomethingRef.current = false; }, [isOpen]);
 
   const flagInstantSave = useCallback(() => { savedSomethingRef.current = true; }, []);
 
@@ -44,7 +40,6 @@ export function useJobCardListRefresh({ isOpen, isEdit, onSuccess, onClose }) {
  * fieldStates — one recorded fact per key instead of three separate guesses.
  */
 export function useJobCardCloseGuard({
-  isOpen,
   isEdit,
   jobCardId,
   canSeePricing,
@@ -98,7 +93,6 @@ export function useJobCardCloseGuard({
   }, [onClose]);
 
   const guard = useUnsavedGuard({
-    isOpen,
     isDirty,
     saving,
     hasUnpostedNote: jobNotes.newNote.trim() !== '',

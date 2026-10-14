@@ -37,22 +37,13 @@ const FLASH_MS = 1800;
  * screen went quiet. A landing while other work is still outstanding arms the flash
  * and waits for the rest, so the green always means all of it, not just the last bit.
  *
- * `active` is the job window being open on an existing job, and it is what keeps one
- * opening's news out of the next one. A field edited with the cursor still in the box
- * is sent as the close button takes focus off it, so that write is normally still in
- * the air when the window goes — and it lands, quite correctly, while there is nothing
- * on screen. Without this the flash would start against a closed window, and reopening
- * the job (which resets the count) would cancel its timer without ever clearing it, so
- * the next opening arrived green and stayed green. While the window is shut this
- * absorbs whatever lands, arms nothing and holds nothing.
- *
  * Held by a timer here rather than a keyframe animation in CSS, because the frame's
  * colour is a transition on the window itself and hanging an animation off a class
  * that comes and goes would replay the window's opening slide every time it cleared.
  */
-export function useSavedFlash({ landedCount, waiting, active }) {
+export function useSavedFlash({ landedCount, waiting }) {
   const [flashing, setFlashing] = useState(false);
-  // Whether anything has been confirmed during THIS opening — the spoken twin of the
+  // Whether anything has been confirmed in this window — the spoken twin of the
   // green, which has to persist rather than flash.
   const [landedHere, setLandedHere] = useState(false);
   // The last landing count this hook has reacted to, and whether a landing since
@@ -61,22 +52,7 @@ export function useSavedFlash({ landedCount, waiting, active }) {
   const armedRef = useRef(false);
 
   useEffect(() => {
-    if (!active) {
-      seenRef.current = landedCount;
-      armedRef.current = false;
-      setFlashing(false);
-      setLandedHere(false);
-      return undefined;
-    }
-
-    if (landedCount < seenRef.current) {
-      // The queue was reset — a different job, or this one reopened. Nothing that
-      // landed before belongs to what is on screen now.
-      seenRef.current = landedCount;
-      armedRef.current = false;
-      setFlashing(false);
-      setLandedHere(false);
-    } else if (landedCount > seenRef.current) {
+    if (landedCount > seenRef.current) {
       seenRef.current = landedCount;
       armedRef.current = true;
       setLandedHere(true);
@@ -94,16 +70,16 @@ export function useSavedFlash({ landedCount, waiting, active }) {
     setFlashing(true);
     const id = setTimeout(() => setFlashing(false), FLASH_MS);
     return () => clearTimeout(id);
-  }, [landedCount, waiting, active]);
+  }, [landedCount, waiting]);
 
   return {
     // Worked out here rather than left to the caller or to which CSS rule happens to
     // come last: the effect above only runs after the screen has been painted, so a
     // fresh edit would otherwise get one frame of green — the exact opposite of what
     // just happened — before amber took over. Green is by definition "nothing is
-    // waiting, on a window that is actually open", so it is asked that way, and it can
-    // never be true at the same time as amber.
-    flashing: flashing && !waiting && active,
+    // waiting", so it is asked that way, and it can never be true at the same time as
+    // amber.
+    flashing: flashing && !waiting,
     anythingLanded: landedHere
   };
 }

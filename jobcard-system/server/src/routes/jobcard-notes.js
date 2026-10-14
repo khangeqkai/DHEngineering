@@ -3,9 +3,8 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
-const { body } = require('express-validator');
-const { requiredString, handleValidationErrors } = require('../middleware/validation');
-const { db, jobcardQueries, jobNoteQueries, recordHistory, actorName } = require('../db/database');
+const { requiredString, handleValidationErrors, validateMarkNotesRead } = require('../middleware/validation');
+const { db, jobcardQueries, jobNoteQueries, getLatestNotesForJobcards, getUnreadNoteCountsForJobcards, recordHistory, actorName } = require('../db/database');
 const { findOr404 } = require('../utils/findOr404');
 
 const router = express.Router();
@@ -75,22 +74,24 @@ router.post('/:id/notes', authenticate, [
 // Deliberately NOT recorded in the activity trail: reading is not an edit of the job and
 // every time the comments window opened would add an entry. Clamped to the newest comment
 // actually on the job and only ever moves forward, so a stale or invented value is harmless.
-router.put('/:id/notes/read', authenticate, [
-  body('seenUpTo').isString().matches(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/)
-    .withMessage('seenUpTo must be a UTC ISO timestamp'),
-  handleValidationErrors
-], (req, res) => {
+router.put('/:id/notes/read', authenticate, validateMarkNotesRead, (req, res) => {
   try {
     const { id } = req.params;
     if (!findOr404(res, jobcardQueries.getById.get(id), 'Job card not found')) return;
 
     const params = { userId: req.user.userId, jobcardId: id };
-    const newest = jobNoteQueries.newestCreatedAt.get(id).newest;
+    // The newest comment's moment, from the same pick the job list and the thread use.
+    const newest = getLatestNotesForJobcards([id])[id]?.created_at;
     if (newest) {
       const seenUpTo = req.body.seenUpTo < newest ? req.body.seenUpTo : newest;
       jobNoteQueries.markRead.run({ ...params, seenUpTo });
     }
-    res.json({ commentsSeenUpTo: jobNoteQueries.getSeenUpTo.get(params).seen_up_to });
+    // The list row's unread count comes from the same counting as the list itself, so
+    // the row never shows a number the list wouldn't.
+    res.json({
+      commentsSeenUpTo: jobNoteQueries.getSeenUpTo.get(params).seen_up_to,
+      unreadNotes: getUnreadNoteCountsForJobcards([id], req.user.userId)[id] || 0
+    });
   } catch (err) {
     logger.error({ err }, 'Mark job notes read error');
     res.status(500).json({ error: 'Failed to mark comments as read' });
@@ -118,7 +119,13 @@ router.delete('/:id/notes/:noteId', authenticate, requireManagement, (req, res) 
       jobNoteQueries.delete.run(noteId);
     })();
 
-    res.json({ success: true });
+    // The job's newest remaining comment, so the job list can patch its row without
+    // re-reading the whole thread.
+    const latest = getLatestNotesForJobcards([id])[id];
+    res.json({
+      success: true,
+      latestNote: latest ? { text: latest.text, userName: latest.user_name, createdAt: latest.created_at } : null
+    });
   } catch (err) {
     logger.error({ err }, 'Delete job note error');
     res.status(500).json({ error: 'Failed to delete note' });

@@ -75,17 +75,5 @@ export function useJobCardInstantSaves(formHook, isEdit, jobCardId, saveQueue, {
     saveQueue
   });
 
-  // One combined reset for the two hooks' own session-only marks (fieldStates'
-  // "ever saved" record, the parts list's required-box marks, and this file's own
-  // detail-field marks) — collapses what would otherwise be three separate
-  // refs/calls in JobCardModal.jsx into one. The save queue itself
-  // (formHook.saveQueue) resets alongside the rest of the form in
-  // useJobCardForm.js's own resetForm, not here.
-  const resetInstantSaves = useCallback(() => {
-    instantSave.resetFieldStates();
-    instantItems.resetItemErrors();
-    detailFieldErrors.clearAll();
-  }, [instantSave, instantItems, detailFieldErrors]);
-
-  return { instantSave, instantItems, resetInstantSaves, detailFieldErrors };
+  return { instantSave, instantItems, detailFieldErrors };
 }

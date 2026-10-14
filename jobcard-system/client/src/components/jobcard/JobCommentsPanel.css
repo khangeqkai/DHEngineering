@@ -198,9 +198,12 @@
 
 .jc-msg {
   position: relative;
-  display: flex;
-  align-items: flex-end;
-  gap: var(--gap-tight);
+  /* A small grid so the name and the time line up with the bubble's edge and the
+     initials circle sits at the top of a run, level with the name:
+     theirs = [avatar] [bubble column] [delete]; rows = name / bubble / time. */
+  display: grid;
+  grid-template-columns: 28px minmax(0, max-content) auto;
+  column-gap: var(--gap-tight);
   max-width: 88%;
   margin-top: var(--space-2);
 }
@@ -215,7 +218,8 @@
 
 .jc-msg-mine {
   align-self: flex-end;
-  flex-direction: row-reverse;
+  grid-template-columns: auto minmax(0, max-content);
+  justify-items: end;
 }
 
 .jc-msg-avatar {
@@ -224,30 +228,44 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  flex: none;
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
   font-size: var(--text-2xs);
   font-weight: var(--font-bold);
   letter-spacing: 0.02em;
   user-select: none;
 }
 
-.jc-msg-body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+/* Later comments in a run carry no circle; the grid's first column still holds their
+   place, and an empty circle here would open a blank row above the bubble. */
+.jc-msg-follow .jc-msg-avatar {
+  display: none;
 }
 
-.jc-msg-mine .jc-msg-body {
-  align-items: flex-end;
+/* The wrapper adds no box of its own: its name, bubble and time are placed straight
+   into the message's grid. */
+.jc-msg-body {
+  display: contents;
+}
+
+/* Mine has no avatar column: the body keeps column 2, the delete button sits to its left. */
+.jc-msg-mine .jc-msg-delete {
+  grid-column: 1;
 }
 
 .jc-msg-who {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
   margin: 0 0 var(--space-0-5) var(--space-3);
   font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
 .jc-msg-bubble {
+  grid-column: 2;
+  grid-row: 2;
   padding: var(--space-2) var(--space-3);
   border-radius: 18px;
   font-size: var(--text-sm);
@@ -259,16 +277,35 @@
 .jc-msg-theirs .jc-msg-bubble {
   background: var(--surface-inset);
   color: var(--text-primary);
-  border-bottom-left-radius: 6px;
 }
 
 .jc-msg-mine .jc-msg-bubble {
   background: var(--fill-accent);
   color: var(--text-on-saturated);
-  border-bottom-right-radius: 6px;
+}
+
+/* Messenger-style runs: a lone comment is fully round; within a run, the corners on
+   the writer's side flatten where one bubble meets the next, so the run reads as a
+   single stack hanging off the avatar (theirs, left) or the window edge (mine, right). */
+.jc-msg-theirs.jc-msg-follow .jc-msg-bubble {
+  border-top-left-radius: var(--radius-sm);
+}
+
+.jc-msg-theirs.jc-msg-continues .jc-msg-bubble {
+  border-bottom-left-radius: var(--radius-sm);
+}
+
+.jc-msg-mine.jc-msg-follow .jc-msg-bubble {
+  border-top-right-radius: var(--radius-sm);
+}
+
+.jc-msg-mine.jc-msg-continues .jc-msg-bubble {
+  border-bottom-right-radius: var(--radius-sm);
 }
 
 .jc-msg-time {
+  grid-column: 2;
+  grid-row: 3;
   margin: var(--space-0-5) var(--space-3) 0;
   font-size: var(--text-2xs);
   color: var(--text-tertiary);
@@ -276,6 +313,8 @@
 }
 
 .jc-msg-delete {
+  grid-column: 3;
+  grid-row: 2;
   align-self: center;
   width: 28px;
   height: 28px;
@@ -286,7 +325,6 @@
   color: var(--danger-ink);
   display: grid;
   place-items: center;
-  flex: none;
   cursor: pointer;
   opacity: 0;
   transition: opacity var(--duration-fast) ease;

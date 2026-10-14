@@ -580,6 +580,21 @@ const manualTimeEntryRules = ({ startRequired }) => {
   ];
 };
 
+// Marking a job's comments as read up to a moment. Any valid ISO-8601 moment is accepted,
+// then rewritten to the stored shape (milliseconds, Z): the route's cap and the read-mark
+// MAX compare moments as text, which only orders correctly when every value is written the
+// same way. One message for every way the value can be wrong, and bail() stops at the first
+// failure, so the refusal always carries it and the rewrite never sees a bad value.
+const SEEN_UP_TO_MESSAGE = 'seenUpTo must be an ISO timestamp';
+const validateMarkNotesRead = [
+  body('seenUpTo')
+    .isString().withMessage(SEEN_UP_TO_MESSAGE).bail()
+    .isISO8601({ strict: true }).withMessage(SEEN_UP_TO_MESSAGE).bail()
+    .custom(v => !Number.isNaN(new Date(v).getTime())).withMessage(SEEN_UP_TO_MESSAGE).bail()
+    .customSanitizer(v => new Date(v).toISOString()),
+  handleValidationErrors
+];
+
 const validateManualTimeEntry = manualTimeEntryRules({ startRequired: true });
 const validateTimeEntryEdit = manualTimeEntryRules({ startRequired: false });
 
@@ -621,6 +636,7 @@ module.exports = {
   validateConfirmFinish,
   validateManualTimeEntry,
   validateTimeEntryEdit,
+  validateMarkNotesRead,
 
   JOBCARD_STATUSES,
   PRIORITY_OPTIONS

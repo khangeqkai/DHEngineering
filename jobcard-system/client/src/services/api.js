@@ -21,7 +21,21 @@ function unreachableError(isWrite = false) {
 const UNREACHABLE_RETRIES = 3;
 const UNREACHABLE_RETRY_MS = 1500;
 
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// Runs each listener on its own inside try/catch. A listener is another screen's
+// housekeeping; if one throws, a write the server already stored must not be reported
+// to the caller as failed (a retry would save it twice), and a sign-out must not stop
+// halfway with later listeners never told.
+function notifyAll(listeners, ...args) {
+  listeners.forEach((fn) => {
+    try {
+      fn(...args);
+    } catch (err) {
+      console.error('api listener failed', err);
+    }
+  });
+}
+
+const wait = (ms) =>new Promise((resolve) => setTimeout(resolve, ms));
 
 // Every reason the server can tell us this person's sign-in is finished, with
 // the wording they see. Shared with AuthContext so both say the same thing.
@@ -40,10 +54,31 @@ class ApiService {
     // Guards against firing the forced sign-out handler multiple times for the
     // burst of 401s that arrives at once. Re-armed on each fresh login.
     this.sessionInvalidated = false;
+    this.signedOutListeners = new Set();
+    this.dataWrittenListeners = new Set();
+  }
+
+  // Runs fn whenever the pass goes from a value to nothing (any sign-out path).
+  // Returns an unsubscribe function.
+  onSignedOut(fn) {
+    this.signedOutListeners.add(fn);
+    return () => { this.signedOutListeners.delete(fn); };
+  }
+
+  // Runs fn(endpoint) after any write the server accepted, whoever made it, with the path
+  // it was sent to. A screen holding cached lists decides from the path which writes can
+  // change them. Returns an unsubscribe function.
+  onDataWritten(fn) {
+    this.dataWrittenListeners.add(fn);
+    return () => { this.dataWrittenListeners.delete(fn); };
   }
 
   setToken(token) {
+    const hadToken = !!this.token;
     this.token = token;
+    if (hadToken && !token) {
+      notifyAll(this.signedOutListeners);
+    }
     // A real token means a fresh login — re-arm the forced sign-out handler so
     // it works again on this workstation, not just the first time.
     if (token) {
@@ -136,7 +171,11 @@ class ApiService {
       throw error;
     }
 
-    return response.json();
+    const result = await response.json();
+    if (isWriteRequest) {
+      notifyAll(this.dataWrittenListeners, endpoint);
+    }
+    return result;
   }
 
   _post(endpoint, data) {

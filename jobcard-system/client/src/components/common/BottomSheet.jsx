@@ -19,7 +19,9 @@ export default function BottomSheet({
   saved = false,
   // Optional second window docked to the left of this one (the job card's comments).
   // Absent, the output is exactly the plain window; present, both share one row that
-  // takes the large window's footprint, so opening the aside shrinks the window.
+  // takes the large window's footprint. The window keeps its size: the pair shifts
+  // right to make room for the aside, and on screens too narrow for both, the aside
+  // overlaps the window's left edge instead.
   aside = null,
   children
 }) {

@@ -66,6 +66,7 @@ export default function JobCommentsPanel({
   const readAttemptRef = useRef(null);
   const bubbleRef = useRef(null);
   const draftRef = useRef(null);
+  const closeRef = useRef(null);
   const threadRef = useRef(null);
   const lastSeenNewestRef = useRef(null);
 
@@ -98,12 +99,14 @@ export default function JobCommentsPanel({
     if (firstUnread && !touchedRef.current) setOpen(true);
   }, [seenUpTo, notesLoaded, thread, isUnread]);
 
-  // Focus follows a press: the typing box on open, the bubble on close. The automatic
-  // opening takes no focus from the job.
+  // Focus follows a press: the typing box on open (the close button when the job is
+  // locked and there is no typing box, or focus would drop to the page behind the
+  // now-inert bubble), the bubble on close. The automatic opening takes no focus from
+  // the job.
   useEffect(() => {
     if (!focusOnChangeRef.current) return;
     focusOnChangeRef.current = false;
-    if (open) draftRef.current?.focus({ preventScroll: true });
+    if (open) (draftRef.current || closeRef.current)?.focus({ preventScroll: true });
     else bubbleRef.current?.focus({ preventScroll: true });
   }, [open]);
 
@@ -219,7 +222,7 @@ export default function JobCommentsPanel({
         <div key={note.id} className="jc-chat-item">
           {showDay && <div className="jc-chat-day">{dayLabel(note.createdAt)}</div>}
           {note.id === dividerNoteId && <div className="jc-chat-new">New</div>}
-          <div className={`jc-msg ${mine ? 'jc-msg-mine' : 'jc-msg-theirs'}${follows ? ' jc-msg-follow' : ''}`}>
+          <div className={`jc-msg ${mine ? 'jc-msg-mine' : 'jc-msg-theirs'}${follows ? ' jc-msg-follow' : ''}${continues ? ' jc-msg-continues' : ''}`}>
             {!mine && (
               <span
                 className="jc-msg-avatar"
@@ -289,6 +292,7 @@ export default function JobCommentsPanel({
               </div>
             </div>
             <button
+              ref={closeRef}
               type="button"
               className="jc-chat-close"
               onClick={() => changeOpen(false)}

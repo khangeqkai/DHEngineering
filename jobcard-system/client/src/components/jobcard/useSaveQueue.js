@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
-import toast from 'react-hot-toast';
+import { toastJobWriteFailure } from './jobWriteFailure';
+import { api } from '../../services/api';
 import { isJobClosedError } from '../../utils/jobLock';
 
 // A `run()` a caller resolves with this instead of its usual result to mean
@@ -15,9 +16,27 @@ import { isJobClosedError } from '../../utils/jobLock';
 // to retry).
 export const NOT_LANDED = Symbol('notLanded');
 
-// How long a save from an earlier opening of the job is waited for before a new save
-// of the same box goes ahead anyway (see boundedTail).
-const OLD_OPENING_WAIT_MS = 20000;
+// How long a save from an earlier window is waited for before a new save of the same
+// box goes ahead anyway (see boundedTail).
+const OLD_WINDOW_WAIT_MS = 20000;
+
+// One promise-chain tail per job and key, shared by every window: a window is a fresh
+// instance each time the job is opened, but a write still travelling from the one just
+// closed must stay ahead of the next write for the same box, or the older save could land
+// last and overwrite the newer one. `chainOwner` says which window asked for each tail.
+const chains = {};
+const chainOwner = {};
+
+// The chains belong to whoever is signed in. A save from the previous person's session
+// that never answered must not hold the next person's saves (or their "wait for every
+// save") on the same job for the bounded wait, so every sign-out forgets them; a reply
+// that does still arrive settles on its own, unwatched.
+api.onSignedOut(() => {
+  for (const ck of Object.keys(chains)) {
+    delete chains[ck];
+    delete chainOwner[ck];
+  }
+});
 
 /**
  * One saving record per open job card — Contract A of
@@ -51,17 +70,16 @@ const OLD_OPENING_WAIT_MS = 20000;
  * moment its own turn starts — which is also the moment any stale 'failed' from
  * the write ahead of it gets overwritten, correctly, back to 'inFlight'.
  */
-export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
+export function useSaveQueue(jobCardId, { onJobClosed, isWindowUp, jobNumber } = {}) {
   const jobCardIdRef = useRef(jobCardId);
   jobCardIdRef.current = jobCardId;
+  // Named in a failure message: a failure can arrive after this window has closed and
+  // another job is on screen, so the message has to say which job it was.
+  const jobNumberRef = useRef(jobNumber);
+  jobNumberRef.current = jobNumber;
 
-  // Which opening of the job window this record belongs to. Bumped by reset, captured by
-  // every write, and checked alongside the job id when the reply comes back — the id on
-  // its own cannot tell a reply meant for the previous opening from one meant for this
-  // one when the SAME job is closed and immediately reopened. That reply used to be
-  // counted as a landing against the fresh opening, which answered an untouched job with
-  // the green frame and "all changes saved".
-  const openingRef = useRef(0);
+  // Identifies this window among the ones that came before it (see chainOwner above).
+  const ownerRef = useRef({});
 
   // key -> { label, state }. A settled-successful key is deleted outright — only
   // something still queued, in flight, or failed has anything to show.
@@ -73,26 +91,24 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
   // from a write that was never sent at all (a box typed back to what was already
   // stored, a still-local row deleted before it became real, or a card nobody has
   // touched). This counter is the positive fact, and the only honest basis for saying
-  // "that saved". Cleared with the rest of the queue on open, so it always counts this
-  // job's landings and no one else's.
+  // "that saved". It belongs to this window alone, so it counts this opening's landings
+  // and no one else's.
   const [landedCount, setLandedCount] = useState(0);
 
-  // One promise-chain tail per key, so same-key writes always run in the order
-  // they were asked for while different keys never wait on each other — the
-  // exact shape every hand-rolled version of this used to build for itself.
-  // Keyed by job AND key (`${jobCardId}|${key}`): the same job reopened still orders behind
-  // its own travelling save, while another job's identical field name never waits on it.
-  const chains = useRef({});
+  // Same-key writes always run in the order they were asked for while different keys
+  // never wait on each other — the exact shape every hand-rolled version of this used to
+  // build for itself. Keyed by job AND key (`${jobCardId}|${key}`): the same job reopened
+  // still orders behind its own travelling save, while another job's identical field name
+  // never waits on it.
   const chainKey = (jobId, key) => `${jobId}|${key}`;
-  // Which opening each chain tail was asked for under. A tail from an EARLIER opening is
-  // still waited for (so an older save can't land after a newer one), but only up to
-  // OLD_OPENING_WAIT_MS: a save whose answer never comes (a dead connection) must not
-  // hold every later save of that box forever after the job is reopened.
-  const chainOpening = useRef({});
+  // A tail from an EARLIER window is still waited for (so an older save can't land after
+  // a newer one), but only up to OLD_WINDOW_WAIT_MS: a save whose answer never comes (a
+  // dead connection) must not hold every later save of that box forever after the job is
+  // reopened.
   const boundedTail = useCallback((ck) => {
-    const tail = chains.current[ck];
-    if (!tail || chainOpening.current[ck] === openingRef.current) return tail;
-    return Promise.race([tail, new Promise(resolve => setTimeout(resolve, OLD_OPENING_WAIT_MS))]);
+    const tail = chains[ck];
+    if (!tail || chainOwner[ck] === ownerRef.current) return tail;
+    return Promise.race([tail, new Promise(resolve => setTimeout(resolve, OLD_WINDOW_WAIT_MS))]);
   }, []);
 
   const setEntry = useCallback((key, patch) => {
@@ -110,12 +126,7 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
   const enqueue = useCallback((key, run, options = {}) => {
     const label = options.label || key;
     const forJobCardId = jobCardIdRef.current;
-    const forOpening = openingRef.current;
-    // Handed to `run` so a caller's own reply work can apply the same "still this
-    // job, still this opening" test the queue applies below — checking the job id
-    // alone lets a reply from before a close-and-reopen of the SAME job land on the
-    // fresh screen.
-    const isCurrent = () => jobCardIdRef.current === forJobCardId && openingRef.current === forOpening;
+    const forJobNumber = jobNumberRef.current;
     const ownKey = chainKey(forJobCardId, key);
     const prior = boundedTail(ownKey);
     // options.after: other keys whose writes already asked for must land (or fail)
@@ -134,44 +145,50 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
       // just settled (successfully or not) and it's this one's turn now — either
       // way the write actually starts here, which is the only place 'inFlight'
       // is set once a key has been queued behind something else.
-      // A write queued under an earlier opening (closed and reopened while it waited)
-      // still runs — it was asked for — but must not mark the reopened job "Saving…":
-      // nothing on this opening would ever clear that mark.
-      if (isCurrent()) setEntry(key, { label, state: 'inFlight' });
-      return run(isCurrent).then(
+      setEntry(key, { label, state: 'inFlight' });
+      // Handed to `run` as isWindowUp. Two separate questions: may this reply change the
+      // window's own screen (marks, rows, reloads, closing)? Only while it is up. Must
+      // the person hear that their own write failed or was refused? Always, window or not.
+      return run(isWindowUp).then(
         (result) => {
-          // A reply for a job the user has since left — or for an earlier opening of
-          // this same job — must not touch what is on screen now.
-          if (isCurrent()) {
-            setEntry(key, null);
-            // NOT_LANDED means nothing was stored (a refused create/remove that
-            // already reported itself) — clear the key so it stops
-            // reading as outstanding, but don't count it as a landing: nothing was
-            // actually saved, so the green flash must not arm for it.
-            if (result !== NOT_LANDED) setLandedCount(n => n + 1);
-          }
+          // Only this window's own record is touched; once it has closed, there is
+          // nothing on screen left to update.
+          setEntry(key, null);
+          // NOT_LANDED means nothing was stored (a refused create/remove that
+          // already reported itself) — clear the key so it stops
+          // reading as outstanding, but don't count it as a landing: nothing was
+          // actually saved, so the green flash must not arm for it.
+          if (result !== NOT_LANDED) setLandedCount(n => n + 1);
           return result;
         },
         (err) => {
-          if (isCurrent()) {
-            setEntry(key, { label, state: 'failed' });
-            // The job was invoiced and archived from another PC while this screen
-            // still had it open — the write was already on its way when that
-            // happened, so it reaches the server as any other write would and is
-            // refused the same way (closedJobGuard). onJobClosed (JobCardModal.jsx)
-            // is the one place that shows the shared sentence and reloads the job
-            // so the screen catches up and goes read-only, instead of leaving
-            // every other box on screen still offering edits that would only fail
-            // the same way.
-            if (isJobClosedError(err)) {
-              onJobClosed?.();
-            } else {
-              // Never re-sent automatically — house rule. This only flags the key
-              // and waits on the caller to enqueue it again (typically the user
-              // editing it again). A stable id per key means a repeat failure
-              // replaces the toast instead of stacking a new one on top of it.
-              toast.error(err?.message || `Couldn't save ${label}`, { id: `save-queue-${key}` });
-            }
+          // The job was invoiced and archived from another PC while this screen
+          // still had it open — the write was already on its way when that
+          // happened, so it reaches the server as any other write would and is
+          // refused the same way (closedJobGuard). onJobClosed (JobCardModal.jsx)
+          // is the one place that shows the shared sentence and reloads the job
+          // so the screen catches up and goes read-only, instead of leaving
+          // every other box on screen still offering edits that would only fail
+          // the same way. It runs even when the window has gone, because the
+          // refused write is lost work the person must be told about; it decides
+          // for itself whether there is still a window to reload.
+          if (isJobClosedError(err)) {
+            if (isWindowUp()) setEntry(key, { label, state: 'failed' });
+            onJobClosed?.();
+          } else {
+            // Only the on-screen flag asks the window; the toast does not, because a
+            // write that fails after the window closed is still typed work the person
+            // would otherwise never learn was lost.
+            if (isWindowUp()) setEntry(key, { label, state: 'failed' });
+            // Never re-sent automatically — house rule. This only flags the key
+            // and waits on the caller to enqueue it again (typically the user
+            // editing it again). A stable id per key means a repeat failure
+            // replaces the toast instead of stacking a new one on top of it. The job is
+            // in both the message and the id: the failure may land after this window has
+            // closed and another job's is open, whose own failure for the same box must
+            // neither be mistaken for this one nor replace it.
+            const message = err?.message || `Couldn't save ${label}`;
+            toastJobWriteFailure({ jobNumber: forJobNumber, jobCardId: forJobCardId }, message, `save-queue-${key}`);
           }
           throw err;
         }
@@ -185,15 +202,15 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
     // work inside `run`'s .then), so this exists only to keep the promise chain
     // itself from ever surfacing as an unhandled rejection.
     const tracked = chained.catch(() => {}).finally(() => {
-      if (chains.current[ownKey] === tracked) {
-        delete chains.current[ownKey];
-        delete chainOpening.current[ownKey];
+      if (chains[ownKey] === tracked) {
+        delete chains[ownKey];
+        delete chainOwner[ownKey];
       }
     });
-    chains.current[ownKey] = tracked;
-    chainOpening.current[ownKey] = forOpening;
+    chains[ownKey] = tracked;
+    chainOwner[ownKey] = ownerRef.current;
     return tracked;
-  }, [setEntry, boundedTail]);
+  }, [setEntry, boundedTail, isWindowUp]);
 
   // Drops a key's own 'failed' record without sending anything — for a caller
   // that skips a write because the value already matches what's stored (an
@@ -238,17 +255,6 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
     Object.entries(entries).map(([key, { label, state }]) => ({ key, label, state })),
   [entries]);
 
-  const reset = useCallback(() => {
-    setEntries({});
-    setLandedCount(0);
-    // The per-key chains are kept: a write still on its way from the opening that just
-    // ended must stay ahead of the next write for the same field, or an older save
-    // landing last would overwrite a newer one. Only what the screen shows is cleared.
-    // Anything already in the air belonged to the opening that just ended — see
-    // openingRef's declaration above.
-    openingRef.current += 1;
-  }, []);
-
   // Resolves once every write queued so far — for every key of the current job, whatever its state —
   // has settled, success or failure. Never rejects: a caller waiting on this (e.g.
   // a status change that must not run ahead of a part save already in flight) needs
@@ -258,9 +264,17 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
   // Only the current job's chains: another job's travelling save is none of this job's business.
   const whenSettled = useCallback(() => {
     const mine = `${jobCardIdRef.current}|`;
-    return Promise.allSettled(Object.keys(chains.current)
+    return Promise.allSettled(Object.keys(chains)
       .filter(k => k.startsWith(mine)).map(boundedTail));
   }, [boundedTail]);
 
-  return { enqueue, stateOf, isPending, pending, reset, clearFailure, landedCount, whenSettled };
+  // For a write that fails outside the queue's own tracking (a part that is gone, a
+  // refused add or remove): told the same way a queued write's failure is, naming this
+  // window's job. Each window is one job, so the refs still hold the right one even when
+  // this is called from a catch that runs after the window has closed.
+  const reportFailure = useCallback((message, idKey) => {
+    toastJobWriteFailure({ jobNumber: jobNumberRef.current, jobCardId: jobCardIdRef.current }, message, idKey);
+  }, []);
+
+  return { enqueue, reportFailure, stateOf, isPending, pending, clearFailure, landedCount, whenSettled };
 }

@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
+import { toastJobWriteFailure } from './jobWriteFailure';
 import BottomSheet from '../common/BottomSheet';
 import Spinner from '../common/Spinner';
 import ConfirmDialog from '../common/ConfirmDialog';
@@ -9,6 +10,7 @@ import { isManagement, can } from '../../utils/roles';
 import { todayIsoDate } from '../../utils/formatters';
 import { isJobOverdue } from '../JobCardList.constants';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
+import { useStillMounted } from '../../hooks/useStillMounted';
 import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
 import { fieldErrorKey } from './fieldRules.mjs';
 import { isJobClosed, JOB_CLOSED_MESSAGE, JOB_DELETED_MESSAGE, JOB_DELETED_TOAST_ID } from '../../utils/jobLock';
@@ -36,8 +38,25 @@ import JobPaperworkHub from './JobPaperworkHub';
 import JobIdentityStrip from './JobIdentityStrip';
 import { mapTimeEntryFromApi } from './mappers';
 
-export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onCommentsRead, onPrinted, initialTab = null, initialStopEntry = null, ownsStopForm = false }) {
+// The later of two moments (UTC ISO text compares in time order); either may be missing.
+const newerMoment = (a, b) => (!a ? b : !b ? a : (a > b ? a : b));
+
+// The job window. Closed it is nothing at all, and every opening — even of the same job —
+// mounts a fresh JobCardWindow, so no state, pending reply or "decide once" flag of one
+// opening can reach the next. The key makes a different job a fresh window too.
+export default function JobCardModal(props) {
+  if (!props.isOpen) return null;
+  return <JobCardWindow key={props.jobCardId ?? 'new'} {...props} />;
+}
+
+// A reply that comes back after the window has closed: one that only updates this
+// window's own screen needs no check (React drops it). One that reaches outside it must
+// either name its job (the callbacks into the list behind: onNotesChange, onCommentsRead)
+// or ask isWindowUp first — but only for screen changes, closing, and read-failure
+// messages. A failure of the person's own write is always told, window or not.
+function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onCommentsRead, onPrinted, initialTab = null, initialStopEntry = null, ownsStopForm = false }) {
   const { user, logout } = useAuth();
+  const isWindowUp = useStillMounted();
   const isEdit = Boolean(jobCardId);
   // Two permissions, both admin-only today: pricing gates the Costing tab and its
   // countdown, activityTrail gates the Activity tab. Everything else managerial on
@@ -45,12 +64,21 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   const canSeePricing = can(user, 'pricing');
   const canSeeActivity = can(user, 'activityTrail');
   const canManage = isManagement(user);
-  const [activeTab, setActiveTab] = useState('details');
-  const [loading, setLoading] = useState(false);
+  // Only tabs this user can actually open are valid; anything else (a stale 'costing' or
+  // 'activity' for someone who can't see it) lands on Details.
+  const [activeTab, setActiveTab] = useState(() => {
+    const validTabs = ['details']
+      .concat(canSeePricing ? ['costing'] : [])
+      .concat(canSeeActivity ? ['activity'] : []);
+    return validTabs.includes(initialTab) ? initialTab : 'details';
+  });
+  // An existing job starts out loading, so its first frame is the spinner and never the
+  // empty form.
+  const [loading, setLoading] = useState(isEdit);
   const [timeEntries, setTimeEntries] = useState([]);
   const [attachmentWarnings, setAttachmentWarnings] = useState(null);
   // An instant write never touches the list behind this modal — useJobCardCloseGuard.js.
-  const { flagInstantSave, closeAndRefresh } = useJobCardListRefresh({ isOpen, isEdit, onSuccess, onClose });
+  const { flagInstantSave, closeAndRefresh } = useJobCardListRefresh({ isEdit, onSuccess, onClose });
   const contactHook = useContactSearch();
   // The job was invoiced and archived from another PC while this screen still had it
   // open: a write already on its way reaches the server after that and is refused
@@ -66,27 +94,33 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // the ref is filled in once it is, and nothing calls this before the job has
   // loaded once, so it's always populated by the time it matters.
   const reloadOnJobClosedRef = useRef(null);
+  // formHook (below) holds the job number, but this callback is built before it exists.
+  const jobNumberRef = useRef(null);
+  // A write refused because the job was closed is lost work, so the person is always told
+  // — even when the window has gone since, which is why the message names the job — but
+  // the reload only means anything while the window is still up. This is the one place
+  // that rule lives.
   const handleJobClosedWrite = useCallback(() => {
-    toast.error(JOB_CLOSED_MESSAGE, { id: 'job-closed' });
-    reloadOnJobClosedRef.current?.();
-  }, []);
+    toastJobWriteFailure({ jobNumber: jobNumberRef.current, jobCardId }, JOB_CLOSED_MESSAGE, 'job-closed');
+    if (isWindowUp()) reloadOnJobClosedRef.current?.();
+  }, [isWindowUp, jobCardId]);
   // formHook also owns the one save queue for this open job card (Contract A) —
   // formHook.saveQueue — that every instant write (a field, a part, a worker)
   // routes through, so what's queued, in flight or failed is one recorded fact
   // instead of three separate hand-rolled promise-chain registries.
-  const formHook = useJobCardForm(jobCardId, { onInstantSave: flagInstantSave, onJobClosed: handleJobClosedWrite });
+  const formHook = useJobCardForm(jobCardId, { onInstantSave: flagInstantSave, onJobClosed: handleJobClosedWrite, isWindowUp });
+  jobNumberRef.current = formHook.jobNumber;
   // The details fields and the parts list save themselves through these (see
   // useJobCardInstantSaves.js). A part write's reply also refreshes the file
   // notes here (Contract B) — setAttachmentWarnings is the one landing point,
   // whether the write came from a part being added, edited or removed, or a
   // field such as the quality level.
-  const { instantSave, instantItems, resetInstantSaves, detailFieldErrors } = useJobCardInstantSaves(formHook, isEdit, jobCardId, formHook.saveQueue, {
+  const { instantSave, instantItems, detailFieldErrors } = useJobCardInstantSaves(formHook, isEdit, jobCardId, formHook.saveQueue, {
     onAttachmentWarnings: setAttachmentWarnings,
     onJobClosed: handleJobClosedWrite
   });
   const activityLog = useActivityLog(jobCardId);
   const reloadTimeEntriesRef = useRef(null);
-  const resetInstantSavesRef = useRef(null);
   const hubRef = useRef(null);
   const onExternalStop = useCallback(() => {
     if (reloadTimeEntriesRef.current) reloadTimeEntriesRef.current();
@@ -109,48 +143,32 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     reload: () => reloadAfterAnswerRef.current?.()
   }), [showStopFormForEntry, shownStopEntryIds]);
   useEffect(() => {
-    if (!registerJobScreen || ownsStopForm || !isOpen || !isEdit || !jobCardId) return undefined;
+    if (!registerJobScreen || ownsStopForm || !isEdit || !jobCardId) return undefined;
     return registerJobScreen(jobCardId, jobScreen);
-  }, [registerJobScreen, ownsStopForm, isOpen, isEdit, jobCardId, jobScreen]);
-  const { dialogState, showConfirm, handleCancel, handleConfirm, handleAlt, cancelConfirms } = useConfirmDialog();
+  }, [registerJobScreen, ownsStopForm, isEdit, jobCardId, jobScreen]);
+  // Questions belong to this window: the hook answers any still waiting "no" when the
+  // window unmounts, so none is left outstanding behind a box that can no longer be seen.
+  const { dialogState, showConfirm, handleCancel, handleConfirm, handleAlt } = useConfirmDialog();
 
-  // Questions belong to the open card. Once it closes nothing renders the box any more,
-  // so anything still waiting for an answer is answered "no" here — left outstanding it
-  // would never settle, and the next question asked would queue behind a box that can
-  // no longer be seen.
-  useEffect(() => {
-    if (!isOpen) cancelConfirms();
-  }, [isOpen, cancelConfirms]);
-
-  const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm, onNotesChange, handleJobClosedWrite);
-  // Pricing: the on-open load and the save-on-the-way-out paths all live in this hook —
-  // see useJobCardCosting.js.
-  const costingHook = useJobCardCosting({ isOpen, isEdit, canSeePricing, jobCardId, activeTab, onJobClosed: handleJobClosedWrite });
+  const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm, onNotesChange, handleJobClosedWrite, isWindowUp, formHook.jobNumber);
+  // Pricing: the load when the Costing tab is first shown and the save-on-the-way-out
+  // paths all live in this hook — see useJobCardCosting.js.
+  const costingHook = useJobCardCosting({ isEdit, canSeePricing, jobCardId, jobNumber: formHook.jobNumber, activeTab, onJobClosed: handleJobClosedWrite });
 
   // The lists every picker on this screen draws from — suppliers, workers, machines —
-  // reloaded every time the window opens (with its own failure toast), because this
-  // component stays mounted behind the list rather than unmounting on close. Pulled
-  // into its own hook (useJobCardReferenceData.js) purely to keep this file from
-  // growing further, the same reason useJobCardTimerActions.js and
-  // useJobCardCloseGuard.js exist.
-  const { suppliers, employees, machines, reloadSuppliers } = useJobCardReferenceData({ isOpen });
+  // loaded when the window opens (useJobCardReferenceData.js).
+  const { suppliers, employees, machines, reloadSuppliers } = useJobCardReferenceData({ isWindowUp });
 
-  const { setFormDataFromJobCard, setFormData, resetForm: resetFormHook } = formHook;
-  const { setContactFromJobCard, resetContact } = contactHook;
-  const { loadHistory, resetHistory } = activityLog;
+  const { setFormDataFromJobCard, setFormData } = formHook;
+  const { setContactFromJobCard } = contactHook;
+  const { loadHistory } = activityLog;
   const { loadNotes } = jobNotes;
   // How far this person has read the job's comments (null until the job has loaded). Only
   // ever moves forward: a late reply carrying an older value can't un-read anything.
   const [commentsSeenUpTo, setCommentsSeenUpTo] = useState(null);
-  const newerMoment = (a, b) => (!a ? b : !b ? a : (a > b ? a : b));
-  // Tracks which job's load should "win". A load only applies its result if the
-  // modal is still showing the same job when the request resolves, so a slow
-  // response for a just-closed job can't paint over a newly opened one.
-  const currentLoadRef = useRef(null);
   const loadJobCard = useCallback(async () => {
     if (!isEdit || !jobCardId) return;
 
-    currentLoadRef.current = jobCardId;
     setLoading(true);
     try {
       const [jobcardRes, timeEntriesRes] = await Promise.all([
@@ -158,7 +176,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         api.getTimeEntries(jobCardId)
       ]);
 
-      if (currentLoadRef.current !== jobCardId) return;  // superseded by a newer load — ignore
+      // The window closed while this was on its way: nothing to fill in, and loading
+      // the comments now would be a request for a screen that is gone.
+      if (!isWindowUp()) return;
 
       const jobcardData = jobcardRes;
       setFormDataFromJobCard(jobcardData);
@@ -173,16 +193,18 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
       // has actually been opened — the fetch walks every logged minute, and most job
       // opens never touch pricing at all.
     } catch (err) {
-      if (currentLoadRef.current !== jobCardId) return;  // stale failure for a closed job — don't disturb the current one
+      // A failure for a window that has closed must not toast or close — onClose would
+      // close whichever job the person opened since.
+      if (!isWindowUp()) return;
       // A 404 means the job was deleted (from another PC, or this screen was opened
       // from a stale row or activity entry) — trying again can never work.
       if (err.status === 404) toast.error(JOB_DELETED_MESSAGE, { id: JOB_DELETED_TOAST_ID });
       else toast.error('Failed to load job card. Please try again.');
       onClose();
     } finally {
-      if (currentLoadRef.current === jobCardId) setLoading(false);
+      setLoading(false);
     }
-  }, [isEdit, jobCardId, setFormDataFromJobCard, setContactFromJobCard, loadNotes, onClose]);
+  }, [isEdit, jobCardId, setFormDataFromJobCard, setContactFromJobCard, loadNotes, onClose, isWindowUp]);
   reloadOnJobClosedRef.current = loadJobCard;
 
   // Re-read just the "declared but no file" flags after a file is added, so the
@@ -205,10 +227,10 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   }, []);
 
   useEffect(() => {
-    if (isOpen && isEdit && activeTab === 'activity') {
+    if (isEdit && activeTab === 'activity') {
       loadHistory();
     }
-  }, [isOpen, isEdit, activeTab, loadHistory]);
+  }, [isEdit, activeTab, loadHistory]);
 
   const reloadTimeEntries = useCallback(async () => {
     const res = await api.getTimeEntries(jobCardId);
@@ -233,13 +255,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
 
   const { costingLoaded, refreshCosting } = costingHook;
   const { creditAssignee, dropAssignee } = formHook;
-  // A save/timer action that's still in flight when the user closes this job and
-  // opens another must not let its late reply patch the now-different job's
-  // screen — this stays current every render (unlike a plain closed-over
-  // jobCardId, fixed at the moment the action started), so useJobCardTimerActions
-  // can tell a reply that's still for the open job apart from a stale one.
-  const currentJobIdRef = useRef(jobCardId);
-  currentJobIdRef.current = jobCardId;
   // A closed (invoiced) job's time is locked server-side; kept here (rather than
   // reading formHook.formData inline below) so both the timer actions and the
   // manual add/edit form agree on exactly the same test — jobLock.js's
@@ -265,7 +280,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     jobCardId, canSeePricing, isInvoiced, costingLoaded, refreshCosting, refreshJobStatus,
     reloadTimeEntries, timer, showConfirm, creditAssignee, dropAssignee,
     employees, currentUserId: user?.id, setFormData, onTimerChange, onWorkSaved: flagInstantSave,
-    currentJobIdRef
+    isWindowUp
   });
 
   // What the shell asks for after an answer: the running clock (a "still working" answer
@@ -286,95 +301,37 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     isInvoiced,
     onJobClosed: handleJobClosedWrite
   });
-  const { resetTimeEntries } = timeEntry;
-  const { resetCosting } = costingHook;
-  const { resetTimer } = timer;
-  const { resetNotes } = jobNotes;
   // Tells the server the person has read the thread up to this comment. Silent on failure
-  // (the panel tries again next time it is open with newer comments).
-  const jobCardIdRef = useRef(jobCardId);
-  jobCardIdRef.current = jobCardId;
+  // (the panel tries again next time it is open with newer comments). The callback into
+  // the list names its job, so it still fires if the window closed meanwhile: the server
+  // has marked the comments read either way and the list row should clear.
   const markCommentsRead = useCallback(async (seenUpTo) => {
-    const forJob = jobCardId;
     try {
-      const res = await api.markJobNotesRead(forJob, seenUpTo);
-      if (jobCardIdRef.current !== forJob) return;
+      const res = await api.markJobNotesRead(jobCardId, seenUpTo);
       setCommentsSeenUpTo(prev => newerMoment(prev, res.commentsSeenUpTo));
-      onCommentsRead?.(forJob);
+      onCommentsRead?.(jobCardId, res.unreadNotes);
     } catch {
       // Not worth a pop-up: the unread mark simply stays until the next try.
     }
   }, [jobCardId, onCommentsRead]);
-  const resetForm = useCallback(() => {
-    resetFormHook();
-    resetContact();
-    setTimeEntries([]);
-    setAttachmentWarnings(null);
-    resetTimeEntries();
-    resetCosting();
-    resetTimer();
-    resetNotes();
-    setCommentsSeenUpTo(null);
-    resetHistory();
-  }, [resetFormHook, resetContact, resetTimeEntries, resetCosting, resetTimer, resetNotes, resetHistory]);
-  useEffect(() => {
-    if (isOpen) {
-      // Only tabs this user can actually open are valid; anything else (a stale
-      // 'costing' or 'activity' for someone who can't see it) lands on Details.
-      const validTabs = ['details']
-        .concat(canSeePricing ? ['costing'] : [])
-        .concat(canSeeActivity ? ['activity'] : []);
-      setActiveTab(validTabs.includes(initialTab) ? initialTab : 'details');
-    }
-  }, [isOpen, initialTab, canSeePricing, canSeeActivity]);
-
-  // Pricing/activity access can also be lost while the modal is already open. The
+  // Pricing/activity access can also be lost while the window is already open. The
   // tab strip and the Costing/Activity panels vanish on that render, so without
-  // this the body would draw nothing at all. Kept separate from the effect above
-  // so it never re-applies initialTab mid-session.
+  // this the body would draw nothing at all.
   useEffect(() => {
     if (activeTab === 'costing' && !canSeePricing) setActiveTab('details');
     if (activeTab === 'activity' && !canSeeActivity) setActiveTab('details');
   }, [canSeePricing, canSeeActivity, activeTab]);
 
-  const resetFormRef = useRef(resetForm);
-  const loadJobCardRef = useRef(loadJobCard);
-  const loadActiveTimerRef = useRef(timer.loadActiveTimer);
-  // The stop form this opening was handed (from the shell's "when did you finish?"
-  // question: the clock the server stopped by itself now needs the usual form).
-  const initialStopEntryRef = useRef(initialStopEntry);
-  const showStopFormForEntryRef = useRef(showStopFormForEntry);
-  initialStopEntryRef.current = initialStopEntry;
-  showStopFormForEntryRef.current = showStopFormForEntry;
-  resetFormRef.current = resetForm;
-  loadJobCardRef.current = loadJobCard;
-  loadActiveTimerRef.current = timer.loadActiveTimer;
-  resetInstantSavesRef.current = resetInstantSaves;
-
-  // Before the browser paints, not after: this modal returns null while closed rather
-  // than unmounting, so the commit that reopens it still holds the PREVIOUS opening's
-  // form, baseline and save queue. As a plain effect the reset landed one paint too
-  // late and that stale state was shown — the job that was just closed with an edit
-  // discarded came back wearing its amber frame, and a write that landed after the
-  // window went brought its green with it. Resetting here means the reopened window is
-  // measured, framed and (once loadJobCard flips `loading`) drawn as the new opening
-  // from its very first frame.
-  useLayoutEffect(() => {
-    if (!isOpen) return;
-    resetFormRef.current(); // also clears formHook's save queue — see useJobCardForm.js
-    resetInstantSavesRef.current();
-    if (isEdit) {
-      loadJobCardRef.current();
-      // Re-fetch active timer every time the modal opens — useTimer's own
-      // load effect only fires on jobcardId change, so reopening the same
-      // card after a close would otherwise keep activeTimer cleared by reset.
-      loadActiveTimerRef.current();
-    }
-    // Shown here, straight after the reset that wipes the timer's forms, and nowhere else:
-    // whenever the reset runs (once per opening — twice under development's strict mode)
-    // the handed-in form is put back by the same pass, so the two can't fall out of step.
-    if (initialStopEntryRef.current) showStopFormForEntryRef.current(initialStopEntryRef.current);
-  }, [isOpen, isEdit, jobCardId]);
+  // Once, as the window mounts: an existing job loads (the running clock is loaded by
+  // useTimer's own effect), and a stop form this opening was handed (from the shell's
+  // "when did you finish?" question: the clock the server stopped by itself now needs
+  // the usual form) is shown. Showing the same form twice is a no-op, so strict mode's
+  // second mount can't stack a copy.
+  useEffect(() => {
+    if (isEdit) loadJobCard();
+    if (initialStopEntry) showStopFormForEntry(initialStopEntry);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const selectCompany = (company) => contactHook.selectCompany(company, formHook.setFormData);
   const selectPerson = (personId) => contactHook.selectPerson(personId, formHook.setFormData);
@@ -393,10 +350,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     if (name === 'contactEmail') return contactHook.contactFormData.email;
     return undefined;
   });
-  const { clearAll: clearContactFieldErrors } = contactFieldErrors;
-  // This screen stays mounted while closed, so a mark left from the last new job
-  // would otherwise greet the next one.
-  useEffect(() => { clearContactFieldErrors(); }, [isOpen, jobCardId, clearContactFieldErrors]);
   const handleContactFieldErrors = useCallback((errors) => {
     contactFieldErrors.setFieldErrors(errors);
     const order = ['companyName', 'contactName', 'contactPhone', 'contactEmail'];
@@ -429,7 +382,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // Save to do; every field, row and worker writes itself the moment it changes.
   const { saving, handleSubmit } = useJobCardSave({
     canManage, isEdit, formHook, contactHook,
-    showConfirm, onSuccess, onClose, setAttachmentWarnings,
+    showConfirm, onSuccess, onClose, setAttachmentWarnings, isWindowUp,
     onContactFieldErrors: handleContactFieldErrors,
     onFormMarks: handleFormMarks
   });
@@ -499,7 +452,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
     setActiveTab(tab);
   }, [activeTab, canSeePricing, costingHook, showConfirm, supplierDraftOpen]);
   const { handleRequestClose } = useJobCardCloseGuard({
-    isOpen, isEdit, jobCardId, canSeePricing, isDirty, supplierDraftOpen,
+    isEdit, jobCardId, canSeePricing, isDirty, supplierDraftOpen,
     formHook, instantItems, saveQueue: formHook.saveQueue, jobNotes, timer, costingHook,
     saving, showConfirm, onClose: closeAndRefresh, revealDetails: showDetailsTab, revealCosting
   });
@@ -520,9 +473,9 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // Everything that has actually reached the job. It has to cover exactly what
   // waitingOnSave covers, or the two halves of the frame disagree: pricing writes go out
   // on their own path rather than through the job's save queue, so a visit that only
-  // touched money would turn the frame amber and then never answer it. Both counts are
-  // cleared together when a job opens (the reset above), so a previous opening's tally
-  // can never be mistaken for this one's.
+  // touched money would turn the frame amber and then never answer it. Both counts
+  // start from zero in each window, so a previous opening's tally can never be mistaken
+  // for this one's.
   const landedOnJob = formHook.saveQueue.landedCount + costingHook.costingLandedCount;
 
   // The window frame is the whole answer to "did that save?" on an existing job —
@@ -531,14 +484,12 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   // to carry, which there is no longer room for beside the job number, priority,
   // description, status and due date. Green is driven by writes the server actually
   // confirmed rather than by unsaved work disappearing, so abandoning an edit no longer
-  // reads as saving it. Must sit above the early return below — it is a hook.
+  // reads as saving it.
   const { flashing: savedFlash, anythingLanded } = useSavedFlash({
     landedCount: landedOnJob,
-    waiting: waitingOnSave,
-    active: isOpen && isEdit
+    waiting: waitingOnSave
   });
 
-  if (!isOpen) return null;
   // Enter in a box someone types into must not submit the form by accident. Only those
   // boxes: a button (a tab, a reset link, a part's buttons) keeps Enter's normal job of
   // pressing it. The comboboxes and the pricing sheet handle their own Enter first.
@@ -583,7 +534,7 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
   return (
     <>
       <BottomSheet
-        isOpen={isOpen}
+        isOpen
         onClose={handleRequestClose}
         // No Save button any more, so this now means "something hasn't reached the
         // job" — a failed write, an empty required box, a row mid-create/delete, or a
@@ -603,7 +554,6 @@ export default function JobCardModal({ isOpen, onClose, jobCardId = null, onSucc
         // role and on every tab; a job that does not exist yet has no thread.
         aside={isEdit && jobCardId ? (
           <JobCommentsPanel
-            key={jobCardId}
             jobNumber={formHook.jobNumber}
             notes={jobNotes.notes}
             newNote={jobNotes.newNote}

@@ -18,6 +18,7 @@ import { useCostingSave } from './useCostingSave';
 // so by the time either fires the ref is already pointing at the real thing.
 export function useCosting(jobCardId, {
   costing: loadedCosting,
+  jobNumber,
   updateCosting,
   onJobClosed
 } = {}) {
@@ -30,6 +31,7 @@ export function useCosting(jobCardId, {
 
   const save = useCostingSave(jobCardId, {
     loadedCosting,
+    jobNumber,
     updateCosting,
     onJobClosed,
     costingForm: drafts.costingForm,
@@ -38,22 +40,12 @@ export function useCosting(jobCardId, {
     setDrafts: drafts.setDrafts,
     clearAllFieldErrors: drafts.clearAllFieldErrors,
     commitAllBoxes: drafts.commitAllBoxes,
+    foldDraftsNow: drafts.foldDraftsNow,
     discardCostingDrafts: drafts.discardCostingDrafts
   });
 
   markEditedRef.current = save.markEdited;
   requestImmediateSaveRef.current = save.requestImmediateSave;
-
-  // Resets both halves, in the same order the single resetCosting always ran in: save
-  // state first, then the committed form/drafts/errors. Stable ([] deps) like the
-  // original — save.resetSaveState and drafts.resetDraftsState are themselves always the
-  // same function instance (each built with useCallback(..., [])), so this closure
-  // reaches the current implementation on every call despite never being recreated.
-  const resetCosting = useCallback(() => {
-    save.resetSaveState();
-    drafts.resetDraftsState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return {
     costingForm: drafts.shownCostingForm,
@@ -83,7 +75,6 @@ export function useCosting(jobCardId, {
     calculateCostingTotals: drafts.calculateCostingTotals,
     handleSaveCosting: save.handleSaveCosting,
     refreshCosting: save.refreshCosting,
-    resetCosting,
     costingFieldError: drafts.costingFieldError,
     costingFieldProps: drafts.costingFieldProps,
     costingErrorProps: drafts.costingErrorProps

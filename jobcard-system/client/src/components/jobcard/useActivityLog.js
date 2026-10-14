@@ -31,11 +31,5 @@ export function useActivityLog(jobCardId) {
     }
   }, [jobCardId, startRequest]);
 
-  const resetHistory = useCallback(() => {
-    startRequest(); // a load still out for the job just left must not land on the next one
-    setHistory([]);
-    setHistoryFailed(false);
-  }, [startRequest]);
-
-  return { history, loadingHistory, historyFailed, loadHistory, resetHistory };
+  return { history, loadingHistory, historyFailed, loadHistory };
 }

@@ -86,11 +86,11 @@ const pristineSaved = () => ({
  * (useJobCardInstantSaves.js), so every instant write on the card shares the one
  * record instead of each area keeping its own.
  */
-export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed } = {}) {
+export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed, isWindowUp } = {}) {
   // Core form data
   const [formData, setFormData] = useState(getDefaultFormData());
   const [jobNumber, setJobNumber] = useState('');
-  const saveQueue = useSaveQueue(jobCardId, { onJobClosed });
+  const saveQueue = useSaveQueue(jobCardId, { onJobClosed, isWindowUp, jobNumber });
 
   // Related data (locally managed for create mode, from API for edit mode)
   const [assignees, setAssignees] = useState([]);
@@ -102,24 +102,21 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed } = {}) {
   // handleRequestClose most needs to protect. loadJobCard/setFormDataFromJobCard
   // below replaces this with the loaded job's own snapshot once a job is loaded.
   const [saved, setSaved] = useState(pristineSaved);
-  // False from the moment an existing job starts opening (resetForm runs first,
-  // dropping in one blank local row) until setFormDataFromJobCard has replaced it
-  // with the real one. Without this, itemsDirty below reads that placeholder row
+  // False from the moment an existing job starts opening (one blank local row
+  // stands in) until setFormDataFromJobCard has replaced it with the real one. Without this, itemsDirty below reads that placeholder row
   // as an unsaved part for the whole loading window — the header wears the amber
   // ring and Escape asks about a change nobody made. A brand-new job never sets
   // this at all, so its own itemsDirty branch (below) is untouched by it.
   const [loaded, setLoaded] = useState(false);
   // The job description's own required-box mark. Lifted up from JobIdentityStrip
   // (rather than kept as that component's local state) so the close question
-  // (useUnsavedGuard.js, via closeReasons.js) can see it — JobIdentityStrip
-  // unmounts on every close (JobCardModal returns null rather than hiding it), so
-  // resetForm below clears this the same way a fresh mount would have.
+  // (useUnsavedGuard.js, via closeReasons.js) can see it.
   // The description box's mark follows the text it was raised against, like every
-  // other mark in the app (hooks/useFieldErrors.js) — typing, a reset or a reply that
+  // other mark in the app (hooks/useFieldErrors.js) — typing or a reply that
   // changes the box takes it away without anyone having to clear it by hand.
   const descriptionMarks = useFieldErrors(() => formData.description);
   const descriptionError = descriptionMarks.fieldErrors.description ?? null;
-  const { setFieldErrors: setDescriptionMarks, clearAll: clearDescriptionMark } = descriptionMarks;
+  const { setFieldErrors: setDescriptionMarks } = descriptionMarks;
   // Marks the box against the exact text judged — the tidied value may not have
   // reached formData yet when the leave-time check runs.
   const markDescription = useCallback((message, judgedText) => {
@@ -129,20 +126,12 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed } = {}) {
   // reads the people list and the open job as they stand right now, not one commit
   // behind: assigneesRef decides the next tap's direction without listing
   // `assignees` as a dependency (which would rebuild its promise-chaining closure
-  // on every tick), and jobCardIdRef tells whether a write that lands late still
-  // belongs to the job on screen.
+  // on every tick), and jobCardIdRef hands toggleAssignee the job's id once a
+  // new job has been created, without listing it as a dependency.
   const assigneesRef = useRef(assignees);
   assigneesRef.current = assignees;
   const jobCardIdRef = useRef(jobCardId);
   jobCardIdRef.current = jobCardId;
-  // Bumped every time resetForm runs — which is every time this window (re)opens,
-  // on any job. A brand-new create that's still travelling when the window is
-  // closed and reopened (same job or a different one) can capture this before it
-  // sends and compare afterwards, so its reply knows the window it was meant for
-  // is gone and must not close, or set warnings on, whichever job is open now.
-  // See useJobCardSave.js.
-  const sessionRef = useRef(0);
-
   // A part now saves itself row by row (useInstantItems.js), so "are the parts
   // dirty" is no longer one whole-list comparison — it's asked per row:
   //   - a brand-new job has nothing to write to yet, so every row is still local
@@ -156,7 +145,7 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed } = {}) {
     if (!jobCardId) {
       return snapshotItems(lineItems) !== saved.items;
     }
-    // Still loading: lineItems is resetForm's placeholder blank row, not anything
+    // Still loading: lineItems is the placeholder blank row, not anything
     // the user has touched — nothing to flag yet.
     if (!loaded) return false;
     return lineItems.some(item => {
@@ -282,13 +271,15 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed } = {}) {
     if (!forJobCardId) return; // new job — local only
 
     const label = `${employee.name || employee.username || 'that worker'}'s assignment`;
-    saveQueue.enqueue(`assignee:${workerId}`, (isCurrent) => (willAssign
+    saveQueue.enqueue(`assignee:${workerId}`, (isWindowUp) => (willAssign
       ? api.assignWorker(forJobCardId, workerId)
       : api.unassignWorker(forJobCardId, workerId))
       .then(() => {
-        // A reply for a job the user has since left — or for an earlier opening of
-        // this same job — must not mark the people list now on screen as saved.
-        if (!isCurrent()) return;
+        // Once the window has closed there is no people list left to mark as saved,
+        // and the list-refresh flag it would raise belongs to a window that is gone.
+        // A failed tick has no catch here on purpose: the queue's own failure toast tells
+        // the person whether or not the window is still up.
+        if (!isWindowUp()) return;
         onInstantSave?.();
         setSaved(prev => ({
           ...prev,
@@ -412,7 +403,7 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed } = {}) {
 
     // Everything on screen now matches what is stored — the starting point the
     // header's unsaved-edits mark is measured against. `items` (the whole-array
-    // snapshot) is left exactly as resetForm just set it — itemsDirty never reads
+    // snapshot) is left exactly as the form started — itemsDirty never reads
     // it once jobCardId is set, so there's nothing here worth computing again;
     // itemFields is its real replacement for an existing job, and only ever holds
     // real rows (a job always loads with at least one) — see the isDirty comment.
@@ -428,35 +419,12 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed } = {}) {
     setLoaded(true);
   }, []);
 
-  const resetForm = useCallback(() => {
-    setFormData(getDefaultFormData());
-    setJobNumber('');
-    setAssignees([]);
-    setLineItems([makeEmptyLineItem(1)]);
-    clearDescriptionMark(); // new form session
-    // Back to the pristine baseline, same as the hook's own initial state, so a
-    // second new card starts clean exactly like the first one did.
-    setSaved(pristineSaved());
-    // Runs before an existing job's own data has arrived — see the comment on
-    // `loaded`'s declaration above.
-    setLoaded(false);
-    // JobCardModal returns null when closed rather than unmounting, so the save
-    // queue outlives a close the same way every other piece of state here does —
-    // without this, opening the next job would still show whatever was left
-    // queued or failed on the previous one.
-    saveQueue.reset();
-    sessionRef.current += 1;
-  }, [saveQueue]);
-
   return {
     // Form state
     formData,
     setFormData,
     jobNumber,
     setJobNumber,
-    // See its own declaration above — useJobCardSave.js reads this to tell
-    // whether a create it sent still belongs to the window now on screen.
-    sessionRef,
     // The one save queue for this open job card (Contract A) — shared out to
     // useJobCardInstantSaves.js and useJobCardCloseGuard.js so every instant
     // write on the card, and the close question, read the same record.
@@ -479,7 +447,6 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed } = {}) {
     markItemRemoved,
     savedForm,
     savedItemFields,
-    resetForm,
     descriptionError,
     markDescription,
     // True once a loaded job has edits that haven't reached the job yet — a failed

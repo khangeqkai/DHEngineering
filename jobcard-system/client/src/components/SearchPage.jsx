@@ -9,6 +9,7 @@ import useSearch from '../hooks/useSearch';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
 import JobCardModal from './jobcard/JobCardModal';
+import { prefetchJobCardReferenceData } from './jobcard/useJobCardReferenceData';
 import { ACTIVITY_FIELDS } from './searchFields';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { formatHistoryValue } from '../utils/formatters';
@@ -209,6 +210,8 @@ export default function SearchPage() {
   }, [scope]);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+  // Fill the picker lists now so the first job window opens with them already in place.
+  useEffect(() => { prefetchJobCardReferenceData(); }, []);
 
   const handleSeeAll = (groupKey) => {
     const targetScope = GROUP_TO_SCOPE[groupKey];

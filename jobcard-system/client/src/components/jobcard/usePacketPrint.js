@@ -113,7 +113,7 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
       if (opened) {
         try {
           const { printedAt } = await api.markPacketPrinted(jobcardId, { cardIncluded });
-          if (printedAt) onPrinted?.(printedAt);
+          if (printedAt) onPrinted?.(jobcardId, printedAt);
         } catch {
           // The packet is open in front of the user, so the print itself didn't
           // fail — but nothing was written down either, and no amount of reloading

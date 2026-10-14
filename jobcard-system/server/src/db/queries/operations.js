@@ -280,13 +280,15 @@ const timeEntryQueries = {
 // their own read mark (alias r, from job_note_reads), the launch baseline
 // (settings.comments_read_from, so comments that existed before the feature don't all
 // arrive as unread) and the day their account was made (a new worker inherits no
-// backlog). Each part is COALESCEd to '' because SQLite's multi-argument MAX returns
-// NULL if any argument is NULL. All are UTC ISO strings, so they compare as text.
+// backlog). Each part is COALESCEd to a real moment (1970) because SQLite's multi-argument
+// MAX returns NULL if any argument is NULL, and an empty answer would read as "not
+// loaded yet" on the job screen. All are UTC ISO strings, so they compare as text.
 // Needs a named @userId parameter and the alias r in scope.
+const SEEN_FLOOR = `'1970-01-01T00:00:00.000Z'`;
 const SEEN_UP_TO_SQL = `MAX(
-  COALESCE(r.seen_up_to, ''),
-  COALESCE((SELECT value FROM settings WHERE key = 'comments_read_from'), ''),
-  COALESCE((SELECT created_at FROM users WHERE id = @userId), '')
+  COALESCE(r.seen_up_to, ${SEEN_FLOOR}),
+  COALESCE((SELECT value FROM settings WHERE key = 'comments_read_from'), ${SEEN_FLOOR}),
+  COALESCE((SELECT created_at FROM users WHERE id = @userId), ${SEEN_FLOOR})
 )`;
 
 // Job note queries
@@ -315,9 +317,6 @@ const jobNoteQueries = {
   // sync — called from the user-update route whenever a name actually changes.
   updateAuthorNameByUserId: db.prepare('UPDATE job_notes SET user_name = ? WHERE user_id = ?'),
 
-  // The moment of the newest comment on the job, or null when there are none.
-  newestCreatedAt: db.prepare('SELECT MAX(created_at) AS newest FROM job_notes WHERE jobcard_id = ?'),
-
   // Moves a person's read mark forward, never back (an older PC's late reply can't
   // un-read what a newer one already cleared).
   markRead: db.prepare(`
@@ -334,20 +333,23 @@ const jobNoteQueries = {
   `)
 };
 
+// Prepared once: the text is constant, the listed ids go in as one JSON array.
+const unreadNoteCountsStmt = db.prepare(`
+  SELECT n.jobcard_id AS jobcard_id, COUNT(*) AS unread
+  FROM job_notes n
+  LEFT JOIN job_note_reads r ON r.user_id = @userId AND r.jobcard_id = n.jobcard_id
+  WHERE n.jobcard_id IN (SELECT value FROM json_each(@ids))
+    AND n.user_id != @userId
+    AND n.created_at > ${SEEN_UP_TO_SQL}
+  GROUP BY n.jobcard_id
+`);
+
 // Unread comment count per job for one person, in one pass for every listed job.
 // Same rule as the single-job value (SEEN_UP_TO_SQL) and never counts their own
 // comments. Jobs with nothing unread are absent from the map.
 function getUnreadNoteCountsForJobcards(jobcardIds, userId) {
   if (jobcardIds.length === 0) return {};
-  const rows = db.prepare(`
-    SELECT n.jobcard_id AS jobcard_id, COUNT(*) AS unread
-    FROM job_notes n
-    LEFT JOIN job_note_reads r ON r.user_id = @userId AND r.jobcard_id = n.jobcard_id
-    WHERE n.jobcard_id IN (SELECT value FROM json_each(@ids))
-      AND n.user_id != @userId
-      AND n.created_at > ${SEEN_UP_TO_SQL}
-    GROUP BY n.jobcard_id
-  `).all({ userId, ids: JSON.stringify(jobcardIds) });
+  const rows = unreadNoteCountsStmt.all({ userId, ids: JSON.stringify(jobcardIds) });
   const map = {};
   for (const row of rows) map[row.jobcard_id] = row.unread;
   return map;

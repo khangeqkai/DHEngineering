@@ -251,20 +251,6 @@ export function useContactSearch() {
     setPickedPerson(null);
   }, []);
 
-  const resetContact = useCallback(() => {
-    setContactFormData(getDefaultContactFormData());
-    setPickedPerson(null);
-    setFieldFocused(false);
-    setShowContactDropdown(false);
-    setCompanyMatches([]);
-    // Dropping this flag (rather than just leaving the stale list in place) is
-    // what makes the customer list reload on the next focus — the modal calls
-    // this on every open, so a customer added or renamed elsewhere is picked up
-    // the next time a job is opened, instead of only on the very first load of
-    // the whole session.
-    companiesLoaded.current = false;
-  }, []);
-
   // Which of the picked person's details were changed on this job, old → new.
   // Empty when nobody is picked or nothing differs — which is the usual case, so
   // the save stays silent.
@@ -309,7 +295,6 @@ export function useContactSearch() {
     handleFieldFocus,
     handleFieldBlur,
     setContactFromJobCard,
-    resetContact,
     registerCompany,
     adoptPerson
   };

@@ -97,11 +97,11 @@ export function useInstantSave(jobCardId, saveQueue, { onSaved, onAttachmentWarn
       saveQueue.clearFailure(`field:${name}`);
       return;
     }
-    saveQueue.enqueue(`field:${name}`, (isCurrent) => api.updateJobcard(forJobCardId, { [name]: value })
+    saveQueue.enqueue(`field:${name}`, (isWindowUp) => api.updateJobcard(forJobCardId, { [name]: value })
       .then((result) => {
-        // A reply for a job the user has since left — or for an earlier opening of
-        // this same job — must not mark a field as saved on the screen now showing.
-        if (!isCurrent()) return;
+        // A reply that arrives after the window has closed has no field left to mark
+        // (a failure still reaches the person through the queue's toast).
+        if (!isWindowUp()) return;
         setSavedNames(prev => ({ ...prev, [name]: true }));
         onSaved?.(name, value);
         if (alsoMarkSaved) {
@@ -117,11 +117,11 @@ export function useInstantSave(jobCardId, saveQueue, { onSaved, onAttachmentWarn
         // A check that belongs to a named box marks that box instead of a pop-up
         // (CLAUDE.md) — the same rule a form with a Save button follows via
         // showSaveRefusal, applied here to a field that saves itself. Anything
-        // the server didn't name a box for (or a reply for a job/opening the user
-        // has since left) still falls through to the queue's own generic failure
-        // toast below, unchanged.
+        // the server didn't name a box for (or a refusal after the window
+        // has closed, when there is no box left to mark) falls through to the
+        // queue's own generic failure toast below, which is told either way.
         const { marks } = fieldErrorsFromRefusal(err, FIELD_BOXES);
-        if (marks && isCurrent()) {
+        if (marks && isWindowUp()) {
           fieldErrors?.setFieldErrors(marks, { [name]: value });
           // Nothing was stored — say so with the mark, not a second toast on top
           // of it — so this must not count toward landedCount or read 'failed'.
@@ -147,11 +147,5 @@ export function useInstantSave(jobCardId, saveQueue, { onSaved, onAttachmentWarn
     return out;
   }, [savedNames, saveQueue]);
 
-  // JobCardModal returns null when closed rather than unmounting, so this hook's
-  // state outlives a close. Without clearing it, opening the next job would greet
-  // it with the previous job's "Saved" — the line would be reporting a write that
-  // never happened on the job being looked at.
-  const resetFieldStates = useCallback(() => setSavedNames({}), []);
-
-  return { saveField, fieldStates, resetFieldStates };
+  return { saveField, fieldStates };
 }

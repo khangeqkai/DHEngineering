@@ -28,7 +28,7 @@ import { describeAtRisk, describeSafe, describeSafeAsSecondLine } from './closeR
 // the inactivity sign-out don't run that save — they just make the screen disappear — so
 // the two effects below that guard against those need a wider question still:
 // hasWorkToLose, which folds costingDirty in alongside hasUnsavedWork.
-export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNote, stopFormOpen, supplierDraftOpen = false, costingDirty = false, costingUnsettled = false, showConfirm, onClose, isEdit = false, closeReasons = { safe: [], atRisk: [] }, revealDetails }) {
+export function useUnsavedGuard({ isDirty, saving = false, hasUnpostedNote, stopFormOpen, supplierDraftOpen = false, costingDirty = false, costingUnsettled = false, showConfirm, onClose, isEdit = false, closeReasons = { safe: [], atRisk: [] }, revealDetails }) {
   const { registerUnsavedWork } = useAuth();
   const hasUnsavedWork = isDirty || hasUnpostedNote || stopFormOpen || supplierDraftOpen;
   // A page refresh and the inactivity sign-out both skip the close question and its
@@ -165,7 +165,7 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
   // once the page has been interacted with, so this cannot carry the message above; it
   // just makes the refresh stop and ask.
   useEffect(() => {
-    if (!isOpen || !hasWorkToLose) return undefined;
+    if (!hasWorkToLose) return undefined;
     const warnBeforeLeaving = (event) => {
       event.preventDefault();
       // Older browsers need returnValue set as well as the default prevented.
@@ -173,7 +173,7 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
     };
     window.addEventListener('beforeunload', warnBeforeLeaving);
     return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
-  }, [isOpen, hasWorkToLose]);
+  }, [hasWorkToLose]);
 
   // The last way work disappears without being asked about: the inactivity sign-out. It
   // already waits a moment for last-moment work to land (useTimer.js uses that to put a
@@ -183,9 +183,9 @@ export function useUnsavedGuard({ isOpen, isDirty, saving = false, hasUnpostedNo
   // something to lose — a card sitting open with nothing typed into it isn't worth a
   // warning. Admins are exempt from the inactivity timer; managers and employees are not.
   useEffect(() => {
-    if (!isOpen || !hasWorkToLose) return undefined;
+    if (!hasWorkToLose) return undefined;
     return registerUnsavedWork('job card');
-  }, [isOpen, hasWorkToLose, registerUnsavedWork]);
+  }, [hasWorkToLose, registerUnsavedWork]);
 
   return { hasUnsavedWork, handleRequestClose };
 }

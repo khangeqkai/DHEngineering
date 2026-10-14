@@ -19,6 +19,7 @@ import { useMissingFilesIndicator } from '../hooks/useMissingFilesIndicator';
 import { useDismissableMenu } from '../hooks/useDismissableMenu';
 import { describeWorkWarning } from '../utils/attachmentWarnings';
 import { changeJobStatus } from './jobcard/changeJobStatus';
+import { prefetchJobCardReferenceData } from './jobcard/useJobCardReferenceData';
 import useJobCardSort from '../hooks/useJobCardSort';
 import useJobCardColumnOrder from '../hooks/useJobCardColumnOrder';
 import useJobCardColumnVisibility from '../hooks/useJobCardColumnVisibility';
@@ -250,20 +251,23 @@ export default function JobCardList() {
 
   // A comment added or deleted in the job screen only changes that job's Latest
   // Comment cell, so patch the one row rather than re-fetching the whole list.
-  const handleNotesChange = useCallback((latestNote) => {
-    setJobcards(prev => prev.map(c => c.id === editingCardId ? { ...c, latestNote } : c));
-  }, [editingCardId]);
+  // It names its job: the reply can arrive after the window has closed, or after another
+  // job has been opened.
+  const handleNotesChange = useCallback((jobId, latestNote) => {
+    setJobcards(prev => prev.map(c => c.id === jobId ? { ...c, latestNote } : c));
+  }, []);
 
-  // Reading a job's comments clears that row's unread mark.
-  const handleCommentsRead = useCallback((jobId) => {
-    setJobcards(prev => prev.map(c => c.id === jobId ? { ...c, unreadNotes: 0 } : c));
+  // Reading a job's comments updates that row's unread mark to the count the server
+  // gives back (normally zero, but a comment that arrived meanwhile stays unread).
+  const handleCommentsRead = useCallback((jobId, unreadNotes) => {
+    setJobcards(prev => prev.map(c => c.id === jobId ? { ...c, unreadNotes } : c));
   }, []);
 
   // A real print of the job card only changes that job's Print mark, so patch the
   // one row rather than re-fetching the whole list.
-  const handlePrinted = useCallback((printedAt) => {
-    setJobcards(prev => prev.map(c => c.id === editingCardId ? { ...c, printedAt } : c));
-  }, [editingCardId]);
+  const handlePrinted = useCallback((jobId, printedAt) => {
+    setJobcards(prev => prev.map(c => c.id === jobId ? { ...c, printedAt } : c));
+  }, []);
 
   const filteredCards = useMemo(() => {
     return jobcards.filter((card) => {
@@ -352,9 +356,13 @@ export default function JobCardList() {
     setIsModalOpen(true);
   };
 
+  const { subscribeJobChanged, subscribeCommentsRead } = useFinishQuestion() || {};
   // A stop form saved on the finish question's own job screen changes a job in this list.
-  const subscribeJobChanged = useFinishQuestion()?.subscribeJobChanged;
   useEffect(() => subscribeJobChanged?.(loadJobcards), [subscribeJobChanged, loadJobcards]);
+  // The forgotten-clock window reading comments patches one row, never reloads the list.
+  useEffect(() => subscribeCommentsRead?.(handleCommentsRead), [subscribeCommentsRead, handleCommentsRead]);
+  // Fill the picker lists now so the first job window opens with them already in place.
+  useEffect(() => { prefetchJobCardReferenceData(); }, []);
 
   const handleModalSuccess = () => {
     loadJobcards();

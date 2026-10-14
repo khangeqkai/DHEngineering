@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { warningToastIcon } from '../components/common/toastIcons';
+import { useStillMounted } from './useStillMounted';
 
 // How long to wait before retrying a row whose check failed (a connection blip),
 // so a row never sits on the loading hint forever when the visible set is static.
@@ -37,15 +38,14 @@ export function useMissingFilesIndicator() {
   const retriedRef = useRef(new Set());
   // True once the "files could not be checked" notice has been shown for this outage.
   const unreachableNotedRef = useRef(false);
+  // Whether the list is still up, so no retry is scheduled after it has gone.
+  const isUp = useStillMounted();
   // Retry timers, cleared on unmount.
-  const mountedRef = useRef(true);
   const timersRef = useRef(new Set());
 
   useEffect(() => {
-    mountedRef.current = true;
     const timers = timersRef.current;
     return () => {
-      mountedRef.current = false;
       for (const t of timers) clearTimeout(t);
       timers.clear();
     };
@@ -68,7 +68,7 @@ export function useMissingFilesIndicator() {
         }
         // Ask again in a minute (one request for the rows still unchecked), and keep
         // doing so while the drive stays away; stops when the list closes.
-        if (mountedRef.current) {
+        if (isUp()) {
           const t = setTimeout(() => {
             timersRef.current.delete(t);
             const again = ids.filter(id => !checkedRef.current.has(id) && !inFlightRef.current.has(id));
@@ -105,7 +105,7 @@ export function useMissingFilesIndicator() {
     } catch {
       // Leave these ids unchecked and schedule one retry, so a momentary blip
       // doesn't strand the row on the loading hint until the page changes.
-      if (mountedRef.current) {
+      if (isUp()) {
         const retryable = ids.filter(id => !retriedRef.current.has(id));
         for (const id of retryable) retriedRef.current.add(id);
         if (retryable.length) {
@@ -134,7 +134,7 @@ export function useMissingFilesIndicator() {
         fetchFor(redo);
       }
     }
-  }, []);
+  }, [isUp]);
 
   // Check any of these ids we haven't already checked (and aren't checking).
   const ensure = useCallback((ids) => {

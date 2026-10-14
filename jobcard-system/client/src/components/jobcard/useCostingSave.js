@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { scrollFieldIntoView } from '../../hooks/useFieldErrors';
 import { isJobClosedError } from '../../utils/jobLock';
+import { toastJobWriteFailure } from './jobWriteFailure';
 import { TEXT_FIELDS } from './useCostingDrafts';
 
 // The save half of the pricing sheet: the save queue, save-now, flush, leave guard and
@@ -24,6 +25,7 @@ import { TEXT_FIELDS } from './useCostingDrafts';
 // message, and a reload that locks the sheet — instead of the ordinary failure toast.
 export function useCostingSave(jobCardId, {
   loadedCosting,
+  jobNumber,
   updateCosting,
   onJobClosed,
   costingForm,
@@ -32,8 +34,13 @@ export function useCostingSave(jobCardId, {
   setDrafts,
   clearAllFieldErrors,
   commitAllBoxes,
+  foldDraftsNow,
   discardCostingDrafts
 }) {
+  // Named in a failure message: the unmount backstop's save can fail after the window has
+  // gone and another job is on screen, so the message has to say which job it was.
+  const jobNumberRef = useRef(jobNumber);
+  jobNumberRef.current = jobNumber;
   const [savingCosting, setSavingCosting] = useState(false);
   // True when the pricing screen has hand edits that haven't been saved yet. Used to
   // warn/save before invoicing so unsaved edits aren't lost when the job is filed away.
@@ -76,12 +83,13 @@ export function useCostingSave(jobCardId, {
   // manual money boxes. (loadedRef chases every save, which used to make that hint compare
   // a just-typed figure against itself and disappear about a second after it appeared.)
   const openingRef = useRef(null);
-  // Which job is on screen right now, read inside the save so it sees the current value
-  // without being rebuilt (and restarting the save timer) on every render of the job
-  // screen — so a reply to a save started for a job that has since been closed can be
-  // recognised as stale rather than applied to the next one.
-  const jobCardIdRef = useRef(jobCardId);
-  jobCardIdRef.current = jobCardId;
+  // True from the moment the person's unsaved figures were thrown away (dropUnsavedCosting)
+  // until the next hand edit or load. A ref rather than state because the drop and the
+  // window closing happen in the same tick: the unmount flush then runs the LAST RENDER's
+  // flushCosting/runSave, whose closures still see the old form, the old dirty flag and
+  // the old drafts, and would send exactly what was discarded. Both check this first, so a
+  // stale closure finds nothing to send whatever it last rendered.
+  const droppedRef = useRef(false);
 
   // Fill the form from the costing loaded for this job. That load happens once per
   // opening — the save no longer re-reads. loadedCosting already IS the form shape —
@@ -91,6 +99,7 @@ export function useCostingSave(jobCardId, {
     if (loadedCosting) {
       loadedRef.current = loadedCosting;
       openingRef.current = loadedCosting;
+      droppedRef.current = false;
       setCostingDirty(false);
       setSaveState('idle');
       setCostingForm(loadedCosting);
@@ -104,6 +113,7 @@ export function useCostingSave(jobCardId, {
   // Every hand edit marks the screen as owing a save and restarts the save timer.
   const markEdited = useCallback(() => {
     editSeq.current += 1;
+    droppedRef.current = false;
     setCostingDirty(true);
     setSaveState('pending');
     setAutoSavePaused(false);
@@ -136,14 +146,45 @@ export function useCostingSave(jobCardId, {
     return pendingImmediate.current.promise;
   }, []);
 
-  // Nothing is going to carry out a requested save once this screen is gone, so anything
-  // waiting on one is told so rather than left hanging on a promise that never settles.
-  useEffect(() => () => {
-    if (pendingImmediate.current) {
-      pendingImmediate.current.settle(false);
-      pendingImmediate.current = null;
+  // The window unmounting is the one exit with no render after it, so nothing here can
+  // wait for the next render the way commitBox's requested save does. Backstop for a close
+  // that never went through the close guard (useJobCardCloseGuard.js saves pricing first
+  // and waits): fold every valid open draft into the newest committed figures synchronously
+  // (foldDraftsNow — the same judgeBox rule as commitBox; a red box is not sent) and hand
+  // that form straight to the ordinary save queue, with the same changed-fields diff,
+  // ordering behind a save in flight, and dropped/not-loaded guards. No timer, no retry.
+  // A save already carrying these exact figures is left to finish rather than sent twice.
+  // Anything waiting on a requested save is settled with this outcome, never left hanging.
+  // Two cases send nothing: nobody is signed in (sign-out clears the pass before removing
+  // the window, so a send would only be refused; if figures were owed the person is told
+  // they weren't saved, otherwise it is silent), and a
+  // save that already failed with nothing newly committed (a write is never re-sent
+  // automatically; the figures stay on screen, unsaved, as the failure left them).
+  const flushOnUnmount = () => {
+    const waiting = pendingImmediate.current;
+    pendingImmediate.current = null;
+    const settle = (ok) => waiting?.settle(ok);
+    if (droppedRef.current || !jobCardId) { settle(true); return; }
+
+    const { form, changed } = foldDraftsNow();
+    if (autoSavePaused && !changed) { settle(false); return; }
+    // A box committed just now is an edit like any other: a save already in flight no
+    // longer covers everything.
+    if (changed) editSeq.current += 1;
+    const owes = loadedRef.current
+      ? Object.keys(changedFigures(form, loadedRef.current)).length > 0
+      : (changed || !!waiting);
+    if (!owes) { settle(true); return; }
+    if (!api.token) { toastSignedOutUnsaved(jobCardId, jobNumberRef.current); settle(false); return; }
+    if (!changed && inFlight.current && inFlightSeq.current === editSeq.current) {
+      inFlight.current.then(settle, () => settle(false));
+      return;
     }
-  }, []);
+    saveNowRef.current({ form }).then(settle, () => settle(false));
+  };
+  const flushOnUnmountRef = useRef(flushOnUnmount);
+  flushOnUnmountRef.current = flushOnUnmount;
+  useEffect(() => () => { flushOnUnmountRef.current(); }, []);
 
   // Throw away every figure this screen holds that the server never stored: open drafts
   // and their red marks, and committed figures still waiting to be sent — the sheet goes
@@ -152,6 +193,7 @@ export function useCostingSave(jobCardId, {
   // question naming pricing whose save failed (not one still in flight, which may yet store) (useJobCardCloseGuard.js), so the
   // save-on-close backstop doesn't send what they chose to lose.
   const dropUnsavedCosting = useCallback(() => {
+    droppedRef.current = true;
     discardCostingDrafts();
     if (loadedRef.current) setCostingForm(loadedRef.current);
     setCostingDirty(false);
@@ -168,8 +210,15 @@ export function useCostingSave(jobCardId, {
   // locked on screen meanwhile, so a save only ever runs on an open job and goes
   // straight through, like the rest of the sheet. Every figure is recorded in the
   // activity trail with its old and new value.
-  const runSave = useCallback(async () => {
+  //
+  // `options.form` sends exactly that form instead of the one this render closed over —
+  // the unmount flush passes the figures it worked out from refs, since a closure from the
+  // last render can't know what was typed or committed after it.
+  const runSave = useCallback(async ({ form: explicitForm } = {}) => {
     if (!jobCardId) return true; // nothing to save (new card) — not a failure
+    // The figures were thrown away (see droppedRef); this may be a stale closure still
+    // holding them.
+    if (droppedRef.current) return true;
 
     // The job's stored pricing never arrived (the load failed, or hasn't finished). The
     // boxes are showing an empty sheet, so sending it would write zeros over the job's
@@ -177,15 +226,12 @@ export function useCostingSave(jobCardId, {
     if (!loadedRef.current) {
       setSaveState('error');
       setAutoSavePaused(true);
-      toastNotLoaded();
+      toastNotLoaded(jobCardId);
       return false;
     }
 
-    const form = costingForm;
+    const form = explicitForm ?? costingForm;
     const seq = editSeq.current;
-    // Which opening of the pricing this save belongs to — see the comparison-base update
-    // after the reply below.
-    const opening = openingRef.current;
     // What this save covers, for flushCosting to compare against — see there.
     inFlightSeq.current = seq;
     setSavingCosting(true);
@@ -202,23 +248,18 @@ export function useCostingSave(jobCardId, {
       }
       const stored = await updateCosting(costingData);
       // Whatever happens to the boxes below, the comparison base moves to what the server
-      // now holds — on EVERY successful reply for this opening, adopted or not. Otherwise
+      // now holds — on EVERY successful reply, adopted or not. Otherwise
       // a figure changed while this save was in flight and then put back to its old
       // value (materials $100 → $200, left; another box edited meanwhile; materials back
       // to $100) would be judged unchanged against the stale base and never sent,
-      // leaving the server on $200. The opening check keeps a reply that lands after
-      // the job was closed (or closed and reopened) from touching the next opening's
-      // base — while it is null the save block below still has to hold.
-      if (stored && jobCardIdRef.current === jobCardId && openingRef.current === opening) {
+      // leaving the server on $200.
+      if (stored) {
         loadedRef.current = stored;
       }
       // Only call it saved when nothing was typed while the request was in flight —
       // otherwise those later keystrokes would look stored without ever having been sent.
       // Left dirty, they go out with the next box left, Enter, or flush.
-      // The job must also still be the one on screen: a save that started as a job was
-      // closed can land after the next job has opened, and its figures would otherwise
-      // be adopted onto that job.
-      if (editSeq.current === seq && jobCardIdRef.current === jobCardId) {
+      if (editSeq.current === seq) {
         // Adopt what the server actually stored. It folds in any time logged since the
         // screen loaded, so its totals can be higher than the ones worked out here —
         // without this the grand total on screen quietly drifts from the billed one.
@@ -249,14 +290,14 @@ export function useCostingSave(jobCardId, {
       // The job was invoiced and closed elsewhere: these figures can never be stored,
       // so they're dropped (the sheet goes back to what the server holds, and closing
       // won't ask about them) and the screen reloads into its locked state.
-      if (isJobClosedError(err) && jobCardIdRef.current === jobCardId) {
+      if (isJobClosedError(err)) {
         dropUnsavedCosting();
         onJobClosed?.();
         return false;
       }
       setSaveState('error');
       setAutoSavePaused(true);
-      toastSaveFailed(err);
+      toastSaveFailed(err, jobCardId, jobNumberRef.current);
       return false;
     } finally {
       inFlightSeq.current = null;
@@ -317,6 +358,9 @@ export function useCostingSave(jobCardId, {
   // the cursor is still in a box — a red one stays red and this refuses to save, naming
   // which field, rather than silently sending the committed figures around it.
   const flushCosting = useCallback(async () => {
+    // Checked before the boxes are committed: a stale closure's commitAllBoxes would
+    // still see drafts the person discarded and commit them as fresh edits (see droppedRef).
+    if (droppedRef.current) return { ok: true };
     const invalidField = commitAllBoxes();
     if (invalidField) return { ok: false, invalid: true, field: invalidField };
 
@@ -379,20 +423,17 @@ export function useCostingSave(jobCardId, {
   // unsaved pricing will be billed" prompt before calling it.
   const handleSaveCosting = useCallback(() => saveNowRef.current(), []);
 
-  // Which job this refresh was asked for, and how many refreshes have been asked for
-  // altogether — both captured at call time, same as runSave's jobCardIdRef guard above.
-  // A reply is dropped when either has moved on by the time it lands: the job on screen
-  // has changed (this job's figures would otherwise land on the next job's sheet), or a
-  // later refresh was started after this one (two quick timer actions could otherwise
-  // land in either order, with the older reply overwriting the newer one's figures).
+  // How many refreshes have been asked for altogether, captured at call time. A reply is
+  // dropped when a later refresh was started after this one (two quick timer actions
+  // could otherwise land in either order, with the older reply overwriting the newer
+  // one's figures).
   const refreshSeq = useRef(0);
   const refreshCosting = useCallback(async () => {
     if (!jobCardId) return;
-    const calledForJobId = jobCardId;
     const seq = ++refreshSeq.current;
     try {
       const costingRes = await api.getCosting(jobCardId);
-      if (jobCardIdRef.current !== calledForJobId || refreshSeq.current !== seq) return;
+      if (refreshSeq.current !== seq) return;
       if (costingRes) {
         // Only labour hours are auto-tallied from time entries; this runs after a
         // timer event to pick that up. Every other field is manually entered, so
@@ -423,26 +464,10 @@ export function useCostingSave(jobCardId, {
         }));
       }
     } catch (err) {
-      if (jobCardIdRef.current !== calledForJobId || refreshSeq.current !== seq) return;
-      toastRefreshFailed(err);
+      if (refreshSeq.current !== seq) return;
+      toastRefreshFailed(err, jobCardId);
     }
   }, [jobCardId]);
-
-  // Blank the save state — used when the job on screen is switched or closed.
-  // Counterpart to useCostingDrafts.js's resetDraftsState; useCosting.js calls both, in
-  // the same order resetCosting always has.
-  //
-  // Count the reset as an edit, so a close-time save that resolves after the job is
-  // reopened fails runSave's "nothing typed since" check and is dropped rather than
-  // adopted onto the freshly blanked form (which would file blank notes as loaded).
-  const resetSaveState = useCallback(() => {
-    setCostingDirty(false);
-    setSaveState('idle');
-    setLandedCount(0);
-    loadedRef.current = null;
-    openingRef.current = null;
-    editSeq.current += 1;
-  }, []);
 
   // The manual money lines (materials, subcontractor, special labour) have no
   // "reset to auto" link the way the tier hours/multipliers do — this is what the
@@ -465,8 +490,7 @@ export function useCostingSave(jobCardId, {
     guardLeaveCosting,
     dropUnsavedCosting,
     handleSaveCosting,
-    refreshCosting,
-    resetSaveState
+    refreshCosting
   };
 }
 
@@ -513,12 +537,16 @@ function changedFigures(form, stored) {
 
 // Split out so runSave (already long) reads as a list of steps rather than a wall of
 // toast wording.
-function toastNotLoaded() {
-  toast.error("This job's pricing hasn't loaded — reopen the pricing screen before making changes.", { id: 'costing-not-loaded' });
+function toastSignedOutUnsaved(jobCardId, jobNumber) {
+  toastJobWriteFailure({ jobNumber, jobCardId }, 'The latest pricing change was not saved because you were signed out. Open the job and check its pricing.', 'costing-signed-out');
 }
-function toastSaveFailed(err) {
-  toast.error(err.message || 'Failed to save costing', { id: 'save-costing-failed' });
+function toastNotLoaded(jobCardId) {
+  toast.error("This job's pricing hasn't loaded — reopen the pricing screen before making changes.", { id: `costing-not-loaded-${jobCardId}` });
 }
-function toastRefreshFailed(err) {
-  toast.error(err.message || 'Failed to refresh costing hours');
+function toastSaveFailed(err, jobCardId, jobNumber) {
+  const message = err.message ? `Pricing not saved — ${err.message}` : 'Failed to save pricing';
+  toastJobWriteFailure({ jobNumber, jobCardId }, message, 'save-costing-failed');
+}
+function toastRefreshFailed(err, jobCardId) {
+  toast.error(err.message || 'Failed to refresh costing hours', { id: `refresh-costing-failed-${jobCardId}` });
 }

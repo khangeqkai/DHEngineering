@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
+import { useStillMounted } from '../../hooks/useStillMounted';
 import { isJobClosedError } from '../../utils/jobLock';
 import { readFileAsBase64, base64ToBlob } from '../../utils/fileData';
 import { ALLOWED_FILE_EXTENSIONS, MAX_UPLOAD_BYTES, CATEGORY_FOLDER } from '../../../../server/src/shared/jobFiles';
@@ -70,13 +71,14 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const [loadingFiles, setLoadingFiles] = useState(new Set());
   const thumbnailGenRef = useRef({});
-  // Which job is shown right now, and which "opening" of it (bumped by reset). A
-  // folder listing is only applied if both still match what they were when it was
-  // asked for — a late reply for the previous job must not land under this one.
-  const jobIdRef = useRef(jobcardId);
-  jobIdRef.current = jobcardId;
+  // Which opening of the Files panel this is (bumped by reset, which the panel calls as it
+  // closes). A folder listing is only applied if it still matches what it was when it was
+  // asked for, so a listing still travelling when the panel closed can't fill the next one. The window shows
+  // one job for its whole life (no id yet, then the job's id once created), so there
+  // is no other job a late reply could belong to.
   const openingRef = useRef(0);
   const listSeqRef = useRef({});
+  const isUp = useStillMounted();
 
   const fetchList = useCallback((category) => {
     if (!jobcardId) return Promise.resolve([]);
@@ -116,13 +118,11 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
 
   const loadFiles = useCallback(async (category) => {
     if (!jobcardId) return;
-    const requestedJob = jobcardId;
     const opening = openingRef.current;
     const seq = (listSeqRef.current[category] || 0) + 1;
     listSeqRef.current[category] = seq;
-    // Still the reply this screen wants: same job, same opening, newest ask for this folder.
-    const isCurrent = () => jobIdRef.current === requestedJob
-      && openingRef.current === opening
+    // Still the reply this screen wants: same opening, newest ask for this folder.
+    const isCurrent = () => openingRef.current === opening
       && listSeqRef.current[category] === seq;
     setLoadingByCategory(prev => ({ ...prev, [category]: true }));
     try {
@@ -132,6 +132,9 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
       loadThumbnails(list, category);
     } catch (err) {
       if (!isCurrent()) return;
+      // A failed read is for a screen someone is looking at; once the window has gone
+      // nobody is waiting on this listing, and it must not pop up over another job.
+      if (!isUp()) return;
       // All three folders load at once when the Files panel opens, and they fail
       // together for the same reason (storage not set up, drive offline) — one
       // id per job so the three messages replace each other instead of stacking.
@@ -140,7 +143,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
     } finally {
       if (isCurrent()) setLoadingByCategory(prev => ({ ...prev, [category]: false }));
     }
-  }, [jobcardId, fetchList, loadThumbnails]);
+  }, [jobcardId, fetchList, loadThumbnails, isUp]);
 
   // Returns { saved, failed }: how many files were actually saved, and how many
   // were skipped or refused, so the caller can tell a clean try from one that
@@ -358,7 +361,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
     setViewerUrl(null);
   }, []);
 
-  // Switching to another job starts from nothing, so the previous job's files
+  // A new job getting its id starts from nothing, so any placeholder files
   // never sit on screen while the new job's list is on its way.
   useEffect(() => { reset(); }, [jobcardId, reset]);
 

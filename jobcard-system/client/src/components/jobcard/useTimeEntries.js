@@ -401,10 +401,6 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     }
   }, [jobCardId, deleteTimeEntry, showConfirm, isInvoiced, onJobClosed]);
 
-  const resetTimeEntries = useCallback(() => {
-    resetTimeEntryForm();
-  }, [resetTimeEntryForm]);
-
   return {
     showTimeEntryForm,
     setShowTimeEntryForm,
@@ -416,7 +412,6 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     handleEditTimeEntry,
     handleSaveTimeEntry,
     handleDeleteTimeEntry,
-    resetTimeEntries,
     inspectionRequired,
     editingSignOffRequired,
     groupClass,

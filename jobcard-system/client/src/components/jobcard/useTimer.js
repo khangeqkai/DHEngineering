@@ -688,20 +688,6 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     });
   }, [showEntryForm, hasStoppedEntry, jobcardId, currentUserId, registerBeforeLogout]);
 
-  const resetTimer = useCallback(() => {
-    setActiveTimer(null);
-    setElapsed(0);
-    setShowEntryForm(false);
-    setStoppedEntry(null);
-    setStoppedEntryJobCard(null);
-    setEntryForm(emptyEntryForm());
-    setPendingStartItem(null);
-    heldEntryRef.current = null;
-    stoppedEntryRef.current = null;
-    // A form wiped by this reset was not saved: it must not be reported to the shell as done.
-    hadQuestionFormRef.current = false;
-  }, []);
-
   return {
     activeTimer,
     elapsed,
@@ -722,7 +708,6 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     handleEntryMachineToggle,
     submitEntryForm,
     cancelEntryForm,
-    loadActiveTimer,
-    resetTimer
+    loadActiveTimer
   };
 }

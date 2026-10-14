@@ -1,5 +1,4 @@
 import { useRef, useCallback } from 'react';
-import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { buildItemPayload, mapLineItemFromApi } from './mappers';
 import { isSavedLineItem } from './jobCardValidation.mjs';
@@ -85,7 +84,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     const item = lineItemsRef.current.find(it => it.id === itemId);
     return item ? item[field] : REMOVED_ITEM_FIELD;
   }, [REMOVED_ITEM_FIELD]);
-  const { fieldErrors, setFieldErrors, clearAll, errorFor } = useFieldErrors(valueOfItemField);
+  const { fieldErrors, setFieldErrors, errorFor } = useFieldErrors(valueOfItemField);
 
   // Guards a real row's delete against a fast double-click sending two DELETEs for
   // the same line — the second would only 404 once the first has already removed it.
@@ -259,9 +258,9 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     // What this write sends, in the row's own payload shape, so its reply can tell
     // a box left alone since (takes the server's copy) from one changed again.
     const sent = { [field]: buildItemPayload({ [field]: value })[field] };
-    saveQueue.enqueue(`item:${itemId}`, (isCurrent) => api.updateJobItem(forJobCardId, itemId, { [field]: value })
+    saveQueue.enqueue(`item:${itemId}`, (isWindowUp) => api.updateJobItem(forJobCardId, itemId, { [field]: value })
       .then((reply) => {
-        if (!isCurrent()) return;
+        if (!isWindowUp()) return;
         applyItemReply(reply, { sent });
       })
       .catch(err => {
@@ -274,9 +273,8 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
         // the queue doesn't hold this key open as a permanently "failed" write
         // for a row that no longer exists.
         if (err?.status === 404 && err?.data?.error === 'Part not found') {
-          if (isCurrent()) {
-            toast.error("That part was removed, so the change wasn't saved.", { id: `item-gone-${itemId}` });
-          }
+          // Told even after the window has closed: the person's edit was lost.
+          saveQueue.reportFailure("That part was removed, so the change wasn't saved.", `item-gone-${itemId}`);
           // Nothing was stored — the row is gone — so this must not count toward
           // landedCount or arm the green saved flash for a write that never landed.
           return NOT_LANDED;
@@ -291,7 +289,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     const localId = row.id;
     if (creatingRef.current.has(localId)) return;
     creatingRef.current.add(localId);
-    saveQueue.enqueue(`item:${localId}`, (isCurrent) => {
+    saveQueue.enqueue(`item:${localId}`, (isWindowUp) => {
       const current = lineItemsRef.current.find(it => it.id === localId);
       // Already real (an earlier queued create for this row won) or removed since
       // this was queued — nothing left to send. Completeness is deliberately NOT
@@ -311,7 +309,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
       const sent = buildItemPayload(row);
       return api.addJobItem(forJobCardId, sent)
         .then((reply) => {
-          if (!isCurrent()) return;
+          if (!isWindowUp()) return;
           const nowOnScreen = lineItemsRef.current.find(it => it.id === localId);
           if (!nowOnScreen) {
             // Removed from the screen while the create was travelling (a local row's
@@ -346,14 +344,15 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
           }
         })
         .catch(err => {
-          if (!isCurrent()) return;
+          // Told even after the window has closed (the typed part is lost either way);
+          // only the success path above asks whether the window is still up.
           // Never re-sent automatically — the row stays local, exactly as typed.
           // Completing it again (any required box) is what retries. A job closed
           // from another PC goes to the screen's shared closed-job handling (the
           // one the save queue uses for every other refused write), so the screen
           // locks instead of reading as an ordinary refusal.
           if (isJobClosedError(err) && onJobClosed) onJobClosed();
-          else toast.error(err.message || "Couldn't add that part", { id: `item-create-${localId}` });
+          else saveQueue.reportFailure(err.message || "Couldn't add that part", `item-create-${localId}`);
           // Reported above with its own toast, not flagged 'failed' in the queue
           // (there's nothing stored to retry against — the row is still local) —
           // and NOT a landing either, so it must not count toward landedCount or
@@ -475,10 +474,10 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     const lineItem = lineIdx !== -1 ? lineItemsRef.current[lineIdx] : null;
     const lineNo = lineItem ? (lineItem.position != null ? lineItem.position : lineIdx + 1) : null;
     const label = lineNo != null ? `removing part ${lineNo}` : 'removing that part';
-    saveQueue.enqueue(`item:${item.id}`, (isCurrent) => api.deleteJobItem(forJobCardId, item.id)
+    saveQueue.enqueue(`item:${item.id}`, (isWindowUp) => api.deleteJobItem(forJobCardId, item.id)
       .then((reply) => {
         removingRef.current.delete(item.id);
-        if (!isCurrent()) return;
+        if (!isWindowUp()) return;
         if (Array.isArray(reply?.items)) {
           applyItemReply(reply);
         } else {
@@ -508,23 +507,15 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
         // A job closed from another PC is the exception — same hand-off as a
         // refused create above.
         if (isJobClosedError(err) && onJobClosed) {
-          if (isCurrent()) onJobClosed();
+          onJobClosed();
         } else {
-          toast.error(err.message || "Couldn't remove that part", { id: `item-remove-${item.id}` });
+          saveQueue.reportFailure(err.message || "Couldn't remove that part", `item-remove-${item.id}`);
         }
         return NOT_LANDED;
       }), { label });
   }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, saveQueue, onJobStatusChange, onJobClosed, liveRowFor]);
 
-  // JobCardModal returns null when closed rather than unmounting, so these marks
-  // outlive a close. Without clearing them, a box left empty on one job would keep
-  // reading as incomplete on the next job opened — which closeReasons.js folds into
-  // the close question, so that job would be told something wasn't filled in when
-  // nothing was. Same reasoning as useInstantSave's resetFieldStates.
-  const resetItemErrors = clearAll;
-
   return {
-    resetItemErrors,
     handleItemFieldChange,
     commitItemFieldBlur,
     itemErrorFor,

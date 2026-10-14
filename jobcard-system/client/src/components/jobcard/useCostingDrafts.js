@@ -68,12 +68,67 @@ function parsedDraftValue(name, text, committedForm) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// The single rule for turning one box's typed text into a committed figure — shared by
+// commitBox (a box left while the screen is up) and foldDrafts (the window unmounting,
+// when no further render will come), so the parsing and floors exist once. Returns
+// { error } when the text is refused (the box stays a draft, marked red), otherwise
+// { patch } — the committed fields to change, or null when committing changes nothing.
+// A valid figure only counts as a change when it differs: leaving a box typed in and put
+// back exactly as it was is not an edit, and on a box still following the logged/company
+// figure, retyping that same figure must not pin it as hand-typed, or later logged work
+// would never be billed.
+function judgeBox(name, raw, form) {
+  if (TEXT_FIELDS.has(name)) {
+    const formatted = capitalizeFirst(raw);
+    return { patch: formatted !== form[name] ? { [name]: formatted } : null };
+  }
+
+  const flag = OVERRIDE_FLAG[name];
+  const min = FIELD_MIN[name] ?? 0;
+  const trimmed = raw.trim();
+
+  // Blank: a plain box commits to 0; an override box drops the hand figure and
+  // follows the logged/company figure instead — never a typed 0 either way, just
+  // nothing typed at all.
+  if (trimmed === '') {
+    if (flag) {
+      const calcVal = form[`${name}Calculated`] ?? 0;
+      const changed = form[name] !== calcVal || form[flag] !== false;
+      return { patch: changed ? { [name]: calcVal, [flag]: false } : null };
+    }
+    return { patch: form[name] !== 0 ? { [name]: 0 } : null };
+  }
+
+  // Not blank: it has to actually be a number, and clear the floor, or it stays a draft.
+  if (!NUMERIC_PATTERN.test(trimmed)) return { error: 'Enter a number.' };
+  const parsed = parseFloat(trimmed);
+  // A figure too long to fit (over ~309 digits) parses as Infinity, which travels as
+  // empty and would save as 0 — or clear a hand-typed override.
+  if (!Number.isFinite(parsed)) return { error: 'Enter a smaller number.' };
+  if (parsed < min) return { error: floorMessage(min) };
+
+  return { patch: form[name] !== parsed ? { [name]: parsed, ...(flag ? { [flag]: true } : {}) } : null };
+}
+
 // markEdited and requestImmediateSave belong to useCostingSave.js — every box function
 // here calls into that half after a real change, but never reads anything back from it.
 export function useCostingDrafts({ markEdited, requestImmediateSave }) {
   // The committed figures — numbers and flags, exactly as they'll be sent. The only
   // thing a save ever reads. Never holds a box's half-typed text; see `drafts` below.
-  const [costingForm, setCostingForm] = useState(getDefaultCostingForm());
+  const [costingFormState, setCostingFormState] = useState(getDefaultCostingForm());
+  // The newest committed figures, updated the instant a change is asked for rather than
+  // when React next renders — the window closing leaves no next render, so the unmount
+  // flush (foldDraftsNow below) can only trust this. The ref is the single source of
+  // truth; costingFormState is only a mirror for rendering. Every write goes through
+  // setCostingForm, which runs an updater once against the ref, then hands React the
+  // resulting VALUE (never the updater), so the two copies are equal by construction.
+  const costingFormRef = useRef(costingFormState);
+  const setCostingForm = useCallback((update) => {
+    const next = typeof update === 'function' ? update(costingFormRef.current) : update;
+    costingFormRef.current = next;
+    setCostingFormState(next);
+  }, []);
+  const costingForm = costingFormState;
   // What's being typed right now, keyed by field name, for every box on the sheet —
   // number boxes and the three description boxes alike. A field with no entry here shows
   // its committed figure; one with an entry shows exactly what's been typed, however
@@ -104,85 +159,25 @@ export function useCostingDrafts({ markEdited, requestImmediateSave }) {
   const commitBox = useCallback((name) => {
     if (!(name in drafts)) return { ok: true }; // nothing being typed here — nothing to do
 
-    const raw = drafts[name];
-
-    if (TEXT_FIELDS.has(name)) {
-      const formatted = capitalizeFirst(raw);
-      setDrafts(prev => {
-        const next = { ...prev };
-        delete next[name];
-        return next;
-      });
-      if (formatted !== costingForm[name]) {
-        markEdited();
-        setCostingForm(prev => ({ ...prev, [name]: formatted }));
-        requestImmediateSave();
-      }
-      return { ok: true };
-    }
-
-    const flag = OVERRIDE_FLAG[name];
-    const min = FIELD_MIN[name] ?? 0;
-    const trimmed = raw.trim();
-
-    // Blank: a plain box commits to 0; an override box drops the hand figure and
-    // follows the logged/company figure instead — never a typed 0 either way, just
-    // nothing typed at all.
-    if (trimmed === '') {
-      setDrafts(prev => {
-        const next = { ...prev };
-        delete next[name];
-        return next;
-      });
-      if (flag) {
-        const calcVal = costingForm[`${name}Calculated`] ?? 0;
-        if (costingForm[name] !== calcVal || costingForm[flag] !== false) {
-          markEdited();
-          setCostingForm(prev => ({ ...prev, [name]: calcVal, [flag]: false }));
-          requestImmediateSave();
-        }
-      } else if (costingForm[name] !== 0) {
-        markEdited();
-        setCostingForm(prev => ({ ...prev, [name]: 0 }));
-        requestImmediateSave();
-      }
-      return { ok: true };
-    }
-
-    // Not blank: it has to actually be a number, and clear the floor, or it stays a
-    // draft — keep the typed text, mark it red, send nothing.
-    if (!NUMERIC_PATTERN.test(trimmed)) {
-      setFieldErrors({ [name]: 'Enter a number.' }, { [name]: raw });
-      return { ok: false };
-    }
-    const parsed = parseFloat(trimmed);
-    // A figure too long to fit (over ~309 digits) parses as Infinity, which travels as
-    // empty and would save as 0 — or clear a hand-typed override.
-    if (!Number.isFinite(parsed)) {
-      setFieldErrors({ [name]: 'Enter a smaller number.' }, { [name]: raw });
-      return { ok: false };
-    }
-    if (parsed < min) {
-      setFieldErrors({ [name]: floorMessage(min) }, { [name]: raw });
+    const verdict = judgeBox(name, drafts[name], costingForm);
+    if (verdict.error) {
+      // Stays a draft, marked red, nothing sent.
+      setFieldErrors({ [name]: verdict.error }, { [name]: drafts[name] });
       return { ok: false };
     }
 
-    // Valid — commit it, but only actually save when the figure changed. Leaving a box
-    // that was typed in and then put back exactly as it was is not an edit — and on a
-    // box still following the logged/company figure, retyping that same figure must not
-    // pin it as hand-typed, or later logged work would never be billed.
     setDrafts(prev => {
       const next = { ...prev };
       delete next[name];
       return next;
     });
-    if (costingForm[name] !== parsed) {
+    if (verdict.patch) {
       markEdited();
-      setCostingForm(prev => ({ ...prev, [name]: parsed, ...(flag ? { [flag]: true } : {}) }));
+      setCostingForm(prev => ({ ...prev, ...verdict.patch }));
       requestImmediateSave();
     }
     return { ok: true };
-  }, [drafts, costingForm, markEdited, requestImmediateSave, setFieldErrors]);
+  }, [drafts, costingForm, markEdited, requestImmediateSave, setFieldErrors, setCostingForm]);
 
   // Drop every box's typed text and the errors that go with them, without committing
   // anything — used when the person answers "discard" to the red-box question on close
@@ -317,14 +312,22 @@ export function useCostingDrafts({ markEdited, requestImmediateSave }) {
     return firstInvalid;
   }, []);
 
-  // Blank the committed form and every draft/error — used when the job on screen is
-  // switched or closed. Counterpart to useCostingSave.js's resetSaveState; useCosting.js
-  // calls both, in the same order runSave/resetCosting always has.
-  const resetDraftsState = useCallback(() => {
-    setCostingForm(getDefaultCostingForm());
-    setDrafts({});
-    clearAllFieldErrors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // The committed figures with every VALID open draft folded in exactly as commitBox
+  // would fold it (same judgeBox), computed synchronously from refs and changing no state
+  // — for the window unmounting, where a commit-then-save-next-render never gets its
+  // render. A red draft is left out, as ever; `changed` says whether any draft altered
+  // the figures.
+  const foldDraftsNow = useCallback(() => {
+    let form = costingFormRef.current;
+    let changed = false;
+    for (const [name, raw] of Object.entries(draftsRef.current)) {
+      const verdict = judgeBox(name, raw, form);
+      if (!verdict.error && verdict.patch) {
+        form = { ...form, ...verdict.patch };
+        changed = true;
+      }
+    }
+    return { form, changed };
   }, []);
 
   // What the sheet actually renders: every committed figure, with any box currently
@@ -366,7 +369,7 @@ export function useCostingDrafts({ markEdited, requestImmediateSave }) {
     revertField,
     calculateCostingTotals,
     commitAllBoxes,
-    resetDraftsState,
+    foldDraftsNow,
     costingFieldError: (name) => fieldErrors[name] || null,
     costingFieldProps: fieldProps,
     costingErrorProps: errorProps

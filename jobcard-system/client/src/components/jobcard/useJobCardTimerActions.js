@@ -32,23 +32,16 @@ export function useJobCardTimerActions({
   // job's status or put the worker on it, so the job list reloads when this job
   // closes — the same close-time flag the field, part and worker saves raise.
   onWorkSaved,
-  // Kept current by JobCardModal on every render (unlike jobCardId below, which
-  // this hook's own closures capture at the moment a request started). Comparing
-  // the two after an await tells a reply that's still for the open job apart from
-  // one whose job has since been closed or swapped for another — without this, a
-  // slow reply lands its stale job's time list, status or assignee credit onto
-  // whichever job the screen has moved on to.
-  currentJobIdRef
+  // Whether the job window is still up (useStillMounted.js). A reply that lands after the
+  // window has closed must not go on to reload that job's lists, status or assignee
+  // credit; the page-wide refreshes (onTimerChange) fire regardless, since the header
+  // badge and job list aren't tied to the window.
+  isWindowUp
 }) {
-  const isStillThisJob = useCallback(
-    () => !currentJobIdRef || currentJobIdRef.current === jobCardId,
-    [currentJobIdRef, jobCardId]
-  );
-
   const reloadTimeEntriesAndCosting = useCallback(async () => {
-    if (!isStillThisJob()) return;
+    if (!isWindowUp()) return;
     await reloadTimeEntries();
-    if (!isStillThisJob()) return;
+    if (!isWindowUp()) return;
     // Costing endpoint is admin-only; skip for non-admin to avoid 403 toast. Also skip
     // unless this job's stored pricing has actually arrived on screen — before that
     // there's nothing to update, and the first load is already on its way with the
@@ -56,9 +49,9 @@ export function useJobCardTimerActions({
     // failed isn't retried on every timer tick, and so this never writes hours onto a
     // still-default sheet ahead of the real figures landing.
     if (canSeePricing && costingLoaded) await refreshCosting();
-    if (!isStillThisJob()) return;
+    if (!isWindowUp()) return;
     await refreshJobStatus();
-  }, [isStillThisJob, reloadTimeEntries, canSeePricing, costingLoaded, refreshCosting, refreshJobStatus]);
+  }, [isWindowUp, reloadTimeEntries, canSeePricing, costingLoaded, refreshCosting, refreshJobStatus]);
 
   const handleSubmitEntryForm = useCallback(async () => {
     const result = await timer.submitEntryForm(reloadTimeEntriesAndCosting);
@@ -66,13 +59,13 @@ export function useJobCardTimerActions({
     // (once the old run's fill-in form is answered) — that's always the current
     // user's own timer (see useTimer.js), so credit them exactly as a direct
     // Start would. Skipped when the reply is for a job that's no longer open.
-    if (result?.startedNewTimer && isStillThisJob()) creditAssignee(currentUserId, employees);
+    if (result?.startedNewTimer && isWindowUp()) creditAssignee(currentUserId, employees);
     // The header's running-timer badge and the job list aren't tied to the open
     // job, so they refresh even when the screen has since moved to another one.
     if (onTimerChange) onTimerChange();
     // The form reads this back for a Critical-inspection refusal (StopTimerForm.jsx).
     return result;
-  }, [timer, reloadTimeEntriesAndCosting, onTimerChange, isStillThisJob, creditAssignee, currentUserId, employees]);
+  }, [timer, reloadTimeEntriesAndCosting, onTimerChange, isWindowUp, creditAssignee, currentUserId, employees]);
 
   const handleCancelEntryForm = useCallback(async () => {
     await timer.cancelEntryForm(reloadTimeEntriesAndCosting);
@@ -108,7 +101,7 @@ export function useJobCardTimerActions({
       return;
     }
     const started = await timer.startTimerWithConflictCheck(itemId, displayNumber, showConfirm, workerId, workerName);
-    if (!isStillThisJob()) {
+    if (!isWindowUp()) {
       // This job is no longer the one open — drop the reply's effect on its screen,
       // but the header badge and job list still need to see the timer that started.
       if (onTimerChange) onTimerChange();
@@ -122,12 +115,12 @@ export function useJobCardTimerActions({
     if (started) creditAssignee(workerId || currentUserId, employees);
     try {
       const fresh = await api.getJobcard(jobCardId);
-      if (isStillThisJob() && fresh.status) setFormData(prev => ({ ...prev, status: fresh.status }));
+      if (isWindowUp() && fresh.status) setFormData(prev => ({ ...prev, status: fresh.status }));
     } catch {
       // Non-fatal — status will refresh next time the modal opens
     }
     if (onTimerChange) onTimerChange();
-  }, [timer, showConfirm, reloadTimeEntries, onTimerChange, jobCardId, creditAssignee, employees, setFormData, currentUserId, isInvoiced, isStillThisJob]);
+  }, [timer, showConfirm, reloadTimeEntries, onTimerChange, jobCardId, creditAssignee, employees, setFormData, currentUserId, isInvoiced, isWindowUp]);
 
   // Both stop paths land here. A tap discarded as an accident is undone server-side,
   // so untick the worker it put on — a Save would otherwise put them straight back.
@@ -135,15 +128,15 @@ export function useJobCardTimerActions({
   // reply's own effect on screen is skipped when it's no longer for the open job —
   // the header badge and job list refresh regardless, since they aren't per-job.
   const afterStop = useCallback(async (result) => {
-    if (isStillThisJob()) {
+    if (isWindowUp()) {
       if (result?.unassignedUserId) {
         dropAssignee(result.unassignedUserId);
       }
       await reloadTimeEntries();
-      if (isStillThisJob()) await refreshJobStatus();
+      if (isWindowUp()) await refreshJobStatus();
     }
     if (onTimerChange) onTimerChange();
-  }, [reloadTimeEntries, refreshJobStatus, onTimerChange, dropAssignee, isStillThisJob]);
+  }, [reloadTimeEntries, refreshJobStatus, onTimerChange, dropAssignee, isWindowUp]);
 
   const handleStopItemTimer = useCallback(
     () => timer.stopTimer().then(afterStop), [timer, afterStop]);
