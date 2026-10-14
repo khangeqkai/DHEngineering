@@ -113,6 +113,15 @@ const requireManagement = requirePermission('management');
 // (creating/updating a user) rather than just against management vs. not.
 const ALL_ROLES = ['admin', 'manager', 'user'];
 
+// The caller's role as it stands NOW. req.user.role is read when the request arrives;
+// a route that waits (hashing a PIN) re-reads it after the wait, so a demotion or an
+// archive that landed meanwhile applies to this request too. Null when the caller is
+// no longer an active account.
+function liveRole(req) {
+  const row = userQueries.getAuthState.get(req.user.userId);
+  return row && row.active === 1 ? row.role : null;
+}
+
 // Single source of truth for "may this role move this job from fromStatus to
 // toStatus?" — used by both the status-only route and the general job update
 // route so the rule can never drift between them. A no-op (status unchanged)
@@ -131,6 +140,7 @@ module.exports = {
   requirePermission,
   requireManagement,
   isManagement,
+  liveRole,
   MANAGEMENT_ROLES,
   ALL_ROLES,
   canSetStatus

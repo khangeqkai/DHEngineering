@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const logger = require('../utils/logger');
-const { authenticate, can, requirePermission, requireManagement } = require('../middleware/auth');
+const { authenticate, can, isManagement, liveRole, requirePermission, requireManagement } = require('../middleware/auth');
 const db = require('../db/database');
 const config = require('../config');
 const { lanIpv4s } = require('../utils/netHost');
@@ -105,23 +105,25 @@ router.put('/', requireManagement, async (req, res) => {
   try {
     // Reject a manager's attempt to save any overtime/labour-rate field outright
     // rather than silently dropping it, so a stale client fails loudly.
-    if (!can(req.user.role, 'pricing')) {
-      const blocked = OVERTIME_BODY_KEYS.find(k => req.body[k] !== undefined);
-      if (blocked) {
-        return res.status(403).json({ error: 'Only admins can change labour rates and overtime settings' });
+    const refusalFor = (role) => {
+      if (!can(role, 'pricing') && OVERTIME_BODY_KEYS.some(k => req.body[k] !== undefined)) {
+        return 'Only admins can change labour rates and overtime settings';
       }
-    }
-    if (!can(req.user.role, 'systemData')) {
-      // The job-folders base path decides where every job's files (and backups) are
-      // written; only admins can repoint it, so a manager can't redirect company
-      // files to a personal/removable drive.
-      if (req.body.jobFoldersBase !== undefined) {
-        return res.status(403).json({ error: 'Only admins can change the job folders base path' });
+      if (!can(role, 'systemData')) {
+        // The job-folders base path decides where every job's files (and backups) are
+        // written; only admins can repoint it, so a manager can't redirect company
+        // files to a personal/removable drive.
+        if (req.body.jobFoldersBase !== undefined) {
+          return 'Only admins can change the job folders base path';
+        }
+        if (homeAccess.HOME_ACCESS_BODY_KEYS.some(k => req.body[k] !== undefined)) {
+          return 'Only admins can change home access settings';
+        }
       }
-      if (homeAccess.HOME_ACCESS_BODY_KEYS.some(k => req.body[k] !== undefined)) {
-        return res.status(403).json({ error: 'Only admins can change home access settings' });
-      }
-    }
+      return null;
+    };
+    const refusedBefore = refusalFor(req.user.role);
+    if (refusedBefore) return res.status(403).json({ error: refusedBefore });
 
     const jobFoldersBase = req.body.jobFoldersBase;
     const inactivityTimeoutMinutes = req.body.inactivityTimeoutMinutes;
@@ -129,6 +131,14 @@ router.put('/', requireManagement, async (req, res) => {
 
     // Home access code + home address (settings-home-access.js).
     const home = await homeAccess.collectHomeAccessUpdates(req.body);
+    // Hashing the code waited: every permission decision is made again from the
+    // caller's role as it stands now, so a demotion or archive meanwhile applies here too.
+    const roleNow = liveRole(req);
+    if (!isManagement(roleNow)) {
+      return res.status(403).json({ error: 'Your account can no longer change settings' });
+    }
+    const refusedNow = refusalFor(roleNow);
+    if (refusedNow) return res.status(403).json({ error: refusedNow });
     if (home.error) return refuseField(res, home.field, home.error);
     Object.assign(updates, home.updates);
     // Switching home access on/off is a security change, so it leaves a trace

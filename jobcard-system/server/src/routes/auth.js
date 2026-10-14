@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 
 const config = require('../config');
 const logger = require('../utils/logger');
-const { authenticate, requireManagement, can, isManagement, ALL_ROLES } = require('../middleware/auth');
+const { authenticate, requireManagement, can, isManagement, liveRole, ALL_ROLES } = require('../middleware/auth');
 const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences, PIN_REGEX, PIN_MESSAGE } = require('../middleware/validation');
 const { db, userQueries, jobNoteQueries, timeEntryQueries, recordHistory, actorName, getSettings } = require('../db/database');
 const { diffFields } = require('../utils/historyChanges');
@@ -265,15 +265,6 @@ router.get('/users/:id', authenticate, requireManagement, (req, res) => {
 });
 
 // Create user (admin or manager; only admins can create admins)
-// The caller's role as it stands NOW. req.user.role is read when the request arrives;
-// a route that waits (hashing a PIN) re-reads it after the wait, so a demotion or an
-// archive that landed meanwhile applies to this request too. Null when the caller is
-// no longer an active account.
-function liveRole(req) {
-  const row = userQueries.getAuthState.get(req.user.userId);
-  return row && row.active === 1 ? row.role : null;
-}
-
 router.post('/users', authenticate, requireManagement, userCreationLimiter, validateCreateUser, async (req, res) => {
   try {
     const { username, password, role, name, email } = req.body;
