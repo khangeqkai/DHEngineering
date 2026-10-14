@@ -100,7 +100,7 @@ router.get('/entity/:entityType', authenticate, requireManagement, (req, res) =>
       .prepare(`SELECT COUNT(*) as count FROM history WHERE entity_type IN (${placeholders})`)
       .get(...types);
     const history = db
-      .prepare(`SELECT * FROM history WHERE entity_type IN (${placeholders}) ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+      .prepare(`SELECT * FROM history WHERE entity_type IN (${placeholders}) ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`)
       .all(...types, PAGE_SIZE, offset);
 
     res.json({

@@ -6,6 +6,10 @@
 
 Base URL: `/api` (relative; Vite dev server proxies to `http://localhost:3000`, production serves client statically from Express)
 
+## Paged lists
+
+Every paged query (LIMIT/OFFSET or cursor) ends its `ORDER BY` with the row's unique `id`, in the same direction as the main sort, so rows that tie on the sort key can never land on two pages or none. In the people search's `UNION ALL` the tie-break is `sort_group, sort1, sort2, sort3, id`, where `sort3` is the company id (contacts) or supplier id, so a company with no contacts (null `id`) is still unique.
+
 ## Validation error shape
 
 Any route guarded by a validator chain ending in `handleValidationErrors` (`middleware/validation.js`) answers a failed check with 400 `{ error: 'Validation failed', details: [...messages], fields: [{ field, message }, ...] }`. `details` is unchanged (a flat list of messages, for a plain pop-up); `fields` is additive — one entry per failing check naming which body field it belongs to, so a screen can mark that field's own box (`hooks/useFieldErrors.js` + `common/FieldError.jsx`) instead of only popping up a message. The field name comes from express-validator's `error.path` (v7; an older major would call it `param` — `handleValidationErrors` reads whichever the installed version exposes).

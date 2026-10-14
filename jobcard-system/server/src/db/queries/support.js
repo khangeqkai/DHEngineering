@@ -24,7 +24,7 @@ const historyQueries = {
 
   getRecent: db.prepare(`
     SELECT h.*, ${HISTORY_JOB_NUMBER_SQL} AS job_number FROM history h
-    ORDER BY created_at DESC, h.rowid DESC
+    ORDER BY created_at DESC, h.id DESC
     LIMIT ? OFFSET ?
   `),
 
@@ -52,7 +52,7 @@ const historyQueries = {
   getByUser: db.prepare(`
     SELECT h.*, ${HISTORY_JOB_NUMBER_SQL} AS job_number FROM history h
     WHERE user_id = ?
-    ORDER BY created_at DESC
+    ORDER BY created_at DESC, h.id DESC
     LIMIT ?
   `),
 

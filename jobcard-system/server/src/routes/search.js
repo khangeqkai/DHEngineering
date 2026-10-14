@@ -207,7 +207,7 @@ function searchAll(req, res, canManage) {
 
   const jobCount = db.prepare(`SELECT COUNT(*) as count ${jobFrom} WHERE ${jobWhere}`).get(...jobParams).count;
   const jobRows = db.prepare(
-    `SELECT j.* ${jobFrom} WHERE ${jobWhere} ORDER BY j.created_at DESC LIMIT ?`
+    `SELECT j.* ${jobFrom} WHERE ${jobWhere} ORDER BY j.created_at DESC, j.id DESC LIMIT ?`
   ).all(...jobParams, PREVIEW_LIMIT);
   const assigneeMap = getAssigneesForJobcards(jobRows.map(j => j.id));
   groups.jobs = { count: jobCount, results: jobRows.map(j => formatJob(j, assigneeMap[j.id], canManage)) };
@@ -221,14 +221,14 @@ function searchAll(req, res, canManage) {
     const cSelect = 'c.id AS id, c.contact_name, c.phone, c.email, co.id AS company_id, co.name AS company_name, co.address AS address';
     groups.contacts = {
       count: db.prepare(`SELECT COUNT(*) as count ${cFrom} WHERE ${cWhere}`).get(like, like, like, like).count,
-      results: db.prepare(`SELECT ${cSelect} ${cFrom} WHERE ${cWhere} ORDER BY co.name ASC LIMIT ?`).all(like, like, like, like, PREVIEW_LIMIT).map(formatContact)
+      results: db.prepare(`SELECT ${cSelect} ${cFrom} WHERE ${cWhere} ORDER BY co.name ASC, co.id ASC, c.id ASC LIMIT ?`).all(like, like, like, like, PREVIEW_LIMIT).map(formatContact)
     };
 
     // Suppliers
     const sWhere = "active = 1 AND (name LIKE ? ESCAPE '\\' OR contact_name LIKE ? ESCAPE '\\' OR contact_phone LIKE ? ESCAPE '\\' OR contact_email LIKE ? ESCAPE '\\')";
     groups.suppliers = {
       count: db.prepare(`SELECT COUNT(*) as count FROM suppliers WHERE ${sWhere}`).get(like, like, like, like).count,
-      results: db.prepare(`SELECT * FROM suppliers WHERE ${sWhere} ORDER BY name ASC LIMIT ?`).all(like, like, like, like, PREVIEW_LIMIT).map(r => formatSupplier(r, canManage))
+      results: db.prepare(`SELECT * FROM suppliers WHERE ${sWhere} ORDER BY name ASC, id ASC LIMIT ?`).all(like, like, like, like, PREVIEW_LIMIT).map(r => formatSupplier(r, canManage))
     };
   }
 
@@ -238,7 +238,7 @@ function searchAll(req, res, canManage) {
     const { sql: hWhere, params: hParams } = activitySearchMatch(q);
     groups.activity = {
       count: db.prepare(`SELECT COUNT(*) as count FROM history h WHERE ${hWhere}`).get(...hParams).count,
-      results: db.prepare(`${ACTIVITY_SELECT} WHERE ${hWhere} ORDER BY h.created_at DESC LIMIT ?`).all(...hParams, PREVIEW_LIMIT).map(formatActivity)
+      results: db.prepare(`${ACTIVITY_SELECT} WHERE ${hWhere} ORDER BY h.created_at DESC, h.id DESC LIMIT ?`).all(...hParams, PREVIEW_LIMIT).map(formatActivity)
     };
   }
 
@@ -292,7 +292,7 @@ function searchJobs(req, res, canManage) {
   const total = db.prepare(`SELECT COUNT(*) as count ${from} ${where}`).get(...params).count;
   const offset = (page - 1) * PAGE_SIZE;
   const rows = db.prepare(
-    `SELECT j.* ${from} ${where} ORDER BY j.created_at DESC LIMIT ? OFFSET ?`
+    `SELECT j.* ${from} ${where} ORDER BY j.created_at DESC, j.id DESC LIMIT ? OFFSET ?`
   ).all(...params, PAGE_SIZE, offset);
   const assigneeMap = getAssigneesForJobcards(rows.map(j => j.id));
 
@@ -324,7 +324,7 @@ function searchPeople(req, res, canManage) {
       p.push(like, like, like, like);
     }
     branches.push({
-      sql: `SELECT 0 AS sort_group, co.name AS sort1, c.contact_name AS sort2, 'contact' AS type,
+      sql: `SELECT 0 AS sort_group, co.name AS sort1, c.contact_name AS sort2, co.id AS sort3, 'contact' AS type,
                    c.id AS id, c.contact_name AS contact_name, c.phone AS phone, c.email AS email,
                    co.id AS company_id, co.name AS company_name, co.address AS address,
                    NULL AS name, NULL AS contact_phone, NULL AS contact_email
@@ -341,7 +341,7 @@ function searchPeople(req, res, canManage) {
       p.push(like, like, like, like);
     }
     branches.push({
-      sql: `SELECT 1 AS sort_group, name AS sort1, NULL AS sort2, 'supplier' AS type,
+      sql: `SELECT 1 AS sort_group, name AS sort1, NULL AS sort2, id AS sort3, 'supplier' AS type,
                    id AS id, contact_name AS contact_name, NULL AS phone, NULL AS email,
                    NULL AS company_id, NULL AS company_name, address AS address,
                    name AS name, contact_phone AS contact_phone, contact_email AS contact_email
@@ -357,7 +357,7 @@ function searchPeople(req, res, canManage) {
   const total = db.prepare(`SELECT COUNT(*) AS count FROM (${unionSql})`).get(...allParams).count;
   const offset = (page - 1) * PAGE_SIZE;
   const rows = db.prepare(
-    `SELECT * FROM (${unionSql}) ORDER BY sort_group ASC, sort1 ASC, sort2 ASC LIMIT ? OFFSET ?`
+    `SELECT * FROM (${unionSql}) ORDER BY sort_group ASC, sort1 ASC, sort2 ASC, sort3 ASC, id ASC LIMIT ? OFFSET ?`
   ).all(...allParams, PAGE_SIZE, offset);
 
   const results = rows.map(r => r.type === 'supplier'
@@ -406,7 +406,7 @@ function searchActivity(req, res) {
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const total = db.prepare(`SELECT COUNT(*) as count FROM history h ${where}`).get(...params).count;
   const offset = (page - 1) * PAGE_SIZE;
-  const rows = db.prepare(`${ACTIVITY_SELECT} ${where} ORDER BY h.created_at DESC LIMIT ? OFFSET ?`).all(...params, PAGE_SIZE, offset);
+  const rows = db.prepare(`${ACTIVITY_SELECT} ${where} ORDER BY h.created_at DESC, h.id DESC LIMIT ? OFFSET ?`).all(...params, PAGE_SIZE, offset);
 
   res.json({ results: rows.map(formatActivity), total, page, totalPages: Math.ceil(total / PAGE_SIZE) });
 }
@@ -454,7 +454,7 @@ function searchTime(req, res, canManage) {
 
   const offset = (page - 1) * PAGE_SIZE;
   const rows = db.prepare(
-    `SELECT te.*, u.name as user_name, j.job_number, ${partPosition} as part_position, CASE WHEN te.end_time IS NOT NULL THEN (julianday(te.end_time) - julianday(te.start_time)) * 24 ELSE NULL END as duration_hours ${from} ${where} ORDER BY te.start_time DESC LIMIT ? OFFSET ?`
+    `SELECT te.*, u.name as user_name, j.job_number, ${partPosition} as part_position, CASE WHEN te.end_time IS NOT NULL THEN (julianday(te.end_time) - julianday(te.start_time)) * 24 ELSE NULL END as duration_hours ${from} ${where} ORDER BY te.start_time DESC, te.id DESC LIMIT ? OFFSET ?`
   ).all(...params, PAGE_SIZE, offset);
 
   res.json({
