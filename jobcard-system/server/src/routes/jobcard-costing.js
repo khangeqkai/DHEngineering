@@ -18,8 +18,8 @@ router.get('/:id/costing', authenticate, requirePermission('pricing'), (req, res
 
     // Every job — open or invoiced — owns its own overtime rules and rate, so recomputing
     // on the spot from logged time + those captured rules always reproduces the billed
-    // number. There is nothing to lock or freeze; an invoiced job is edited behind an
-    // on-screen confirm, not blocked here.
+    // number. There is nothing to freeze; the lock on an invoiced job is closedJobGuard,
+    // which refuses a save (PUT) until the job is unarchived — a read is always allowed.
     const computed = computeLiveCosting(jobId, null);
     res.json(buildCostingResponse(jobId, computed));
   } catch (err) {

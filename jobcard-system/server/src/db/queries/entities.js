@@ -179,13 +179,15 @@ const tagQueries = {
   // match) not LIKE, because tag values contain underscores and "_" is a LIKE
   // single-char wildcard — LIKE would over-count similar values. A NULL column makes
   // the concatenation NULL, so instr yields NULL and the row is excluded (correct).
+  // Spaces are stripped from both sides first, matching splitAnswer (shared/lineItemAnswers.js),
+  // which trims each value — so a stored "A, B" still counts as using "B".
   countItemsByDrawingsValue: db.prepare(`
     SELECT COUNT(*) as count FROM job_items
-    WHERE instr(',' || drawings_type || ',', ',' || ? || ',') > 0
+    WHERE instr(',' || replace(drawings_type, ' ', '') || ',', ',' || replace(?, ' ', '') || ',') > 0
   `),
   countItemsByCustomerPropertyValue: db.prepare(`
     SELECT COUNT(*) as count FROM job_items
-    WHERE instr(',' || customer_property || ',', ',' || ? || ',') > 0
+    WHERE instr(',' || replace(customer_property, ' ', '') || ',', ',' || replace(?, ' ', '') || ',') > 0
   `),
 
   // Supplier tag operations (treatment tags for suppliers)
