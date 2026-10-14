@@ -52,7 +52,6 @@ export default function FinishQuestionDialog({ item, onAnswered, onRecheck }) {
       if (!isTopModal(modalId)) return;
       handleDialogKey(e, {
         container: dialogRef.current,
-        holdWhenEmpty: true,
         focusable: () => (dialogRef.current
           ? Array.from(dialogRef.current.querySelectorAll('input, button')).filter(el => !el.disabled)
           : [])

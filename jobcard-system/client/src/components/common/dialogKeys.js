@@ -20,8 +20,10 @@
 //   container    required; the dialog's element. Focus outside it, or (on Shift+Tab) on
 //                the element itself just after opening, is pulled to the first or last
 //                control
-//   holdWhenEmpty  optional; with no controls at all, Tab is held rather than let go
-export function handleDialogTab(e, { focusable, container, holdWhenEmpty = false }) {
+//
+// Tab never leaves a dialog, always: with no usable controls at all (everything disabled
+// while loading or saving) Tab is held where it is — focus stays put, nothing behind is walked.
+export function handleDialogTab(e, { focusable, container }) {
   if (e.key !== 'Tab') return;
   // A key that arrives before the dialog's node is committed, or after it has gone, has nothing
   // to wrap — but it is still held, or it would walk the page behind.
@@ -31,7 +33,8 @@ export function handleDialogTab(e, { focusable, container, holdWhenEmpty = false
   }
   const controls = focusable();
   if (controls.length === 0) {
-    if (holdWhenEmpty) e.preventDefault();
+    // Nothing usable to move to: hold Tab so it can't walk the page behind.
+    e.preventDefault();
     return;
   }
   const first = controls[0];
@@ -47,7 +50,7 @@ export function handleDialogTab(e, { focusable, container, holdWhenEmpty = false
   }
 }
 
-export function handleDialogKey(e, { focusable, escape, container, holdWhenEmpty = false }) {
+export function handleDialogKey(e, { focusable, escape, container }) {
   if (e.key === 'Escape') {
     e.preventDefault();
     if (escape) {
@@ -57,5 +60,5 @@ export function handleDialogKey(e, { focusable, escape, container, holdWhenEmpty
     }
     return;
   }
-  handleDialogTab(e, { focusable, container, holdWhenEmpty });
+  handleDialogTab(e, { focusable, container });
 }
