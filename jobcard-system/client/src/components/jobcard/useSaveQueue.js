@@ -76,7 +76,10 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
   // One promise-chain tail per key, so same-key writes always run in the order
   // they were asked for while different keys never wait on each other — the
   // exact shape every hand-rolled version of this used to build for itself.
+  // Keyed by job AND key (`${jobCardId}|${key}`): the same job reopened still orders behind
+  // its own travelling save, while another job's identical field name never waits on it.
   const chains = useRef({});
+  const chainKey = (jobId, key) => `${jobId}|${key}`;
 
   const setEntry = useCallback((key, patch) => {
     setEntries(prev => {
@@ -99,12 +102,13 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
     // alone lets a reply from before a close-and-reopen of the SAME job land on the
     // fresh screen.
     const isCurrent = () => jobCardIdRef.current === forJobCardId && openingRef.current === forOpening;
-    const prior = chains.current[key];
+    const ownKey = chainKey(forJobCardId, key);
+    const prior = chains.current[ownKey];
     // options.after: other keys whose writes already asked for must land (or fail)
     // before this one starts — for two fields one action changes together, so the
     // server applies them in click order — while each key keeps its OWN record, so
     // one field's failure is never hidden, or copied, by the other's write.
-    const ahead = [prior, ...(options.after || []).map(k => chains.current[k])].filter(Boolean);
+    const ahead = [prior, ...(options.after || []).map(k => chains.current[chainKey(forJobCardId, k)])].filter(Boolean);
 
     // Recorded the instant it's asked for, even if it turns out to run right
     // away — queued when something it must wait for is still ahead of it,
@@ -167,9 +171,9 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
     // work inside `run`'s .then), so this exists only to keep the promise chain
     // itself from ever surfacing as an unhandled rejection.
     const tracked = chained.catch(() => {}).finally(() => {
-      if (chains.current[key] === tracked) delete chains.current[key];
+      if (chains.current[ownKey] === tracked) delete chains.current[ownKey];
     });
-    chains.current[key] = tracked;
+    chains.current[ownKey] = tracked;
     return tracked;
   }, [setEntry]);
 
@@ -227,13 +231,18 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
     openingRef.current += 1;
   }, []);
 
-  // Resolves once every write queued so far — for every key, whatever its state —
+  // Resolves once every write queued so far — for every key of the current job, whatever its state —
   // has settled, success or failure. Never rejects: a caller waiting on this (e.g.
   // a status change that must not run ahead of a part save already in flight) needs
   // to know the field is quiet either way, not to fail itself because one of those
   // saves failed. A write enqueued AFTER this is called is not waited on — it
   // belongs to the next look at "what's in flight now", not this one.
-  const whenSettled = useCallback(() => Promise.allSettled(Object.values(chains.current)), []);
+  // Only the current job's chains: another job's travelling save is none of this job's business.
+  const whenSettled = useCallback(() => {
+    const mine = `${jobCardIdRef.current}|`;
+    return Promise.allSettled(Object.entries(chains.current)
+      .filter(([k]) => k.startsWith(mine)).map(([, p]) => p));
+  }, []);
 
   return { enqueue, stateOf, isPending, pending, reset, clearFailure, landedCount, whenSettled };
 }
