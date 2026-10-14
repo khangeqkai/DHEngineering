@@ -233,7 +233,9 @@ export function useSettings() {
   }, [inactivityTimeout, refreshInactivityTimeout, setFieldErrors]);
 
   const handleSaveJobNumber = useCallback(async () => {
-    if (!isJobNumberPrefix(jobNumberPrefix)) {
+    // A prefix saved before the rule existed passes while left unchanged.
+    const prefixChanged = jobNumberPrefix.trim() !== (settings?.jobNumberPrefix || '');
+    if (prefixChanged && !isJobNumberPrefix(jobNumberPrefix)) {
       setFieldErrors({ jobNumberPrefix: JOB_NUMBER_PREFIX_MESSAGE });
       scrollFieldIntoView('jobNumberPrefix');
       return;
@@ -246,13 +248,17 @@ export function useSettings() {
     setSavingJobNumber(true);
     try {
       await api.updateSettings({ jobNumberPrefix, jobNumberNext });
+      // The server stores the prefix trimmed; show what was saved, not what was typed.
+      const savedPrefix = jobNumberPrefix.trim();
+      setJobNumberPrefix(savedPrefix);
+      setSettings(prev => (prev ? { ...prev, jobNumberPrefix: savedPrefix, jobNumberNext } : prev));
       toast.success('Job number settings updated');
     } catch (err) {
       showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save job number settings' });
     } finally {
       setSavingJobNumber(false);
     }
-  }, [jobNumberPrefix, jobNumberNext, setFieldErrors]);
+  }, [jobNumberPrefix, jobNumberNext, settings, setFieldErrors]);
 
   const toggleDarkMode = useCallback(() => setDarkMode(prev => !prev), []);
 

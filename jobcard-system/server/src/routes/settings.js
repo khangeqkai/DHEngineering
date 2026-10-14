@@ -145,6 +145,9 @@ router.put('/', requireManagement, async (req, res) => {
 
     // Validate job folders base path if provided
     if (jobFoldersBase !== undefined) {
+      if (jobFoldersBase !== null && typeof jobFoldersBase !== 'string') {
+        return refuseField(res, 400, 'jobFoldersBase', 'Job folders base path must be text');
+      }
       if (jobFoldersBase && jobFoldersBase.trim()) {
         if (!fs.existsSync(jobFoldersBase)) {
           return refuseField(res, 400, 'jobFoldersBase', 'Job folders base path does not exist');
@@ -173,8 +176,12 @@ router.put('/', requireManagement, async (req, res) => {
     // Validate job number prefix if provided
     const jobNumberPrefix = req.body.jobNumberPrefix;
     if (jobNumberPrefix !== undefined) {
-      // null means "no prefix", as blank does.
-      if (jobNumberPrefix !== null && !isJobNumberPrefix(jobNumberPrefix)) {
+      // null means "no prefix", as blank does. A prefix saved before the rule existed
+      // (e.g. "DH/") passes while it is left unchanged, so the other job-number
+      // settings can still be saved; only a changed prefix is judged.
+      const prefixChanged = typeof jobNumberPrefix !== 'string'
+        || jobNumberPrefix.trim() !== (before.job_number_prefix || '');
+      if (jobNumberPrefix !== null && prefixChanged && !isJobNumberPrefix(jobNumberPrefix)) {
         return refuseField(res, 400, 'jobNumberPrefix', JOB_NUMBER_PREFIX_MESSAGE);
       }
       updates.job_number_prefix = (jobNumberPrefix || '').trim();
