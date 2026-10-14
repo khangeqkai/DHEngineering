@@ -163,36 +163,23 @@ const tagQueries = {
 
   getMaxSortOrder: db.prepare('SELECT MAX(sort_order) as max_sort FROM tags WHERE category = ?'),
 
-  // Count line items still referencing a tag value, per category. A value still
-  // in use must not be renamed (a rename changes the value and would strand it).
-  // treatments: JSON array of objects keyed by `value` — walk it with json_each.
-  countItemsByTreatmentValue: db.prepare(`
-    SELECT COUNT(*) as count FROM job_items
-    WHERE treatments IS NOT NULL
-      AND EXISTS (
-        SELECT 1 FROM json_each(job_items.treatments)
-        WHERE json_extract(json_each.value, '$.value') = ?
-      )
-  `),
+  // Line items still referencing a tag value, per category. A value still in use must
+  // not be renamed (a rename changes the value and would strand it). Counted in
+  // routes/tags.js: material / job_type are plain equality below; for treatments and the
+  // comma-joined drawings / customer-property lists the statements here only narrow to
+  // rows that contain the value as literal text (instr, not LIKE — tag values hold
+  // underscores, a LIKE wildcard), and the route then decides membership with the same
+  // reading the rest of the app uses (shared/lineItemAnswers.js splitAnswer; the
+  // treatments JSON parsed), so spacing quirks in a stored list cannot hide a use.
+  listTreatmentsContaining: db.prepare(
+    'SELECT id, treatments FROM job_items WHERE treatments IS NOT NULL AND instr(treatments, ?) > 0'),
+  listDrawingsContaining: db.prepare(
+    'SELECT id, drawings_type AS answer FROM job_items WHERE instr(drawings_type, ?) > 0'),
+  listCustomerPropertyContaining: db.prepare(
+    'SELECT id, customer_property AS answer FROM job_items WHERE instr(customer_property, ?) > 0'),
   // material / job_type: single value per line item — plain equality.
   countItemsByMaterialValue: db.prepare('SELECT COUNT(*) as count FROM job_items WHERE material = ?'),
   countItemsByJobTypeValue: db.prepare('SELECT COUNT(*) as count FROM job_items WHERE job_type = ?'),
-  // drawings / customer_property: comma-joined list per line item — delimiter-padded
-  // membership so "DH_CAD" doesn't match "DH_CAD_V2". Uses instr (literal substring
-  // match) not LIKE, because tag values contain underscores and "_" is a LIKE
-  // single-char wildcard — LIKE would over-count similar values. A NULL column makes
-  // the concatenation NULL, so instr yields NULL and the row is excluded (correct).
-  // Spaces next to a comma are dropped from the stored list first, matching splitAnswer
-  // (shared/lineItemAnswers.js), which trims each value — so a stored "A, B" still counts
-  // as using "B". Spaces inside a value are kept: "FULL SET" and "FULLSET" stay different.
-  countItemsByDrawingsValue: db.prepare(`
-    SELECT COUNT(*) as count FROM job_items
-    WHERE instr(',' || replace(replace(drawings_type, ', ', ','), ' ,', ',') || ',', ',' || trim(?) || ',') > 0
-  `),
-  countItemsByCustomerPropertyValue: db.prepare(`
-    SELECT COUNT(*) as count FROM job_items
-    WHERE instr(',' || replace(replace(customer_property, ', ', ','), ' ,', ',') || ',', ',' || trim(?) || ',') > 0
-  `),
 
   // Supplier tag operations (treatment tags for suppliers)
   getForSupplier: db.prepare(`

@@ -8,6 +8,7 @@ const { nameToValue } = require('../utils/tagSlug');
 const { findOr404 } = require('../utils/findOr404');
 const { sameName } = require('../shared/names');
 const { refuseField } = require('./name-conflict');
+const { splitAnswer } = require('../shared/lineItemAnswers');
 
 const router = express.Router();
 
@@ -36,15 +37,37 @@ function formatTag(t) {
   };
 }
 
-// Maps each category to the query that counts how many job line items still use a
-// value. Used to block a value-changing rename while the option is in use (a rename
-// would strand it). Archiving needs no such guard — old jobs keep resolving.
+// How many job line items still use a value, as a count. Used to block a value-changing
+// rename while the option is in use (a rename would strand it). Archiving needs no such
+// guard — old jobs keep resolving.
+const countAnswerUses = (rows, value) => {
+  const wanted = String(value).trim();
+  return rows.filter(r => splitAnswer(r.answer).includes(wanted)).length;
+};
+
+// A part whose treatments won't parse is skipped (and logged) instead of failing the whole
+// request — one damaged row must not make every treatment rename fail.
+const countTreatmentUses = (value) => {
+  let count = 0;
+  for (const row of tagQueries.listTreatmentsContaining.all(value)) {
+    let list;
+    try {
+      list = JSON.parse(row.treatments);
+    } catch (err) {
+      logger.warn({ err, itemId: row.id }, 'Skipped a part with unreadable treatments while checking if an option is in use');
+      continue;
+    }
+    if (Array.isArray(list) && list.some(t => t && t.value === value)) count++;
+  }
+  return count;
+};
+
 const USAGE_COUNT_BY_CATEGORY = {
-  treatment: tagQueries.countItemsByTreatmentValue,
-  material: tagQueries.countItemsByMaterialValue,
-  job_type: tagQueries.countItemsByJobTypeValue,
-  drawings: tagQueries.countItemsByDrawingsValue,
-  customer_property: tagQueries.countItemsByCustomerPropertyValue
+  treatment: countTreatmentUses,
+  material: (value) => tagQueries.countItemsByMaterialValue.get(value).count,
+  job_type: (value) => tagQueries.countItemsByJobTypeValue.get(value).count,
+  drawings: (value) => countAnswerUses(tagQueries.listDrawingsContaining.all(String(value).trim()), value),
+  customer_property: (value) => countAnswerUses(tagQueries.listCustomerPropertyContaining.all(String(value).trim()), value)
 };
 
 // All routes require authentication
@@ -212,11 +235,11 @@ router.put('/:id', requireManagement, (req, res) => {
     // "M6 x 10") would relabel every job using it — so block both while jobs use
     // it, allowing only capitals/spacing tweaks of the same name.
     if (value !== existing.value || !sameName(trimmedName, existing.name)) {
-      const usageQuery = USAGE_COUNT_BY_CATEGORY[existing.category];
-      const usage = usageQuery ? usageQuery.get(existing.value) : { count: 0 };
-      if (usage.count > 0) {
+      const usageCounter = USAGE_COUNT_BY_CATEGORY[existing.category];
+      const usageCount = usageCounter ? usageCounter(existing.value) : 0;
+      if (usageCount > 0) {
         return refuseField(res, 400, 'name',
-          `Cannot rename: ${usage.count} job part(s) still use the "${existing.name}" option`);
+          `Cannot rename: ${usageCount} job part(s) still use the "${existing.name}" option`);
       }
     }
 
