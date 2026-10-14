@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
+import { useLatestRequest } from '../hooks/useLatestRequest';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
 import ExportButton from './common/ExportButton';
@@ -13,19 +14,21 @@ export default function ActivityLog() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(50);
+  const startRequest = useLatestRequest();
 
   useEffect(() => {
     loadActivities();
   }, [limit]);
 
   const loadActivities = async () => {
+    const isLatest = startRequest();
     try {
       const data = await api.getActivityHistory(limit);
-      setActivities(data);
+      if (isLatest()) setActivities(data);
     } catch (err) {
-      toast.error(err.message || 'Failed to load activities');
+      if (isLatest()) toast.error(err.message || 'Failed to load activities');
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
   };
 

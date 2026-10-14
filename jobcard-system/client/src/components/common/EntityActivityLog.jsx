@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
+import { useLatestRequest } from '../../hooks/useLatestRequest';
 import { History } from 'lucide-react';
 import BottomSheet from './BottomSheet';
 import { formatHistoryValue, formatDateTime } from '../../utils/formatters';
@@ -77,33 +78,37 @@ export default function EntityActivityLog({ entityType, isOpen, onClose, refresh
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const startRequest = useLatestRequest();
 
   const loadHistory = useCallback(async (fetchPage) => {
+    const isLatest = startRequest();
     setLoading(true);
     try {
       const result = await api.getEntityHistory(entityType, fetchPage);
+      if (!isLatest()) return;
       setHistory(result.data);
       setTotal(result.total);
       setTotalPages(result.totalPages);
       setPage(result.page);
     } catch (err) {
-      toast.error('Failed to load activity history');
+      if (isLatest()) toast.error('Failed to load activity history');
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [entityType]);
+  }, [entityType, startRequest]);
 
   // Load on open
   useEffect(() => {
     if (isOpen) {
       loadHistory(1);
     } else {
+      startRequest(); // a page still loading when the panel closed must not land later
       setHistory([]);
       setPage(1);
       setTotal(0);
       setTotalPages(0);
     }
-  }, [isOpen, entityType, loadHistory]);
+  }, [isOpen, entityType, loadHistory, startRequest]);
 
   // Refresh when parent signals data has changed
   useEffect(() => {
