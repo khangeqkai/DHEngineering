@@ -98,15 +98,16 @@ export default function TimeEntryForm({
 
   // A disabled box cannot take focus, so a mark raised during the save (and the focus the lock
   // dropped) is handled once the lock lifts: the first marked box, else back to the save button.
-  // Only while the form still shows the block that save was for — if another block was opened
-  // for editing meanwhile, the save's outcome has nothing to say about that form.
+  // Not when ANOTHER block was opened for editing meanwhile — the save's outcome has nothing to
+  // say about that form. A successful save resetting the form to blank still gets the cursor
+  // back, whether it was a new block or an update.
   const wasSavingRef = useRef(false);
   const savingForRef = useRef(null);
   useEffect(() => {
     const was = wasSavingRef.current;
     wasSavingRef.current = saving;
     if (!was || saving || !formRef.current) return;
-    if (savingForRef.current !== editingTimeEntryId) return;
+    if (editingTimeEntryId != null && editingTimeEntryId !== savingForRef.current) return;
     const marked = formRef.current.querySelector('[aria-invalid="true"]');
     if (marked) marked.focus({ preventScroll: true });
     else if (document.activeElement === document.body) saveButtonRef.current?.focus({ preventScroll: true });

@@ -308,6 +308,17 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     }
     const { shouldArchive, invoicedDate } = invoicing;
 
+    // ---- Change tracking (pure computation; uses `existing`, fetched above) ----
+    if (data.photos !== undefined) {
+      const newPhotos = JSON.stringify(data.photos);
+      const oldPhotos = existing.photos || '[]';
+      if (newPhotos !== oldPhotos) {
+        const oldCount = existing.photos ? JSON.parse(existing.photos).length : 0;
+        const newCount = data.photos.length;
+        changes['photos'] = { from: `${oldCount} photos`, to: `${newCount} photos` };
+      }
+    }
+
     // All database writes happen in one transaction: either the status/field
     // update lands, or none of it does.
     let invoicingChanges = {};
@@ -337,29 +348,18 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
       );
 
       invoicingChanges = applyInvoicingArchive(shouldArchive, invoicedDate, req.user.userId, id, invoicing.inspectionConfirmedCount);
+
+      // The trail entry commits with the edit (and the invoicing it may carry), or neither does.
+      Object.assign(changes, invoicingChanges);
+      if (Object.keys(changes).length > 0) {
+        recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), changes, null);
+      }
     });
     applyUpdate();
 
     // Invoicing just files the job away. No costing snapshot is taken: the job owns its
     // own overtime rules and rate, so recomputing its costing later always reproduces
     // the billed number — there is nothing a settings change could move.
-
-    // ---- Change tracking (pure computation; uses `existing`, fetched above) ----
-    if (data.photos !== undefined) {
-      const newPhotos = JSON.stringify(data.photos);
-      const oldPhotos = existing.photos || '[]';
-      if (newPhotos !== oldPhotos) {
-        const oldCount = existing.photos ? JSON.parse(existing.photos).length : 0;
-        const newCount = data.photos.length;
-        changes['photos'] = { from: `${oldCount} photos`, to: `${newCount} photos` };
-      }
-    }
-
-    Object.assign(changes, invoicingChanges);
-
-    if (Object.keys(changes).length > 0) {
-      recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), changes, null);
-    }
 
     const updated = jobcardQueries.getById.get(id);
     const items = jobItemQueries.getByJobcard.all(id);

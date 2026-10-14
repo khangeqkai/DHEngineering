@@ -90,7 +90,10 @@ export function useInstantSave(jobCardId, saveQueue, { onSaved, onAttachmentWarn
     // landed after this one was dropped and the server kept the wrong value.
     // Falling through instead queues the revert, so whichever value the user
     // left it on is always the one that lands last.
-    if (baseline !== undefined && value === baseline && !saveQueue.isPending(`field:${name}`)) {
+    // A linked field's write still on its way counts too: the untick, once it lands,
+    // moves the reference's stored copy, so "back to the stored value" can't be judged yet.
+    const linkedPending = LINKED_FIELDS[name] && saveQueue.isPending(`field:${LINKED_FIELDS[name]}`);
+    if (baseline !== undefined && value === baseline && !saveQueue.isPending(`field:${name}`) && !linkedPending) {
       saveQueue.clearFailure(`field:${name}`);
       return;
     }

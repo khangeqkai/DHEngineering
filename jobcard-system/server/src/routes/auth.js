@@ -344,6 +344,18 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
       return res.status(403).json({ error: 'To change your own PIN, use Change PIN in Settings — it asks for your current PIN first.' });
     }
 
+    // Validate the PIN and hash it FIRST, before the account is read or any check runs.
+    // Hashing waits, and nothing may wait between the checks below (the last-admin
+    // rule above all) and the write they guard — two admins demoting each other at
+    // once would both pass, or an older read of the account could overwrite a newer
+    // change. From the read onward the route runs straight through to the commit, so
+    // the new PIN, the sign-out of whoever holds the old one and the trail entry that
+    // says the PIN changed all land together.
+    if (password && !PIN_REGEX.test(password)) {
+      return res.status(400).json({ error: PIN_MESSAGE });
+    }
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+
     // A role must be a real one (requireManagement already limits this route to admins and managers).
     if (role && !ALL_ROLES.includes(role)) {
       return res.status(400).json({ error: 'Role must be "admin", "manager" or "user"' });
@@ -381,13 +393,6 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     const changes = diffFields(user, fieldsToTrack);
     if (password) changes.password = { from: '(hidden)', to: '(changed)' };
 
-    // Validate password before any DB writes
-    if (password) {
-      if (!PIN_REGEX.test(password)) {
-        return res.status(400).json({ error: PIN_MESSAGE });
-      }
-    }
-
     // Update user (normalize empty email to null for DB consistency)
     const emailToStore = email !== undefined ? (email || null) : user.email;
     const newName = name || user.name;
@@ -395,10 +400,6 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     // actually changes, fold every one of that user's past job notes onto the new
     // name in the same transaction, so a rename doesn't leave old comments reading
     // whoever they used to be called.
-    // Hashed before the transaction (it can't wait inside one), so the new PIN, the
-    // sign-out of whoever still holds the old one and the trail entry that says the
-    // PIN changed all commit together.
-    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
     const updateUserAndNotes = db.transaction(() => {
       userQueries.update.run(
         newName,

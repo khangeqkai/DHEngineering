@@ -64,13 +64,18 @@ function autoAssignWorker(jobcardId, workerId, actor, action = 'assign') {
   const before = jobAssigneeQueries.getByJobcard.all(jobcardId);
   if (before.some(a => a.user_id === workerId)) return;
   try {
-    jobAssigneeQueries.create.run(`assignee:${uuidv4()}`, jobcardId, workerId);
-    const after = jobAssigneeQueries.getByJobcard.all(jobcardId);
-    const fromNames = before.map(a => a.user_name).join(', ') || 'none';
-    const toNames = after.map(a => a.user_name).join(', ') || 'none';
-    recordHistory('jobcard', jobcardId, action, actor.userId, actor.name || actor.username, {
-      assignees: { from: fromNames, to: toNames }
-    });
+    // The assignment and its trail entry are one step (a savepoint when called inside a
+    // route's transaction): if either fails both are undone, then the failure is logged
+    // and the work being recorded carries on — never a worker the trail doesn't mention.
+    db.transaction(() => {
+      jobAssigneeQueries.create.run(`assignee:${uuidv4()}`, jobcardId, workerId);
+      const after = jobAssigneeQueries.getByJobcard.all(jobcardId);
+      const fromNames = before.map(a => a.user_name).join(', ') || 'none';
+      const toNames = after.map(a => a.user_name).join(', ') || 'none';
+      recordHistory('jobcard', jobcardId, action, actor.userId, actor.name || actor.username, {
+        assignees: { from: fromNames, to: toNames }
+      });
+    })();
   } catch (e) {
     if (!e || e.code !== 'SQLITE_CONSTRAINT_UNIQUE') {
       logger.error({ err: e }, 'Auto-assign of the credited worker failed');
