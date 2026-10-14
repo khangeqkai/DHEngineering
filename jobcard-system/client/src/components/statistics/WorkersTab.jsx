@@ -44,6 +44,7 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
               {
                 key: 'totalHours',
                 label: 'Hours Worked',
+                align: 'right',
                 sortable: true,
                 render: (val, row) => (
                   <div>
@@ -76,15 +77,17 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
               {
                 key: 'normalHours',
                 label: 'Normal Hours',
+                align: 'right',
                 sortable: true,
                 render: (val) => <span className="tier-tag normal">{val}h</span>
               },
               {
                 key: 'totalOtHours',
                 label: 'Overtime',
+                align: 'right',
                 sortable: true,
                 render: (val, row) => (
-                  <div style={{ display: 'flex', gap: 'var(--space-1)', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-1)', flexWrap: 'wrap' }}>
                     {val > 0 ? (
                       <>
                         {row.ot1Hours > 0 && <span className="tier-tag ot">OT1: {row.ot1Hours}h</span>}
@@ -100,18 +103,21 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
               {
                 key: 'jobsCount',
                 label: 'Jobs Worked On',
+                align: 'right',
                 sortable: true,
                 render: (val) => <span>{val} jobs</span>
               },
               {
                 key: 'partsProduced',
                 label: 'Good Parts Made',
+                align: 'right',
                 sortable: true,
                 render: (val) => (val || 0).toLocaleString()
               },
               {
                 key: 'totalScrapQty',
                 label: 'Scrapped (Bin / Recycled)',
+                align: 'right',
                 sortable: true,
                 render: (val, row) => (
                   <span style={{ color: val > 0 ? 'var(--accent-caution)' : 'inherit' }}>
@@ -122,6 +128,7 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
               {
                 key: 'qaChecks',
                 label: 'Quality Checks',
+                align: 'right',
                 sortable: true,
                 render: (val) => <span>{val || 0} checks</span>
               }

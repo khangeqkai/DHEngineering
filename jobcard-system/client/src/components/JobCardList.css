@@ -721,9 +721,10 @@
 }
 
 .status-check {
+  display: inline-flex;
+  align-items: center;
   margin-left: var(--space-2);
   color: var(--success-ink);
-  font-weight: var(--font-bold);
 }
 
 .action-buttons {
@@ -800,13 +801,15 @@ th.jc-align-center { text-align: center; }
   cursor: pointer;
 }
 
-.jc-th .jc-th-label {
-  margin-right: var(--gap-inline);
+.jc-th .jc-th-content {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-inline);
 }
 
 .jc-th .jc-sort-icon {
   display: inline-flex;
-  vertical-align: middle;
+  align-items: center;
   color: var(--text-tertiary);
   opacity: 0.55;
   transition: opacity var(--duration-fast) ease, color var(--duration-fast) ease;

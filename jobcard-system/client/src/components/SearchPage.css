@@ -7,7 +7,7 @@
 .search-page .search-input-icon { position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; }
 .search-page .search-input { width: 100%; padding: var(--space-3) var(--space-10) var(--space-3) var(--space-10); border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--surface); color: var(--text-primary); font-size: 1rem; }
 .search-page .search-input:focus { outline: none; border-color: var(--primary-accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-.search-page .search-input-clear { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: var(--space-1); border-radius: 0.25rem; }
+.search-page .search-input-clear { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: var(--space-1); border-radius: 0.25rem; }
 .search-page .search-input-clear:hover { color: var(--text-primary); background: var(--background); }
 .search-scope-tabs { display: flex; gap: var(--space-1-5); margin-bottom: var(--space-4); flex-wrap: wrap; }
 .search-scope-tab { display: inline-flex; align-items: center; gap: var(--gap-inline); padding: var(--pad-control); border: 1px solid var(--border-color); border-radius: 0.375rem; background: var(--surface); color: var(--text-secondary); font-size: 0.8125rem; font-weight: var(--font-regular); cursor: pointer; transition: all var(--duration-fast); }
@@ -20,7 +20,7 @@
 .search-filters-error { display: flex; align-items: center; justify-content: space-between; gap: var(--gap-tight); margin-bottom: var(--space-2); padding: var(--pad-control); border-radius: 6px; background: var(--accent-caution-bg, rgba(220, 80, 80, 0.1)); color: var(--accent-caution); font-size: 0.8125rem; }
 .search-filters-title { display: flex; align-items: center; gap: var(--gap-inline); font-size: 0.8125rem; font-weight: var(--font-bold); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
 .search-filter-row { display: flex; align-items: flex-start; gap: var(--gap-field); margin-bottom: var(--space-2); }
-.search-filter-label { min-width: 5.5rem; padding-top: var(--space-1-5); font-size: 0.8125rem; font-weight: var(--font-regular); color: var(--text-secondary); text-align: right; flex-shrink: 0; }
+.search-filter-label { min-width: 5.5rem; padding-top: calc(var(--space-1-5) + 1px); font-size: 0.8125rem; font-weight: var(--font-regular); color: var(--text-secondary); text-align: right; flex-shrink: 0; }
 .search-filter-control { flex: 1; }
 .search-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .search-chip { padding: var(--space-1) var(--space-2-5); border: 1px solid var(--border-color); border-radius: 1rem; background: var(--surface); color: var(--text-secondary); font-size: 0.75rem; cursor: pointer; transition: all var(--duration-fast); white-space: nowrap; }
@@ -55,6 +55,7 @@
 .search-changes { margin-top: var(--space-1); }
 .search-change-line { font-size: 0.6875rem; color: var(--text-secondary); }
 .search-from { text-decoration: line-through; color: var(--accent-caution); }
+.search-arrow { display: inline-flex; align-self: center; vertical-align: middle; margin: 0 var(--gap-inline); }
 .search-to { color: var(--accent-ready); }
 .search-truncate { max-width: 20rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
 .search-type-badge { font-size: 0.6875rem; font-weight: var(--font-bold); text-transform: uppercase; padding: var(--space-0-5) var(--space-2); border-radius: 1rem; }

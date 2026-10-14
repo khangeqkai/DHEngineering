@@ -120,7 +120,7 @@ export default function DataTable({
                   <th
                     key={col.key}
                     scope="col"
-                    className={`${col.sortable ? 'sortable' : ''} ${getSortClass(col.key)}`}
+                    className={`${col.sortable ? 'sortable' : ''} ${getSortClass(col.key)}${col.align ? ` dt-align-${col.align}` : ''}`}
                     style={columnWidths[col.key] ? { width: columnWidths[col.key] } : undefined}
                     onClick={col.sortable ? () => handleSort(col.key) : undefined}
                     onKeyDown={col.sortable ? (e) => {
@@ -172,7 +172,7 @@ export default function DataTable({
                       // firing a second time on top of it).
                       if (onRowClick && colIndex === 0) {
                         return (
-                          <td key={col.key}>
+                          <td key={col.key} className={col.align ? `dt-align-${col.align}` : undefined}>
                             <button
                               type="button"
                               className="row-link-btn"
@@ -184,7 +184,7 @@ export default function DataTable({
                           </td>
                         );
                       }
-                      return <td key={col.key}>{cellContent}</td>;
+                      return <td key={col.key} className={col.align ? `dt-align-${col.align}` : undefined}>{cellContent}</td>;
                     })}
                   </tr>
                 ))

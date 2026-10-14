@@ -8,6 +8,7 @@ import ExportButton from './common/ExportButton';
 import { exportActivityLog } from '../utils/excelExport';
 import { formatHistoryValue, formatDateTime } from '../utils/formatters';
 import { actionColor } from '../utils/activityColors';
+import { ArrowRight } from 'lucide-react';
 import './ActivityLog.css';
 
 export default function ActivityLog() {
@@ -54,7 +55,7 @@ export default function ActivityLog() {
             <span style={{ textDecoration: 'line-through', color: 'var(--accent-caution)' }}>
               {formatHistoryValue(field, change.from) || '(empty)'}
             </span>
-            {' → '}
+            <span className="activity-arrow"><ArrowRight size={14} aria-hidden="true" /></span>
             <span style={{ color: 'var(--accent-ready)' }}>{formatHistoryValue(field, change.to) || '(empty)'}</span>
           </>
         )}

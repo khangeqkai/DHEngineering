@@ -7,7 +7,7 @@
 .tag-category-tab {
   padding: var(--space-2) var(--space-4); border: none; background: transparent; color: var(--text-secondary);
   font-size: var(--text-sm); font-weight: var(--font-regular); cursor: pointer;
-  border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all var(--duration-fast); white-space: nowrap;
+  border-top: 2px solid transparent; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all var(--duration-fast); white-space: nowrap;
 }
 .tag-category-tab:hover { color: var(--text-primary); }
 .tag-category-tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }

@@ -7,3 +7,10 @@
   color: var(--text-primary);
   font-size: 0.875rem;
 }
+
+.activity-arrow {
+  display: inline-flex;
+  align-self: center;
+  vertical-align: middle;
+  margin: 0 var(--gap-inline);
+}

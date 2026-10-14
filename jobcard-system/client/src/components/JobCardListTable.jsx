@@ -51,14 +51,16 @@ export default function JobCardListTable({
                   title={sortable ? 'Click to sort, drag to reorder' : 'Drag to reorder columns'}
                   aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
                 >
-                  <span className="jc-th-label">{col.label}</span>
-                  {sortable && (
-                    <span className="jc-sort-icon" aria-hidden="true">
-                      {!active && <ChevronsUpDown size={14} />}
-                      {active && sortDir === 'asc' && <ChevronUp size={14} />}
-                      {active && sortDir === 'desc' && <ChevronDown size={14} />}
-                    </span>
-                  )}
+                  <span className="jc-th-content">
+                    <span className="jc-th-label">{col.label}</span>
+                    {sortable && (
+                      <span className="jc-sort-icon" aria-hidden="true">
+                        {!active && <ChevronsUpDown size={14} />}
+                        {active && sortDir === 'asc' && <ChevronUp size={14} />}
+                        {active && sortDir === 'desc' && <ChevronDown size={14} />}
+                      </span>
+                    )}
+                  </span>
                 </th>
               );
             })}

@@ -109,6 +109,8 @@
 }
 
 .eal-arrow {
+  display: inline-flex;
+  align-self: center;
   color: var(--text-tertiary);
   flex-shrink: 0;
 }

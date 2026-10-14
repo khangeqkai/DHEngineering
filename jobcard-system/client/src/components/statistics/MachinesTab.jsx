@@ -310,6 +310,7 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
               {
                 key: 'totalHours',
                 label: 'Hours Worked',
+                align: 'right',
                 sortable: true,
                 render: (val) => (
                   <strong style={{ fontFamily: 'var(--font-mono)', color: val > 0 ? 'var(--primary-accent)' : 'inherit' }}>
@@ -320,18 +321,21 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
               {
                 key: 'sessionCount',
                 label: 'Runs Logged',
+                align: 'right',
                 sortable: true,
                 render: (val) => <span>{val} runs</span>
               },
               {
                 key: 'partsProduced',
                 label: 'Good Parts Made',
+                align: 'right',
                 sortable: true,
                 render: (val) => (val || 0).toLocaleString()
               },
               {
                 key: 'scrapQty',
                 label: 'Scrapped',
+                align: 'right',
                 sortable: true,
                 render: (val, row) => {
                   const total = (row.partsProduced || 0) + (val || 0);

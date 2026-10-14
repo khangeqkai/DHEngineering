@@ -1,9 +1,18 @@
+/* Pragmatica's own line metrics (ascent 1005 / descent 396 per 1000) sit capital
+   letters and figures ~0.045em above the middle of their line, so every pill, badge
+   and button label rode high against the dot or icon beside it. The overrides keep
+   the same total line height (1401) but split it so cap height (700) lands exactly
+   in the middle: (1050.5 - 350.5) = 700. Lowercase-only text sits a hair lower,
+   which reads as centred because ascenders reach cap height. */
 @font-face {
   font-family: 'Pragmatica';
   src: url('./assets/fonts/Pragmatica-Light.otf') format('opentype');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
+  ascent-override: 105.05%;
+  descent-override: 35.05%;
+  line-gap-override: 0%;
 }
 
 @font-face {
@@ -12,6 +21,9 @@
   font-weight: 400;
   font-style: normal;
   font-display: swap;
+  ascent-override: 105.05%;
+  descent-override: 35.05%;
+  line-gap-override: 0%;
 }
 
 @font-face {
@@ -20,6 +32,9 @@
   font-weight: 700;
   font-style: normal;
   font-display: swap;
+  ascent-override: 105.05%;
+  descent-override: 35.05%;
+  line-gap-override: 0%;
 }
 
 * {

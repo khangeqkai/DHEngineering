@@ -129,18 +129,21 @@ export default function CustomersTab({
               {
                 key: 'jobsCount',
                 label: 'Jobs Started',
+                align: 'right',
                 sortable: true,
                 render: (val) => <span>{val} jobs</span>
               },
               {
                 key: 'completedCount',
                 label: 'Completed',
+                align: 'right',
                 sortable: true,
                 render: (val) => <span>{val} finished</span>
               },
               {
                 key: 'onTimeRate',
                 label: 'Finished On Time',
+                align: 'right',
                 sortable: true,
                 render: (val) => val !== null ? (
                   <span className={`kpi-badge ${val >= 90 ? 'success' : val >= 75 ? 'warning' : 'danger'}`}>
@@ -153,6 +156,7 @@ export default function CustomersTab({
               {
                 key: 'repeatPercent',
                 label: 'Repeat Work',
+                align: 'right',
                 sortable: true,
                 render: (val, row) => (
                   <span>{val}% ({row.repeatCount} repeat)</span>
@@ -161,12 +165,14 @@ export default function CustomersTab({
               {
                 key: 'totalHours',
                 label: 'Hours Worked',
+                align: 'right',
                 sortable: true,
                 render: (val) => <span style={{ fontFamily: 'var(--font-mono)' }}>{val}h</span>
               },
               ...(canSeePricing ? [{
                 key: 'invoicedTotal',
                 label: 'Invoiced Total',
+                align: 'right',
                 sortable: true,
                 render: (val) => (
                   <span>{formatMoney(val)}</span>

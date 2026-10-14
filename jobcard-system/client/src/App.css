@@ -282,14 +282,15 @@
   justify-content: flex-start;
   background: transparent !important;
   color: var(--sidebar-text) !important;
-  border: 1px solid var(--sidebar-border) !important;
-  box-shadow: none !important;
+  border: none !important;
+  /* An inset ring instead of a border, so the row is the same size as the nav links above */
+  box-shadow: inset 0 0 0 1px var(--sidebar-border) !important;
 }
 
 .signout-btn:hover:not(:disabled) {
   background: rgba(239, 68, 68, 0.12) !important;
   color: #fca5a5 !important;
-  border-color: rgba(239, 68, 68, 0.3) !important;
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.3) !important;
 }
 
 .signout-btn .nav-icon {
@@ -411,7 +412,7 @@
   padding: var(--space-2-5) var(--space-5);
   font-size: var(--text-sm);
   font-weight: var(--font-bold);
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background-color var(--duration-fast) ease,
@@ -531,7 +532,7 @@ select.has-retired option.retired-option {
 .btn-ghost {
   background: transparent;
   color: var(--text-primary);
-  border: none;
+  border: 1px solid transparent;
   box-shadow: none;
 }
 
@@ -1021,6 +1022,7 @@ select.has-retired option.retired-option {
   border-radius: 50%;
   background: currentColor;
   box-shadow: 0 0 4px currentColor;
+  flex-shrink: 0;
 }
 
 .badge-pending {
@@ -1171,6 +1173,7 @@ select.has-retired option.retired-option {
 }
 
 .status-dot {
+  flex-shrink: 0;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -1198,6 +1201,8 @@ select.has-retired option.retired-option {
 }
 
 .pending-badge {
+  display: inline-flex;
+  align-items: center;
   background: var(--primary-accent);
   color: #ffffff;
   padding: var(--space-0-5) var(--space-1-5);
@@ -1738,8 +1743,11 @@ select.has-retired option.retired-option {
     display: inline;
   }
 
+  /* Same padding and gap as the nav links above, so its icon and label line up with theirs */
   .signout-btn {
     justify-content: flex-start !important;
+    padding: var(--space-2-5) var(--space-3) !important;
+    gap: var(--space-3) !important;
   }
 
   .signout-btn .nav-text {
@@ -2020,7 +2028,8 @@ div[data-hot-toast] > div {
   color: var(--text-tertiary);
   cursor: pointer;
   font-size: 16px;
-  padding: 0 0 0 var(--space-2);
+  padding: 0;
+  margin-left: var(--space-2);
   transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
 }
 

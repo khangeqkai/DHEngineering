@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Search, X, ChevronLeft, ChevronRight, Briefcase, Users as UsersIcon, Clock, Timer, Filter } from 'lucide-react';
+import { Search, X, ChevronLeft, ChevronRight, Briefcase, Users as UsersIcon, Clock, Timer, Filter, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFinishQuestion } from '../context/FinishQuestionContext';
 import { isManagement, can } from '../utils/roles';
@@ -256,7 +256,7 @@ export default function SearchPage() {
             <div key={f} className="search-change-line">
               <strong>{fmt(f)}:</strong>{' '}
               {c.changed ? <em style={{ color: 'var(--primary-accent)' }}>modified</em> : (
-                <><span className="search-from">{formatHistoryValue(f, c.from) || '(empty)'}</span> → <span className="search-to">{formatHistoryValue(f, c.to) || '(empty)'}</span></>
+                <><span className="search-from">{formatHistoryValue(f, c.from) || '(empty)'}</span><span className="search-arrow"><ArrowRight size={14} aria-hidden="true" /></span><span className="search-to">{formatHistoryValue(f, c.to) || '(empty)'}</span></>
               )}
             </div>
           ))}</div>}

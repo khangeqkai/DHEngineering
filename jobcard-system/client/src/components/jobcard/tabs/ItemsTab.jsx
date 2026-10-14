@@ -168,7 +168,7 @@ export default function ItemsTab({
     <div className="modal-form-grid">
       <div className="form-section form-section--unboxed">
         <div className="form-section-header">
-          <h3 className="form-section-title">Parts <span className="required">*</span></h3>
+          <h3 className="form-section-title"><span className="form-section-title-label">Parts <span className="required">*</span></span></h3>
           {!fieldsLocked && (
             <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddLineItem}>
               <Plus size={14} /> Add Part

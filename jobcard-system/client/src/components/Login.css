@@ -116,6 +116,8 @@
 }
 
 .login-input-icon {
+  display: flex;
+  align-items: center;
   position: absolute;
   left: 0.75rem;
   top: 50%;

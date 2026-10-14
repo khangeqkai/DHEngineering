@@ -133,6 +133,7 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
               {
                 key: 'daysLate',
                 label: 'Delay',
+                align: 'right',
                 sortable: true,
                 render: (val) => (
                   <span className="kpi-badge danger">

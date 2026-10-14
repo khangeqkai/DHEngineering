@@ -36,8 +36,8 @@
 }
 
 .tag-chip .check-mark {
-  font-size: 0.75rem;
-  margin-left: var(--space-1);
+  display: inline-flex;
+  align-items: center;
 }
 
 .tag-chip-wrapper {

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { useLatestRequest } from '../../hooks/useLatestRequest';
-import { History } from 'lucide-react';
+import { History, ArrowRight } from 'lucide-react';
 import BottomSheet from './BottomSheet';
 import { formatHistoryValue, formatDateTime } from '../../utils/formatters';
 import { actionColor } from '../../utils/activityColors';
@@ -37,7 +37,7 @@ function formatChanges(changes) {
           <span className="eal-from">
             {formatValue(field, change.from) || '(empty)'}
           </span>
-          <span className="eal-arrow">&rarr;</span>
+          <span className="eal-arrow"><ArrowRight size={14} aria-hidden="true" /></span>
           <span className="eal-to">
             {formatValue(field, change.to) || '(empty)'}
           </span>

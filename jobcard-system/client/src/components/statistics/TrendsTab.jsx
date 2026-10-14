@@ -106,18 +106,21 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', loadin
               {
                 key: 'jobsCreated',
                 label: 'Jobs Started',
+                align: 'right',
                 sortable: true,
                 render: (val) => <span>{val}</span>
               },
               {
                 key: 'jobsCompleted',
                 label: 'Jobs Finished',
+                align: 'right',
                 sortable: true,
                 render: (val) => <span>{val}</span>
               },
               {
                 key: 'onTimeRate',
                 label: 'Finished On Time',
+                align: 'right',
                 sortable: true,
                 render: (val) => val !== null ? (
                   <span className={`kpi-badge ${val >= 90 ? 'success' : val >= 75 ? 'warning' : 'danger'}`}>
@@ -130,18 +133,21 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', loadin
               {
                 key: 'totalHours',
                 label: 'Hours Worked',
+                align: 'right',
                 sortable: true,
                 render: (val) => <span style={{ fontFamily: 'var(--font-mono)' }}>{val}h</span>
               },
               {
                 key: 'partsProduced',
                 label: 'Good Parts Made',
+                align: 'right',
                 sortable: true,
                 render: (val) => (val || 0).toLocaleString()
               },
               {
                 key: 'scrapQty',
                 label: 'Scrapped',
+                align: 'right',
                 sortable: true,
                 render: (val) => (
                   <span style={{ color: val > 0 ? 'var(--accent-caution)' : 'inherit' }}>

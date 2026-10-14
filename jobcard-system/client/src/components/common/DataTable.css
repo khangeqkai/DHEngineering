@@ -40,6 +40,8 @@
 }
 
 .data-table-search-icon {
+  display: flex;
+  align-items: center;
   position: absolute;
   left: 0.625rem;
   top: 50%;
@@ -75,7 +77,12 @@
   gap: var(--space-1);
 }
 
+.data-table .dt-align-right { text-align: right; }
+.data-table .dt-align-center { text-align: center; }
+
 .data-table-sort-icon {
+  display: inline-flex;
+  align-items: center;
   opacity: 0.3;
   flex-shrink: 0;
 }
