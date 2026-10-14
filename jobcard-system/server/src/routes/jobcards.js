@@ -231,6 +231,9 @@ router.delete('/:id/assignees/self', authenticate, (req, res) => {
         assignees: before.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
       });
     }
+    if (clockRunningOnJob(userId, id)) {
+      return res.status(409).json({ error: 'Stop your timer on this job before taking yourself off it.' });
+    }
 
     let after;
     db.transaction(() => {
@@ -251,6 +254,14 @@ router.delete('/:id/assignees/self', authenticate, (req, res) => {
     res.status(500).json({ error: 'Failed to self-unassign' });
   }
 });
+
+// True while this worker's clock is running on this job — they can't be taken off it
+// then (by themselves or the office), or the job would show nobody on it while their
+// time is being logged.
+function clockRunningOnJob(userId, jobcardId) {
+  const running = timeEntryQueries.getActiveByUser.get(userId);
+  return !!running && running.jobcard_id === jobcardId;
+}
 
 // Put one worker on the job (management, idempotent) — the instant-save
 // equivalent of the self-assign route above, for the person ticking names.
@@ -337,6 +348,9 @@ router.delete('/:id/assignees/:userId', authenticate, requireManagement, (req, r
       return res.status(200).json({
         assignees: before.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
       });
+    }
+    if (clockRunningOnJob(userId, id)) {
+      return res.status(409).json({ error: `${user.name || user.username}'s timer is running on this job. Stop it before taking them off.` });
     }
 
     // A worker taken off the job moves its "Last Edited", in the same write.
