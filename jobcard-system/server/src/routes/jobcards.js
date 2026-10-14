@@ -385,7 +385,8 @@ router.patch('/:id/status', authenticate, (req, res) => {
     const sendJob = () => {
       const updated = jobcardQueries.getById.get(id);
       const items = jobItemQueries.getByJobcard.all(id);
-      const response = formatJobcard(updated, items, [], req.user.role);
+      const assignees = jobAssigneeQueries.getByJobcard.all(id);
+      const response = formatJobcard(updated, items, assignees, req.user.role);
       response.attachmentWarnings = computeAttachmentWarnings(id, items);
       res.json(response);
     };
