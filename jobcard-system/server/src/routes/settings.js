@@ -182,24 +182,27 @@ router.put('/', requireManagement, async (req, res) => {
         return refuseField(res, 400, 'jobNumberNext', STARTING_JOB_NUMBER_MESSAGE);
       }
 
-      // Prevent setting the counter backward into a job number already handed out.
-      if (jobNumberNext) {
-        const currentSettings = db.getSettings();
-        const effectivePrefix = jobNumberPrefix !== undefined ? (jobNumberPrefix || '') : (currentSettings.job_number_prefix || '');
-        const newNum = parseInt(jobNumberNext, 10);
-        const width = jobNumberNext.length;
+      updates.job_number_next = jobNumberNext || '';
+    }
 
+    // Prevent the next number handed out from landing on a job number already
+    // used. Checked whenever the prefix OR the starting number changes: switching
+    // to a prefix that has history with the old counter would reuse a number too.
+    if (jobNumberPrefix !== undefined || jobNumberNext !== undefined) {
+      const currentSettings = db.getSettings();
+      const effectivePrefix = updates.job_number_prefix !== undefined ? updates.job_number_prefix : (currentSettings.job_number_prefix || '');
+      const effectiveNext = updates.job_number_next !== undefined ? updates.job_number_next : (currentSettings.job_number_next || '');
+      if (effectiveNext) {
+        const newNum = parseInt(effectiveNext, 10);
         const highest = db.highestUsedJobNumber(effectivePrefix);
         if (highest && newNum <= highest.num) {
-          const paddedMax = db.formatJobNumber('', highest.num, width);
+          const paddedMax = db.formatJobNumber('', highest.num, effectiveNext.length);
           const error = highest.deleted
             ? `Starting number must be greater than ${paddedMax} — job ${effectivePrefix}${paddedMax} was used by a job that has since been deleted`
             : `Starting number must be greater than ${paddedMax} — job ${effectivePrefix}${paddedMax} already exists`;
-          return refuseField(res, 400, 'jobNumberNext', error);
+          return refuseField(res, 400, jobNumberNext !== undefined ? 'jobNumberNext' : 'jobNumberPrefix', error);
         }
       }
-
-      updates.job_number_next = jobNumberNext || '';
     }
 
     // Overtime configuration (time zone, weekly schedule, default hourly rate,
