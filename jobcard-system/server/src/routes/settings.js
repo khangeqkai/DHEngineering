@@ -119,7 +119,9 @@ router.put('/', requireManagement, async (req, res) => {
     const refusedBefore = refusalFor(req.user.role);
     if (refusedBefore) return res.status(403).json({ error: refusedBefore });
 
-    const jobFoldersBase = req.body.jobFoldersBase;
+    // Trimmed before any check: "Z:\\ " would pass the drive-root check and then be read
+    // back as "Z:" — every job's files would break. What is checked is what is stored.
+    const jobFoldersBase = typeof req.body.jobFoldersBase === 'string' ? req.body.jobFoldersBase.trim() : req.body.jobFoldersBase;
     const inactivityTimeoutMinutes = req.body.inactivityTimeoutMinutes;
     const updates = {};
 
@@ -394,10 +396,26 @@ router.post('/export-backup', requirePermission('systemData'), [
 });
 
 // Import full backup from ZIP (admin only)
+let restoreRunning = false;
 router.post('/import-backup', requirePermission('systemData'), [
   requiredString('inputPath', 'Input path'),
   handleValidationErrors
 ], async (req, res) => {
+  // One restore at a time: a second one (a double-click, two admins) would wipe and
+  // reload while the first is still running, and the first one finishing would lift
+  // the maintenance block while the second is mid-way. Claimed before anything waits.
+  if (restoreRunning) {
+    return res.status(409).json({ error: 'A backup restore is already running. Wait for it to finish, then try again if needed.' });
+  }
+  restoreRunning = true;
+  try {
+    await importBackup(req, res);
+  } finally {
+    restoreRunning = false;
+  }
+});
+
+async function importBackup(req, res) {
   const { inputPath } = req.body;
 
   if (!fs.existsSync(inputPath)) {
@@ -583,6 +601,6 @@ router.post('/import-backup', requirePermission('systemData'), [
     if (maintenanceOn) setMaintenance(false);
     try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) { /* ignore */ }
   }
-});
+}
 
 module.exports = router;
