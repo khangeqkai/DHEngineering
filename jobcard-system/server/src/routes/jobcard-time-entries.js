@@ -241,7 +241,10 @@ function afterClockStarted(jobcardId, workerId, item, startTime, req, isSelf, en
     jobcardId,
     userId: workerId,
     itemId: item.id,
-    itemNumber: item.item_number,
+    // The part's place in the list as the screens number it, not its stored sort
+    // order (which keeps gaps after a part is removed) — the same number every
+    // other view of a running timer shows.
+    itemNumber: jobItemQueries.getByJobcard.all(jobcardId).findIndex(p => p.id === item.id) + 1,
     startTime
   };
 }
