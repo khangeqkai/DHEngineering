@@ -15,7 +15,7 @@ const { buildPacketPdf } = require('../utils/pdfPacket');
 const { renderHtmlToPdf } = require('../utils/htmlToPdf');
 const { jobcardQueries, recordHistory, actorName } = require('../db/database');
 const { findOr404 } = require('../utils/findOr404');
-const { ALLOWED_FILE_EXTENSIONS, MAX_PRINT_FILES } = require('../shared/jobFiles');
+const { ALLOWED_FILE_EXTENSIONS, MAX_PRINT_FILES, CATEGORY_FOLDER } = require('../shared/jobFiles');
 
 // Built from the shared allowlist so a printable extension can never drift from
 // what the file folders themselves accept.
@@ -74,7 +74,8 @@ printRouter.post('/:id/print', authenticate, (req, res) => {
 const validatePacket = [
   param('id').isString().trim().notEmpty(),
   body('items').isArray({ max: MAX_PRINT_FILES }).withMessage('Too many items'),
-  body('items.*.category').isString().notEmpty(),
+  body('items.*.category').isString().isIn(Object.keys(CATEGORY_FOLDER))
+    .withMessage(`category must be one of: ${Object.keys(CATEGORY_FOLDER).join(', ')}`),
   body('items.*.filename').isString().notEmpty().custom((v) => {
     if (!isPlainFileName(v)) {
       throw new Error('Invalid filename');
@@ -158,12 +159,24 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
       if (!isWithinBase(folderPath, filePath)) { skipped.push({ name, reason: 'missing' }); continue; }
       if (!fs.existsSync(filePath)) { skipped.push({ name, reason: 'missing' }); continue; }
 
-      totalBytes += fs.statSync(filePath).size;
-      if (totalBytes > MAX_PACKET_INPUT_BYTES) {
-        return res.status(413).json({ error: 'Selected files are too large to combine at once; print in smaller batches' });
+      // Any failure to size or read this one file (locked, permissions, removed since
+      // the check above, share error) is treated like a missing file: leave it out.
+      // The size is checked BEFORE reading, so an over-limit packet is refused without
+      // pulling a large file across the network for nothing.
+      let bytes;
+      try {
+        totalBytes += fs.statSync(filePath).size;
+        if (totalBytes > MAX_PACKET_INPUT_BYTES) {
+          return res.status(413).json({ error: 'Selected files are too large to combine at once; print in smaller batches' });
+        }
+        bytes = fs.readFileSync(filePath);
+      } catch (readErr) {
+        logger.warn({ err: readErr, storedName: filename }, 'Packet: could not read a chosen file; leaving it out');
+        skipped.push({ name, reason: 'missing' });
+        continue;
       }
 
-      files.push({ name, storedName: filename, ext, bytes: fs.readFileSync(filePath) });
+      files.push({ name, storedName: filename, ext, bytes });
     }
 
     let pdf, buildSkipped, cardIncluded;

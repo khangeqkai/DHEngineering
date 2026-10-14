@@ -14,10 +14,12 @@ const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
 // separately and doesn't count toward this.
 const MAX_PRINT_FILES = 20;
 
-// Stable URL slugs ↔ on-disk folder names.
-const CATEGORY_FOLDER = {
+// Stable URL slugs ↔ on-disk folder names. No prototype and frozen, so a lookup
+// by any other text ("constructor", "__proto__") finds nothing instead of an
+// inherited value that would then be fed to path.join.
+const CATEGORY_FOLDER = Object.freeze(Object.assign(Object.create(null), {
   'job-files': 'Job Files',
   'customer-property-files': 'Customer Property'
-};
+}));
 
 module.exports = { ALLOWED_FILE_EXTENSIONS, MAX_UPLOAD_BYTES, MAX_PRINT_FILES, CATEGORY_FOLDER };
