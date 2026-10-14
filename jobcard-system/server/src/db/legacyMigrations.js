@@ -653,6 +653,17 @@ function clearStaleAwaitingDetails() {
   if (cleared > 0) logger.info({ cleared }, 'Migration: Cleared old abandoned stop-form marks');
 }
 
+// The job-folders location is trimmed when it is saved, but one saved before that
+// may still end in a space ("Z:\\ "), which every reader would have to remember to
+// trim. Trimmed once here so every reader sees the clean value. Naturally idempotent.
+function trimJobFoldersBase() {
+  const value = settingsQueries.getByKey.get('job_folders_base')?.value;
+  if (typeof value === 'string' && value !== value.trim()) {
+    settingsQueries.upsert.run('job_folders_base', value.trim());
+    logger.info('Migration: Trimmed spaces from the stored job folders location');
+  }
+}
+
 function runLegacyMigrations() {
   logger.info('Running migrations...');
 
@@ -668,6 +679,12 @@ function runLegacyMigrations() {
     db.exec('DROP INDEX IF EXISTS idx_history_entity');
   } catch (err) {
     logger.error({ err }, 'Migration: Failed to drop superseded history indexes');
+  }
+
+  try {
+    trimJobFoldersBase();
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to trim the job folders location');
   }
 
   // One-shot wipe of legacy time_entries (Task 6 — per-item timer rewrite).

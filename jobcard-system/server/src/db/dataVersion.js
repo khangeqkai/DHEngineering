@@ -12,6 +12,7 @@
 // out again (3, 4 and 5 were a one-time pass that marked clocks open before self-stopping
 // clocks existed, and its marker; all since removed): backups stamped with them exist.
 // 6 dropped the unused jobcards.photos column.
-const DATA_VERSION = 6;
+// 7 trims a stored job folders location that ended in spaces.
+const DATA_VERSION = 7;
 
 module.exports = { DATA_VERSION };
