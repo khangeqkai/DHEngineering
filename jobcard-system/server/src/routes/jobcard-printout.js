@@ -46,10 +46,9 @@ printRouter.post('/:id/print', authenticate, (req, res) => {
     const view = buildJobCardView(req.params.id, jobcard, isManagement(req.user.role));
     const html = renderJobCardHtml(view);
 
-    recordHistory('jobcard', req.params.id, 'update', req.user.userId, actorName(req), {
-      jobCardPreviewed: { from: null, to: new Date().toISOString() }
-    });
-
+    // A preview is only a look: it records nothing (printing and saving the
+    // paperwork record their own entries), so opening it never touches an
+    // invoiced job's trail.
     res.json({ html });
   } catch (err) {
     logger.error({ err }, 'Print job card error');
