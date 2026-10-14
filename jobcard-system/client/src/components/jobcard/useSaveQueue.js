@@ -15,6 +15,10 @@ import { isJobClosedError } from '../../utils/jobLock';
 // to retry).
 export const NOT_LANDED = Symbol('notLanded');
 
+// How long a save from an earlier opening of the job is waited for before a new save
+// of the same box goes ahead anyway (see boundedTail).
+const OLD_OPENING_WAIT_MS = 20000;
+
 /**
  * One saving record per open job card — Contract A of
  * tasks/instant-save-root-causes.md. Every instant write (a job-level field, a
@@ -80,6 +84,16 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
   // its own travelling save, while another job's identical field name never waits on it.
   const chains = useRef({});
   const chainKey = (jobId, key) => `${jobId}|${key}`;
+  // Which opening each chain tail was asked for under. A tail from an EARLIER opening is
+  // still waited for (so an older save can't land after a newer one), but only up to
+  // OLD_OPENING_WAIT_MS: a save whose answer never comes (a dead connection) must not
+  // hold every later save of that box forever after the job is reopened.
+  const chainOpening = useRef({});
+  const boundedTail = useCallback((ck) => {
+    const tail = chains.current[ck];
+    if (!tail || chainOpening.current[ck] === openingRef.current) return tail;
+    return Promise.race([tail, new Promise(resolve => setTimeout(resolve, OLD_OPENING_WAIT_MS))]);
+  }, []);
 
   const setEntry = useCallback((key, patch) => {
     setEntries(prev => {
@@ -103,12 +117,12 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
     // fresh screen.
     const isCurrent = () => jobCardIdRef.current === forJobCardId && openingRef.current === forOpening;
     const ownKey = chainKey(forJobCardId, key);
-    const prior = chains.current[ownKey];
+    const prior = boundedTail(ownKey);
     // options.after: other keys whose writes already asked for must land (or fail)
     // before this one starts — for two fields one action changes together, so the
     // server applies them in click order — while each key keeps its OWN record, so
     // one field's failure is never hidden, or copied, by the other's write.
-    const ahead = [prior, ...(options.after || []).map(k => chains.current[chainKey(forJobCardId, k)])].filter(Boolean);
+    const ahead = [prior, ...(options.after || []).map(k => boundedTail(chainKey(forJobCardId, k)))].filter(Boolean);
 
     // Recorded the instant it's asked for, even if it turns out to run right
     // away — queued when something it must wait for is still ahead of it,
@@ -171,11 +185,15 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
     // work inside `run`'s .then), so this exists only to keep the promise chain
     // itself from ever surfacing as an unhandled rejection.
     const tracked = chained.catch(() => {}).finally(() => {
-      if (chains.current[ownKey] === tracked) delete chains.current[ownKey];
+      if (chains.current[ownKey] === tracked) {
+        delete chains.current[ownKey];
+        delete chainOpening.current[ownKey];
+      }
     });
     chains.current[ownKey] = tracked;
+    chainOpening.current[ownKey] = forOpening;
     return tracked;
-  }, [setEntry]);
+  }, [setEntry, boundedTail]);
 
   // Drops a key's own 'failed' record without sending anything — for a caller
   // that skips a write because the value already matches what's stored (an
@@ -240,9 +258,9 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
   // Only the current job's chains: another job's travelling save is none of this job's business.
   const whenSettled = useCallback(() => {
     const mine = `${jobCardIdRef.current}|`;
-    return Promise.allSettled(Object.entries(chains.current)
-      .filter(([k]) => k.startsWith(mine)).map(([, p]) => p));
-  }, []);
+    return Promise.allSettled(Object.keys(chains.current)
+      .filter(k => k.startsWith(mine)).map(boundedTail));
+  }, [boundedTail]);
 
   return { enqueue, stateOf, isPending, pending, reset, clearFailure, landedCount, whenSettled };
 }
