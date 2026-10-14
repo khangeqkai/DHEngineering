@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { base64ToBytes } from '../../utils/fileData';
 import { warningToastIcon, infoToastIcon } from '../common/toastIcons';
+import { downloadBlob } from '../../utils/downloadBlob';
 
 // Builds and prints/saves the combined "packet" PDF (job card + chosen files).
 // The server builds the whole packet — including rendering the job card to a PDF —
@@ -57,23 +58,10 @@ function showPdfInBrowser(win, bytes, filename) {
   return 'refused';
 }
 
-// Hands the packet to the browser and reports whether the browser took it. This fires
-// after the packet is built, so it is no longer inside the user's click and a strict
-// browser can refuse it — and refuses silently. A refusal means no file exists, so it
-// must not be recorded as a save.
+// Hands the packet to the browser (fires after the packet is built, so outside the
+// user's click — see downloadBlob) and reports whether the browser took it.
 function downloadBytes(bytes, filename) {
-  const blob = new Blob([bytes], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  let accepted = false;
-  try {
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    accepted = a.dispatchEvent(new MouseEvent('click', { bubbles: false, cancelable: true }));
-  } catch {
-    accepted = false;
-  }
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-  return accepted;
+  return downloadBlob(new Blob([bytes], { type: 'application/pdf' }), filename);
 }
 
 export function usePacketPrint(jobcardId, jobNumber, onPrinted) {

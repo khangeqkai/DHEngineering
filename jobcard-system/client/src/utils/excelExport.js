@@ -1,6 +1,7 @@
 import { formatDate as fmtDate, formatDateTime as fmtDateTime, todayIsoDate, formatHistoryValue } from './formatters';
 import { roundTo } from '../../../server/src/shared/round';
 import { STATUS_LABELS, PRIORITY_LABELS } from '../components/JobCardList.constants';
+import { downloadBlob } from './downloadBlob';
 // Tag labels are now dynamic (DB-driven). For exports, convert values to readable labels.
 
 // xlsx is a heavy library (~430 kB) but is only ever needed when the user
@@ -26,16 +27,12 @@ export async function saveWorkbook(wb, defaultName) {
     return true;
   }
 
-  // Web fallback — blob download
+  // Web fallback — blob download. The sheet is built after an await, so the browser may
+  // refuse the download; a refusal must not be reported as an export.
   const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = defaultName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  if (!downloadBlob(blob, defaultName)) {
+    throw new Error("Your browser didn't start the download. Allow downloads for this site and try again.");
+  }
   return true;
 }
 
