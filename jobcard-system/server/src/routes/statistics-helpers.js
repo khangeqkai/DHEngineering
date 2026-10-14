@@ -327,7 +327,7 @@ function fetchInRangeTimeEntries(bufferedStartIso, bufferedEndIso, startDate, en
            te.first_off_inspection, te.in_process_validation,
            te.measuring_equipment_verification, te.equipment_checks,
            u.name AS user_name, u.username, u.employee_id, u.role, u.active AS user_active,
-           j.job_number, j.company_name AS j_company_name, c.name AS j_resolved_company
+           j.job_number, j.company_name AS j_company_name, j.company_id AS j_company_id, c.name AS j_resolved_company
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
     JOIN jobcards j ON te.jobcard_id = j.id
@@ -522,8 +522,10 @@ function processTimeEntries(inRangeTimeEntries, jobCostingsMap, defaultRules, ac
     if (te.equipment_checks === 1) totalInspectionChecks++;
 
     // Customer hours directly from period entries
-    const custName = te.j_resolved_company || te.j_company_name || 'Unknown';
-    customerHoursMap.set(custName, (customerHoursMap.get(custName) || 0) + dur);
+    const cust = customerGroup(te.j_company_id, te.j_resolved_company || te.j_company_name);
+    const custHours = customerHoursMap.get(cust.key);
+    if (custHours) custHours.hours += dur;
+    else customerHoursMap.set(cust.key, { name: cust.name, hours: dur });
 
     // Worker aggregation
     if (!workerEntriesMap.has(te.user_id)) {
@@ -785,11 +787,19 @@ function invoicedTotalsByJob(jobIds, ot) {
   return totals;
 }
 
+// Which customer a job or time block counts under: the company's permanent id
+// when it has one (two companies sharing a name stay apart), otherwise the name
+// it was saved under. The name is only what gets shown.
+function customerGroup(companyId, name) {
+  const shown = name || 'Unknown';
+  return { key: companyId ? `id:${companyId}` : `name:${shown}`, name: shown };
+}
+
 function buildCustomerRankings(inRangeJobs, completedInRangeJobs, customerHoursMap, fmt, userRole, ot) {
   const customerMap = new Map();
-  const getOrCreateCustomer = (cName) => {
-    if (!customerMap.has(cName)) {
-      customerMap.set(cName, {
+  const getOrCreateCustomer = (key, cName) => {
+    if (!customerMap.has(key)) {
+      customerMap.set(key, {
         companyName: cName,
         jobsCount: 0,
         completedCount: 0,
@@ -799,11 +809,16 @@ function buildCustomerRankings(inRangeJobs, completedInRangeJobs, customerHoursM
         invoicedTotal: 0
       });
     }
-    return customerMap.get(cName);
+    return customerMap.get(key);
+  };
+
+  const getOrCreateJobCustomer = (j) => {
+    const g = customerGroup(j.company_id, j.resolved_company_name || j.company_name);
+    return getOrCreateCustomer(g.key, g.name);
   };
 
   for (const j of inRangeJobs) {
-    const c = getOrCreateCustomer(j.resolved_company_name || j.company_name || 'Unknown');
+    const c = getOrCreateJobCustomer(j);
     c.jobsCount++;
     if (j.is_repeat_job) c.repeatCount++;
   }
@@ -813,7 +828,7 @@ function buildCustomerRankings(inRangeJobs, completedInRangeJobs, customerHoursM
     : new Map();
 
   for (const j of completedInRangeJobs) {
-    const c = getOrCreateCustomer(j.resolved_company_name || j.company_name || 'Unknown');
+    const c = getOrCreateJobCustomer(j);
     c.completedCount++;
     const fDate = getJobFinishDate(j, j.max_entry_end, fmt);
     if (j.due_date && fDate) {
@@ -825,14 +840,14 @@ function buildCustomerRankings(inRangeJobs, completedInRangeJobs, customerHoursM
     }
   }
 
-  for (const [custName] of customerHoursMap.entries()) {
-    getOrCreateCustomer(custName);
+  for (const [key, { name }] of customerHoursMap.entries()) {
+    getOrCreateCustomer(key, name);
   }
 
-  return Array.from(customerMap.values())
-    .map(c => {
+  return Array.from(customerMap.entries())
+    .map(([key, c]) => {
       const rated = c.onTimeCount + c.lateCount;
-      const hoursInPeriod = roundTo(customerHoursMap.get(c.companyName) || 0, 1);
+      const hoursInPeriod = roundTo(customerHoursMap.get(key)?.hours || 0, 1);
       return {
         ...c,
         totalHours: hoursInPeriod,
