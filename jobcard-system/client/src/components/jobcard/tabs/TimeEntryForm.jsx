@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { capitalizeFirst, formatDateTime } from '../../../utils/formatters';
 import CheckboxDropdown from '../../common/CheckboxDropdown';
 import FieldError from '../../common/FieldError';
@@ -32,6 +32,8 @@ export default function TimeEntryForm({
   // A double-click here records the block twice, doubling the job's hours.
   // One save at a time: the button greys out until the save finishes.
   const [saving, setSaving] = useState(false);
+  const formRef = useRef(null);
+  const saveButtonRef = useRef(null);
   // Every box here already carries the name the form state uses; this turns that
   // same name into the id its label points at, so clicking a label lands in its box
   // and a screen reader reads the two together.
@@ -94,8 +96,25 @@ export default function TimeEntryForm({
     })
   ];
 
+  // A disabled box cannot take focus, so a mark raised during the save (and the focus the lock
+  // dropped) is handled once the lock lifts: the first marked box, else back to the save button.
+  // Only while the form still shows the block that save was for — if another block was opened
+  // for editing meanwhile, the save's outcome has nothing to say about that form.
+  const wasSavingRef = useRef(false);
+  const savingForRef = useRef(null);
+  useEffect(() => {
+    const was = wasSavingRef.current;
+    wasSavingRef.current = saving;
+    if (!was || saving || !formRef.current) return;
+    if (savingForRef.current !== editingTimeEntryId) return;
+    const marked = formRef.current.querySelector('[aria-invalid="true"]');
+    if (marked) marked.focus({ preventScroll: true });
+    else if (document.activeElement === document.body) saveButtonRef.current?.focus({ preventScroll: true });
+  }, [saving, editingTimeEntryId]);
+
   const handleSave = async () => {
     if (saving) return;
+    savingForRef.current = editingTimeEntryId;
     setSaving(true);
     try {
       await handleSaveTimeEntry();
@@ -105,12 +124,16 @@ export default function TimeEntryForm({
   };
 
   return (
-    <div className="time-entry-form costing-entry-form">
+    <div className="time-entry-form costing-entry-form" ref={formRef}>
+      {/* One lock for the whole form while a save is on its way, so a refusal is always applied to
+          what was actually sent and nothing typed mid-save is lost to the reset. Every box and button
+          inside is covered, including any added later — no box carries its own saving lock. */}
+      <fieldset className="form-save-lock" disabled={saving}>
       <div className="form-section-header">
         <h3 className="form-section-title">
           {editingTimeEntryId ? 'Edit Time Entry' : 'New Time Entry'}
         </h3>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={resetTimeEntryForm} disabled={saving}>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={resetTimeEntryForm}>
           Cancel
         </button>
       </div>
@@ -264,9 +287,6 @@ export default function TimeEntryForm({
             name="startTime"
             value={timeEntryForm.startTime}
             onChange={handleTimeEntryChange}
-            // The times are locked while a save is on its way, so a refusal is always applied to what was
-            // actually sent. Read-only, not disabled: a mark raised by that save still moves focus to its box.
-            readOnly={saving}
             aria-invalid={errorFor('startTime') ? true : undefined}
             aria-describedby={errorFor('startTime') ? errorIdFor('startTime') : undefined}
           />
@@ -280,7 +300,6 @@ export default function TimeEntryForm({
             name="endTime"
             value={timeEntryForm.endTime}
             onChange={handleTimeEntryChange}
-            readOnly={saving}
             aria-invalid={errorFor('endTime') ? true : undefined}
             aria-describedby={errorFor('endTime') ? errorIdFor('endTime') : undefined}
           />
@@ -309,7 +328,6 @@ export default function TimeEntryForm({
                     name="confirmFinish"
                     checked={!!timeEntryForm.confirmFinish}
                     onChange={handleTimeEntryChange}
-                    disabled={saving}
                   />
                   This finish is right — confirm it for them
                 </label>
@@ -319,9 +337,10 @@ export default function TimeEntryForm({
         </div>
       </div>
 
-      <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
+      <button type="button" className="btn btn-primary" ref={saveButtonRef} onClick={handleSave}>
         {saving ? 'Saving…' : editingTimeEntryId ? 'Update Entry' : 'Save Entry'}
       </button>
+      </fieldset>
     </div>
   );
 }

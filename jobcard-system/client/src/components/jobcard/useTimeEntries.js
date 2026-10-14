@@ -244,7 +244,21 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
         return;
       }
     }
-    if (endTime && (startChanged || endSent)) {
+    // A moved start against a finish that is NOT being sent (a confirm-only save, or an
+    // untouched box): the box shows the stored finish cut down to the minute, so the real
+    // finish lies somewhere in that minute. A start past the box's minute is past the real
+    // finish whatever its seconds — flag it now. A start ON that minute can't be judged
+    // from here; the server, which has the seconds, decides it.
+    if (startChanged && !endSent && endTime) {
+      const shownEnd = new Date(endTime).getTime();
+      if (!isNaN(shownEnd) && start > shownEnd) {
+        setFieldErrors({ startTime: 'Start time must be before the finish time' });
+        scrollFieldIntoView('startTime');
+        return;
+      }
+    }
+    // A finish that is being sent is judged against the start here in full.
+    if (endTime && endSent) {
       const end = new Date(endTime).getTime();
       if (endSent && isNaN(end)) {
         setFieldErrors({ endTime: 'Finish time is not a valid date' });

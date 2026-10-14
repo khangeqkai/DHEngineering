@@ -3448,6 +3448,14 @@
   }
 }
 
+/* The save lock is a disabled fieldset; strip the browser's fieldset chrome so it is invisible. */
+.form-save-lock {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
 .costing-entry-form {
   margin-bottom: var(--space-4);
 }
