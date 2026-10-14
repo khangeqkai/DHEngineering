@@ -35,11 +35,11 @@ function itemSummary(qty, description, jobType, material, treatments, drawingsTy
 }
 
 // Resolve a list of assignee user IDs to a comma-separated display name string.
-function assigneeNames(userIds) {
+function namesOfUserIds(userIds) {
   return userIds.map(userId => {
     const user = userQueries.getById.get(userId);
     return user ? (user.name || user.username) : userId;
   }).join(', ');
 }
 
-module.exports = { itemSummary, describePart, assigneeNames };
+module.exports = { itemSummary, describePart, namesOfUserIds };

@@ -16,6 +16,7 @@ const { diffFields } = require('../utils/historyChanges');
 const { officeDateString } = require('../utils/officeTime');
 const { formatDayAu } = require('../shared/calendarDate');
 const { splitAnswer, isNaAnswer, declaresAnswer } = require('../shared/lineItemAnswers');
+const { partTagRegex, partTagWithSpaceRegex } = require('../shared/partFileTag');
 
 // Customer/contact fields hidden from non-admins. Used both when formatting a
 // job card and when sanitizing a job card's history so the two protections stay
@@ -51,8 +52,7 @@ function hasItemFile(names, itemId) {
   const { partFileCode } = require('./jobcard-files');
   const code = partFileCode(itemId);
   if (!code) return false;
-  const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const tagAtEnd = new RegExp(`\\[${escaped}\\](?: \\(\\d+\\))?$`);
+  const tagAtEnd = partTagRegex(code);
   return names.some(name => {
     const base = name.slice(0, name.length - path.extname(name).length);
     return tagAtEnd.test(base);
@@ -67,9 +67,8 @@ function itemFileDisplayNames(names, itemId) {
   const { partFileCode } = require('./jobcard-files');
   const code = partFileCode(itemId);
   if (!code) return [];
-  const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const tagAtEnd = new RegExp(`\\[${escaped}\\](?: \\(\\d+\\))?$`);
-  const stripTag = new RegExp(` \\[${escaped}\\](?: \\(\\d+\\))?$`);
+  const tagAtEnd = partTagRegex(code);
+  const stripTag = partTagWithSpaceRegex(code);
   return names
     .filter(name => tagAtEnd.test(name.slice(0, name.length - path.extname(name).length)))
     .map(name => {
@@ -529,12 +528,8 @@ function createRelatedRecords(jobcardId, data) {
 
   if (data.assigneeIds && Array.isArray(data.assigneeIds)) {
     for (const userId of data.assigneeIds) {
-      const assigneeId = `assignee:${uuidv4()}`;
-      try {
-        jobAssigneeQueries.create.run(assigneeId, jobcardId, userId);
-      } catch (e) {
-        // Ignore duplicate
-      }
+      // The create route has already refused unknown/archived workers and repeats.
+      jobAssigneeQueries.create.run(`assignee:${uuidv4()}`, jobcardId, userId);
     }
   }
 }
