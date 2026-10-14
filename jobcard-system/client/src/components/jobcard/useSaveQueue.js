@@ -116,7 +116,10 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
       // just settled (successfully or not) and it's this one's turn now — either
       // way the write actually starts here, which is the only place 'inFlight'
       // is set once a key has been queued behind something else.
-      setEntry(key, { label, state: 'inFlight' });
+      // A write queued under an earlier opening (closed and reopened while it waited)
+      // still runs — it was asked for — but must not mark the reopened job "Saving…":
+      // nothing on this opening would ever clear that mark.
+      if (isCurrent()) setEntry(key, { label, state: 'inFlight' });
       return run(isCurrent).then(
         (result) => {
           // A reply for a job the user has since left — or for an earlier opening of
