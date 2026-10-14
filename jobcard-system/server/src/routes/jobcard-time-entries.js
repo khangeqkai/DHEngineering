@@ -337,7 +337,10 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
     // just said was still going, so a quick stop is a real (if short) stretch of work, and
     // discarding it would skip the stop form — and with it the Critical sign-off that
     // stretch of work always has to be asked for.
-    const discarded = existing.continues_run === 1 ? null : discardIfAccidentalTap(id, existing, req.user);
+    // A closed (archived) job is frozen, and the discard would put its status and worker
+    // list back — so a stop there is recorded as a normal block, never discarded.
+    const jobIsClosed = jobcardQueries.getById.get(id)?.archived === 1;
+    const discarded = existing.continues_run === 1 || jobIsClosed ? null : discardIfAccidentalTap(id, existing, req.user);
     if (discarded) return res.json(discarded);
 
     const endTime = new Date().toISOString();
@@ -869,7 +872,8 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
 
         // Show who the block was re-credited to, by name, when an admin changed the owner.
         if (workerId !== existing.user_id) {
-          const toName = userQueries.getById.get(workerId).name;
+          const toWorker = userQueries.getById.get(workerId);
+          const toName = toWorker.name || toWorker.username;
           changes.worker = { from: existing.user_name, to: toName };
         }
 
