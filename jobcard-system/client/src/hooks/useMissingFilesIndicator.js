@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { api } from '../services/api';
+import { warningToastIcon } from '../components/common/toastIcons';
 
 // How long to wait before retrying a row whose check failed (a connection blip),
 // so a row never sits on the loading hint forever when the visible set is static.
@@ -26,6 +28,10 @@ export function useMissingFilesIndicator() {
   // just-attached file), so we must not let it win — these get re-fetched once
   // the in-flight call returns.
   const dirtyRef = useRef(new Set());
+  // Ids whose failed check has already had its one retry. A second failure is left
+  // alone (the row keeps its loading hint) until a fresh ask — `ensure` for a new
+  // list load, or `refresh` after a change to that job — clears the mark.
+  const retriedRef = useRef(new Set());
   // Retry timers, cleared on unmount.
   const mountedRef = useRef(true);
   const timersRef = useRef(new Set());
@@ -44,6 +50,15 @@ export function useMissingFilesIndicator() {
   const fetchFor = useCallback(async (ids) => {
     try {
       const res = await api.getAttachmentWarnings(ids);
+      for (const id of ids) retriedRef.current.delete(id);
+      // The job files' drive couldn't be reached, so nothing was looked at: these
+      // jobs are NOT checked (a later load or refresh asks again), and one notice
+      // says so instead of the rows quietly reading as clean.
+      if (res?.filesUnreachable) {
+        toast('Job files could not be checked right now. Missing-file markers may be incomplete.',
+          { id: 'attachment-check-unreachable', icon: warningToastIcon });
+        return;
+      }
       const checked = res?.checked || ids;
       const flagged = res?.flagged || [];
       const flaggedMap = new Map(flagged.map(f => [f.jobcardId, f]));
@@ -68,15 +83,19 @@ export function useMissingFilesIndicator() {
       // Leave these ids unchecked and schedule one retry, so a momentary blip
       // doesn't strand the row on the loading hint until the page changes.
       if (mountedRef.current) {
-        const t = setTimeout(() => {
-          timersRef.current.delete(t);
-          const retry = ids.filter(id => !checkedRef.current.has(id) && !inFlightRef.current.has(id));
-          if (retry.length) {
-            for (const id of retry) inFlightRef.current.add(id);
-            fetchFor(retry);
-          }
-        }, RETRY_DELAY_MS);
-        timersRef.current.add(t);
+        const retryable = ids.filter(id => !retriedRef.current.has(id));
+        for (const id of retryable) retriedRef.current.add(id);
+        if (retryable.length) {
+          const t = setTimeout(() => {
+            timersRef.current.delete(t);
+            const retry = retryable.filter(id => !checkedRef.current.has(id) && !inFlightRef.current.has(id));
+            if (retry.length) {
+              for (const id of retry) inFlightRef.current.add(id);
+              fetchFor(retry);
+            }
+          }, RETRY_DELAY_MS);
+          timersRef.current.add(t);
+        }
       }
     } finally {
       for (const id of ids) inFlightRef.current.delete(id);
@@ -100,7 +119,7 @@ export function useMissingFilesIndicator() {
       id => id && !checkedRef.current.has(id) && !inFlightRef.current.has(id)
     );
     if (fresh.length === 0) return;
-    for (const id of fresh) inFlightRef.current.add(id);
+    for (const id of fresh) { inFlightRef.current.add(id); retriedRef.current.delete(id); }
     fetchFor(fresh);
   }, [fetchFor]);
 
@@ -117,6 +136,7 @@ export function useMissingFilesIndicator() {
         dirtyRef.current.add(id);
       } else {
         checkedRef.current.delete(id);
+        retriedRef.current.delete(id);
         inFlightRef.current.add(id);
         now.push(id);
       }
