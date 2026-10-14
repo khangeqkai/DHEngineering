@@ -27,8 +27,8 @@ export const NOT_LANDED = Symbol('notLanded');
  *
  * A key's entry is one of:
  *   - absent            -> stateOf returns 'idle': nothing outstanding.
- *   - { state: 'queued' }   -> asked for, but a write for the SAME key is still
- *                              running ahead of it.
+ *   - { state: 'queued' }   -> asked for, but a write for the SAME key (or a key
+ *                              named in options.after) is still running ahead of it.
  *   - { state: 'inFlight' } -> this write's turn has actually begun.
  *   - { state: 'failed' }   -> it ran and was refused/errored; stays exactly like
  *                              this, unretried, until the caller enqueues that key
@@ -100,11 +100,16 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
     // fresh screen.
     const isCurrent = () => jobCardIdRef.current === forJobCardId && openingRef.current === forOpening;
     const prior = chains.current[key];
+    // options.after: other keys whose writes already asked for must land (or fail)
+    // before this one starts — for two fields one action changes together, so the
+    // server applies them in click order — while each key keeps its OWN record, so
+    // one field's failure is never hidden, or copied, by the other's write.
+    const ahead = [prior, ...(options.after || []).map(k => chains.current[k])].filter(Boolean);
 
     // Recorded the instant it's asked for, even if it turns out to run right
-    // away — queued when something for this same key is still ahead of it,
+    // away — queued when something it must wait for is still ahead of it,
     // otherwise its turn starts immediately.
-    setEntry(key, { label, state: prior ? 'queued' : 'inFlight' });
+    setEntry(key, { label, state: ahead.length ? 'queued' : 'inFlight' });
 
     const task = () => {
       // Either this is the first write for the key, or the one ahead of it has
@@ -152,7 +157,8 @@ export function useSaveQueue(jobCardId, { onJobClosed } = {}) {
       );
     };
 
-    const chained = prior ? prior.then(task, task) : task();
+    // Every tail in `chains` is already a never-rejecting promise (see `tracked`).
+    const chained = ahead.length ? Promise.all(ahead).then(task) : task();
     // Swallowed separately from `chained` below: nothing outside this hook reads
     // enqueue's own return value for its resolution (every caller does its own
     // work inside `run`'s .then), so this exists only to keep the promise chain

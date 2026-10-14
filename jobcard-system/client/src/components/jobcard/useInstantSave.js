@@ -12,6 +12,13 @@ import { NOT_LANDED } from './useSaveQueue';
 // validity depends on another field's stored value rather than its own content.
 const FIELD_BOXES = { repeatJobReference: 'repeatJobReference' };
 
+// Fields one action changes together: the Repeat Job tick's click blurs the
+// reference box, so both writes go out milliseconds apart. Each waits for the
+// other's write already asked for, so they land in click order (a late reference
+// reply can no longer put the stored copy back after the tick cleared it), while
+// each keeps its own saving/failed record.
+const LINKED_FIELDS = { isRepeatJob: 'repeatJobReference', repeatJobReference: 'isRepeatJob' };
+
 // What the shared status line beside a group of instant-save fields shows. There is
 // deliberately no 'idle' entry — the line only appears once something in the group
 // has actually happened; before that, summarizeFieldStates below returns 'idle' and
@@ -118,7 +125,10 @@ export function useInstantSave(jobCardId, saveQueue, { onSaved, onAttachmentWarn
           return NOT_LANDED;
         }
         throw err;
-      }), { label: JOB_FIELD_LABEL[name] || `the ${name}` });
+      }), {
+      label: JOB_FIELD_LABEL[name] || `the ${name}`,
+      ...(LINKED_FIELDS[name] ? { after: [`field:${LINKED_FIELDS[name]}`] } : {})
+    });
   }, [saveQueue, onSaved, onAttachmentWarnings, fieldErrors]);
 
   // Live queued/inFlight/failed state layered over the "ever saved" record — a
