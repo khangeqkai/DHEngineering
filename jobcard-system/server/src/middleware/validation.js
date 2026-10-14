@@ -378,6 +378,40 @@ const validateJobcardListQuery = [
 ];
 
 /**
+ * Search box and its filters. Every value must be a single piece of text: a link
+ * that repeats a filter (q=a&q=b) or nests one (q[x]=1) would otherwise reach the
+ * search code as a list or object and break it, so it is refused here instead.
+ * GET /search
+ */
+const SEARCH_QUERY_KEYS = [
+  'scope', 'q', 'page', 'status', 'assigneeId', 'priority', 'jobType', 'qualityLevel',
+  'dateFrom', 'dateTo', 'dateField', 'includeArchived', 'peopleType', 'userId', 'action',
+  'entityType', 'field', 'workerId', 'machineId', 'jobNumber'
+];
+const validateSearchQuery = [
+  query(SEARCH_QUERY_KEYS)
+    .optional()
+    .isString()
+    .withMessage('Search values must be plain text, given once'),
+  handleValidationErrors
+];
+
+/**
+ * Missing-attachments check for the job list. The list asks about one page of
+ * rows at a time (50), plus a pinned job; each id costs a folder read, so the
+ * number of jobs per request is capped.
+ * POST /jobcards/attachment-warnings
+ */
+const ATTACHMENT_WARNINGS_MAX_IDS = 100;
+const validateAttachmentWarningsBody = [
+  body('ids')
+    .optional()
+    .isArray({ max: ATTACHMENT_WARNINGS_MAX_IDS })
+    .withMessage(`ids must be a list of at most ${ATTACHMENT_WARNINGS_MAX_IDS} job ids`),
+  handleValidationErrors
+];
+
+/**
  * Job card enum field validation
  * Used for both create and update routes
  */
@@ -577,6 +611,8 @@ module.exports = {
   validateCreateMachine,
   validateUpdateMachine,
   validateJobcardListQuery,
+  validateSearchQuery,
+  validateAttachmentWarningsBody,
   validateJobcardEnums,
   validateJobcardDueDate,
   validateJobcardContactFields,

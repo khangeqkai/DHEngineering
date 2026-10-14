@@ -104,7 +104,7 @@ router.post('/', requireManagement, (req, res) => {
       return res.status(400).json({ error: `Category is required and must be one of: ${VALID_CATEGORIES.join(', ')}` });
     }
 
-    if (!name || !name.trim()) {
+    if (typeof name !== 'string' || !name.trim()) {
       return refuseField(res, 400, 'name', 'Tag name is required');
     }
 
@@ -177,7 +177,7 @@ router.put('/:id', requireManagement, (req, res) => {
     const existing = findOr404(res, tagQueries.getById.get(id), 'Tag not found');
     if (!existing) return;
 
-    if (!name || !name.trim()) {
+    if (typeof name !== 'string' || !name.trim()) {
       return refuseField(res, 400, 'name', 'Tag name is required');
     }
 

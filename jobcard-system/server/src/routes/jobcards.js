@@ -5,15 +5,16 @@ const logger = require('../utils/logger');
 const { assigneeNames } = require('../utils/historyChanges');
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
 const { isActiveRecord } = require('../shared/records');
-const { deleteJobCardFolders } = require('../utils/folderCreation');
+const { deleteJobCardFolders, isBaseReachable } = require('../utils/folderCreation');
 const { authenticate, requireManagement, requirePermission, canSetStatus } = require('../middleware/auth');
-const { validateJobcardListQuery, JOBCARD_STATUSES } = require('../middleware/validation');
+const { validateJobcardListQuery, validateAttachmentWarningsBody, JOBCARD_STATUSES } = require('../middleware/validation');
 const {
   jobcardQueries,
   jobItemQueries,
   jobAssigneeQueries,
   timeEntryQueries,
   userQueries,
+  getSettings,
   getAssigneesForJobcards,
   getLatestNotesForJobcards,
   historyQueries,
@@ -84,11 +85,19 @@ router.get('/', authenticate, validateJobcardListQuery, (req, res) => {
 // list can tell "checked, clean" apart from "not checked yet") plus the detail
 // for the ones that have a declared-but-not-attached gap. Registered before
 // '/:id' so the literal path isn't swallowed by it.
-router.post('/attachment-warnings', authenticate, (req, res) => {
+router.post('/attachment-warnings', authenticate, validateAttachmentWarningsBody, (req, res) => {
   try {
     const rawIds = Array.isArray(req.body?.ids) ? req.body.ids : [];
     // De-dupe and keep only well-formed string ids.
     const ids = [...new Set(rawIds.filter(id => typeof id === 'string' && id))];
+
+    // An offline drive or share is answered once, up front: reading every job's
+    // folder against it would stall the whole server for each one. Nothing is
+    // looked at, so nothing is flagged (the same answer each job gave before).
+    const base = (getSettings().job_folders_base || '').trim();
+    if (base && !isBaseReachable(base)) {
+      return res.json({ checked: ids, flagged: [], filesUnreachable: true });
+    }
 
     const flagged = [];
     for (const id of ids) {

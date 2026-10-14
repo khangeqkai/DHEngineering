@@ -7,6 +7,7 @@ const { customerFields } = require('./jobcard-helpers');
 const { supplierContactFields } = require('./supplier-helpers');
 const { roundTo } = require('../shared/round');
 const logger = require('../utils/logger');
+const { validateSearchQuery } = require('../middleware/validation');
 
 const router = express.Router();
 const PAGE_SIZE = 25;
@@ -161,7 +162,7 @@ function formatTimeEntry(row) {
 
 // --- Route ---
 
-router.get('/', authenticate, (req, res) => {
+router.get('/', authenticate, validateSearchQuery, (req, res) => {
   try {
     const scope = req.query.scope || 'all';
     const canManage = isManagement(req.user.role);
