@@ -7,8 +7,9 @@ const jobcardQueries = {
 
   // Every job number starting with this prefix — the prefix-scan half of
   // highestUsedJobNumber (db/helpers.js), which decides how low a new starting
-  // number is allowed to go.
-  getByPrefix: db.prepare('SELECT job_number FROM jobcards WHERE substr(job_number, 1, ?) = ?'),
+  // number is allowed to go. Case-insensitive: Windows folders are, so "dh-0001"
+  // would share DH-0001's folder.
+  getByPrefix: db.prepare('SELECT job_number FROM jobcards WHERE lower(substr(job_number, 1, ?)) = lower(?)'),
 
   getAll: db.prepare(`
     SELECT j.*

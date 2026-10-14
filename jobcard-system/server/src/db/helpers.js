@@ -62,10 +62,13 @@ function highestUsedJobNumber(prefix) {
   const existingRows = jobcardQueries.getByPrefix.all(prefix.length, prefix);
   const deletedRows = historyQueries.getDeletedJobNumbers.all();
 
+  // Compared without regard to case: Windows folders are case-insensitive, so
+  // "dh-0001" would share DH-0001's folder.
+  const prefixLower = prefix.toLowerCase();
   let maxExisting = 0;
   let maxIsDeleted = false;
   const consider = (jobNumber, deleted) => {
-    if (typeof jobNumber !== 'string' || !jobNumber.startsWith(prefix)) return;
+    if (typeof jobNumber !== 'string' || !jobNumber.toLowerCase().startsWith(prefixLower)) return;
     const num = parseInt(jobNumber.slice(prefix.length), 10);
     if (!isNaN(num) && num > maxExisting) { maxExisting = num; maxIsDeleted = deleted; }
   };
