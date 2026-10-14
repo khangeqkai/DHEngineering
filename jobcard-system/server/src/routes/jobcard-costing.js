@@ -16,6 +16,8 @@ const router = express.Router();
 router.get('/:id/costing', authenticate, requirePermission('pricing'), (req, res) => {
   try {
     const jobId = req.params.id;
+    // A job deleted from another PC: say so, instead of a blank $0.00 sheet.
+    if (!findOr404(res, jobcardQueries.getById.get(jobId), 'Job card not found')) return;
 
     // Every job — open or invoiced — owns its own overtime rules and rate, so recomputing
     // on the spot from logged time + those captured rules always reproduces the billed

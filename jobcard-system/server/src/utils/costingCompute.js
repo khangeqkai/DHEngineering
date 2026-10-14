@@ -162,7 +162,8 @@ function computeCosting(jobId, existing, entries, ot, incoming) {
     normalTotal + ot1Total + ot2Total + holidayTotal + specialTotal + materialsTotal + subTotal, 2);
 
   const row = {
-    id: (existing && existing.id) || src.id || `costing:${uuidv4()}`,
+    // The stored row's id, or a new one — never an id sent from the screen.
+    id: (existing && existing.id) || `costing:${uuidv4()}`,
     jobcard_id: jobId,
     labour_hours: normalCalc,
     labour_hours_override: normalOverride,
