@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 
 const config = require('../config');
 const logger = require('../utils/logger');
-const { authenticate, requireManagement, can, ALL_ROLES } = require('../middleware/auth');
+const { authenticate, requireManagement, can, isManagement, ALL_ROLES } = require('../middleware/auth');
 const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences, PIN_REGEX, PIN_MESSAGE } = require('../middleware/validation');
 const { db, userQueries, jobNoteQueries, timeEntryQueries, recordHistory, actorName, getSettings } = require('../db/database');
 const { diffFields } = require('../utils/historyChanges');
@@ -265,6 +265,15 @@ router.get('/users/:id', authenticate, requireManagement, (req, res) => {
 });
 
 // Create user (admin or manager; only admins can create admins)
+// The caller's role as it stands NOW. req.user.role is read when the request arrives;
+// a route that waits (hashing a PIN) re-reads it after the wait, so a demotion or an
+// archive that landed meanwhile applies to this request too. Null when the caller is
+// no longer an active account.
+function liveRole(req) {
+  const row = userQueries.getAuthState.get(req.user.userId);
+  return row && row.active === 1 ? row.role : null;
+}
+
 router.post('/users', authenticate, requireManagement, userCreationLimiter, validateCreateUser, async (req, res) => {
   try {
     const { username, password, role, name, email } = req.body;
@@ -285,6 +294,21 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
     // Create user
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = `user:${uuidv4()}`;
+
+    // The hash waited, so the checks above are made again against what is stored now:
+    // the caller may have been demoted or archived, and the same username may have been
+    // created meanwhile (two managers at once, or a double-click).
+    const actorRole = liveRole(req);
+    if (!isManagement(actorRole)) {
+      return res.status(403).json({ error: 'Your account can no longer manage users' });
+    }
+    if (role === 'admin' && !can(actorRole, 'adminAccounts')) {
+      return res.status(403).json({ error: 'Only admins can create admin accounts' });
+    }
+    const takenMeanwhile = userQueries.getByUsername.get(username);
+    if (nameConflictOr409(res, takenMeanwhile, null, { entityLabel: 'user', nameLabel: 'username', field: 'username', isArchived: (row) => !row.active })) {
+      return;
+    }
 
     // The new account and its trail entry commit together.
     db.transaction(() => {
@@ -331,8 +355,6 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     const { id } = req.params;
     const { password, role, name, email } = req.body;
 
-    // Check permissions
-    const canManageAdmins = can(req.user.role, 'adminAccounts');
     const isSelf = req.user.userId === id;
 
     // Changing your OWN PIN always goes through PUT /auth/change-password, which
@@ -345,8 +367,8 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     }
 
     // Validate the PIN and hash it FIRST, before the account is read or any check runs.
-    // Hashing waits, and nothing may wait between the checks below (the last-admin
-    // rule above all) and the write they guard — two admins demoting each other at
+    // Hashing waits, and nothing may wait between the checks below (the caller's own
+    // role, re-read after the hash, and the last-admin rule above all) and the write they guard — two admins demoting each other at
     // once would both pass, or an older read of the account could overwrite a newer
     // change. From the read onward the route runs straight through to the commit, so
     // the new PIN, the sign-out of whoever holds the old one and the trail entry that
@@ -355,6 +377,14 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
       return res.status(400).json({ error: PIN_MESSAGE });
     }
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+
+    // Permissions from the caller's role as it stands after that wait — an admin demoted
+    // while the PIN was hashing must not finish resetting another admin's PIN.
+    const actorRole = liveRole(req);
+    if (!isManagement(actorRole)) {
+      return res.status(403).json({ error: 'Your account can no longer manage users' });
+    }
+    const canManageAdmins = can(actorRole, 'adminAccounts');
 
     // A role must be a real one (requireManagement already limits this route to admins and managers).
     if (role && !ALL_ROLES.includes(role)) {
@@ -549,7 +579,15 @@ router.put('/change-password', authenticate, async (req, res) => {
     // Rotate the session so any OTHER device still signed in with the old PIN is
     // kicked, while the person making the change stays logged in via a fresh token.
     const sessionToken = uuidv4();
-    // PIN, session and trail entry commit together.
+    // PIN, session and trail entry commit together — but only over the account as it was
+    // when the current PIN was checked. The comparison and the hash both wait; an office
+    // PIN reset or an archive that landed meanwhile has already ended this session, and
+    // writing now would undo the reset and sign this person straight back in.
+    // (Nothing waits between this check and the write below.)
+    const now = userQueries.getById.get(req.user.userId);
+    if (!now || now.active !== 1 || now.password !== user.password || now.session_token !== user.session_token) {
+      return res.status(409).json({ error: 'Your account was just changed by the office. Sign in again to change your PIN.' });
+    }
     db.transaction(() => {
       userQueries.updatePassword.run(hashedPassword, req.user.userId);
       userQueries.updateSessionToken.run(sessionToken, req.user.userId);
