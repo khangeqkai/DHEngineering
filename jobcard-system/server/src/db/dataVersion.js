@@ -11,6 +11,7 @@
 // A number once issued is never lowered, even when the change behind it is taken
 // out again (3, 4 and 5 were a one-time pass that marked clocks open before self-stopping
 // clocks existed, and its marker; all since removed): backups stamped with them exist.
-const DATA_VERSION = 5;
+// 6 dropped the unused jobcards.photos column.
+const DATA_VERSION = 6;
 
 module.exports = { DATA_VERSION };

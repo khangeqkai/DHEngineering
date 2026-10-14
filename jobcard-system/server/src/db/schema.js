@@ -125,9 +125,6 @@ db.exec(`
     is_repeat_job INTEGER DEFAULT 0,
     repeat_job_reference TEXT,
 
-    -- Photos stored as JSON array
-    photos TEXT,
-
     -- Invoice tracking
     invoiced_date TEXT,
     archived INTEGER DEFAULT 0,

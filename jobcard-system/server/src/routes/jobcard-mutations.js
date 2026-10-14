@@ -183,7 +183,6 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
         data.isRepeatJob ? 1 : 0,
         // A previous-job reference only exists on a repeat job.
         data.isRepeatJob ? (data.repeatJobReference || null) : null,
-        data.photos ? JSON.stringify(data.photos) : null,
         req.user.userId,
         req.user.userId
       );
@@ -329,17 +328,6 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     }
     const { shouldArchive, invoicedDate } = invoicing;
 
-    // ---- Change tracking (pure computation; uses `existing`, fetched above) ----
-    if (data.photos !== undefined) {
-      const newPhotos = JSON.stringify(data.photos);
-      const oldPhotos = existing.photos || '[]';
-      if (newPhotos !== oldPhotos) {
-        const oldCount = existing.photos ? JSON.parse(existing.photos).length : 0;
-        const newCount = data.photos.length;
-        changes['photos'] = { from: `${oldCount} photos`, to: `${newCount} photos` };
-      }
-    }
-
     // All database writes happen in one transaction: either the status/field
     // update lands, or none of it does.
     let invoicingChanges = {};
@@ -363,7 +351,6 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
         data.dueDate !== undefined ? data.dueDate : existing.due_date,
         data.isRepeatJob !== undefined ? (data.isRepeatJob ? 1 : 0) : existing.is_repeat_job,
         data.repeatJobReference !== undefined ? data.repeatJobReference : existing.repeat_job_reference,
-        data.photos !== undefined ? JSON.stringify(data.photos) : existing.photos,
         req.user.userId,
         id
       );

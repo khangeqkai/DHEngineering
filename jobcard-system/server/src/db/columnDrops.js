@@ -23,6 +23,8 @@ const columnDrops = [
   { table: 'time_entries', column: 'is_special_labour' },
   // Always written null, never read by the client.
   { table: 'suppliers', column: 'services' },
+  // Photos live as files in the job's folders; this JSON list was never sent or read.
+  { table: 'jobcards', column: 'photos' },
 ];
 
 function dropDeadColumns() {
