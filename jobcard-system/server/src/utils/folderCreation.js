@@ -49,8 +49,7 @@ function getBasePath() {
   try {
     const settings = db.getSettings();
     const base = settings.job_folders_base;
-    if (!base || !base.trim()) return null;
-    return base.trim();
+    return base || null;
   } catch (err) {
     logger.error({ err }, 'Failed to read job_folders_base setting');
     return null;

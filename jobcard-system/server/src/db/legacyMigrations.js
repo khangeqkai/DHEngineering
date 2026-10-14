@@ -313,7 +313,7 @@ function moveQaFormsIntoJobFiles() {
   if (settingsQueries.getByKey.get(QA_FORMS_MOVED_KEY)?.value) return;
 
   const baseRow = settingsQueries.getByKey.get('job_folders_base');
-  const base = baseRow && baseRow.value ? baseRow.value.trim() : '';
+  const base = baseRow && baseRow.value ? baseRow.value : '';
   // Not set, or offline: nothing can be checked, so nothing is marked done.
   if (!base) return;
   if (!isBaseReachable(base)) {

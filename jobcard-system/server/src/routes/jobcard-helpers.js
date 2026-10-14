@@ -96,7 +96,7 @@ function computeAttachmentWarnings(jobcardId, items = []) {
   // can tell "checked and fine" apart from "never checked" — never read as a
   // file being there. Invoicing does not stop for this one: with no location
   // set there is nowhere a file could ever have been attached.
-  if (!settings.job_folders_base || !settings.job_folders_base.trim()) {
+  if (!settings.job_folders_base) {
     return { items: [], hasAny: false, attachedByItem: {}, filesNotConfigured: true };
   }
 
@@ -432,7 +432,7 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
   let filesNotChecked = null;
   if (listing === null) {
     const base = getSettings().job_folders_base;
-    filesNotChecked = base && base.trim() ? 'unreachable' : 'not set';
+    filesNotChecked = base ? 'unreachable' : 'not set';
   }
   const folderNames = listing || {};
   const jobFileNames = folderNames['job-files'] || [];

@@ -94,7 +94,7 @@ router.post('/attachment-warnings', authenticate, validateAttachmentWarningsBody
     // An offline drive or share is answered once, up front: reading every job's
     // folder against it would stall the whole server for each one. Nothing is
     // looked at, so nothing is flagged (the same answer each job gave before).
-    const base = (getSettings().job_folders_base || '').trim();
+    const base = getSettings().job_folders_base || '';
     if (base && !isBaseReachable(base)) {
       return res.json({ checked: ids, flagged: [], filesUnreachable: true });
     }
