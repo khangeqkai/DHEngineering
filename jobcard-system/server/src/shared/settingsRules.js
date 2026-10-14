@@ -25,6 +25,20 @@ function isStartingJobNumber(value) {
 const STARTING_JOB_NUMBER_MESSAGE =
   `Starting number must contain only digits, at most ${STARTING_JOB_NUMBER_MAX_DIGITS} (e.g. 00001)`;
 
+// The job number prefix: it leads every job number and so every job folder name.
+// Letters, digits, hyphen and underscore only (so the folder name needs no
+// cleaning), at most 10 characters; blank means no prefix. Judged trimmed, as stored.
+const JOB_NUMBER_PREFIX_MAX_LENGTH = 10;
+
+function isJobNumberPrefix(value) {
+  return typeof value === 'string'
+    && value.trim().length <= JOB_NUMBER_PREFIX_MAX_LENGTH
+    && /^[A-Za-z0-9_-]*$/.test(value.trim());
+}
+
+const JOB_NUMBER_PREFIX_MESSAGE =
+  `Prefix can only use letters, digits, hyphens and underscores, up to ${JOB_NUMBER_PREFIX_MAX_LENGTH} characters (e.g. DH-)`;
+
 // The home access code a home sign-in gives on top of a PIN. Blank switches home
 // access off. Stored hashed like a PIN, and the hash only reads the first 72 bytes,
 // so a longer code would silently have a tail that doesn't count.
@@ -65,5 +79,5 @@ function homeAddressProblem(address) {
 
 module.exports = {
   INACTIVITY_MINUTES, isInactivityMinutes, isStartingJobNumber, STARTING_JOB_NUMBER_MESSAGE,
-  homeAccessCodeProblem, homeAddressProblem
+  isJobNumberPrefix, JOB_NUMBER_PREFIX_MESSAGE, homeAccessCodeProblem, homeAddressProblem
 };

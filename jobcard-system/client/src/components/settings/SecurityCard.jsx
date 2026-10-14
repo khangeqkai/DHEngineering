@@ -2,6 +2,7 @@ import FieldError from '../common/FieldError';
 
 export default function SecurityCard({ s }) {
   const timeoutError = s.errorFor('inactivityTimeout');
+  const jobNumberPrefixError = s.errorFor('jobNumberPrefix');
   const jobNumberNextError = s.errorFor('jobNumberNext');
   return (
     <>
@@ -60,7 +61,7 @@ export default function SecurityCard({ s }) {
             </div>
           </div>
           <div className="job-number-input-group">
-            <div className="form-group job-number-field">
+            <div className={jobNumberPrefixError ? 'form-group field-error job-number-field' : 'form-group job-number-field'}>
               <label className="form-label" htmlFor="jobNumberPrefix">Prefix</label>
               <input
                 type="text"
@@ -69,7 +70,10 @@ export default function SecurityCard({ s }) {
                 value={s.jobNumberPrefix}
                 onChange={(e) => s.setJobNumberPrefix(e.target.value)}
                 placeholder="e.g. DH-"
+                aria-invalid={jobNumberPrefixError ? true : undefined}
+                aria-describedby={jobNumberPrefixError ? 'jobNumberPrefix-error' : undefined}
               />
+              <FieldError message={jobNumberPrefixError} id="jobNumberPrefix-error" />
             </div>
             <div className={jobNumberNextError ? 'form-group field-error job-number-field' : 'form-group job-number-field'}>
               <label className="form-label" htmlFor="jobNumberNext">Starting Number</label>

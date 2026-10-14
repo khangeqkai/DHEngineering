@@ -33,7 +33,8 @@ const {
 const { forgetRollCache } = require('../utils/timerPause');
 const { collectOvertimeUpdates, OVERTIME_BODY_KEYS, OVERTIME_DB_KEYS } = require('./settings-overtime');
 const {
-  INACTIVITY_MINUTES, isInactivityMinutes, isStartingJobNumber, STARTING_JOB_NUMBER_MESSAGE
+  INACTIVITY_MINUTES, isInactivityMinutes, isStartingJobNumber, STARTING_JOB_NUMBER_MESSAGE,
+  isJobNumberPrefix, JOB_NUMBER_PREFIX_MESSAGE
 } = require('../shared/settingsRules');
 
 // All settings routes require authentication
@@ -172,7 +173,11 @@ router.put('/', requireManagement, async (req, res) => {
     // Validate job number prefix if provided
     const jobNumberPrefix = req.body.jobNumberPrefix;
     if (jobNumberPrefix !== undefined) {
-      updates.job_number_prefix = jobNumberPrefix || '';
+      // null means "no prefix", as blank does.
+      if (jobNumberPrefix !== null && !isJobNumberPrefix(jobNumberPrefix)) {
+        return refuseField(res, 400, 'jobNumberPrefix', JOB_NUMBER_PREFIX_MESSAGE);
+      }
+      updates.job_number_prefix = (jobNumberPrefix || '').trim();
     }
 
     // Validate job number next if provided

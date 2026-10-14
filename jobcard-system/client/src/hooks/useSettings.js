@@ -8,7 +8,7 @@ import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from './useField
 import { warningToastIcon } from '../components/common/toastIcons';
 import {
   INACTIVITY_MINUTES, isInactivityMinutes, isStartingJobNumber, STARTING_JOB_NUMBER_MESSAGE,
-  homeAccessCodeProblem, homeAddressProblem
+  isJobNumberPrefix, JOB_NUMBER_PREFIX_MESSAGE, homeAccessCodeProblem, homeAddressProblem
 } from '../../../server/src/shared/settingsRules';
 
 // Which box on this page a server refusal of a settings field lands on (the
@@ -16,6 +16,7 @@ import {
 const SETTINGS_BOXES = {
   jobFoldersBase: 'jobFoldersBase',
   inactivityTimeoutMinutes: 'inactivityTimeout',
+  jobNumberPrefix: 'jobNumberPrefix',
   jobNumberNext: 'jobNumberNext',
   homeAccessCode: 'homeAccessCode',
   homeAddress: 'homeAddress'
@@ -59,6 +60,7 @@ export function useSettings() {
   const [homeAddress, setHomeAddress] = useState('');
   const { setFieldErrors, errorFor, fieldProps, errorProps } = useFieldErrors((name) => {
     if (name === 'inactivityTimeout') return inactivityTimeout;
+    if (name === 'jobNumberPrefix') return jobNumberPrefix;
     if (name === 'jobNumberNext') return jobNumberNext;
     if (name === 'jobFoldersBase') return jobFoldersBase;
     if (name === 'homeAccessCode') return homeAccessCode;
@@ -231,6 +233,11 @@ export function useSettings() {
   }, [inactivityTimeout, refreshInactivityTimeout, setFieldErrors]);
 
   const handleSaveJobNumber = useCallback(async () => {
+    if (!isJobNumberPrefix(jobNumberPrefix)) {
+      setFieldErrors({ jobNumberPrefix: JOB_NUMBER_PREFIX_MESSAGE });
+      scrollFieldIntoView('jobNumberPrefix');
+      return;
+    }
     if (jobNumberNext && !isStartingJobNumber(jobNumberNext)) {
       setFieldErrors({ jobNumberNext: STARTING_JOB_NUMBER_MESSAGE });
       scrollFieldIntoView('jobNumberNext');
