@@ -256,19 +256,26 @@ function isListedFileName(name) {
   return ALLOWED_FILE_EXTENSIONS.includes(path.extname(name).toLowerCase());
 }
 
+// The same rule applied to a real path: a regular file (not a folder) of an
+// allowed type. Returns its stat, or null for anything the list would hide.
+// The list, view, reassign and delete routes all ask this one question.
+function statListedFile(full) {
+  if (!isListedFileName(path.basename(full))) return null;
+  try {
+    const stat = fs.statSync(full);
+    return stat.isFile() ? stat : null;
+  } catch {
+    return null;
+  }
+}
+
 function listFolderFiles(folderPath) {
   if (!fs.existsSync(folderPath)) return [];
   return fs.readdirSync(folderPath)
     .map(name => {
       const full = path.join(folderPath, name);
-      let stat;
-      try {
-        stat = fs.statSync(full);
-      } catch {
-        return null;
-      }
-      if (!stat.isFile()) return null;
-      if (!isListedFileName(name)) return null;
+      const stat = statListedFile(full);
+      if (!stat) return null;
       const ext = path.extname(name).toLowerCase();
       return {
         name,
@@ -395,7 +402,7 @@ router.get('/:id/files/:category/:filename', authenticate, validateCategory, val
       return res.status(403).json({ error: 'Path traversal detected' });
     }
     // A name the list hides is answered exactly like a missing file.
-    if (!isListedFileName(filename) || !fs.existsSync(filePath)) {
+    if (!statListedFile(filePath)) {
       return res.status(404).json({ error: 'File not found' });
     }
 
@@ -515,7 +522,7 @@ router.post('/:id/files/:category/:filename/assign', authenticate, validateCateg
     if (!isWithinBase(folderRes.folderPath, currentPath)) {
       return res.status(403).json({ error: 'Path traversal detected' });
     }
-    if (!fs.existsSync(currentPath)) {
+    if (!statListedFile(currentPath)) {
       return res.status(404).json({ error: 'File not found' });
     }
 
@@ -603,7 +610,7 @@ router.delete('/:id/files/:category/:filename', authenticate, requireManagement,
     if (!isWithinBase(folderRes.folderPath, filePath)) {
       return res.status(403).json({ error: 'Path traversal detected' });
     }
-    if (!fs.existsSync(filePath)) {
+    if (!statListedFile(filePath)) {
       return res.status(404).json({ error: 'File not found' });
     }
 
