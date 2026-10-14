@@ -332,6 +332,9 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     // update lands, or none of it does.
     let invoicingChanges = {};
     const applyUpdate = db.transaction(() => {
+      // Nothing changed and nothing is being invoiced: leave the job alone, so
+      // "Last edited" doesn't move on a save that changed nothing.
+      if (Object.keys(changes).length === 0 && !shouldArchive) return;
       jobcardQueries.update.run(
         existing.card_type,
         data.status !== undefined ? data.status : existing.status,

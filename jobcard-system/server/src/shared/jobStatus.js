@@ -1,9 +1,9 @@
 const jobStatuses = require('./jobStatuses.json');
 
 // Single source of truth for "may this actor move this job from fromStatus to
-// toStatus?" — used by both the status-only route and the general job update
-// route (server side) and mirrored by the job screen (client side) so the rule
-// can never drift between any of them. A no-op (status unchanged) is always
+// toStatus?" — called by PATCH /jobcards/:id/status (server side; PUT
+// /jobcards/:id is management-only and never needs it) and mirrored by the job
+// screen (client side) so the rule can never drift between them. A no-op (status unchanged) is always
 // allowed, for anyone. Takes a boolean (already-resolved "is this actor
 // management") rather than a role, so this file never has to know what a role
 // is.

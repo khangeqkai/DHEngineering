@@ -65,21 +65,6 @@ function authenticate(req, res, next) {
   }
 }
 
-// Middleware to require specific roles
-function requireRole(...roles) {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
-    }
-
-    next();
-  };
-}
-
 // One name per permission, and the roles that carry it — read from the shared
 // JSON (server/src/shared/permissions.json) so a role's access can never drift
 // between here and the client's copy of the same rule (client/src/utils/roles.js).
@@ -105,7 +90,6 @@ function requirePermission(permission) {
 
 // Management roles: a manager can do everything an admin can except job
 // costing and the labour rates/overtime configuration (money stays admin-only).
-const MANAGEMENT_ROLES = permissions.management;
 const isManagement = (role) => can(role, 'management');
 const requireManagement = requirePermission('management');
 
@@ -123,8 +107,8 @@ function liveRole(req) {
 }
 
 // Single source of truth for "may this role move this job from fromStatus to
-// toStatus?" — used by both the status-only route and the general job update
-// route so the rule can never drift between them. A no-op (status unchanged)
+// toStatus?" — called only by PATCH /jobcards/:id/status, the one status route a
+// worker can reach (PUT /jobcards/:id is management-only). A no-op (status unchanged)
 // is always allowed, for any role. The rule itself (which statuses a worker
 // may move a job to/from) lives once in server/src/shared/jobStatus.js — also
 // read by the client's copy, client/src/components/jobcard/constants.js — this
@@ -135,13 +119,11 @@ function canSetStatus(role, fromStatus, toStatus) {
 
 module.exports = {
   authenticate,
-  requireRole,
   can,
   requirePermission,
   requireManagement,
   isManagement,
   liveRole,
-  MANAGEMENT_ROLES,
   ALL_ROLES,
   canSetStatus
 };
