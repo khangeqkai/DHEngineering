@@ -31,6 +31,18 @@ function handledAsJobClosed(err, onJobClosed) {
   return true;
 }
 
+// "2 of 3 saved — a.pdf wasn't: <reason>" — what an upload or photo save says
+// when it ended with some files saved and some not. `failed` is a list of
+// { name, message }.
+function partialSummary(saved, total, failed) {
+  const fallback = "couldn't be saved, try again in a moment.";
+  if (failed.length === 1) {
+    return `${saved} of ${total} saved — ${failed[0].name} wasn't: ${failed[0].message || fallback}`;
+  }
+  const lines = failed.map(f => `${f.name}: ${f.message || fallback}`);
+  return `${saved} of ${total} saved — not saved: ${lines.join('; ')}`;
+}
+
 /**
  * Files hook scoped to a single job card. Lists, uploads, and views files
  * for one category at a time. Files are identified by filename on disk.
@@ -44,9 +56,6 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
   const onJobClosedRef = useRef(onJobClosed);
   onJobClosedRef.current = onJobClosed;
 
-  const [counts, setCounts] = useState(
-    () => Object.fromEntries(CATEGORIES.map(c => [c, null]))
-  );
   const [filesByCategory, setFilesByCategory] = useState({});
   const [loadingByCategory, setLoadingByCategory] = useState({});
 
@@ -61,28 +70,18 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const [loadingFiles, setLoadingFiles] = useState(new Set());
   const thumbnailGenRef = useRef({});
+  // Which job is shown right now, and which "opening" of it (bumped by reset). A
+  // folder listing is only applied if both still match what they were when it was
+  // asked for — a late reply for the previous job must not land under this one.
+  const jobIdRef = useRef(jobcardId);
+  jobIdRef.current = jobcardId;
+  const openingRef = useRef(0);
+  const listSeqRef = useRef({});
 
   const fetchList = useCallback((category) => {
     if (!jobcardId) return Promise.resolve([]);
     return api.listJobcardFiles(jobcardId, category);
   }, [jobcardId]);
-
-  const refreshCount = useCallback(async (category) => {
-    if (!jobcardId) return;
-    try {
-      const list = await fetchList(category);
-      setCounts(prev => ({ ...prev, [category]: (list || []).length }));
-    } catch {
-      // Leave the count as unknown (null) rather than claiming "0 files" — a
-      // failed listing isn't proof the folder is empty.
-      setCounts(prev => ({ ...prev, [category]: null }));
-    }
-  }, [jobcardId, fetchList]);
-
-  const refreshAllCounts = useCallback(async () => {
-    if (!jobcardId) return;
-    await Promise.all(CATEGORIES.map(refreshCount));
-  }, [jobcardId, refreshCount]);
 
   const loadThumbnails = useCallback(async (fileList, category) => {
     const imageFiles = (fileList || []).filter(f => f.mimeType?.startsWith('image/'));
@@ -117,20 +116,29 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
 
   const loadFiles = useCallback(async (category) => {
     if (!jobcardId) return;
+    const requestedJob = jobcardId;
+    const opening = openingRef.current;
+    const seq = (listSeqRef.current[category] || 0) + 1;
+    listSeqRef.current[category] = seq;
+    // Still the reply this screen wants: same job, same opening, newest ask for this folder.
+    const isCurrent = () => jobIdRef.current === requestedJob
+      && openingRef.current === opening
+      && listSeqRef.current[category] === seq;
     setLoadingByCategory(prev => ({ ...prev, [category]: true }));
     try {
       const list = await fetchList(category);
+      if (!isCurrent()) return;
       setFilesByCategory(prev => ({ ...prev, [category]: list || [] }));
-      setCounts(prev => ({ ...prev, [category]: (list || []).length }));
       loadThumbnails(list, category);
     } catch (err) {
+      if (!isCurrent()) return;
       // All three folders load at once when the Files panel opens, and they fail
       // together for the same reason (storage not set up, drive offline) — one
       // id per job so the three messages replace each other instead of stacking.
       toast.error(err.message || 'Failed to load files', { id: `files-load-${jobcardId}` });
       setFilesByCategory(prev => ({ ...prev, [category]: [] }));
     } finally {
-      setLoadingByCategory(prev => ({ ...prev, [category]: false }));
+      if (isCurrent()) setLoadingByCategory(prev => ({ ...prev, [category]: false }));
     }
   }, [jobcardId, fetchList, loadThumbnails]);
 
@@ -165,23 +173,27 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
           saved++;
         } catch (err) {
           if (handledAsJobClosed(err, onJobClosedRef.current)) {
-            toast.dismiss(toastId);
-            if (saved > 0) refreshCount(category);
-            return { saved: 0, failed: 0 };
+            // The job's closed message has been shown; the rest were never tried.
+            // Still say how many did go in before it closed.
+            if (saved > 0) {
+              toast.error(partialSummary(saved, valid.length, [...failed, { name: file.name, message: err.message }]), { id: toastId });
+            } else {
+              toast.dismiss(toastId);
+            }
+            return { saved, failed: valid.length - saved + skipped };
           }
           failed.push({ name: file.name, message: err.message });
         }
       }
-      if (saved > 0) {
-        toast.success(`${saved} file(s) saved to ${CATEGORY_LABELS[category]}`, { id: toastId });
-        refreshCount(category);
-      } else {
-        toast.dismiss(toastId);
-      }
       // Name each failed file with the server's reason ("doesn't look like a
       // PDF", "that part was removed…") — the same as saving photos does — so
       // the user isn't left retrying something that can never work.
-      if (failed.length) {
+      if (failed.length === 0) {
+        toast.success(`${saved} file(s) saved to ${CATEGORY_LABELS[category]}`, { id: toastId });
+      } else if (saved > 0) {
+        toast.error(partialSummary(saved, valid.length, failed), { id: toastId });
+      } else {
+        toast.dismiss(toastId);
         const lines = failed.map(f => `${f.name}: ${f.message || "couldn't be uploaded, try again in a moment."}`);
         toast.error(`Failed to upload — ${lines.join('; ')}`);
       }
@@ -190,7 +202,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
       setUploading(false);
       if (onDone) onDone();
     }
-  }, [jobcardId, refreshCount]);
+  }, [jobcardId]);
 
   // `removePhoto(id)` is called right after each individual photo finishes
   // uploading — never a single "clear the whole strip" at the end. That's what
@@ -225,18 +237,20 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
           if (removePhoto) removePhoto(photo.id);
         } catch (err) {
           if (handledAsJobClosed(err, onJobClosedRef.current)) {
-            toast.dismiss(toastId);
-            if (saved > 0) refreshCount(category);
-            return { saved: 0, failed: 0 };
+            if (saved > 0) {
+              toast.error(partialSummary(saved, photos.length, [...failed, { name: filename, message: err.message }]), { id: toastId });
+            } else {
+              toast.dismiss(toastId);
+            }
+            return { saved, failed: photos.length - saved };
           }
-          failed.push({ photo, message: err.message });
+          failed.push({ name: filename, message: err.message });
         }
       }
-      if (saved > 0) refreshCount(category);
       if (failed.length === 0) {
         toast.success(`${saved} photo(s) saved to ${CATEGORY_LABELS[category]}`, { id: toastId });
       } else if (saved > 0) {
-        toast.error(`${saved} photo(s) saved, but ${failed.length} didn't save — ${failed[0].message || 'try again for those.'}`, { id: toastId });
+        toast.error(partialSummary(saved, photos.length, failed), { id: toastId });
       } else {
         // Keep the server's reason (e.g. "This file is too large") — a fixed
         // "try again" would send the user retrying something that can never work.
@@ -246,7 +260,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
     } finally {
       setSavingPhotos(false);
     }
-  }, [jobcardId, refreshCount]);
+  }, [jobcardId]);
 
   // Re-tag a stored file so it belongs to a part (itemId) or to the whole job
   // (null), then reload that folder so the row shows its new owner/name. Re-tagging
@@ -333,6 +347,8 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
     for (const c of CATEGORIES) {
       thumbnailGenRef.current[c] = (thumbnailGenRef.current[c] || 0) + 1;
     }
+    // Same for any folder listing still on its way back.
+    openingRef.current += 1;
     setFilesByCategory({});
     setLoadingByCategory({});
     setThumbnails(new Map());
@@ -341,6 +357,10 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
     viewerUrlRef.current = null;
     setViewerUrl(null);
   }, []);
+
+  // Switching to another job starts from nothing, so the previous job's files
+  // never sit on screen while the new job's list is on its way.
+  useEffect(() => { reset(); }, [jobcardId, reset]);
 
   useEffect(() => {
     return () => {
@@ -352,9 +372,6 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
   }, []);
 
   return {
-    counts,
-    refreshAllCounts,
-    refreshCount,
     filesByCategory, loadingByCategory, loadFiles,
     uploading, uploadPickedFiles,
     savingPhotos, savePhotos,
