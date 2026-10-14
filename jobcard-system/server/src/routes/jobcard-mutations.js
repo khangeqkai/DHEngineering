@@ -10,6 +10,7 @@ const {
   jobcardQueries,
   jobItemQueries,
   jobAssigneeQueries,
+  userQueries,
   companyQueries,
   contactQueries,
   recordHistory,
@@ -17,7 +18,7 @@ const {
 } = require('../db/database');
 const { formatJobcard, buildChanges, createRelatedRecords, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
 const { refuseField } = require('./name-conflict');
-const { itemSummary, describePart, assigneeNames } = require('./jobcard-audit-text');
+const { itemSummary, describePart, namesOfUserIds } = require('./jobcard-audit-text');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { readOvertimeSettings } = require('../utils/overtimeSettings');
 const { peekNextJobNumber, bumpJobNumber } = require('../db/helpers');
@@ -119,6 +120,20 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
       return res.status(400).json({ error: 'A new job cannot be created as Invoiced. Save it first, then invoice it.' });
     }
 
+    // Every worker asked for must still be an active account. Checked before any
+    // write, so a worker archived or removed since the form opened refuses the whole
+    // create (nothing half-assigned) and the trail only ever lists workers really added.
+    if (Array.isArray(data.assigneeIds)) {
+      data.assigneeIds = [...new Set(data.assigneeIds)];
+      for (const workerId of data.assigneeIds) {
+        const worker = userQueries.getById.get(workerId);
+        if (!worker || !worker.active) {
+          const who = worker ? (worker.name || worker.username) : 'A worker';
+          return refuseField(res, 400, 'assigneeIds', `${who} can no longer be assigned — remove them and try again`);
+        }
+      }
+    }
+
     // A job always carries one of the two fixed quality levels — nothing chosen
     // means the plain Standard baseline (validateJobcardEnums already refused
     // anything that isn't 'STANDARD'/'CRITICAL').
@@ -208,7 +223,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
       }
       // Record who was assigned at creation.
       if (Array.isArray(data.assigneeIds) && data.assigneeIds.length > 0) {
-        createChanges['assignees'] = { from: null, to: assigneeNames(data.assigneeIds) };
+        createChanges['assignees'] = { from: null, to: namesOfUserIds(data.assigneeIds) };
       }
       recordHistory('jobcard', id, 'create', req.user.userId, actorName(req), createChanges);
 
