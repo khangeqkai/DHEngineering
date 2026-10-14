@@ -39,9 +39,9 @@ function reportSkipped(skipped) {
 // PDF viewer (and print()) inside one, failing with nothing shown. If the browser
 // blocked the tab anyway, fall back to downloading the file so the user always
 // gets the packet rather than a silent no-op.
-// Returns what happened: 'opened' (a viewer has it — a print), 'downloaded' (a
-// blocked pop-up fell back to a download — a save, not a print) or 'refused' (the
-// browser blocked the download too, so no file exists).
+// Returns what happened: 'opened' (a viewer has it — a print) or 'downloaded' (a
+// blocked pop-up fell back to a download — a save, not a print). A page cannot see
+// whether the browser then kept the download, so it is taken as saved.
 function showPdfInBrowser(win, bytes, filename) {
   if (win && !win.closed) {
     const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
@@ -49,19 +49,16 @@ function showPdfInBrowser(win, bytes, filename) {
     setTimeout(() => URL.revokeObjectURL(url), 60000);
     return 'opened';
   }
-  if (downloadBytes(bytes, filename)) {
-    toast('Pop-up blocked — the packet was downloaded instead, so it’s recorded as a save, not a print',
-      { icon: infoToastIcon, duration: 6000 });
-    return 'downloaded';
-  }
-  toast.error('The browser blocked the packet — nothing was printed or saved');
-  return 'refused';
+  downloadBytes(bytes, filename);
+  toast('Pop-up blocked — the packet was downloaded instead, so it’s recorded as a save, not a print',
+    { icon: infoToastIcon, duration: 6000 });
+  return 'downloaded';
 }
 
 // Hands the packet to the browser (fires after the packet is built, so outside the
-// user's click — see downloadBlob) and reports whether the browser took it.
+// user's click — see downloadBlob).
 function downloadBytes(bytes, filename) {
-  return downloadBlob(new Blob([bytes], { type: 'application/pdf' }), filename);
+  downloadBlob(new Blob([bytes], { type: 'application/pdf' }), filename);
 }
 
 export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
@@ -170,11 +167,11 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
         if (res?.error) toast.error(res.error);
         else if (res && !res.canceled) { saved = true; toast.success('Packet saved'); }
       } else {
-        // In the browser there is no save window to cancel, but the download itself can
-        // be refused — and the user is told either way, so a refused one isn't invisible.
-        saved = downloadBytes(bytes, name);
-        if (saved) toast.success('Packet downloaded');
-        else toast.error('The browser blocked the download — nothing was saved');
+        // In the browser there is no save window to cancel, and a page cannot see
+        // whether the browser kept the download, so it counts as saved.
+        downloadBytes(bytes, name);
+        saved = true;
+        toast.success('Packet downloaded');
       }
       reportSkipped(skipped);
       if (saved) {

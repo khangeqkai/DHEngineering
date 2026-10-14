@@ -27,12 +27,9 @@ export async function saveWorkbook(wb, defaultName) {
     return true;
   }
 
-  // Web fallback — blob download. The sheet is built after an await, so the browser may
-  // refuse the download; a refusal must not be reported as an export.
+  // Web fallback — blob download. A page cannot see whether the browser saved it.
   const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  if (!downloadBlob(blob, defaultName)) {
-    throw new Error("Your browser didn't start the download. Allow downloads for this site and try again.");
-  }
+  downloadBlob(blob, defaultName);
   return true;
 }
 
