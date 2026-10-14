@@ -326,8 +326,11 @@ const validateCategory = [
 ];
 
 const validateFilenameParam = [
+  // Not trimmed: this names a file that already exists, and Windows allows a name
+  // that starts or ends with a space (" Rev B.pdf") — trimming it would look for a
+  // different file.
   param('filename')
-    .isString().trim().notEmpty().withMessage('Filename required')
+    .isString().notEmpty().withMessage('Filename required')
     .custom(value => {
       if (!isPlainFileName(value)) {
         throw new Error('Filename must not contain path separators');
