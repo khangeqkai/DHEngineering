@@ -343,7 +343,10 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
     const discarded = existing.continues_run === 1 || jobIsClosed ? null : discardIfAccidentalTap(id, existing, req.user);
     if (discarded) return res.json(discarded);
 
-    const endTime = new Date().toISOString();
+    // Never a finish before the start: a workstation clock running a few seconds fast
+    // can put "now" behind a just-stored start, and a negative block would show
+    // negative hours in costing and statistics. Such a stop records a zero-length block.
+    const endTime = new Date(Math.max(Date.now(), Date.parse(existing.start_time))).toISOString();
     // A stop always gives the block its FIRST finish time (it only runs on an open
     // timer, and existing.end_time is checked null just above), so this is always
     // the fresh decision, never a kept one.
