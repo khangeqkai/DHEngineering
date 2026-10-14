@@ -204,3 +204,8 @@ that still posted a whole-job payload on a timer would reproduce the same bug wi
   `isDirty` itself, which stays exactly the single screen-vs-stored comparison it already was; the
   close question just describes it more specifically. See `tasks/instant-save-job-card.md`, Stage 4b.
 
+## Intended, not findings
+
+Each of these was decided (2026-10-14); a review or bug hunt does not raise it.
+
+- **The older reload-on-change screens keep their own request counters.** The job list, statistics, search (`useSearch`), tags/equipment and the list pages (`useManagedListPage`'s `runLoad`) each guard "newest answer wins" with a hand-written counter. They work and are deliberately not moved onto `hooks/useLatestRequest.js`; only new screens take the hook.

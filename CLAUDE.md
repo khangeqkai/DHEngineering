@@ -50,6 +50,8 @@ Read the matching note **before** working in that area. Each one is the full, un
 
 If a change makes one of those notes wrong, **update the note in the same commit**. They are the record; this file only points at them.
 
+**Before raising a review or bug-hunt finding, check the matching note's "Intended, not findings" list.** Those behaviours were decided; they are not raised again. A decision made in a review round goes into that list in the same change.
+
 ## Project Overview
 
 DH Engineering Job Card System - A full-stack Electron/React/Express application for managing job cards, quotes, contacts, suppliers, and manufacturing operations. Designed for LAN-connected desktop use with a central server.
