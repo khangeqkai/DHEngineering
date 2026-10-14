@@ -3,7 +3,9 @@ const { db } = require('../connection');
 // Jobcard queries
 const jobcardQueries = {
   getById: db.prepare('SELECT * FROM jobcards WHERE id = ?'),
-  getByJobNumber: db.prepare('SELECT * FROM jobcards WHERE job_number = ?'),
+  // Ignoring case, like every "already used" check: Windows folders do, so dh-0007
+  // and DH-0007 would share one folder.
+  getByJobNumber: db.prepare('SELECT * FROM jobcards WHERE lower(job_number) = lower(?)'),
 
   // Every job number starting with this prefix — the prefix-scan half of
   // highestUsedJobNumber (db/helpers.js), which decides how low a new starting
