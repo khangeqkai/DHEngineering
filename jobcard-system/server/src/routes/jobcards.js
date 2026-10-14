@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { assigneeNames } = require('../utils/historyChanges');
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
+const { isActiveRecord } = require('../shared/records');
 const { deleteJobCardFolders } = require('../utils/folderCreation');
 const { authenticate, requireManagement, requirePermission, canSetStatus } = require('../middleware/auth');
 const { validateJobcardListQuery, JOBCARD_STATUSES } = require('../middleware/validation');
@@ -257,6 +258,12 @@ router.put('/:id/assignees/:userId', authenticate, requireManagement, (req, res)
     const before = jobAssigneeQueries.getByJobcard.all(id);
     const alreadyAssigned = before.some(a => a.user_id === userId);
 
+    // An archived account can't be newly put on a job — the same rule as creating one.
+    // (Already on it is left alone: the reply below just reports the list.)
+    if (!alreadyAssigned && !isActiveRecord(user)) {
+      return res.status(400).json({ error: `${user.name || user.username} can no longer be assigned` });
+    }
+
     if (alreadyAssigned) {
       return res.status(200).json({
         assignees: before.map(a => ({ id: a.id, userId: a.user_id, userName: a.user_name, username: a.username }))
@@ -425,7 +432,8 @@ router.post('/:id/unarchive', authenticate, requireManagement, (req, res) => {
     // comes back Done, some work In Progress, none at all Open.
     db.transaction(() => {
       jobcardQueries.unarchive.run(req.user.userId, id);
-      const fromWork = syncStatusToWork(id, req.user);
+      // strict: a failure here fails the whole unarchive, rather than recording OPEN as if chosen.
+      const fromWork = syncStatusToWork(id, req.user, { strict: true });
       recordHistory('jobcard', id, 'unarchive', req.user.userId, actorName(req), {
         archived: { from: true, to: false },
         invoicedDate: { from: existing.invoiced_date, to: null },

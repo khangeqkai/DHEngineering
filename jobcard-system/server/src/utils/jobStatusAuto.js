@@ -65,7 +65,9 @@ function isJobComplete(jobcardId, entries) {
 // caller folds a non-null result into the work event's own history entry. Never lets
 // an auto-status failure break the work action that triggered it.
 // `workRemoved` is set by the time-block delete so an empty job is still recomputed.
-function syncStatusToWork(jobcardId, actor, { workRemoved = false } = {}) {
+// `strict` rethrows a failure instead of swallowing it, for a caller whose own record
+// would otherwise state a status that was never worked out (unarchive).
+function syncStatusToWork(jobcardId, actor, { workRemoved = false, strict = false } = {}) {
   try {
     const job = jobcardQueries.getById.get(jobcardId);
     if (!job || job.archived === 1) return null;
@@ -91,6 +93,7 @@ function syncStatusToWork(jobcardId, actor, { workRemoved = false } = {}) {
     jobcardQueries.updateStatus.run(target, actor.userId, jobcardId);
     return { from: job.status, to: target };
   } catch (err) {
+    if (strict) throw err;
     logger.error({ err }, 'Auto status sync failed');
     return null;
   }
