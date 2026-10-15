@@ -6,5 +6,6 @@
   "systemData":    ["admin"],
   "adminAccounts": ["admin"],
   "deleteJob":     ["admin"],
+  "invoiceJob":    ["admin"],
   "stayLoggedIn":  ["admin"]
 }

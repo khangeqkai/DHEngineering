@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { createJobCardFolders } = require('../utils/folderCreation');
-const { authenticate, requireManagement } = require('../middleware/auth');
+const { authenticate, requireManagement, statusChangeRefusal } = require('../middleware/auth');
 const { validateJobcardEnums, validateJobcardDescriptionRequired, validateJobcardDueDate, validateJobcardContactFields } = require('../middleware/validation');
 const { validateItemTreatments, validateItemMaterials, validateItemJobTypes, validateItemDrawings, validateItemCustomerProperty, validateItemDescriptions, validateItemQuantities } = require('../middleware/itemValidation');
 const {
@@ -318,6 +318,10 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     const changes = buildChanges(existing, data);
 
     const newStatus = data.status !== undefined ? data.status : existing.status;
+
+    // This route is management-only, but a manager still may not invoice.
+    const statusRefusal = statusChangeRefusal(req.user.role, existing.status, newStatus);
+    if (statusRefusal) return res.status(403).json({ error: statusRefusal });
 
     // Shared invoicing step (see jobcard-helpers.js) — the hard running-timer
     // refusal and the soft missing-attachments checkpoint, both before any

@@ -7,7 +7,7 @@ const { syncStatusToWork } = require('../utils/jobStatusAuto');
 const { displayName } = require('../shared/names');
 const { isActiveRecord } = require('../shared/records');
 const { deleteJobCardFolders, isBaseReachable } = require('../utils/folderCreation');
-const { authenticate, requireManagement, requirePermission, canSetStatus } = require('../middleware/auth');
+const { authenticate, requireManagement, requirePermission, statusChangeRefusal } = require('../middleware/auth');
 const { validateJobcardListQuery, validateAttachmentWarningsBody, JOBCARD_STATUSES } = require('../middleware/validation');
 const {
   jobcardQueries,
@@ -396,9 +396,8 @@ router.patch('/:id/status', authenticate, (req, res) => {
     const existing = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!existing) return;
 
-    if (!canSetStatus(req.user.role, existing.status, status)) {
-      return res.status(403).json({ error: 'Only an admin or manager can set that status.' });
-    }
+    const refusal = statusChangeRefusal(req.user.role, existing.status, status);
+    if (refusal) return res.status(403).json({ error: refusal });
 
     // Picking the status the job already has (a list or screen showing an older
     // status — a timer started on another PC moves it) is not a change: no write,

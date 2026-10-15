@@ -68,6 +68,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   const canSeePricing = can(user, 'pricing');
   const canSeeActivity = can(user, 'activityTrail');
   const canManage = isManagement(user);
+  const canInvoice = can(user, 'invoiceJob');
   // Which side window is open. History starts open when the job is opened from a search
   // result for an activity entry (initialHistoryOpen), whatever tab that result lands on.
   // Only one can be open at a time, so it is one value: null, 'comments' or 'history'.
@@ -613,6 +614,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
     <JobIdentityStrip
       isEdit={isEdit}
       canManage={canManage}
+      canInvoice={canInvoice}
       jobCardId={jobCardId}
       jobNumber={formHook.jobNumber}
       formData={formHook.formData}

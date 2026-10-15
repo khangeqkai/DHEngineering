@@ -83,7 +83,8 @@ const REFUSAL_MESSAGES = {
   activityTrail: 'Only an admin can see the activity log.',
   systemData: 'Only an admin can change backups and where job files are kept.',
   adminAccounts: 'Only an admin can change admin accounts.',
-  deleteJob: 'Only an admin can delete a job.'
+  deleteJob: 'Only an admin can delete a job.',
+  invoiceJob: 'Only an admin can invoice a job.'
 };
 
 function requirePermission(permission) {
@@ -117,14 +118,17 @@ function liveRole(req) {
 }
 
 // Single source of truth for "may this role move this job from fromStatus to
-// toStatus?" — called only by PATCH /jobcards/:id/status, the one status route a
-// worker can reach (PUT /jobcards/:id is management-only). A no-op (status unchanged)
-// is always allowed, for any role. The rule itself (which statuses a worker
-// may move a job to/from) lives once in server/src/shared/jobStatus.js — also
-// read by the client's copy, client/src/components/jobcard/constants.js — this
-// is just the role-to-boolean seam.
-function canSetStatus(role, fromStatus, toStatus) {
-  return sharedCanSetStatus(isManagement(role), fromStatus, toStatus);
+// toStatus?" — called by both status routes, PATCH /jobcards/:id/status and
+// PUT /jobcards/:id. Returns null when allowed, else the plain-words refusal. The
+// rule itself (which statuses a worker may move a job to/from, and that Invoiced
+// needs the invoiceJob permission) lives once in server/src/shared/jobStatus.js,
+// also read by the client; this is just the role-to-booleans seam.
+function statusChangeRefusal(role, fromStatus, toStatus) {
+  const actor = { canManage: isManagement(role), canInvoice: can(role, 'invoiceJob') };
+  if (sharedCanSetStatus(actor, fromStatus, toStatus)) return null;
+  return toStatus === 'INVOICED'
+    ? REFUSAL_MESSAGES.invoiceJob
+    : 'Only an admin or manager can set that status.';
 }
 
 module.exports = {
@@ -135,5 +139,5 @@ module.exports = {
   isManagement,
   liveRole,
   ALL_ROLES,
-  canSetStatus
+  statusChangeRefusal
 };

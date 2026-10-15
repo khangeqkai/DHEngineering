@@ -18,6 +18,7 @@ import { can } from '../utils/roles';
 export function getJobCardColumns({
   user,
   canManage,
+  canInvoice,
   showArchived,
   activeTimerJobcardId,
   formattedElapsed,
@@ -300,7 +301,7 @@ export function getJobCardColumns({
             </td>
           );
         }
-        const offeredValues = new Set(offeredStatusValues(canManage, card.status));
+        const offeredValues = new Set(offeredStatusValues({ canManage, canInvoice }, card.status));
         return (
           <td key="status">
             <div className="status-popover-wrapper" ref={statusPopoverId === card.id ? popoverRef : null}>

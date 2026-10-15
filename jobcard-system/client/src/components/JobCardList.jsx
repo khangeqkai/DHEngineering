@@ -41,6 +41,7 @@ import './JobCardList.css';
 export default function JobCardList() {
   const { user } = useAuth();
   const canManage = isManagement(user);
+  const canInvoice = can(user, 'invoiceJob');
   const canSeePricing = can(user, 'pricing');
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -397,6 +398,7 @@ export default function JobCardList() {
   const columns = getJobCardColumns({
     user,
     canManage,
+    canInvoice,
     showArchived,
     activeTimerJobcardId,
     formattedElapsed,

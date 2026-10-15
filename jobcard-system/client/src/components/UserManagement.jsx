@@ -28,7 +28,7 @@ const ROLE_LABELS = { user: 'Worker', manager: 'Manager', admin: 'Admin' };
 // The line under the Role box, changing with the role picked.
 const ROLE_HELP = {
   user: "Logs time and changes parts on jobs. Can't see customer details or prices.",
-  manager: 'Everything an admin can do except prices, backups and the activity trail.',
+  manager: 'Everything an admin can do except prices, invoicing, backups and the activity trail.',
   admin: 'Full access, including prices, backups and user accounts.'
 };
 

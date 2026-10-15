@@ -20,6 +20,7 @@ const PRIORITY_VALUES = PRIORITY_OPTIONS.map(p => p.value);
 export default function JobIdentityStrip({
   isEdit,
   canManage,
+  canInvoice,
   jobCardId,
   jobNumber,
   formData,
@@ -190,8 +191,8 @@ export default function JobIdentityStrip({
   const statusChangeable = canChangeStatus(canManage, status);
   // Invoicing files a job away and runs the missing-files check + auto-archive,
   // which only happen on an existing job — offeredStatusValues never offers
-  // it while creating a new job (and never to non-management).
-  const offeredValues = new Set(offeredStatusValues(canManage, status, isEdit));
+  // it while creating a new job (and never without the invoiceJob permission).
+  const offeredValues = new Set(offeredStatusValues({ canManage, canInvoice }, status, isEdit));
   // Same rows as the job list's status drop-down: only the statuses this person may
   // set from here. The pill itself names the current one, so it needs no row.
   const statusOptions = STATUS_OPTIONS.filter(opt => offeredValues.has(opt.value));
