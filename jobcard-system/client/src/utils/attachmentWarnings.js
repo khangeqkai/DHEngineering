@@ -1,3 +1,5 @@
+import { joinList } from './joinList';
+
 // Turn the server's attachment-warning data into short, plain phrases describing
 // what a job declared but has no file attached for. Shared by the close-out
 // confirm dialog on both the job card screen and the job list so they speak the
@@ -24,10 +26,7 @@ export function describeAttachmentGaps(warnings) {
 
 // Join names the way a person would: "Jane", "Jane and Bob", "Jane, Bob and Sam".
 function joinNames(names) {
-  const list = names.filter(Boolean);
-  if (list.length <= 1) return list[0] || 'someone';
-  if (list.length === 2) return `${list[0]} and ${list[1]}`;
-  return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
+  return joinList(names.filter(Boolean)) || 'someone';
 }
 
 // Turn the server's delete-time work warning into plain sentences for the

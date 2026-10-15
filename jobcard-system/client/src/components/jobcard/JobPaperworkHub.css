@@ -41,7 +41,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1100;
+  /* No z-index: modalStack inlines this window's layer before first paint. */
   padding: var(--space-6);
 }
 

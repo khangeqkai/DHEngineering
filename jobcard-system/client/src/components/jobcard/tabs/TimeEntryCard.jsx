@@ -1,7 +1,6 @@
-import { useState, useEffect, useId, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MoreVertical, Pencil, Trash2, ChevronDown, AlertTriangle } from 'lucide-react';
 import ScrapStat from './ScrapStat';
-import { pushModal, removeModal, isTopModal } from '../../common/modalStack';
 import { formatDate, formatTime, formatCount, formatElapsed, elapsedSecondsSince } from '../../../utils/formatters';
 import { splitMachineCodes } from '../../../../../server/src/shared/machineList';
 
@@ -71,18 +70,17 @@ export default function TimeEntryCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const menuBtnRef = useRef(null);
-  const menuId = useId();
   useEffect(() => {
     if (!menuOpen) return;
-    // This little menu sits on top of the job window, which closes on Escape.
-    // Registering as the top layer means Escape dismisses the menu and stops
-    // there, instead of taking the whole job window with it.
-    pushModal(menuId);
+    // This little menu sits on top of the job window, which closes on Escape. It is not
+    // a window, so it stays off the modal stack: it takes Escape in the capture phase and
+    // stops it there, instead of taking the whole job window with it.
     const handler = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
     };
     const onKey = (e) => {
-      if (!isTopModal(menuId)) return;
+      // A key aimed at a window opened over the menu (the inactivity warning) is not the menu's.
+      if (e.target !== document.body && !menuRef.current?.contains(e.target)) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
@@ -91,13 +89,12 @@ export default function TimeEntryCard({
       }
     };
     document.addEventListener('mousedown', handler);
-    document.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey, true);
     return () => {
-      removeModal(menuId);
       document.removeEventListener('mousedown', handler);
-      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keydown', onKey, true);
     };
-  }, [menuOpen, menuId]);
+  }, [menuOpen]);
 
   return (
     <div className={`te-card${isActive ? ' te-card--active' : ''}`}>

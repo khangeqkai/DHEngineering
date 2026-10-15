@@ -426,6 +426,11 @@ async function stageBackupArchive(inputPath, tempDir, schemaVersion, dataVersion
   if (!Array.isArray(data.job_note_reads) && (Number(data._metadata.dataVersion) || 0) < 8) {
     data.job_note_reads = [];
   }
+  // Backups made before data version 9 predate comment mentions: there were none, so
+  // the table restores empty.
+  if (!Array.isArray(data.job_note_mentions) && (Number(data._metadata.dataVersion) || 0) < 9) {
+    data.job_note_mentions = [];
+  }
   for (const table of tableOrder) {
     if (!Array.isArray(data[table])) {
       return { error: `Invalid backup: missing table "${table}"`, status: 400 };

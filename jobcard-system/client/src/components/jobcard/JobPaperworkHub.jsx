@@ -15,7 +15,7 @@ import { usePaperworkSelection } from './usePaperworkSelection';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { isManagement } from '../../utils/roles';
-import { pushModal, removeModal, isTopModal } from '../common/modalStack';
+import { useModalLayer, isTopModal } from '../common/modalStack';
 import './JobPaperworkHub.css';
 
 // One place for a job's paperwork: the generated job card plus the two file
@@ -48,11 +48,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
   // Join the shared modal stack while open. This window opens on top of the job
   // card (itself a dialog that traps Tab/Escape); registering makes this the
   // top-most layer, so the card behind stops grabbing the keyboard.
-  useEffect(() => {
-    if (!open) return undefined;
-    pushModal(modalId);
-    return () => removeModal(modalId);
-  }, [open, modalId]);
+  const layer = useModalLayer(modalId, open);
 
   const { user } = useAuth();
   // Anyone can add paperwork; only management can remove it (deleting a file can
@@ -357,7 +353,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
       </button>
 
       {open && createPortal(
-        <div className="hub-overlay" ref={overlayRef}>
+        <div className="hub-overlay" ref={overlayRef} style={{ zIndex: layer }}>
           <div className="hub-panel" role="dialog" aria-modal="true" aria-label="Job paperwork">
             <div className="hub-head">
               {view === 'camera' ? (

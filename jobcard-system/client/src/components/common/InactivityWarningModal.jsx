@@ -1,7 +1,8 @@
 import { useEffect, useRef, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { TriangleAlert } from 'lucide-react';
-import { pushModal, removeModal, isTopModal } from './modalStack';
+import { useModalLayer, isTopModal, PINNED_LAYERS } from './modalStack';
+import { handleDialogKey } from './dialogKeys';
 import { useAuth } from '../../context/AuthContext';
 
 export default function InactivityWarningModal({
@@ -54,12 +55,11 @@ export default function InactivityWarningModal({
   // Join the shared modal stack while open. This warning can appear on top of an
   // open job card or edit form (each a dialog that traps Tab/Escape); registering
   // makes it the top-most layer, so the form behind stops grabbing the keyboard —
-  // otherwise Escape would close that form and Enter could save it.
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    pushModal(modalId);
-    return () => removeModal(modalId);
-  }, [isOpen, modalId]);
+  // otherwise Escape would close that form and Enter could save it. It joins pinned, so
+  // a window that opens while the countdown is up (the forgotten-clock question) is
+  // slotted in beneath it and never takes the keys or the focus from this one. Pinned (see
+  // PINNED_LAYERS); the stack's layer is the one drawn, so what is on top is what holds the keys.
+  const layer = useModalLayer(modalId, isOpen, { pinnedLayer: PINNED_LAYERS.inactivity });
 
   // Focus trap and keyboard handling
   useEffect(() => {
@@ -72,20 +72,12 @@ export default function InactivityWarningModal({
       // Only the top-most dialog reacts to global keys.
       if (!isTopModal(modalId)) return;
 
-      // Escape key - stay logged in
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onStayLoggedIn();
-        return;
-      }
-
-      // Tab key - trap focus within modal
-      if (e.key === 'Tab') {
-        // Since we only have one focusable element (the button),
-        // prevent Tab from leaving the modal
-        e.preventDefault();
-        buttonRef.current?.focus();
-      }
+      // Escape = stay logged in; Tab stays on the one button.
+      handleDialogKey(e, {
+        container: modalRef.current,
+        focusable: () => (buttonRef.current ? [buttonRef.current] : []),
+        escape: onStayLoggedIn
+      });
     };
 
     document.addEventListener('keydown', handleKeyDown);
@@ -97,6 +89,7 @@ export default function InactivityWarningModal({
   return createPortal(
     <div
       className="inactivity-modal-overlay"
+      style={{ zIndex: layer }}
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="inactivity-title"

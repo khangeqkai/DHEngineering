@@ -13,7 +13,8 @@ import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import { useStillMounted } from '../../hooks/useStillMounted';
 import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
 import { fieldErrorKey } from './fieldRules.mjs';
-import { isJobClosed, JOB_CLOSED_MESSAGE, JOB_DELETED_MESSAGE, JOB_DELETED_TOAST_ID } from '../../utils/jobLock';
+import { isJobClosed, JOB_DELETED_MESSAGE, JOB_DELETED_TOAST_ID } from '../../utils/jobLock';
+import { JOB_CLOSED_MESSAGE } from '../../../../server/src/shared/closedJob';
 import './JobCardModal.css';
 import { useJobCardCosting } from './useJobCardCosting';
 import { useTimeEntries } from './useTimeEntries';
@@ -31,6 +32,7 @@ import ActivityLogTab from './tabs/ActivityLogTab';
 import { useActivityLog } from './useActivityLog';
 import { useTimer } from './useTimer';
 import { useFinishQuestion } from '../../context/FinishQuestionContext';
+import { useMentions } from '../../context/MentionsContext';
 import { useJobNotes } from './useJobNotes';
 import JobCommentsPanel from './JobCommentsPanel';
 import StopTimerForm from './StopTimerForm';
@@ -39,6 +41,8 @@ import JobIdentityStrip from './JobIdentityStrip';
 import { mapTimeEntryFromApi } from './mappers';
 
 // The later of two moments (UTC ISO text compares in time order); either may be missing.
+// One shared empty list, so a missing staff list doesn't hand the panels a new array every render.
+const NO_EMPLOYEES = [];
 const newerMoment = (a, b) => (!a ? b : !b ? a : (a > b ? a : b));
 
 // The job window. Closed it is nothing at all, and every opening — even of the same job —
@@ -54,7 +58,7 @@ export default function JobCardModal(props) {
 // either name its job (the callbacks into the list behind: onNotesChange, onCommentsRead)
 // or ask isWindowUp first — but only for screen changes, closing, and read-failure
 // messages. A failure of the person's own write is always told, window or not.
-function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onCommentsRead, onPrinted, initialTab = null, initialStopEntry = null, ownsStopForm = false }) {
+function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onCommentsRead, onPrinted, initialTab = null, initialStopEntry = null, initialCommentNoteId = null, ownsStopForm = false }) {
   const { user, logout } = useAuth();
   const isWindowUp = useStillMounted();
   const isEdit = Boolean(jobCardId);
@@ -150,14 +154,26 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   // window unmounts, so none is left outstanding behind a box that can no longer be seen.
   const { dialogState, showConfirm, handleCancel, handleConfirm, handleAlt } = useConfirmDialog();
 
-  const jobNotes = useJobNotes(isEdit ? jobCardId : null, showConfirm, onNotesChange, handleJobClosedWrite, isWindowUp, formHook.jobNumber);
+  // The lists every picker on this screen draws from — suppliers, workers, machines —
+  // loaded when the window opens (useJobCardReferenceData.js).
+  const { suppliers, employees, machines, reloadSuppliers, reloadEmployees } = useJobCardReferenceData({ isWindowUp });
+  // A posted comment answers the questions waiting on this person for this job.
+  const mentionsAnsweredOnJob = useMentions()?.mentionsAnsweredOnJob;
+  const jobNotes = useJobNotes({
+    jobcardId: isEdit ? jobCardId : null,
+    showConfirm,
+    onChange: onNotesChange,
+    onJobClosed: handleJobClosedWrite,
+    isWindowUp,
+    jobNumber: formHook.jobNumber,
+    staff: employees,
+    onPosted: mentionsAnsweredOnJob,
+    reloadStaff: reloadEmployees
+  });
   // Pricing: the load when the Costing tab is first shown and the save-on-the-way-out
   // paths all live in this hook — see useJobCardCosting.js.
   const costingHook = useJobCardCosting({ isEdit, canSeePricing, jobCardId, jobNumber: formHook.jobNumber, activeTab, onJobClosed: handleJobClosedWrite });
 
-  // The lists every picker on this screen draws from — suppliers, workers, machines —
-  // loaded when the window opens (useJobCardReferenceData.js).
-  const { suppliers, employees, machines, reloadSuppliers } = useJobCardReferenceData({ isWindowUp });
 
   const { setFormDataFromJobCard, setFormData } = formHook;
   const { setContactFromJobCard } = contactHook;
@@ -558,15 +574,24 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
             notes={jobNotes.notes}
             newNote={jobNotes.newNote}
             setNewNote={jobNotes.setNewNote}
+            onPickMention={jobNotes.addPickedMention}
+            checking={jobNotes.checking}
+            willAsk={jobNotes.willAsk}
+            commentError={jobNotes.commentError}
+            commentFieldProps={jobNotes.commentFieldProps}
+            commentErrorProps={jobNotes.commentErrorProps}
+            initialCommentNoteId={initialCommentNoteId}
             onAddNote={jobNotes.addNote}
             onDeleteNote={jobNotes.deleteNote}
             loading={jobNotes.loading}
+            sending={jobNotes.sending}
             loadError={jobNotes.loadError}
             onRetry={jobNotes.loadNotes}
             notesLoaded={jobNotes.notesLoaded}
             seenUpTo={commentsSeenUpTo}
             onMarkRead={markCommentsRead}
             canManage={canManage}
+            employees={employees || NO_EMPLOYEES}
             locked={jobClosed}
           />
         ) : null}
@@ -603,7 +628,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
               <div className="jc-zoom-root">
               {jobClosed && (
                 <div className="jc-closed-banner" role="status">
-                  This job is invoiced and closed. Unarchive it to make changes.
+                  {JOB_CLOSED_MESSAGE}
                 </div>
               )}
               {isEdit && (canSeePricing || canSeeActivity) && (
@@ -668,7 +693,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
                   contactGroupClass={contactFieldErrors.groupClass}
                   contactErrorFor={contactFieldErrors.errorFor}
                   contactErrorProps={contactFieldErrors.errorProps}
-                  employees={employees || []}
+                  employees={employees || NO_EMPLOYEES}
                   assignees={formHook.assignees}
                   toggleAssignee={formHook.toggleAssignee}
                   lineItems={formHook.lineItems}

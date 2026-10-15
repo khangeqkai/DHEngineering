@@ -141,12 +141,11 @@
    theme-independent, like .modal-overlay in App.css: the backdrop and text
    stay a fixed dark/light pair in both themes rather than switching to
    --text-inverse, which flips to dark navy in the dark theme and would
-   vanish on this always-dark backdrop. z-index sits one step above
-   .modal-overlay's 1000 so it covers the still-open confirm sheet under it. */
+   vanish on this always-dark backdrop. */
 .restore-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1001;
+  /* No z-index: modalStack inlines this window's layer before first paint. */
   background: rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;

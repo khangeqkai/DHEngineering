@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { pushModal, removeModal, isTopModal } from './modalStack';
+import { useModalLayer, isTopModal, useFocusWhenTop } from './modalStack';
 import { todayIsoDate, toIsoDate } from '../../utils/formatters';
 import './CalendarPicker.css';
 
@@ -28,16 +28,12 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose, allow
   // Join the shared modal stack while open. This calendar opens on top of the job
   // card dialog; registering makes it the top-most layer so the card behind stops
   // trapping Tab and stops closing on Escape meant for the calendar.
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    pushModal(modalId);
-    return () => removeModal(modalId);
-  }, [isOpen, modalId]);
+  const layer = useModalLayer(modalId, isOpen);
+
+  useFocusWhenTop(modalId, isOpen, () => calendarRef.current?.focus());
 
   useEffect(() => {
     if (!isOpen) return;
-
-    calendarRef.current?.focus();
 
     const handleKeyDown = (e) => {
       if (!isTopModal(modalId)) return;
@@ -131,7 +127,7 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose, allow
   }
 
   return createPortal(
-    <div className="calendar-overlay">
+    <div className="calendar-overlay" style={{ zIndex: layer }}>
       <div
         className="calendar-modal"
         ref={calendarRef}

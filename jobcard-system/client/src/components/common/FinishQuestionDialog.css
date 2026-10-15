@@ -1,25 +1,5 @@
-/* The blocking "your clock stopped by itself" question. Sits just under the
-   inactivity warning (2000) so that warning can still appear over it. */
-.fq-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(6, 14, 28, 0.85);
-  z-index: 1900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--pad-page);
-}
-
-.fq-dialog {
-  background: var(--surface);
-  border: 2px solid var(--accent-caution);
-  border-radius: var(--radius-xl);
-  padding: var(--space-8) var(--space-12);
-  width: 100%;
-  max-width: 480px;
-  box-shadow: var(--shadow-lg);
-}
+/* The clock section of the "Needs your attention" window (the overlay and frame are in
+   AttentionDialog.css). */
 
 .fq-icon {
   display: flex;
@@ -28,24 +8,11 @@
   color: var(--warning-ink);
 }
 
-.fq-title {
-  margin: 0 0 var(--gap-field) 0;
-  text-align: center;
-  font-size: var(--text-lg);
-  font-weight: var(--font-bold);
-  color: var(--text-primary);
-}
-
-.fq-text {
-  margin: 0 0 var(--gap-group) 0;
-  color: var(--text-secondary);
-}
-
-.fq-dialog .form-group {
+.fq-section .form-group {
   margin-bottom: var(--gap-group);
 }
 
-.fq-dialog .form-control {
+.fq-section .form-control {
   border-color: var(--border-input);
 }
 

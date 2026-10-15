@@ -15,6 +15,7 @@
 // 7 trims a stored job folders location that ended in spaces.
 // 8 adds the job_note_reads table (who has read which job's comments) and stamps the
 // comments_read_from launch baseline.
-const DATA_VERSION = 8;
+// 9 adds the job_note_mentions table (who was @mentioned in which comment, and whether they have answered).
+const DATA_VERSION = 9;
 
 module.exports = { DATA_VERSION };

@@ -1,6 +1,5 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Play, Square, ChevronDown } from 'lucide-react';
-import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import { workBelongsToItem } from './workMatch.mjs';
 import { formatElapsed } from '../../utils/formatters';
 
@@ -19,20 +18,18 @@ export default function LineItemTimerButton({
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
-  const pickerId = useId();
 
   useEffect(() => {
     if (!open) return;
-    // Join the shared modal stack while this picker is open, the same way the
-    // priority menu does. Without it, Escape reached the job card underneath and
-    // closed the whole window when all the user meant to dismiss was this small
-    // list of workers.
-    pushModal(pickerId);
+    // A menu is not a window, so it stays off the modal stack. Escape is taken in the
+    // capture phase and stopped there, so it never reaches the job card underneath
+    // (which would close the whole window for what was meant as dismissing this list).
     const onDocClick = (e) => {
       if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
     };
     const onKey = (e) => {
-      if (!isTopModal(pickerId)) return;
+      // A key aimed at a window opened over the menu (the inactivity warning) is not the menu's.
+      if (e.target !== document.body && !rootRef.current?.contains(e.target)) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
@@ -40,13 +37,12 @@ export default function LineItemTimerButton({
       }
     };
     document.addEventListener('mousedown', onDocClick);
-    document.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey, true);
     return () => {
-      removeModal(pickerId);
       document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keydown', onKey, true);
     };
-  }, [open, pickerId]);
+  }, [open]);
 
   // The Stop button sticks to the part the timer was actually started on, even
   // after a save renumbers the parts (the timer's remembered number goes stale

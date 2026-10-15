@@ -8,7 +8,7 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, can, isManagement, liveRole, ALL_ROLES } = require('../middleware/auth');
 const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences, PIN_REGEX, PIN_MESSAGE } = require('../middleware/validation');
-const { db, userQueries, jobNoteQueries, timeEntryQueries, recordHistory, actorName, getSettings } = require('../db/database');
+const { db, userQueries, jobNoteQueries, jobNoteMentionQueries, timeEntryQueries, recordHistory, actorName, getSettings } = require('../db/database');
 const { diffFields } = require('../utils/historyChanges');
 const { isViaTunnel, clientIp } = require('../utils/homeAccess');
 const { setArchived } = require('../utils/archiveToggle');
@@ -174,12 +174,27 @@ router.get('/me', authenticate, (req, res) => {
   try {
     const user = findOr404(res, userQueries.getById.get(req.user.userId), 'User not found');
     if (!user) return;
+    // Polled by every signed-in PC: one indexed read. A failure here must not fail /me.
+    let openMentions = null;
+    try {
+      const row = jobNoteMentionQueries.openSummaryForUser.get(user.id);
+      // Count + newest mention + the visible job ids (one entry per open mention), sorted here
+      // because SQLite promises no order for group_concat: a swap (one job archived, another
+      // unarchived) changes the ids; a plain job edit or a different read order does not.
+      const signature = row.count
+        ? `${row.count}|${row.newest_mention_at}|${String(row.job_ids).split(',').sort().join(',')}`
+        : '0';
+      openMentions = { count: row.count, signature };
+    } catch (err) {
+      logger.error({ err }, 'Open mentions summary error');
+    }
     res.json({
       id: user.id,
       username: user.username,
       role: user.role,
       name: user.name,
       email: user.email,
+      openMentions,
       jobcardColumnOrder: parseSavedLayout(user.jobcard_column_order, user.id),
       jobcardHiddenColumns: parseSavedLayout(user.jobcard_hidden_columns, user.id)
     });

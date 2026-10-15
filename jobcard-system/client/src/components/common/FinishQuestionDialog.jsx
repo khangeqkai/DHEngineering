@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useId } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useEffect, useRef } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAttentionRefocus } from './AttentionDialog';
 import { api } from '../../services/api';
 import { formatDate, formatTime } from '../../utils/formatters';
 import { isoToLocalInput, localInputToIso } from '../jobcard/mappers';
@@ -9,8 +9,6 @@ import { useFieldErrors, fieldErrorsFromRefusal, scrollFieldIntoView } from '../
 import FieldError from './FieldError';
 import Spinner from './Spinner';
 import { infoToastIcon } from './toastIcons';
-import { pushModal, removeModal, isTopModal } from './modalStack';
-import { handleDialogKey } from './dialogKeys';
 import { FINISH_ALREADY_CONFIRMED, RESTART_REFUSED } from '../../../../server/src/shared/runRefusals';
 import { checkFinishAnswer } from '../../../../server/src/shared/finishAnswer';
 import './FinishQuestionDialog.css';
@@ -21,45 +19,26 @@ const BOXES = { finishTime: 'finishTime' };
 const clock = (iso) => formatTime(iso, { hour: '2-digit', minute: '2-digit' });
 const day = (iso) => formatDate(iso, { weekday: 'long', day: 'numeric', month: 'long' });
 
-// The blocking "your clock stopped by itself" question. One dialog whose two steps swap in
-// place (the time box, then "still working?"); nothing is sent until the last step, and that
-// one call carries every answer. The time can be earlier or later than the stored finish.
-// There is no Escape, no click-outside and no close button: answering is the way out —
-// so a refusal this dialog has no answer for is handed to onRecheck, which takes the
-// question away when the server no longer lists it (its clock was deleted or changed).
+// The "your clock stopped by itself" question. One section of the shared "Needs your
+// attention" window (AttentionDialog), whose two steps swap in place (the time box, then
+// "still working?"); nothing is sent until the last step, and that one call carries every
+// answer. The time can be earlier or later than the stored finish. The window owns the
+// overlay, the modal stack entry, the Escape/Tab rules and where focus goes; this section
+// only asks it to place focus again when its step changes. Answering is the way out of this
+// section — so a refusal this section has no answer for is handed to onRecheck, which takes
+// the question away when the server no longer lists it (its clock was deleted or changed).
 export default function FinishQuestionDialog({ item, onAnswered, onRecheck }) {
-  const modalId = useId();
-  const dialogRef = useRef(null);
+  const sectionRef = useRef(null);
   const [step, setStep] = useState('B');
   const [finishLocal, setFinishLocal] = useState(() => (item.finishKnown ? isoToLocalInput(item.endTime) : ''));
   const [sending, setSending] = useState(false);
   const { setFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(() => finishLocal);
 
-  useEffect(() => {
-    pushModal(modalId);
-    return () => removeModal(modalId);
-  }, [modalId]);
-
-  // Focus the first control of whichever step is showing.
-  useEffect(() => {
-    const first = dialogRef.current?.querySelector('input, button:not(:disabled)');
-    first?.focus();
-  }, [step]);
-
-  // Escape does nothing; Tab stays inside the dialog.
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (!isTopModal(modalId)) return;
-      handleDialogKey(e, {
-        container: dialogRef.current,
-        focusable: () => (dialogRef.current
-          ? Array.from(dialogRef.current.querySelectorAll('input, button')).filter(el => !el.disabled)
-          : [])
-      });
-    };
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [modalId]);
+  // The step swap unmounts the button that was pressed, so focus falls to the page; ask the
+  // window to put it on the first control of the new step (it does so only while it is the
+  // top window, so it never pulls focus off the inactivity warning).
+  const refocus = useAttentionRefocus();
+  useEffect(() => { refocus(); }, [step, refocus]);
 
   const checkFinish = () => {
     const iso = localInputToIso(finishLocal);
@@ -141,74 +120,64 @@ export default function FinishQuestionDialog({ item, onAnswered, onRecheck }) {
     ? isoToLocalInput(item.latestFinish)
     : undefined;
 
-  return createPortal(
-    <div className="fq-overlay">
-      <div
-        className="fq-dialog"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="fq-title"
-        aria-describedby="fq-description"
-        ref={dialogRef}
-      >
-        <div className="fq-icon" aria-hidden="true">
-          <TriangleAlert size={32} />
-        </div>
-        <h2 id="fq-title" className="fq-title">Your clock stopped by itself</h2>
-
-        {step === 'B' && (
-          <>
-            {!item.finishKnown && (
-              <p id="fq-description" className="fq-text">
-                Your clock on {where} was started at {clock(item.startTime)} on {day(item.startTime)} and never stopped.
-                What time did you finish?
-              </p>
-            )}
-            {item.finishKnown && (
-              <p id="fq-description" className="fq-text">
-                Your clock on {where} stopped by itself at {clock(item.endTime)} on {day(item.endTime)} — the end of
-                normal hours. When did you really finish? Change the time if you stopped earlier or kept working.
-              </p>
-            )}
-            <div className={groupClass('finishTime')}>
-              <label htmlFor="finishTime">Time you finished</label>
-              <input
-                {...fieldProps('finishTime')}
-                type="datetime-local"
-                className="form-control"
-                value={finishLocal}
-                min={min}
-                max={max}
-                onChange={(e) => setFinishLocal(e.target.value)}
-              />
-              <FieldError message={errorFor('finishTime')} {...errorProps('finishTime')} />
-            </div>
-            <div className="fq-actions">
-              <button type="button" className="btn btn-primary" onClick={handleNext}>Next</button>
-            </div>
-          </>
-        )}
-
-        {step === 'C' && (
-          <>
-            <p id="fq-description" className="fq-text">Are you still working on this job?</p>
-            <div className="fq-actions">
-              <button type="button" className="btn btn-secondary" disabled={sending} onClick={() => setStep('B')}>
-                Back
-              </button>
-              <button type="button" className="btn btn-secondary" disabled={sending} onClick={() => send(true)}>
-                {sending && <Spinner size={16} />}
-                Yes, start my clock again
-              </button>
-              <button type="button" className="btn btn-primary" disabled={sending} onClick={() => send(false)}>
-                {sending && <Spinner size={16} />}
-                No, I'm done with it
-              </button>
-            </div>
-          </>
-        )}
+  return (
+    <section className="fq-section" aria-labelledby="fq-title" ref={sectionRef}>
+      <div className="fq-icon" aria-hidden="true">
+        <TriangleAlert size={32} />
       </div>
-    </div>,
-    document.body
+      <h3 id="fq-title" className="attention-title attention-title--tight">Your clock stopped by itself</h3>
+
+      {step === 'B' && (
+        <>
+          {!item.finishKnown && (
+            <p className="attention-note attention-note--spaced">
+              Your clock on {where} was started at {clock(item.startTime)} on {day(item.startTime)} and never stopped.
+              What time did you finish?
+            </p>
+          )}
+          {item.finishKnown && (
+            <p className="attention-note attention-note--spaced">
+              Your clock on {where} stopped by itself at {clock(item.endTime)} on {day(item.endTime)} — the end of
+              normal hours. When did you really finish? Change the time if you stopped earlier or kept working.
+            </p>
+          )}
+          <div className={groupClass('finishTime')}>
+            <label htmlFor="finishTime">Time you finished</label>
+            <input
+              {...fieldProps('finishTime')}
+              type="datetime-local"
+              className="form-control"
+              value={finishLocal}
+              min={min}
+              max={max}
+              onChange={(e) => setFinishLocal(e.target.value)}
+            />
+            <FieldError message={errorFor('finishTime')} {...errorProps('finishTime')} />
+          </div>
+          <div className="fq-actions">
+            <button type="button" className="btn btn-primary" onClick={handleNext}>Next</button>
+          </div>
+        </>
+      )}
+
+      {step === 'C' && (
+        <>
+          <p className="attention-note attention-note--spaced">Are you still working on this job?</p>
+          <div className="fq-actions">
+            <button type="button" className="btn btn-secondary" disabled={sending} onClick={() => setStep('B')}>
+              Back
+            </button>
+            <button type="button" className="btn btn-secondary" disabled={sending} onClick={() => send(true)}>
+              {sending && <Spinner size={16} />}
+              Yes, start my clock again
+            </button>
+            <button type="button" className="btn btn-primary" disabled={sending} onClick={() => send(false)}>
+              {sending && <Spinner size={16} />}
+              No, I'm done with it
+            </button>
+          </div>
+        </>
+      )}
+    </section>
   );
 }

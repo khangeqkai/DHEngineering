@@ -354,7 +354,11 @@ class ApiService {
 
   // Job Notes
   getJobNotes(jobcardId) { return this.request(`/jobcards/${jobcardId}/notes`); }
-  addJobNote(jobcardId, text) { return this._post(`/jobcards/${jobcardId}/notes`, { text }); }
+  addJobNote(jobcardId, text, mentionUserIds = []) {
+    return this._post(`/jobcards/${jobcardId}/notes`, mentionUserIds.length > 0 ? { text, mentionUserIds } : { text });
+  }
+  // Jobs holding comments that mention the signed-in person and are still unanswered.
+  getOpenMentions() { return this.request('/jobcards/open-mentions'); }
   markJobNotesRead(jobcardId, seenUpTo) { return this._put(`/jobcards/${jobcardId}/notes/read`, { seenUpTo }); }
   deleteJobNote(jobcardId, noteId) { return this._del(`/jobcards/${jobcardId}/notes/${noteId}`); }
 

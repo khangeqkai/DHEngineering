@@ -14,7 +14,9 @@ import { describeAtRisk, describeSafe, describeSafeAsSecondLine } from './closeR
 // passed in rather than worked out here.
 //
 // hasUnsavedWork is the wider answer, and the one every question below is asked about. It
-// adds a comment typed into the Comments tab but never posted, the details form of a
+// adds a comment typed into the Comments tab but never posted, a comment sent and still
+// waiting for the save's answer (notePosting: its text has left the box, so the box alone
+// can't see it), the details form of a
 // run that was just stopped (the run itself is recorded, but the machine, quantities and
 // checks about to go on it are not), and a part's half-filled New supplier form (kept
 // only inside that form until Save supplier). Those are deliberately kept out of isDirty:
@@ -28,9 +30,9 @@ import { describeAtRisk, describeSafe, describeSafeAsSecondLine } from './closeR
 // the inactivity sign-out don't run that save — they just make the screen disappear — so
 // the two effects below that guard against those need a wider question still:
 // hasWorkToLose, which folds costingDirty in alongside hasUnsavedWork.
-export function useUnsavedGuard({ isDirty, saving = false, hasUnpostedNote, stopFormOpen, supplierDraftOpen = false, costingDirty = false, costingUnsettled = false, showConfirm, onClose, isEdit = false, closeReasons = { safe: [], atRisk: [] }, revealDetails }) {
+export function useUnsavedGuard({ isDirty, saving = false, hasUnpostedNote, notePosting = false, stopFormOpen, supplierDraftOpen = false, costingDirty = false, costingUnsettled = false, showConfirm, onClose, isEdit = false, closeReasons = { safe: [], atRisk: [] }, revealDetails }) {
   const { registerUnsavedWork } = useAuth();
-  const hasUnsavedWork = isDirty || hasUnpostedNote || stopFormOpen || supplierDraftOpen;
+  const hasUnsavedWork = isDirty || hasUnpostedNote || notePosting || stopFormOpen || supplierDraftOpen;
   // A page refresh and the inactivity sign-out both skip the close question and its
   // own pricing flush (see useJobCardCosting.js), so they need to know about a box
   // still being typed in or sitting red too — not just a committed figure waiting on
@@ -110,6 +112,7 @@ export function useUnsavedGuard({ isDirty, saving = false, hasUnpostedNote, stop
     // form" — instead of a shared, vaguer "changes".
     const atRisk = [...closeReasons.atRisk];
     if (hasUnpostedNote) atRisk.push({ text: 'your unposted comment', verb: "hasn't been posted" });
+    if (notePosting) atRisk.push({ text: 'your comment', verb: 'is still being sent' });
     if (stopFormOpen) atRisk.push({ text: 'the open timer entry form', verb: "hasn't been saved" });
     if (supplierDraftOpen) atRisk.push({ text: 'the new supplier you started', verb: "hasn't been saved" });
     if (pricingFailed) atRisk.push({ text: 'your pricing', verb: "hasn't been saved" });
@@ -157,7 +160,7 @@ export function useUnsavedGuard({ isDirty, saving = false, hasUnpostedNote, stop
     // Switch there first, then let that render land before reaching for the element.
     revealDetails?.(); // the caller switches to the Details tab; see the comment above
     requestAnimationFrame(() => scrollFieldIntoView(safe[0].key));
-  }, [saving, hasUnsavedWork, isEdit, closeReasons, hasUnpostedNote, stopFormOpen, supplierDraftOpen, showConfirm, onClose, revealDetails]);
+  }, [saving, hasUnsavedWork, isEdit, closeReasons, hasUnpostedNote, notePosting, stopFormOpen, supplierDraftOpen, showConfirm, onClose, revealDetails]);
 
   // A browser refresh (Ctrl+R) and closing the tab never reach handleRequestClose — they
   // were throwing a half-filled card away in silence, which is the same hole that was

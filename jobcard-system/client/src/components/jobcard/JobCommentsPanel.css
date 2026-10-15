@@ -358,6 +358,7 @@
 }
 
 .jc-chat-composer {
+  position: relative;
   display: flex;
   align-items: flex-end;
   gap: var(--gap-tight);
@@ -415,6 +416,12 @@
   cursor: default;
 }
 
+/* A refusal about the comment sits just under the typing box, inside the side gutters. */
+.jc-chat .field-error-message {
+  margin: var(--space-1) var(--space-4) 0;
+  flex-shrink: 0;
+}
+
 .jc-chat-hint {
   padding: var(--space-1-5) var(--space-4) var(--space-2-5);
   font-size: var(--text-2xs);
@@ -447,4 +454,83 @@
   .jc-bubble {
     transition: none;
   }
+}
+
+/* The @ list sits right above the typing box, over the bottom of the thread. */
+.jc-mention-list {
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: calc(100% + var(--space-1));
+  z-index: 4;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.jc-mention-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+  padding: var(--space-1-5) var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.jc-mention-row:hover,
+.jc-mention-row.is-active {
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+.jc-mention-avatar {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: var(--text-2xs);
+  font-weight: var(--font-bold);
+  letter-spacing: 0.02em;
+}
+
+.jc-mention-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* An @name inside a comment. Other people's bubbles take the accent ink (words never take
+   a fill); the person's own bubble is accent-filled, so there it only goes bold. */
+.jc-msg-mention {
+  font-weight: var(--font-bold);
+}
+
+.jc-msg-theirs .jc-msg-mention {
+  color: var(--accent-text);
+}
+
+.jc-msg-mention.is-me {
+  padding: 0 var(--space-0-5);
+  border-radius: var(--radius-sm);
+  background: rgba(var(--accent-rgb), 0.15);
+}
+
+/* The comment a mention link landed on: a tint that fades out. */
+.jc-msg--target .jc-msg-bubble {
+  animation: jc-target-fade 2s ease-out;
+}
+
+@keyframes jc-target-fade {
+  from { box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.45); }
+  to { box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0); }
 }

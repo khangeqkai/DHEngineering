@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { api, SIGNED_OUT_MESSAGES } from '../services/api';
 import { useInactivityTimer } from '../hooks/useInactivityTimer';
 import { can } from '../utils/roles';
+import { setOpenMentionsMarker } from './openMentionsMarker';
 import { INACTIVITY_MINUTES } from '../../../server/src/shared/settingsRules';
 
 const AuthContext = createContext(null);
@@ -69,6 +70,7 @@ export function AuthProvider({ children }) {
     // run once that last-moment work has landed. It never rejects.
     const cancelSession = api.beginLogout();
     setUser(null);
+    setOpenMentionsMarker(null);
     Promise.race([
       Promise.allSettled(pending),
       new Promise(resolve => setTimeout(resolve, BEFORE_LOGOUT_GRACE_MS))
@@ -96,9 +98,18 @@ export function AuthProvider({ children }) {
       clearInterval(pollRef.current);
       api.setToken(null);
       setUser(null);
+      setOpenMentionsMarker(null);
       toast.error(SIGNED_OUT_MESSAGES[code] || 'You have been signed out. Please sign in again.');
     });
     return () => api.setOnSessionInvalidated(null);
+  }, []);
+
+  // The change marker of the person's unanswered @mentions, from a /me reply (null when
+  // the server couldn't say, which keeps the last known one). An equal string is a
+  // no-op, so an unchanged poll notifies nobody.
+  const applyOpenMentions = useCallback((fresh) => {
+    const signature = fresh?.openMentions?.signature;
+    if (typeof signature === 'string') setOpenMentionsMarker(signature);
   }, []);
 
   // Swap ONLY the live identity — role and display name, both of which the
@@ -126,6 +137,7 @@ export function AuthProvider({ children }) {
     pollRef.current = setInterval(async () => {
       try {
         const fresh = await api.getMe();
+        applyOpenMentions(fresh);
         const roleChanged = !!fresh?.role && fresh.role !== knownRole;
         const nameChanged = !!fresh?.name && fresh.name !== knownName;
         if (roleChanged || nameChanged) {
@@ -140,7 +152,7 @@ export function AuthProvider({ children }) {
       }
     }, SESSION_POLL_MS);
     return () => clearInterval(pollRef.current);
-  }, [user, applyIdentity]);
+  }, [user, applyIdentity, applyOpenMentions]);
 
   // Load inactivity timeout from server
   const loadInactivityTimeout = useCallback(async () => {
@@ -173,11 +185,16 @@ export function AuthProvider({ children }) {
 
     // Fetch full user profile to get preferences
     const fullUser = await api.getMe();
-    setUser(fullUser);
+    // The open-mentions summary only feeds the change marker; kept on the user it would go stale.
+    const { openMentions, ...profile } = fullUser;
+    // Marker first, person second: the list is read once the person is known, and by then
+    // the marker is already there, so sign-in makes one read instead of two.
+    applyOpenMentions(fullUser);
+    setUser(profile);
 
     await loadInactivityTimeout();
-    return fullUser;
-  }, [loadInactivityTimeout]);
+    return profile;
+  }, [loadInactivityTimeout, applyOpenMentions]);
 
   const updatePreferences = useCallback(async (preferences) => {
     await api.updatePreferences(preferences);

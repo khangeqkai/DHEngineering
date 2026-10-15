@@ -76,7 +76,9 @@ function seedHistory({ db, adminId, adminName, users, companies, contacts, suppl
       }
 
       for (const n of job.notes) {
-        add('jobcard', job.id, 'add_note', n.workerId, n.workerName, { note: { from: null, to: n.text } }, n.at);
+        const changes = { note: { from: null, to: n.text } };
+        if (n.mentioned?.length) changes.mentioned = { from: null, to: n.mentioned.join(', ') };
+        add('jobcard', job.id, 'add_note', n.workerId, n.workerName, changes, n.at);
       }
 
       for (const t of job.timers) {

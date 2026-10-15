@@ -14,6 +14,12 @@ const { PIN_REGEX, PIN_MESSAGE } = require('../shared/pin');
 const { hasMachineSeparator, MACHINE_SEPARATOR_MESSAGE } = require('../shared/machineList');
 const { QUALITY_LEVELS } = require('../shared/qualityLevels');
 const { FUTURE_LEEWAY_MS } = require('../shared/finishAnswer');
+const { MAX_MENTIONS, TOO_MANY_MENTIONS_MESSAGE } = require('../shared/mentions');
+
+// Fields a screen shows under a different box than the body key: the people a comment asks
+// are worked out from its text, so every refusal about them marks the comment's text box
+// (the route's own mention refusals already report 'text').
+const FIELD_ALIASES = { mentionUserIds: 'text' };
 
 /**
  * Middleware to handle validation errors
@@ -30,7 +36,10 @@ function handleValidationErrors(req, res, next) {
       // Which field each message belongs to, so a screen can mark the box itself
       // instead of only popping up the message. express-validator 7 names it
       // `path` (an older major would call it `param`) — use whichever exists.
-      fields: errArray.map(err => ({ field: err.path !== undefined ? err.path : err.param, message: err.msg }))
+      fields: errArray.map(err => {
+        const field = err.path !== undefined ? err.path : err.param;
+        return { field: FIELD_ALIASES[field] || field, message: err.msg };
+      })
     });
   }
   next();
@@ -595,6 +604,18 @@ const validateMarkNotesRead = [
   handleValidationErrors
 ];
 
+// The people @mentioned in a new comment: optional, at most 20 ids. Whether each id is a real,
+// active person is checked by the route (it needs the database); this only checks the shape.
+// A value that isn't a list at all, or holds something other than ids, gets the same
+// "pick them again" message: only a real list that is too long is told it asked too many.
+const MENTION_IDS_GARBLED = 'Couldn’t tell who was asked — pick them again from the @ list.';
+const validateMentionUserIds = body('mentionUserIds')
+  .optional({ nullable: true })
+  .isArray().withMessage(MENTION_IDS_GARBLED).bail()
+  .isArray({ max: MAX_MENTIONS }).withMessage(TOO_MANY_MENTIONS_MESSAGE).bail()
+  .custom(list => list.every(v => typeof v === 'string' && v.trim().length > 0))
+  .withMessage(MENTION_IDS_GARBLED);
+
 const validateManualTimeEntry = manualTimeEntryRules({ startRequired: true });
 const validateTimeEntryEdit = manualTimeEntryRules({ startRequired: false });
 
@@ -637,6 +658,8 @@ module.exports = {
   validateManualTimeEntry,
   validateTimeEntryEdit,
   validateMarkNotesRead,
+  validateMentionUserIds,
+  MENTION_IDS_GARBLED,
 
   JOBCARD_STATUSES,
   PRIORITY_OPTIONS

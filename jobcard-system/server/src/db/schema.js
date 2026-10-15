@@ -400,6 +400,22 @@ db.exec(`
     FOREIGN KEY (jobcard_id) REFERENCES jobcards(id) ON DELETE CASCADE
   );
 
+  -- Who was @mentioned in which comment, one row per person per comment. A mention is
+  -- open (answered_at NULL) until the mentioned person posts any comment on the same job
+  -- after it; that one comment answers all their open mentions on the job.
+  CREATE TABLE IF NOT EXISTS job_note_mentions (
+    id TEXT PRIMARY KEY,
+    note_id TEXT NOT NULL REFERENCES job_notes(id) ON DELETE CASCADE,
+    jobcard_id TEXT NOT NULL REFERENCES jobcards(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,
+    mentioned_name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    answered_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_job_note_mentions_open ON job_note_mentions(user_id) WHERE answered_at IS NULL;
+  CREATE INDEX IF NOT EXISTS idx_job_note_mentions_job_user ON job_note_mentions(jobcard_id, user_id);
+  CREATE INDEX IF NOT EXISTS idx_job_note_mentions_note ON job_note_mentions(note_id);
+
   -- Index for finding active timers (time entries with no end_time)
   CREATE INDEX IF NOT EXISTS idx_time_entries_active ON time_entries(user_id, end_time);
 `);

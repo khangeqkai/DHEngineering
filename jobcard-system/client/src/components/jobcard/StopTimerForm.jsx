@@ -8,7 +8,7 @@ import ToggleTiles from '../common/ToggleTiles';
 import Spinner from '../common/Spinner';
 import FieldError from '../common/FieldError';
 import { useFieldErrors, fieldErrorsFromRefusal, scrollFieldIntoView } from '../../hooks/useFieldErrors';
-import { pushModal, removeModal, isTopModal } from '../common/modalStack';
+import { useModalLayer, isTopModal, useFocusWhenTop } from '../common/modalStack';
 import { handleDialogKey } from '../common/dialogKeys';
 import './StopTimerForm.css';
 
@@ -131,11 +131,7 @@ export default function StopTimerForm({
   // card (itself a dialog with its own Tab trap); registering here makes this the
   // top-most layer, so the job card behind stops grabbing Tab and focus stays in
   // this form. Without it, Tab between these fields gets yanked back to the card.
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    pushModal(modalId);
-    return () => removeModal(modalId);
-  }, [isOpen, modalId]);
+  const layer = useModalLayer(modalId, isOpen);
 
   // The job's own details — just the item and its part position now. Whether the
   // checklist is needed no longer comes from here (see the effect below); a
@@ -207,11 +203,13 @@ export default function StopTimerForm({
     if (firstMarkedCheck) scrollFieldIntoView(firstMarkedCheck);
   }, [firstMarkedCheck]);
 
-  useEffect(() => {
-    if (isOpen && !jobLoading && firstInputRef.current) {
-      firstInputRef.current.focus();
-    }
-  }, [isOpen, jobLoading]);
+  // Focus the first box once per opening, the first time this form is the top window and
+  // the job has loaded (not under the inactivity warning). It never pulls focus from a box
+  // already inside it. When a window above closes, the stack hands focus back itself.
+  useFocusWhenTop(modalId, isOpen && !jobLoading, () => {
+    if (formRef.current?.contains(document.activeElement)) return;
+    firstInputRef.current?.focus();
+  });
 
   const handleKeyDown = useCallback((e) => {
     // Only the top-most dialog reacts to global keys (a confirmation layered over
@@ -330,7 +328,7 @@ export default function StopTimerForm({
   };
 
   return createPortal(
-    <div className="stop-timer-overlay" role="alertdialog" aria-modal="true" aria-labelledby="stop-timer-title" aria-describedby="stop-timer-desc">
+    <div className="stop-timer-overlay" style={{ zIndex: layer }} role="alertdialog" aria-modal="true" aria-labelledby="stop-timer-title" aria-describedby="stop-timer-desc">
       <div className="stop-timer-form" ref={formRef}>
         <div className="stop-timer-header">
           <div className="stop-timer-header-top">

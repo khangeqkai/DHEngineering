@@ -1,6 +1,6 @@
 import { useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
-import { pushModal, removeModal, isTopModal } from './modalStack';
+import { useModalLayer, isTopModal, useFocusWhenTop } from './modalStack';
 import { handleDialogKey } from './dialogKeys';
 
 export default function ConfirmDialog({
@@ -13,21 +13,22 @@ export default function ConfirmDialog({
   altLabel = null,
   onConfirm,
   onCancel,
-  onAlt
+  onAlt,
+  pinnedLayer = null
 }) {
   const confirmButtonRef = useRef(null);
   const cancelButtonRef = useRef(null);
   const altButtonRef = useRef(null);
   const dialogRef = useRef(null);
   const modalId = useId();
+  // Registers as the (now) top-most dialog while open, and takes its drawing layer.
+  const layer = useModalLayer(modalId, isOpen, { pinnedLayer });
+
+  // Focus the cancel button when modal opens (safer default) — once it is the top window.
+  useFocusWhenTop(modalId, isOpen, () => cancelButtonRef.current?.focus());
 
   useEffect(() => {
     if (!isOpen) return;
-
-    // Register as the (now) top-most dialog while open.
-    pushModal(modalId);
-    // Focus the cancel button when modal opens (safer default)
-    cancelButtonRef.current?.focus();
 
     const handleKeyDown = (e) => {
       // Only the top-most open dialog reacts to global keys.
@@ -44,7 +45,6 @@ export default function ConfirmDialog({
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      removeModal(modalId);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onCancel, modalId]);
@@ -56,6 +56,7 @@ export default function ConfirmDialog({
   return createPortal(
     <div
       className="confirm-dialog-overlay"
+      style={{ zIndex: layer }}
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"

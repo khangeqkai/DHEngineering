@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { isActiveRecord } from '../../../../server/src/shared/records';
+import { displayNameOf } from './mentionNames';
 
 // The last lists any window loaded. A window mounts fresh each time, so without this its
 // pickers would start empty and stay empty until the reply lands; it starts from these
@@ -21,7 +22,7 @@ const cache = { suppliers: [], employees: [], machines: [] };
 // a slow full load can never overwrite suppliers with an older reply than a later
 // reloadSuppliers (which would wipe a just-created supplier), and the reverse.
 let seq = 0;
-const newestSeq = { suppliers: 0, others: 0 };
+const newestSeq = { suppliers: 0, employees: 0, machines: 0 };
 const listeners = new Set();
 
 // The full load currently on the wire, shared by everyone who asks while it runs, so the
@@ -35,6 +36,9 @@ let everLoaded = false;
 // Bumped by clear and by a write to the lists: a full load started under an older value
 // does not count as fresh.
 let generation = 0;
+// Bumped by clear only (every sign-out): a reply that started under an older value belongs
+// to a session that has ended.
+let session = 0;
 // A window opening within this long of a successful full load reuses the lists instead of
 // asking again. Long enough to cover going list -> job -> back -> another job; short enough
 // that a supplier or worker added on another PC shows up on the next open after a short
@@ -54,11 +58,13 @@ function publish() {
  */
 function clearJobCardReferenceData() {
   generation += 1;
+  session += 1;
   inFlight = null;
   loadedAt = 0;
   everLoaded = false;
   newestSeq.suppliers = seq;
-  newestSeq.others = seq;
+  newestSeq.employees = seq;
+  newestSeq.machines = seq;
   cache.suppliers = [];
   cache.employees = [];
   cache.machines = [];
@@ -86,6 +92,10 @@ api.onDataWritten((endpoint) => {
   loadedAt = 0;
 });
 
+const activeSorted = (users) => (users || [])
+  .filter(isActiveRecord)
+  .sort((a, b) => displayNameOf(a).localeCompare(displayNameOf(b)));
+
 function fetchAll() {
   if (inFlight) return inFlight;
   const myGeneration = generation;
@@ -106,11 +116,12 @@ function fetchAll() {
       newestSeq.suppliers = mine;
       cache.suppliers = suppliersRes || [];
     }
-    if (mine > newestSeq.others) {
-      newestSeq.others = mine;
-      cache.employees = (usersRes || [])
-        .filter(isActiveRecord)
-        .sort((a, b) => (a.name || a.username || '').localeCompare(b.name || b.username || ''));
+    if (mine > newestSeq.employees) {
+      newestSeq.employees = mine;
+      cache.employees = activeSorted(usersRes);
+    }
+    if (mine > newestSeq.machines) {
+      newestSeq.machines = mine;
       cache.machines = machinesRes || [];
     }
     // Only a load from this generation counts: one still on the wire from before a
@@ -174,7 +185,7 @@ export function useJobCardReferenceData({ isWindowUp }) {
   const loadReferenceData = useCallback(async () => {
     try {
       await refreshIfStale();
-    } catch (err) {
+    } catch {
       // Every picker on this screen — suppliers, workers, machines — may be stale or
       // empty until this lands, which on its own just looks like an app with nothing
       // in it. Say what is missing, and say what gets it back. Nothing is said once
@@ -201,10 +212,32 @@ export function useJobCardReferenceData({ isWindowUp }) {
       newestSeq.suppliers = mine;
       cache.suppliers = res || [];
       publish();
-    } catch (err) {
+    } catch {
       // Non-fatal: the picker keeps its current list until the next load.
     }
   }, []);
 
-  return { suppliers: lists.suppliers, employees: lists.employees, machines: lists.machines, reloadSuppliers };
+  // Re-fetch the workers (the @ mention check asks for this before telling someone a name
+  // matches nobody). Touches only the workers list, and resolves to the shared list as it
+  // stands once this reply is settled, so the caller checks names against exactly what the
+  // pickers show: this reply when it landed, or the newer reply that overtook it. Null when
+  // the fetch failed (the cache is untouched) or the session ended meanwhile.
+  const reloadEmployees = useCallback(async () => {
+    const mine = ++seq;
+    const mySession = session;
+    try {
+      const fresh = activeSorted(await api.getEmployees());
+      if (mySession !== session) return null;
+      if (mine > newestSeq.employees) {
+        newestSeq.employees = mine;
+        cache.employees = fresh;
+        publish();
+      }
+      return cache.employees;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  return { suppliers: lists.suppliers, employees: lists.employees, machines: lists.machines, reloadSuppliers, reloadEmployees };
 }

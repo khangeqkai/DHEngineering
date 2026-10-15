@@ -40,7 +40,7 @@ const machines = refData.machines.map(m => ({ ...m, id: uid('machine') }));
 console.log('Wiping all data...');
 const tables = [
   'history', 'job_costings',
-  'time_entries', 'job_note_reads', 'job_notes', 'job_assignees', 'job_items',
+  'time_entries', 'job_note_reads', 'job_note_mentions', 'job_notes', 'job_assignees', 'job_items',
   'jobcards', 'supplier_service_tags', 'tags', 'machines', 'suppliers',
   'contacts', 'companies', 'users'
 ];
@@ -162,6 +162,7 @@ const insertJobcard = db.prepare(`INSERT INTO jobcards (
 const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments, drawings_type, customer_property) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
 const insertNote = db.prepare('INSERT INTO job_notes (id, jobcard_id, user_id, user_name, text, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+const insertMention = db.prepare('INSERT INTO job_note_mentions (id, note_id, jobcard_id, user_id, mentioned_name, created_at, answered_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
 const insertTimeEntry = db.prepare(`INSERT INTO time_entries (
   id, jobcard_id, user_id, item_id, machine_number, qty, scrap_bin_qty, scrap_recycle_qty, description, start_time, end_time,
   first_off_inspection, in_process_validation, measuring_equipment_verification, equipment_checks, equipment_checks_comments,
@@ -368,6 +369,59 @@ const createJobs = db.transaction(() => {
 });
 
 createJobs();
+
+// A few @mentions so a fresh install has something waiting: the admin asked on two jobs (one
+// of them twice), one worker asked on a third, and a second worker who was asked and has
+// already replied (that mention is answered). Open ones sit only on jobs that aren't invoiced.
+const seedMentions = db.transaction(() => {
+  const liveJobs = jobsForHistory.filter(j => j.status !== 'INVOICED');
+  if (liveJobs.length < 4 || workers.length < 2) return;
+  const admin = users[0];
+  const [w1, w2] = workers;
+  const displayName = (person) => person.name || person.username;
+  const adminName = displayName(admin);
+  const addNote = (job, author, text, daysAgo, hour, mentioned = []) => {
+    const noteId = uid('note');
+    const at = makeDate(daysAgo, hour, 0).toISOString();
+    insertNote.run(noteId, job.id, author.id, displayName(author), text, at);
+    // Hand the comment to the activity-trail seeder too, like the main note loop does.
+    job.notes.push({ workerId: author.id, workerName: displayName(author), text, at, mentioned: mentioned.map(displayName) });
+    return { noteId, at };
+  };
+  const mention = (note, job, person, answered) =>
+    insertMention.run(uid('mention'), note.noteId, job.id, person.id, displayName(person),
+      note.at, answered ? answered.at : null);
+
+  // A job that fits a question: it existed when the question was asked, and none of the
+  // people who must still be waiting on it has written a comment there since (a comment
+  // answers every open question to its writer on that job).
+  const taken = new Set();
+  const pickJob = (askedAt, waiting) => {
+    const job = liveJobs.find(j => !taken.has(j) && j.createdAt < askedAt
+      && !j.notes.some(n => n.at > askedAt && waiting.some(p => p.id === n.workerId)));
+    if (job) taken.add(job);
+    return job;
+  };
+  const at = (daysAgo, hour) => makeDate(daysAgo, hour, 0).toISOString();
+  const jobA = pickJob(at(3, 9), [admin]);
+  const jobB = pickJob(at(2, 11), [admin]);
+  const jobC = pickJob(at(1, 13), [w1]);
+  // Job D's question is answered by w2 at day 3, 15:00; no earlier w2 comment may have answered it first.
+  const jobD = pickJob(at(4, 8), []);
+  if (!jobA || !jobB || !jobC || !jobD || jobD.notes.some(n => n.workerId === w2.id && n.at > at(4, 8) && n.at < at(3, 15))) return;
+  const a1 = addNote(jobA, w1, `@${adminName} the customer rang about the delivery date, can you call them back?`, 3, 9, [admin]);
+  mention(a1, jobA, admin);
+  const a2 = addNote(jobA, w2, `@${adminName} still waiting on the material certificate for this one.`, 1, 10, [admin]);
+  mention(a2, jobA, admin);
+  const b1 = addNote(jobB, w2, `@${adminName} drawing revision C is not in the folder, which one do we run?`, 2, 11, [admin]);
+  mention(b1, jobB, admin);
+  const c1 = addNote(jobC, w2, `@${displayName(w1)} can you check the first-off on this before the next shift?`, 1, 13, [w1]);
+  mention(c1, jobC, w1);
+  const d1 = addNote(jobD, w1, `@${displayName(w2)} did the bracket get its coating booked?`, 4, 8, [w2]);
+  const d2 = addNote(jobD, w2, 'Yes, booked for Thursday.', 3, 15);
+  mention(d1, jobD, w2, d2);
+});
+seedMentions();
 console.log(SKIP_JOBS
   ? 'Skipped job cards (--no-jobs): job list starts empty, next job number is DH-00001.'
   : `Created ${scenarios.length} job cards covering every status, job type, material, treatment, drawing, and customer-property value.`);

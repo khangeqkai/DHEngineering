@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { pushModal, removeModal, isTopModal } from './modalStack';
+import { useModalLayer, isTopModal, useFocusWhenTop } from './modalStack';
 import { handleDialogTab } from './dialogKeys';
 
 // Selector for elements that can receive keyboard focus via Tab.
@@ -27,7 +27,6 @@ export default function BottomSheet({
 }) {
   const dialogRef = useRef(null);
   const rowRef = useRef(null);
-  const previousFocusRef = useRef(null);
   const modalId = useId();
 
   const handleKeyDown = useCallback((e) => {
@@ -60,25 +59,13 @@ export default function BottomSheet({
     });
   }, [onClose, modalId]);
 
-  // Focus management — keyed only on open/close so a changing
-  // onClose identity can't keep snapping focus back to the dialog mid-edit.
-  useEffect(() => {
-    if (!isOpen) return undefined;
+  // Joins the shared modal stack while open and takes its drawing layer.
+  const layer = useModalLayer(modalId, isOpen);
 
-    // Register as the (now) top-most dialog for the duration it's open.
-    pushModal(modalId);
-    // Remember what was focused before opening so we can restore it on close.
-    previousFocusRef.current = document.activeElement;
-    // Move focus into the dialog so the first Tab lands on a real field
-    // rather than the close button (first in the DOM) or the page behind.
-    dialogRef.current?.focus();
-
-    return () => {
-      removeModal(modalId);
-      // Hand focus back to wherever it was before the dialog opened.
-      previousFocusRef.current?.focus?.();
-    };
-  }, [isOpen, modalId]);
+  // Move focus into the dialog so the first Tab lands on a real field
+  // rather than the close button (first in the DOM) or the page behind.
+  // Handing focus back on close is the modal stack's job, not this window's.
+  useFocusWhenTop(modalId, isOpen, () => dialogRef.current?.focus());
 
   // Keydown handling (Escape close + Tab trap) — re-bound if the handler changes.
   useEffect(() => {
@@ -127,7 +114,7 @@ export default function BottomSheet({
   );
 
   return createPortal(
-    <div className="modal-overlay">
+    <div className="modal-overlay" style={{ zIndex: layer }}>
       {aside ? (
         <div ref={rowRef} className="modal-row">
           {aside}

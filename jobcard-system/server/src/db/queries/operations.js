@@ -333,6 +333,65 @@ const jobNoteQueries = {
   `)
 };
 
+// @mentions in comments. Open = answered_at IS NULL. Open mentions on archived (invoiced)
+// jobs are left out of every list and count: nothing can be posted there to answer them,
+// and they come back if the job is unarchived.
+const jobNoteMentionQueries = {
+  create: db.prepare(`
+    INSERT INTO job_note_mentions (id, note_id, jobcard_id, user_id, mentioned_name, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `),
+
+  // The person posted on this job: every mention of them here that is still open is answered.
+  answerOpenForUserOnJob: db.prepare(`
+    UPDATE job_note_mentions
+    SET answered_at = ?
+    WHERE jobcard_id = ? AND user_id = ? AND answered_at IS NULL
+  `),
+
+  forJobcard: db.prepare(`
+    SELECT note_id, user_id, mentioned_name FROM job_note_mentions
+    WHERE jobcard_id = ?
+    ORDER BY rowid
+  `),
+
+  // One row per job with open mentions for this person, oldest waiting first. The oldest
+  // open mention on each job (the one a row opens at) is picked by created_at, rowid breaking ties.
+  openForUserByJob: db.prepare(`
+    SELECT j.id AS jobcard_id, j.job_number AS job_number, j.description AS description,
+           g.count AS count, g.oldest_at AS oldest_at,
+           first_m.note_id AS first_note_id,
+           fn.text AS first_text, fn.user_name AS first_by_name
+    FROM (
+      SELECT jobcard_id, COUNT(*) AS count, MIN(created_at) AS oldest_at,
+             (SELECT m2.id FROM job_note_mentions m2
+              WHERE m2.jobcard_id = m.jobcard_id AND m2.user_id = @userId AND m2.answered_at IS NULL
+              ORDER BY m2.created_at ASC, m2.rowid ASC LIMIT 1) AS first_id
+      FROM job_note_mentions m
+      WHERE m.user_id = @userId AND m.answered_at IS NULL
+      GROUP BY m.jobcard_id
+    ) g
+    JOIN jobcards j ON j.id = g.jobcard_id AND j.archived = 0
+    JOIN job_note_mentions first_m ON first_m.id = g.first_id
+    JOIN job_notes fn ON fn.id = first_m.note_id
+    ORDER BY g.oldest_at ASC, j.job_number ASC
+  `),
+
+  // The cheap one polled with every /auth/me: one aggregate over this person's open mentions on
+  // jobs that aren't archived. /me builds the change marker from it: the count moves when a
+  // mention is added or answered; the newest mention time moves when one is added; the list
+  // of visible job ids (sorted by /me — group_concat keeps no promised order) moves when a job drops out or comes back (archived or unarchived),
+  // so one job archived while another is unarchived still changes it. Unlike a job's edit
+  // time, the id list does not move when such a job is merely edited, so ordinary work on it
+  // never makes every PC of that person read the list again.
+  openSummaryForUser: db.prepare(`
+    SELECT COUNT(*) AS count, MAX(m.created_at) AS newest_mention_at, group_concat(m.jobcard_id, ',') AS job_ids
+    FROM job_note_mentions m
+    JOIN jobcards j ON j.id = m.jobcard_id AND j.archived = 0
+    WHERE m.user_id = ? AND m.answered_at IS NULL
+  `)
+};
+
 // Prepared once: the text is constant, the listed ids go in as one JSON array.
 const unreadNoteCountsStmt = db.prepare(`
   SELECT n.jobcard_id AS jobcard_id, COUNT(*) AS unread
@@ -467,6 +526,7 @@ const jobCostingQueries = {
 module.exports = {
   timeEntryQueries,
   jobNoteQueries,
+  jobNoteMentionQueries,
   getLatestNotesForJobcards,
   getUnreadNoteCountsForJobcards,
   jobCostingQueries

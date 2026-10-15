@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect, useCallback, useId } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { Calendar, ChevronDown } from 'lucide-react';
 import CalendarPicker from '../common/CalendarPicker';
-import { pushModal, removeModal, isTopModal } from '../common/modalStack';
 import { capitalizeFirst, formatDate } from '../../utils/formatters';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from './constants';
 import { canChangeStatus, offeredStatusValues } from '../../../../server/src/shared/jobStatus';
@@ -62,7 +61,6 @@ export default function JobIdentityStrip({
   const priorityRef = useRef(null);
   const priorityTriggerRef = useRef(null);
   const priorityMenuRef = useRef(null);
-  const priorityMenuId = useId();
 
   // Closing the menu always hands the keyboard back to the button that opened it —
   // otherwise Escape (or a pick) drops focus onto the document body and the next Tab
@@ -74,10 +72,9 @@ export default function JobIdentityStrip({
 
   useEffect(() => {
     if (!showPriorityMenu) return;
-    // Join the shared modal stack while open: this menu sits on top of the job
-    // card dialog, and registering as the top layer keeps that dialog's
-    // Escape-to-close (and Tab trap) from firing while the menu is open.
-    pushModal(priorityMenuId);
+    // A menu is not a window, so it stays off the modal stack. It sits on top of the job
+    // card dialog, and takes Escape in the capture phase and stops it there, which keeps
+    // that dialog's Escape-to-close from firing while the menu is open.
     const onMouse = (e) => {
       if (priorityRef.current && !priorityRef.current.contains(e.target)) {
         // A click elsewhere has already chosen where focus goes; taking it back to
@@ -86,7 +83,8 @@ export default function JobIdentityStrip({
       }
     };
     const onKey = (e) => {
-      if (!isTopModal(priorityMenuId)) return;
+      // A key aimed at a window opened over the menu (the inactivity warning) is not the menu's.
+      if (e.target !== document.body && !priorityRef.current?.contains(e.target)) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
@@ -94,13 +92,12 @@ export default function JobIdentityStrip({
       }
     };
     document.addEventListener('mousedown', onMouse);
-    document.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey, true);
     return () => {
-      removeModal(priorityMenuId);
       document.removeEventListener('mousedown', onMouse);
-      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keydown', onKey, true);
     };
-  }, [showPriorityMenu, priorityMenuId, closePriorityMenu]);
+  }, [showPriorityMenu, closePriorityMenu]);
 
   // Opening the menu puts the keyboard on the priority the job already has, so the
   // arrow keys start from where the job actually is rather than from the top of the list.

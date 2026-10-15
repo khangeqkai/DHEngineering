@@ -68,6 +68,12 @@ export function todayIsoDate() {
   return toIsoDate(new Date());
 }
 
+// Whether a stored moment falls on today's local calendar day. False for empty/invalid input.
+export function isToday(value) {
+  const when = new Date(value);
+  return !Number.isNaN(when.getTime()) && toIsoDate(when) === todayIsoDate();
+}
+
 // isCalendarDate and roundTo used to be written out here a second time, kept in step
 // with the server's copies by hand. Both are now one shared file each side imports —
 // see server/src/shared/calendarDate.js and server/src/shared/round.js.

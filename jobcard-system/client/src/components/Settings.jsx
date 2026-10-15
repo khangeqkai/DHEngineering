@@ -9,33 +9,34 @@ import HomeAccessCard from './settings/HomeAccessCard';
 import DataBackupCard from './settings/DataBackupCard';
 import FieldError from './common/FieldError';
 import EmptyState from './common/EmptyState';
-import { pushModal, removeModal, isTopModal } from './common/modalStack';
+import { handleDialogKey } from './common/dialogKeys';
+import { useModalLayer, isTopModal, useFocusWhenTop, PINNED_LAYERS } from './common/modalStack';
 import './Settings.css';
 
 export default function Settings() {
   const s = useSettings();
   const restoreOverlayRef = useRef(null);
+  const restoreLayer = useModalLayer('restore-overlay', s.importing, { pinnedLayer: PINNED_LAYERS.restore });
 
   // While a restore runs the cover owns the keyboard: it takes focus when it
   // appears and, while it is the top layer, swallows Tab so nothing behind it
   // (the sidebar, this page's buttons) can be reached and pressed — leaving the
   // page mid-restore would pull the cover down while the restore is still going.
   // Escape does nothing either: a restore can't be cancelled.
+  useFocusWhenTop('restore-overlay', s.importing, () => restoreOverlayRef.current?.focus());
+
   useEffect(() => {
     if (!s.importing) return undefined;
-    pushModal('restore-overlay');
-    restoreOverlayRef.current?.focus();
     const handleKeyDown = (e) => {
       if (!isTopModal('restore-overlay')) return;
-      if (e.key === 'Tab' || e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      // The cover has no controls: Tab is held where it is, Escape is swallowed.
+      handleDialogKey(e, { container: restoreOverlayRef.current, focusable: () => [] });
+      // Nothing else may see the Tab either (handleDialogKey only prevents its default).
+      if (e.key === 'Tab') e.stopPropagation();
     };
     document.addEventListener('keydown', handleKeyDown, true);
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true);
-      removeModal('restore-overlay');
     };
   }, [s.importing]);
 
@@ -403,6 +404,7 @@ export default function Settings() {
           aria-label="Restoring backup"
           aria-describedby="restore-overlay-desc"
           className="restore-overlay"
+          style={{ zIndex: restoreLayer }}
         >
           <Spinner size={40} />
           <h2>Restoring…</h2>

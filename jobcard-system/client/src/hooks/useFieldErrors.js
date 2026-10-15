@@ -123,16 +123,18 @@ export function fieldErrorsFromRefusal(err, boxFor) {
 // The one way a form with a Save/Create button reports a failed save: a message
 // that belongs to one of its boxes marks that box (and brings the first into view);
 // anything else — a message with no box, or a refusal that names no field at all —
-// is a pop-up. The two never both fire for one message.
-export function showSaveRefusal(err, { boxFor, setFieldErrors, fallback, toastId }) {
+// is a pop-up. The two never both fire for one message. showToast(message), when given,
+// tells the pop-up part instead of toast.error (for a pop-up that must name its job).
+export function showSaveRefusal(err, { boxFor, setFieldErrors, fallback, toastId, showToast }) {
   const { marks, others } = fieldErrorsFromRefusal(err, boxFor);
+  const tell = (message) => (showToast ? showToast(message) : toast.error(message, toastId ? { id: toastId } : undefined));
   if (!marks) {
-    toast.error(err?.message || fallback, toastId ? { id: toastId } : undefined);
+    tell(err?.message || fallback);
     return;
   }
   setFieldErrors(marks);
   scrollFieldIntoView(Object.keys(marks)[0]);
-  if (others.length > 0) toast.error(others.join('. '), toastId ? { id: toastId } : undefined);
+  if (others.length > 0) tell(others.join('. '));
 }
 
 // Scrolls a field's input into view when a submit-time error has just marked it

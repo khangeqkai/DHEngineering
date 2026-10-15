@@ -1,21 +1,48 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { infoToastIcon } from '../components/common/toastIcons';
 import { useAuth } from './AuthContext';
+import { subscribeOpenMentionsMarker, getOpenMentionsMarker, setOpenMentionsMarker } from './openMentionsMarker';
 import { FinishQuestionContext } from './FinishQuestionContext';
 import FinishQuestionDialog from '../components/common/FinishQuestionDialog';
+import AttentionDialog, { MentionsSection, ATTENTION_MODAL_ID } from '../components/common/AttentionDialog';
+import { subscribeModalStack, anyModalOpenExcept, PINNED_LAYERS } from '../components/common/modalStack';
+import { useMentionAttention } from '../hooks/useMentionAttention';
+import { decideAttention } from './attentionDue';
+import { MentionsContext } from './MentionsContext';
 import JobCardModal from '../components/jobcard/JobCardModal';
+import ConfirmDialog from '../components/common/ConfirmDialog';
+import { useConfirmDialog } from '../hooks/useConfirmDialog';
 
-// The question a worker must answer before doing anything else: a clock they left
-// running was stopped by the server, and it needs the time they really finished.
-// Mounted inside the signed-in shell. While the server lists one or more such clocks
-// it shows the first one's question over everything; answering is the only way out.
-// A failed read is silent (no question) and is never retried in a loop — it is asked
-// again at sign-in and when a screen notices a clock has gone (refresh below). A stop
-// form still owed is blocking and is offered again after each answer and each saved form.
+const anyOtherWindowOpen = () => anyModalOpenExcept(ATTENTION_MODAL_ID);
+// A read of the open mentions failed: forget the marker, so the next poll's marker reads as
+// a change and the list is read again — even when nothing changed on the server.
+const forgetMentionsMarker = () => setOpenMentionsMarker(null);
+
+// Composes the worker's clock question and their @mention questions into one blocking
+// "Needs your attention" window (AttentionDialog) with two sections. Mounted inside the
+// signed-in shell.
+// This file owns the clock side: a clock they left running was stopped by the server and
+// needs the time they really finished. While the server lists one or more such clocks it
+// shows the first one's question over everything; answering is the only way out (besides
+// signing out). It also owns the stop forms still owed (the check for them at sign-in,
+// after an answer and after a form; a stop form still owed is blocking and is offered again
+// after each answer and each saved form) and the job screens it hands those forms to. A
+// failed read is silent (no question) and is never retried in a loop — it is asked again at
+// sign-in and when a screen notices a clock has gone (refresh below).
+// The mentions side (the list, the job opened from a row, the re-read after it closes)
+// lives in hooks/useMentionAttention.js; whether the rows are already up is kept here. This file passes
+// both sides to decideAttention (attentionDue.js), which holds the rules for what shows
+// and when: the rows wait until no other window is open, are hidden while a job is open
+// from a row or a stop form is up, are greyed out while a clock or an owed-form check is
+// pending, and once up stay up over a window that opens later. A reply posted on any job
+// window drops that job's row at once, because the server answers every open mention on
+// that job; job screens reach that through MentionsContext (mentionsAnsweredOnJob).
 export function FinishQuestionProvider({ children }) {
-  const { user } = useAuth();
+  const { user, logout, getUnsavedWorkLabel } = useAuth();
+  const openMentionsSignature = useSyncExternalStore(subscribeOpenMentionsMarker, getOpenMentionsMarker);
+  const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   const userId = user?.id;
   const [flagged, setFlagged] = useState([]);
   // The job screen shown for the stop form after an answer of "I'm done with it".
@@ -26,6 +53,18 @@ export function FinishQuestionProvider({ children }) {
   const [stopJob, setStopJob] = useState({ id: null, entry: null, open: false, external: false });
   const stopJobRef = useRef(stopJob);
   stopJobRef.current = stopJob;
+  const {
+    mentions, rereadingMentions,
+    mentionJob, openMentionJob, closeMentionJob, dropMentionJob
+  } = useMentionAttention(userId, openMentionsSignature, forgetMentionsMarker);
+  // Whether any window other than the attention window itself is open right now.
+  const otherWindowOpen = useSyncExternalStore(subscribeModalStack, anyOtherWindowOpen);
+  // Whether the question rows were up in the last frame (they then stay up over windows
+  // that open later). State, not a ref: decideAttention reads it during render, so it must
+  // be right on the very render a window opens, not only after a commit has written it.
+  const [mentionsHeld, setMentionsHeld] = useState(false);
+  // True while a check that may end by opening a stop form is in flight.
+  const [checkingOwed, setCheckingOwed] = useState(false);
   // Open job screens, by job, each able to show a stop form for an entry (showStopForm),
   // to say which stop-form entries it shows now (shownStopEntryIds) and to reload its
   // clock and work after an answer changed them (reload).
@@ -36,8 +75,23 @@ export function FinishQuestionProvider({ children }) {
   // read a job's comments, so they patch that one row instead of reloading the whole list.
   const commentsReadRef = useRef(new Set());
   const requestIdRef = useRef(0);
+  // Numbers each stop-form offer, so a newer offer supersedes an older one's reply.
   const unfilledRequestIdRef = useRef(0);
+  // Numbers each owed-stop-form check (an offer, or the wait before one); only the newest
+  // check's end clears the "checking" flag.
+  const owedCheckTokenRef = useRef(0);
   const userIdRef = useRef(userId);
+
+  // Marks a check for owed stop forms as in flight and returns its token. A newer check
+  // supersedes an older one: ending an older token never clears a newer check's flag.
+  const beginOwedCheck = useCallback(() => {
+    const token = ++owedCheckTokenRef.current;
+    setCheckingOwed(true);
+    return token;
+  }, []);
+  const endOwedCheck = useCallback((token) => {
+    if (token === owedCheckTokenRef.current) setCheckingOwed(false);
+  }, []);
 
   // Reads the signed-in person's flagged clocks, shows them, and returns the list
   // (null when the read failed). A reply overtaken by a newer read is not shown.
@@ -77,6 +131,7 @@ export function FinishQuestionProvider({ children }) {
   // switched is dropped, and a newer check supersedes an older one. Failures are silent.
   const offerUnfilledStopForm = useCallback(async () => {
     const id = ++unfilledRequestIdRef.current;
+    const token = beginOwedCheck();
     const askedFor = userIdRef.current;
     try {
       const forms = await api.getUnfilledStopForms();
@@ -92,25 +147,33 @@ export function FinishQuestionProvider({ children }) {
       if (next) openStopForm(next);
     } catch {
       // Silent: it is checked again after the next answer or form
+    } finally {
+      endOwedCheck(token);
     }
-  }, [openStopForm]);
+  }, [openStopForm, beginOwedCheck, endOwedCheck]);
 
   useEffect(() => {
     userIdRef.current = userId;
     if (!userId) {
       unfilledRequestIdRef.current++;
+      owedCheckTokenRef.current++;
+      setCheckingOwed(false);
       setFlagged([]);
       return;
     }
     // At sign-in: with no question pending, offer any stop form still owed.
     let stale = false;
     (async () => {
+      const token = beginOwedCheck();
       const list = await refresh();
-      if (stale || list.length > 0) return;
+      if (stale || list.length > 0) {
+        endOwedCheck(token);
+        return;
+      }
       offerUnfilledStopForm();
     })();
     return () => { stale = true; };
-  }, [userId, refresh, offerUnfilledStopForm]);
+  }, [userId, refresh, offerUnfilledStopForm, beginOwedCheck, endOwedCheck]);
 
   const notifyJobChanged = useCallback(() => {
     jobChangedRef.current.forEach(callback => callback());
@@ -133,9 +196,18 @@ export function FinishQuestionProvider({ children }) {
     setFlagged(prev => prev.filter(f => f.id !== item.id));
     if (entry) openStopForm(entry);
     announceJobChanged(item.jobcardId);
-    const list = await refresh();
-    if (!entry && list.length === 0) offerUnfilledStopForm();
-  }, [refresh, offerUnfilledStopForm, openStopForm, announceJobChanged]);
+    if (entry) {
+      await refresh();
+      return;
+    }
+    const token = beginOwedCheck();
+    try {
+      const list = await refresh();
+      if (list.length === 0) offerUnfilledStopForm();
+    } finally {
+      endOwedCheck(token);
+    }
+  }, [refresh, offerUnfilledStopForm, openStopForm, announceJobChanged, beginOwedCheck, endOwedCheck]);
 
   // The answer was refused for a reason the dialog has no box for. The dialog has no other
   // way out, so the server's own list of what this worker owes decides whether there is
@@ -216,23 +288,68 @@ export function FinishQuestionProvider({ children }) {
     setStopJob(prev => (prev.open ? prev : { id: null, entry: null, open: false, external: false }));
   }, [stopJob]);
 
+  // Signing out from the attention window can happen over a job screen with work that only
+  // saves on Create (a new job being typed), so it asks first when something is unsaved.
+  const signOutFromAttention = useCallback(async () => {
+    const label = getUnsavedWorkLabel();
+    if (label) {
+      const ok = await showConfirm({
+        title: 'Sign out?',
+        message: `You have an unsaved ${label}. Signing out now will lose it.`,
+        confirmLabel: 'Sign out',
+        cancelLabel: 'Stay signed in',
+        confirmVariant: 'danger'
+      });
+      if (!ok) return;
+    }
+    logout();
+  }, [getUnsavedWorkLabel, showConfirm, logout]);
+
   const value = useMemo(
     () => ({ refresh, registerJobScreen, stopFormDone, subscribeJobChanged, subscribeCommentsRead }),
     [refresh, registerJobScreen, stopFormDone, subscribeJobChanged, subscribeCommentsRead]
   );
-  const first = flagged[0] || null;
+  // A comment posted on a job from any job window answers the person's open questions on
+  // it, so dropMentionJob removes its row at once instead of waiting for the next read.
+  const mentionsValue = useMemo(() => ({ mentionsAnsweredOnJob: dropMentionJob }), [dropMentionJob]);
+
+  const due = decideAttention({
+    flagged,
+    stopJobOpen: stopJob.open,
+    mentionJobOpen: mentionJob.open,
+    checkingOwed,
+    rereadingMentions,
+    otherWindowOpen,
+    mentions,
+    mentionsHeld
+  });
+  const first = due.clock;
+  // Once the questions are up they stay up; the flag follows what is shown. Adjusted during
+  // render, so React re-renders at once with the new value, before anything is drawn.
+  const mentionsUp = due.mentionRows.length > 0;
+  if (mentionsHeld !== mentionsUp) setMentionsHeld(mentionsUp);
+  // The wait reason is in the key so focus is placed again when the rows become pressable.
+  const contentKey = `${first ? first.id : ''}|${due.mentionRows.map(row => row.jobcardId).join(',')}|${due.mentionsWaitReason || ''}`;
 
   return (
     <FinishQuestionContext.Provider value={value}>
+      <MentionsContext.Provider value={mentionsValue}>
       {children}
       {/* Held back while the stop form is up, so a second question never stacks on it. */}
-      {first && !stopJob.open && (
-        <FinishQuestionDialog
-          key={first.id}
-          item={first}
-          onAnswered={handleAnswered}
-          onRecheck={recheckQuestion}
-        />
+      {due.showing && (
+        <AttentionDialog contentKey={contentKey} onSignOut={signOutFromAttention}>
+          {first && (
+            <FinishQuestionDialog
+              key={first.id}
+              item={first}
+              onAnswered={handleAnswered}
+              onRecheck={recheckQuestion}
+            />
+          )}
+          {mentionsUp && (
+            <MentionsSection mentions={due.mentionRows} waitReason={due.mentionsWaitReason} onOpen={openMentionJob} />
+          )}
+        </AttentionDialog>
       )}
       {stopJob.id && (
         <JobCardModal
@@ -249,6 +366,31 @@ export function FinishQuestionProvider({ children }) {
           ownsStopForm
         />
       )}
+      {mentionJob.id && (
+        <JobCardModal
+          key={`${mentionJob.id}:${mentionJob.seq}`}
+          isOpen={mentionJob.open}
+          onClose={closeMentionJob}
+          jobCardId={mentionJob.id}
+          initialCommentNoteId={mentionJob.noteId}
+          onSuccess={notifyJobChanged}
+          onTimerChange={notifyJobChanged}
+          onNotesChange={notifyJobChanged}
+          onCommentsRead={notifyCommentsRead}
+        />
+      )}
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmLabel={dialogState.confirmLabel}
+        cancelLabel={dialogState.cancelLabel}
+        confirmVariant={dialogState.confirmVariant}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+        pinnedLayer={PINNED_LAYERS.signOutConfirm}
+      />
+      </MentionsContext.Provider>
     </FinishQuestionContext.Provider>
   );
 }

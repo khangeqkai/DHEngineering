@@ -96,6 +96,7 @@ export function useJobCardCloseGuard({
     isDirty,
     saving,
     hasUnpostedNote: jobNotes.newNote.trim() !== '',
+    notePosting: jobNotes.posting,
     stopFormOpen: timer.showEntryForm,
     supplierDraftOpen,
     costingDirty: canSeePricing ? costingHook.costingDirty : false,
@@ -129,6 +130,7 @@ export function useJobCardCloseGuard({
   askRef.current = guard.handleRequestClose;
   const closingRef = useRef(false);
   const { whenSettled } = saveQueue;
+  const { whenPosted } = jobNotes;
   const handleRequestClose = useCallback(async () => {
     // A second Escape while the first is still waiting must not stack a second question.
     if (closingRef.current) return;
@@ -138,11 +140,12 @@ export function useJobCardCloseGuard({
         const el = document.activeElement;
         if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) el.blur();
         await nextFrame();
-        // Bounded: a save stuck on a dead network never settles, and waiting on it
-        // forever left the window impossible to close (every later press met the guard
-        // above). Past the limit the question is asked anyway, and it names whatever
-        // hasn't finished saving so the person can keep editing or close.
-        await Promise.race([whenSettled(), wait(CLOSE_SETTLE_LIMIT_MS)]);
+        // Wait for every job save and a comment still sending to land. Bounded: a save
+        // stuck on a dead network never settles, and waiting on it forever left the
+        // window impossible to close (every later press met the guard above). Past the
+        // limit the question is asked anyway, and it names whatever hasn't finished
+        // saving so the person can keep editing or close.
+        await Promise.race([Promise.all([whenSettled(), whenPosted()]), wait(CLOSE_SETTLE_LIMIT_MS)]);
         await nextFrame();
         // A red pricing box is a harder stop than the ordinary unsaved-work question
         // below: the figure in it was never valid, so there's nothing to save. Ask about
@@ -178,7 +181,7 @@ export function useJobCardCloseGuard({
       pricingUnsavedRef.current = false;
       closingRef.current = false;
     }
-  }, [isEdit, whenSettled, canSeePricing, costingHook, showConfirm, revealCosting]);
+  }, [isEdit, whenSettled, whenPosted, canSeePricing, costingHook, showConfirm, revealCosting]);
 
   return { ...guard, handleRequestClose };
 }

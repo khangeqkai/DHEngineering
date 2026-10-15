@@ -1,4 +1,5 @@
 const { jobcardQueries } = require('../db/database');
+const { JOB_CLOSED, JOB_CLOSED_MESSAGE } = require('../shared/closedJob');
 
 // One lock for every write to an already-invoiced (archived) job: once a job
 // is filed away, nothing on it changes until it is unarchived. Mounted once
@@ -55,8 +56,8 @@ function closedJobGuard(req, res, next) {
 
   if (jobcard.archived === 1 && !isAllowedOnClosedJob(req.method, req.path)) {
     return res.status(409).json({
-      error: 'This job is invoiced and closed. Unarchive it to make changes.',
-      code: 'JOB_CLOSED'
+      error: JOB_CLOSED_MESSAGE,
+      code: JOB_CLOSED
     });
   }
 

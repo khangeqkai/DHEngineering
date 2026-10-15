@@ -785,7 +785,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  /* No z-index: modalStack inlines this window's layer before first paint. */
 }
 
 .calendar-modal {

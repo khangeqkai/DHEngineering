@@ -22,6 +22,7 @@
 import { isSavedLineItem } from './jobCardValidation.mjs';
 import { buildItemPayload } from './mappers';
 import { fieldErrorKey } from './fieldRules.mjs';
+import { joinList } from '../../utils/joinList';
 
 // Human-readable name for a job-level instant-save field — used both here (for a
 // box that's been typed into but not yet sent) and by useInstantSave.js (as the
@@ -185,13 +186,6 @@ export function buildCloseReasons({
   }
 
   return { safe, atRisk };
-}
-
-function joinList(items) {
-  if (items.length === 0) return '';
-  if (items.length === 1) return items[0];
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }
 
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
