@@ -60,7 +60,7 @@ function setArchived(req, res, spec) {
     res.json(spec.respond(freshRow));
   } catch (err) {
     logger.error({ err }, `Failed to ${verb} ${entityType}`);
-    res.status(500).json({ error: `Failed to ${verb} ${entityType}` });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 }
 

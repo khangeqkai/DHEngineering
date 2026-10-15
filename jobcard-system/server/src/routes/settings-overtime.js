@@ -25,28 +25,30 @@ const OVERTIME_DB_KEYS = [
 // day is a 24-hour cycle: a block runs until the next block's start, and the time
 // before the earliest block wraps to the last block — so any single well-ordered set
 // of blocks covers every minute. The first block need NOT start at 00:00.
+const dayLabel = (day) => day.charAt(0).toUpperCase() + day.slice(1);
+
 function validateSchedule(input) {
   let obj = input;
   if (typeof input === 'string') {
-    try { obj = JSON.parse(input); } catch { return 'Schedule must be valid JSON'; }
+    try { obj = JSON.parse(input); } catch { return 'The weekly schedule could not be read. Reload the page and try again.'; }
   }
-  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return 'Schedule must be an object of days';
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return 'The weekly schedule could not be read. Reload the page and try again.';
   for (const day of SCHEDULE_DAYS) {
     const blocks = obj[day];
-    if (!Array.isArray(blocks) || blocks.length === 0) return `Schedule day "${day}" must have at least one block`;
+    if (!Array.isArray(blocks) || blocks.length === 0) return `${dayLabel(day)} needs at least one time block.`;
     let prev = null;
     for (let i = 0; i < blocks.length; i++) {
       const b = blocks[i];
-      if (!b || typeof b !== 'object') return `Schedule day "${day}" has an invalid block`;
-      if (!/^\d{2}:\d{2}$/.test(b.start)) return `Schedule day "${day}" has an invalid start time`;
+      if (!b || typeof b !== 'object') return `${dayLabel(day)} has a time block that could not be read. Reload the page and try again.`;
+      if (!/^\d{2}:\d{2}$/.test(b.start)) return `${dayLabel(day)} has a start time that isn't a real time. Enter it as hours and minutes.`;
       const [h, m] = b.start.split(':').map(Number);
-      if (h > 23 || m > 59) return `Schedule day "${day}" has an out-of-range start time`;
+      if (h > 23 || m > 59) return `${dayLabel(day)} has a start time that isn't a real time. Use 00:00 to 23:00.`;
       // Every overtime tier switches on the hour. Sub-hour boundaries can't be
       // set here or restored from a backup — see scheduleToWholeHours (init.js),
       // the one-time conversion that already snaps existing data to whole hours.
-      if (m !== 0) return `Schedule day "${day}" block times must be on the hour (minutes "00")`;
-      if (prev !== null && b.start <= prev) return `Schedule day "${day}" blocks must be in increasing time order`;
-      if (!SCHEDULE_TIERS.includes(b.tier)) return `Schedule day "${day}" has an invalid tier`;
+      if (m !== 0) return `${dayLabel(day)} has a block that doesn't start on the hour. Use whole hours, like 07:00.`;
+      if (prev !== null && b.start <= prev) return `${dayLabel(day)} has blocks out of order. Put the earliest start time first.`;
+      if (!SCHEDULE_TIERS.includes(b.tier)) return `${dayLabel(day)} has a block with no pay rate picked. Pick one.`;
       prev = b.start;
     }
   }
@@ -74,10 +76,10 @@ function collectOvertimeUpdates(body) {
   const timezone = body.timezone;
   if (timezone !== undefined) {
     if (typeof timezone !== 'string' || !timezone.trim()) {
-      return { error: 'Time zone is required' };
+      return { error: 'Pick a time zone.' };
     }
     if (!isValidTimeZone(timezone)) {
-      return { error: `Unrecognised time zone: ${timezone}` };
+      return { error: `That time zone isn't recognised. Pick one from the list.` };
     }
     updates.timezone = timezone;
   }
@@ -97,7 +99,7 @@ function collectOvertimeUpdates(body) {
   if (defaultRate !== undefined) {
     const n = Number(defaultRate);
     if (!Number.isFinite(n) || n < 0) {
-      return { error: 'Default hourly rate must be a number of 0 or more' };
+      return { error: 'Enter a default hourly rate of 0 or more.' };
     }
     updates.labour_default_rate = String(n);
   }
@@ -112,7 +114,7 @@ function collectOvertimeUpdates(body) {
     if (raw !== undefined) {
       const n = Number(raw);
       if (!Number.isFinite(n) || n < 1) {
-        return { error: `${label} must be a number of 1 or more` };
+        return { error: `Enter a ${label.toLowerCase()} of 1 or more.` };
       }
       updates[dbKey] = String(n);
     }
@@ -123,15 +125,15 @@ function collectOvertimeUpdates(body) {
   if (publicHolidays !== undefined) {
     let list = publicHolidays;
     if (typeof list === 'string') {
-      try { list = JSON.parse(list); } catch { return { error: 'Public holidays must be a list of dates' }; }
+      try { list = JSON.parse(list); } catch { return { error: 'The public holidays could not be read. Reload the page and try again.' }; }
     }
     if (!Array.isArray(list)) {
-      return { error: 'Public holidays must be a list of dates' };
+      return { error: 'The public holidays could not be read. Reload the page and try again.' };
     }
     const clean = [];
     for (const d of list) {
       if (!isCalendarDate(d)) {
-        return { error: `Invalid holiday date: ${d}` };
+        return { error: `"${d}" isn't a real date. Enter each public holiday as a real date.` };
       }
       if (!clean.includes(d)) clean.push(d);
     }

@@ -116,7 +116,7 @@ export function useJobCardSave({
         // has to be said, or it would vanish behind the marked boxes.
         if (others.length > 0) toast.error(others.join('. '), { id: 'job-create-failed' });
       } else {
-        toast.error(err.message || 'Failed to save job card');
+        toast.error(err.message || 'Couldn\'t save the job card. Check the connection and try again.');
       }
     } finally {
       setSaving(false);

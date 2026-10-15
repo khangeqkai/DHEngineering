@@ -13,7 +13,7 @@ import MachinesTab from './statistics/MachinesTab';
 import CustomersTab from './statistics/CustomersTab';
 import EmptyState from './common/EmptyState';
 import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
-import { BarChart3, Users, CheckCircle2, Cpu, Building2 } from 'lucide-react';
+import { BarChart3, Users, AlertTriangle, Cpu, Building2 } from 'lucide-react';
 import { todayIsoDate } from '../utils/formatters';
 import { isCalendarDate } from '../../../server/src/shared/calendarDate';
 import './Statistics.css';
@@ -49,7 +49,7 @@ export default function Statistics() {
   }, [preset, groupBy, user?.role]);
 
   // The one check on a custom range, run before every load of one — Apply, Refresh,
-  // Retry and a Trend View change alike — so no button can load a range Apply would
+  // Retry and a Group by change alike — so no button can load a range Apply would
   // refuse. On failure the date boxes are marked and the current figures stay.
   const customRangeIsValid = () => {
     if (!customStartDate || !customEndDate) {
@@ -88,9 +88,9 @@ export default function Statistics() {
       }
     } catch (err) {
       if (currentReqId === reqIdRef.current) {
-        setError(err.message || 'Failed to load statistics');
+        setError(err.message || 'Couldn\'t load the statistics. Try again in a moment.');
         setData(null);
-        toast.error(err.message || 'Failed to load statistics');
+        toast.error(err.message || 'Couldn\'t load the statistics. Try again in a moment.');
       }
     } finally {
       if (currentReqId === reqIdRef.current) {
@@ -140,8 +140,6 @@ export default function Statistics() {
         customEndDate={customEndDate}
         setCustomEndDate={setCustomEndDate}
         customRangeError={errorFor('customRange')}
-        groupBy={groupBy}
-        setGroupBy={setGroupBy}
         rangeLabel={range.label}
         loading={loading}
         exporting={exporting}
@@ -157,7 +155,7 @@ export default function Statistics() {
           <div className="stats-card-body">
             <EmptyState
               icon="alert-triangle"
-              title="Unable to load statistics"
+              title="Couldn't load the statistics"
               description={error}
               actionLabel="Retry"
               onAction={fetchStatistics}
@@ -194,8 +192,11 @@ export default function Statistics() {
               className={`stats-tab-btn ${activeTab === 'ontime' ? 'active' : ''}`}
               onClick={() => setActiveTab('ontime')}
             >
-              <CheckCircle2 size={16} />
-              <span>Late Jobs ({summary.lateJobsCount || 0})</span>
+              {(summary.overdueActiveJobsCount || 0) > 0 && <AlertTriangle size={14} />}
+              <span>
+                Delivery
+                {(summary.overdueActiveJobsCount || 0) > 0 ? ` · ${summary.overdueActiveJobsCount} overdue` : ''}
+              </span>
             </button>
             <button
               className={`stats-tab-btn ${activeTab === 'machines' ? 'active' : ''}`}
@@ -220,6 +221,8 @@ export default function Statistics() {
               // The grouping the shown rows were built with, not the dropdown's:
               // a refused load keeps the earlier rows, which must keep their title.
               groupBy={data?.range?.groupBy}
+              selectedGroupBy={groupBy}
+              onGroupByChange={setGroupBy}
               loading={loading}
             />
           </div>

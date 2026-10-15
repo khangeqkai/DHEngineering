@@ -50,6 +50,8 @@ export default function DetailsTab({
   addLineItem,
   updateLineItem,
   removeLineItem,
+  failedItemIds,
+  onRetryItem,
   onItemFieldChange,
   onItemFieldBlur,
   itemErrorFor,
@@ -225,6 +227,8 @@ export default function DetailsTab({
         addLineItem={addLineItem}
         updateLineItem={updateLineItem}
         removeLineItem={removeLineItem}
+        failedItemIds={failedItemIds}
+        onRetryItem={onRetryItem}
         onItemFieldChange={onItemFieldChange}
         onItemFieldBlur={onItemFieldBlur}
         itemErrorFor={itemErrorFor}
@@ -285,7 +289,7 @@ export default function DetailsTab({
       />
 
       {/* Assignees */}
-      <div className="form-section">
+      <div className="form-section" id="jc-section-assignees">
         <h3 className="form-section-title">Assignees</h3>
         {assigneesLocked && (
           <span className="field-hint">This job is invoiced and closed. Its workers can't be changed.</span>

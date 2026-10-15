@@ -1,6 +1,11 @@
+import { Fragment } from 'react';
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { SORT_VALUE_GETTERS } from '../hooks/useJobCardSort';
 import { isJobOverdue } from './JobCardList.constants';
+
+// Anything inside a row that already does something when pressed keeps its own
+// click — the row only opens the job for a press on plain cell space.
+const OWN_CLICK_SELECTOR = 'button, a, input, select, textarea, label, .status-popover, .mf-tooltip';
 
 export default function JobCardListTable({
   visibleColumns,
@@ -10,6 +15,7 @@ export default function JobCardListTable({
   sortDir,
   onSort,
   activeTimerJobcardId,
+  onOpenJob,
   handleDragStart,
   handleDragEnd,
   handleDragOver,
@@ -48,7 +54,9 @@ export default function JobCardListTable({
                   } : undefined}
                   tabIndex={sortable ? 0 : undefined}
                   className={`jc-th${sortable ? ' jc-th-sortable' : ''}${active ? ' jc-th-sorted' : ''}${col.align ? ` jc-align-${col.align}` : ''}`}
-                  title={sortable ? 'Click to sort, drag to reorder' : 'Drag to reorder columns'}
+                  title={col.headerHint
+                    ? `${col.headerHint} ${sortable ? '(Click to sort, drag to reorder)' : '(Drag to reorder)'}`
+                    : (sortable ? 'Click to sort, drag to reorder' : 'Drag to reorder columns')}
                   aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
                 >
                   <span className="jc-th-content">
@@ -75,10 +83,24 @@ export default function JobCardListTable({
               isPinnedTimer ? 'pinned-timer-row' : ''
             ].filter(Boolean).join(' ');
 
+            const handleRowClick = (e) => {
+              if (e.target.closest(OWN_CLICK_SELECTOR)) return;
+              // Dragging across text to copy it is not a request to open the job.
+              if (window.getSelection()?.toString()) return;
+              onOpenJob(card.id);
+            };
+
             return (
-              <tr key={card.id} className={rowClasses}>
-                {visibleColumns.map(col => col.renderCell(card, isOverdue))}
-              </tr>
+              <Fragment key={card.id}>
+                {isPinnedTimer && (
+                  <tr className="pinned-timer-band">
+                    <td colSpan={visibleColumns.length}>Your timer is running on this job</td>
+                  </tr>
+                )}
+                <tr className={`clickable ${rowClasses}`.trim()} onClick={handleRowClick}>
+                  {visibleColumns.map(col => col.renderCell(card, isOverdue))}
+                </tr>
+              </Fragment>
             );
           })}
         </tbody>

@@ -3,7 +3,7 @@ import DataTable from '../common/DataTable';
 import { useAuth } from '../../context/AuthContext';
 import { can } from '../../utils/roles';
 import { PRIORITY_LABELS } from '../JobCardList.constants';
-import { formatMoney } from '../../utils/formatters';
+import { formatMoney, pluralize } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
 
 // Bar colour per priority — anything not listed reads as the muted default.
@@ -31,7 +31,7 @@ export default function CustomersTab({
           <div className="stats-card-header">
             <div className="stats-card-title">
               <Award size={18} />
-              <span>Jobs By Quality Level</span>
+              <span>Jobs by quality level</span>
             </div>
           </div>
           <div className="stats-card-body">
@@ -51,7 +51,7 @@ export default function CustomersTab({
                     <div key={level} className="distribution-item">
                       <div className="distribution-header">
                         <span>{level}</span>
-                        <span>{count} jobs ({pct}%)</span>
+                        <span>{pluralize(count, 'job')} ({pct}%)</span>
                       </div>
                       <div className="distribution-bar-bg">
                         <div className="distribution-bar-fill" style={{ width: `${pct}%` }} />
@@ -69,7 +69,7 @@ export default function CustomersTab({
           <div className="stats-card-header">
             <div className="stats-card-title">
               <Filter size={18} />
-              <span>Jobs By Priority</span>
+              <span>Jobs by priority</span>
             </div>
           </div>
           <div className="stats-card-body">
@@ -89,7 +89,7 @@ export default function CustomersTab({
                     <div key={prio} className="distribution-item">
                       <div className="distribution-header">
                         <span>{PRIORITY_LABELS[prio] || prio}</span>
-                        <span>{count} jobs ({pct}%)</span>
+                        <span>{pluralize(count, 'job')} ({pct}%)</span>
                       </div>
                       <div className="distribution-bar-bg">
                         <div
@@ -114,7 +114,7 @@ export default function CustomersTab({
         <div className="stats-card-header">
           <div className="stats-card-title">
             <Building2 size={18} />
-            <span>Customers By Work Done</span>
+            <span>Customers by work done</span>
           </div>
         </div>
         <div className="stats-card-body" style={{ padding: 0 }}>
@@ -131,7 +131,7 @@ export default function CustomersTab({
                 label: 'Jobs Started',
                 align: 'right',
                 sortable: true,
-                render: (val) => <span>{val} jobs</span>
+                render: (val) => <span>{pluralize(val, 'job')}</span>
               },
               {
                 key: 'completedCount',
@@ -183,7 +183,7 @@ export default function CustomersTab({
             loading={loading}
             searchable
             searchKeys={['companyName']}
-            searchPlaceholder="Search customer..."
+            searchPlaceholder="Search customer…"
             emptyState={{
               icon: 'building',
               title: 'No customer data for this period',

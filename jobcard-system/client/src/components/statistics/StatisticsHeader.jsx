@@ -11,8 +11,6 @@ export default function StatisticsHeader({
   customEndDate,
   setCustomEndDate,
   customRangeError,
-  groupBy,
-  setGroupBy,
   rangeLabel,
   loading,
   exporting,
@@ -24,7 +22,7 @@ export default function StatisticsHeader({
 }) {
   return (
     <>
-      <PageHeader title="Workshop Statistics">
+      <PageHeader title="Statistics">
         <div className="stats-actions">
           <button
             className="btn btn-secondary"
@@ -41,7 +39,7 @@ export default function StatisticsHeader({
             title="Print report"
           >
             <Printer size={16} />
-            <span>Print Report</span>
+            <span>Print report</span>
           </button>
           <button
             className="btn btn-primary"
@@ -50,7 +48,7 @@ export default function StatisticsHeader({
             title="Export full statistics to Excel"
           >
             <Download size={16} />
-            <span>{exporting ? 'Exporting...' : 'Export Excel'}</span>
+            <span>{exporting ? 'Exporting…' : 'Export Excel'}</span>
           </button>
         </div>
       </PageHeader>
@@ -145,25 +143,6 @@ export default function StatisticsHeader({
             <FieldError id="customRange-error" message={customRangeError} />
           </div>
         )}
-
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--gap-tight)' }}>
-          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>Trend View:</span>
-          <select
-            value={groupBy}
-            onChange={(e) => setGroupBy(e.target.value)}
-            style={{
-              padding: 'var(--gap-inline) var(--space-2-5)',
-              fontSize: 'var(--text-xs)',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-color)',
-              background: 'var(--surface)',
-              color: 'var(--text-primary)'
-            }}
-          >
-            <option value="month">Monthly</option>
-            <option value="year">Yearly</option>
-          </select>
-        </div>
       </div>
     </>
   );

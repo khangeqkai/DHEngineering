@@ -15,6 +15,46 @@ function pad2(n) {
   return String(n).padStart(2, '0');
 }
 
+// Fixed English month names, so a label never depends on the server machine's locale.
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+  'August', 'September', 'October', 'November', 'December'];
+
+// "March 2026" (or "Mar 2026" when short) for a 1-12 month.
+function monthYearLabel(year, month, short = false) {
+  const name = MONTH_NAMES[month - 1];
+  return `${short ? name.slice(0, 3) : name} ${year}`;
+}
+
+// A bare "YYYY-MM-DD" day split into numbers.
+function ymdParts(ymd) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return { y, m, d };
+}
+
+// One day as "31 March 2026".
+function dayLabel(ymd) {
+  const { y, m, d } = ymdParts(ymd);
+  return `${d} ${MONTH_NAMES[m - 1]} ${y}`;
+}
+
+// A span of days as "1 to 31 March 2026" (same month), "25 Feb to 3 Mar 2026"
+// (same year) or "28 Dec 2025 to 3 Jan 2026" (across years). One day reads as itself.
+function rangeLabel(startYmd, endYmd) {
+  if (startYmd === endYmd) return dayLabel(startYmd);
+  const a = ymdParts(startYmd);
+  const b = ymdParts(endYmd);
+  if (a.y === b.y && a.m === b.m) return `${a.d} to ${b.d} ${MONTH_NAMES[b.m - 1]} ${b.y}`;
+  const short = (p) => `${p.d} ${MONTH_NAMES[p.m - 1].slice(0, 3)}`;
+  if (a.y === b.y) return `${short(a)} to ${short(b)} ${b.y}`;
+  return `${short(a)} ${a.y} to ${short(b)} ${b.y}`;
+}
+
+// A trend row's period key ("2026-03" or "2026") as a label ("Mar 2026" or "2026").
+function periodLabel(key) {
+  if (/^\d{4}-\d{2}$/.test(key)) return monthYearLabel(Number(key.slice(0, 4)), Number(key.slice(5)), true);
+  return key;
+}
+
 // Calculate preset date ranges based strictly on the shop's local calendar
 function calculateDateRange(preset, customStart, customEnd, timezone) {
   const fmt = makeDateFormatter(timezone);
@@ -40,18 +80,17 @@ function calculateDateRange(preset, customStart, customEnd, timezone) {
     let label = 'Custom Range';
 
     if (validStart && validEnd) {
-      label = `${validStart} to ${validEnd}`;
+      label = validStart <= validEnd ? rangeLabel(validStart, validEnd) : `${dayLabel(validStart)} to ${dayLabel(validEnd)}`;
     } else if (validStart && !validEnd) {
       endDate = todayYmd;
-      label = `${validStart} to ${todayYmd}`;
+      label = validStart <= todayYmd ? rangeLabel(validStart, todayYmd) : dayLabel(validStart);
     } else if (!validStart && validEnd) {
-      label = `Up to ${validEnd}`;
+      label = `Up to ${dayLabel(validEnd)}`;
     } else {
       // Fall back to current month bounded dates when custom range is completely empty
       startDate = `${curYear}-${pad2(curMonth)}-01`;
       endDate = todayYmd;
-      const monthName = new Date(curYear, curMonth - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-      label = `Custom (${monthName})`;
+      label = `Custom (${monthYearLabel(curYear, curMonth)})`;
     }
 
     return { startDate, endDate, label };
@@ -67,8 +106,7 @@ function calculateDateRange(preset, customStart, customEnd, timezone) {
     const daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
     const start = `${prevYear}-${pad2(prevMonth)}-01`;
     const end = `${prevYear}-${pad2(prevMonth)}-${pad2(daysInPrevMonth)}`;
-    const monthName = new Date(prevYear, prevMonth - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-    return { startDate: start, endDate: end, label: monthName };
+    return { startDate: start, endDate: end, label: monthYearLabel(prevYear, prevMonth) };
   }
 
   if (preset === 'last_3_months') {
@@ -124,7 +162,7 @@ function calculateDateRange(preset, customStart, customEnd, timezone) {
   }
 
   // Default: 'this_month'
-  const monthName = new Date(curYear, curMonth - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+  const monthName = monthYearLabel(curYear, curMonth);
   return {
     startDate: `${curYear}-${pad2(curMonth)}-01`,
     endDate: todayYmd,
@@ -752,6 +790,7 @@ function buildPeriodTrends(inRangeJobs, completedInRangeJobs, inRangeTimeEntries
       const totalRated = b.onTimeCompleted + b.lateCompleted;
       return {
         ...b,
+        periodLabel: periodLabel(b.period),
         totalHours: roundTo(b.totalHours, 1),
         onTimeRate: totalRated > 0 ? roundTo((b.onTimeCompleted / totalRated) * 100, 1) : null
       };

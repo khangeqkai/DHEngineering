@@ -163,10 +163,12 @@ const ACTIVITY_COLS = [
   { label: 'Time', value: r => fmtDateTime(r.createdAt) },
   { label: 'User', value: r => r.userName },
   { label: 'Action', value: r => r.action },
-  { label: 'Entity Type', value: r => r.entityType },
-  { label: 'Entity ID', value: r => r.entityId },
+  { label: 'Record type', value: r => r.entityType },
+  { label: 'Record', value: r => r.recordName || r.entityId },
   // A job's entries name the job; the trail itself stores only its internal id.
   { label: 'Job Number', value: r => r.jobNumber ?? '' },
+  // The plain sentence the Activity screen shows, when the caller built one.
+  { label: 'What happened', value: r => r.sentence ?? '' },
   { label: 'Changes', value: r => formatChangesText(r.changes) },
 ];
 
@@ -218,14 +220,13 @@ export async function exportActivityLog(activities) {
 // ── Statistics Export ────────────────────────────────────────────────────────
 
 const STATS_WORKER_COLS = [
-  { label: 'Rank', value: r => r.rank || 1 },
   { label: 'Worker Name', value: r => r.userName },
-  { label: 'Employee ID', value: r => r.employeeId },
+  { label: 'Worker', value: r => r.employeeId },
   { label: 'Role', value: r => r.role },
   { label: 'Total Hours', value: r => r.totalHours },
   { label: 'Normal Hours', value: r => r.normalHours },
-  { label: 'OT1 Hours', value: r => r.ot1Hours },
-  { label: 'OT2 Hours', value: r => r.ot2Hours },
+  { label: 'Overtime 1 hours', value: r => r.ot1Hours },
+  { label: 'Overtime 2 hours', value: r => r.ot2Hours },
   { label: 'Holiday Hours', value: r => r.holidayHours },
   { label: 'Total OT Hours', value: r => r.totalOtHours },
   { label: 'Jobs Count', value: r => r.jobsCount },
@@ -238,8 +239,18 @@ const STATS_WORKER_COLS = [
   { label: 'Avg Session (hrs)', value: r => r.avgSessionHours },
 ];
 
+// "Mar 2026" from the screen's own label when the row has one, otherwise from the
+// raw "2026-03" the figures carry. Anything else (a week, a day) prints as it is.
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function periodText(r) {
+  if (r.periodLabel) return r.periodLabel;
+  const m = /^(\d{4})-(\d{2})$/.exec(String(r.period ?? ''));
+  if (!m || Number(m[2]) < 1 || Number(m[2]) > 12) return r.period;
+  return `${MONTH_NAMES[Number(m[2]) - 1]} ${m[1]}`;
+}
+
 const STATS_TREND_COLS = [
-  { label: 'Period', value: r => r.period },
+  { label: 'Period', value: r => periodText(r) },
   { label: 'Jobs Created', value: r => r.jobsCreated },
   { label: 'Jobs Completed', value: r => r.jobsCompleted },
   { label: 'On-Time Completed', value: r => r.onTimeCompleted },

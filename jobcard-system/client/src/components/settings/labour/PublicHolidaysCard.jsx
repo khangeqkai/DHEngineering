@@ -13,13 +13,13 @@ function pretty(date) {
 
 // Add/remove specific calendar dates that charge the whole day at the holiday rate,
 // overriding that day's normal weekly blocks.
-export default function PublicHolidaysCard({ holidays, addHoliday, removeHoliday, onSave, saving }) {
+export default function PublicHolidaysCard({ holidays, addHoliday, removeHoliday, onSave, saving, dirty }) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
     <div className="card full-width">
       <div className="card-header">
-        <h2>Public Holidays</h2>
+        <h2>Public holidays</h2>
       </div>
       <div className="card-body">
         <p className="setting-description">
@@ -47,9 +47,10 @@ export default function PublicHolidaysCard({ holidays, addHoliday, removeHoliday
         )}
 
         <div className="sched-save">
-          <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save Holidays'}
+          <button type="button" className={`btn ${dirty ? 'btn-primary' : 'btn-secondary'}`} onClick={onSave} disabled={saving || !dirty}>
+            {saving ? 'Saving…' : dirty ? 'Save holidays' : 'Saved'}
           </button>
+          {dirty && <span className="unsaved-pill"><span className="unsaved-pill-dot" aria-hidden="true" />Unsaved changes</span>}
         </div>
       </div>
 

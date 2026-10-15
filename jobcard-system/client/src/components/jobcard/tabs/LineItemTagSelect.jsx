@@ -85,11 +85,11 @@ export default function LineItemTagSelect({
 
   // A value saved on this job whose option was since archived won't be in the
   // active `options` list. Add those selected-but-missing values to the menu (tagged
-  // "(retired)") so the user can still see and untick them — they just can't be re-added.
+  // "(archived)") so the user can still see and untick them — they just can't be re-added.
   const missingSelected = selected.filter(v => v && !options.some(o => o.value === v));
   const menuOptions = [
     ...options,
-    ...missingSelected.map(v => ({ value: v, label: `${labelOf ? labelOf(v) : v} (retired)`, retired: true }))
+    ...missingSelected.map(v => ({ value: v, label: `${labelOf ? labelOf(v) : v} (archived)`, retired: true }))
   ];
   const hasRetired = missingSelected.length > 0;
 

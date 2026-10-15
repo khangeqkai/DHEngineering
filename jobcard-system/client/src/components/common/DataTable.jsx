@@ -31,14 +31,14 @@ export default function DataTable({
   loading = false,
   searchable = false,
   searchKeys = [],
-  searchPlaceholder = 'Search...',
+  searchPlaceholder = 'Search…',
   emptyMessage = 'No data found',
   emptyState,
   defaultSortKey = null,
   defaultSortOrder = 'asc',
   rowClassName,
   // Called with the rows currently on screen (search-filtered, sorted) whenever
-  // they change, so a caller like "Export Current View" can send exactly what the
+  // they change, so a caller like "Export current view" can send exactly what the
   // table shows instead of the whole unfiltered dataset. Pass a plain useState
   // setter — it's referentially stable, so this never loops.
   onVisibleRowsChange,

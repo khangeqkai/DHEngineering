@@ -82,7 +82,7 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
       toast.success('Supplier updated');
       onCreated(supplier);
     } catch (err) {
-      showSaveRefusal(err, { boxFor: supplierBoxes, setFieldErrors, fallback: 'Could not add that supplier' });
+      showSaveRefusal(err, { boxFor: supplierBoxes, setFieldErrors, fallback: 'Couldn\'t add that supplier. Check the connection and try again.' });
     } finally {
       setSaving(false);
     }

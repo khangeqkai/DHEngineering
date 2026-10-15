@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { tagActions } from '../hooks/useTags';
 import { toTitleCase, capitalizeFirst, autoResize } from '../utils/formatters';
-import { Plus, Archive, ArchiveRestore, Save, History, Check, X } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore, Save, History, Check } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import { exportSuppliers } from '../utils/excelExport';
@@ -21,7 +22,7 @@ import './SupplierManagement.css';
 
 // Which box on the form each field named in a server refusal belongs to.
 const SUPPLIER_FORM_BOXES = { name: 'name', contactEmail: 'contactEmail', contactPhone: 'contactPhone' };
-// The "+ Other" new-service box: an option refusal (a name clash, say) names 'name'.
+// The "+ New service" box: an option refusal (a name clash, say) names 'name'.
 const CUSTOM_SERVICE_BOXES = { name: 'customTagName' };
 
 // The contact details as the form opens on a supplier — also what an edit is
@@ -65,13 +66,12 @@ export default function SupplierManagement() {
   );
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   // What the table is actually showing right now (after its own search box has
-  // filtered it) — kept separate so "Export Current View" sends exactly those
+  // filtered it) — kept separate so "Export current view" sends exactly those
   // rows instead of silently exporting every supplier.
   const [visibleSuppliers, setVisibleSuppliers] = useState([]);
-  // Names for tags archived during this session, keyed by id — a tag disappears
-  // from `serviceTags` the moment it's archived, so this is what lets a "(retired)"
-  // chip still show its name afterwards, for any supplier that holds it.
-  const [retiredTagsCache, setRetiredTagsCache] = useState({});
+  // A search result opens its supplier here with ?open=<id>.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openId = searchParams.get('open');
 
   const loadData = useCallback(async () => {
     await runLoad(
@@ -83,7 +83,7 @@ export default function SupplierManagement() {
         setSuppliers(suppliersData);
         setServiceTags(tagsData);
       },
-      (err) => toast.error(err.message || 'Failed to load data')
+      (err) => toast.error(err.message || 'Couldn\'t load the supplier data. Try again in a moment.')
     );
   }, [showInactive, runLoad]);
 
@@ -148,7 +148,7 @@ export default function SupplierManagement() {
       bumpActivity();
       resetForm();
     } catch (err) {
-      showSaveRefusal(err, { boxFor: SUPPLIER_FORM_BOXES, setFieldErrors, fallback: 'Failed to save supplier' });
+      showSaveRefusal(err, { boxFor: SUPPLIER_FORM_BOXES, setFieldErrors, fallback: 'Couldn\'t save the supplier. Check the connection and try again.' });
     } finally {
       setSaving(false);
     }
@@ -174,10 +174,21 @@ export default function SupplierManagement() {
     setShowForm(true);
   };
 
+  // Open the supplier a search result pointed at, then drop ?open= so a refresh or
+  // Back doesn't reopen it. Waits for the first load so the list is in place behind it.
+  useEffect(() => {
+    if (!openId || loading) return;
+    const target = suppliers.find(sp => String(sp.id) === openId);
+    if (target) handleEdit(target);
+    else toast.error('That supplier could not be found', { id: 'supplier-open-missing' });
+    setSearchParams(prev => { const next = new URLSearchParams(prev); next.delete('open'); return next; }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId, loading]);
+
   const handleArchive = async (supplier) => {
     if (pendingId !== null) return;
     const confirmed = await showConfirm({
-      title: 'Archive Supplier',
+      title: 'Archive supplier',
       message: `Archive "${supplier.name}"? It will no longer appear when picking a supplier for a job, but jobs that already use it keep their record. You can restore it any time.`,
       confirmLabel: 'Archive',
       confirmVariant: 'warning'
@@ -191,7 +202,7 @@ export default function SupplierManagement() {
         await reloadData();
         bumpActivity();
       } catch (err) {
-        toast.error(err.message || 'Failed to archive supplier');
+        toast.error(err.message || 'Couldn\'t archive the supplier. Check the connection and try again.');
       }
     });
   };
@@ -205,7 +216,7 @@ export default function SupplierManagement() {
         await reloadData();
         bumpActivity();
       } catch (err) {
-        toast.error(err.message || 'Failed to restore supplier');
+        toast.error(err.message || 'Couldn\'t restore the supplier. Check the connection and try again.');
       }
     });
   };
@@ -238,29 +249,7 @@ export default function SupplierManagement() {
       toast.success('Service updated');
     } catch (err) {
       // A refusal about the name (a clash with another option, say) marks the box.
-      showSaveRefusal(err, { boxFor: CUSTOM_SERVICE_BOXES, setFieldErrors, fallback: 'Failed to create tag' });
-    }
-  };
-
-  const handleArchiveTag = async (tag) => {
-    const confirmed = await showConfirm({
-      title: 'Archive Service',
-      message: `Archive "${tag.name}"? It will no longer appear when choosing services for suppliers, but suppliers that already have it keep it. You can restore it from the Tags & Equipment page.`,
-      confirmLabel: 'Archive',
-      confirmVariant: 'warning'
-    });
-    if (!confirmed) return;
-
-    try {
-      await tagActions.archive(tag);
-      setServiceTags(prev => prev.filter(t => t.id !== tag.id));
-      // Leave the tag ticked on the supplier being edited — retiring a service must
-      // not silently drop it from what's about to be saved. It reappears below as
-      // a "(retired)" chip instead of disappearing.
-      setRetiredTagsCache(prev => ({ ...prev, [tag.id]: tag }));
-      toast.success('Service archived');
-    } catch (err) {
-      toast.error(err.message || 'Failed to archive service');
+      showSaveRefusal(err, { boxFor: CUSTOM_SERVICE_BOXES, setFieldErrors, fallback: 'Couldn\'t add the service. Check the connection and try again.' });
     }
   };
 
@@ -281,14 +270,11 @@ export default function SupplierManagement() {
     setCustomTagName('');
   };
 
-  // Services already on the supplier being edited whose tag has since been archived
-  // (either before this form opened, or just now from inside it): held (in
-  // serviceTagIds) but absent from the active picker list above. Names come from
-  // whichever source still has them — the supplier's own saved list, or the
-  // session cache for one retired while this form was open.
+  // Services already on the supplier being edited whose option has since been
+  // archived: held (in serviceTagIds) but absent from the active picker list above.
+  // Names come from the supplier's own saved list.
   const activeTagIds = new Set(serviceTags.map(t => t.id));
-  const retiredHeldTags = [...(editingSupplier?.serviceTags || []), ...Object.values(retiredTagsCache)]
-    .filter((t, idx, arr) => arr.findIndex(x => x.id === t.id) === idx)
+  const retiredHeldTags = (editingSupplier?.serviceTags || [])
     .filter(t => formData.serviceTagIds.includes(t.id) && !activeTagIds.has(t.id));
 
   return (
@@ -316,7 +302,7 @@ export default function SupplierManagement() {
       <BottomSheet
         isOpen={showForm}
         onClose={resetForm}
-        title={editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}
+        title={editingSupplier ? 'Edit supplier' : 'Add supplier'}
         size="small"
       >
         <BottomSheet.Body>
@@ -402,7 +388,7 @@ export default function SupplierManagement() {
               <label>Services Provided</label>
               <div className="service-tags-selector">
                 {serviceTags.map(tag => (
-                  <span key={tag.id} className="tag-chip-wrapper deletable">
+                  <span key={tag.id} className="tag-chip-wrapper">
                     <button
                       type="button"
                       className={`tag-chip ${formData.serviceTagIds.includes(tag.id) ? 'selected' : ''}`}
@@ -411,21 +397,10 @@ export default function SupplierManagement() {
                       {tag.name}
                       {formData.serviceTagIds.includes(tag.id) && <span className="check-mark"><Check size={14} /></span>}
                     </button>
-                    <button
-                      type="button"
-                      className="tag-delete-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleArchiveTag(tag);
-                      }}
-                      title={`Archive "${tag.name}"`}
-                    >
-                      <X size={14} />
-                    </button>
                   </span>
                 ))}
-                {/* Services this supplier already holds whose tag was since archived
-                    aren't in the active list above. Show them as "(retired)" chips so
+                {/* Services this supplier already holds whose option was since archived
+                    aren't in the active list above. Show them as "(archived)" chips so
                     they stay visible and can be unticked — they just can't be re-added. */}
                 {retiredHeldTags.map(tag => (
                   <button
@@ -434,7 +409,7 @@ export default function SupplierManagement() {
                     className="tag-chip selected retired-option"
                     onClick={() => handleTagToggle(tag.id)}
                   >
-                    {tag.name} (retired)
+                    {tag.name} (archived)
                     <span className="check-mark"><Check size={14} /></span>
                   </button>
                 ))}
@@ -444,7 +419,7 @@ export default function SupplierManagement() {
                     className="tag-chip add-custom"
                     onClick={() => setShowCustomTagInput(true)}
                   >
-                    + Other
+                    + New service
                   </button>
                 ) : (
                   <div className={`custom-tag-field${errorFor('customTagName') ? ' field-error' : ''}`}>
@@ -461,7 +436,7 @@ export default function SupplierManagement() {
                             setCustomTagName(formatted);
                           }
                         }}
-                        placeholder="New service name..."
+                        placeholder="New service name (added for everyone)"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
@@ -494,6 +469,7 @@ export default function SupplierManagement() {
                   </div>
                 )}
               </div>
+              <p className="field-hint">Tick the services this supplier provides. Archive a service from Job Options.</p>
             </div>
 
             <div className="form-group">
@@ -522,7 +498,7 @@ export default function SupplierManagement() {
             className="btn btn-primary"
             disabled={saving}
           >
-            <Save size={14} /> {saving ? 'Saving...' : editingSupplier ? 'Update Supplier' : 'Create Supplier'}
+            <Save size={14} /> {saving ? 'Saving…' : editingSupplier ? 'Update supplier' : 'Create supplier'}
           </button>
         </BottomSheet.Footer>
       </BottomSheet>
@@ -589,13 +565,13 @@ export default function SupplierManagement() {
             rowClassName={(row) => row.active ? '' : 'inactive-row'}
             searchable
             searchKeys={['name', 'contactName', 'contactPhone']}
-            searchPlaceholder="Search suppliers..."
+            searchPlaceholder="Search suppliers…"
             onVisibleRowsChange={setVisibleSuppliers}
             emptyState={{
               icon: 'suppliers',
               title: 'No suppliers yet',
               description: 'Add your first supplier to get started.',
-              actionLabel: 'Add Supplier',
+              actionLabel: 'Add supplier',
               onAction: openAddForm,
             }}
             defaultSortKey="name"

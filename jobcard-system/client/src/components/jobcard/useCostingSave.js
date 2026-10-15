@@ -405,8 +405,8 @@ export function useCostingSave(jobCardId, {
       return { proceed: false, field: invalidField };
     }
     const discard = await showConfirm({
-      title: 'Pricing not saved',
-      message: "This pricing figure isn't saved — fix it or discard it?",
+      title: 'Costing not saved',
+      message: "This costing figure isn't saved — fix it or discard it?",
       confirmLabel: 'Discard',
       cancelLabel: 'Fix it',
       confirmVariant: 'danger'
@@ -538,15 +538,15 @@ function changedFigures(form, stored) {
 // Split out so runSave (already long) reads as a list of steps rather than a wall of
 // toast wording.
 function toastSignedOutUnsaved(jobCardId, jobNumber) {
-  toastJobWriteFailure({ jobNumber, jobCardId }, 'The latest pricing change was not saved because you were signed out. Open the job and check its pricing.', 'costing-signed-out');
+  toastJobWriteFailure({ jobNumber, jobCardId }, 'The latest costing change was not saved because you were signed out. Open the job and check its costing.', 'costing-signed-out');
 }
 function toastNotLoaded(jobCardId) {
-  toast.error("This job's pricing hasn't loaded — reopen the pricing screen before making changes.", { id: `costing-not-loaded-${jobCardId}` });
+  toast.error("This job's costing hasn't loaded — reopen the costing screen before making changes.", { id: `costing-not-loaded-${jobCardId}` });
 }
 function toastSaveFailed(err, jobCardId, jobNumber) {
-  const message = err.message ? `Pricing not saved — ${err.message}` : 'Failed to save pricing';
+  const message = err.message ? `Costing not saved — ${err.message}` : 'Couldn\'t save the costing. Check the connection and try again.';
   toastJobWriteFailure({ jobNumber, jobCardId }, message, 'save-costing-failed');
 }
 function toastRefreshFailed(err, jobCardId) {
-  toast.error(err.message || 'Failed to refresh costing hours', { id: `refresh-costing-failed-${jobCardId}` });
+  toast.error(err.message || 'Couldn\'t refresh the costing hours. Check the connection and try again.', { id: `refresh-costing-failed-${jobCardId}` });
 }

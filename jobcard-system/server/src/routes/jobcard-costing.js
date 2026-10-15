@@ -17,7 +17,7 @@ router.get('/:id/costing', authenticate, requirePermission('pricing'), (req, res
   try {
     const jobId = req.params.id;
     // A job deleted from another PC: say so, instead of a blank $0.00 sheet.
-    if (!findOr404(res, jobcardQueries.getById.get(jobId), 'Job card not found')) return;
+    if (!findOr404(res, jobcardQueries.getById.get(jobId), "That job couldn't be found. It may have been removed.")) return;
 
     // Every job — open or invoiced — owns its own overtime rules and rate, so recomputing
     // on the spot from logged time + those captured rules always reproduces the billed
@@ -27,7 +27,7 @@ router.get('/:id/costing', authenticate, requirePermission('pricing'), (req, res
     res.json(buildCostingResponse(jobId, computed));
   } catch (err) {
     logger.error({ err }, 'Get costing error');
-    res.status(500).json({ error: 'Failed to get costing' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -36,7 +36,7 @@ router.put('/:id/costing', authenticate, requirePermission('pricing'), (req, res
   try {
     const jobId = req.params.id;
     // A job deleted from another PC while the sheet was still open: say so, once.
-    if (!findOr404(res, jobcardQueries.getById.get(jobId), 'Job card not found')) return;
+    if (!findOr404(res, jobcardQueries.getById.get(jobId), "That job couldn't be found. It may have been removed.")) return;
     const existing = jobCostingQueries.getByJobcard.get(jobId);
 
     // An invoiced (archived) job never reaches here: closedJobGuard, mounted ahead of every
@@ -118,7 +118,7 @@ router.put('/:id/costing', authenticate, requirePermission('pricing'), (req, res
     res.json({ success: true, costing: buildCostingResponse(jobId, computed) });
   } catch (err) {
     logger.error({ err }, 'Update costing error');
-    res.status(500).json({ error: 'Failed to update costing' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 

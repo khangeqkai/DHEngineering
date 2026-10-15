@@ -128,7 +128,7 @@ export function useJobNotes({ jobcardId, showConfirm, onChange, onJobClosed, isW
       // Surface the failure instead of looking like an empty list. Pressing the
       // bubble re-reads, so a stable id keeps repeat failures from stacking.
       setLoadError(true);
-      if (isWindowUp()) toast.error(err.message || 'Failed to load comments', { id: 'job-notes-load-failed' });
+      if (isWindowUp()) toast.error(err.message || 'Couldn\'t load the comments. Try again in a moment.', { id: 'job-notes-load-failed' });
       return null;
     } finally {
       setLoading(false);
@@ -250,11 +250,11 @@ export function useJobNotes({ jobcardId, showConfirm, onChange, onJobClosed, isW
           showSaveRefusal(err, {
             boxFor: { text: 'commentText' },
             setFieldErrors: marks => setFieldErrors(marks, { commentText: boxText }),
-            fallback: 'Failed to add note',
+            fallback: 'Couldn\'t add the comment. Check the connection and try again.',
             showToast
           });
         } else {
-          showToast(err.message || 'Failed to add note');
+          showToast(err.message || 'Couldn\'t add the comment. Check the connection and try again.');
         }
       }
     } finally {
@@ -299,7 +299,7 @@ export function useJobNotes({ jobcardId, showConfirm, onChange, onJobClosed, isW
     } catch (err) {
       // Told even after the window has gone, as for adding a comment.
       if (isJobClosedError(err)) onJobClosed?.();
-      else toastJobWriteFailure({ jobNumber, jobCardId: jobcardId }, err.message || 'Failed to delete note', 'job-note-delete-failed');
+      else toastJobWriteFailure({ jobNumber, jobCardId: jobcardId }, err.message || 'Couldn\'t delete the comment. Check the connection and try again.', 'job-note-delete-failed');
     } finally {
       setStage('idle');
     }

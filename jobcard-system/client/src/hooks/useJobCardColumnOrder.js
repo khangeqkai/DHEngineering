@@ -48,7 +48,7 @@ export default function useJobCardColumnOrder() {
 
     setColumnOrder(newOrder);
     updatePreferences({ jobcardColumnOrder: newOrder }).catch(() => {
-      toast.error('Failed to save column order preference', { id: 'column-order-failed' });
+      toast.error('Couldn\'t save the column order. Check the connection and try again.', { id: 'column-order-failed' });
     });
   };
 
@@ -82,7 +82,7 @@ export default function useJobCardColumnOrder() {
 
     setColumnOrder(newOrder);
     updatePreferences({ jobcardColumnOrder: newOrder }).catch(() => {
-      toast.error('Failed to save column order preference', { id: 'column-order-failed' });
+      toast.error('Couldn\'t save the column order. Check the connection and try again.', { id: 'column-order-failed' });
     });
   };
 
@@ -94,7 +94,7 @@ export default function useJobCardColumnOrder() {
     const previous = columnOrder;
     setColumnOrder(DEFAULT_COLUMN_ORDER);
     updatePreferences({ jobcardColumnOrder: DEFAULT_COLUMN_ORDER }).catch(() => {
-      toast.error('Failed to save column order preference', { id: 'column-order-failed' });
+      toast.error('Couldn\'t save the column order. Check the connection and try again.', { id: 'column-order-failed' });
       setColumnOrder(previous);
     });
   };

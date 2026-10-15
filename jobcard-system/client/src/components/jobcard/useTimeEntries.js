@@ -322,7 +322,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
         const refusedFinish = err?.status === 409 && err?.data?.code === FINISH_CHANGED;
         const message = refusedFinish && err.data.current
           ? `${blockLabel}: ${finishRefusalHead(err.data.reason, err.data.current)} Your change was not saved.`
-          : `${blockLabel}: ${err.message || 'Failed to save time entry'}`;
+          : `${blockLabel}: ${err.message || 'Couldn\'t save the time entry. Check the connection and try again.'}`;
         toast.error(message, { id: 'time-entry-save-refused' });
         if (refusedFinish) reloadTimeEntries?.()?.catch?.(() => {});
       }
@@ -362,7 +362,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       }
       // Anything else the server refused on a named box (e.g. a start or finish that
       // this PC's clock thought was fine) marks that box; the rest is a pop-up.
-      else showSaveRefusal(err, { boxFor: FORM_BOXES, setFieldErrors, fallback: 'Failed to save time entry' });
+      else showSaveRefusal(err, { boxFor: FORM_BOXES, setFieldErrors, fallback: 'Couldn\'t save the time entry. Check the connection and try again.' });
     }
   }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry, reloadTimeEntries, isInvoiced, setFieldErrors, onJobClosed]);
 
@@ -397,7 +397,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       await deleteTimeEntry(entry.id);
     } catch (err) {
       if (isJobClosedError(err)) onJobClosed?.();
-      else toast.error(err.message || 'Failed to delete time entry');
+      else toast.error(err.message || 'Couldn\'t delete the time entry. Check the connection and try again.');
     }
   }, [jobCardId, deleteTimeEntry, showConfirm, isInvoiced, onJobClosed]);
 

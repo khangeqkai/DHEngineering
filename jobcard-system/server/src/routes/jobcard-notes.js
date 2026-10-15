@@ -30,7 +30,7 @@ router.get('/open-mentions', authenticate, (req, res) => {
     })));
   } catch (err) {
     logger.error({ err }, 'Get open mentions error');
-    res.status(500).json({ error: 'Failed to get mentions' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -54,7 +54,7 @@ router.get('/:id/notes', authenticate, (req, res) => {
     })));
   } catch (err) {
     logger.error({ err }, 'Get job notes error');
-    res.status(500).json({ error: 'Failed to get notes' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -69,7 +69,7 @@ router.post('/:id/notes', authenticate, [
     const { text } = req.body;
 
     // A job deleted from another PC while this one still had it open.
-    if (!findOr404(res, jobcardQueries.getById.get(id), 'Job card not found')) return;
+    if (!findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.")) return;
 
     // Who is being mentioned: no repeats, never the writer (mentioning yourself is ignored
     // without a word), and each must be an existing active person. An id that names nobody
@@ -82,7 +82,7 @@ router.post('/:id/notes', authenticate, [
         return res.status(400).json({ error: MENTION_IDS_GARBLED, fields: [{ field: 'text', message: MENTION_IDS_GARBLED }] });
       }
       if (!isActiveRecord(person)) {
-        const message = `${displayName(person)} can no longer be mentioned — their account is archived.`;
+        const message = `${displayName(person)} can no longer be asked, because their account is archived. Remove them from the comment.`;
         return res.status(400).json({ error: message, code: MENTION_INACTIVE, fields: [{ field: 'text', message }] });
       }
       mentioned.push({ userId: person.id, name: displayName(person) });
@@ -124,7 +124,7 @@ router.post('/:id/notes', authenticate, [
     });
   } catch (err) {
     logger.error({ err }, 'Add job note error');
-    res.status(500).json({ error: 'Failed to add note' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -135,7 +135,7 @@ router.post('/:id/notes', authenticate, [
 router.put('/:id/notes/read', authenticate, validateMarkNotesRead, (req, res) => {
   try {
     const { id } = req.params;
-    if (!findOr404(res, jobcardQueries.getById.get(id), 'Job card not found')) return;
+    if (!findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.")) return;
 
     const params = { userId: req.user.userId, jobcardId: id };
     // The newest comment's moment, from the same pick the job list and the thread use.
@@ -152,7 +152,7 @@ router.put('/:id/notes/read', authenticate, validateMarkNotesRead, (req, res) =>
     });
   } catch (err) {
     logger.error({ err }, 'Mark job notes read error');
-    res.status(500).json({ error: 'Failed to mark comments as read' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -161,11 +161,11 @@ router.delete('/:id/notes/:noteId', authenticate, requireManagement, (req, res) 
   try {
     const { id, noteId } = req.params;
 
-    const existing = findOr404(res, jobNoteQueries.getById.get(noteId), 'Note not found');
+    const existing = findOr404(res, jobNoteQueries.getById.get(noteId), "That comment couldn't be found. It may have been removed.");
     if (!existing) return;
 
     if (existing.jobcard_id !== id) {
-      return res.status(403).json({ error: 'Note does not belong to this job card' });
+      return res.status(403).json({ error: "That comment isn't on this job. Reload the job and try again." });
     }
 
     db.transaction(() => {
@@ -186,7 +186,7 @@ router.delete('/:id/notes/:noteId', authenticate, requireManagement, (req, res) 
     });
   } catch (err) {
     logger.error({ err }, 'Delete job note error');
-    res.status(500).json({ error: 'Failed to delete note' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 

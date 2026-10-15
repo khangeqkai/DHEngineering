@@ -58,12 +58,12 @@ function resolveJobFolder(jobcardId) {
   if (!basePath) {
     // `notConfigured` lets callers that don't send the reply themselves tell
     // "nothing was looked at" apart from "looked, and the folder is empty".
-    return { error: 'Job folders base path not configured', status: 400, notConfigured: true };
+    return { error: 'The job folders location hasn\'t been set up. Ask an admin to set it in Settings.', status: 400, notConfigured: true };
   }
 
   const jobcard = jobcardQueries.getById.get(jobcardId);
   if (!jobcard) {
-    return { error: 'Job card not found', status: 404 };
+    return { error: "That job couldn't be found. It may have been removed.", status: 404 };
   }
 
   const base = basePath.trim();
@@ -84,18 +84,18 @@ function resolveJobFolder(jobcardId) {
   }
   if (!companyName) companyName = jobcard.company_name;
   if (!companyName) {
-    return { error: 'No company associated with this job card', status: 400 };
+    return { error: 'This job has no customer, so its folder can\'t be found. Pick a customer for the job first.', status: 400 };
   }
 
   const companyFolder = resolveCompanyFolder(base, companyId, companyName);
   const sanitizedJob = sanitizeFolderName(jobcard.job_number);
   if (!companyFolder || !sanitizedJob) {
-    return { error: 'Invalid path components', status: 400 };
+    return { error: 'That file or folder name can\'t be used. Rename it and try again.', status: 400 };
   }
 
   const jobFolderPath = path.join(companyFolder, sanitizedJob);
   if (!isWithinBase(base, jobFolderPath)) {
-    return { error: 'Path traversal detected', status: 403 };
+    return { error: 'That file or folder name can\'t be used. Rename it and try again.', status: 403 };
   }
 
   return { jobFolderPath, base, jobcard };
@@ -111,12 +111,12 @@ function resolveCategoryFolder(jobcardId, category) {
 
   const subfolder = CATEGORY_FOLDER[category];
   if (!subfolder) {
-    return { error: 'Invalid path components', status: 400 };
+    return { error: 'That file or folder name can\'t be used. Rename it and try again.', status: 400 };
   }
 
   const folderPath = path.join(jobRes.jobFolderPath, subfolder);
   if (!isWithinBase(jobRes.base, folderPath)) {
-    return { error: 'Path traversal detected', status: 403 };
+    return { error: 'That file or folder name can\'t be used. Rename it and try again.', status: 403 };
   }
 
   return { folderPath, jobcard: jobRes.jobcard };
@@ -323,7 +323,7 @@ function listCategoryFileNames(jobcardId, categories) {
 const validateCategory = [
   param('category')
     .isIn(CATEGORIES)
-    .withMessage(`category must be one of: ${CATEGORIES.join(', ')}`),
+    .withMessage('That kind of document isn\'t recognised. Reload the job and try again.'),
   handleValidationErrors
 ];
 
@@ -332,10 +332,10 @@ const validateFilenameParam = [
   // that starts or ends with a space (" Rev B.pdf") — trimming it would look for a
   // different file.
   param('filename')
-    .isString().notEmpty().withMessage('Filename required')
+    .isString().notEmpty().withMessage('The file needs a name.')
     .custom(value => {
       if (!isPlainFileName(value)) {
-        throw new Error('Filename must not contain path separators');
+        throw new Error('The file name can\'t contain slashes. Rename the file and try again.');
       }
       return true;
     }),
@@ -344,19 +344,19 @@ const validateFilenameParam = [
 
 const validateUploadBody = [
   body('filename')
-    .isString().trim().notEmpty().withMessage('Filename is required')
+    .isString().trim().notEmpty().withMessage('The file needs a name.')
     .custom((value) => {
       if (!isPlainFileName(value)) {
-        throw new Error('Filename must not contain path separators');
+        throw new Error('The file name can\'t contain slashes. Rename the file and try again.');
       }
       const ext = path.extname(value).toLowerCase();
       if (!ALLOWED_FILE_EXTENSIONS.includes(ext)) {
-        throw new Error('Invalid file extension');
+        throw new Error('That type of file can\'t be uploaded.');
       }
       return true;
     }),
   body('fileData')
-    .isString().notEmpty().withMessage('File data is required')
+    .isString().notEmpty().withMessage('The file was empty. Choose it again.')
     .bail()
     .custom((value) => {
       if (value.length > MAX_FILE_DATA_CHARS) {
@@ -370,7 +370,7 @@ const validateUploadBody = [
   body('itemId')
     .optional({ nullable: true })
     .isString().bail()
-    .matches(/^item:[A-Za-z0-9:-]+$/).withMessage('itemId must be a valid part reference'),
+    .matches(/^item:[A-Za-z0-9:-]+$/).withMessage('Pick which part this file belongs to.'),
   handleValidationErrors
 ];
 
@@ -385,7 +385,7 @@ router.get('/:id/files/:category', authenticate, validateCategory, (req, res) =>
     res.json(resolveFileOwners(id, listFolderFiles(folderRes.folderPath)));
   } catch (err) {
     logger.error({ err }, 'List jobcard files error');
-    res.status(500).json({ error: 'Failed to list files' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -404,11 +404,11 @@ router.get('/:id/files/:category/:filename', authenticate, validateCategory, val
 
     const filePath = path.join(folderRes.folderPath, filename);
     if (!isWithinBase(folderRes.folderPath, filePath)) {
-      return res.status(403).json({ error: 'Path traversal detected' });
+      return res.status(403).json({ error: 'That file or folder name can\'t be used. Rename it and try again.' });
     }
     // A name the list hides is answered exactly like a missing file.
     if (!statListedFile(filePath)) {
-      return res.status(404).json({ error: 'File not found' });
+      return res.status(404).json({ error: "That file couldn't be found. It may have been removed." });
     }
 
     const ext = path.extname(filename).toLowerCase();
@@ -424,7 +424,7 @@ router.get('/:id/files/:category/:filename', authenticate, validateCategory, val
     });
   } catch (err) {
     logger.error({ err }, 'Get jobcard file data error');
-    res.status(500).json({ error: 'Failed to get file data' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -453,7 +453,7 @@ function saveFile({ jobcardId, category, displayName, buffer, source, itemId, re
   const storageFilename = buildStorageFilename(folderRes.folderPath, displayName, partFileCode(itemId));
   const targetPath = path.join(folderRes.folderPath, storageFilename);
   if (!isWithinBase(folderRes.folderPath, targetPath)) {
-    return res.status(403).json({ error: 'Path traversal detected' });
+    return res.status(403).json({ error: 'That file or folder name can\'t be used. Rename it and try again.' });
   }
 
   fs.writeFileSync(targetPath, buffer);
@@ -505,7 +505,7 @@ router.post('/:id/files/:category/upload', authenticate, validateCategory, valid
     });
   } catch (err) {
     logger.error({ err }, 'Upload-to-files error');
-    res.status(500).json({ error: 'Failed to upload file' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -517,7 +517,7 @@ const validateAssignBody = [
   body('itemId')
     .optional({ nullable: true })
     .isString().bail()
-    .matches(/^item:[A-Za-z0-9:-]+$/).withMessage('itemId must be a valid part reference'),
+    .matches(/^item:[A-Za-z0-9:-]+$/).withMessage('Pick which part this file belongs to.'),
   handleValidationErrors
 ];
 
@@ -533,10 +533,10 @@ router.post('/:id/files/:category/:filename/assign', authenticate, requireManage
 
     const currentPath = path.join(folderRes.folderPath, filename);
     if (!isWithinBase(folderRes.folderPath, currentPath)) {
-      return res.status(403).json({ error: 'Path traversal detected' });
+      return res.status(403).json({ error: 'That file or folder name can\'t be used. Rename it and try again.' });
     }
     if (!statListedFile(currentPath)) {
-      return res.status(404).json({ error: 'File not found' });
+      return res.status(404).json({ error: "That file couldn't be found. It may have been removed." });
     }
 
     // A chosen part must be a real line item on this job — otherwise a file could
@@ -544,7 +544,7 @@ router.post('/:id/files/:category/:filename/assign', authenticate, requireManage
     // Fetched once and reused below to name the old/new owner in the history entry.
     const parts = jobItemQueries.getByJobcard.all(id) || [];
     if (itemId && !parts.some(it => it.id === itemId)) {
-      return res.status(400).json({ error: 'That part is not on this job card' });
+      return res.status(400).json({ error: "That part couldn't be found on this job. Pick another part." });
     }
 
     // Already tagged for this owner → nothing to do. Decided BEFORE building a new
@@ -572,7 +572,7 @@ router.post('/:id/files/:category/:filename/assign', authenticate, requireManage
 
     const newPath = path.join(folderRes.folderPath, newName);
     if (!isWithinBase(folderRes.folderPath, newPath)) {
-      return res.status(403).json({ error: 'Path traversal detected' });
+      return res.status(403).json({ error: 'That file or folder name can\'t be used. Rename it and try again.' });
     }
     fs.renameSync(currentPath, newPath);
 
@@ -604,7 +604,7 @@ router.post('/:id/files/:category/:filename/assign', authenticate, requireManage
     return res.json(owned);
   } catch (err) {
     logger.error({ err }, 'Assign-file error');
-    res.status(500).json({ error: 'Failed to reassign file' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -621,10 +621,10 @@ router.delete('/:id/files/:category/:filename', authenticate, requireManagement,
 
     const filePath = path.join(folderRes.folderPath, filename);
     if (!isWithinBase(folderRes.folderPath, filePath)) {
-      return res.status(403).json({ error: 'Path traversal detected' });
+      return res.status(403).json({ error: 'That file or folder name can\'t be used. Rename it and try again.' });
     }
     if (!statListedFile(filePath)) {
-      return res.status(404).json({ error: 'File not found' });
+      return res.status(404).json({ error: "That file couldn't be found. It may have been removed." });
     }
 
     fs.unlinkSync(filePath);
@@ -637,7 +637,7 @@ router.delete('/:id/files/:category/:filename', authenticate, requireManagement,
     return res.json({ success: true });
   } catch (err) {
     logger.error({ err }, 'Delete jobcard file error');
-    res.status(500).json({ error: 'Failed to delete file' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 

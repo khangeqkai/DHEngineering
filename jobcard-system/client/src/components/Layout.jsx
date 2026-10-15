@@ -14,6 +14,7 @@ import {
   Settings,
   LogOut,
   Tag,
+  Wrench,
   DollarSign,
   PanelLeftClose,
   PanelLeftOpen,
@@ -21,6 +22,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import Waves from './common/Waves';
+import './Layout.css';
 
 export default function Layout() {
   const {
@@ -149,7 +151,7 @@ export default function Layout() {
             <div className="user-avatar">{getInitials(user?.name)}</div>
             <div className="user-details">
               <div className="user-name">{user?.name}</div>
-              <div className="user-role">{user?.role}</div>
+              <div className="user-role">{user?.role === 'user' ? 'Worker' : user?.role}</div>
             </div>
           </div>
         </div>
@@ -164,22 +166,24 @@ export default function Layout() {
                 <span className="nav-text">Job Cards</span>
               </NavLink>
             </li>
+            <li>
+              <NavLink to="/search" onClick={handleNavClick}>
+                <span className="nav-icon">
+                  <Search size={18} />
+                </span>
+                <span className="nav-text">Search</span>
+              </NavLink>
+            </li>
             {isManagement(user) && (
               <>
-                <li>
-                  <NavLink to="/statistics" onClick={handleNavClick}>
-                    <span className="nav-icon">
-                      <BarChart3 size={18} />
-                    </span>
-                    <span className="nav-text">Statistics</span>
-                  </NavLink>
-                </li>
+                <li className="nav-divider" role="separator" aria-hidden="true"></li>
+                <li className="nav-group-label" aria-hidden="true">Set up</li>
                 <li>
                   <NavLink to="/contacts" onClick={handleNavClick}>
                     <span className="nav-icon">
                       <UserCircle size={18} />
                     </span>
-                    <span className="nav-text">Contacts</span>
+                    <span className="nav-text">Customers</span>
                   </NavLink>
                 </li>
                 <li>
@@ -195,7 +199,23 @@ export default function Layout() {
                     <span className="nav-icon">
                       <Tag size={18} />
                     </span>
-                    <span className="nav-text">Tags &amp; Equipment</span>
+                    <span className="nav-text">Job Options</span>
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/equipment" onClick={handleNavClick}>
+                    <span className="nav-icon">
+                      <Wrench size={18} />
+                    </span>
+                    <span className="nav-text">Equipment</span>
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/users" onClick={handleNavClick}>
+                    <span className="nav-icon">
+                      <Users size={18} />
+                    </span>
+                    <span className="nav-text">Users</span>
                   </NavLink>
                 </li>
                 {can(user, 'pricing') && (
@@ -208,24 +228,19 @@ export default function Layout() {
                     </NavLink>
                   </li>
                 )}
-                <li>
-                  <NavLink to="/users" onClick={handleNavClick}>
-                    <span className="nav-icon">
-                      <Users size={18} />
-                    </span>
-                    <span className="nav-text">Users</span>
-                  </NavLink>
-                </li>
               </>
             )}
-            <li>
-              <NavLink to="/search" onClick={handleNavClick}>
-                <span className="nav-icon">
-                  <Search size={18} />
-                </span>
-                <span className="nav-text">Search</span>
-              </NavLink>
-            </li>
+            <li className="nav-divider" role="separator" aria-hidden="true"></li>
+            {isManagement(user) && (
+              <li>
+                <NavLink to="/statistics" onClick={handleNavClick}>
+                  <span className="nav-icon">
+                    <BarChart3 size={18} />
+                  </span>
+                  <span className="nav-text">Statistics</span>
+                </NavLink>
+              </li>
+            )}
             {can(user, 'activityTrail') && (
               <li>
                 <NavLink to="/activity" onClick={handleNavClick}>

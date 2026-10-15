@@ -23,8 +23,8 @@ function nameConflictOr409(res, existingRow, currentId, { entityLabel, nameLabel
     return false;
   }
   const message = isArchived(existingRow)
-    ? `A ${entityLabel} with this ${nameLabel} already exists in the archive. Restore it from the archived list instead.`
-    : `A ${entityLabel} with this ${nameLabel} already exists`;
+    ? `That ${nameLabel} belongs to an archived ${entityLabel}. Restore that one from the archived list, or choose a different ${nameLabel}.`
+    : `That ${nameLabel} is already used by another ${entityLabel}. Choose a different ${nameLabel}.`;
   refuseField(res, 409, field, message);
   return true;
 }

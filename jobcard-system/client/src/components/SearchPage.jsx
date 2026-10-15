@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Search, X, ChevronLeft, ChevronRight, Briefcase, Users as UsersIcon, Clock, Timer, Filter, ArrowRight } from 'lucide-react';
+import { Search, X, ChevronLeft, ChevronRight, Briefcase, Users as UsersIcon, Clock, Timer, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFinishQuestion } from '../context/FinishQuestionContext';
 import { isManagement, can } from '../utils/roles';
@@ -12,13 +12,14 @@ import JobCardModal from './jobcard/JobCardModal';
 import { prefetchJobCardReferenceData } from './jobcard/useJobCardReferenceData';
 import { ACTIVITY_FIELDS } from './searchFields';
 import { formatDate, formatDateTime } from '../utils/formatters';
-import { formatHistoryValue } from '../utils/formatters';
+import { describeActivity, recordTypeName } from '../utils/activitySentences';
 import { statusToken, priorityToken, PRIORITY_LABELS, STATUS_LABELS } from './JobCardList.constants';
 import { STATUS_OPTIONS, PRIORITY_OPTIONS } from './jobcard/constants';
-import { actionColor, ACTION_NAMES } from '../utils/activityColors';
+import { ACTION_NAMES } from '../utils/activityColors';
 import { JOB_DELETED_MESSAGE, JOB_DELETED_TOAST_ID } from '../utils/jobLock';
 import { QUALITY_LEVELS, QUALITY_LEVEL_LABELS } from '../../../server/src/shared/qualityLevels';
 import './SearchPage.css';
+import PriorityLevel from './common/PriorityLevel';
 
 // Both lists come from the job screen, so every chip can match and every stored value
 // has a chip — adding a status or priority there gives it a search chip for free.
@@ -29,8 +30,30 @@ const PRIORITIES = PRIORITY_OPTIONS.map(p => p.value);
 // the trail entries the old quality-levels page left behind are still stored, so
 // the chip stays to keep them filterable.
 const ENTITY_TYPES = ['jobcard', 'company', 'contact', 'supplier', 'user', 'machine', 'auth', 'tag', 'settings', 'system', 'qa_level'];
-const ENTITY_TYPE_LABELS = { qa_level: 'Quality Level' };
-const fmtEntityType = (t) => ENTITY_TYPE_LABELS[t] || fmt(t);
+const fmtEntityType = recordTypeName;
+
+// An activity result in a plain sentence — the Activity Log's wording: names in bold,
+// the old value in small grey, and the job's number when it is a job's entry.
+function ActivitySentence({ row }) {
+  const { headline, details, jobNumber } = describeActivity(row);
+  const sayLine = (line, i) => (
+    <span key={i}>
+      {line.parts.map((part, j) => (part.strong ? <strong key={j}>{part.text}</strong> : <span key={j}>{part.text}</span>))}
+      {line.was && <span className="search-from"> was {line.was}</span>}
+    </span>
+  );
+  return (
+    <>
+      {sayLine(headline, 'head')}
+      {jobNumber && <span> · job {jobNumber}</span>}
+      {details.length > 0 && <div className="search-changes">{details.map((line, i) => <div key={i} className="search-change-line">{sayLine(line, i)}</div>)}</div>}
+    </>
+  );
+}
+const activityAriaLabel = (row) => {
+  const { headline } = describeActivity(row);
+  return `Open activity: ${headline.parts.map((p) => p.text).join('')}`;
+};
 const SCOPES = [
   { key: 'all', label: 'All', icon: Search },
   { key: 'jobs', label: 'Jobs', icon: Briefcase },
@@ -70,6 +93,23 @@ function FilterRow({ label, children }) {
   );
 }
 
+// Wraps whatever part of `text` matches the search words in a <mark>. The whole
+// phrase is tried first, then each word alone, so "acme bolt" lights up both the
+// phrase and either word wherever they appear.
+function Highlight({ text, query }) {
+  const value = text == null ? '' : String(text);
+  const phrase = (query || '').trim();
+  if (!phrase || !value) return value;
+  const parts = [...new Set([phrase, ...phrase.split(/\s+/)])]
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length)
+    .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const pieces = value.split(new RegExp(`(${parts.join('|')})`, 'gi'));
+  if (pieces.length === 1) return value;
+  // split() with one capture group puts every match at an odd index.
+  return pieces.map((piece, i) => (i % 2 === 1 ? <mark key={i} className="search-mark">{piece}</mark> : piece));
+}
+
 function StatusBadge({ status }) {
   return <span className={`badge status-${statusToken(status)}`}>{STATUS_LABELS[status] || fmt(status)}</span>;
 }
@@ -77,11 +117,7 @@ function StatusBadge({ status }) {
 // Same soft-tinted pill as the job list, so status and priority read as one set here too.
 function PriorityBadge({ priority }) {
   const p = priority || 'NONE';
-  return <span className={`badge priority-${priorityToken(p)}`}>{PRIORITY_LABELS[p] || fmt(p)}</span>;
-}
-
-function ActionBadge({ action }) {
-  return <span className="search-badge" style={{ color: actionColor(action), fontWeight: 700 }}>{fmt(action)}</span>;
+  return <span className={`badge priority-${priorityToken(p)}`}><PriorityLevel priority={p} />{PRIORITY_LABELS[p] || fmt(p)}</span>;
 }
 
 function Pagination({ page, totalPages, total, onPageChange }) {
@@ -132,7 +168,7 @@ export default function SearchPage() {
   const machineOptions = useMemo(() => (
     [...machines]
       .sort((a, b) => (a.active === b.active ? 0 : a.active ? -1 : 1))
-      .map(m => ({ ...m, displayLabel: `${m.machineNumber} - ${m.name}${m.active ? '' : ' (retired)'}` }))
+      .map(m => ({ ...m, displayLabel: `${m.machineNumber} - ${m.name}${m.active ? '' : ' (archived)'}` }))
   ), [machines]);
   const jobTypeOptions = useMemo(() => (
     [...jobTypes]
@@ -170,7 +206,9 @@ export default function SearchPage() {
       navigate('/suppliers');
     } else if (row.entityType === 'user') {
       navigate('/users');
-    } else if (row.entityType === 'machine' || row.entityType === 'tag') {
+    } else if (row.entityType === 'machine') {
+      navigate('/equipment');
+    } else if (row.entityType === 'tag') {
       navigate('/tags');
     }
   }, [navigate, openJobModal, canManage]);
@@ -179,7 +217,8 @@ export default function SearchPage() {
     if (scope === 'jobs') {
       openJobModal(row.id);
     } else if (scope === 'people') {
-      navigate(row.type === 'contact' ? '/contacts' : '/suppliers');
+      // Straight to that customer's or supplier's own form, not just their page.
+      navigate(row.type === 'contact' ? `/contacts?open=${row.companyId}` : `/suppliers?open=${row.id}`);
     } else if (scope === 'activity') {
       navigateActivity(row);
     } else if (scope === 'time') {
@@ -197,7 +236,7 @@ export default function SearchPage() {
         ? `Open contact ${row.companyName || row.contactName || ''}`.trim()
         : `Open supplier ${row.name || ''}`.trim();
     }
-    if (scope === 'activity') return `Open activity: ${fmt(row.action)} on ${fmtEntityType(row.entityType)}`;
+    if (scope === 'activity') return activityAriaLabel(row);
     if (scope === 'time') return `Open job ${row.jobNumber}`;
     return undefined;
   }, [scope]);
@@ -223,52 +262,41 @@ export default function SearchPage() {
 
   // --- Column definitions ---
   const jobColumns = [
-    { key: 'jobNumber', label: 'Job #' },
-    ...(canManage ? [{ key: 'companyName', label: 'Company', render: (v) => v || '-' }] : []),
+    { key: 'jobNumber', label: 'Job #', render: (v) => <Highlight text={v} query={q} /> },
+    ...(canManage ? [{ key: 'companyName', label: 'Company', render: (v) => (v ? <Highlight text={v} query={q} /> : '-') }] : []),
     { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v} /> },
     { key: 'priority', label: 'Priority', render: (v) => <PriorityBadge priority={v} /> },
     { key: 'dueDate', label: 'Due Date', render: (v) => fmtDateShort(v) },
-    { key: 'description', label: 'Description', render: (v) => <span className="search-truncate">{v || '-'}</span> },
+    { key: 'description', label: 'Description', render: (v) => <span className="search-truncate">{v ? <Highlight text={v} query={q} /> : '-'}</span> },
   ];
 
   const peopleColumns = [
     { key: 'type', label: 'Type', render: (v) => <span className={`search-type-badge ${v}`}>{fmt(v)}</span> },
-    { key: 'companyName', label: 'Company / Name', render: (_, row) => row.type === 'contact' ? row.companyName : row.name },
-    { key: 'contactName', label: 'Contact', render: (v) => v || '-' },
-    { key: 'phone', label: 'Phone', render: (_, row) => (row.type === 'contact' ? row.phone : row.contactPhone) || '-' },
-    { key: 'email', label: 'Email', render: (_, row) => (row.type === 'contact' ? row.email : row.contactEmail) || '-' },
+    { key: 'companyName', label: 'Company / Name', render: (_, row) => <Highlight text={row.type === 'contact' ? row.companyName : row.name} query={q} /> },
+    { key: 'contactName', label: 'Contact', render: (v) => (v ? <Highlight text={v} query={q} /> : '-') },
+    { key: 'phone', label: 'Phone', render: (_, row) => { const v = row.type === 'contact' ? row.phone : row.contactPhone; return v ? <Highlight text={v} query={q} /> : '-'; } },
+    { key: 'email', label: 'Email', render: (_, row) => { const v = row.type === 'contact' ? row.email : row.contactEmail; return v ? <Highlight text={v} query={q} /> : '-'; } },
   ];
 
   const activityColumns = [
     { key: 'createdAt', label: 'Time', render: (v) => <span style={{ whiteSpace: 'nowrap' }}>{fmtDate(v)}</span> },
-    { key: 'userName', label: 'User', render: (v) => v || 'System' },
-    { key: 'action', label: 'Action', render: (v) => <ActionBadge action={v} /> },
-    { key: 'entityType', label: 'Type', render: (v) => fmtEntityType(v) },
-    {
-      key: 'entityId', label: 'Details', render: (v, row) => (
-        <>
-          {row.jobNumber ? <strong>Job {row.jobNumber}</strong> : <code className="search-entity-id">{v}</code>}
-          {row.changes && <div className="search-changes">{Object.entries(row.changes).map(([f, c]) => (
-            <div key={f} className="search-change-line">
-              <strong>{fmt(f)}:</strong>{' '}
-              {c.changed ? <em style={{ color: 'var(--primary-accent)' }}>modified</em> : (
-                <><span className="search-from">{formatHistoryValue(f, c.from) || '(empty)'}</span><span className="search-arrow"><ArrowRight size={14} aria-hidden="true" /></span><span className="search-to">{formatHistoryValue(f, c.to) || '(empty)'}</span></>
-              )}
-            </div>
-          ))}</div>}
-        </>
-      )
-    },
+    { key: 'action', label: 'What happened', render: (_, row) => <ActivitySentence row={row} /> },
   ];
 
   const timeColumns = [
-    { key: 'jobNumber', label: 'Job #' },
-    { key: 'workerName', label: 'Worker' },
+    { key: 'jobNumber', label: 'Job #', render: (v) => <Highlight text={v} query={q} /> },
+    { key: 'workerName', label: 'Worker', render: (v) => <Highlight text={v} query={q} /> },
     { key: 'machineNumber', label: 'Machine', render: (v) => v || '-' },
     { key: 'durationHours', label: 'Hours', render: (v) => v != null ? `${v.toFixed(2)}h` : 'Active' },
     { key: 'startTime', label: 'Start', render: (v) => fmtDate(v) },
     { key: 'endTime', label: 'End', render: (v) => v ? fmtDate(v) : '-' },
   ];
+
+  // Says what the box really looks through. A worker's search never reaches
+  // customers, people or suppliers, so the hint doesn't promise them.
+  const searchPlaceholder = canManage
+    ? 'Job numbers, descriptions, PO numbers, customers, people, suppliers…'
+    : 'Job numbers, descriptions, logged time…';
 
   const columnsMap = { jobs: jobColumns, people: peopleColumns, activity: activityColumns, time: timeColumns };
 
@@ -280,7 +308,7 @@ export default function SearchPage() {
       <div className="search-input-wrapper">
         <Search size={18} className="search-input-icon" />
         <input ref={inputRef} type="text" className="search-input" value={q}
-          onChange={(e) => setQ(e.target.value)} placeholder="Search across all data..." />
+          onChange={(e) => setQ(e.target.value)} placeholder={searchPlaceholder} />
         {q && <button type="button" className="search-input-clear" onClick={() => setQ('')}><X size={16} /></button>}
       </div>
 
@@ -382,7 +410,7 @@ export default function SearchPage() {
               <FilterRow label="Action">
                 <Chips options={ACTION_NAMES} selected={filters.action} onToggle={(v) => toggleArrayFilter('action', v)} multi />
               </FilterRow>
-              <FilterRow label="Entity Type">
+              <FilterRow label="Record Type">
                 <Chips options={ENTITY_TYPES} selected={filters.entityType} formatLabel={fmtEntityType}
                   onToggle={(v) => updateFilter('entityType', filters.entityType === v ? '' : v)} />
               </FilterRow>
@@ -419,7 +447,7 @@ export default function SearchPage() {
                   {machineOptions.map(m => <option key={m.id} value={m.machineNumber}>{m.displayLabel}</option>)}
                 </select>
               </FilterRow>
-              <FilterRow label="Job #">
+              <FilterRow label="Job Number">
                 <input type="text" className="search-field-input" value={filters.jobNumber}
                   onChange={e => updateFilter('jobNumber', e.target.value)} placeholder="Filter by job number" />
               </FilterRow>
@@ -436,12 +464,12 @@ export default function SearchPage() {
       )}
 
       {/* Results */}
-      {loading && <div className="search-loading">Searching...</div>}
+      {loading && <div className="search-loading">Searching…</div>}
 
       {!loading && scope === 'all' && results?.groups && (
         <div className="search-groups">
           {Object.entries(results.groups).every(([, g]) => g.count === 0) && q.trim() && (
-            <div className="search-empty">No results found for &ldquo;{q}&rdquo;</div>
+            <div className="search-empty">No results for &ldquo;{q.trim()}&rdquo;. Try fewer words, or tick Include archived.</div>
           )}
           {Object.entries(results.groups).map(([key, group]) => group.count > 0 && (
             <div key={key} className="search-group card">
@@ -453,33 +481,30 @@ export default function SearchPage() {
                 <div className="search-group-items">
                   {key === 'jobs' && group.results.map(j => (
                     <button key={j.id} type="button" className="search-preview-item clickable" onClick={() => openJobModal(j.id)} aria-label={`Open job ${j.jobNumber}`}>
-                      <strong>{j.jobNumber}</strong>
-                      {canManage && j.companyName && <span className="search-preview-detail"> &middot; {j.companyName}</span>}
+                      <strong><Highlight text={j.jobNumber} query={q} /></strong>
+                      {canManage && j.companyName && <span className="search-preview-detail"> &middot; <Highlight text={j.companyName} query={q} /></span>}
                       <StatusBadge status={j.status} />
                       {j.dueDate && <span className="search-preview-meta">Due {fmtDateShort(j.dueDate)}</span>}
                     </button>
                   ))}
                   {key === 'contacts' && group.results.map(c => (
-                    <button key={c.id} type="button" className="search-preview-item clickable" onClick={() => navigate('/contacts')} aria-label={`Open contact ${c.companyName}`}>
-                      <strong>{c.companyName}</strong>
-                      {c.contactName && <span className="search-preview-detail"> ({c.contactName})</span>}
-                      {c.phone && <span className="search-preview-meta">{c.phone}</span>}
+                    <button key={c.id} type="button" className="search-preview-item clickable" onClick={() => navigate(`/contacts?open=${c.companyId}`)} aria-label={`Open contact ${c.companyName}`}>
+                      <strong><Highlight text={c.companyName} query={q} /></strong>
+                      {c.contactName && <span className="search-preview-detail"> (<Highlight text={c.contactName} query={q} />)</span>}
+                      {c.phone && <span className="search-preview-meta"><Highlight text={c.phone} query={q} /></span>}
                     </button>
                   ))}
                   {key === 'suppliers' && group.results.map(s => (
-                    <button key={s.id} type="button" className="search-preview-item clickable" onClick={() => navigate('/suppliers')} aria-label={`Open supplier ${s.name}`}>
-                      <strong>{s.name}</strong>
-                      {s.contactName && <span className="search-preview-detail"> ({s.contactName})</span>}
-                      {s.contactPhone && <span className="search-preview-meta">{s.contactPhone}</span>}
+                    <button key={s.id} type="button" className="search-preview-item clickable" onClick={() => navigate(`/suppliers?open=${s.id}`)} aria-label={`Open supplier ${s.name}`}>
+                      <strong><Highlight text={s.name} query={q} /></strong>
+                      {s.contactName && <span className="search-preview-detail"> (<Highlight text={s.contactName} query={q} />)</span>}
+                      {s.contactPhone && <span className="search-preview-meta"><Highlight text={s.contactPhone} query={q} /></span>}
                     </button>
                   ))}
                   {key === 'activity' && group.results.map(a => (
-                    <button key={a.id} type="button" className="search-preview-item clickable" onClick={() => navigateActivity(a)} aria-label={`Open activity: ${fmt(a.action)} on ${fmtEntityType(a.entityType)}`}>
+                    <button key={a.id} type="button" className="search-preview-item clickable" onClick={() => navigateActivity(a)} aria-label={activityAriaLabel(a)}>
                       <span className="search-preview-meta">{fmtDate(a.createdAt)}</span>
-                      <strong>{a.userName || 'System'}</strong>
-                      <ActionBadge action={a.action} />
-                      <span>{fmtEntityType(a.entityType)}</span>
-                      {a.jobNumber ? <strong>Job {a.jobNumber}</strong> : <code className="search-entity-id">{a.entityId}</code>}
+                      <span><ActivitySentence row={a} /></span>
                     </button>
                   ))}
                 </div>
@@ -500,7 +525,7 @@ export default function SearchPage() {
                 loading={false}
                 onRowClick={handleRowClick}
                 getRowAriaLabel={getResultRowAriaLabel}
-                emptyState={{ icon: 'search', title: 'No results', description: q ? `No results for "${q}"` : 'Adjust your filters to find results' }}
+                emptyState={{ icon: 'search', title: 'No results', description: q ? `No results for "${q.trim()}". Try fewer words${scope === 'jobs' ? ', or tick Include archived' : ''}.` : 'Adjust your filters to find results' }}
               />
             </div>
           </div>

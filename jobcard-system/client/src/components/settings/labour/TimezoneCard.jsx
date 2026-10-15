@@ -17,12 +17,17 @@ export default function TimezoneCard({ timezone, setTimezone, onSave, saving, er
   return (
     <div className="card full-width">
       <div className="card-header">
-        <h2>Time Zone</h2>
+        <h2>Time zone</h2>
       </div>
       <div className="card-body">
         <p className="setting-description">
           Work is matched to the schedule using this time zone. It should be the
-          workshop's local time. Changing it re-sorts which hours count as overtime.
+          workshop's local time.
+        </p>
+        <p className="setting-description">
+          Applies to jobs created from now on. Jobs that already exist keep the time zone they
+          started with, including invoiced ones, so their figures never move. A change is
+          asked about first.
         </p>
 
         <div className={error ? 'field-error' : undefined}>
@@ -59,7 +64,7 @@ export default function TimezoneCard({ timezone, setTimezone, onSave, saving, er
 
         <div className="sched-save">
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save Time Zone'}
+            {saving ? 'Saving…' : 'Save time zone'}
           </button>
         </div>
       </div>

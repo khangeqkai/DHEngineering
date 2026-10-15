@@ -60,11 +60,11 @@ function ownPart(itemId, jobcardId) {
 // fields can still be corrected. Returns { itemId } or { error }.
 function resolveItemId(jobcardId, itemId, { blankAllowed = false } = {}) {
   if (itemId === null || itemId === undefined || itemId === '') {
-    return blankAllowed ? { itemId: null } : { error: 'Please choose the part this work was on' };
+    return blankAllowed ? { itemId: null } : { error: 'Pick which part this work was on.' };
   }
   const match = ownPart(itemId, jobcardId);
   if (!match) {
-    return { error: 'That part does not exist on this job card' };
+    return { error: "That part couldn't be found on this job. Pick another part." };
   }
   return { itemId: match.id };
 }
@@ -75,14 +75,14 @@ function resolveItemId(jobcardId, itemId, { blankAllowed = false } = {}) {
 // { userId } for a real, active worker, or { error } otherwise.
 function resolveWorkerId(workerId) {
   if (workerId === null || workerId === undefined || workerId === '') {
-    return { error: 'Please choose the worker who did this work' };
+    return { error: 'Pick the worker who did this work.' };
   }
   const user = userQueries.getById.get(workerId);
   if (!user) {
-    return { error: 'That worker does not exist' };
+    return { error: "That worker couldn't be found. Pick someone from the list." };
   }
   if (!isActiveRecord(user)) {
-    return { error: 'That worker is no longer active' };
+    return { error: 'That worker\'s account is archived. Pick someone else.' };
   }
   return { userId: user.id };
 }
@@ -134,7 +134,7 @@ function sendOpenTimerConflict(res, userId, knownActive) {
   const active = knownActive || timeEntryQueries.getActiveByUser.get(userId);
   if (!active) return false;
   res.status(409).json({
-    error: 'Timer running on another job',
+    error: 'Timer running on another job. Stop that timer first, or switch to this job.',
     activeTimer: {
       id: active.id,
       jobcardId: active.jobcard_id,
@@ -152,11 +152,11 @@ function sendOpenTimerConflict(res, userId, knownActive) {
 function findEntryForJob(res, jobcardId, entryId) {
   const existing = timeEntryQueries.getById.get(entryId);
   if (!existing) {
-    res.status(404).json({ error: 'Time entry not found' });
+    res.status(404).json({ error: "That time entry couldn't be found. It may have been removed." });
     return null;
   }
   if (existing.jobcard_id !== jobcardId) {
-    res.status(403).json({ error: 'Time entry does not belong to this job card' });
+    res.status(403).json({ error: "That time entry isn't on this job. Reload the job and try again." });
     return null;
   }
   return existing;
@@ -174,17 +174,17 @@ const AWAITING_DETAILS_WINDOW_MS = 30 * 60 * 1000;
 // files the job away, after which that form's save is refused.
 function invoiceBlockedByTime(jobcardId) {
   if (timeEntryQueries.countRunningByJobcard.get(jobcardId).count > 0) {
-    return 'A timer is still running on this job. Stop it before marking the job invoiced.';
+    return 'This job can\'t be invoiced while a timer is running. Stop the timer first.';
   }
   const unconfirmed = timeEntryQueries.getFirstUnconfirmedByJobcard.get(jobcardId);
   if (unconfirmed) {
-    return `${unconfirmed.user_name} has not confirmed when their clock on this job finished. Ask them to sign in and answer, or correct the time yourself.`;
+    return `This job can't be invoiced yet because ${unconfirmed.user_name} hasn't confirmed when their clock finished. Ask them to sign in and answer, or correct the time yourself.`;
   }
   // The wait is measured from the finish or from the worker's answer (a clock that stopped
   // itself is answered long after its finish), whichever is later — hence `since` twice.
   const since = new Date(Date.now() - AWAITING_DETAILS_WINDOW_MS).toISOString();
   if (timeEntryQueries.countAwaitingDetailsByJobcard.get(jobcardId, since, since).count > 0) {
-    return 'Someone has just stopped a timer on this job and is still filling in their pieces. Try again once they have saved it.';
+    return 'Someone has just stopped a timer on this job and is still filling in their pieces. Try invoicing again once they have saved.';
   }
   return null;
 }
@@ -254,9 +254,9 @@ function checkCriticalInspection(criticalAtFinish, flags) {
   const missing = INSPECTION_FIELDS.filter(field => flags[field] === null || flags[field] === undefined);
   if (missing.length === 0) return null;
   return {
-    error: 'This is a Critical job — please answer all the inspection checks (first-off, in-process, measuring equipment, and equipment) before saving.',
+    error: 'This is a Critical job. Answer all the inspection checks (first-off, in-process, measuring equipment and equipment) before saving.',
     code: CRITICAL_INSPECTION_REFUSED,
-    fields: missing.map(field => ({ field, message: 'This is a Critical job — please answer this check' }))
+    fields: missing.map(field => ({ field, message: 'This is a Critical job. Answer this check.' }))
   };
 }
 

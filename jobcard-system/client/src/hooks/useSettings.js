@@ -1,11 +1,11 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, createElement, Fragment } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { validatePassword, todayIsoDate } from '../utils/formatters';
+import { validatePassword, todayIsoDate, formatDateTime } from '../utils/formatters';
 import { isManagement, can } from '../utils/roles';
 import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from './useFieldErrors';
-import { warningToastIcon } from '../components/common/toastIcons';
+import { useConfirmDialog } from './useConfirmDialog';
 import {
   INACTIVITY_MINUTES, isInactivityMinutes, isStartingJobNumber, STARTING_JOB_NUMBER_MESSAGE,
   isJobNumberPrefix, JOB_NUMBER_PREFIX_MESSAGE, homeAccessCodeProblem, homeAddressProblem
@@ -28,7 +28,12 @@ const PIN_BOXES = {
   newPassword: 'newPin'
 };
 
+// The file name at the end of a chosen path, whichever kind of slash it uses.
+const baseName = (path) => String(path).split(/[\\/]/).pop();
+
 export function useSettings() {
+  const confirmDialog = useConfirmDialog();
+  const { showConfirm } = confirmDialog;
   const { user, refreshInactivityTimeout } = useAuth();
   // Managers see the management settings cards; the job-folders path, backups
   // and the home-access code stay admin-only (systemData) — a backup carries
@@ -89,8 +94,9 @@ export function useSettings() {
   const { setFieldErrors: setPinFieldErrors, clearAll: clearPinFieldErrors } = pinFieldErrors;
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [showImportConfirm, setShowImportConfirm] = useState(false);
-  const [pendingImportPath, setPendingImportPath] = useState(null);
+  // A finished backup that left something out: { intro, items } shown in a window the
+  // admin has to dismiss, never in a toast that fades while there is still work to do.
+  const [backupGaps, setBackupGaps] = useState(null);
 
   const setInactivityTimeout = useCallback((v) => setInactivityTimeoutState(v), []);
 
@@ -113,7 +119,7 @@ export function useSettings() {
       setLoadFailed(false);
     } catch (err) {
       setLoadFailed(true);
-      toast.error('Failed to load settings', { id: 'settings-load' });
+      toast.error('Couldn\'t load the settings. Try again in a moment.', { id: 'settings-load' });
     } finally {
       setLoading(false);
     }
@@ -126,7 +132,7 @@ export function useSettings() {
         window.electronAPI.getAppInfo().then(setAppInfo);
         window.electronAPI.getPrinters()
           .then(setPrinters)
-          .catch(() => toast.error('Failed to load printers'))
+          .catch(() => toast.error('Couldn\'t load the printer list. Try again in a moment.'))
           .finally(() => setLoadingPrinters(false));
       } else {
         setLoadingPrinters(false);
@@ -158,16 +164,33 @@ export function useSettings() {
   // out unsaved edits sitting in the other cards, and never flips the page-level
   // `loading` flag, which would flash the whole page back to "Loading...".
   const handleSaveJobFolders = useCallback(async () => {
+    // Changing the location moves nothing: the server only starts looking in the new
+    // folder, so files already in the old one stay put and stop showing on their jobs.
+    const oldBase = settings?.jobFoldersBase || '';
+    const newBase = jobFoldersBase.trim();
+    if (oldBase && newBase !== oldBase) {
+      const ok = await showConfirm({
+        title: 'Change the job folders location?',
+        message: newBase
+          ? `From ${oldBase} to ${newBase}. Files already in ${oldBase} stay there and will not show on their jobs until they are moved.`
+          : `From ${oldBase} to nothing. Files already in ${oldBase} stay there, and jobs show no files until a location is set again.`,
+        confirmLabel: newBase ? `Use ${newBase}` : 'Clear the location',
+        cancelLabel: 'Go back',
+        confirmVariant: 'warning'
+      });
+      if (!ok) return;
+    }
     setSavingJobFolders(true);
     try {
       await api.updateSettings({ jobFoldersBase });
+      setSettings(prev => (prev ? { ...prev, jobFoldersBase: newBase } : prev));
       toast.success('Job folders base path updated');
     } catch (err) {
-      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save job folders base path' });
+      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Couldn\'t save the job folders location. Check the connection and try again.' });
     } finally {
       setSavingJobFolders(false);
     }
-  }, [jobFoldersBase, setFieldErrors]);
+  }, [jobFoldersBase, settings, showConfirm, setFieldErrors]);
 
   // Blank = switch home access off (the server refuses tunnel sign-ins with no code).
   const handleSaveHomeAccessCode = useCallback(async () => {
@@ -185,7 +208,7 @@ export function useSettings() {
       setSettings(prev => (prev ? { ...prev, homeAccessCodeSet: wasSet } : prev));
       toast.success(wasSet ? 'Home access code updated' : 'Home access switched off');
     } catch (err) {
-      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save the home access code' });
+      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Couldn\'t save the home access code. Check the connection and try again.' });
     } finally {
       setSavingHomeAccess(false);
     }
@@ -204,7 +227,7 @@ export function useSettings() {
       setSettings(prev => (prev ? { ...prev, homeAddress } : prev));
       toast.success('Home address updated');
     } catch (err) {
-      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save the home address' });
+      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Couldn\'t save the home address. Check the connection and try again.' });
     } finally {
       setSavingHomeAddress(false);
     }
@@ -226,7 +249,7 @@ export function useSettings() {
       if (refreshInactivityTimeout) await refreshInactivityTimeout();
       toast.success('Inactivity timeout updated');
     } catch (err) {
-      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save inactivity timeout' });
+      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Couldn\'t save the inactivity time. Check the connection and try again.' });
     } finally {
       setSavingTimeout(false);
     }
@@ -254,7 +277,7 @@ export function useSettings() {
       setSettings(prev => (prev ? { ...prev, jobNumberPrefix: savedPrefix, jobNumberNext } : prev));
       toast.success('Job number settings updated');
     } catch (err) {
-      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Failed to save job number settings' });
+      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Couldn\'t save the job number settings. Check the connection and try again.' });
     } finally {
       setSavingJobNumber(false);
     }
@@ -294,7 +317,7 @@ export function useSettings() {
       toast.success('PIN updated');
       resetPasswordForm();
     } catch (err) {
-      showSaveRefusal(err, { boxFor: PIN_BOXES, setFieldErrors: setPinFieldErrors, fallback: 'Failed to change PIN' });
+      showSaveRefusal(err, { boxFor: PIN_BOXES, setFieldErrors: setPinFieldErrors, fallback: 'Couldn\'t change the PIN. Check the connection and try again.' });
     } finally {
       setSavingPassword(false);
     }
@@ -320,6 +343,9 @@ export function useSettings() {
       const result = await api.exportBackup(outputPath);
       const sizeMB = result?.size ? (result.size / 1024 / 1024).toFixed(1) : null;
       const backupsLeftOut = result?.backupsLeftOut || [];
+      const unreadNote = result?.filesSkipped > 0
+        ? `${result.filesSkipped} file(s) couldn't be read and were left out.`
+        : '';
       if (result && result.filesIncluded === false) {
         // The job folders were never read, so this backup holds only the records.
         // Checked first: it matters more than any per-file note below.
@@ -329,25 +355,30 @@ export function useSettings() {
         const setNote = result.filesLeftOutReason === 'not-set'
           ? 'Set it in Settings and export again.'
           : 'Reconnect it and export again.';
-        const unreadNote = result.filesSkipped > 0
-          ? ` Also, ${result.filesSkipped} file(s) couldn't be read and were left out.`
-          : '';
-        toast(`Backup saved, but it holds only the records, not the job files: ${where}. ${setNote}${unreadNote}`,
-          { id: toastId, icon: warningToastIcon, duration: 20000 });
+        toast.dismiss(toastId);
+        setBackupGaps({
+          intro: `The backup was saved, but it holds only the records, not the job files: ${where}. ${setNote}`,
+          items: unreadNote ? [unreadNote] : []
+        });
       } else if (backupsLeftOut.length > 0) {
         // Earlier backups kept inside the job folders are not in this backup, and a
         // restore replaces everything in there — the admin has to move them out.
-        const unreadNote = result.filesSkipped > 0
-          ? ` Also, ${result.filesSkipped} file(s) couldn't be read and were left out.`
-          : '';
-        toast.error(`Backup saved, but ${backupsLeftOut.length} earlier backup file(s) are kept inside the job folders and were left out. Restoring a backup replaces everything in there, so move them somewhere else: ${backupsLeftOut.join(', ')}.${unreadNote}`, { id: toastId, duration: 20000 });
+        toast.dismiss(toastId);
+        setBackupGaps({
+          intro: `The backup was saved, but ${backupsLeftOut.length} earlier backup file(s) kept inside the job folders were left out. Restoring a backup replaces everything in there, so move these somewhere else.${unreadNote ? ` Also, ${unreadNote}` : ''}`,
+          items: backupsLeftOut
+        });
       } else if (result?.filesSkipped > 0) {
-        toast.error(`Backup saved, but ${result.filesSkipped} file(s) couldn't be read and were left out. Check those files and back up again.`, { id: toastId });
+        toast.dismiss(toastId);
+        setBackupGaps({
+          intro: `The backup was saved, but ${unreadNote} Check those files and back up again.`,
+          items: []
+        });
       } else {
         toast.success(sizeMB ? `Backup exported (${sizeMB} MB)` : 'Backup exported', { id: toastId });
       }
     } catch (err) {
-      toast.error(err.message || 'Failed to export backup', { id: toastId });
+      toast.error(err.message || 'Couldn\'t save the backup. Try again in a moment.', { id: toastId });
     } finally {
       setExporting(false);
     }
@@ -365,41 +396,67 @@ export function useSettings() {
     );
     if (!inputPath) return;
 
-    setPendingImportPath(inputPath);
-    setShowImportConfirm(true);
-  }, []);
+    // The picker returns only a path; the desktop app can look up the file's date and
+    // size. If that lookup is missing or fails, the confirm simply leaves them out.
+    let info = null;
+    try { info = await window.electronAPI.fileInfo?.(inputPath); } catch { info = null; }
+    const madeAt = info?.modifiedAt
+      ? formatDateTime(info.modifiedAt, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+      : '';
+    const mb = typeof info?.sizeBytes === 'number' ? info.sizeBytes / (1024 * 1024) : null;
+    const sizeText = mb === null ? '' : mb < 10 ? `${mb.toFixed(1)} MB` : `${Math.round(mb)} MB`;
+    const details = [madeAt && `Made ${madeAt}`, sizeText].filter(Boolean).join(' · ');
+    const name = baseName(inputPath);
+    const folder = String(inputPath).slice(0, String(inputPath).length - name.length).replace(/[\\/]$/, '');
+    const ok = await showConfirm({
+      title: 'Restore this backup?',
+      // createElement, not JSX: plain .js files cannot hold JSX here.
+      message: createElement(
+        Fragment, null,
+        createElement('strong', null, name),
+        folder ? createElement(Fragment, null, createElement('br'), `In ${folder}`) : null,
+        details ? createElement(Fragment, null, createElement('br'), details) : null,
+        createElement('br'), createElement('br'),
+        'Everything entered after this backup was made will be lost: jobs, time, comments and files. Everyone is signed out while it runs.'
+      ),
+      confirmLabel: 'Restore and replace everything',
+      cancelLabel: 'Go back',
+      confirmVariant: 'danger'
+    });
+    if (!ok) return;
 
-  const handleConfirmImport = useCallback(async () => {
-    if (!pendingImportPath) return;
-
-    setShowImportConfirm(false);
     setImporting(true);
     // A loading toast shows for the length of the restore, not just after it finishes.
     const toastId = toast.loading('Restoring backup…');
     try {
-      const result = await api.importBackup(pendingImportPath);
+      const result = await api.importBackup(inputPath);
       // An older backup that doesn't say it holds the job files leaves the files
       // already on disk as they are — say so rather than implying they were replaced.
       const filesKept = result?.filesReplaced === false;
       toast.success(filesKept
-        ? 'Restore complete. This backup does not say it holds the job files, so the files already in the job folders were left as they were. Returning to the login screen...'
-        : 'Restore complete. Returning to the login screen...', { id: toastId });
+        ? 'Restore complete. This backup does not say it holds the job files, so the files already in the job folders were left as they were. Returning to the sign-in screen…'
+        : 'Restore complete. Returning to the sign-in screen…', { id: toastId });
       // No saved login survives a reload, so this lands on the login screen —
       // exactly the intended end state after a full rewind. The longer message
       // gets long enough on screen to be read.
       setTimeout(() => window.location.reload(), filesKept ? 6000 : 1500);
       // Leave the "Restoring..." overlay up until the reload happens.
     } catch (err) {
-      toast.error(err.message || 'Failed to import backup', { id: toastId });
+      toast.error(err.message || 'Couldn\'t restore the backup. Try again in a moment.', { id: toastId });
       setImporting(false);
-      setPendingImportPath(null);
     }
-  }, [pendingImportPath]);
+  }, [showConfirm]);
 
-  const handleCancelImport = useCallback(() => {
-    setShowImportConfirm(false);
-    setPendingImportPath(null);
-  }, []);
+  const dismissBackupGaps = useCallback(() => setBackupGaps(null), []);
+
+  // Copies the list of left-out items; a browser that refuses simply does nothing.
+  const copyBackupGaps = useCallback(async () => {
+    if (!backupGaps?.items.length) return;
+    try {
+      await navigator.clipboard.writeText(backupGaps.items.join('\n'));
+      toast.success('List copied', { id: 'backup-gaps-copied' });
+    } catch { /* clipboard not available: nothing to do */ }
+  }, [backupGaps]);
 
   return {
     user, canSeeSystemData, canManage,
@@ -417,6 +474,7 @@ export function useSettings() {
     confirmPassword, setConfirmPassword,
     savingPassword, handleChangePassword, resetPasswordForm,
     exporting, importing, handleExportBackup, handleImportBackup,
-    showImportConfirm, handleConfirmImport, handleCancelImport
+    backupGaps, dismissBackupGaps, copyBackupGaps,
+    confirmDialog
   };
 }

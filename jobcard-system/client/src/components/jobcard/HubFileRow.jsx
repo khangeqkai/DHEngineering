@@ -3,7 +3,7 @@ import { Eye, Printer, FileText, Image as ImageIcon, Trash2 } from 'lucide-react
 import { PickCircle } from './paperworkHubHelpers';
 import Spinner from '../common/Spinner';
 
-// One file line in the paperwork hub: tick to include in the packet, thumbnail,
+// One file line in the paperwork hub: tick to include in the printout, thumbnail,
 // name + kind, an optional "For:" picker (drawings / customer property only) that
 // ties the file to a part, and the per-row View / Print / Delete buttons.
 export default function HubFileRow({
@@ -23,7 +23,7 @@ export default function HubFileRow({
         className="hub-row-toggle"
         onClick={onToggle}
         aria-pressed={checked}
-        title={checked ? 'Tap to leave out of the packet' : 'Tap to add to the packet'}
+        title={checked ? 'Click to leave out of the printout' : 'Click to include in the printout'}
       >
         <PickCircle state={checked} />
         <span className="hub-thumb">
@@ -62,7 +62,7 @@ export default function HubFileRow({
       <div className="hub-row-tools">
         {confirming ? (
           <span className="hub-del-confirm">
-            <span className="hub-del-ask">Delete for good?</span>
+            <span className="hub-del-ask">Delete {nameText} for good?</span>
             <button type="button" className="hub-del-yes" onClick={() => { setConfirming(false); onDelete(); }} disabled={deleting}>
               {deleting ? <Spinner size={14} /> : 'Delete'}
             </button>

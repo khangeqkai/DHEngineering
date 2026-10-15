@@ -455,14 +455,15 @@ class ApiService {
   archiveTag(id) { return this._del(`/tags/${id}`); }
   activateTag(id) { return this._post(`/tags/${id}/activate`); }
 
-  // Activity history (management only). `before` (optional, { createdAt, id } — the
-  // last row a page already has) walks the trail with a cursor instead of an offset;
-  // only the Activity Log's "export all" uses it, on-screen paging keeps offset.
-  getActivityHistory(limit = 50, offset = 0, before = null) {
-    const query = before
-      ? `limit=${limit}&before=${encodeURIComponent(`${before.createdAt},${before.id}`)}`
-      : `limit=${limit}&offset=${offset}`;
-    return this.request(`/history?${query}`);
+  // One page of the Activity Log (admin only). `filters` may carry userId, entityType (a
+  // record-type key such as 'jobs'), from / to (calendar days) and q (typed text); blank
+  // ones are left out. Answers { items, total, page, pageSize }.
+  getActivityHistory(page = 1, pageSize = 50, filters = {}) {
+    const params = new URLSearchParams({ page, pageSize });
+    for (const [key, value] of Object.entries(filters)) {
+      if (value) params.set(key, value);
+    }
+    return this.request(`/history?${params}`);
   }
   getEntityHistory(entityType, page = 1) { return this.request(`/history/entity/${entityType}?page=${page}`); }
 

@@ -18,7 +18,7 @@ export default function DataBackupCard({ s }) {
             onClick={s.handleExportBackup}
             disabled={s.exporting || s.importing || !window.electronAPI}
           >
-            {s.exporting ? 'Exporting...' : 'Export Backup'}
+            {s.exporting ? 'Exporting…' : 'Export backup'}
           </button>
         </div>
         <div className="setting-item">
@@ -34,7 +34,7 @@ export default function DataBackupCard({ s }) {
             onClick={s.handleImportBackup}
             disabled={s.exporting || s.importing || !window.electronAPI}
           >
-            {s.importing ? 'Importing...' : 'Import Backup'}
+            {s.importing ? 'Importing…' : 'Import backup'}
           </button>
         </div>
         {!window.electronAPI && (

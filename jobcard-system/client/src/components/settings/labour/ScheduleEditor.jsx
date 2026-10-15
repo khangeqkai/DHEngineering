@@ -5,10 +5,47 @@ import { gridFromBlocks } from '../../../../../server/src/shared/overtimeSchedul
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const TIER_LABEL = { normal: 'Normal', ot1: 'Overtime 1', ot2: 'Overtime 2' };
+const TIER_WORDS = { normal: 'normal', ot1: 'overtime 1', ot2: 'overtime 2' };
+
+const hourText = (h) => `${String(h).padStart(2, '0')}:00`;
+
+// One day's painted hours as a sentence: "overtime 2 until 07:00, normal 07:00–15:00,
+// overtime 1 15:00–17:00, overtime 2 after 17:00". A day painted one rate reads "… all day".
+function describeDay(grid) {
+  const runs = [];
+  for (let h = 0; h < 24; h++) {
+    const last = runs[runs.length - 1];
+    if (last && last.tier === grid[h]) last.end = h + 1;
+    else runs.push({ tier: grid[h], start: h, end: h + 1 });
+  }
+  if (runs.length === 1) return `${TIER_WORDS[runs[0].tier]} all day`;
+  return runs.map(r => {
+    if (r.start === 0) return `${TIER_WORDS[r.tier]} until ${hourText(r.end)}`;
+    if (r.end === 24) return `${TIER_WORDS[r.tier]} after ${hourText(r.start)}`;
+    return `${TIER_WORDS[r.tier]} ${hourText(r.start)}\u2013${hourText(r.end)}`;
+  }).join(', ');
+}
+
+// One line per stretch of days that share the same painting (Mon–Fri, Sat, Sun).
+function summariseWeek(schedule) {
+  const lines = [];
+  DAYS.forEach((day) => {
+    const text = describeDay(gridFromBlocks(schedule[day.key]));
+    const short = day.label.slice(0, 3);
+    const last = lines[lines.length - 1];
+    if (last && last.text === text) last.to = short;
+    else lines.push({ from: short, to: short, text });
+  });
+  return lines.map(l => ({
+    key: `${l.from}-${l.to}`,
+    label: l.from === l.to ? l.from : `${l.from}\u2013${l.to}`,
+    text: l.text
+  }));
+}
 
 // Reolink-style weekly painter: pick a rate (the "brush"), then click or drag across
 // the 7×24 grid to paint each hour. Painting a cell folds back into the stored blocks.
-export default function ScheduleEditor({ schedule, paintHour, copyDayToAll, onSave, saving }) {
+export default function ScheduleEditor({ schedule, paintHour, copyDayToAll, onSave, saving, dirty }) {
   const [brush, setBrush] = useState('ot1');
   const painting = useRef(false);
   const gridRef = useRef(null);
@@ -50,7 +87,7 @@ export default function ScheduleEditor({ schedule, paintHour, copyDayToAll, onSa
   return (
     <div className="card full-width">
       <div className="card-header">
-        <h2>Weekly Overtime Schedule</h2>
+        <h2>Weekly overtime schedule</h2>
       </div>
       <div className="card-body">
         <p className="setting-description">
@@ -111,7 +148,8 @@ export default function ScheduleEditor({ schedule, paintHour, copyDayToAll, onSa
                         data-hour={h}
                         tabIndex={dIndex === 0 && h === 0 ? 0 : -1}
                         className={`paint-cell sched-seg--${grid[h]}`}
-                        aria-label={`${day.label} ${String(h).padStart(2, '0')}:00 — ${TIER_LABEL[grid[h]]}`}
+                        aria-label={`${day.label} ${hourText(h)} — ${TIER_LABEL[grid[h]]}`}
+                        title={`${day.label} ${hourText(h)} \u00b7 ${TIER_LABEL[grid[h]]}`}
                         onKeyDown={(e) => onCellKeyDown(e, dIndex, h)}
                       />
                     ))}
@@ -131,10 +169,17 @@ export default function ScheduleEditor({ schedule, paintHour, copyDayToAll, onSa
           </div>
         </div>
 
+        <ul className="sched-summary" aria-label="The week in words">
+          {summariseWeek(schedule).map(line => (
+            <li key={line.key}><strong>{line.label}:</strong> {line.text}</li>
+          ))}
+        </ul>
+
         <div className="sched-save">
-          <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save Schedule'}
+          <button type="button" className={`btn ${dirty ? 'btn-primary' : 'btn-secondary'}`} onClick={onSave} disabled={saving || !dirty}>
+            {saving ? 'Saving…' : dirty ? 'Save schedule' : 'Saved'}
           </button>
+          {dirty && <span className="unsaved-pill"><span className="unsaved-pill-dot" aria-hidden="true" />Unsaved changes</span>}
         </div>
       </div>
     </div>

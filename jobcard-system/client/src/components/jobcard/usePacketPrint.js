@@ -16,20 +16,20 @@ function reportSkipped(skipped) {
   // fixable problem — call it out specifically rather than burying it among files
   // that simply couldn't be read.
   if (skipped.some(s => s.reason === 'engine')) {
-    toast('Couldn’t start the PDF engine — the job card was left out of the packet. Ask an admin to set it up.',
+    toast('Couldn’t start the PDF engine — the job card was left out of the printout. Ask an admin to set it up.',
       { icon: warningToastIcon, duration: 8000 });
   }
   // A secured PDF can't be merged at all, but it opens and prints fine on its
   // own — say that, rather than lumping it in with files that couldn't be read.
   const secured = skipped.filter(s => s.reason === 'secured');
   if (secured.length) {
-    toast(`These are locked PDFs and were left out of the packet; open and print them on their own: ${secured.map(s => s.name).join(', ')}`,
+    toast(`These are locked PDFs and were left out of the printout; open and print them on their own: ${secured.map(s => s.name).join(', ')}`,
       { icon: warningToastIcon, duration: 8000 });
   }
   const others = skipped.filter(s => s.reason !== 'engine' && s.reason !== 'secured');
   if (others.length) {
     const names = others.map(s => s.name).join(', ');
-    toast(`Left out of the packet (couldn't be added): ${names}`, { icon: warningToastIcon, duration: 6000 });
+    toast(`Left out of the printout (couldn't be added): ${names}`, { icon: warningToastIcon, duration: 6000 });
   }
 }
 
@@ -50,7 +50,7 @@ function showPdfInBrowser(win, bytes, filename) {
     return 'opened';
   }
   downloadBytes(bytes, filename);
-  toast('Pop-up blocked — the packet was downloaded instead, so it’s recorded as a save, not a print',
+  toast('Pop-up blocked — the printout was downloaded instead, so it’s recorded as a save, not a print',
     { icon: infoToastIcon, duration: 6000 });
   return 'downloaded';
 }
@@ -91,13 +91,13 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
         if (window.electronAPI?.openPdf) {
           const r = await window.electronAPI.openPdf({ buffer: bytes, name: jobNumber });
           if (r && r.success === false) {
-            toast.error(r.failureReason || 'Failed to open the packet');
+            toast.error(r.failureReason || 'Couldn\'t open the printout. Try again in a moment.');
           } else {
             opened = true;
             toast.success('Opening print preview…');
           }
         } else {
-          const outcome = showPdfInBrowser(win, bytes, `${jobNumber || 'Job'} packet.pdf`);
+          const outcome = showPdfInBrowser(win, bytes, `${jobNumber || 'Job'} printout.pdf`);
           opened = outcome === 'opened';
           downloaded = outcome === 'downloaded';
         }
@@ -140,7 +140,7 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
       }
     } catch (err) {
       if (win && !win.closed) win.close();
-      toast.error(err.message || 'Failed to print the packet');
+      toast.error(err.message || 'Couldn\'t print. Check the printer and try again.');
     } finally {
       toast.dismiss(buildingToastId);
       setBuilding(false);
@@ -154,7 +154,7 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
     try {
       const { pdf, skipped } = await build({ items, includeJobCard });
       const bytes = base64ToBytes(pdf);
-      const name = `${jobNumber || 'Job'} packet.pdf`;
+      const name = `${jobNumber || 'Job'} printout.pdf`;
       // Building a packet isn't saving it: on the desktop the user still gets a
       // "where do you want to save it?" window and can cancel, in which case no
       // file exists and nothing may be recorded. Record the save only once the
@@ -165,13 +165,13 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
         // A write that failed (file open in another program) comes back as a
         // plain message, not a throw — nothing landed, so nothing is recorded.
         if (res?.error) toast.error(res.error);
-        else if (res && !res.canceled) { saved = true; toast.success('Packet saved'); }
+        else if (res && !res.canceled) { saved = true; toast.success('Printout saved'); }
       } else {
         // In the browser there is no save window to cancel, and a page cannot see
         // whether the browser kept the download, so it counts as saved.
         downloadBytes(bytes, name);
         saved = true;
-        toast.success('Packet downloaded');
+        toast.success('Printout downloaded');
       }
       reportSkipped(skipped);
       if (saved) {
@@ -186,7 +186,7 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
         }
       }
     } catch (err) {
-      toast.error(err.message || 'Failed to save the packet');
+      toast.error(err.message || 'Couldn\'t save the printout. Check the connection and try again.');
     } finally {
       toast.dismiss(buildingToastId);
       setBuilding(false);

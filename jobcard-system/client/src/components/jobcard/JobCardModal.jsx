@@ -246,7 +246,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
       // A 404 means the job was deleted (from another PC, or this screen was opened
       // from a stale row or activity entry) — trying again can never work.
       if (err.status === 404) toast.error(JOB_DELETED_MESSAGE, { id: JOB_DELETED_TOAST_ID });
-      else toast.error('Failed to load job card. Please try again.');
+      else toast.error('Couldn\'t load the job card. Try again in a moment.');
       onClose();
     } finally {
       setLoading(false);
@@ -493,6 +493,55 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
     }
     setActiveTab(tab);
   }, [activeTab, canSeePricing, costingHook, showConfirm, supplierDraftOpen]);
+  // The strip's "For <company>" and assignee buttons: bring the named section of the
+  // Details tab into view, switching to that tab first when the person is elsewhere.
+  const revealSection = useCallback(async (sectionId) => {
+    if (activeTab !== 'details') {
+      await handleTabChange('details');
+    }
+    requestAnimationFrame(() => {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [activeTab, handleTabChange]);
+
+  // Removing a part that has anything filled in asks first — its answers are lost with
+  // it. A blank part goes without a question. Time logged on a part is never lost by this
+  // (the server refuses the removal while any is logged, and that message still shows).
+  const requestRemoveItem = useCallback(async (item) => {
+    const hasContent = Boolean(
+      (item.description || '').trim() ||
+      item.material ||
+      (Array.isArray(item.treatments) && item.treatments.length > 0) ||
+      item.drawingsType ||
+      item.customerProperty
+    );
+    if (hasContent) {
+      const idx = formHook.lineItems.findIndex(it => it.id === item.id);
+      const number = item.position != null ? item.position : idx + 1;
+      const description = (item.description || '').trim();
+      const keep = await showConfirm({
+        title: description ? `Remove part ${number}, "${description}"?` : `Remove part ${number}?`,
+        message: 'Its material, service, supplier and drawing answers will be lost. Logged time on it is kept.',
+        confirmLabel: 'Remove part',
+        cancelLabel: 'Keep part',
+        confirmVariant: 'danger'
+      });
+      if (!keep) return;
+    }
+    instantItems.removeItem(item);
+  }, [formHook.lineItems, showConfirm, instantItems]);
+
+  // Part cards that hold a failed write, for the "Not saved · Retry" chip: a saved
+  // part's failed write is read from the save queue (keyed `item:<id>`), a new part's
+  // failed create from the parts list itself.
+  const failedItemIds = useMemo(() => {
+    const out = new Set(instantItems.createFailedIds);
+    for (const { key, state } of formHook.saveQueue.pending()) {
+      if (state === 'failed' && key.startsWith('item:')) out.add(key.slice('item:'.length));
+    }
+    return out;
+  }, [instantItems.createFailedIds, formHook.saveQueue]);
+
   const { handleRequestClose } = useJobCardCloseGuard({
     isEdit, jobCardId, canSeePricing, isDirty, supplierDraftOpen,
     formHook, instantItems, saveQueue: formHook.saveQueue, jobNotes, timer, costingHook,
@@ -586,6 +635,9 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
       whenPartSavesSettled={formHook.saveQueue.whenSettled}
       onJobClosed={handleJobClosedWrite}
       onReload={loadJobCard}
+      companyName={contactHook.contactFormData.companyName}
+      assignees={formHook.assignees}
+      revealSection={revealSection}
     />
   );
 
@@ -756,7 +808,9 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
                   lineItems={formHook.lineItems}
                   addLineItem={formHook.addLineItem}
                   updateLineItem={formHook.updateLineItem}
-                  removeLineItem={instantItems.removeItem}
+                  removeLineItem={requestRemoveItem}
+                  failedItemIds={failedItemIds}
+                  onRetryItem={instantItems.retryItem}
                   onItemFieldChange={instantItems.handleItemFieldChange}
                   onItemFieldBlur={instantItems.commitItemFieldBlur}
                   itemErrorFor={instantItems.itemErrorFor}
@@ -825,7 +879,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
             {!isEdit ? (
               <BottomSheet.Footer>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Saving...' : 'Create'}
+                  {saving ? 'Saving…' : 'Create'}
                 </button>
               </BottomSheet.Footer>
             ) : canManage && (

@@ -11,7 +11,7 @@ export default function CheckboxDropdown({
   options = [],
   selectedValues = [],
   onToggle,
-  placeholder = 'Select...',
+  placeholder = 'Select…',
   ariaLabel,
   disabled = false
 }) {

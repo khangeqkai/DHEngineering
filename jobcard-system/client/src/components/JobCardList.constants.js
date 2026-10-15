@@ -39,6 +39,10 @@ export const DEFAULT_COLUMN_ORDER = [
   'actions'
 ];
 
+// Columns hidden for someone who has never chosen their own set. A saved choice
+// (even an empty one) always wins, so changing this never resets anyone's layout.
+export const DEFAULT_HIDDEN_COLUMNS = ['timer', 'customer', 'latestNote', 'print', 'createdAt', 'updatedAt'];
+
 // Every column except the job number can be hidden — the job number is the
 // click-through to open a job, so it always stays visible.
 export const HIDEABLE_COLUMN_IDS = DEFAULT_COLUMN_ORDER.filter(id => id !== 'jobNumber');
@@ -46,7 +50,7 @@ export const HIDEABLE_COLUMN_IDS = DEFAULT_COLUMN_ORDER.filter(id => id !== 'job
 // Keep only known hideable ids, de-duped. Drops anything unknown or jobNumber so a
 // stale/garbage saved value can never hide the job number or a column that's gone.
 export const normalizeHiddenColumns = (saved) => {
-  if (!Array.isArray(saved)) return [];
+  if (!Array.isArray(saved)) return [...DEFAULT_HIDDEN_COLUMNS];
   const seen = new Set();
   const out = [];
   for (const id of saved) {

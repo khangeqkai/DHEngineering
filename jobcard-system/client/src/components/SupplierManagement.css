@@ -49,40 +49,6 @@
   border-radius: 16px;
 }
 
-.tag-chip-wrapper.deletable .tag-chip {
-  padding-right: var(--space-3);
-}
-
-.tag-delete-btn {
-  display: none;
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: 1px solid var(--border-color);
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  z-index: 1;
-}
-
-.tag-delete-btn:hover {
-  background: var(--fill-danger);
-  border-color: var(--danger-color);
-  color: var(--text-inverse);
-}
-
-.tag-chip-wrapper.deletable:hover .tag-delete-btn {
-  display: inline-flex;
-}
-
 .tag-chip.add-custom {
   border-style: dashed;
   color: var(--text-secondary);
@@ -92,7 +58,7 @@
   color: var(--primary-color);
 }
 
-/* The "+ Other" box and its mark underneath, taking the row's full width. */
+/* The "+ New service" box and its mark underneath, taking the row's full width. */
 .custom-tag-field {
   width: 100%;
 }

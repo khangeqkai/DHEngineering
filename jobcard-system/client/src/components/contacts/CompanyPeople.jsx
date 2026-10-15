@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Plus, Archive, ArchiveRestore, Save, X } from 'lucide-react';
 import { toTitleCase } from '../../utils/formatters';
 import { useFieldErrors, scrollFieldIntoView } from '../../hooks/useFieldErrors';
@@ -14,10 +14,11 @@ const PERSON_BOX_VALUE = { companyPersonName: 'contactName', companyPersonPhone:
 
 /**
  * The people at one company. Several can sit under the same customer, so this is
- * where a Jane who leaves is retired and a Bob who replaces her is added — the
+ * where a Jane who leaves is archived and a Bob who replaces her is added — the
  * company, and everything filed under it, stays put.
  */
-export default function CompanyPeople({ people, saving, pendingId, onCreate, onUpdate, onArchive, onRestore, companyArchived }) {
+export default function CompanyPeople({ people, saving, pendingId, onCreate, onUpdate, onArchive, onRestore, companyArchived, justSaved = false }) {
+  const addButtonRef = useRef(null);
   const [editingId, setEditingId] = useState(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(blankPerson());
@@ -27,6 +28,12 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
   const { setFieldErrors, clearAll, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
     (box) => form[PERSON_BOX_VALUE[box]]
   );
+
+  // Right after a brand-new customer is saved the window turns into this view;
+  // putting focus on Add person keeps the next step one keypress away.
+  useEffect(() => {
+    if (justSaved) addButtonRef.current?.focus();
+  }, [justSaved]);
 
   const startAdd = () => { setEditingId(null); setAdding(true); setForm(blankPerson()); clearAll(); };
   const startEdit = (p) => {
@@ -101,7 +108,7 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
           <X size={14} /> Cancel
         </button>
         <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
-          <Save size={14} /> {saving ? 'Saving...' : adding ? 'Add Person' : 'Save'}
+          <Save size={14} /> {saving ? 'Saving…' : adding ? 'Add person' : 'Save'}
         </button>
       </div>
     </form>
@@ -113,16 +120,20 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
         {/* Was an <h4>, which dropped two levels below the page's own <h1> and
             lost the section structure for anyone moving by heading. The styling
             rule in App.css follows it to h2, so the look is unchanged. */}
-        <h2>Contacts</h2>
+        <h2>People</h2>
         {!adding && !companyArchived && (
-          <button type="button" className="btn btn-secondary btn-sm" onClick={startAdd}>
-            <Plus size={14} /> Add Person
+          <button type="button" ref={addButtonRef} className="btn btn-secondary btn-sm" onClick={startAdd}>
+            <Plus size={14} /> Add person
           </button>
         )}
       </div>
 
       {companyArchived && (
         <p className="field-hint">This customer is archived. Restore it before adding people.</p>
+      )}
+
+      {justSaved && people.length === 0 && !companyArchived && (
+        <p className="field-hint">Customer saved. Add the people you deal with.</p>
       )}
 
       {adding && editor}
@@ -140,7 +151,7 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
                   <button type="button" className="cp-name" onClick={() => startEdit(p)}>
                     {p.contactName || 'Unnamed'}
                   </button>
-                  {p.archived && <span className="cp-tag">Retired</span>}
+                  {p.archived && <span className="cp-tag">Archived</span>}
                   <span className="cp-detail">{[p.phone, p.email].filter(Boolean).join(' · ') || 'No phone or email'}</span>
                 </div>
                 <div className="cp-actions">
@@ -150,7 +161,7 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
                     </button>
                   ) : (
                     <button type="button" className="btn btn-warning btn-sm" disabled={pendingId === p.id} onClick={() => onArchive(p)}>
-                      <Archive size={14} /> Retire
+                      <Archive size={14} /> Archive
                     </button>
                   )}
                 </div>

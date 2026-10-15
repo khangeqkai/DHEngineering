@@ -1,4 +1,7 @@
-import { Trash2, ArchiveRestore, Check, X, AlertTriangle, Paperclip } from 'lucide-react';
+import { Trash2, ArchiveRestore, Check, AlertTriangle, Paperclip, Printer, ChevronDown, Plus, Minus } from 'lucide-react';
+import { displayName } from '../../../server/src/shared/names';
+import './common/CheckboxDropdown.css';
+import PriorityLevel from './common/PriorityLevel';
 import { getInitials, getAvatarColor } from '../utils/initials';
 import { describeAttachmentGaps, attachmentSeverity } from '../utils/attachmentWarnings';
 import {
@@ -29,6 +32,8 @@ export function getJobCardColumns({
   assignPopoverRef,
   setHoverNames,
   setHoverDesc,
+  employees,
+  handleAssigneeToggle,
   openEditModal,
   handleQuickStatusChange,
   handleSelfToggle,
@@ -84,10 +89,8 @@ export function getJobCardColumns({
         <td
           key="description"
           className="description-cell"
-          // Also carries the full text as a native title, so a keyboard or touch
-          // user (who never fires the hover below) can still get at it — via
-          // assistive tech or a long-press — not just a mouse hover.
-          title={card.description || undefined}
+          // No native title here: the hover card below already shows the full
+          // text, and the two would stack on top of each other.
           onMouseEnter={(e) => {
             const el = e.currentTarget;
             // Only float the full text when it's actually cut off by the ellipsis.
@@ -109,7 +112,6 @@ export function getJobCardColumns({
         <td
           key="company"
           className="company-cell"
-          title={card.companyName || undefined}
           onMouseEnter={(e) => {
             const el = e.currentTarget;
             if (!card.companyName || el.scrollWidth <= el.clientWidth) return;
@@ -130,7 +132,6 @@ export function getJobCardColumns({
         <td
           key="customer"
           className="customer-cell"
-          title={card.contactName || undefined}
           onMouseEnter={(e) => {
             const el = e.currentTarget;
             if (!card.contactName || el.scrollWidth <= el.clientWidth) return;
@@ -198,52 +199,92 @@ export function getJobCardColumns({
           );
         }
 
+        const showHoverNames = (e) => {
+          if (!card.assignees?.length) return;
+          const r = e.currentTarget.getBoundingClientRect();
+          setHoverNames({
+            top: r.bottom + 6,
+            left: r.left,
+            names: card.assignees.map(a => ({
+              name: a.userName,
+              color: getAvatarColor(a.userName || a.userId).bg
+            }))
+          });
+        };
+        const assignedIds = new Set((card.assignees || []).map(a => a.userId));
+
         return (
           <td key="assignedTo" className="assignee-cell">
-            <div className="status-popover-wrapper" ref={assignPopoverId === card.id ? assignPopoverRef : null}>
-              <button
-                type="button"
-                className="assignee-trigger"
-                aria-label={isAssigned ? 'Unassign me from this job' : 'Assign me to this job'}
-                // Full names as a native title too, so a keyboard or touch user
-                // (who never fires the hover names card below) can still see
-                // who's assigned — via a long-press or assistive tech.
-                title={card.assignees?.length
-                  ? card.assignees.map(a => a.userName).filter(Boolean).join(', ')
-                  : undefined}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAssignPopoverId(assignPopoverId === card.id ? null : card.id);
-                }}
-                onMouseEnter={(e) => {
-                  if (!card.assignees?.length) return;
-                  const r = e.currentTarget.getBoundingClientRect();
-                  setHoverNames({
-                    top: r.bottom + 6,
-                    left: r.left,
-                    names: card.assignees.map(a => ({
-                      name: a.userName,
-                      color: getAvatarColor(a.userName || a.userId).bg
-                    }))
-                  });
-                }}
-                onMouseLeave={() => setHoverNames(null)}
-              >
-                {renderAvatars()}
-              </button>
-              {assignPopoverId === card.id && (
-                <div className="status-popover">
+            <div className="assignee-cell-row">
+              {canManage ? (
+                <div className="status-popover-wrapper" ref={assignPopoverId === card.id ? assignPopoverRef : null}>
                   <button
-                    className="status-popover-item"
+                    type="button"
+                    className="assignee-trigger"
+                    aria-label="Choose who is on this job"
+                    aria-haspopup="true"
+                    aria-expanded={assignPopoverId === card.id}
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleSelfToggle(card, isAssigned);
+                      setHoverNames(null);
+                      setAssignPopoverId(assignPopoverId === card.id ? null : card.id);
                     }}
+                    onMouseEnter={showHoverNames}
+                    onMouseLeave={() => setHoverNames(null)}
                   >
-                    {isAssigned ? 'Remove me' : 'Assign me'}
+                    {renderAvatars()}
                   </button>
+                  {assignPopoverId === card.id && (
+                    <div className="status-popover assignee-checklist">
+                      {employees.length === 0 && (
+                        <div className="checkbox-dropdown-empty">No people to choose from</div>
+                      )}
+                      {employees.map(emp => {
+                        const checked = assignedIds.has(emp.id);
+                        return (
+                          <button
+                            type="button"
+                            key={emp.id}
+                            className={`checkbox-dropdown-option${checked ? ' is-checked' : ''}`}
+                            role="menuitemcheckbox"
+                            aria-checked={checked}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAssigneeToggle(card, emp.id, checked);
+                            }}
+                          >
+                            <span className={`checkbox-dropdown-box${checked ? ' is-checked' : ''}`}>
+                              {checked && <Check size={14} strokeWidth={3} />}
+                            </span>
+                            <span className="checkbox-dropdown-text">
+                              <span className="checkbox-dropdown-label">{displayName(emp)}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <span
+                  className="assignee-trigger assignee-trigger--readonly"
+                  onMouseEnter={showHoverNames}
+                  onMouseLeave={() => setHoverNames(null)}
+                >
+                  {renderAvatars()}
+                </span>
               )}
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm assign-me-btn"
+                aria-label={isAssigned ? 'Take myself off this job' : 'Put myself on this job'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSelfToggle(card, isAssigned);
+                }}
+              >
+                {isAssigned ? <Minus size={12} /> : <Plus size={12} />} Me
+              </button>
             </div>
           </td>
         );
@@ -287,6 +328,7 @@ export function getJobCardColumns({
                 }}
               >
                 {STATUS_LABELS[card.status] || card.status}
+                <ChevronDown size={12} aria-hidden="true" />
               </button>
               {statusPopoverId === card.id && (
                 <div className="status-popover">
@@ -362,6 +404,7 @@ export function getJobCardColumns({
         return (
           <td key="priority">
             <span className={`badge priority-${priorityToken(priority)}`}>
+              <PriorityLevel priority={priority} />
               {PRIORITY_LABELS[card.priority] || 'None'}
             </span>
           </td>
@@ -371,6 +414,7 @@ export function getJobCardColumns({
     {
       id: 'attachments',
       label: 'Attachments',
+      headerHint: 'Tick: all files attached. Warning triangle: drawings missing, the job can\'t be invoiced. Paperclip: files not attached yet.',
       align: 'center',
       renderCell: (card) => {
         // Until this row has actually been checked, show a faint loading hint
@@ -387,7 +431,7 @@ export function getJobCardColumns({
         if (severity === 'ok') {
           return (
             <td key="attachments" className="attachment-cell">
-              <span className="attachment-ok" aria-label="All files attached">
+              <span className="attachment-ok" title="All files attached" aria-label="All files attached">
                 <Check size={14} />
               </span>
             </td>
@@ -395,7 +439,7 @@ export function getJobCardColumns({
         }
         const blocking = severity === 'blocking';
         const gaps = describeAttachmentGaps(warning);
-        const title = blocking ? 'Missing — blocking' : 'Not attached yet';
+        const title = blocking ? 'Drawings missing, can\'t invoice' : 'Files not attached yet';
         return (
           <td key="attachments" className="attachment-cell">
             <span
@@ -424,12 +468,13 @@ export function getJobCardColumns({
     {
       id: 'print',
       label: 'Print',
+      headerHint: 'Tick: the job card has been printed. Printer: not printed yet.',
       align: 'center',
       renderCell: (card) => {
         if (card.printedAt) {
           return (
             <td key="print" className="print-cell">
-              <span className="attachment-ok" title={`Printed ${formatDateTime(card.printedAt)}`} aria-label={`Printed ${formatDateTime(card.printedAt)}`}>
+              <span className="attachment-ok" title="Printed" aria-label={`Printed ${formatDateTime(card.printedAt)}`}>
                 <Check size={14} />
               </span>
             </td>
@@ -437,10 +482,9 @@ export function getJobCardColumns({
         }
         return (
           <td key="print" className="print-cell">
-            {/* Shape carries the meaning, not just colour: a tick vs a cross, so
-               the two read apart for colour-blind users too. */}
+            {/* Shape carries the meaning, not just colour: a tick vs a printer. */}
             <span className="print-missing" title="Not printed yet" aria-label="Not printed yet">
-              <X size={14} />
+              <Printer size={14} />
             </span>
           </td>
         );

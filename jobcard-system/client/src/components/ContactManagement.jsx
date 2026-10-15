@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { toTitleCase, capitalizeFirst, autoResize } from '../utils/formatters';
 import { Plus, Archive, ArchiveRestore, Save, History } from 'lucide-react';
@@ -27,15 +28,15 @@ const blankCompany = () => ({ name: '', address: '', notes: '' });
 const COMPANY_FORM_BOXES = { name: 'companyName', address: 'address', notes: 'notes' };
 const COMPANY_BOX_VALUE = { companyName: 'name', address: 'address', notes: 'notes' };
 
-// The people still working at a customer. The page also holds retired people (so
-// they can be restored), but the Contacts column and the export only ever list
+// The people still working at a customer. The page also holds archived people (so
+// they can be restored), but the People column and the export only ever list
 // these — a person who has left must not read as a current contact.
 const livePeople = (company) => (company.people || []).filter(p => !p.archived);
 
 export default function ContactManagement() {
   const [companies, setCompanies] = useState([]);
   // What the table is actually showing right now (after its own search box has
-  // filtered it) — kept separate so "Export Current View" sends exactly those
+  // filtered it) — kept separate so "Export current view" sends exactly those
   // rows instead of silently exporting every customer.
   const [visibleCompanies, setVisibleCompanies] = useState([]);
   const {
@@ -56,19 +57,28 @@ export default function ContactManagement() {
   // change while the form's boxes stay as they were.
   const openedFormRef = useRef(blankCompany());
   const [saving, setSaving] = useState(false);
+  // True from the moment a brand-new customer is saved until the window is left or
+  // someone is added — it drives the "Customer saved" line and the focus on Add person.
+  const [justSaved, setJustSaved] = useState(false);
+  // A search result opens its customer here with ?open=<id>; every customer from the
+  // last load (archived included) is kept so the id can be found whatever the filter.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openId = searchParams.get('open');
+  const allCompaniesRef = useRef(null);
   const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
     (box) => formData[COMPANY_BOX_VALUE[box]]
   );
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
 
   // One call brings every customer and the people under them, which is what the
-  // table lists. Retired people are always included here — this is the page you
+  // table lists. Archived people are always included here — this is the page you
   // come to in order to bring one back, so hiding them would strand them.
   const loadCompanies = useCallback(async () => {
     return await runLoad(
       () => api.getCompanies({ includeArchived: true, withPeople: true }),
       (data) => {
-        // The "Show archived" box is about customers; a retired person still shows
+        allCompaniesRef.current = data;
+        // The "Show archived" box is about customers; an archived person still shows
         // under their (live) customer so they can be restored.
         const visible = (showArchived ? data : data.filter(c => !c.archived))
           // Flattened so the search box finds a customer by the person you deal
@@ -77,7 +87,7 @@ export default function ContactManagement() {
         setCompanies(visible);
         return visible;
       },
-      () => toast.error('Could not load the customer list', { id: 'customer-list-load-failed' })
+      () => toast.error('Couldn\'t load the customer list. Try again in a moment.', { id: 'customer-list-load-failed' })
     );
   }, [showArchived, runLoad]);
 
@@ -125,21 +135,23 @@ export default function ContactManagement() {
         toast.success('Customer updated');
       } else {
         const created = await api.createCompany(payload);
-        toast.success('Customer updated', { id: 'customer-updated' });
+        toast.success('Customer added', { id: 'customer-added' });
         setEditingCompany({ ...created, people: [] });
+        setJustSaved(true);
       }
       // The form stays open, so what it now holds is the new starting point.
       openedFormRef.current = saved;
       resetFieldErrors();
       await refresh();
     } catch (err) {
-      showSaveRefusal(err, { boxFor: COMPANY_FORM_BOXES, setFieldErrors, fallback: 'Could not save the customer' });
+      showSaveRefusal(err, { boxFor: COMPANY_FORM_BOXES, setFieldErrors, fallback: 'Couldn\'t save the customer. Check the connection and try again.' });
     } finally {
       setSaving(false);
     }
   };
 
   const handleEdit = (company) => {
+    setJustSaved(false);
     setEditingCompany(company);
     resetFieldErrors();
     const opened = {
@@ -152,10 +164,26 @@ export default function ContactManagement() {
     setShowForm(true);
   };
 
+  // Open the customer a search result pointed at, then drop ?open= so a refresh or
+  // Back doesn't reopen it. An archived customer switches "Show archived" on so the
+  // open window and the list agree.
+  useEffect(() => {
+    if (!openId || allCompaniesRef.current === null) return;
+    const target = allCompaniesRef.current.find(c => String(c.id) === openId);
+    if (target) {
+      if (target.archived) setShowArchived(true);
+      handleEdit({ ...target, peopleNames: (target.people || []).map(p => p.contactName).filter(Boolean).join(', ') });
+    } else {
+      toast.error('That customer could not be found', { id: 'customer-open-missing' });
+    }
+    setSearchParams(prev => { const next = new URLSearchParams(prev); next.delete('open'); return next; }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId, companies]);
+
   const handleArchive = async (company) => {
     if (pendingId !== null) return;
     const confirmed = await showConfirm({
-      title: 'Archive Customer',
+      title: 'Archive customer',
       message: `Archive "${company.name}"? They will no longer appear when picking a customer for a job, but their existing jobs and files stay intact. You can restore them any time.`,
       confirmLabel: 'Archive',
       confirmVariant: 'warning'
@@ -168,7 +196,7 @@ export default function ContactManagement() {
         toast.success('Customer archived');
         await refresh();
       } catch (err) {
-        toast.error(err.message || 'Could not archive the customer');
+        toast.error(err.message || 'Couldn\'t archive the customer. Check the connection and try again.');
       }
     });
   };
@@ -181,7 +209,7 @@ export default function ContactManagement() {
         toast.success('Customer restored');
         await refresh();
       } catch (err) {
-        toast.error(err.message || 'Could not restore the customer');
+        toast.error(err.message || 'Couldn\'t restore the customer. Check the connection and try again.');
       }
     });
   };
@@ -198,7 +226,7 @@ export default function ContactManagement() {
       await refresh();
       return true;
     } catch (err) {
-      showSaveRefusal(err, { boxFor: PERSON_FORM_BOXES, setFieldErrors: markBoxes, fallback: 'Could not add the person' });
+      showSaveRefusal(err, { boxFor: PERSON_FORM_BOXES, setFieldErrors: markBoxes, fallback: 'Couldn\'t add the person. Check the connection and try again.' });
       return false;
     } finally {
       setSaving(false);
@@ -213,7 +241,7 @@ export default function ContactManagement() {
       await refresh();
       return true;
     } catch (err) {
-      showSaveRefusal(err, { boxFor: PERSON_FORM_BOXES, setFieldErrors: markBoxes, fallback: 'Could not save the person' });
+      showSaveRefusal(err, { boxFor: PERSON_FORM_BOXES, setFieldErrors: markBoxes, fallback: 'Couldn\'t save the person. Check the connection and try again.' });
       return false;
     } finally {
       setSaving(false);
@@ -223,19 +251,19 @@ export default function ContactManagement() {
   const archivePerson = async (person) => {
     if (pendingId !== null) return;
     const confirmed = await showConfirm({
-      title: 'Retire Person',
-      message: `Retire ${person.contactName || 'this person'}? They stop being offered on new jobs, but the jobs already taken for them keep their name.`,
-      confirmLabel: 'Retire',
+      title: 'Archive person',
+      message: `Archive ${person.contactName || 'this person'}? They stop being offered on new jobs, but the jobs already taken for them keep their name.`,
+      confirmLabel: 'Archive',
       confirmVariant: 'warning'
     });
     if (!confirmed) return;
     await runPending(person.id, async () => {
       try {
         await api.archiveContact(person.id);
-        toast.success('Person retired');
+        toast.success('Person archived');
         await refresh();
       } catch (err) {
-        toast.error(err.message || 'Could not retire the person');
+        toast.error(err.message || 'Couldn\'t archive the person. Check the connection and try again.');
       }
     });
   };
@@ -248,12 +276,13 @@ export default function ContactManagement() {
         toast.success('Person restored');
         await refresh();
       } catch (err) {
-        toast.error(err.message || 'Could not restore the person');
+        toast.error(err.message || 'Couldn\'t restore the person. Check the connection and try again.');
       }
     });
   };
 
   const resetForm = () => {
+    setJustSaved(false);
     setShowForm(false);
     setEditingCompany(null);
     resetFieldErrors();
@@ -288,7 +317,7 @@ export default function ContactManagement() {
         <button className="btn btn-secondary" onClick={() => setShowActivityLog(true)}>
           <History size={16} /> Activity Log
         </button>
-        <button className="btn btn-primary" onClick={() => { setEditingCompany(null); setFormData(blankCompany()); resetFieldErrors(); setShowForm(true); }}>
+        <button className="btn btn-primary" onClick={() => { setJustSaved(false); setEditingCompany(null); setFormData(blankCompany()); resetFieldErrors(); setShowForm(true); }}>
           <Plus size={16} /> Add Customer
         </button>
       </PageHeader>
@@ -296,7 +325,7 @@ export default function ContactManagement() {
       <BottomSheet
         isOpen={showForm}
         onClose={resetForm}
-        title={editingCompany ? editingCompany.name : 'Add New Customer'}
+        title={editingCompany ? editingCompany.name : 'Add customer'}
         size="small"
       >
         <BottomSheet.Body>
@@ -312,7 +341,7 @@ export default function ContactManagement() {
                   const formatted = toTitleCase(e.target.value);
                   if (formatted !== e.target.value) setFormData(prev => ({ ...prev, name: formatted }));
                 }}
-                placeholder="Company name..."
+                placeholder="Company name…"
               />
               <FieldError {...errorProps('companyName')} message={errorFor('companyName')} />
             </div>
@@ -363,6 +392,7 @@ export default function ContactManagement() {
               onArchive={archivePerson}
               onRestore={restorePerson}
               companyArchived={!!editingCompany.archived}
+              justSaved={justSaved}
             />
           ) : (
             <p className="field-note">Save the customer first, then add the people you deal with there.</p>
@@ -375,7 +405,7 @@ export default function ContactManagement() {
             className="btn btn-primary"
             disabled={saving}
           >
-            <Save size={14} /> {saving ? 'Saving...' : editingCompany ? 'Save Customer' : 'Create Customer'}
+            <Save size={14} /> {saving ? 'Saving…' : editingCompany ? 'Save customer' : 'Create customer'}
           </button>
         </BottomSheet.Footer>
       </BottomSheet>
@@ -396,7 +426,7 @@ export default function ContactManagement() {
               },
               {
                 key: 'people',
-                label: 'Contacts',
+                label: 'People',
                 render: (_, row) => {
                   const live = livePeople(row);
                   if (live.length === 0) return <span className="text-muted">None</span>;
@@ -427,13 +457,13 @@ export default function ContactManagement() {
             rowClassName={(row) => row.archived ? 'inactive-row' : ''}
             searchable
             searchKeys={['name', 'peopleNames', 'address']}
-            searchPlaceholder="Search customers..."
+            searchPlaceholder="Search customers…"
             onVisibleRowsChange={setVisibleCompanies}
             emptyState={{
               icon: 'contacts',
               title: 'No customers yet',
               description: 'Add your first customer to get started.',
-              actionLabel: 'Add Customer',
+              actionLabel: 'Add customer',
               onAction: () => setShowForm(true),
             }}
             defaultSortKey="name"

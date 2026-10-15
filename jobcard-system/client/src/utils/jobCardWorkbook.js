@@ -60,7 +60,7 @@ const JOBCARD_SUMMARY_COLS = [
   // exported record should read oldest-first like a diary, so flip them back.
   { label: 'Notes', value: r => (r._notes || []).slice().reverse().map(n => n.text).join(' | ') },
   { label: 'Repeat Job', value: r => r.isRepeatJob ? 'Yes' : 'No' },
-  { label: 'Repeat Job Ref', value: r => r.repeatJobReference },
+  { label: 'Repeat Job Reference', value: r => r.repeatJobReference },
   { label: 'Invoiced Date', value: r => fmtDate(r.invoicedDate) },
   { label: 'Created', value: r => fmtDateTime(r.createdAt) },
 ];
@@ -95,12 +95,12 @@ const COSTING_COLS = [
   { label: 'Labour Hours', value: r => r.labourHours },
   { label: 'Labour Rate', value: r => r.labourRate },
   { label: 'Labour Total', value: r => r.labourTotal },
-  { label: 'OT1 Hours', value: r => r.labourOt1Hours },
-  { label: 'OT1 Multiplier', value: r => r.labourOt1Multiplier },
-  { label: 'OT1 Total', value: r => r.labourOt1Total },
-  { label: 'OT2 Hours', value: r => r.labourOt2Hours },
-  { label: 'OT2 Multiplier', value: r => r.labourOt2Multiplier },
-  { label: 'OT2 Total', value: r => r.labourOt2Total },
+  { label: 'Overtime 1 Hours', value: r => r.labourOt1Hours },
+  { label: 'Overtime 1 Multiplier', value: r => r.labourOt1Multiplier },
+  { label: 'Overtime 1 Total', value: r => r.labourOt1Total },
+  { label: 'Overtime 2 Hours', value: r => r.labourOt2Hours },
+  { label: 'Overtime 2 Multiplier', value: r => r.labourOt2Multiplier },
+  { label: 'Overtime 2 Total', value: r => r.labourOt2Total },
   { label: 'Holiday Hours', value: r => r.labourHolidayHours },
   { label: 'Holiday Multiplier', value: r => r.labourHolidayMultiplier },
   { label: 'Holiday Total', value: r => r.labourHolidayTotal },
@@ -149,7 +149,7 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
   // falls back to the slim list-view card, which has no items/parts at all —
   // the job still appears in the Summary sheet but with most of its detail
   // missing.
-  onProgress?.('Fetching job card details...');
+  onProgress?.('Fetching job card details…');
   const fullCards = await fetchInBatches(ids, id =>
     api.getJobcard(id).catch(() => { failedJobIds.add(id); return null; }),
     5,
@@ -163,7 +163,7 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
 
   // Tag lists (including archived options) to resolve each stored value to its
   // real, current name — a rebuilt guess is only used when a value isn't found.
-  onProgress?.('Fetching tag lists...');
+  onProgress?.('Fetching tag lists…');
   const [jobTypeTags, drawingsTags, materialTags, customerPropertyTags, treatmentTags] = await Promise.all([
     api.getTags('job_type', true).catch(() => []),
     api.getTags('drawings', true).catch(() => []),
@@ -189,7 +189,7 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
     return parts.join(', ');
   }
 
-  onProgress?.('Fetching time entries...');
+  onProgress?.('Fetching time entries…');
   const timeEntriesPerJob = await fetchInBatches(ids, id =>
     api.getTimeEntries(id).then(entries => ({ id, entries })).catch(() => {
       failedJobIds.add(id);
@@ -204,7 +204,7 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
   // pricing-shaped sheet.
   let costingPerJob = [];
   if (includeCosting) {
-    onProgress?.('Fetching costing...');
+    onProgress?.('Fetching costing…');
     costingPerJob = await fetchInBatches(ids, id =>
       api.getCosting(id).then(costing => ({ id, costing })).catch(() => {
         failedJobIds.add(id);
@@ -215,7 +215,7 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
     );
   }
 
-  onProgress?.('Fetching notes...');
+  onProgress?.('Fetching notes…');
   const notesPerJob = await fetchInBatches(ids, id =>
     api.getJobNotes(id).then(notes => ({ id, notes })).catch(() => {
       failedJobIds.add(id);
@@ -283,7 +283,7 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
     }
   }
 
-  onProgress?.('Building workbook...');
+  onProgress?.('Building workbook…');
   const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, enrichedCards, JOBCARD_SUMMARY_COLS), 'Summary');
@@ -319,7 +319,7 @@ export async function exportJobCardList(cards, onProgress, includeCosting = true
 }
 
 export async function exportJobCardsFull(onProgress, includeCosting = true) {
-  onProgress?.('Fetching job cards...');
+  onProgress?.('Fetching job cards…');
   // "All" means open and filed (invoiced) jobs together; the list route only
   // ever returns one or the other, so ask twice and join.
   const [open, filed] = await Promise.all([api.getJobcards(), api.getJobcards({ archived: true })]);

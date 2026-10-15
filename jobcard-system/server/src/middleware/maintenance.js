@@ -33,7 +33,7 @@ function maintenanceGuard(req, res, next) {
   if (!isMutating || isSession) return next();
 
   return res.status(503).json({
-    error: 'A restore is in progress. Please wait a moment and try again.',
+    error: 'A backup is being restored right now. Wait a moment, then try again.',
     code: 'RESTORE_IN_PROGRESS'
   });
 }

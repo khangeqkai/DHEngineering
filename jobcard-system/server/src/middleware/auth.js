@@ -9,12 +9,12 @@ function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
-    return res.status(401).json({ error: 'No token provided' });
+    return res.status(401).json({ error: 'You need to sign in to do that.' });
   }
 
   const parts = authHeader.split(' ');
   if (parts.length !== 2 || parts[0] !== 'Bearer') {
-    return res.status(401).json({ error: 'Invalid token format' });
+    return res.status(401).json({ error: 'You need to sign in to do that.' });
   }
 
   const token = parts[1];
@@ -29,16 +29,16 @@ function authenticate(req, res, next) {
     // marker-less token simply fails the match and is rejected.
     const row = userQueries.getAuthState.get(decoded.userId);
     if (!row || row.active !== 1) {
-      return res.status(401).json({ error: 'Account deactivated', code: 'ACCOUNT_DEACTIVATED' });
+      return res.status(401).json({ error: 'Your account was turned off. Ask the office.', code: 'ACCOUNT_DEACTIVATED' });
     }
     // An empty marker means the session was ended here (a PIN reset, archiving the
     // account, a backup restore, signing out) — not that someone signed in
     // elsewhere, so it gets its own code and the person isn't told it was another device.
     if (!row.sessionToken) {
-      return res.status(401).json({ error: 'Session ended', code: 'SESSION_ENDED' });
+      return res.status(401).json({ error: 'You were signed out. Sign in again.', code: 'SESSION_ENDED' });
     }
     if (row.sessionToken !== decoded.sessionToken) {
-      return res.status(401).json({ error: 'Session invalidated', code: 'SESSION_REPLACED' });
+      return res.status(401).json({ error: 'This account was signed in on another computer. Sign in again.', code: 'SESSION_REPLACED' });
     }
 
     // Build req.user explicitly so a role can never arrive from the token: the
@@ -59,9 +59,9 @@ function authenticate(req, res, next) {
     // action failing silently (an admin is exempt from the inactivity timeout,
     // so a session left open past its expiry hit exactly that).
     if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
+      return res.status(401).json({ error: 'Your sign-in has expired. Sign in again.', code: 'TOKEN_EXPIRED' });
     }
-    return res.status(401).json({ error: 'Invalid token', code: 'TOKEN_INVALID' });
+    return res.status(401).json({ error: 'You need to sign in to do that.', code: 'TOKEN_INVALID' });
   }
 }
 
@@ -76,13 +76,23 @@ function can(role, permission) {
   return roles.includes(role);
 }
 
+// What a refused person is told, per permission, in plain words.
+const REFUSAL_MESSAGES = {
+  management: "You don't have access to this. Ask an admin or manager.",
+  pricing: 'Only an admin can see or change job pricing.',
+  activityTrail: 'Only an admin can see the activity log.',
+  systemData: 'Only an admin can change backups and where job files are kept.',
+  adminAccounts: 'Only an admin can change admin accounts.',
+  deleteJob: 'Only an admin can delete a job.'
+};
+
 function requirePermission(permission) {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return res.status(401).json({ error: 'You need to sign in to do that.' });
     }
     if (!can(req.user.role, permission)) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
+      return res.status(403).json({ error: REFUSAL_MESSAGES[permission] || "You don't have access to do that." });
     }
     next();
   };

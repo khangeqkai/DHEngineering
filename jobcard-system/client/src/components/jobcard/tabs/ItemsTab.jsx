@@ -1,5 +1,5 @@
-import { useRef, useEffect, useCallback, useMemo, memo } from 'react';
-import { X, Plus } from 'lucide-react';
+import { useRef, useEffect, useCallback, useMemo, useState, memo } from 'react';
+import { X, Plus, Copy } from 'lucide-react';
 import { capitalizeFirst } from '../../../utils/formatters';
 import { useTags } from '../../../hooks/useTags';
 import LineItemTreatment from './LineItemTreatment';
@@ -53,6 +53,8 @@ export default function ItemsTab({
   addLineItem,
   updateLineItem,
   removeLineItem,
+  failedItemIds = null,
+  onRetryItem,
   onItemFieldChange,
   onItemFieldBlur,
   itemErrorFor,
@@ -141,26 +143,73 @@ export default function ItemsTab({
   // The add/edit time-entry form renders at the top of the Parts section, but its
   // Edit buttons live down inside each line item's expanded list — so opening it can drop
   // the form above the current scroll position, out of sight. Bring it into view when it opens.
+  //
+  // A new entry started from a part's "+ Add time" opens INSIDE that part's card instead
+  // (directly under its progress row), so nothing scrolls away from where the person is.
+  // The part is remembered here when the button is pressed rather than read from the
+  // form's own part box, so changing that box can't carry the form into another card.
+  // Only one form is ever open (the hook holds a single one).
   const timeEntryFormRef = useRef(null);
+  const [timeFormPartId, setTimeFormPartId] = useState(null);
+  useEffect(() => {
+    if (!showTimeEntryForm) setTimeFormPartId(null);
+  }, [showTimeEntryForm]);
+  const handleAddTimeForPart = useCallback((partId) => {
+    setTimeFormPartId(partId);
+    handleAddTimeEntry?.(partId);
+  }, [handleAddTimeEntry]);
+  const timeFormInCard = Boolean(
+    showTimeEntryForm && !editingTimeEntryId && timeFormPartId && lineItems.some(it => it.id === timeFormPartId)
+  );
   useEffect(() => {
     if (showTimeEntryForm && timeEntryFormRef.current) {
-      timeEntryFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      timeEntryFormRef.current.scrollIntoView({ behavior: 'smooth', block: timeFormInCard ? 'nearest' : 'center' });
     }
-  }, [showTimeEntryForm, editingTimeEntryId]);
+  }, [showTimeEntryForm, editingTimeEntryId, timeFormInCard]);
+  const timeEntryFormNode = canManage && showTimeEntryForm && timeEntryForm ? (
+    <div ref={timeEntryFormRef}>
+      <TimeEntryForm
+        editingTimeEntryId={editingTimeEntryId}
+        timeEntryForm={timeEntryForm}
+        handleTimeEntryChange={handleTimeEntryChange}
+        employees={employees}
+        lineItems={lineItems}
+        machines={machines}
+        isCritical={isCritical}
+        handleSaveTimeEntry={handleSaveTimeEntry}
+        resetTimeEntryForm={resetTimeEntryForm}
+        groupClass={timeEntryGroupClass}
+        errorFor={timeEntryErrorFor}
+      />
+    </div>
+  ) : null;
 
   // Adding a part appends its card to the bottom of the list, which can be below the fold
   // on a long job (the Add button sits at the top). Scroll the new card into view, but only
   // when the user actually clicked Add — not when a job's saved parts first load in.
   const listRef = useRef(null);
   const scrollToNewItemRef = useRef(false);
+  // A duplicate also puts the cursor in the new part's quantity box, the one box it
+  // is left without.
+  const focusNewQtyRef = useRef(false);
   const handleAddLineItem = () => {
     scrollToNewItemRef.current = true;
     addLineItem();
   };
+  const handleDuplicateItem = useCallback((item) => {
+    scrollToNewItemRef.current = true;
+    focusNewQtyRef.current = true;
+    addLineItem(item);
+  }, [addLineItem]);
   useEffect(() => {
     if (scrollToNewItemRef.current && listRef.current) {
       scrollToNewItemRef.current = false;
-      listRef.current.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const card = listRef.current.lastElementChild;
+      card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (focusNewQtyRef.current) {
+        focusNewQtyRef.current = false;
+        card?.querySelector('.line-item-qty input')?.focus({ preventScroll: true });
+      }
     }
   }, [lineItems.length]);
 
@@ -176,23 +225,7 @@ export default function ItemsTab({
           )}
         </div>
 
-        {canManage && showTimeEntryForm && timeEntryForm && (
-          <div ref={timeEntryFormRef}>
-            <TimeEntryForm
-              editingTimeEntryId={editingTimeEntryId}
-              timeEntryForm={timeEntryForm}
-              handleTimeEntryChange={handleTimeEntryChange}
-              employees={employees}
-              lineItems={lineItems}
-              machines={machines}
-              isCritical={isCritical}
-              handleSaveTimeEntry={handleSaveTimeEntry}
-              resetTimeEntryForm={resetTimeEntryForm}
-              groupClass={timeEntryGroupClass}
-              errorFor={timeEntryErrorFor}
-            />
-          </div>
-        )}
+        {!timeFormInCard && timeEntryFormNode}
 
         <div className="line-items-list" ref={listRef}>
           {lineItems.map((item, itemIdx) => (
@@ -233,7 +266,11 @@ export default function ItemsTab({
               onSuppliersChanged={onSuppliersChanged}
               onSupplierDraftChange={onSupplierDraftChange}
               onAttachItemFile={onAttachItemFile}
-              handleAddTimeEntry={handleAddTimeEntry}
+              handleAddTimeEntry={handleAddTimeEntry ? handleAddTimeForPart : undefined}
+              timeFormSlot={timeFormInCard && timeFormPartId === item.id ? timeEntryFormNode : null}
+              onDuplicate={handleDuplicateItem}
+              failed={Boolean(failedItemIds && (failedItemIds.has(item.id) || (item.rowKey != null && failedItemIds.has(item.rowKey))))}
+              onRetry={onRetryItem}
               handleEditTimeEntry={handleEditTimeEntry}
               handleDeleteTimeEntry={handleDeleteTimeEntry}
               handleStopEntryWithForm={handleStopEntryWithForm}
@@ -288,6 +325,10 @@ const LineItemCard = memo(function LineItemCard({
   onSupplierDraftChange,
   onAttachItemFile,
   handleAddTimeEntry,
+  timeFormSlot,
+  onDuplicate,
+  failed,
+  onRetry,
   handleEditTimeEntry,
   handleDeleteTimeEntry,
   handleStopEntryWithForm,
@@ -306,6 +347,7 @@ const LineItemCard = memo(function LineItemCard({
   // list, which is always its correct future position: a new row is
   // only ever added at the end, right where the server would put it.
   const displayNumber = item.position != null ? item.position : itemIdx + 1;
+  const showTimer = Boolean(jobCardId && isPersisted(item) && (onStartTimer || onStopTimer));
 
   return (
     <div className="line-item-card">
@@ -327,9 +369,9 @@ const LineItemCard = memo(function LineItemCard({
               aria-invalid={fieldError(item, 'jobType') ? true : undefined}
               aria-describedby={fieldError(item, 'jobType') ? fieldErrorMessageId(item.id, 'jobType') : undefined}
             >
-              <option value="">Select...</option>
+              <option value="">Select…</option>
               {jobTypeRetired && (
-                <option className="retired-option" value={item.jobType}>{jobTypeLabelOf(item.jobType)} (retired)</option>
+                <option className="retired-option" value={item.jobType}>{jobTypeLabelOf(item.jobType)} (archived)</option>
               )}
               {jobTypeTags.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -339,7 +381,7 @@ const LineItemCard = memo(function LineItemCard({
           <FieldError id={fieldErrorMessageId(item.id, 'jobType')} message={fieldError(item, 'jobType')} />
         </div>
         <div className={fieldError(item, 'qty') ? 'line-item-qty field-error' : 'line-item-qty'}>
-          <label htmlFor={fieldsLocked ? undefined : fieldErrorKey(item.id, 'qty')}>Qty</label>
+          <label htmlFor={fieldsLocked ? undefined : fieldErrorKey(item.id, 'qty')}>Qty {!fieldsLocked && <span className="required">*</span>}</label>
           {fieldsLocked ? (
             <div className="readonly-value">{item.qty || '-'}</div>
           ) : (
@@ -361,7 +403,7 @@ const LineItemCard = memo(function LineItemCard({
           <FieldError id={fieldErrorMessageId(item.id, 'qty')} message={fieldError(item, 'qty')} />
         </div>
         <div className={fieldError(item, 'description') ? 'line-item-desc field-error' : 'line-item-desc'}>
-          <label htmlFor={fieldsLocked ? undefined : fieldErrorKey(item.id, 'description')}>Description</label>
+          <label htmlFor={fieldsLocked ? undefined : fieldErrorKey(item.id, 'description')}>Description {!fieldsLocked && <span className="required">*</span>}</label>
           {fieldsLocked ? (
             <div className="readonly-value">{item.description || '-'}</div>
           ) : (
@@ -377,7 +419,7 @@ const LineItemCard = memo(function LineItemCard({
                 }
                 onFieldBlur?.(item, 'description', formatted);
               }}
-              placeholder="What needs to be done..."
+              placeholder="What needs to be done…"
               aria-invalid={fieldError(item, 'description') ? true : undefined}
               aria-describedby={fieldError(item, 'description') ? fieldErrorMessageId(item.id, 'description') : undefined}
             />
@@ -405,13 +447,13 @@ const LineItemCard = memo(function LineItemCard({
                 ? item.treatments.map((t, i) => {
                     const tName = t.value;
                     // If the saved supplier still exists but is archived, tag it
-                    // "(retired)" so it reads the same as a retired treatment.
+                    // "(archived)" so it reads the same as a retired treatment.
                     const supplier = t.supplierId ? suppliers.find(s => s.id === t.supplierId) : null;
                     const supplierRetired = supplier && !isActiveRecord(supplier);
                     return (
                       <span key={i} className="readonly-badge treatment">
                         {tName} → {t.supplierName
-                          ? <span className={supplierRetired ? 'retired-option' : ''}>{t.supplierName}{supplierRetired ? ' (retired)' : ''}</span>
+                          ? <span className={supplierRetired ? 'retired-option' : ''}>{t.supplierName}{supplierRetired ? ' (archived)' : ''}</span>
                           : '(no supplier)'}
                       </span>
                     );
@@ -466,21 +508,41 @@ const LineItemCard = memo(function LineItemCard({
         />
         </div>
 
-        {jobCardId && isPersisted(item) && (onStartTimer || onStopTimer) && (
+        {(showTimer || !fieldsLocked) && (
           <div className="line-item-actions">
-            <LineItemTimerButton
-              itemId={item.id}
-              itemNumber={item.itemNumber}
-              displayNumber={displayNumber}
-              activeTimer={activeTimer}
-              elapsed={timerElapsed}
-              loading={timerLoading}
-              onStart={onStartTimer}
-              onStop={onStopTimer}
-              canManage={canManage}
-              employees={employees}
-              currentUserId={currentUserId}
-            />
+            {showTimer && (
+              <LineItemTimerButton
+                itemId={item.id}
+                itemNumber={item.itemNumber}
+                displayNumber={displayNumber}
+                activeTimer={activeTimer}
+                elapsed={timerElapsed}
+                loading={timerLoading}
+                onStart={onStartTimer}
+                onStop={onStopTimer}
+                canManage={canManage}
+                employees={employees}
+                currentUserId={currentUserId}
+              />
+            )}
+            {!fieldsLocked && onDuplicate && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => onDuplicate(item)}
+                title="Add another part with the same details, ready for its own quantity"
+              >
+                <Copy size={14} /> Duplicate part
+              </button>
+            )}
+            {failed && !fieldsLocked && (
+              <span className="line-item-failed-chip" role="status">
+                Not saved ·
+                <button type="button" className="line-item-failed-retry" onClick={() => onRetry?.(item)}>
+                  Retry
+                </button>
+              </span>
+            )}
           </div>
         )}
 
@@ -496,6 +558,7 @@ const LineItemCard = memo(function LineItemCard({
             onStop={handleStopEntryWithForm}
           />
         )}
+        {timeFormSlot && <div className="line-item-time-form">{timeFormSlot}</div>}
       </div>
       {showRemove && (
         <button

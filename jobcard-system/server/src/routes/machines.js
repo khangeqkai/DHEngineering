@@ -38,7 +38,7 @@ router.get('/', (req, res) => {
     res.json(machines.map(toResponseFormat));
   } catch (err) {
     logger.error({ err }, 'Failed to get machines');
-    res.status(500).json({ error: 'Failed to get machines' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -50,7 +50,7 @@ router.post('/', requireManagement, validateCreateMachine, (req, res) => {
     // Check if an active machine already uses this number (archived ones don't count)
     const existing = machineQueries.getActiveByNumber.get(machineNumber);
     if (existing) {
-      return refuseField(res, 400, 'machineNumber', 'Machine number already exists');
+      return refuseField(res, 400, 'machineNumber', 'That machine number is already used by another machine. Choose a different number.');
     }
 
     const id = uuidv4();
@@ -72,7 +72,7 @@ router.post('/', requireManagement, validateCreateMachine, (req, res) => {
     res.status(201).json(toResponseFormat(machine));
   } catch (err) {
     logger.error({ err }, 'Failed to create machine');
-    res.status(500).json({ error: 'Failed to create machine' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -81,7 +81,7 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
   const { id } = req.params;
 
   try {
-    const existing = findOr404(res, machineQueries.getById.get(id), 'Machine not found');
+    const existing = findOr404(res, machineQueries.getById.get(id), "That machine couldn't be found. It may have been removed.");
     if (!existing) return;
 
     // A field left out of the request keeps the stored value — only a sent value
@@ -101,7 +101,7 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
     if (numberChanged) {
       const duplicate = machineQueries.getActiveByNumber.get(machineNumber);
       if (duplicate && duplicate.id !== id) {
-        return refuseField(res, 400, 'machineNumber', 'Machine number already exists');
+        return refuseField(res, 400, 'machineNumber', 'That machine number is already used by another machine. Choose a different number.');
       }
 
       // Time entries store machine numbers as a free-text list (e.g. "01, 02") that
@@ -116,7 +116,7 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
         .some((row) => splitMachineCodes(row.machine_number).some((tok) => tok.toLowerCase() === oldKey));
       if (loggedAgainstOldNumber) {
         return refuseField(res, 400, 'machineNumber',
-          'This machine has logged work; archive it and add a new one instead.');
+          'This machine has logged work, so its number can\'t change. Archive it and add a new machine instead.');
       }
     }
 
@@ -143,7 +143,7 @@ router.put('/:id', requireManagement, validateUpdateMachine, (req, res) => {
     res.json(toResponseFormat(machine));
   } catch (err) {
     logger.error({ err }, 'Failed to update machine');
-    res.status(500).json({ error: 'Failed to update machine' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -156,7 +156,7 @@ router.delete('/:id', requireManagement, (req, res) => {
   setArchived(req, res, {
     entityType: 'machine',
     load: () => machineQueries.getById.get(id),
-    notFound: 'Machine not found',
+    notFound: "That machine couldn't be found. It may have been removed.",
     isArchived: (row) => !row.active,
     archive: true,
     write: (row) => machineQueries.deactivate.run(row.id),
@@ -172,13 +172,13 @@ router.post('/:id/activate', requireManagement, (req, res) => {
   setArchived(req, res, {
     entityType: 'machine',
     load: () => machineQueries.getById.get(id),
-    notFound: 'Machine not found',
+    notFound: "That machine couldn't be found. It may have been removed.",
     isArchived: (row) => !row.active,
     // Block restore if an active machine has since claimed this number.
     refuse: (row) => {
       const conflict = machineQueries.getActiveByNumber.get(row.machine_number);
       return conflict && conflict.id !== row.id
-        ? { status: 400, error: `Machine number "${row.machine_number}" is already in use. Rename or archive the other machine first.` }
+        ? { status: 400, error: `Machine number "${row.machine_number}" is already used by another machine. Rename or archive that machine first.` }
         : null;
     },
     archive: false,

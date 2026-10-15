@@ -1,4 +1,6 @@
 import { Cpu, Zap, Activity, AlertTriangle } from 'lucide-react';
+import { pluralize } from '../../utils/formatters';
+import { wasteTone, wasteWord, WASTE_RULE } from './thresholds';
 import DataTable from '../common/DataTable';
 import EmptyState from '../common/EmptyState';
 import { roundTo } from '../../../../server/src/shared/round';
@@ -81,10 +83,11 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
           </div>
           <div className="kpi-body">
             <div className="kpi-value">{loading ? <span className="stat-dash">—</span> : `${fleetScrapRate}%`}</div>
-            <span className={`kpi-badge ${fleetScrapRate <= 3 ? 'success' : fleetScrapRate <= 7 ? 'warning' : 'danger'}`}>
-              {fleetScrapRate <= 3 ? 'Low Waste' : fleetScrapRate <= 7 ? 'Moderate' : 'Elevated'}
+            <span className={`kpi-badge ${wasteTone(fleetScrapRate)}`}>
+              {wasteWord(fleetScrapRate)}
             </span>
           </div>
+          <p className="kpi-rule">{WASTE_RULE}</p>
           <div className="kpi-footer">
             <div className="kpi-stat-row">
               <span className="kpi-stat-label">Pieces Scrapped:</span>
@@ -99,7 +102,7 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
         <div className="stats-card-header">
           <div className="stats-card-title">
             <Activity size={18} />
-            <span>How Machine Hours Were Shared</span>
+            <span>How machine hours were shared</span>
           </div>
           <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
             Each machine’s share of the hours logged in this period
@@ -126,8 +129,8 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
               {activeMachinesCount > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-tight)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
-                    <span>All Machines Together</span>
-                    <span>{totalMachineHours} hours in total</span>
+                    <span>All machines together</span>
+                    <span>{pluralize(totalMachineHours, 'hour')} in total</span>
                   </div>
                   <div style={{
                     width: '100%',
@@ -252,7 +255,7 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
         <div className="stats-card-header">
           <div className="stats-card-title">
             <Cpu size={18} />
-            <span>Every Machine In Full</span>
+            <span>Every machine in full</span>
           </div>
         </div>
         <div className="stats-card-body" style={{ padding: 0 }}>
@@ -362,7 +365,7 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
             loading={loading}
             searchable
             searchKeys={['machineNumber', 'name', 'description']}
-            searchPlaceholder="Search machine by number or name..."
+            searchPlaceholder="Search machine by number or name…"
             emptyState={{
               icon: 'cpu',
               title: 'No machine work logged',

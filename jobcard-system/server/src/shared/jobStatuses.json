@@ -7,7 +7,7 @@
     { "value": "PO_REQUESTED", "label": "PO Requested" },
     { "value": "IN_PROGRESS", "label": "In Progress" },
     { "value": "DONE", "label": "Done" },
-    { "value": "CUST_NOTIFIED", "label": "Cust. Notified" },
+    { "value": "CUST_NOTIFIED", "label": "Customer notified" },
     { "value": "INVOICED", "label": "Invoiced" }
   ],
   "priorities": [

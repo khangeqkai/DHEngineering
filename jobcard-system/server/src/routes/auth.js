@@ -34,7 +34,7 @@ const loginTarget = (username) => username.toLowerCase();
 const userCreationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // 10 attempts per window
-  message: { error: 'Too many user creation attempts. Please try again later.' },
+  message: { error: 'Too many accounts were created in a short time. Wait a few minutes, then try again.' },
   standardHeaders: true,
   legacyHeaders: false
 });
@@ -50,7 +50,7 @@ router.post('/login', validateLogin, async (req, res) => {
     if (waitSeconds) {
       logger.warn({ ip, waitSeconds }, 'Login rate limited');
       return res.status(429).json({
-        error: `Too many attempts. Please wait ${waitSeconds} seconds before trying again.`
+        error: `Too many attempts. Please wait ${waitSeconds} seconds, then try again.`
       });
     }
 
@@ -67,7 +67,7 @@ router.post('/login', validateLogin, async (req, res) => {
     if (isViaTunnel(req)) {
       const codeHash = getSettings().home_access_code;
       if (!codeHash) {
-        return res.status(403).json({ error: 'Home access is not switched on. Ask an admin to set a home access code.' });
+        return res.status(403).json({ error: 'Home access is switched off. Ask an admin to set a home access code first.' });
       }
       const { homeAccessCode } = req.body;
       const codeOk = typeof homeAccessCode === 'string' && await bcrypt.compare(homeAccessCode, codeHash);
@@ -76,7 +76,7 @@ router.post('/login', validateLogin, async (req, res) => {
         recordHistory('auth', 'login', 'login_failed', null, username, {
           reason: { from: null, to: 'invalid_home_access_code' }
         });
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: "The username or PIN doesn't match. Check both and try again." });
       }
     }
 
@@ -87,7 +87,7 @@ router.post('/login', validateLogin, async (req, res) => {
       recordHistory('auth', 'login', 'login_failed', null, username, {
         reason: { from: null, to: 'user_not_found_or_archived' }
       });
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: "The username or PIN doesn't match. Check both and try again." });
     }
 
     // Verify password
@@ -97,7 +97,7 @@ router.post('/login', validateLogin, async (req, res) => {
       recordHistory('auth', 'login', 'login_failed', user.id, username, {
         reason: { from: null, to: 'invalid_password' }
       });
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: "The username or PIN doesn't match. Check both and try again." });
     }
 
     // Successful login - forgive the failures from this computer that were aimed
@@ -138,7 +138,7 @@ router.post('/login', validateLogin, async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, 'Login error');
-    res.status(500).json({ error: 'Login failed' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -154,7 +154,7 @@ router.post('/logout', authenticate, (req, res) => {
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, 'Logout error');
-    res.status(500).json({ error: 'Logout failed' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -173,7 +173,7 @@ function parseSavedLayout(raw, userId) {
 // Get current user
 router.get('/me', authenticate, (req, res) => {
   try {
-    const user = findOr404(res, userQueries.getById.get(req.user.userId), 'User not found');
+    const user = findOr404(res, userQueries.getById.get(req.user.userId), "That person couldn't be found. They may have been removed.");
     if (!user) return;
     // Polled by every signed-in PC: one indexed read. A failure here must not fail /me.
     let openMentions = null;
@@ -200,7 +200,7 @@ router.get('/me', authenticate, (req, res) => {
       jobcardHiddenColumns: parseSavedLayout(user.jobcard_hidden_columns, user.id)
     });
   } catch (err) {
-    res.status(404).json({ error: 'User not found' });
+    res.status(404).json({ error: "That person couldn't be found. They may have been removed." });
   }
 });
 
@@ -222,7 +222,7 @@ router.put('/me/preferences', authenticate, validateUpdatePreferences, (req, res
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, 'Update preferences error');
-    res.status(500).json({ error: 'Failed to update preferences' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -242,7 +242,7 @@ router.get('/employees', authenticate, (req, res) => {
     })));
   } catch (err) {
     logger.error({ err }, 'List employees error');
-    res.status(500).json({ error: 'Failed to list employees' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -266,14 +266,14 @@ router.get('/users', authenticate, requireManagement, (req, res) => {
     })));
   } catch (err) {
     logger.error({ err }, 'List users error');
-    res.status(500).json({ error: 'Failed to list users' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
 // Get single user (admin or manager)
 router.get('/users/:id', authenticate, requireManagement, (req, res) => {
   try {
-    const user = findOr404(res, userQueries.getById.get(req.params.id), 'User not found');
+    const user = findOr404(res, userQueries.getById.get(req.params.id), "That person couldn't be found. They may have been removed.");
     if (!user) return;
 
     res.json({
@@ -288,7 +288,7 @@ router.get('/users/:id', authenticate, requireManagement, (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, 'Get user error');
-    res.status(500).json({ error: 'Failed to get user' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -301,7 +301,7 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
     // A manager can create accounts but never mint an admin — otherwise they
     // could grant themselves the costing access managers are barred from.
     if (role === 'admin' && !can(req.user.role, 'adminAccounts')) {
-      return res.status(403).json({ error: 'Only admins can create admin accounts' });
+      return res.status(403).json({ error: 'Only an admin can create an admin account.' });
     }
 
     // Usernames are unique, archived accounts included — an archived match is
@@ -320,10 +320,10 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
     // created meanwhile (two managers at once, or a double-click).
     const actorRole = liveRole(req);
     if (!isManagement(actorRole)) {
-      return res.status(403).json({ error: 'Your account can no longer manage users' });
+      return res.status(403).json({ error: 'Your account can no longer manage users. Sign in again.' });
     }
     if (role === 'admin' && !can(actorRole, 'adminAccounts')) {
-      return res.status(403).json({ error: 'Only admins can create admin accounts' });
+      return res.status(403).json({ error: 'Only an admin can create an admin account.' });
     }
     const takenMeanwhile = userQueries.getByUsername.get(username);
     if (nameConflictOr409(res, takenMeanwhile, null, { entityLabel: 'user', nameLabel: 'username', field: 'username', isArchived: (row) => !row.active })) {
@@ -361,7 +361,7 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
     });
   } catch (err) {
     logger.error({ err }, 'Create user error');
-    res.status(500).json({ error: 'Failed to create user' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -385,7 +385,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     // knew the old one — and lock the real owner out. Resetting SOMEONE ELSE'S PIN
     // (the management reset below) is deliberately different: that's the point of a reset.
     if (password && isSelf) {
-      return res.status(403).json({ error: 'To change your own PIN, use Change PIN in Settings — it asks for your current PIN first.' });
+      return res.status(403).json({ error: 'To change your own PIN, use Change PIN in Settings. It asks for your current PIN first.' });
     }
 
     // Every refusal that depends on who is asking and on the account being edited, in
@@ -398,26 +398,26 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     // could overwrite a newer change. From the second judging onward the route runs
     // straight through to the commit.
     const refusalFor = (actorRole, target) => {
-      if (!isManagement(actorRole)) return { status: 403, error: 'Your account can no longer manage users' };
+      if (!isManagement(actorRole)) return { status: 403, error: 'Your account can no longer manage users. Sign in again.' };
       const canManageAdmins = can(actorRole, 'adminAccounts');
       // A role must be a real one.
-      if (role && !ALL_ROLES.includes(role)) return { status: 400, error: 'Role must be "admin", "manager" or "user"' };
+      if (role && !ALL_ROLES.includes(role)) return { status: 400, error: 'Pick a role: admin, manager or user.' };
       // A manager can never promote anyone to admin — that would let them grant
       // themselves the costing access managers are barred from.
-      if (role === 'admin' && !canManageAdmins) return { status: 403, error: 'Only admins can grant the admin role' };
+      if (role === 'admin' && !canManageAdmins) return { status: 403, error: 'Only an admin can make someone an admin.' };
       // Admin accounts are off-limits to managers (PIN resets, demotion, renames).
-      if (target.role === 'admin' && !canManageAdmins) return { status: 403, error: 'Only admins can modify admin accounts' };
+      if (target.role === 'admin' && !canManageAdmins) return { status: 403, error: 'Only an admin can change an admin account.' };
       // The last admin can't demote themselves (or be demoted) — with nobody left in
       // the role, nobody could ever grant it back. Checked against OTHER active admins,
       // so this only ever blocks the very last one.
       if (target.role === 'admin' && role && role !== 'admin' &&
           userQueries.countOtherActiveAdmins.get(id).count === 0) {
-        return { status: 400, error: 'This is the only admin account. Make another person an admin first.' };
+        return { status: 400, error: 'There has to be at least one admin. Make someone else an admin first.' };
       }
       return null;
     };
 
-    const asked = findOr404(res, userQueries.getById.get(id), 'User not found');
+    const asked = findOr404(res, userQueries.getById.get(id), "That person couldn't be found. They may have been removed.");
     if (!asked) return;
     const refusedUpFront = refusalFor(req.user.role, asked);
     if (refusedUpFront) return res.status(refusedUpFront.status).json({ error: refusedUpFront.error });
@@ -428,7 +428,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     // Judged again, from here straight through to the commit with nothing waiting.
-    const user = findOr404(res, userQueries.getById.get(id), 'User not found');
+    const user = findOr404(res, userQueries.getById.get(id), "That person couldn't be found. They may have been removed.");
     if (!user) return;
     const refusedNow = refusalFor(liveRole(req), user);
     if (refusedNow) return res.status(refusedNow.status).json({ error: refusedNow.error });
@@ -486,7 +486,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     });
   } catch (err) {
     logger.error({ err }, 'Update user error');
-    res.status(500).json({ error: 'Failed to update user' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -495,27 +495,27 @@ router.post('/users/:id/deactivate', authenticate, requireManagement, (req, res)
   const { id } = req.params;
 
   if (req.user.userId === id) {
-    return res.status(400).json({ error: 'Cannot archive yourself' });
+    return res.status(400).json({ error: "You can't archive your own account. Ask another admin to do it." });
   }
 
   setArchived(req, res, {
     entityType: 'user',
     load: () => userQueries.getById.get(id),
-    notFound: 'User not found',
+    notFound: "That person couldn't be found. They may have been removed.",
     isArchived: (row) => !row.active,
     // Admin accounts can only be archived by another admin. A running timer
     // refuses too, like invoicing does: timers outlive sign-out, so an archived
     // worker's block would keep counting labour with nobody told it was there.
     refuse: (row) => {
       if (row.role === 'admin' && !can(req.user.role, 'adminAccounts')) {
-        return { status: 403, error: 'Only admins can archive admin accounts' };
+        return { status: 403, error: 'Only an admin can archive an admin account.' };
       }
       const running = timeEntryQueries.getActiveByUser.get(row.id);
       if (running) {
         const where = running.item_number
           ? `job ${running.job_number}, part ${running.item_number}`
           : `job ${running.job_number}`;
-        return { status: 409, error: `This person has a timer running on ${where}. Stop it before archiving.` };
+        return { status: 409, error: `This person has a timer running on ${where}. Stop the timer first, then archive them.` };
       }
       return null;
     },
@@ -538,11 +538,11 @@ router.post('/users/:id/activate', authenticate, requireManagement, (req, res) =
   setArchived(req, res, {
     entityType: 'user',
     load: () => userQueries.getById.get(id),
-    notFound: 'User not found',
+    notFound: "That person couldn't be found. They may have been removed.",
     isArchived: (row) => !row.active,
     // Admin accounts can only be restored by another admin.
     refuse: (row) => (row.role === 'admin' && !can(req.user.role, 'adminAccounts')
-      ? { status: 403, error: 'Only admins can restore admin accounts' }
+      ? { status: 403, error: 'Only an admin can restore an admin account.' }
       : null),
     archive: false,
     write: (row) => userQueries.activate.run(row.id),
@@ -560,16 +560,16 @@ router.put('/change-password', authenticate, async (req, res) => {
     // that box instead of popping up a message.
     if (!currentPassword || !newPassword) {
       const fields = [];
-      if (!currentPassword) fields.push({ field: 'currentPassword', message: 'Enter your current PIN' });
-      if (!newPassword) fields.push({ field: 'newPassword', message: 'Enter a new PIN' });
-      return res.status(400).json({ error: 'Your current PIN and a new PIN are both needed', fields });
+      if (!currentPassword) fields.push({ field: 'currentPassword', message: 'Enter your current PIN.' });
+      if (!newPassword) fields.push({ field: 'newPassword', message: 'Enter a new PIN.' });
+      return res.status(400).json({ error: 'Enter your current PIN and a new PIN.', fields });
     }
 
     if (!PIN_REGEX.test(newPassword)) {
       return res.status(400).json({ error: PIN_MESSAGE, fields: [{ field: 'newPassword', message: PIN_MESSAGE }] });
     }
 
-    const user = findOr404(res, userQueries.getById.get(req.user.userId), 'User not found');
+    const user = findOr404(res, userQueries.getById.get(req.user.userId), "That person couldn't be found. They may have been removed.");
     if (!user) return;
 
     // The current PIN is the lock that stops someone at a session left signed in
@@ -580,7 +580,7 @@ router.put('/change-password', authenticate, async (req, res) => {
     if (waitSeconds) {
       logger.warn({ userId: pinKey, waitSeconds }, 'Change PIN rate limited');
       return res.status(429).json({
-        error: `Too many attempts. Please wait ${waitSeconds} seconds before trying again.`
+        error: `Too many attempts. Please wait ${waitSeconds} seconds, then try again.`
       });
     }
     changePinAttempts.recordFailure(pinKey, pinKey);
@@ -591,7 +591,7 @@ router.put('/change-password', authenticate, async (req, res) => {
       recordHistory('user', pinKey, 'pin_change_failed', pinKey, actorName(req), {
         reason: { from: null, to: 'invalid_current_password' }
       }, { username: user.username, name: user.name });
-      const message = 'Your current PIN is not right';
+      const message = "That isn't your current PIN. Check it and try again.";
       return res.status(401).json({ error: message, fields: [{ field: 'currentPassword', message }] });
     }
     changePinAttempts.forgive(pinKey, pinKey);
@@ -610,7 +610,7 @@ router.put('/change-password', authenticate, async (req, res) => {
     // session marker is not compared, because the same person signing in on another PC in
     // that instant would rotate it and refuse a change nobody else had touched.
     if (!now || now.active !== 1 || now.password !== user.password) {
-      return res.status(409).json({ error: 'Your account was just changed by the office. Sign in again to change your PIN.' });
+      return res.status(409).json({ error: 'Your account was just changed by the office. Sign in again, then change your PIN.' });
     }
     db.transaction(() => {
       userQueries.updatePassword.run(hashedPassword, req.user.userId);
@@ -633,7 +633,7 @@ router.put('/change-password', authenticate, async (req, res) => {
     res.json({ success: true, message: 'PIN changed', token });
   } catch (err) {
     logger.error({ err }, 'Change password error');
-    res.status(500).json({ error: 'Failed to change PIN' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 

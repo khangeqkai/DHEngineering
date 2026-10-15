@@ -8,7 +8,7 @@ export default function SecurityCard({ s }) {
     <>
       <div className="card full-width">
         <div className="card-header">
-          <h2>Security Settings</h2>
+          <h2>Security settings</h2>
         </div>
         <div className="card-body">
           <div className="setting-item">
@@ -39,7 +39,7 @@ export default function SecurityCard({ s }) {
               onClick={s.handleSaveInactivityTimeout}
               disabled={s.savingTimeout}
             >
-              {s.savingTimeout ? 'Saving...' : 'Save'}
+              {s.savingTimeout ? 'Saving…' : 'Save'}
             </button>
           </div>
           <FieldError message={timeoutError} id="inactivityTimeout-error" />
@@ -48,7 +48,7 @@ export default function SecurityCard({ s }) {
 
       <div className="card full-width">
         <div className="card-header">
-          <h2>Job Card Numbering</h2>
+          <h2>Job card numbering</h2>
         </div>
         <div className="card-body">
           <div className="setting-item">
@@ -96,7 +96,7 @@ export default function SecurityCard({ s }) {
                 onClick={s.handleSaveJobNumber}
                 disabled={s.savingJobNumber}
               >
-                {s.savingJobNumber ? 'Saving...' : 'Save'}
+                {s.savingJobNumber ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>

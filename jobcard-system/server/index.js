@@ -131,7 +131,7 @@ if (fs.existsSync(clientBuildPath)) {
   app.use(express.static(clientBuildPath));
   app.use((req, res) => {
     if (req.path === '/api' || req.path.startsWith('/api/')) {
-      return res.status(404).json({ error: 'Not found' });
+      return res.status(404).json({ error: 'That page couldn\'t be found. Reload the app and try again.' });
     }
     res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
@@ -144,15 +144,15 @@ app.use((err, req, res, next) => {
   // told the user "Internal server error" for what's really just too big a file.
   if (err && (err.type === 'entity.too.large' || err.status === 413 || err.statusCode === 413)) {
     logger.warn({ url: req.url, method: req.method }, 'Request body too large');
-    return res.status(413).json({ error: 'This file is too large' });
+    return res.status(413).json({ error: 'That file is too large to upload. Choose a smaller file.' });
   }
   if (err && err.type === 'entity.parse.failed') {
     logger.warn({ url: req.url, method: req.method }, 'Request body could not be parsed');
-    return res.status(400).json({ error: 'This request could not be read — please try again' });
+    return res.status(400).json({ error: 'That could not be saved because it did not arrive in one piece. Try again.' });
   }
   logger.error({ err, url: req.url, method: req.method }, 'Server error');
   res.status(500).json({
-    error: 'Internal server error',
+    error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });

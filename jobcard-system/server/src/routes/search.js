@@ -1,7 +1,7 @@
 const express = require('express');
 const { db } = require('../db/connection');
 const { authenticate, isManagement, can } = require('../middleware/auth');
-const { getAssigneesForJobcards, HISTORY_JOB_NUMBER_SQL } = require('../db/database');
+const { getAssigneesForJobcards, HISTORY_JOB_NUMBER_SQL, HISTORY_RECORD_NAME_SQL } = require('../db/database');
 const { officeTimeZone, officeDayStart, officeDayEnd } = require('../utils/officeTime');
 const { customerFields } = require('./jobcard-helpers');
 const { supplierContactFields } = require('./supplier-helpers');
@@ -79,7 +79,8 @@ function activitySearchMatch(q) {
 }
 
 // Activity rows carry the job number they belong to (null for anything not a job).
-const ACTIVITY_SELECT = `SELECT h.*, ${HISTORY_JOB_NUMBER_SQL} AS job_number FROM history h`;
+// recordName: the record's current name, so a row can be worded like the Activity Log's.
+const ACTIVITY_SELECT = `SELECT h.*, ${HISTORY_JOB_NUMBER_SQL} AS job_number, ${HISTORY_RECORD_NAME_SQL} AS record_name FROM history h`;
 
 // --- Formatters (snake_case → camelCase) ---
 
@@ -133,11 +134,14 @@ function formatActivity(row) {
   const changes = read.changes;
   return {
     id: row.id,
+    userId: row.user_id,
     userName: row.user_name,
     action: row.action,
     entityType: row.entity_type,
     entityId: row.entity_id,
     jobNumber: row.job_number ?? null,
+    recordName: row.record_name ?? null,
+    snapshot: read.snapshot,
     changes,
     createdAt: row.created_at
   };
@@ -186,19 +190,19 @@ router.get('/', authenticate, validateSearchQuery, (req, res) => {
       case 'all': return searchAll(req, res, canManage);
       case 'jobs': return searchJobs(req, res, canManage);
       case 'people': {
-        if (!canManage) return res.status(403).json({ error: 'Management only' });
+        if (!canManage) return res.status(403).json({ error: "You don't have access to search people. Ask an admin or manager." });
         return searchPeople(req, res, canManage);
       }
       case 'activity': {
-        if (!canSeeActivity) return res.status(403).json({ error: 'Admin only' });
+        if (!canSeeActivity) return res.status(403).json({ error: 'Only an admin can search the activity log.' });
         return searchActivity(req, res);
       }
       case 'time': return searchTime(req, res, canManage);
-      default: return res.status(400).json({ error: 'Invalid scope' });
+      default: return res.status(400).json({ error: 'That kind of search isn\'t recognised. Reload the page and try again.' });
     }
   } catch (err) {
     logger.error({ err }, 'Search error');
-    res.status(500).json({ error: 'Search failed' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 

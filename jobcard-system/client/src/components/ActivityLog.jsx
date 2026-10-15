@@ -1,172 +1,252 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { Search } from 'lucide-react';
 import { api } from '../services/api';
 import { useLatestRequest } from '../hooks/useLatestRequest';
 import PageHeader from './common/PageHeader';
-import DataTable from './common/DataTable';
 import ExportButton from './common/ExportButton';
 import { exportActivityLog } from '../utils/excelExport';
-import { formatHistoryValue, formatDateTime } from '../utils/formatters';
-import { actionColor } from '../utils/activityColors';
-import { ArrowRight } from 'lucide-react';
+import { formatTime, toIsoDate } from '../utils/formatters';
+import { dayHeading } from '../utils/historySentences';
+import { describeActivity, activityText, RECORD_TYPES } from '../utils/activitySentences';
+
+// The Excel sheet carries the same plain sentence the screen shows ("What happened").
+const withSentences = (rows) => rows.map((e) => ({ ...e, sentence: activityText(e) }));
 import './ActivityLog.css';
 
+const PAGE_SIZE = 50;
+const EXPORT_PAGE_SIZE = 200;
+
+// The date-range dropdown: how many calendar days back (counting today) each choice reaches.
+const RANGES = [
+  { key: 'today', label: 'Today', days: 1 },
+  { key: '7', label: 'Last 7 days', days: 7 },
+  { key: '30', label: 'Last 30 days', days: 30 },
+  { key: '90', label: 'Last 90 days', days: 90 },
+  { key: 'all', label: 'All time', days: 0 }
+];
+
+// The from / to calendar days of a range choice, as the server takes them.
+function rangeDays(key) {
+  const range = RANGES.find((r) => r.key === key);
+  if (!range || !range.days) return {};
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (range.days - 1));
+  return { from: toIsoDate(first), to: toIsoDate(now) };
+}
+
+// One sentence: names in bold, the old value in small grey.
+function Sentence({ line }) {
+  return (
+    <>
+      {line.parts.map((part, i) => (
+        part.strong
+          ? <strong key={i} className="activity-strong">{part.text}</strong>
+          : <span key={i}>{part.text}</span>
+      ))}
+      {line.was && <span className="activity-was"> was {line.was}</span>}
+    </>
+  );
+}
+
+function ActivityEntry({ item }) {
+  const [expanded, setExpanded] = useState(false);
+  const { described, time } = item;
+  const { kind, ring, headline, details, jobNumber } = described;
+  const lone = details.length === 1;
+
+  return (
+    <li className="activity-entry">
+      <span className={`activity-dot activity-dot-${kind}${ring ? ' activity-dot-ring' : ''}`} aria-hidden="true" />
+      <div className="activity-entry-body">
+        <div className="activity-entry-line">
+          <p className="activity-sentence">
+            <Sentence line={headline} />
+            {jobNumber && <span className="activity-job"> · job {jobNumber}</span>}
+          </p>
+          <span className="activity-time">{time}</span>
+        </div>
+        {details.length > 1 && (
+          <button
+            type="button"
+            className="activity-toggle"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? 'Hide' : `Show ${details.length} more`}
+          </button>
+        )}
+        {(lone || (expanded && details.length > 1)) && (
+          <ul className="activity-details">
+            {details.map((line, i) => (
+              <li key={i} className="activity-detail"><Sentence line={line} /></li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </li>
+  );
+}
+
 export default function ActivityLog() {
-  const [activities, setActivities] = useState([]);
+  const [entries, setEntries] = useState([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [limit, setLimit] = useState(50);
+  const [failed, setFailed] = useState(false);
+  const [page, setPage] = useState(1);
+  // The search box holds what is typed; `query` is what the list is filtered by. It is
+  // applied when the person presses Enter or leaves the box, never while they type.
+  const [typed, setTyped] = useState('');
+  const [query, setQuery] = useState('');
+  const [userId, setUserId] = useState('');
+  const [entityType, setEntityType] = useState('');
+  const [range, setRange] = useState('30');
+  const [people, setPeople] = useState([]);
   const startRequest = useLatestRequest();
 
   useEffect(() => {
-    loadActivities();
-  }, [limit]);
+    api.getEmployees()
+      .then((list) => setPeople(list))
+      .catch(() => { /* the person dropdown simply stays at "Anyone" */ });
+  }, []);
 
-  const loadActivities = async () => {
+  const filters = useMemo(() => ({ q: query, userId, entityType, ...rangeDays(range) }), [query, userId, entityType, range]);
+
+  useEffect(() => {
     const isLatest = startRequest();
-    try {
-      const data = await api.getActivityHistory(limit);
-      if (isLatest()) setActivities(data);
-    } catch (err) {
-      if (isLatest()) toast.error(err.message || 'Failed to load activities');
-    } finally {
-      if (isLatest()) setLoading(false);
-    }
+    (async () => {
+      try {
+        const data = await api.getActivityHistory(page, PAGE_SIZE, filters);
+        if (!isLatest()) return;
+        setEntries(data.items);
+        setTotal(data.total);
+        setFailed(false);
+      } catch (err) {
+        if (!isLatest()) return;
+        setFailed(true);
+        toast.error(err.message || 'Couldn\'t load the activity log. Try again in a moment.', { id: 'activity-load-failed' });
+      } finally {
+        if (isLatest()) setLoading(false);
+      }
+    })();
+  }, [page, filters, startRequest]);
+
+  // A new filter starts again from the first page.
+  const choose = (setter) => (value) => { setter(value); setPage(1); };
+  const applyQuery = () => {
+    const next = typed.trim();
+    if (next !== query) { setQuery(next); setPage(1); }
   };
 
-  const formatAction = (action) => (
-    <span style={{
-      color: actionColor(action),
-      fontWeight: 400,
-      textTransform: 'capitalize'
-    }}>
-      {action.replace(/_/g, ' ')}
-    </span>
-  );
+  const items = useMemo(() => entries.map((entry) => ({
+    key: entry.id,
+    described: describeActivity(entry),
+    time: formatTime(entry.createdAt, { hour: '2-digit', minute: '2-digit' }),
+    day: entry.createdAt ? toIsoDate(new Date(entry.createdAt)) : '',
+    createdAt: entry.createdAt
+  })), [entries]);
 
-  const formatChanges = (changes) => {
-    if (!changes) return null;
-    return Object.entries(changes).map(([field, change]) => (
-      <div key={field} style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-        <strong>{field.replace('_', ' ')}:</strong>{' '}
-        {change.changed ? (
-          <span style={{ color: 'var(--primary-accent)', fontStyle: 'italic' }}>modified</span>
-        ) : (
-          <>
-            <span style={{ textDecoration: 'line-through', color: 'var(--accent-caution)' }}>
-              {formatHistoryValue(field, change.from) || '(empty)'}
-            </span>
-            <span className="activity-arrow"><ArrowRight size={14} aria-hidden="true" /></span>
-            <span style={{ color: 'var(--accent-ready)' }}>{formatHistoryValue(field, change.to) || '(empty)'}</span>
-          </>
-        )}
+  const days = useMemo(() => {
+    const groups = [];
+    for (const it of items) {
+      const last = groups[groups.length - 1];
+      if (last && last.day === it.day) last.items.push(it);
+      else groups.push({ day: it.day, heading: dayHeading(it.createdAt), items: [it] });
+    }
+    return groups;
+  }, [items]);
+
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const exportAll = async () => {
+    // Walk the pages of the current filters until one comes back short.
+    const all = [];
+    for (let p = 1; ; p++) {
+      const data = await api.getActivityHistory(p, EXPORT_PAGE_SIZE, filters);
+      all.push(...data.items);
+      if (data.items.length < EXPORT_PAGE_SIZE || all.length >= data.total) break;
+    }
+    return all.length ? exportActivityLog(withSentences(all)) : false;
+  };
+
+  const renderBody = () => {
+    if (loading) return <div className="loading">Loading activity&hellip;</div>;
+    if (failed && entries.length === 0) {
+      return <div className="empty-state">The activity couldn&rsquo;t be loaded. Change a filter to try again.</div>;
+    }
+    if (entries.length === 0) {
+      return (
+        <div className="empty-state">
+          {total === 0 && (query || userId || entityType || range !== 'all')
+            ? 'Nothing matches those filters.'
+            : 'Activity will appear here as changes are made.'}
+        </div>
+      );
+    }
+    return (
+      <div className="activity-timeline">
+        {days.map((group) => (
+          <section key={group.day} className="activity-day">
+            <h3 className="activity-day-heading">{group.heading}</h3>
+            <ul className="activity-entries">
+              {group.items.map((item) => <ActivityEntry key={item.key} item={item} />)}
+            </ul>
+          </section>
+        ))}
       </div>
-    ));
+    );
   };
 
   return (
     <div className="activity-log page-activity page-enter">
       <PageHeader title="Activity Log">
-        <select
-          value={limit}
-          onChange={(e) => setLimit(Number(e.target.value))}
-          className="limit-select"
-        >
-          <option value={25}>Last 25</option>
-          <option value={50}>Last 50</option>
-          <option value={100}>Last 100</option>
-          <option value={200}>Last 200</option>
-        </select>
         <ExportButton
-          onExportView={() => activities.length ? exportActivityLog(activities) : false}
-          onExportAll={async () => {
-            // The server caps a page at 500, so walk pages until one comes back short.
-            // Each page after the first asks for rows strictly older than the last row
-            // the previous page returned (by time + id), so the cost stays linear in the
-            // trail's size instead of the quadratic cost of walking it with an offset.
-            const all = [];
-            let cursor = null;
-            for (;;) {
-              const page = await api.getActivityHistory(500, 0, cursor);
-              all.push(...page);
-              if (page.length < 500) break;
-              const last = page[page.length - 1];
-              cursor = { createdAt: last.createdAt, id: last.id };
-            }
-            return all.length ? exportActivityLog(all) : false;
-          }}
+          onExportView={() => entries.length ? exportActivityLog(withSentences(entries)) : false}
+          onExportAll={exportAll}
         />
       </PageHeader>
 
-      <div className="card">
-        <div className="card-body" style={{ padding: 0 }}>
-          <DataTable
-            columns={[
-              {
-                key: 'createdAt',
-                label: 'Time',
-                sortable: true,
-                render: (val) => (
-                  <span style={{ whiteSpace: 'nowrap' }}>{formatDateTime(val)}</span>
-                )
-              },
-              {
-                key: 'userName',
-                label: 'User',
-                sortable: true,
-                render: (val) => val || 'System'
-              },
-              {
-                key: 'action',
-                label: 'Action',
-                sortable: true,
-                render: (val) => formatAction(val)
-              },
-              {
-                key: 'entityType',
-                label: 'Type',
-                sortable: true,
-                render: (val) => (
-                  <span style={{ textTransform: 'capitalize' }}>{val}</span>
-                )
-              },
-              {
-                key: 'entityId',
-                label: 'Details',
-                render: (val, row) => (
-                  <>
-                    <div style={{ fontSize: '0.875rem' }}>
-                      {/* A job's entry names the job; anything else keeps its id. */}
-                      {row.jobNumber ? (
-                        <strong>Job {row.jobNumber}</strong>
-                      ) : (
-                        <code style={{
-                          fontSize: '0.7rem',
-                          background: 'var(--background)',
-                          padding: '0.125rem 0.375rem',
-                          borderRadius: '0.25rem'
-                        }}>
-                          {val}
-                        </code>
-                      )}
-                    </div>
-                    {formatChanges(row.changes)}
-                  </>
-                )
-              }
-            ]}
-            data={activities}
-            loading={loading}
-            searchable
-            searchKeys={['userName', 'action', 'entityType', 'entityId', 'jobNumber']}
-            searchPlaceholder="Search activity..."
-            emptyState={{
-              icon: 'activity',
-              title: 'No activity yet',
-              description: 'Activity will appear here as changes are made.',
-            }}
+      <div className="activity-filters">
+        <div className="activity-search">
+          <Search size={16} className="activity-search-icon" aria-hidden="true" />
+          <input
+            type="text"
+            className="activity-search-input"
+            placeholder="Search activity…"
+            aria-label="Search activity"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            onBlur={applyQuery}
+            onKeyDown={(e) => { if (e.key === 'Enter') applyQuery(); }}
           />
         </div>
+        <select className="limit-select" aria-label="Person" value={userId} onChange={(e) => choose(setUserId)(e.target.value)}>
+          <option value="">Anyone</option>
+          {people.map((p) => <option key={p.id} value={p.id}>{p.displayName}</option>)}
+        </select>
+        <select className="limit-select" aria-label="Type of record" value={entityType} onChange={(e) => choose(setEntityType)(e.target.value)}>
+          {RECORD_TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+        </select>
+        <select className="limit-select" aria-label="Date range" value={range} onChange={(e) => choose(setRange)(e.target.value)}>
+          {RANGES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+        </select>
       </div>
+
+      <div className="card">
+        <div className="card-body">{renderBody()}</div>
+      </div>
+
+      {!loading && total > 0 && (
+        <div className="activity-pager">
+          <button type="button" className="btn btn-secondary btn-sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            Previous
+          </button>
+          <span className="activity-pager-text">Page {page} of {pageCount}</span>
+          <button type="button" className="btn btn-secondary btn-sm" disabled={page >= pageCount} onClick={() => setPage(page + 1)}>
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

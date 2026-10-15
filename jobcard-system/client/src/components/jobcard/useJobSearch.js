@@ -57,7 +57,7 @@ export function useJobSearch({ excludeJobNumber } = {}) {
         if (cancelled || id !== requestIdRef.current) return;
         // One message, replaced rather than stacked: focusing this box repeatedly
         // while the server is away would otherwise pile up a copy each time.
-        toast.error('Could not search the job list. Type the job number in full instead.', { id: 'job-search-load-failed' });
+        toast.error('Couldn\'t search the job list. Type the job number in full instead.', { id: 'job-search-load-failed' });
       }
     })();
 

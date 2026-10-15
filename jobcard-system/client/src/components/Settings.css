@@ -58,6 +58,11 @@
   color: var(--text-secondary);
 }
 
+.settings-current {
+  margin: var(--space-3) 0 0;
+  color: var(--text-primary);
+}
+
 .folder-input-group {
   display: flex;
   gap: var(--gap-tight);
@@ -120,21 +125,26 @@
   font-size: var(--text-sm);
 }
 
-/* Confirm-import warning copy. */
+/* The list in the "Backup saved with gaps" window: about eight lines show, then it scrolls. */
+.settings-gap-list {
+  max-height: calc(8 * 1.5em);
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-6);
+  overflow-y: auto;
+  background: var(--surface-inset);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* Body copy in a small confirm-style window. */
 .settings-note {
   margin-bottom: var(--space-3);
   color: var(--text-secondary);
   font-size: var(--text-sm);
-}
-
-.settings-note-list {
-  margin: 0 0 var(--space-4) var(--space-5);
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-}
-
-.settings-note--danger {
-  color: var(--danger-ink);
 }
 
 /* Full-screen restore-in-progress overlay for a database import. Deliberately

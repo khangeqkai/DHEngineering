@@ -432,7 +432,11 @@
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  /* Flat, not faded: a disabled button reads as inert on every surface. */
+  background: var(--surface-inset);
+  color: var(--text-tertiary);
+  border-color: var(--border-color);
+  box-shadow: none;
   cursor: not-allowed;
   transform: none;
 }
@@ -453,12 +457,12 @@
 .btn-secondary {
   background: var(--surface);
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-input);
 }
 
 .btn-secondary:hover:not(:disabled) {
   background: var(--surface-elevated);
-  border-color: var(--border-strong);
+  border-color: var(--text-tertiary);
 }
 
 /* Danger */
@@ -518,28 +522,6 @@ select.has-retired option.retired-option {
   font-weight: var(--font-bold);
 }
 
-/* Action */
-.btn-action {
-  background: var(--fill-accent);
-  color: #ffffff;
-}
-
-.btn-action:hover:not(:disabled) {
-  background: var(--fill-accent-hover);
-}
-
-/* Ghost */
-.btn-ghost {
-  background: transparent;
-  color: var(--text-primary);
-  border: 1px solid transparent;
-  box-shadow: none;
-}
-
-.btn-ghost:hover:not(:disabled) {
-  background: var(--surface-inset);
-}
-
 /* Size Variants */
 .btn-sm {
   padding: var(--space-1-5) var(--space-3);
@@ -549,42 +531,6 @@ select.has-retired option.retired-option {
 .btn-lg {
   padding: var(--space-3) var(--space-7);
   font-size: var(--text-base);
-}
-
-/* Icon Button */
-.btn-icon {
-  width: auto;
-  min-width: 36px;
-  height: 36px;
-  padding: var(--space-2);
-  background: var(--surface-elevated);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-  font-size: 1rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-md);
-  transition: background-color var(--duration-fast) ease,
-              border-color var(--duration-fast) ease,
-              color var(--duration-fast) ease;
-}
-
-.btn-icon:hover:not(:disabled) {
-  background: var(--surface);
-  border-color: var(--border-strong);
-  color: var(--text-primary);
-}
-
-.btn-icon.danger {
-  background: var(--fill-danger);
-  border-color: var(--accent-caution);
-  color: #ffffff;
-}
-
-.btn-icon.danger:hover:not(:disabled) {
-  background: var(--fill-danger-hover);
-  border-color: var(--fill-danger-hover);
 }
 
 /* ========================================
@@ -1121,29 +1067,38 @@ select.has-retired option.retired-option {
   --s-border: var(--status-invoiced-border); --s-dot: var(--status-invoiced-dot);
 }
 
-/* Priority badges — same soft-tinted pill treatment as the status badges, so
-   priority and status read as one system in the list. Dot follows currentColor
-   (via .badge::before). Colours reuse the badge palette so dark mode is covered. */
-.priority-none {
-  background: rgba(100, 116, 139, 0.10);
-  color: var(--text-tertiary);
-  border-color: rgba(100, 116, 139, 0.22);
-}
-.priority-low {
-  background: var(--badge-progress-bg);
-  color: var(--badge-progress-text);
-  border-color: rgba(var(--info-rgb), 0.2);
-}
-.priority-medium {
-  background: var(--badge-pending-bg);
-  color: var(--badge-pending-text);
-  border-color: rgba(var(--warning-rgb), 0.2);
-}
+/* Priority pills — deliberately NOT the status palette. Status owns blue/amber/red;
+   priority is a neutral pill carrying a three-step level bar, so a scanned list never
+   mixes the two scales up. The bar replaces the status pills' glowing dot. */
+.priority-none,
+.priority-low,
+.priority-medium,
 .priority-high {
-  background: var(--badge-cancelled-bg);
-  color: var(--badge-cancelled-text);
-  border-color: rgba(var(--danger-rgb), 0.2);
+  background: var(--surface-inset);
+  color: var(--text-secondary);
+  border-color: var(--border-color);
 }
+.priority-none { color: var(--text-tertiary); }
+.priority-none::before,
+.priority-low::before,
+.priority-medium::before,
+.priority-high::before { display: none; }
+
+/* Three tiny squares drawn in CSS: filled count is the level. */
+.level-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0-5);
+  flex-shrink: 0;
+}
+.level-bar i {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 1px;
+  background: var(--border-input);
+}
+.level-bar i.is-on { background: currentColor; }
+
 /* Same-day sits above High, so it is the one filled pill in the set — it has to be
    spottable in a scanned list rather than blend into the other soft tints. Its colours
    are tokens, so light and dark each get the shade that stays legible. */
@@ -1475,7 +1430,6 @@ select.has-retired option.retired-option {
      size on desktop (the tables are laid out tight around it), but on a
      touch screen the hit area needs to reach 44px even though the icon
      inside keeps drawing at its normal size. */
-  .btn-icon,
   .modal-close {
     min-width: 44px;
     min-height: 44px;
@@ -1939,20 +1893,14 @@ select.has-retired option.retired-option {
   margin: 0 0 var(--space-2) 0;
 }
 
-.inactivity-countdown {
-  font-family: var(--font-mono);
+.inactivity-modal .inactivity-countdown {
   font-variant-numeric: tabular-nums;
-  font-size: 4rem;
-  font-weight: var(--font-light);
+  font-weight: var(--font-bold);
   color: var(--danger-ink);
-  line-height: 1;
-  margin: var(--space-2) 0 0;
 }
 
-.inactivity-subtext {
-  color: var(--text-tertiary);
-  font-size: var(--text-sm);
-  margin-bottom: var(--space-6) !important;
+.inactivity-modal #inactivity-description {
+  margin-bottom: var(--space-6);
 }
 
 /* The one line in this dialog with a cost attached. It used to borrow the style above —

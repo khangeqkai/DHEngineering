@@ -1,6 +1,8 @@
 import PageHeader from './common/PageHeader';
 import EmptyState from './common/EmptyState';
-import { useLabourRates } from '../hooks/useLabourRates';
+import ConfirmDialog from './common/ConfirmDialog';
+import { useConfirmDialog } from '../hooks/useConfirmDialog';
+import { useLabourRates, useLeaveGuard } from '../hooks/useLabourRates';
 import ScheduleEditor from './settings/labour/ScheduleEditor';
 import DefaultRateCard from './settings/labour/DefaultRateCard';
 import MultiplierInputs from './settings/labour/MultiplierInputs';
@@ -9,13 +11,22 @@ import TimezoneCard from './settings/labour/TimezoneCard';
 import './settings/labour/LabourRates.css';
 
 export default function LabourRatesSettings() {
-  const lr = useLabourRates();
+  const { dialogState, showConfirm, handleConfirm, handleCancel } = useConfirmDialog();
+  const lr = useLabourRates({ showConfirm });
+  // Painted hours and added holidays wait on their Save button; leaving the page (or the
+  // window) with either would lose them, so it is asked about first.
+  useLeaveGuard(lr.scheduleDirty || lr.holidaysDirty, showConfirm, {
+    title: 'Leave without saving the schedule?',
+    message: 'Your repainted hours will be lost.',
+    stayLabel: 'Stay',
+    leaveLabel: 'Leave without saving'
+  });
 
   if (lr.loading) {
     return (
       <div className="page-container page-enter">
-        <PageHeader title="Labour Rates & Overtime" />
-        <div className="loading">Loading...</div>
+        <PageHeader title="Labour Rates" />
+        <div className="loading">Loading…</div>
       </div>
     );
   }
@@ -25,7 +36,7 @@ export default function LabourRatesSettings() {
   if (lr.loadFailed) {
     return (
       <div className="page-container page-enter">
-        <PageHeader title="Labour Rates & Overtime" />
+        <PageHeader title="Labour Rates" />
         <EmptyState
           icon="cpu"
           title="Couldn't load the labour rate settings"
@@ -39,13 +50,8 @@ export default function LabourRatesSettings() {
 
   return (
     <div className="page-container page-enter">
-      <PageHeader title="Labour Rates & Overtime" />
+      <PageHeader title="Labour Rates" />
       <div className="settings-grid">
-        <TimezoneCard
-          timezone={lr.timezone} setTimezone={lr.setTimezone}
-          onSave={lr.handleSaveTimezone} saving={lr.savingTimezone}
-          error={lr.errorFor('timezone')}
-        />
         <DefaultRateCard
           defaultRate={lr.defaultRate} setDefaultRate={lr.setDefaultRate}
           onSave={lr.handleSaveDefaultRate} saving={lr.savingDefaultRate}
@@ -59,6 +65,7 @@ export default function LabourRatesSettings() {
           ot1Error={lr.errorFor('ot1Mult')}
           ot2Error={lr.errorFor('ot2Mult')}
           holidayError={lr.errorFor('holidayMult')}
+          defaultRate={lr.defaultRate}
         />
         <ScheduleEditor
           schedule={lr.schedule}
@@ -66,6 +73,7 @@ export default function LabourRatesSettings() {
           copyDayToAll={lr.copyDayToAll}
           onSave={lr.handleSaveSchedule}
           saving={lr.savingSchedule}
+          dirty={lr.scheduleDirty}
         />
         <PublicHolidaysCard
           holidays={lr.holidays}
@@ -73,8 +81,24 @@ export default function LabourRatesSettings() {
           removeHoliday={lr.removeHoliday}
           onSave={lr.handleSaveHolidays}
           saving={lr.savingHolidays}
+          dirty={lr.holidaysDirty}
+        />
+        <TimezoneCard
+          timezone={lr.timezone} setTimezone={lr.setTimezone}
+          onSave={lr.handleSaveTimezone} saving={lr.savingTimezone}
+          error={lr.errorFor('timezone')}
         />
       </div>
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmLabel={dialogState.confirmLabel}
+        cancelLabel={dialogState.cancelLabel}
+        confirmVariant={dialogState.confirmVariant}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }

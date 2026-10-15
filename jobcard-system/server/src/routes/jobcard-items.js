@@ -88,7 +88,7 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const existing = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!existing) return;
 
     const existingItems = jobItemQueries.getByJobcard.all(id);
@@ -149,7 +149,7 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, 'Add job item error');
-    res.status(500).json({ error: 'Could not add the part' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -159,13 +159,13 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
   try {
     const { id, itemId } = req.params;
 
-    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const existing = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!existing) return;
 
     const existingItems = jobItemQueries.getByJobcard.all(id);
     // The job's own list is already loaded for the checks below, so the part comes from
     // it — an id belonging to another job's part simply isn't in it.
-    const stored = findOr404(res, existingItems.find(i => i.id === itemId), 'Part not found');
+    const stored = findOr404(res, existingItems.find(i => i.id === itemId), "That part couldn't be found. It may have been removed.");
     if (!stored) return;
 
     // Names this part by what it was called before this edit — stable even if
@@ -235,7 +235,7 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
     });
   } catch (err) {
     logger.error({ err }, 'Update job item error');
-    res.status(500).json({ error: 'Could not update the part' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -244,13 +244,13 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
   try {
     const { id, itemId } = req.params;
 
-    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const existing = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!existing) return;
 
     const existingItems = jobItemQueries.getByJobcard.all(id);
     // The job's own list is already loaded for the checks below, so the part comes from
     // it — an id belonging to another job's part simply isn't in it.
-    const stored = findOr404(res, existingItems.find(i => i.id === itemId), 'Part not found');
+    const stored = findOr404(res, existingItems.find(i => i.id === itemId), "That part couldn't be found. It may have been removed.");
     if (!stored) return;
 
     const label = describePart(stored.description, 'that part');
@@ -261,12 +261,12 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
     // it any more, so this is now the only place a part's removal is refused.
     if (timeEntryQueries.countByItemId.get(itemId).count > 0) {
       return res.status(400).json({
-        error: `Cannot remove ${label} — time is logged against it. Clear that time first.`
+        error: `${label.charAt(0).toUpperCase() + label.slice(1)} can't be removed because time is logged against it. Remove that time first.`
       });
     }
 
     if (existingItems.length <= 1) {
-      return res.status(400).json({ error: 'A job must have at least one part.' });
+      return res.status(400).json({ error: 'A job needs at least one part, so the last one can\'t be removed.' });
     }
 
     const removedPart = itemPartSnapshot(stored.qty, stored.description, stored.job_type, stored.material, stored.treatments, stored.drawings_type, stored.customer_property);
@@ -302,7 +302,7 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
     });
   } catch (err) {
     logger.error({ err }, 'Delete job item error');
-    res.status(500).json({ error: 'Could not remove the part' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 

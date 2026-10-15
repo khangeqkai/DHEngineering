@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { normalizeHiddenColumns } from '../components/JobCardList.constants';
+import { normalizeHiddenColumns, DEFAULT_HIDDEN_COLUMNS } from '../components/JobCardList.constants';
 
 // Owns which job-list columns the current user has hidden. The set is saved to
 // their account (alongside column order) so it follows them between machines.
@@ -34,7 +34,7 @@ export default function useJobCardColumnVisibility() {
   }, [hiddenColumns, persist]);
 
   const resetColumns = useCallback(() => {
-    persist([], hiddenColumns);
+    persist([...DEFAULT_HIDDEN_COLUMNS], hiddenColumns);
   }, [hiddenColumns, persist]);
 
   return { hiddenColumns, toggleColumn, resetColumns };

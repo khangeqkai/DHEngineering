@@ -18,17 +18,17 @@ const BASE64_PATTERN = /^[A-Za-z0-9+/]*={0,2}$/;
  */
 function decodeBase64Strict(input) {
   if (typeof input !== 'string') {
-    throw new Error('Upload looks corrupted or incomplete — please try again');
+    throw new Error('The file didn\'t arrive in one piece. Choose it again and try again.');
   }
   // Tolerate surrounding whitespace (some clients wrap long strings) but nothing else.
   const normalized = input.trim();
   if (!normalized || normalized.length % 4 !== 0 || !BASE64_PATTERN.test(normalized)) {
-    throw new Error('Upload looks corrupted or incomplete — please try again');
+    throw new Error('The file didn\'t arrive in one piece. Choose it again and try again.');
   }
   const buffer = Buffer.from(normalized, 'base64');
   // Re-encode and compare: if Node had to drop anything to decode, this won't match.
   if (buffer.toString('base64') !== normalized) {
-    throw new Error('Upload looks corrupted or incomplete — please try again');
+    throw new Error('The file didn\'t arrive in one piece. Choose it again and try again.');
   }
   return buffer;
 }
@@ -69,7 +69,7 @@ function matchesSignature(buffer, ext) {
 function assertMatchesExtension(buffer, filename) {
   const ext = path.extname(filename || '').toLowerCase();
   if (!matchesSignature(buffer, ext)) {
-    throw new Error('This file looks damaged or is not the type its name says — please try again');
+    throw new Error('This file looks damaged, or isn\'t the type its name says. Check it opens on your computer, then try again.');
   }
 }
 

@@ -6,7 +6,7 @@ export default function FoldersCard({ s }) {
   return (
     <div className="card full-width">
       <div className="card-header">
-        <h2>Job Folders</h2>
+        <h2>Job folders</h2>
       </div>
       <div className="card-body">
         <div className="setting-item">
@@ -17,6 +17,9 @@ export default function FoldersCard({ s }) {
             </div>
           </div>
         </div>
+        <p className="settings-current">
+          Currently: <strong>{s.settings?.jobFoldersBase || 'not set'}</strong>
+        </p>
         <div className={folderError ? 'folder-input-group field-error' : 'folder-input-group'}>
           <input
             type="text"
@@ -25,7 +28,7 @@ export default function FoldersCard({ s }) {
             aria-label="Job folders base path"
             value={s.jobFoldersBase}
             onChange={(e) => s.setJobFoldersBase(e.target.value)}
-            placeholder="Select or enter job folders base path..."
+            placeholder="Select or enter job folders base path…"
             readOnly={!!window.electronAPI?.selectFolder}
           />
           <button
@@ -41,7 +44,7 @@ export default function FoldersCard({ s }) {
             onClick={s.handleSaveJobFolders}
             disabled={s.savingJobFolders}
           >
-            {s.savingJobFolders ? 'Saving...' : 'Save'}
+            {s.savingJobFolders ? 'Saving…' : 'Save'}
           </button>
         </div>
         <FieldError {...s.errorProps('jobFoldersBase')} message={folderError} />

@@ -243,7 +243,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
             ? `That worker already has a timer running on ${t.jobNumber || 'another job'}, part ${labelForRunningItem(t.jobcardId, t.itemId, t.itemNumber)}`
             : 'That worker already has a timer running');
         } else {
-          toast.error(err.message || 'Failed to start timer', { id: 'start-timer-failed' });
+          toast.error(err.message || 'Couldn\'t start the timer. Check the connection and try again.', { id: 'start-timer-failed' });
         }
         return false;
       }
@@ -300,12 +300,12 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
           }
         } catch (innerErr) {
           if (handledAsFinishUnconfirmed(innerErr)) return false;
-          toast.error(innerErr.message || 'Failed to switch timer', { id: 'switch-timer-failed' });
+          toast.error(innerErr.message || 'Couldn\'t switch the timer. Check the connection and try again.', { id: 'switch-timer-failed' });
           return false;
         }
         return false;
       } else {
-        toast.error(err.message || 'Failed to start timer', { id: 'start-timer-failed' });
+        toast.error(err.message || 'Couldn\'t start the timer. Check the connection and try again.', { id: 'start-timer-failed' });
         return false;
       }
     } finally {
@@ -339,7 +339,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
         refreshFinishQuestionRef.current?.();
         if (onExternalStopRef.current) onExternalStopRef.current(jobcardId);
       } else {
-        toast.error(err.message || 'Failed to stop timer', { id: 'stop-timer-failed' });
+        toast.error(err.message || 'Couldn\'t stop the timer. Check the connection and try again.', { id: 'stop-timer-failed' });
       }
     } finally {
       setLoading(false);
@@ -392,7 +392,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
         }
         if (onExternalStopRef.current) onExternalStopRef.current(entry.jobcardId || jobcardId);
       } else {
-        toast.error(err.message || 'Failed to stop timer', { id: 'stop-timer-failed' });
+        toast.error(err.message || 'Couldn\'t stop the timer. Check the connection and try again.', { id: 'stop-timer-failed' });
       }
     } finally {
       setLoading(false);
@@ -576,7 +576,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
           startedNewTimer = true;
         } catch (startErr) {
           if (!handledAsFinishUnconfirmed(startErr)) {
-            toast.error(startErr.message || 'Failed to start new timer', { id: 'start-new-timer-failed' });
+            toast.error(startErr.message || 'Couldn\'t start the new timer. Check the connection and try again.', { id: 'start-new-timer-failed' });
           }
         }
       } else if (alreadySaved) {
@@ -593,7 +593,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       // the form switches its checklist on and marks the unanswered checks, instead
       // of a pop-up that every retry would repeat.
       if (err?.data?.code === CRITICAL_INSPECTION_REFUSED) return { startedNewTimer: false, inspectionRefusal: err };
-      toast.error(err.message || 'Failed to update time entry', { id: 'update-time-entry-failed' });
+      toast.error(err.message || 'Couldn\'t update the time entry. Check the connection and try again.', { id: 'update-time-entry-failed' });
       return { startedNewTimer: false };
     } finally {
       setLoading(false);
@@ -641,7 +641,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       toast.success('Timer resumed');
     } catch (err) {
       if (await closeFormIfRunUnfillable(err, stoppedEntry)) return;
-      toast.error(err.message || 'Failed to resume timer', { id: 'resume-timer-failed' });
+      toast.error(err.message || 'Couldn\'t resume the timer. Check the connection and try again.', { id: 'resume-timer-failed' });
     } finally {
       setLoading(false);
     }

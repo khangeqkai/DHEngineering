@@ -81,7 +81,7 @@ router.get('/', authenticate, validateJobcardListQuery, (req, res) => {
     }));
   } catch (err) {
     logger.error({ err }, 'Get jobcards error');
-    res.status(500).json({ error: 'Failed to get job cards' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -122,14 +122,14 @@ router.post('/attachment-warnings', authenticate, validateAttachmentWarningsBody
     res.json({ checked: ids, flagged });
   } catch (err) {
     logger.error({ err }, 'Attachment-warnings check error');
-    res.status(500).json({ error: 'Failed to check for missing files' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
 // Get single job card with all related data
 router.get('/:id', authenticate, (req, res) => {
   try {
-    const jobcard = findOr404(res, jobcardQueries.getById.get(req.params.id), 'Job card not found');
+    const jobcard = findOr404(res, jobcardQueries.getById.get(req.params.id), "That job couldn't be found. It may have been removed.");
     if (!jobcard) return;
 
     const items = jobItemQueries.getByJobcard.all(req.params.id);
@@ -141,7 +141,7 @@ router.get('/:id', authenticate, (req, res) => {
     res.json(response);
   } catch (err) {
     logger.error({ err }, 'Get jobcard error');
-    res.status(500).json({ error: 'Failed to get job card' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -162,7 +162,7 @@ router.get('/:id/history', authenticate, requirePermission('activityTrail'), (re
     res.json(entries);
   } catch (err) {
     logger.error({ err }, 'Get jobcard history error');
-    res.status(500).json({ error: 'Failed to get job card history' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -172,7 +172,7 @@ router.post('/:id/assignees/self', authenticate, (req, res) => {
     const { id } = req.params;
     const { userId } = req.user;
 
-    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const existing = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!existing) return;
 
     const before = jobAssigneeQueries.getByJobcard.all(id);
@@ -218,7 +218,7 @@ router.post('/:id/assignees/self', authenticate, (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, 'Self-assign error');
-    res.status(500).json({ error: 'Failed to self-assign' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -228,7 +228,7 @@ router.delete('/:id/assignees/self', authenticate, (req, res) => {
     const { id } = req.params;
     const { userId } = req.user;
 
-    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const existing = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!existing) return;
 
     const before = jobAssigneeQueries.getByJobcard.all(id);
@@ -240,7 +240,7 @@ router.delete('/:id/assignees/self', authenticate, (req, res) => {
       });
     }
     if (clockRunningOnJob(userId, id)) {
-      return res.status(409).json({ error: 'Stop your timer on this job before taking yourself off it.' });
+      return res.status(409).json({ error: 'Stop your timer on this job first, then take yourself off it.' });
     }
 
     let after;
@@ -259,7 +259,7 @@ router.delete('/:id/assignees/self', authenticate, (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, 'Self-unassign error');
-    res.status(500).json({ error: 'Failed to self-unassign' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -277,10 +277,10 @@ router.put('/:id/assignees/:userId', authenticate, requireManagement, (req, res)
   try {
     const { id, userId } = req.params;
 
-    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const existing = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!existing) return;
 
-    const user = findOr404(res, userQueries.getById.get(userId), 'User not found');
+    const user = findOr404(res, userQueries.getById.get(userId), "That person couldn't be found. They may have been removed.");
     if (!user) return;
 
     const before = jobAssigneeQueries.getByJobcard.all(id);
@@ -289,7 +289,7 @@ router.put('/:id/assignees/:userId', authenticate, requireManagement, (req, res)
     // An archived account can't be newly put on a job — the same rule as creating one.
     // (Already on it is left alone: the reply below just reports the list.)
     if (!alreadyAssigned && !isActiveRecord(user)) {
-      return res.status(400).json({ error: `${displayName(user)} can no longer be assigned` });
+      return res.status(400).json({ error: `${displayName(user)} can no longer be assigned because their account is archived.` });
     }
 
     if (alreadyAssigned) {
@@ -334,7 +334,7 @@ router.put('/:id/assignees/:userId', authenticate, requireManagement, (req, res)
     });
   } catch (err) {
     logger.error({ err }, 'Assign worker error');
-    res.status(500).json({ error: 'Failed to assign worker' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -343,10 +343,10 @@ router.delete('/:id/assignees/:userId', authenticate, requireManagement, (req, r
   try {
     const { id, userId } = req.params;
 
-    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const existing = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!existing) return;
 
-    const user = findOr404(res, userQueries.getById.get(userId), 'User not found');
+    const user = findOr404(res, userQueries.getById.get(userId), "That person couldn't be found. They may have been removed.");
     if (!user) return;
 
     const before = jobAssigneeQueries.getByJobcard.all(id);
@@ -358,7 +358,7 @@ router.delete('/:id/assignees/:userId', authenticate, requireManagement, (req, r
       });
     }
     if (clockRunningOnJob(userId, id)) {
-      return res.status(409).json({ error: `${displayName(user)}'s timer is running on this job. Stop it before taking them off.` });
+      return res.status(409).json({ error: `${displayName(user)}'s timer is running on this job. Stop the timer first, then take them off.` });
     }
 
     // A worker taken off the job moves its "Last Edited", in the same write.
@@ -379,7 +379,7 @@ router.delete('/:id/assignees/:userId', authenticate, requireManagement, (req, r
     });
   } catch (err) {
     logger.error({ err }, 'Unassign worker error');
-    res.status(500).json({ error: 'Failed to unassign worker' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -390,14 +390,14 @@ router.patch('/:id/status', authenticate, (req, res) => {
     const { status } = req.body;
 
     if (!status || !JOBCARD_STATUSES.includes(status)) {
-      return res.status(400).json({ error: 'Invalid status value' });
+      return res.status(400).json({ error: 'Pick a status from the list.' });
     }
 
-    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const existing = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!existing) return;
 
     if (!canSetStatus(req.user.role, existing.status, status)) {
-      return res.status(403).json({ error: 'Only management can set that status' });
+      return res.status(403).json({ error: 'Only an admin or manager can set that status.' });
     }
 
     // Picking the status the job already has (a list or screen showing an older
@@ -443,7 +443,7 @@ router.patch('/:id/status', authenticate, (req, res) => {
     sendJob();
   } catch (err) {
     logger.error({ err }, 'Update status error');
-    res.status(500).json({ error: 'Failed to update status' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -452,11 +452,11 @@ router.post('/:id/unarchive', authenticate, requireManagement, (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const existing = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!existing) return;
 
     if (existing.archived !== 1) {
-      return res.status(400).json({ error: 'Job card is not archived' });
+      return res.status(400).json({ error: 'This job isn\'t archived, so there is nothing to restore.' });
     }
 
     // Un-filing clears INVOICED (never a back-in-the-list-but-still-invoiced limbo) and
@@ -476,7 +476,7 @@ router.post('/:id/unarchive', authenticate, requireManagement, (req, res) => {
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, 'Unarchive error');
-    res.status(500).json({ error: 'Failed to unarchive job card' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -485,7 +485,7 @@ router.delete('/:id', authenticate, requirePermission('deleteJob'), (req, res) =
   try {
     const { id } = req.params;
 
-    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const existing = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!existing) return;
 
     // Soft delete checkpoint: deleting a job is permanent and its number is never
@@ -533,7 +533,7 @@ router.delete('/:id', authenticate, requirePermission('deleteJob'), (req, res) =
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, 'Delete jobcard error');
-    res.status(500).json({ error: 'Failed to delete job card' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 

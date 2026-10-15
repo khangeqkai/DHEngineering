@@ -601,6 +601,17 @@ ipcMain.handle('show-save-dialog', async (event, { defaultName, filters }) => {
 });
 
 // Select file dialog (for import)
+ipcMain.handle('file-info', async (event, filePath) => {
+  try {
+    if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) return null;
+    const stat = await fs.promises.stat(filePath);
+    if (!stat.isFile()) return null;
+    return { name: path.basename(filePath), sizeBytes: stat.size, modifiedAt: stat.mtime.toISOString() };
+  } catch {
+    return null;
+  }
+});
+
 ipcMain.handle('select-file', async (event, { title, filters }) => {
   const win = BrowserWindow.getAllWindows()[0] || null;
   const result = await dialog.showOpenDialog(win, {

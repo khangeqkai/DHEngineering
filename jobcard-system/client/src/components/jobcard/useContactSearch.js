@@ -55,7 +55,7 @@ export function useContactSearch() {
       setAllCompanies(results || []);
       companiesLoaded.current = true;
     } catch (err) {
-      toast.error('Could not load the customer list', { id: 'customer-list-load-failed' });
+      toast.error('Couldn\'t load the customer list. Try again in a moment.', { id: 'customer-list-load-failed' });
     }
   }, []);
 

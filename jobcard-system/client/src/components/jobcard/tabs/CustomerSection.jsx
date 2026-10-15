@@ -35,7 +35,7 @@ export default function CustomerSection({
 }) {
   if (isEdit) {
     return (
-      <div className="form-section">
+      <div className="form-section" id="jc-section-customer">
         <h3 className="form-section-title">Customer</h3>
         <div className="customer-input-strip">
           <div className="cis-item">
@@ -66,7 +66,7 @@ export default function CustomerSection({
   }
 
   return (
-    <div className="form-section">
+    <div className="form-section" id="jc-section-customer">
       <h3 className="form-section-title">
         Customer <span className="required">*</span>
         {selectedCompany && <span className="contact-linked-badge">Linked</span>}
@@ -156,7 +156,7 @@ export default function CustomerSection({
                 value={contactFormData.contactId}
                 onChange={(e) => selectPerson(e.target.value)}
               >
-                <option value="">Someone else...</option>
+                <option value="">Someone else…</option>
                 {people.map(p => (
                   <option key={p.id} value={p.id}>{p.contactName || 'Unnamed'}</option>
                 ))}

@@ -39,7 +39,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
     // A job needs at least one line; the per-line rules below all no-op on an
     // empty list, so without this guard a job with no parts would slip past them.
     if (!Array.isArray(data.items) || data.items.length === 0) {
-      return res.status(400).json({ error: 'A job must have at least one part' });
+      return res.status(400).json({ error: 'A job needs at least one part. Add a part and try again.' });
     }
 
     const treatmentError = validateItemTreatments(data.items);
@@ -84,22 +84,22 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
     // they must actually work at that company.
     const company = companyQueries.getById.get(data.companyId || '');
     if (!company) {
-      return res.status(400).json({ error: 'Pick a customer for this job' });
+      return res.status(400).json({ error: 'Pick a customer for this job.' });
     }
     if (company.archived) {
-      return res.status(400).json({ error: 'That customer is archived. Restore it before starting new work for them.' });
+      return res.status(400).json({ error: 'That customer is archived. Restore the customer first, or pick another one.' });
     }
 
     let contact = null;
     if (data.contactId) {
       contact = contactQueries.getById.get(data.contactId);
       if (!contact || contact.company_id !== company.id) {
-        return res.status(400).json({ error: 'That contact person does not work at the chosen customer' });
+        return res.status(400).json({ error: 'That person doesn\'t work at the chosen customer. Pick someone from this customer\'s list.' });
       }
       // The picker hides archived people, but the form may have been open when they
       // were archived — refuse, as for an archived customer, rather than start new work for them.
       if (contact.archived) {
-        return res.status(400).json({ error: 'That contact person has been archived. Restore them or pick someone else.' });
+        return res.status(400).json({ error: 'That person is archived. Restore them, or pick someone else.' });
       }
 
       // Picking a saved person copies their stored phone/email as-is, no re-check —
@@ -120,7 +120,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
     // paths do — allowing it here would strand a job in the "invoiced but still
     // open" limbo the status-lock exists to prevent.
     if (status === 'INVOICED') {
-      return res.status(400).json({ error: 'A new job cannot be created as Invoiced. Save it first, then invoice it.' });
+      return res.status(400).json({ error: 'A new job can\'t start as Invoiced. Save the job first, then invoice it.' });
     }
 
     // Every worker asked for must still be an active account. Checked before any
@@ -130,12 +130,12 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
       data.assigneeIds = [...new Set(data.assigneeIds)];
       for (const workerId of data.assigneeIds) {
         if (typeof workerId !== 'string') {
-          return refuseField(res, 400, 'assigneeIds', 'A worker on this job is not valid — remove them and try again');
+          return refuseField(res, 400, 'assigneeIds', 'One of the workers on this job couldn\'t be found. Remove them and try again.');
         }
         const worker = userQueries.getById.get(workerId);
         if (!isActiveRecord(worker)) {
           const who = worker ? displayName(worker) : 'A worker';
-          return refuseField(res, 400, 'assigneeIds', `${who} can no longer be assigned — remove them and try again`);
+          return refuseField(res, 400, 'assigneeIds', `${who} can no longer be assigned. Remove them and try again.`);
         }
       }
     }
@@ -159,7 +159,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
 
       // Guard against manual DB edits that desync the auto-increment counter
       if (jobcardQueries.getByJobNumber.get(peek.jobNumber)) {
-        const e = new Error(`Job number ${peek.jobNumber} already exists. Please update the starting number in Settings.`);
+        const e = new Error(`Job number ${peek.jobNumber} is already in use. Ask an admin to raise the starting job number in Settings.`);
         e.httpStatus = 409;
         throw e;
       }
@@ -257,7 +257,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
     res.status(201).json(response);
   } catch (err) {
     logger.error({ err }, 'Create jobcard error');
-    res.status(500).json({ error: 'Failed to create job card' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -282,7 +282,7 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     // trail records the date as removed rather than changed to blank.
     if (data.dueDate === '') data.dueDate = null;
 
-    const existing = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const existing = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!existing) return;
 
     // An already-archived job never reaches this line: closedJobGuard (mounted
@@ -309,7 +309,7 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
       // reference at all) still falls through to the silent clear below — that
       // is the intended path.
       if (data.isRepeatJob === undefined && data.repeatJobReference) {
-        return refuseField(res, 400, 'repeatJobReference', 'This job is no longer a repeat job — tick Repeat Job first.');
+        return refuseField(res, 400, 'repeatJobReference', 'This job is no longer marked as a repeat job. Tick Repeat Job first.');
       }
       if (data.repeatJobReference !== undefined || existing.repeat_job_reference != null) {
         data.repeatJobReference = null;
@@ -388,7 +388,7 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     res.json(response);
   } catch (err) {
     logger.error({ err }, 'Update jobcard error');
-    res.status(500).json({ error: 'Failed to update job card' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 

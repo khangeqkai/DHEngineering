@@ -23,7 +23,7 @@ function isStartingJobNumber(value) {
 }
 
 const STARTING_JOB_NUMBER_MESSAGE =
-  `Starting number must contain only digits, at most ${STARTING_JOB_NUMBER_MAX_DIGITS} (e.g. 00001)`;
+  `Enter the starting number using digits only, up to ${STARTING_JOB_NUMBER_MAX_DIGITS} of them (for example 00001).`;
 
 // The job number prefix: it leads every job number and so every job folder name.
 // Letters, digits, hyphen and underscore only (so the folder name needs no
@@ -37,7 +37,7 @@ function isJobNumberPrefix(value) {
 }
 
 const JOB_NUMBER_PREFIX_MESSAGE =
-  `Prefix can only use letters, digits, hyphens and underscores, up to ${JOB_NUMBER_PREFIX_MAX_LENGTH} characters (e.g. DH-)`;
+  `The prefix can only use letters, digits, hyphens and underscores, up to ${JOB_NUMBER_PREFIX_MAX_LENGTH} characters (for example DH-).`;
 
 // The home access code a home sign-in gives on top of a PIN. Blank switches home
 // access off. Stored hashed like a PIN, and the hash only reads the first 72 bytes,
@@ -61,10 +61,10 @@ function utf8Length(text) {
 // What is wrong with a home access code, or null when it can be saved.
 function homeAccessCodeProblem(code) {
   if (typeof code !== 'string' || (code && code.length < HOME_ACCESS_CODE_MIN_LENGTH)) {
-    return `The home access code must be at least ${HOME_ACCESS_CODE_MIN_LENGTH} characters`;
+    return `The home access code needs at least ${HOME_ACCESS_CODE_MIN_LENGTH} characters.`;
   }
   if (utf8Length(code) > HOME_ACCESS_CODE_MAX_BYTES) {
-    return `The home access code must be ${HOME_ACCESS_CODE_MAX_BYTES} characters or fewer`;
+    return `The home access code can be at most ${HOME_ACCESS_CODE_MAX_BYTES} characters. Shorten it.`;
   }
   return null;
 }
@@ -72,7 +72,7 @@ function homeAccessCodeProblem(code) {
 // What is wrong with a home address (judged trimmed, as it is stored), or null.
 function homeAddressProblem(address) {
   if (String(address || '').trim().length > HOME_ADDRESS_MAX_LENGTH) {
-    return `The home address must be ${HOME_ADDRESS_MAX_LENGTH} characters or fewer`;
+    return `The home address can be at most ${HOME_ADDRESS_MAX_LENGTH} characters. Shorten it.`;
   }
   return null;
 }

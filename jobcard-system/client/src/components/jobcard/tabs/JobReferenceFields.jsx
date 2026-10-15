@@ -2,7 +2,7 @@ import { INSTANT_SAVE_STATUS_TEXT } from '../useInstantSave';
 import { QUALITY_LEVELS, QUALITY_LEVEL_LABELS } from '../../../../../server/src/shared/qualityLevels';
 import FieldError from '../../common/FieldError';
 
-// The Customer Input card: PO number, quote reference, quality level, repeat-job
+// The References card: PO number, quote reference, quality level, repeat-job
 // toggle and (once that's ticked) the previous-job-reference combobox. Split out
 // of DetailsTab.jsx purely to keep that file from growing further — every prop
 // here is something DetailsTab already holds.
@@ -24,7 +24,7 @@ export default function JobReferenceFields({
   return (
     <div className="form-section">
       <div className="form-section-header">
-        <h3 className="form-section-title">Customer Input</h3>
+        <h3 className="form-section-title">References</h3>
         {detailsStatus !== 'idle' && (
           <span
             className={`instant-save-status instant-save-status--${detailsStatus}`}

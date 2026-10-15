@@ -88,7 +88,7 @@ function finishCeilingMs(row, rules) {
 // repeated press from an answer that was not kept.
 function alreadyConfirmedRefusal(row) {
   return {
-    error: 'This clock has already been confirmed.',
+    error: 'That finish time has already been confirmed. Reload the job to see it.',
     code: FINISH_ALREADY_CONFIRMED,
     settledBy: row.finish_confirmed_at ? 'worker' : 'office',
     endTime: row.end_time
@@ -116,7 +116,7 @@ router.get('/active-timer', authenticate, (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, 'Get active timer error');
-    res.status(500).json({ error: 'Failed to get active timer' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -144,7 +144,7 @@ router.get('/unconfirmed-finish', authenticate, (req, res) => {
     }));
   } catch (err) {
     logger.error({ err }, 'Get unconfirmed finishes error');
-    res.status(500).json({ error: 'Failed to get unconfirmed clocks' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -160,7 +160,7 @@ router.get('/unfilled-stop-forms', authenticate, (req, res) => {
     res.json(rows.map(row => ({ ...toCamelCase(row), jobNumber: row.job_number })));
   } catch (err) {
     logger.error({ err }, 'Get unfilled stop forms error');
-    res.status(500).json({ error: 'Failed to get unfilled stop forms' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -169,7 +169,7 @@ router.get('/unfilled-stop-forms', authenticate, (req, res) => {
 function unconfirmedRefusalFor(userId) {
   const owner = userQueries.getById.get(userId);
   return {
-    error: `${displayName(owner)} has to confirm when their last clock finished first.`,
+    error: `${displayName(owner)} needs to confirm when their last clock finished before starting another. Ask them to sign in and answer.`,
     code: FINISH_UNCONFIRMED
   };
 }
@@ -267,7 +267,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
     let targetWorkerId = req.user.userId;
     if (workerId && workerId !== req.user.userId) {
       if (!isManagement(req.user.role)) {
-        return res.status(403).json({ error: 'Only management can start a timer for another worker' });
+        return res.status(403).json({ error: 'Only an admin or manager can start a timer for another worker.' });
       }
       const resolved = resolveWorkerId(workerId);
       if (resolved.error) {
@@ -281,7 +281,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
     // another until they give it. Refused before any write.
     if (timeEntryQueries.countUnconfirmedByUser.get(targetWorkerId).count > 0) {
       return res.status(409).json(isSelf
-        ? { error: 'Answer the question about your last clock first.', code: FINISH_UNCONFIRMED }
+        ? { error: 'Answer the question about your last clock first, then start this one.', code: FINISH_UNCONFIRMED }
         : unconfirmedRefusalFor(targetWorkerId));
     }
 
@@ -312,7 +312,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
     res.status(201).json(reply);
   } catch (err) {
     logger.error({ err }, 'Start timer error');
-    res.status(500).json({ error: 'Failed to start timer' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -326,17 +326,17 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
 
     // Only the owner or an admin/manager can stop
     if (existing.user_id !== req.user.userId && !isManagement(req.user.role)) {
-      return res.status(403).json({ error: 'You can only stop your own timer' });
+      return res.status(403).json({ error: 'You can only stop your own timer. Ask an admin or manager to stop it.' });
     }
 
     if (existing.end_time) {
       if (existing.finish_unconfirmed === 1) {
         const error = existing.user_id === req.user.userId
-          ? 'Your clock had already stopped by itself.'
+          ? 'Your clock had already stopped by itself. Check when you finished.'
           : `That clock had already stopped by itself. ${existing.user_name} needs to confirm when they finished.`;
         return res.status(409).json({ error, code: RUN_STOPPED_ITSELF });
       }
-      return res.status(400).json({ error: 'Timer already stopped' });
+      return res.status(400).json({ error: 'That timer has already stopped. Reload the job to see it.' });
     }
 
     // A start/stop tap inside seconds is an accident: discard the block and put back
@@ -381,7 +381,7 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
     res.json(toCamelCase(entry));
   } catch (err) {
     logger.error({ err }, 'Stop timer error');
-    res.status(500).json({ error: 'Failed to stop timer' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -392,7 +392,7 @@ router.get('/:id/time-entries', authenticate, (req, res) => {
     res.json(entries.map(toCamelCase));
   } catch (err) {
     logger.error({ err }, 'Get time entries error');
-    res.status(500).json({ error: 'Failed to get time entries' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -407,7 +407,7 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
       startTime = normalizeTime(data.startTime);
       endTime = normalizeTime(data.endTime);
     } catch (e) {
-      return res.status(400).json({ error: 'Invalid start or finish time' });
+      return res.status(400).json({ error: 'Enter a real start time and finish time.' });
     }
 
     const durationError = checkEntryDuration(startTime, endTime);
@@ -510,7 +510,7 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
     res.status(201).json(toCamelCase(entry));
   } catch (err) {
     logger.error({ err }, 'Add time entry error');
-    res.status(500).json({ error: 'Failed to add time entry' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -532,11 +532,11 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
 
     // Only the owner or an admin/manager may edit a time entry
     if (existing.user_id !== req.user.userId && !isManagement(req.user.role)) {
-      return res.status(403).json({ error: 'You can only edit your own time entries', code: RUN_NOT_YOURS });
+      return res.status(403).json({ error: 'You can only edit your own time entries. Ask an admin or manager.', code: RUN_NOT_YOURS });
     }
 
     if (!existing.end_time) {
-      return res.status(400).json({ error: 'Stop the timer before editing this entry', code: RUN_STILL_RUNNING });
+      return res.status(400).json({ error: 'This entry can\'t be edited while its timer is running. Stop the timer first.', code: RUN_STILL_RUNNING });
     }
 
     // A hand edit (the office's edit form) states what it does with the finish in finishAction:
@@ -552,19 +552,19 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
     // never state an action; they carry their times as the run stopped and are handled below.
     const handEdit = data.detailsConfirmed !== true;
     const finishAction = handEdit ? data.finishAction : undefined;
-    const staleMessage = 'This page is out of date. Refresh it and try again.';
+    const staleMessage = 'This time entry was changed by someone else. Reload the job and try again.';
     const refuseEndTime = (message) =>
       res.status(400).json({ error: message, fields: [{ field: 'endTime', message }] });
     if (handEdit && data.endTime !== undefined && !finishAction) return refuseEndTime(staleMessage);
-    if (finishAction === 'correct' && !data.endTime) return refuseEndTime('Please enter a finish time');
+    if (finishAction === 'correct' && !data.endTime) return refuseEndTime('Enter the finish time.');
     if (finishAction && typeof data.finishVersion !== 'string') return refuseEndTime(staleMessage);
 
     if (finishAction && !isManagement(req.user.role)) {
-      return res.status(403).json({ error: 'Only a manager can change a finish time' });
+      return res.status(403).json({ error: 'Only an admin or manager can change a finish time.' });
     }
     if (finishAction && data.finishVersion !== finishVersionOf(existing)) {
       return res.status(409).json({
-        error: 'This finish was changed since you opened it.',
+        error: 'This finish time was changed after you opened it. Check the new time and try again.',
         code: FINISH_CHANGED,
         reason: finishChangeReason(existing, data.finishVersion),
         current: toCamelCase(existing)
@@ -587,7 +587,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
         endTime = data.endTime !== undefined ? normalizeTime(data.endTime) : existing.end_time;
       }
     } catch (e) {
-      return res.status(400).json({ error: 'Invalid start or finish time' });
+      return res.status(400).json({ error: 'Enter a real start time and finish time.' });
     }
 
     if (finishAction === 'confirm') {
@@ -627,7 +627,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
       // sending the save straight to the server, long after the fact.
       if (!isResuming && existing.awaiting_details !== 1) {
         return res.status(403).json({
-          error: 'The details of that run were already saved — ask a manager to correct them.',
+          error: 'Those details were already saved. Ask an admin or manager to correct them.',
           code: RUN_ALREADY_FILLED_IN
         });
       }
@@ -649,7 +649,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
         // for its answer (finish_unconfirmed) can't be resumed either: the question comes first.
         const notAnswered = !existing.finish_confirmed_at && existing.finish_unconfirmed !== 1;
         if (!(withinLast12h && isMostRecentStart && noOtherRunning && notAnswered)) {
-          return res.status(403).json({ error: 'Only the run you just stopped can be resumed.' });
+          return res.status(403).json({ error: 'Only the timer you just stopped can be resumed.' });
         }
       }
     }
@@ -665,8 +665,8 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
         endTime !== null && Date.parse(endTime) <= Date.parse(startTime)) {
       const field = finishAction === 'correct' ? 'endTime' : 'startTime';
       const message = field === 'endTime'
-        ? 'Finish time must be after the start time'
-        : 'Start time must be before the finish time';
+        ? 'The finish time has to be after the start time.'
+        : 'The start time has to be before the finish time.';
       return res.status(400).json({ error: message, fields: [{ field, message }] });
     }
 
@@ -814,7 +814,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
     // instead of pretending to succeed; a hand reopen by the office is never cut, so is exempt.
     if (isResume && !reopenedByHand && cutIsDue(existing, Date.now())) {
       return res.status(409).json({
-        error: 'Normal hours have ended, so this clock can\'t be resumed. Save the form instead.',
+        error: 'Normal hours have ended, so this timer can\'t be resumed. Save the form instead.',
         code: RESUME_AFTER_HOURS
       });
     }
@@ -931,7 +931,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
     res.json(toCamelCase(savedEntry));
   } catch (err) {
     logger.error({ err }, 'Update time entry error');
-    res.status(500).json({ error: 'Failed to update time entry' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -951,7 +951,7 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
       return res.status(409).json(alreadyConfirmedRefusal(existing));
     }
     if (existing.user_id !== req.user.userId) {
-      return res.status(403).json({ error: 'Only the worker whose clock it was can answer this.' });
+      return res.status(403).json({ error: 'Only the worker whose clock it was can answer this. Ask them to sign in.' });
     }
 
     // Earlier or later than the stored finish are both fine. "Not in the future" is judged at
@@ -1073,7 +1073,7 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
     res.json(confirmed);
   } catch (err) {
     logger.error({ err }, 'Confirm finish error');
-    res.status(500).json({ error: 'Failed to confirm the finish time' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -1086,7 +1086,7 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
     if (!existing) return;
 
     if (!existing.end_time) {
-      return res.status(400).json({ error: 'Stop the timer before deleting this entry' });
+      return res.status(400).json({ error: 'This entry can\'t be deleted while its timer is running. Stop the timer first.' });
     }
 
     // Named by description, not position — see the same note on the update route. A part
@@ -1123,7 +1123,7 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, 'Delete time entry error');
-    res.status(500).json({ error: 'Failed to delete time entry' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 

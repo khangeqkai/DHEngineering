@@ -363,7 +363,7 @@ export default function StopTimerForm({
         </div>
 
         {jobLoading ? (
-          <div className="stop-timer-loading">Loading...</div>
+          <div className="stop-timer-loading">Loading…</div>
         ) : (
           <form onSubmit={handleFormSubmit} className="stop-timer-form-body">
             <div className="stop-timer-fields">

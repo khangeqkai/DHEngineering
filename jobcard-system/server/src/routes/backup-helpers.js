@@ -144,10 +144,10 @@ function verifyStagedFiles(stagingDir, manifest) {
     try {
       st = fs.statSync(abs);
     } catch (_) {
-      throw new Error(`A saved file is missing from the backup (${entry.relPath}). Restore stopped; nothing was changed.`);
+      throw plainRefusal(`A saved file is missing from the backup (${entry.relPath}). The restore was stopped and nothing was changed. Make a fresh backup and try again.`);
     }
     if (!st.isFile() || (typeof entry.size === 'number' && st.size !== entry.size)) {
-      throw new Error(`A saved file did not unpack correctly (${entry.relPath}). Restore stopped; nothing was changed.`);
+      throw plainRefusal(`A saved file did not unpack correctly (${entry.relPath}). The restore was stopped and nothing was changed. Copy the backup again and try again.`);
     }
   }
 }
@@ -380,10 +380,18 @@ async function archiveBackupWithRetry({ metadata, tables, collected, outputPath,
 // STAGE — unpack the archive and validate its shape. No live data (database or
 // job folders) is touched yet, so a rejection here needs no rollback of anything.
 // Returns { error, status } to send as-is, or { data } to continue with.
+// An error whose text is already written for a person; the restore route sends it as is.
+function plainRefusal(message) {
+  const e = new Error(message);
+  e.plainMessage = true;
+  e.status = 400;
+  return e;
+}
+
 async function stageBackupArchive(inputPath, tempDir, schemaVersion, dataVersion, tableOrder) {
   // A damaged or partly copied zip fails to unpack or to parse — a plain refusal,
   // not the raw system error, since nothing live has been touched yet.
-  const unreadable = { error: 'This file is not a readable backup — it may be damaged or only partly copied. Nothing was changed.', status: 400 };
+  const unreadable = { error: 'This file isn\'t a readable backup. It may be damaged or only partly copied. Nothing was changed.', status: 400 };
   try {
     await extractZip(inputPath, { dir: tempDir });
   } catch (err) {
@@ -393,7 +401,7 @@ async function stageBackupArchive(inputPath, tempDir, schemaVersion, dataVersion
 
   const dbJsonPath = path.join(tempDir, 'database.json');
   if (!fs.existsSync(dbJsonPath)) {
-    return { error: 'Invalid backup: missing database.json', status: 400 };
+    return { error: 'This file isn\'t a complete backup, so nothing was restored. Choose a backup made by this app.', status: 400 };
   }
 
   let parsed;
@@ -406,18 +414,18 @@ async function stageBackupArchive(inputPath, tempDir, schemaVersion, dataVersion
   const data = splitCustomersInBackup(parsed);
 
   if (!data._metadata) {
-    return { error: 'Invalid backup: missing _metadata', status: 400 };
+    return { error: 'This file isn\'t a complete backup, so nothing was restored. Choose a backup made by this app.', status: 400 };
   }
   if (data._metadata.schemaVersion !== schemaVersion) {
     return {
-      error: `Incompatible backup schema version ${data._metadata.schemaVersion} (expected ${schemaVersion})`,
+      error: 'This backup was made by a different version of the app, so it can\'t be restored here. Nothing was changed.',
       status: 400
     };
   }
   // A backup made before the data version was stamped counts as 0 (older).
   if ((Number(data._metadata.dataVersion) || 0) > dataVersion) {
     return {
-      error: 'This backup was made by a newer version of the app — update this computer first. Nothing was changed.',
+      error: 'This backup was made by a newer version of the app. Update this computer first. Nothing was changed.',
       status: 400
     };
   }
@@ -433,7 +441,7 @@ async function stageBackupArchive(inputPath, tempDir, schemaVersion, dataVersion
   }
   for (const table of tableOrder) {
     if (!Array.isArray(data[table])) {
-      return { error: `Invalid backup: missing table "${table}"`, status: 400 };
+      return { error: 'This file isn\'t a complete backup, so nothing was restored. Choose a backup made by this app.', status: 400 };
     }
   }
 
@@ -480,7 +488,7 @@ function swapJobFolders({ tempDir, currentJobBase, stagingDir, oldDir, fileManif
   } catch (err) {
     if (['EPERM', 'EBUSY', 'EACCES'].includes(err.code)) {
       logger.error({ err, from: currentJobBase, to: oldDir }, 'Backup restore: live job folders could not be moved aside');
-      const inUse = new Error('The job folders are in use — close any files or folder windows open from them, then try again. Nothing was changed.');
+      const inUse = new Error('The job folders are in use. Close any files or folder windows open from them, then try again. Nothing was changed.');
       inUse.plainMessage = true;
       inUse.status = 409;
       throw inUse;

@@ -1,3 +1,4 @@
+import { pluralize } from '../../utils/formatters';
 import { useEffect, useRef, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { TriangleAlert } from 'lucide-react';
@@ -48,7 +49,7 @@ export default function InactivityWarningModal({
     const isCheckpoint = secondsRemaining % 10 === 0 || secondsRemaining === 5;
     if (isFirstAppearance || (isCheckpoint && lastAnnouncedRef.current !== secondsRemaining)) {
       lastAnnouncedRef.current = secondsRemaining;
-      setAnnouncement(`You will be logged out due to inactivity in ${secondsRemaining} seconds.`);
+      setAnnouncement(`You'll be signed out in ${pluralize(secondsRemaining, 'second')}.`);
     }
   }, [isOpen, secondsRemaining]);
 
@@ -100,16 +101,16 @@ export default function InactivityWarningModal({
         <div className="inactivity-modal-icon" aria-hidden="true">
           <TriangleAlert size={48} />
         </div>
-        <h2 id="inactivity-title">Session Timeout Warning</h2>
-        <p id="inactivity-description">You will be logged out due to inactivity in:</p>
-        <div className="inactivity-countdown">{secondsRemaining}</div>
-        <p className="inactivity-subtext">seconds</p>
+        <h2 id="inactivity-title">Still there?</h2>
+        <p id="inactivity-description">
+          You&apos;ll be signed out in <strong className="inactivity-countdown">{secondsRemaining}</strong> {secondsRemaining === 1 ? 'second' : 'seconds'}.
+        </p>
         {/* Announced far less often than the number changes — see the effect
             above that fills this in. Not in the reading order otherwise, since
             the visible sentence and number already say the same thing. */}
         <p className="sr-only" aria-live="polite">{announcement}</p>
         {/* Sits after the count, not inside it: between the sentence and the number it
-            split "logged out in: … seconds" into three pieces that no longer read as one
+            split "signed out in: … seconds" into three pieces that no longer read as one
             phrase. Here it lands against the button that prevents the loss it describes.
             Reading order for a screen reader is unaffected — aria-describedby on the
             dialog lists these two ids in the order they should be spoken, which is not
@@ -124,7 +125,7 @@ export default function InactivityWarningModal({
           className="btn btn-primary btn-lg"
           onClick={onStayLoggedIn}
         >
-          Stay Logged In
+          Stay signed in
         </button>
       </div>
     </div>,

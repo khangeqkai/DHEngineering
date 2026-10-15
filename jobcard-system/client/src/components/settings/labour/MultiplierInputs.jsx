@@ -1,13 +1,23 @@
 import FieldError from '../../common/FieldError';
+import { formatMoney } from '../../../utils/formatters';
 
 // The three overtime rate multipliers. Each tier charges the job's base labour rate
 // times its multiplier, so one rate feeds them all.
 export default function MultiplierInputs({
   ot1Mult, setOt1Mult, ot2Mult, setOt2Mult, holidayMult, setHolidayMult,
-  onSave, saving, ot1Error, ot2Error, holidayError
+  onSave, saving, ot1Error, ot2Error, holidayError, defaultRate
 }) {
   // Called as a plain function (not <Field/>) so the number inputs stay mounted across
   // renders and typing never loses focus.
+  // "= $75.00 per hour at the default $50.00 rate", read live from the two boxes. Blank
+  // until both hold a number, so a half-typed figure never shows a made-up price.
+  const base = defaultRate === '' ? NaN : Number(defaultRate);
+  const worked = (value) => {
+    const m = value === '' ? NaN : Number(value);
+    if (!Number.isFinite(base) || !Number.isFinite(m)) return null;
+    return `= ${formatMoney(base * m)} per hour at the default ${formatMoney(base)} rate`;
+  };
+
   const field = (key, label, hint, value, onChange, error) => (
     <div className={`mult-field${error ? ' field-error' : ''}`} key={key}>
       <label className="setting-label" htmlFor={key}>{label}</label>
@@ -29,6 +39,7 @@ export default function MultiplierInputs({
         />
       </div>
       <FieldError id={`${key}-error`} message={error} />
+      <span className="mult-worked">{worked(value)}</span>
       <span className="setting-description">{hint}</span>
     </div>
   );
@@ -36,7 +47,7 @@ export default function MultiplierInputs({
   return (
     <div className="card full-width">
       <div className="card-header">
-        <h2>Overtime Multipliers</h2>
+        <h2>Overtime multipliers</h2>
       </div>
       <div className="card-body">
         <p className="setting-description">
@@ -50,7 +61,7 @@ export default function MultiplierInputs({
         </div>
         <div className="sched-save">
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save Multipliers'}
+            {saving ? 'Saving…' : 'Save multipliers'}
           </button>
         </div>
       </div>

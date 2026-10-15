@@ -161,12 +161,11 @@ export default function LineItemProgress({
         {canManage && onAdd && (
           <button
             type="button"
-            className="lip-add"
+            className="btn btn-secondary btn-sm lip-add"
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(); }}
-            aria-label="Add time entry"
-            title="Add time entry"
+            title="Add a time entry to this part"
           >
-            <Plus size={14} />
+            <Plus size={14} /> Add time
           </button>
         )}
 

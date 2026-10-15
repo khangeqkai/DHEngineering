@@ -177,3 +177,7 @@ export function formatElapsed(seconds) {
 export function elapsedSecondsSince(startTime) {
   return Math.max(0, Math.floor((Date.now() - new Date(startTime).getTime()) / 1000));
 }
+
+// "1 day" / "2 days" — a count with the right word after it. Pass `many` for
+// irregular plurals ("entry" → "entries").
+export const pluralize = (count, one, many = `${one}s`) => `${count} ${Number(count) === 1 ? one : many}`;

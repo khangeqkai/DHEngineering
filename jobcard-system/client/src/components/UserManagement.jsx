@@ -22,6 +22,16 @@ import { changedFields } from '../utils/changedFields';
 // Which box on the form each field named in a server refusal belongs to.
 const USER_FORM_BOXES = { username: 'username', password: 'password', name: 'name', email: 'email' };
 
+// What each stored role is called on screen (the stored values stay user/manager/admin).
+const ROLE_LABELS = { user: 'Worker', manager: 'Manager', admin: 'Admin' };
+
+// The line under the Role box, changing with the role picked.
+const ROLE_HELP = {
+  user: "Logs time and changes parts on jobs. Can't see customer details or prices.",
+  manager: 'Everything an admin can do except prices, backups and the activity trail.',
+  admin: 'Full access, including prices, backups and user accounts.'
+};
+
 // The form as it opens on an existing account — also what an edit is judged
 // against, so only the boxes the person actually changed are sent.
 const formFromUser = (user) => ({
@@ -40,7 +50,7 @@ export default function UserManagement() {
   const canManageAdmins = can(currentUser, 'adminAccounts');
   const [users, setUsers] = useState([]);
   // What the table is actually showing right now (after its own search box has
-  // filtered it) — kept separate from `users` so "Export Current View" can send
+  // filtered it) — kept separate from `users` so "Export current view" can send
   // exactly those rows instead of silently exporting everyone.
   const [visibleUsers, setVisibleUsers] = useState([]);
   const {
@@ -66,6 +76,13 @@ export default function UserManagement() {
     (name) => formData[name]
   );
   const editingSelf = Boolean(editingUser && editingUser.id === currentUser?.id);
+  // The only active admin can't be demoted (the server refuses it too), so the box
+  // says so up front instead of letting the person find out on Save. The list always
+  // holds every active account, so counting from it is enough.
+  const editingOnlyAdmin = Boolean(
+    editingUser && editingUser.role === 'admin' && editingUser.active &&
+    !users.some(u => u.role === 'admin' && u.active && u.id !== editingUser.id)
+  );
 
   useEffect(() => {
     loadUsers();
@@ -75,7 +92,7 @@ export default function UserManagement() {
     await runLoad(
       () => api.getUsers(showInactive),
       (data) => { setUsers(data); },
-      (err) => toast.error(err.message || 'Failed to load users', { id: 'user-list-load-failed' }),
+      (err) => toast.error(err.message || 'Couldn\'t load the users. Try again in a moment.', { id: 'user-list-load-failed' }),
       { resetLoading: false }
     );
   };
@@ -109,7 +126,7 @@ export default function UserManagement() {
         return;
       }
     } else if (!editingUser) {
-      setFieldErrors({ password: 'PIN is required' });
+      setFieldErrors({ password: 'Enter a 4-digit PIN.' });
       scrollFieldIntoView('password');
       return;
     }
@@ -157,7 +174,7 @@ export default function UserManagement() {
       bumpActivity();
       resetForm();
     } catch (err) {
-      showSaveRefusal(err, { boxFor: USER_FORM_BOXES, setFieldErrors, fallback: 'Failed to save user' });
+      showSaveRefusal(err, { boxFor: USER_FORM_BOXES, setFieldErrors, fallback: 'Couldn\'t save the user. Check the connection and try again.' });
     } finally {
       setSaving(false);
     }
@@ -173,8 +190,8 @@ export default function UserManagement() {
   const handleArchive = async (user) => {
     if (pendingId !== null) return;
     const confirmed = await showConfirm({
-      title: 'Archive User',
-      message: `Archive user "${user.username}"? They will no longer be able to log in, but all their records are kept. You can restore them any time.`,
+      title: 'Archive user',
+      message: `Archive user "${user.username}"? They will no longer be able to sign in, but all their records are kept. You can restore them any time.`,
       confirmLabel: 'Archive',
       confirmVariant: 'warning'
     });
@@ -187,7 +204,7 @@ export default function UserManagement() {
         await reloadUsers();
         bumpActivity();
       } catch (err) {
-        toast.error(err.message || 'Failed to archive user');
+        toast.error(err.message || 'Couldn\'t archive the user. Check the connection and try again.');
       }
     });
   };
@@ -201,7 +218,7 @@ export default function UserManagement() {
         await reloadUsers();
         bumpActivity();
       } catch (err) {
-        toast.error(err.message || 'Failed to restore user');
+        toast.error(err.message || 'Couldn\'t restore the user. Check the connection and try again.');
       }
     });
   };
@@ -249,7 +266,7 @@ export default function UserManagement() {
       <BottomSheet
         isOpen={showForm}
         onClose={resetForm}
-        title={editingUser ? 'Edit User' : 'Add New User'}
+        title={editingUser ? 'Edit user' : 'Add user'}
         size="small"
       >
         <BottomSheet.Body>
@@ -286,8 +303,9 @@ export default function UserManagement() {
                       onChange={(e) => {
                         setFormData({ ...formData, password: e.target.value.replace(/\D/g, '').slice(0, 4) });
                       }}
-                      placeholder="4-digit PIN"
+                      placeholder="····"
                     />
+                    <p className="field-hint">4 digits, numbers only.</p>
                     <FieldError {...errorProps('password')} message={errorFor('password')} />
                   </>
                 )}
@@ -327,16 +345,22 @@ export default function UserManagement() {
             </div>
 
             <div className="form-group">
+              {editingOnlyAdmin && (
+                <p className="field-hint">This is the only admin, so the role can't be changed until another admin exists.</p>
+              )}
               <label htmlFor="role">Role</label>
               <select
                 id="role"
                 value={formData.role}
+                disabled={editingOnlyAdmin}
+                aria-describedby="role-help"
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               >
-                <option value="user">User</option>
-                <option value="manager">Manager</option>
-                {canManageAdmins && <option value="admin">Admin</option>}
+                <option value="user">{ROLE_LABELS.user}</option>
+                <option value="manager">{ROLE_LABELS.manager}</option>
+                {canManageAdmins && <option value="admin">{ROLE_LABELS.admin}</option>}
               </select>
+              <p className="field-hint" id="role-help">{ROLE_HELP[formData.role]}</p>
             </div>
           </form>
         </BottomSheet.Body>
@@ -347,7 +371,7 @@ export default function UserManagement() {
             className="btn btn-primary"
             disabled={saving}
           >
-            <Save size={14} /> {saving ? 'Saving...' : editingUser ? 'Update User' : 'Create User'}
+            <Save size={14} /> {saving ? 'Saving…' : editingUser ? 'Update user' : 'Create user'}
           </button>
         </BottomSheet.Footer>
       </BottomSheet>
@@ -379,7 +403,7 @@ export default function UserManagement() {
                 sortable: true,
                 render: (val) => (
                   <span className={`badge ${val === 'admin' ? 'badge-in-progress' : val === 'manager' ? 'badge-completed' : 'badge-pending'}`}>
-                    {val}
+                    {ROLE_LABELS[val] || val}
                   </span>
                 )
               },
@@ -417,6 +441,9 @@ export default function UserManagement() {
                         )}
                       </>
                     )}
+                    {row.id === currentUser?.id && (
+                      <span className="text-muted">You can't archive yourself</span>
+                    )}
                   </div>
                 )
               }
@@ -425,13 +452,13 @@ export default function UserManagement() {
             loading={loading}
             searchable
             searchKeys={['username', 'name', 'email']}
-            searchPlaceholder="Search users..."
+            searchPlaceholder="Search users…"
             onVisibleRowsChange={setVisibleUsers}
             emptyState={{
               icon: 'users',
               title: 'No users yet',
               description: 'Add your first user to get started.',
-              actionLabel: 'Add User',
+              actionLabel: 'Add user',
               onAction: () => setShowForm(true),
             }}
             defaultSortKey="username"

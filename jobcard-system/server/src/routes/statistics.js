@@ -37,7 +37,7 @@ router.get('/', (req, res) => {
 
     const { startDate, endDate, label: rangeLabel } = calculateDateRange(preset, customStart, customEnd, timezone);
     if (startDate && endDate && startDate > endDate) {
-      return res.status(400).json({ error: 'Start date cannot be after end date' });
+      return res.status(400).json({ error: 'The start date has to be on or before the end date.' });
     }
 
     // The company's own overtime rules, read the one way every other reader does —
@@ -138,7 +138,7 @@ router.get('/', (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, 'Failed to compute workshop statistics');
-    res.status(500).json({ error: 'Failed to compute statistics' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 

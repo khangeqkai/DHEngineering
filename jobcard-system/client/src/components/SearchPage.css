@@ -6,7 +6,7 @@
 .search-page .search-input-wrapper { position: relative; margin-bottom: var(--space-4); }
 .search-page .search-input-icon { position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; }
 .search-page .search-input { width: 100%; padding: var(--space-3) var(--space-10) var(--space-3) var(--space-10); border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--surface); color: var(--text-primary); font-size: 1rem; }
-.search-page .search-input:focus { outline: none; border-color: var(--primary-accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.search-page .search-input:focus { outline: none; border-color: var(--primary-accent); box-shadow: var(--focus-ring); }
 .search-page .search-input-clear { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: var(--space-1); border-radius: 0.25rem; }
 .search-page .search-input-clear:hover { color: var(--text-primary); background: var(--background); }
 .search-scope-tabs { display: flex; gap: var(--space-1-5); margin-bottom: var(--space-4); flex-wrap: wrap; }
@@ -51,14 +51,14 @@
 .search-preview-meta { color: var(--text-secondary); font-size: 0.75rem; margin-left: auto; }
 /* Status color comes from the shared .status-* class (text only here) */
 .search-badge { font-size: 0.75rem; font-weight: var(--font-regular); background: none; border: none; padding: 0; }
-.search-entity-id { font-size: 0.6875rem; background: var(--background); padding: var(--space-0-5) var(--space-1-5); border-radius: 0.25rem; }
+.search-entity-id { font-size: var(--text-xs); background: var(--background); padding: var(--space-0-5) var(--space-1-5); border-radius: 0.25rem; }
 .search-changes { margin-top: var(--space-1); }
-.search-change-line { font-size: 0.6875rem; color: var(--text-secondary); }
+.search-change-line { font-size: var(--text-xs); color: var(--text-secondary); }
 .search-from { text-decoration: line-through; color: var(--accent-caution); }
 .search-arrow { display: inline-flex; align-self: center; vertical-align: middle; margin: 0 var(--gap-inline); }
 .search-to { color: var(--accent-ready); }
 .search-truncate { max-width: 20rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
-.search-type-badge { font-size: 0.6875rem; font-weight: var(--font-bold); text-transform: uppercase; padding: var(--space-0-5) var(--space-2); border-radius: 1rem; }
+.search-type-badge { font-size: var(--text-xs); font-weight: var(--font-bold); text-transform: uppercase; padding: var(--space-0-5) var(--space-2); border-radius: 1rem; }
 .search-type-badge.contact { background: rgba(37,99,235,0.1); color: var(--primary-accent); }
 .search-type-badge.supplier { background: rgba(139,92,246,0.1); color: #8b5cf6; }
 .search-totals { padding: var(--space-3) var(--space-4); font-size: 0.875rem; color: var(--text-secondary); text-align: right; }
@@ -102,4 +102,13 @@
     flex-wrap: wrap;
     justify-content: center;
   }
+}
+
+/* The part of a result that matched the search words: a warm tint behind
+   unchanged text, so it reads in both themes without recolouring the words. */
+.search-mark {
+  background: rgba(var(--warning-rgb), 0.32);
+  color: inherit;
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-0-5);
 }

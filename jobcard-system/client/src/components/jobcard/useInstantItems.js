@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import { api } from '../../services/api';
 import { buildItemPayload, mapLineItemFromApi } from './mappers';
 import { isSavedLineItem } from './jobCardValidation.mjs';
@@ -96,6 +96,18 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
   // and the job would end up holding the same part several times over. A ref, not
   // the rows themselves, because the answer has to be right within a single tick.
   const creatingRef = useRef(new Set());
+
+  // Local rows whose create was refused or failed — the part card shows "Not saved ·
+  // Retry" for these (a saved row's failed write is read from the save queue instead).
+  // The row stays exactly as typed; Retry is the person's own action, never automatic.
+  const [createFailedIds, setCreateFailedIds] = useState([]);
+  const markCreateFailed = useCallback((localId, failed) => {
+    setCreateFailedIds(prev => {
+      const has = prev.includes(localId);
+      if (failed) return has ? prev : [...prev, localId];
+      return has ? prev.filter(id => id !== localId) : prev;
+    });
+  }, []);
 
   // Which fields were committed (a pick made, a box left) on a local row while its
   // create was travelling, per placeholder id. Only those are sent once the create
@@ -289,6 +301,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     const localId = row.id;
     if (creatingRef.current.has(localId)) return;
     creatingRef.current.add(localId);
+    markCreateFailed(localId, false);
     saveQueue.enqueue(`item:${localId}`, (isWindowUp) => {
       const current = lineItemsRef.current.find(it => it.id === localId);
       // Already real (an earlier queued create for this row won) or removed since
@@ -352,7 +365,10 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
           // one the save queue uses for every other refused write), so the screen
           // locks instead of reading as an ordinary refusal.
           if (isJobClosedError(err) && onJobClosed) onJobClosed();
-          else saveQueue.reportFailure(err.message || "Couldn't add that part", `item-create-${localId}`);
+          else {
+            saveQueue.reportFailure(err.message || "Couldn't add that part", `item-create-${localId}`);
+            markCreateFailed(localId, true);
+          }
           // Reported above with its own toast, not flagged 'failed' in the queue
           // (there's nothing stored to retry against — the row is still local) —
           // and NOT a landing either, so it must not count toward landedCount or
@@ -364,7 +380,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
           editedDuringCreateRef.current.delete(localId);
         });
     }, { label: 'a new part' });
-  }, [saveQueue, applyItemReply, writeItemField, onJobClosed]);
+  }, [saveQueue, applyItemReply, writeItemField, onJobClosed, markCreateFailed]);
 
   // Dropdowns, tags and toggles: called straight from onChange (see ItemsTab.jsx).
   // A still-local row just holds the edit — nothing is sent until the row as a
@@ -460,6 +476,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     const live = liveRowFor(item);
     if (live && live.id !== item.id) item = live; // created since this card drew
     if (!isSavedLineItem(item)) {
+      markCreateFailed(item.id, false);
       removeLineItem(item.id);
       return;
     }
@@ -513,7 +530,30 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
         }
         return NOT_LANDED;
       }), { label });
-  }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, saveQueue, onJobStatusChange, onJobClosed, liveRowFor]);
+  }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, saveQueue, onJobStatusChange, onJobClosed, liveRowFor, markCreateFailed]);
+
+  // The "Retry" on a part card's "Not saved" chip — a person's own action, so it is
+  // not an automatic resend. A local row whose create failed is created again; a
+  // saved row has every box that differs from what the job last confirmed storing
+  // sent again, field by field (a required box left empty is never sent, as ever).
+  // With nothing left to send, the stale failure mark is simply dropped.
+  const retryItem = useCallback((item) => {
+    const live = liveRowFor(item) || item;
+    if (!isSavedLineItem(live)) {
+      if (isItemRowComplete(live)) createItemFromRow(live);
+      return;
+    }
+    const base = savedItemFieldsRef.current[live.id];
+    const screen = buildItemPayload(live);
+    let sentAny = false;
+    for (const field of Object.keys(screen)) {
+      if (base && JSON.stringify(screen[field]) === JSON.stringify(base[field])) continue;
+      if (itemFieldMessage(field, live[field])) continue;
+      writeItemField(live.id, field, live[field]);
+      sentAny = true;
+    }
+    if (!sentAny) saveQueue.clearFailure(`item:${live.id}`);
+  }, [liveRowFor, createItemFromRow, writeItemField, saveQueue]);
 
   return {
     handleItemFieldChange,
@@ -523,6 +563,8 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     // fieldErrorKey, raised against what each box holds now, like any other mark.
     markItemFields: setFieldErrors,
     removeItem,
+    retryItem,
+    createFailedIds,
     // Raw required-box marks (fieldErrorKey -> message), for closeReasons.js to
     // turn into "line N needs a description" — see JobCardModal.jsx.
     fieldErrors

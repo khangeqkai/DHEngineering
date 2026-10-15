@@ -40,7 +40,7 @@ const printRouter = express.Router();
 // not job-folder storage is configured, since it never writes a file.
 printRouter.post('/:id/print', authenticate, (req, res) => {
   try {
-    const jobcard = findOr404(res, jobcardQueries.getById.get(req.params.id), 'Job card not found');
+    const jobcard = findOr404(res, jobcardQueries.getById.get(req.params.id), "That job couldn't be found. It may have been removed.");
     if (!jobcard) return;
 
     const view = buildJobCardView(req.params.id, jobcard, isManagement(req.user.role));
@@ -52,7 +52,7 @@ printRouter.post('/:id/print', authenticate, (req, res) => {
     res.json({ html });
   } catch (err) {
     logger.error({ err }, 'Print job card error');
-    res.status(500).json({ error: 'Failed to generate job card printout' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -72,12 +72,12 @@ printRouter.post('/:id/print', authenticate, (req, res) => {
 // afterwards via POST /:id/printed or POST /:id/saved.
 const validatePacket = [
   param('id').isString().trim().notEmpty(),
-  body('items').isArray({ max: MAX_PRINT_FILES }).withMessage('Too many items'),
+  body('items').isArray({ max: MAX_PRINT_FILES }).withMessage('Too many files were chosen at once. Choose fewer and try again.'),
   body('items.*.category').isString().isIn(Object.keys(CATEGORY_FOLDER))
-    .withMessage(`category must be one of: ${Object.keys(CATEGORY_FOLDER).join(', ')}`),
+    .withMessage('That kind of document isn\'t recognised. Reload the job and try again.'),
   body('items.*.filename').isString().notEmpty().custom((v) => {
     if (!isPlainFileName(v)) {
-      throw new Error('Invalid filename');
+      throw new Error('That file name can\'t be used. Rename the file and try again.');
     }
     return true;
   }),
@@ -91,7 +91,7 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
     const items = req.body.items || [];
     const includeJobCard = req.body.includeJobCard !== false; // default true
 
-    const jobcard = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const jobcard = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!jobcard) return;
 
     // Verify every requested name against the live folder listing — a name that
@@ -166,7 +166,7 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
       try {
         totalBytes += fs.statSync(filePath).size;
         if (totalBytes > MAX_PACKET_INPUT_BYTES) {
-          return res.status(413).json({ error: 'Selected files are too large to combine at once; print in smaller batches' });
+          return res.status(413).json({ error: 'The chosen files are too big to print together. Print them in smaller batches.' });
         }
         bytes = fs.readFileSync(filePath);
       } catch (readErr) {
@@ -187,7 +187,7 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
       // instead of a generic failure.
       if (/no usable pages/i.test(buildErr.message)) {
         return res.status(400).json({
-          error: 'None of the chosen documents could be combined',
+          error: 'None of the chosen documents could be combined into one print. Open them one at a time instead.',
           skipped: [...skipped, ...(buildErr.skipped || [])]
         });
       }
@@ -195,13 +195,13 @@ printRouter.post('/:id/packet', authenticate, validatePacket, async (req, res) =
     }
 
     if (pdf.length > MAX_PACKET_BYTES) {
-      return res.status(413).json({ error: 'Combined packet too large; print in smaller batches' });
+      return res.status(413).json({ error: 'The chosen files are too big to print together. Print them in smaller batches.' });
     }
 
     res.json({ pdf: pdf.toString('base64'), skipped: [...skipped, ...buildSkipped], cardIncluded });
   } catch (err) {
     logger.error({ err }, 'Build packet error');
-    res.status(500).json({ error: 'Failed to build combined packet' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -222,7 +222,7 @@ const validatePrinted = [
 printRouter.post('/:id/printed', authenticate, validatePrinted, (req, res) => {
   try {
     const { id } = req.params;
-    const jobcard = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const jobcard = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!jobcard) return;
 
     const userName = actorName(req);
@@ -243,7 +243,7 @@ printRouter.post('/:id/printed', authenticate, validatePrinted, (req, res) => {
     res.json({ printedAt: null });
   } catch (err) {
     logger.error({ err }, 'Record packet print error');
-    res.status(500).json({ error: 'Failed to record the print' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -261,7 +261,7 @@ const validateSaved = [
 printRouter.post('/:id/saved', authenticate, validateSaved, (req, res) => {
   try {
     const { id } = req.params;
-    const jobcard = findOr404(res, jobcardQueries.getById.get(id), 'Job card not found');
+    const jobcard = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!jobcard) return;
 
     recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
@@ -270,7 +270,7 @@ printRouter.post('/:id/saved', authenticate, validateSaved, (req, res) => {
     res.json({ recorded: true });
   } catch (err) {
     logger.error({ err }, 'Record packet save error');
-    res.status(500).json({ error: 'Failed to record the save' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 

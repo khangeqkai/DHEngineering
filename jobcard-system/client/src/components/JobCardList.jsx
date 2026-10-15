@@ -24,6 +24,7 @@ import useJobCardSort from '../hooks/useJobCardSort';
 import useJobCardColumnOrder from '../hooks/useJobCardColumnOrder';
 import useJobCardColumnVisibility from '../hooks/useJobCardColumnVisibility';
 import EmptyState from './common/EmptyState';
+import { displayName } from '../../../server/src/shared/names';
 import JobCardListFilters from './JobCardListFilters';
 import JobCardColumnsMenu from './JobCardColumnsMenu';
 import JobCardListTable from './JobCardListTable';
@@ -31,6 +32,7 @@ import JobCardListPagination from './JobCardListPagination';
 import { getJobCardColumns } from './JobCardListColumns';
 import {
   ACTIVE_FILTER_OPTIONS,
+  STATUS_LABELS,
   PAGE_SIZE,
   isJobOverdue
 } from './JobCardList.constants';
@@ -47,7 +49,7 @@ export default function JobCardList() {
     const valid = ACTIVE_FILTER_OPTIONS.some(o => o.value === paramFilter);
     return valid ? paramFilter : 'all';
   });
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => searchParams.get('q') || '');
   const [myJobsOnly, setMyJobsOnly] = useState(() => searchParams.get('mine') === '1');
   const [assigneeFilter, setAssigneeFilter] = useState(() => searchParams.get('assignee') || 'all');
   const [employees, setEmployees] = useState([]);
@@ -106,7 +108,7 @@ export default function JobCardList() {
         setJobcards([]);
         loadedViewRef.current = null;
       }
-      toast.error(err.message || 'Failed to load job cards', { id: 'load-jobcards-failed' });
+      toast.error(err.message || 'Couldn\'t load the job list. Try again in a moment.', { id: 'load-jobcards-failed' });
     } finally {
       if (requestId === loadRequestIdRef.current) {
         hasLoadedOnceRef.current = true;
@@ -136,7 +138,7 @@ export default function JobCardList() {
       if (err.status === 409 && err.data?.error === 'CONFIRM_DELETE') {
         const lines = describeWorkWarning(err.data.workWarning);
         const proceed = await showConfirm({
-          title: lines.length ? 'Job has recorded work' : 'Delete Job Card',
+          title: lines.length ? 'Job has recorded work' : 'Delete job card',
           message: lines.length ? (
             <span>
               {lines.map((l, i) => <span key={i}>{l}<br /></span>)}
@@ -153,37 +155,32 @@ export default function JobCardList() {
           await api.deleteJobcard(id, true);
           await loadJobcards();
         } catch (e2) {
-          toast.error(e2.message || 'Failed to delete job card', { id: 'delete-jobcard-failed' });
+          toast.error(e2.message || 'Couldn\'t delete the job card. Check the connection and try again.', { id: 'delete-jobcard-failed' });
           // A refusal (deleted, invoiced or changed from another PC) means this row
           // is stale — reload, same as a failed status change does.
           await loadJobcards();
         }
         return;
       }
-      toast.error(err.message || 'Failed to delete job card', { id: 'delete-jobcard-failed' });
+      toast.error(err.message || 'Couldn\'t delete the job card. Check the connection and try again.', { id: 'delete-jobcard-failed' });
       await loadJobcards();
     }
   };
 
+  // One click: the job goes straight back to the active list. (Delete keeps its
+  // question — it cannot be taken back.)
   const handleUnarchive = async (id) => {
-    const confirmed = await showConfirm({
-      title: 'Unarchive Job Card',
-      message: 'Are you sure you want to unarchive this job card? It will be restored to the active list.',
-      confirmLabel: 'Unarchive',
-      confirmVariant: 'warning'
-    });
-    if (!confirmed) return;
-
+    const jobNumber = jobcards.find(c => c.id === id)?.jobNumber;
     try {
       await api.unarchiveJobcard(id);
-      toast.success('Job card unarchived');
+      toast.success(jobNumber ? `Job ${jobNumber} restored` : 'Job restored');
       await loadJobcards();
       // An archived job is reported as checked-clean, and that answer is
       // remembered — so re-check it now that it's a working job again,
       // otherwise its missing-files marker stays off for the whole session.
       refreshMissingFiles([id]);
     } catch (err) {
-      toast.error(err.message || 'Failed to unarchive job card');
+      toast.error(err.message || 'Couldn\'t unarchive the job card. Check the connection and try again.');
       // Refused (already unarchived or deleted elsewhere) — the row is stale.
       await loadJobcards();
     }
@@ -200,6 +197,7 @@ export default function JobCardList() {
     // it reloads rather than trying to patch the row in place.
     await changeJobStatus({
       jobId: cardId,
+      jobNumber: jobcards.find(c => c.id === cardId)?.jobNumber ?? null,
       newStatus,
       showConfirm,
       onApplied: async (updated) => {
@@ -243,11 +241,28 @@ export default function JobCardList() {
     } catch (err) {
       // Stable id so a double-tap on the self-assign control replaces the
       // first failure toast instead of stacking a second one on top of it.
-      toast.error(err.message || 'Failed to update assignment', { id: 'assignment-update-failed' });
+      toast.error(err.message || 'Couldn\'t update the assignment. Check the connection and try again.', { id: 'assignment-update-failed' });
       // Refused (the job was invoiced or deleted elsewhere) — the row is stale.
       await loadJobcards();
     }
   }, [user, loadJobcards]);
+
+  // Management ticking one person on or off a job from the list's checklist.
+  const handleAssigneeToggle = useCallback(async (card, userId, isAssigned) => {
+    try {
+      const result = isAssigned
+        ? await api.unassignWorker(card.id, userId)
+        : await api.assignWorker(card.id, userId);
+      if (result?.assignees) {
+        setJobcards(prev => prev.map(c => c.id === card.id ? { ...c, assignees: result.assignees } : c));
+      } else {
+        await loadJobcards();
+      }
+    } catch (err) {
+      toast.error(err.message || 'Couldn\'t update the assignment. Check the connection and try again.', { id: 'assignment-update-failed' });
+      await loadJobcards();
+    }
+  }, [loadJobcards]);
 
   // A comment added or deleted in the job screen only changes that job's Latest
   // Comment cell, so patch the one row rather than re-fetching the whole list.
@@ -321,6 +336,11 @@ export default function JobCardList() {
     } else {
       params.set('assignee', assigneeFilter);
     }
+    if (search) {
+      params.set('q', search);
+    } else {
+      params.delete('q');
+    }
     if (myJobsOnly) {
       params.set('mine', '1');
     } else {
@@ -374,6 +394,27 @@ export default function JobCardList() {
     if (editingCardId) refreshMissingFiles([editingCardId]);
   };
 
+  // Everything currently narrowing the list, in words, for the empty message.
+  const activeFilterWords = [];
+  if (!showArchived) {
+    if (myJobsOnly) activeFilterWords.push('My jobs');
+    if (filter !== 'all') {
+      activeFilterWords.push(filter === 'OVERDUE' ? 'Overdue' : (STATUS_LABELS[filter] || filter));
+    }
+    if (canManage && assigneeFilter !== 'all') {
+      const emp = employees.find(e => e.id === assigneeFilter);
+      activeFilterWords.push(assigneeFilter === 'UNASSIGNED' ? 'Unassigned' : `Assigned to ${emp ? displayName(emp) : 'one person'}`);
+    }
+  }
+  if (search.trim()) activeFilterWords.push(`search "${search.trim()}"`);
+
+  const clearAllFilters = () => {
+    setFilter('all');
+    setMyJobsOnly(false);
+    setAssigneeFilter('all');
+    setSearch('');
+  };
+
   const columns = getJobCardColumns({
     user,
     canManage,
@@ -390,6 +431,8 @@ export default function JobCardList() {
     assignPopoverRef,
     setHoverNames,
     setHoverDesc,
+    employees,
+    handleAssigneeToggle,
     openEditModal,
     handleQuickStatusChange,
     handleSelfToggle,
@@ -421,7 +464,7 @@ export default function JobCardList() {
   const isColumnVisible = useCallback((id) => visibleColumnIds.has(id), [visibleColumnIds]);
 
   if (loading) {
-    return <div className="loading">Loading job cards...</div>;
+    return <div className="loading">Loading job cards…</div>;
   }
 
   return (
@@ -496,14 +539,18 @@ export default function JobCardList() {
                   icon="jobcards"
                   title="No job cards yet"
                   description="Create your first job card to get started."
-                  actionLabel={canManage ? 'New Job Card' : undefined}
+                  actionLabel={canManage ? 'New job card' : undefined}
                   onAction={canManage ? openCreateModal : undefined}
                 />
               ) : (
                 <EmptyState
                   icon="jobcards"
-                  title="No results"
-                  description="Try adjusting your search or filters."
+                  title="No jobs match"
+                  description={activeFilterWords.length
+                    ? `Filters on: ${activeFilterWords.join(' · ')}`
+                    : 'Try adjusting your search or filters.'}
+                  actionLabel={activeFilterWords.length ? 'Clear all filters' : undefined}
+                  onAction={activeFilterWords.length ? clearAllFilters : undefined}
                 />
               )
             ) : (
@@ -515,6 +562,7 @@ export default function JobCardList() {
                 sortDir={sortDir}
                 onSort={handleSort}
                 activeTimerJobcardId={activeTimerJobcardId}
+                onOpenJob={openEditModal}
                 handleDragStart={handleDragStart}
                 handleDragEnd={handleDragEnd}
                 handleDragOver={handleDragOver}

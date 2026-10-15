@@ -16,6 +16,7 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { isManagement } from '../../utils/roles';
 import { useModalLayer, isTopModal } from '../common/modalStack';
+import ConfirmDialog from '../common/ConfirmDialog';
 import './JobPaperworkHub.css';
 
 // One place for a job's paperwork: the generated job card plus the two file
@@ -40,6 +41,9 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
   const [pickMenuOpen, setPickMenuOpen] = useState(false); // per-part "Select all" menu (only when 2+ parts)
   const [cardPreview, setCardPreview] = useState(null); // generated job-card HTML, shown in the viewer
   const [cardPreviewLoading, setCardPreviewLoading] = useState(false);
+  // Set to 'back' or 'close' while the "Discard unsaved photos?" question is up, so the
+  // answer knows what the person was trying to leave.
+  const [discardAsk, setDiscardAsk] = useState(null);
   const pendingUploadCat = useRef(null);
   const fileInputRef = useRef(null);
   const overlayRef = useRef(null);
@@ -63,7 +67,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
     selected, cardTicked, setCardTicked, toggle,
     sectionState, toggleSection, selectedItems,
     totalFileCount, totalSelectable, tickedFileCount, tickedCount, overFileLimit, masterState,
-    selectAll, clearAll, toggleMaster, partFileKeys, selectPart, resetSelection,
+    selectAll, clearAll, toggleMaster, partFileKeys, selectPart,
     carryTickToRename, forgetFile
   } = usePaperworkSelection(files.filesByCategory);
 
@@ -101,14 +105,36 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
   const closeAll = useCallback(() => {
     camera.stopCamera();
     files.reset();
-    resetSelection();
+    // The ticks are deliberately kept (they live as long as the job window), so
+    // reopening shows the same selection.
     setPickMenuOpen(false);
+    setDiscardAsk(null);
     setCardPreview(null);
     setView('hub');
     setCameraCategory(null);
     setAttachTarget(null);
     setOpen(false);
-  }, [camera, files, resetSelection]);
+  }, [camera, files]);
+
+  // Leaving the camera view (Back, Escape) or closing the window while photos are
+  // still unsaved asks first — they can't be taken again later. Only Discard drops them.
+  const exitCamera = useCallback(() => {
+    camera.stopCamera();
+    setView('hub');
+    setCameraCategory(null);
+  }, [camera]);
+  const leaveCamera = useCallback(() => {
+    if (camera.photos.length > 0) setDiscardAsk('back'); else exitCamera();
+  }, [camera, exitCamera]);
+  const requestClose = useCallback(() => {
+    if (view === 'camera' && camera.photos.length > 0) setDiscardAsk('close'); else closeAll();
+  }, [view, camera, closeAll]);
+  const confirmDiscard = () => {
+    const wasClose = discardAsk === 'close';
+    camera.setPhotos([]);
+    setDiscardAsk(null);
+    if (wasClose) closeAll(); else exitCamera();
+  };
 
   // Escape to close + Tab to trap focus inside the overlay (keyboard users can't
   // tab out to the page behind it).
@@ -122,8 +148,10 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
         if (cardPreview) { setCardPreview(null); return; }
         if (files.viewerUrl) { files.closeViewer(); return; }
         if (files.lightboxPhoto) { files.closeLightbox(); return; }
-        if (view === 'camera') { camera.stopCamera(); setView('hub'); setCameraCategory(null); return; }
-        closeAll();
+        // Handled here, so nothing behind also reacts to this Escape.
+        e.preventDefault();
+        if (view === 'camera') { leaveCamera(); return; }
+        requestClose();
         return;
       }
       if (e.key === 'Tab' && overlayRef.current) {
@@ -145,7 +173,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, view, files, camera, closeAll, cardPreview, pickMenuOpen, modalId]);
+  }, [open, view, files, camera, requestClose, leaveCamera, cardPreview, pickMenuOpen, modalId]);
 
   // Move focus into the panel when it opens so Tab is trapped from the first press.
   useEffect(() => {
@@ -193,7 +221,6 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
     afterChange(cameraCategory);
     if (saved > 0 && failed === 0) clearTargetIfMatches(cameraCategory);
   };
-  const leaveCamera = () => { camera.stopCamera(); setView('hub'); setCameraCategory(null); };
 
   // Re-tag a file to a part (or whole-job) then refresh the per-part missing-file hints.
   // Re-tagging renames the file, so carry the row's current ticked/unticked state
@@ -230,9 +257,9 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
     try {
       const { html } = await api.printJobCard(jobcardId);
       if (html) setCardPreview(html);
-      else toast.error('Could not build the job card preview', { id: 'jobcard-preview-failed' });
+      else toast.error('Couldn\'t build the job card preview. Try again in a moment.', { id: 'jobcard-preview-failed' });
     } catch (err) {
-      toast.error(err.message || 'Could not build the job card preview', { id: 'jobcard-preview-failed' });
+      toast.error(err.message || 'Couldn\'t build the job card preview. Try again in a moment.', { id: 'jobcard-preview-failed' });
     } finally {
       setCardPreviewLoading(false);
     }
@@ -248,7 +275,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
         className="hub-row-toggle"
         onClick={() => setCardTicked(v => !v)}
         aria-pressed={cardTicked}
-        title={cardTicked ? 'Tap to leave the job card out' : 'Tap to add the job card'}
+        title={cardTicked ? 'Click to leave the job card out of the printout' : 'Click to include the job card in the printout'}
       >
         <PickCircle state={cardTicked} />
         <span className="hub-thumb"><FileStack size={18} /></span>
@@ -354,7 +381,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
 
       {open && createPortal(
         <div className="hub-overlay" ref={overlayRef} style={{ zIndex: layer }}>
-          <div className="hub-panel" role="dialog" aria-modal="true" aria-label="Job paperwork">
+          <div className="hub-panel" role="dialog" aria-modal="true" aria-label="Files">
             <div className="hub-head">
               {view === 'camera' ? (
                 <button type="button" className="hub-back" onClick={leaveCamera}><ArrowLeft size={16} /> Back</button>
@@ -362,12 +389,12 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
                 <div className="hub-title">
                   <span className="hub-title-badge"><FolderOpen size={20} /></span>
                   <span className="hub-title-text">
-                    <b>{jobNumber || 'Paperwork'}</b>
-                    <span>Paperwork</span>
+                    <b>{jobNumber || 'Files'}</b>
+                    <span>Files</span>
                   </span>
                 </div>
               )}
-              <button type="button" className="hub-close" onClick={closeAll} aria-label="Close paperwork"><X size={18} /></button>
+              <button type="button" className="hub-close" onClick={requestClose} aria-label="Close" title="Close"><X size={16} /></button>
             </div>
 
             {view === 'hub' && (
@@ -375,7 +402,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
                 {/* Toolbar: a plain-language line + one switch to pick or clear everything. */}
                 <div className="hub-toolbar">
                   <span className="hub-toolbar-count">
-                    <strong>{tickedCount}</strong> of {totalSelectable} documents selected
+                    <strong>{tickedCount}</strong> of {totalSelectable} {totalSelectable === 1 ? 'file' : 'files'} in the printout
                   </span>
                   {assignableParts.length >= 2 ? (
                     // More than one part: "Select all" opens a menu so you can pick
@@ -446,10 +473,10 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
                 <div className="hub-footer">
                   {overFileLimit ? (
                     <span className="hub-count hub-count-warn">
-                      Too many — untick {tickedFileCount - MAX_PACKET_FILES} (max {MAX_PACKET_FILES} files per packet)
+                      Too many — untick {tickedFileCount - MAX_PACKET_FILES} (max {MAX_PACKET_FILES} files per printout)
                     </span>
                   ) : (
-                    <span className="hub-count">{tickedCount === 0 ? 'Pick documents to print' : 'Combined into one printout'}</span>
+                    <span className="hub-count">{tickedCount === 0 ? 'Tick files to print' : 'Combined into one printout'}</span>
                   )}
                   <div className="hub-footer-actions">
                     <button type="button" className="btn btn-secondary" onClick={savePacket} disabled={packet.building || tickedCount === 0 || overFileLimit}>
@@ -474,21 +501,32 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
             )}
           </div>
 
+          <ConfirmDialog
+            isOpen={discardAsk !== null}
+            title={`Discard ${camera.photos.length} unsaved ${camera.photos.length === 1 ? 'photo' : 'photos'}?`}
+            message="They can't be taken again later."
+            cancelLabel="Keep taking photos"
+            confirmLabel="Discard photos"
+            confirmVariant="danger"
+            onCancel={() => setDiscardAsk(null)}
+            onConfirm={confirmDiscard}
+          />
+
           {files.lightboxPhoto && (
             <div className="hub-lightbox">
-              <button type="button" className="hub-lightbox-close" onClick={files.closeLightbox} aria-label="Close photo"><X size={24} /></button>
+              <button type="button" className="hub-lightbox-close" onClick={files.closeLightbox} aria-label="Close photo" title="Close"><X size={24} /></button>
               <img src={files.lightboxPhoto} alt="Full size" />
             </div>
           )}
           {files.viewerUrl && (
             <div className="hub-doc-viewer">
-              <button type="button" className="hub-lightbox-close" onClick={files.closeViewer} aria-label="Close document"><X size={24} /></button>
+              <button type="button" className="hub-lightbox-close" onClick={files.closeViewer} aria-label="Close document" title="Close"><X size={24} /></button>
               <iframe src={files.viewerUrl} className="hub-doc-frame" title="Document viewer" />
             </div>
           )}
           {cardPreview && (
             <div className="hub-doc-viewer">
-              <button type="button" className="hub-lightbox-close" onClick={() => setCardPreview(null)} aria-label="Close preview"><X size={24} /></button>
+              <button type="button" className="hub-lightbox-close" onClick={() => setCardPreview(null)} aria-label="Close preview" title="Close"><X size={24} /></button>
               <iframe srcDoc={cardPreview} className="hub-doc-frame" title="Job card preview" />
             </div>
           )}

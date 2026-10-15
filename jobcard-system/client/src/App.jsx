@@ -29,7 +29,7 @@ function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">Loading…</div>;
   }
 
   return user ? children : <Navigate to="/login" replace />;
@@ -42,7 +42,7 @@ function SignedOutRoute({ children }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">Loading…</div>;
   }
 
   return user ? <Navigate to="/" replace /> : children;
@@ -55,7 +55,7 @@ function PermissionRoute({ permission, children }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">Loading…</div>;
   }
 
   if (!user) {
@@ -76,7 +76,7 @@ function ManagementRoute({ children }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">Loading…</div>;
   }
 
   if (!user) {
@@ -177,12 +177,19 @@ function App() {
               </ManagementRoute>
             }
           />
-          <Route path="equipment" element={<Navigate to="/tags" replace />} />
+          <Route
+            path="equipment"
+            element={
+              <ManagementRoute>
+                <TagManagement key="equipment" mode="equipment" />
+              </ManagementRoute>
+            }
+          />
           <Route
             path="tags"
             element={
               <ManagementRoute>
-                <TagManagement />
+                <TagManagement key="options" mode="options" />
               </ManagementRoute>
             }
           />

@@ -52,9 +52,9 @@ export default function DetailsReadOnlyView({
         </div>
       )}
 
-      {/* Customer Input — inline strip */}
+      {/* References — inline strip */}
       <div className="form-section">
-        <h3 className="form-section-title">Customer Input</h3>
+        <h3 className="form-section-title">References</h3>
         <div className="customer-input-strip">
           <div className="cis-item">
             <span className="cis-label">Quality</span>
@@ -68,7 +68,7 @@ export default function DetailsReadOnlyView({
           )}
           {formData.quoteReference && (
             <div className="cis-item">
-              <span className="cis-label">Quote Ref</span>
+              <span className="cis-label">Quote Reference</span>
               <span className="cis-value">{formData.quoteReference}</span>
             </div>
           )}

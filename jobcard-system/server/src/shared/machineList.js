@@ -8,7 +8,7 @@
 // checks (server and the Equipment form) refuse it using this same constant, so the
 // rule and the split can't drift apart.
 const MACHINE_SEPARATOR = ',';
-const MACHINE_SEPARATOR_MESSAGE = 'Machine number cannot contain a comma (commas separate machines in logged work)';
+const MACHINE_SEPARATOR_MESSAGE = "A machine number can't contain a comma. Remove it.";
 
 // Split on comma, trim, drop blanks. Never touches an already-empty/undefined value.
 function splitMachineCodes(raw) {

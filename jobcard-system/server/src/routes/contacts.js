@@ -14,7 +14,7 @@ const { refuseField } = require('./name-conflict');
 // Any one of the three is enough — a front desk with only a phone number is a
 // fair entry — but a person with none of them would be an "Unnamed" nobody offered
 // on every new job (and picked for it automatically when they're the only one).
-const BLANK_PERSON_MESSAGE = 'Enter a name, phone or email';
+const BLANK_PERSON_MESSAGE = 'Enter a name, phone number or email for this person.';
 const isBlankPerson = (...values) => values.every(v => !v || !String(v).trim());
 
 const router = express.Router();
@@ -37,10 +37,10 @@ router.post('/', requireManagement, validateCreateContact, (req, res) => {
 
     const company = companyQueries.getById.get(companyId);
     if (!company) {
-      return res.status(400).json({ error: 'Pick a company for this person first' });
+      return res.status(400).json({ error: 'Pick the customer this person works for.' });
     }
     if (company.archived) {
-      return res.status(409).json({ error: 'That customer is archived. Restore it before adding people.' });
+      return res.status(409).json({ error: 'That customer is archived. Restore the customer first, then add people.' });
     }
 
     const id = uuidv4();
@@ -60,7 +60,7 @@ router.post('/', requireManagement, validateCreateContact, (req, res) => {
     res.status(201).json(toApiFormat(contact));
   } catch (err) {
     logger.error({ err }, 'Failed to create contact');
-    res.status(500).json({ error: 'Failed to create contact' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -70,7 +70,7 @@ router.post('/', requireManagement, validateCreateContact, (req, res) => {
 router.put('/:id', requireManagement, validateUpdateContact, (req, res) => {
   try {
     const { id } = req.params;
-    const existing = findOr404(res, contactQueries.getById.get(id), 'Contact not found');
+    const existing = findOr404(res, contactQueries.getById.get(id), "That person couldn't be found. They may have been removed.");
     if (!existing) return;
 
     // A field left out of the request keeps the stored value; only a sent one
@@ -102,7 +102,7 @@ router.put('/:id', requireManagement, validateUpdateContact, (req, res) => {
     res.json(toApiFormat(contact));
   } catch (err) {
     logger.error({ err }, 'Failed to update contact');
-    res.status(500).json({ error: 'Failed to update contact' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -113,7 +113,7 @@ router.post('/:id/archive', requireManagement, (req, res) => {
   setArchived(req, res, {
     entityType: 'contact',
     load: () => contactQueries.getById.get(id),
-    notFound: 'Contact not found',
+    notFound: "That person couldn't be found. They may have been removed.",
     isArchived: (row) => Boolean(row.archived),
     archive: true,
     write: (row) => contactQueries.archive.run(row.id),
@@ -128,7 +128,7 @@ router.post('/:id/unarchive', requireManagement, (req, res) => {
   setArchived(req, res, {
     entityType: 'contact',
     load: () => contactQueries.getById.get(id),
-    notFound: 'Contact not found',
+    notFound: "That person couldn't be found. They may have been removed.",
     isArchived: (row) => Boolean(row.archived),
     archive: false,
     write: (row) => contactQueries.unarchive.run(row.id),

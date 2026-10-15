@@ -12,7 +12,7 @@ export function readFileAsBase64(file) {
       const result = reader.result || '';
       resolve(String(result).replace(/^data:[^;]*;base64,/, ''));
     };
-    reader.onerror = () => reject(reader.error || new Error('Failed to read file'));
+    reader.onerror = () => reject(reader.error || new Error('Couldn\'t read the file. Choose it again and try again.'));
     reader.readAsDataURL(file);
   });
 }

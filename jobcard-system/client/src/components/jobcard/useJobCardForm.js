@@ -212,10 +212,24 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed, isWindow
   }, []);
 
   // Line Items handlers
-  const addLineItem = useCallback(() => {
+  // `copyOf` makes a duplicate: the new part takes the job type, description, material,
+  // services, drawing and customer-property answers of the part it copies, and leaves
+  // the quantity blank (a duplicate is for a different quantity). Either way the new
+  // row is a local row, and becomes real through the same create path as any other.
+  const addLineItem = useCallback((copyOf = null) => {
     setLineItems(prev => {
       const nextNum = prev.length > 0 ? Math.max(...prev.map(i => i.itemNumber)) + 1 : 1;
-      return [...prev, makeEmptyLineItem(nextNum)];
+      const fresh = makeEmptyLineItem(nextNum);
+      if (!copyOf) return [...prev, fresh];
+      return [...prev, {
+        ...fresh,
+        description: copyOf.description || '',
+        jobType: copyOf.jobType || '',
+        material: copyOf.material || '',
+        treatments: (copyOf.treatments || []).map(t => ({ ...t })),
+        drawingsType: copyOf.drawingsType || '',
+        customerProperty: copyOf.customerProperty || ''
+      }];
     });
   }, []);
 

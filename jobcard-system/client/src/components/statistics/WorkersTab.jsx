@@ -1,5 +1,13 @@
 import { Users } from 'lucide-react';
+import { pluralize } from '../../utils/formatters';
 import DataTable from '../common/DataTable';
+
+const TIERS = [
+  { key: 'normal', label: 'Normal' },
+  { key: 'ot1', label: 'Overtime 1' },
+  { key: 'ot2', label: 'Overtime 2' },
+  { key: 'holiday', label: 'Holiday' }
+];
 
 export default function WorkersTab({ workerLeaderboard = [], loading = false }) {
   return (
@@ -8,24 +16,23 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
         <div className="stats-card-header">
           <div className="stats-card-title">
             <Users size={18} />
-            <span>Worker Hours &amp; Shift Leaderboard</span>
+            <span>Hours by worker</span>
           </div>
           <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
-            Overtime split according to job captured schedule &amp; holidays
+            Hours are sorted into normal and overtime using the weekly schedule and public holidays.
           </span>
+        </div>
+        <div className="tier-legend" role="list" aria-label="Hours colours">
+          {TIERS.map((t) => (
+            <span className="tier-legend-item" role="listitem" key={t.key}>
+              <span className={`tier-swatch ${t.key}`} />
+              {t.label}
+            </span>
+          ))}
         </div>
         <div className="stats-card-body" style={{ padding: 0 }}>
           <DataTable
             columns={[
-              {
-                key: 'rank',
-                label: 'Rank',
-                render: (val, row) => {
-                  const rank = val || row?.rank || 1;
-                  const badgeClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
-                  return <span className={`worker-rank-badge ${badgeClass}`}>{rank}</span>;
-                }
-              },
               {
                 key: 'userName',
                 label: 'Worker Name',
@@ -43,32 +50,32 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
               },
               {
                 key: 'totalHours',
-                label: 'Hours Worked',
+                label: 'Hours worked',
                 align: 'right',
                 sortable: true,
                 render: (val, row) => (
                   <div>
-                    <strong style={{ fontFamily: 'var(--font-mono)' }}>{val}h</strong>
+                    <strong style={{ fontFamily: 'var(--font-mono)' }}>{val} h</strong>
                     <div className="hours-progress-bar">
                       <div
                         className="hours-progress-segment normal"
                         style={{ width: `${val > 0 ? (row.normalHours / val) * 100 : 100}%` }}
-                        title={`Normal: ${row.normalHours}h`}
+                        title={`Normal: ${row.normalHours} h`}
                       />
                       <div
                         className="hours-progress-segment ot1"
                         style={{ width: `${val > 0 ? (row.ot1Hours / val) * 100 : 0}%` }}
-                        title={`OT1: ${row.ot1Hours}h`}
+                        title={`Overtime 1: ${row.ot1Hours} h`}
                       />
                       <div
                         className="hours-progress-segment ot2"
                         style={{ width: `${val > 0 ? (row.ot2Hours / val) * 100 : 0}%` }}
-                        title={`OT2: ${row.ot2Hours}h`}
+                        title={`Overtime 2: ${row.ot2Hours} h`}
                       />
                       <div
                         className="hours-progress-segment holiday"
                         style={{ width: `${val > 0 ? (row.holidayHours / val) * 100 : 0}%` }}
-                        title={`Holiday: ${row.holidayHours}h`}
+                        title={`Holiday: ${row.holidayHours} h`}
                       />
                     </div>
                   </div>
@@ -79,7 +86,7 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
                 label: 'Normal Hours',
                 align: 'right',
                 sortable: true,
-                render: (val) => <span className="tier-tag normal">{val}h</span>
+                render: (val) => <span className="tier-tag normal">{val} h</span>
               },
               {
                 key: 'totalOtHours',
@@ -90,12 +97,12 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-1)', flexWrap: 'wrap' }}>
                     {val > 0 ? (
                       <>
-                        {row.ot1Hours > 0 && <span className="tier-tag ot">OT1: {row.ot1Hours}h</span>}
-                        {row.ot2Hours > 0 && <span className="tier-tag ot">OT2: {row.ot2Hours}h</span>}
-                        {row.holidayHours > 0 && <span className="tier-tag holiday">Holiday: {row.holidayHours}h</span>}
+                        {row.ot1Hours > 0 && <span className="tier-tag ot1">Overtime 1: {row.ot1Hours} h</span>}
+                        {row.ot2Hours > 0 && <span className="tier-tag ot2">Overtime 2: {row.ot2Hours} h</span>}
+                        {row.holidayHours > 0 && <span className="tier-tag holiday">Holiday: {row.holidayHours} h</span>}
                       </>
                     ) : (
-                      <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-xs)' }}>0h OT</span>
+                      <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-xs)' }}>0 h</span>
                     )}
                   </div>
                 )
@@ -105,7 +112,7 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
                 label: 'Jobs Worked On',
                 align: 'right',
                 sortable: true,
-                render: (val) => <span>{val} jobs</span>
+                render: (val) => <span>{pluralize(val, 'job')}</span>
               },
               {
                 key: 'partsProduced',
@@ -137,11 +144,11 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
             loading={loading}
             searchable
             searchKeys={['userName', 'employeeId', 'username']}
-            searchPlaceholder="Search worker by name or ID..."
+            searchPlaceholder="Search worker by name or ID…"
             emptyState={{
               icon: 'users',
               title: 'No worker time logged',
-              description: 'Logged time entries in this period will rank workers here.'
+              description: 'Logged time entries in this period will show here, worker by worker.'
             }}
           />
         </div>

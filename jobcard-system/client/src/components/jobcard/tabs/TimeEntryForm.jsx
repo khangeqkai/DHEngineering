@@ -66,12 +66,12 @@ export default function TimeEntryForm({
 
   // Same idea for machines: a machine ticked on this entry may since have been
   // archived, so it won't be in the active `machines` list passed in. Add it
-  // back into the picker's options, labelled "(retired)", so it can still be
+  // back into the picker's options, labelled "(archived)", so it can still be
   // seen and unticked — but only that one; an archived machine not already on
   // this entry is never offered.
   // Capitals don't matter when matching a stored number to a machine: a number
   // saved as "cnc-01" and since re-saved as "CNC-01" is still the same working
-  // machine, so it is ticked under that machine's own entry, not as "(retired)".
+  // machine, so it is ticked under that machine's own entry, not as "(archived)".
   const activeMachines = machines.filter(m => m.active !== 0 && m.active !== false);
   const sameNumber = (m, v) => String(m.machineNumber).toLowerCase() === v.toLowerCase();
   const selectedMachineValues = splitMachineCodes(timeEntryForm.machineNumber).map(v => {
@@ -91,7 +91,7 @@ export default function TimeEntryForm({
       const retired = machines.find(m => sameNumber(m, v));
       return {
         value: v,
-        label: `${v} (retired)`,
+        label: `${v} (archived)`,
         sublabel: retired?.name || undefined
       };
     })
@@ -137,7 +137,7 @@ export default function TimeEntryForm({
       <fieldset className="form-save-lock" disabled={lockedHere}>
       <div className="form-section-header">
         <h3 className="form-section-title">
-          {editingTimeEntryId ? 'Edit Time Entry' : 'New Time Entry'}
+          {editingTimeEntryId ? 'Edit time entry' : 'New time entry'}
         </h3>
         <button type="button" className="btn btn-secondary btn-sm" onClick={resetTimeEntryForm}>
           Cancel
@@ -154,7 +154,7 @@ export default function TimeEntryForm({
           aria-invalid={errorFor('workerId') ? true : undefined}
           aria-describedby={errorFor('workerId') ? errorIdFor('workerId') : undefined}
         >
-          <option value="">Select worker...</option>
+          <option value="">Select worker…</option>
           {workerOptions.map(u => (
             <option key={u.id} value={u.id}>{displayName(u)}</option>
           ))}
@@ -190,7 +190,7 @@ export default function TimeEntryForm({
           <label>Machines</label>
           <CheckboxDropdown
             ariaLabel="Machines used"
-            placeholder="Select machines..."
+            placeholder="Select machines…"
             options={machineOptions}
             selectedValues={selectedMachineValues}
             onToggle={(value) => {
@@ -344,7 +344,7 @@ export default function TimeEntryForm({
       </div>
 
       <button type="button" className="btn btn-primary" ref={saveButtonRef} onClick={handleSave} disabled={saving}>
-        {saving ? 'Saving…' : editingTimeEntryId ? 'Update Entry' : 'Save Entry'}
+        {saving ? 'Saving…' : editingTimeEntryId ? 'Update entry' : 'Save entry'}
       </button>
       </fieldset>
     </div>

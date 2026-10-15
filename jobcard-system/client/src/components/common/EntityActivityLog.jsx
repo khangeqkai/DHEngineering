@@ -91,7 +91,7 @@ export default function EntityActivityLog({ entityType, isOpen, onClose, refresh
       setTotalPages(result.totalPages);
       setPage(result.page);
     } catch (err) {
-      if (isLatest()) toast.error('Failed to load activity history');
+      if (isLatest()) toast.error('Couldn\'t load the activity history. Try again in a moment.');
     } finally {
       if (isLatest()) setLoading(false);
     }
@@ -133,7 +133,7 @@ export default function EntityActivityLog({ entityType, isOpen, onClose, refresh
     >
       <div className="eal-modal">
         {loading ? (
-          <div className="eal-status">Loading...</div>
+          <div className="eal-status">Loading…</div>
         ) : history.length === 0 ? (
           <div className="eal-status">No activity recorded.</div>
         ) : (

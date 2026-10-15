@@ -41,7 +41,7 @@ router.get('/', requireManagement, (req, res) => {
     res.json(companies);
   } catch (err) {
     logger.error({ err }, 'Failed to get companies');
-    res.status(500).json({ error: 'Failed to get companies' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -78,7 +78,7 @@ router.post('/', requireManagement, validateCreateCompany, (req, res) => {
     res.status(201).json(toApiFormat(company));
   } catch (err) {
     logger.error({ err }, 'Failed to create company');
-    res.status(500).json({ error: 'Failed to create company' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -87,7 +87,7 @@ router.put('/:id', requireManagement, validateUpdateCompany, (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = findOr404(res, companyQueries.getById.get(id), 'Company not found');
+    const existing = findOr404(res, companyQueries.getById.get(id), "That customer couldn't be found. It may have been removed.");
     if (!existing) return;
 
     // A field left out of the request keeps the stored value; only a sent one
@@ -131,7 +131,7 @@ router.put('/:id', requireManagement, validateUpdateCompany, (req, res) => {
     res.json(toApiFormat(company));
   } catch (err) {
     logger.error({ err }, 'Failed to update company');
-    res.status(500).json({ error: 'Failed to update company' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -143,7 +143,7 @@ router.post('/:id/archive', requireManagement, (req, res) => {
   setArchived(req, res, {
     entityType: 'company',
     load: () => companyQueries.getById.get(id),
-    notFound: 'Company not found',
+    notFound: "That customer couldn't be found. It may have been removed.",
     isArchived: (row) => Boolean(row.archived),
     archive: true,
     write: (row) => companyQueries.archive.run(row.id),
@@ -158,7 +158,7 @@ router.post('/:id/unarchive', requireManagement, (req, res) => {
   setArchived(req, res, {
     entityType: 'company',
     load: () => companyQueries.getById.get(id),
-    notFound: 'Company not found',
+    notFound: "That customer couldn't be found. It may have been removed.",
     isArchived: (row) => Boolean(row.archived),
     archive: false,
     write: (row) => companyQueries.unarchive.run(row.id),

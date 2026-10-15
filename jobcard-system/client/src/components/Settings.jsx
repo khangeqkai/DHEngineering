@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import PageHeader from './common/PageHeader';
 import BottomSheet from './common/BottomSheet';
+import ConfirmDialog from './common/ConfirmDialog';
 import Spinner from './common/Spinner';
 import { useSettings } from '../hooks/useSettings';
 import SecurityCard from './settings/SecurityCard';
@@ -97,7 +98,7 @@ export default function Settings() {
           <>
             <div className="card">
               <div className="card-header">
-                <h2>Application Info</h2>
+                <h2>Application info</h2>
               </div>
               <div className="card-body">
                 <dl className="info-list">
@@ -105,14 +106,19 @@ export default function Settings() {
                     <dt>Version</dt>
                     <dd>{s.appInfo?.version || 'Development'}</dd>
                   </div>
-                  <div className="info-item">
-                    <dt>Platform</dt>
-                    <dd>{s.appInfo?.platform || navigator.platform}</dd>
-                  </div>
-                  <div className="info-item">
-                    <dt>Architecture</dt>
-                    <dd>{s.appInfo?.arch || 'N/A'}</dd>
-                  </div>
+                  {/* Technical detail about this computer: administrators only. */}
+                  {s.canSeeSystemData && (
+                    <>
+                      <div className="info-item">
+                        <dt>Platform</dt>
+                        <dd>{s.appInfo?.platform || navigator.platform}</dd>
+                      </div>
+                      <div className="info-item">
+                        <dt>Architecture</dt>
+                        <dd>{s.appInfo?.arch || 'N/A'}</dd>
+                      </div>
+                    </>
+                  )}
                   <div className="info-item">
                     <dt>Mode</dt>
                     <dd>{s.appInfo?.isDev ? 'Development' : 'Production'}</dd>
@@ -123,7 +129,7 @@ export default function Settings() {
 
             <div className="card">
               <div className="card-header">
-                <h2>Current User</h2>
+                <h2>Current user</h2>
               </div>
               <div className="card-body">
                 <dl className="info-list">
@@ -145,7 +151,7 @@ export default function Settings() {
 
             <div className="card full-width">
               <div className="card-header">
-                <h2>Available Printers</h2>
+                <h2>Available printers</h2>
               </div>
               <div className="card-body">
                 {s.loadingPrinters ? (
@@ -213,7 +219,7 @@ export default function Settings() {
         {s.canManage && (
           <div className="card full-width">
             <div className="card-header">
-              <h2>Server Connection</h2>
+              <h2>Server connection</h2>
             </div>
             <div className="card-body">
               <dl className="info-list">
@@ -351,46 +357,45 @@ export default function Settings() {
             className="btn btn-primary"
             disabled={s.savingPassword || !s.currentPassword || !s.newPassword || !s.confirmPassword}
           >
-            {s.savingPassword ? 'Changing...' : 'Change PIN'}
+            {s.savingPassword ? 'Changing…' : 'Change PIN'}
           </button>
         </BottomSheet.Footer>
       </BottomSheet>
 
+      <ConfirmDialog
+        isOpen={s.confirmDialog.dialogState.isOpen}
+        title={s.confirmDialog.dialogState.title}
+        message={s.confirmDialog.dialogState.message}
+        confirmLabel={s.confirmDialog.dialogState.confirmLabel}
+        cancelLabel={s.confirmDialog.dialogState.cancelLabel}
+        confirmVariant={s.confirmDialog.dialogState.confirmVariant}
+        onConfirm={s.confirmDialog.handleConfirm}
+        onCancel={s.confirmDialog.handleCancel}
+      />
+
+      {/* A backup that was saved but left something out: a window to read and act on, not a toast. */}
       <BottomSheet
-        isOpen={s.showImportConfirm}
-        onClose={s.handleCancelImport}
-        title="Confirm Import"
+        isOpen={!!s.backupGaps}
+        onClose={s.dismissBackupGaps}
+        title="Backup saved with gaps"
         size="small"
       >
         <BottomSheet.Body>
-          <p className="settings-note">
-            This will REPLACE all current data with the backup contents:
-          </p>
-          <ul className="settings-note-list">
-            <li>All database records (job cards, contacts, users, etc.)</li>
-            <li>All job folder files (drawings, photos, scanned documents, etc.)</li>
-          </ul>
-          <p className="settings-note">
-            Everyone will be signed out and the app will reload when it finishes.
-          </p>
-          <p className="settings-note settings-note--danger">
-            This cannot be undone.
-          </p>
+          <p className="settings-note">{s.backupGaps?.intro}</p>
+          {s.backupGaps?.items.length > 0 && (
+            <ul className="settings-gap-list">
+              {s.backupGaps.items.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+          )}
         </BottomSheet.Body>
         <BottomSheet.Footer>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={s.handleCancelImport}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="btn btn-danger"
-            onClick={s.handleConfirmImport}
-          >
-            Import and Replace All Data
+          {s.backupGaps?.items.length > 0 && (
+            <button type="button" className="btn btn-secondary" onClick={s.copyBackupGaps}>
+              Copy list
+            </button>
+          )}
+          <button type="button" className="btn btn-primary" onClick={s.dismissBackupGaps}>
+            OK
           </button>
         </BottomSheet.Footer>
       </BottomSheet>
@@ -409,7 +414,7 @@ export default function Settings() {
           <Spinner size={40} />
           <h2>Restoring…</h2>
           <p id="restore-overlay-desc">
-            Please wait and don't close the app. The screen will return to the login page when it's done.
+            Please wait and don't close the app. The screen will return to the sign-in page when it's done.
           </p>
         </div>
       )}

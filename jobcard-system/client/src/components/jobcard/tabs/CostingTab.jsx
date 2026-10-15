@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Info } from 'lucide-react';
+import { Info, Lock } from 'lucide-react';
 import CostingBreakdown from './CostingBreakdown';
 import FieldError from '../../common/FieldError';
 import { formatMoney } from '../../../utils/formatters';
@@ -76,18 +76,18 @@ export default function CostingTab({
       <div className="modal-form-grid">
         <div className="costing-sheet">
           <div className="costing-sheet-header">
-            <h3 className="costing-sheet-title">Job costing</h3>
+            <h3 className="costing-sheet-title">Costing</h3>
           </div>
           <div className="costing-placeholder">
             {loadFailed ? (
               <>
-                <p>This job's pricing couldn't be loaded, so it can't be changed right now.</p>
+                <p>This job's costing couldn't be loaded, so it can't be changed right now.</p>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => onRetryLoad?.()}>
                   Try again
                 </button>
               </>
             ) : (
-              <p>Loading pricing…</p>
+              <p>Loading costing…</p>
             )}
           </div>
         </div>
@@ -137,7 +137,8 @@ export default function CostingTab({
     if (Number(current) === Number(opened)) return null;
     return (
       <span className="ledger-field-opening ledger-field-revert">
-        opened at {REVERT_FORMAT[name](opened)}
+        Was {REVERT_FORMAT[name](opened)} when you opened this job
+        {' · '}
         <button
           type="button"
           className="btn-link"
@@ -216,8 +217,8 @@ export default function CostingTab({
     return (
       <div className={`tier-row${t.overridden ? ' tier-row--edited' : ''}`} key={t.hoursName}>
         <span className="tier-when">
-          {rowEdited && <span className="tier-dot" aria-hidden="true" />}
           {t.label}
+          {rowEdited && <span className="tier-edited-tag">edited</span>}
         </span>
         <span className="tier-mult-cell">
           {t.multName ? (
@@ -237,16 +238,6 @@ export default function CostingTab({
                   {...costingFieldProps(t.multName)}
                 />
               </span>
-              {t.multOverridden && (
-                <button
-                  type="button"
-                  className="tier-auto"
-                  title="Reset to the company-wide multiplier"
-                  onClick={() => resetTierMultiplier(t.tierKey)}
-                >
-                  standard ×{mult(t.multCalculated)}
-                </button>
-              )}
               <FieldError message={multError} {...costingErrorProps(t.multName)} />
             </span>
           ) : (
@@ -269,20 +260,24 @@ export default function CostingTab({
             aria-label={`${t.label} hours`}
             {...costingFieldProps(t.hoursName)}
           />
-          {t.overridden && (
-            <button
-              type="button"
-              className="tier-auto"
-              title="Reset to the hours from logged time"
-              onClick={() => resetTierHours(t.tierKey)}
-            >
-              logged {Number(t.calculated) || 0}
-            </button>
-          )}
           <FieldError message={hoursError} {...costingErrorProps(t.hoursName)} />
         </span>
         <span className="tier-rate">{formatMoney(derivedRate)}</span>
         <span className="tier-amount">{formatMoney(t.total)}</span>
+        {rowEdited && (
+          <span className="tier-fixes">
+            {t.overridden && (
+              <button type="button" className="btn-link" onClick={() => resetTierHours(t.tierKey)}>
+                Back to logged time ({Number(t.calculated) || 0} h)
+              </button>
+            )}
+            {t.multOverridden && (
+              <button type="button" className="btn-link" onClick={() => resetTierMultiplier(t.tierKey)}>
+                Back to the company multiplier (×{mult(t.multCalculated)})
+              </button>
+            )}
+          </span>
+        )}
       </div>
     );
   };
@@ -316,7 +311,7 @@ export default function CostingTab({
       <div className="costing-sheet" onKeyDown={saveOnEnter} onBlur={saveOnLeavingBox}>
         {/* Sticky top bar: the grand total stays on screen while the sheet is scrolled */}
         <div className="costing-sheet-header">
-          <h3 className="costing-sheet-title">Job costing</h3>
+          <h3 className="costing-sheet-title">Costing</h3>
           <button
             type="button"
             className={`costing-info-btn${showBreakdown ? ' costing-info-btn--on' : ''}`}
@@ -343,6 +338,13 @@ export default function CostingTab({
             </span>
           )}
         </div>
+
+        {locked && (
+          <div className="costing-locked">
+            <Lock size={14} />
+            <span>This job is invoiced. Unarchive it to change the pricing.</span>
+          </div>
+        )}
 
         {showBreakdown && (
           <CostingBreakdown lineItems={lineItems} timeEntries={timeEntries} machines={machines} />
@@ -399,19 +401,23 @@ export default function CostingTab({
           <div className="tier-table" role="table" aria-label="Labour by when it was worked">
             <div className="tier-head" role="row">
               <span role="columnheader">When worked</span>
-              <span role="columnheader">Mult</span>
+              <span role="columnheader">Multiplier</span>
               <span role="columnheader">Hours</span>
               <span role="columnheader">Rate / hr</span>
               <span role="columnheader">Amount</span>
             </div>
             {tiers.map(tierRow)}
           </div>
+          <p className="tier-help">
+            The multiplier is how many times the base rate an hour is charged at: normally ×1.00 for ordinary
+            hours, rising through the overtime steps to ×2.50 on a public holiday. The overtime ones can be changed for this job alone.
+          </p>
 
           <div className="tier-foot">
             <span>Hours are split from logged time.</span>
             {anyOverridden && (
               <span className="tier-foot-edited">
-                <span className="tier-dot" aria-hidden="true" /> Manually edited
+                Some figures were edited by hand
                 {' · '}
                 <button type="button" className="btn-link" onClick={resetAllLabour}>Reset all to auto</button>
               </span>
@@ -499,6 +505,15 @@ export default function CostingTab({
             {costNote('subcontractorDescription', 'e.g. Hard chrome plating and freight both ways')}
           </div>
         </div>
+
+        {/* What the grand total in the header adds up. Same figures as the lines above. */}
+        <dl className="costing-summary" aria-label="What the grand total adds up">
+          <div className="costing-summary-row"><dt>Labour</dt><dd>{formatMoney(labourSubtotal)}</dd></div>
+          <div className="costing-summary-row"><dt>Special labour</dt><dd>{formatMoney(totals.labourSpecialTotal)}</dd></div>
+          <div className="costing-summary-row"><dt>Materials</dt><dd>{formatMoney(totals.materialsTotal)}</dd></div>
+          <div className="costing-summary-row"><dt>Subcontractor</dt><dd>{formatMoney(totals.subcontractorTotal)}</dd></div>
+          <div className="costing-summary-row costing-summary-row--grand"><dt>Grand total</dt><dd>{formatMoney(totals.grandTotal)}</dd></div>
+        </dl>
         </fieldset>
       </div>
     </div>

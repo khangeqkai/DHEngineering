@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { Calendar, ChevronDown } from 'lucide-react';
+import { getInitials, getAvatarColor } from '../../utils/initials';
+import { isCriticalLevel } from '../../../../server/src/shared/qualityLevels';
 import CalendarPicker from '../common/CalendarPicker';
 import { capitalizeFirst, formatDate } from '../../utils/formatters';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from './constants';
@@ -10,8 +12,13 @@ import { changeJobStatus } from './changeJobStatus';
 import { summarizeFieldStates, INSTANT_SAVE_STATUS_TEXT } from './useInstantSave';
 import { jobFieldMessage } from './fieldRules.mjs';
 import FieldError from '../common/FieldError';
+import PriorityLevel from '../common/PriorityLevel';
 import { isJobClosed } from '../../utils/jobLock';
 
+// Same Day Service keeps its lime dot; every other priority carries the level bar.
+const levelMark = (value) => (value === 'SAME_DAY'
+  ? <span className="jc-strip-priority-dot" aria-hidden="true" />
+  : <PriorityLevel priority={value} />);
 const PRIORITY_VALUES = PRIORITY_OPTIONS.map(p => p.value);
 
 export default function JobIdentityStrip({
@@ -49,7 +56,13 @@ export default function JobIdentityStrip({
   onJobClosed,
   // Re-reads the whole job. A status change that closes the job (invoicing
   // archives it) calls this, so the screen picks up the archived flag and locks.
-  onReload
+  onReload,
+  // The strip's second line: who the job is for (management only — contact details are
+  // hidden from everyone else, so a worker's window is never handed a name) and who is
+  // on it. revealSection(id) brings that section of the Details tab into view.
+  companyName = '',
+  assignees = [],
+  revealSection
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
@@ -158,7 +171,13 @@ export default function JobIdentityStrip({
     month: 'short',
     ...(dueDateYear && dueDateYear !== currentYear ? { year: 'numeric' } : {})
   });
-  const titleText = isEdit ? jobNumber : 'New Job Card';
+  const titleText = isEdit ? jobNumber : 'New job card';
+  // The second line shows only what has a value (a new job has none of it until
+  // someone picks a customer, ticks a worker or sets Critical).
+  const showCompany = canManage && Boolean((companyName || '').trim());
+  const assigneeList = assignees || [];
+  const assigneeNames = assigneeList.map(a => a.userName || 'Unknown').join(', ');
+  const critical = isCriticalLevel(formData.qualityLevel);
 
   // A non-management user only gets to pick among the statuses the server allows
   // them to set, plus whatever the job currently sits on. When the job has already
@@ -202,6 +221,21 @@ export default function JobIdentityStrip({
     if (canWriteInstantly) saveField(field, value, { baseline });
   };
 
+  // A failed write names its own field and offers a Retry that resends that one
+  // field's value. The mark stays until a retry lands or the field is edited again
+  // (the next write for it replaces the failure). A Retry is the person's own action —
+  // writes are never re-sent automatically.
+  const FAILABLE_FIELDS = [
+    { field: 'priority', label: 'Priority', value: () => priority, baseline: () => savedForm.priority ?? 'NONE' },
+    { field: 'dueDate', label: 'Due date', value: () => dueDate, baseline: () => savedForm.dueDate ?? '' },
+    { field: 'description', label: 'Job description', value: () => capitalizeFirst(description), baseline: () => savedForm.description ?? '' }
+  ];
+  const failedFields = FAILABLE_FIELDS.filter(f => fieldStates[f.field] === 'failed');
+  const retryField = (f) => {
+    const value = f.value();
+    if (f.field === 'description' && jobFieldMessage('description', value)) return;
+    saveField(f.field, value, { baseline: f.baseline() });
+  };
   // One combined status for the whole strip rather than one per field — an aria-live
   // region announcing three separate lines for one tab-through would be unusable.
   const identityStatus = summarizeFieldStates(fieldStates, ['priority', 'dueDate', 'description']);
@@ -235,7 +269,7 @@ export default function JobIdentityStrip({
       if (!saved) {
         // The save already said why it failed. Don't go on to ask about invoicing: the
         // total would be wrong and the job would be filed away without these edits.
-        toast.error('Could not save the costing — invoicing cancelled.');
+        toast.error('Couldn\'t save the costing, so the job was not invoiced. Try again.');
         return null;
       }
     }
@@ -257,7 +291,8 @@ export default function JobIdentityStrip({
         toast.dismiss(toastId);
       }
     }
-    return { total: freshTotal, costingChangesSaved: costingDirty };
+    // jobNumber rides along so the invoicing question can name the job.
+    return { total: freshTotal, costingChangesSaved: costingDirty, jobNumber };
   };
 
   // Everything below runs behind one lock, held from the first moment of the change to
@@ -317,13 +352,13 @@ export default function JobIdentityStrip({
                 aria-expanded={showPriorityMenu}
                 aria-label={`Priority: ${priorityLabel}`}
               >
-                <span className="jc-strip-priority-dot" aria-hidden="true" />
+                {levelMark(priority)}
                 <span className="jc-strip-priority-label">{priorityLabel}</span>
                 <ChevronDown size={14} className="jc-strip-priority-caret" />
               </button>
             ) : (
               <span className="jc-strip-priority-static">
-                <span className="jc-strip-priority-dot" aria-hidden="true" />
+                {levelMark(priority)}
                 <span className="jc-strip-priority-label">{priorityLabel}</span>
               </span>
             )}
@@ -352,7 +387,7 @@ export default function JobIdentityStrip({
                           closePriorityMenu();
                         }}
                       >
-                        <span className="jc-strip-priority-dot" aria-hidden="true" />
+                        {levelMark(val)}
                         {opt?.label || val}
                       </button>
                     </li>
@@ -363,6 +398,12 @@ export default function JobIdentityStrip({
           </div>
 
           <div className={descriptionError ? 'jc-strip-description field-error' : 'jc-strip-description'}>
+            {editable && !isEdit && (
+              // A new job's description has no label anywhere else, and it is required.
+              <label className="jc-strip-description-label" htmlFor="jc-description">
+                Job description <span className="required">*</span>
+              </label>
+            )}
             {editable ? (
               <input
                 id="jc-description"
@@ -471,17 +512,64 @@ export default function JobIdentityStrip({
             />
       </div>
 
+      {(showCompany || assigneeList.length > 0 || critical) && (
+        <div className="jc-strip-context">
+          {showCompany && (
+            <button
+              type="button"
+              className="jc-strip-context-link"
+              onClick={() => revealSection?.('jc-section-customer')}
+              title="Go to the customer details"
+            >
+              For {companyName}
+            </button>
+          )}
+          {assigneeList.length > 0 && (
+            <button
+              type="button"
+              className="jc-strip-context-link"
+              onClick={() => revealSection?.('jc-section-assignees')}
+              title={assigneeNames}
+              aria-label={`On this job: ${assigneeNames}. Go to the assignees`}
+            >
+              <span className="avatar-stack">
+                {assigneeList.slice(0, 5).map(a => {
+                  const c = getAvatarColor(a.userName || a.userId);
+                  return (
+                    <span key={a.userId} className="avatar-chip" style={{ backgroundColor: c.bg, color: c.fg }}>
+                      {getInitials(a.userName)}
+                    </span>
+                  );
+                })}
+                {assigneeList.length > 5 && (
+                  <span className="avatar-chip avatar-overflow">+{assigneeList.length - 5}</span>
+                )}
+              </span>
+            </button>
+          )}
+          {critical && <span className="jc-strip-critical">Critical · inspection at stop</span>}
+        </div>
+      )}
+
       {/* Only a failure gets words here. "Saving…" and "Saved" are now the window
           frame's job (amber, then green — see .modal-unsaved / .modal-saved in
           App.css), because this bar already carries the job number, priority,
           description, status and due date and a sixth thing in it stopped being
           read. A failure is the one state that has to name itself: the frame
           simply stays amber, which on its own doesn't say anything is wrong. */}
-      {identityStatus === 'failed' && (
-        <span className="instant-save-status instant-save-status--failed">
-          {INSTANT_SAVE_STATUS_TEXT.failed}
+      {failedFields.map(f => (
+        <span key={f.field} className="instant-save-status instant-save-status--failed">
+          {f.label} not saved
+          {editable && (
+            <>
+              {' '}
+              <button type="button" className="jc-strip-failed-retry" onClick={() => retryField(f)}>
+                Retry
+              </button>
+            </>
+          )}
         </span>
-      )}
+      ))}
       {/* A colour says nothing to a screen reader, so the words the strip no longer
           shows are still announced here, unseen — same shape as before. */}
       <span className="sr-only" role="status" aria-live="polite">

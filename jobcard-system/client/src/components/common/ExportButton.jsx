@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import Spinner from './Spinner';
 import './ExportButton.css';
 
-export default function ExportButton({ onExportView, onExportAll, viewLabel = 'Export Current View', allLabel = 'Export All' }) {
+export default function ExportButton({ onExportView, onExportAll, viewLabel = 'Export current view', allLabel = 'Export all' }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const ref = useRef(null);
@@ -60,7 +60,7 @@ export default function ExportButton({ onExportView, onExportAll, viewLabel = 'E
         aria-expanded={open}
       >
         {loading ? <Spinner size={16} /> : <Download size={16} />}
-        {loading ? 'Exporting...' : 'Export'}
+        {loading ? 'Exporting…' : 'Export'}
         <ChevronDown size={14} />
       </button>
       {open && (

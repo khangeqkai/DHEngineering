@@ -91,7 +91,7 @@ router.get('/', requireManagement, (req, res) => {
     res.json(camelCaseSettings);
   } catch (err) {
     logger.error({ err }, 'Error getting settings');
-    res.status(500).json({ error: 'Failed to get settings' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -102,17 +102,17 @@ router.put('/', requireManagement, async (req, res) => {
     // rather than silently dropping it, so a stale client fails loudly.
     const refusalFor = (role) => {
       if (!can(role, 'pricing') && OVERTIME_BODY_KEYS.some(k => req.body[k] !== undefined)) {
-        return 'Only admins can change labour rates and overtime settings';
+        return 'Only an admin can change labour rates and overtime.';
       }
       if (!can(role, 'systemData')) {
         // The job-folders base path decides where every job's files (and backups) are
         // written; only admins can repoint it, so a manager can't redirect company
         // files to a personal/removable drive.
         if (req.body.jobFoldersBase !== undefined) {
-          return 'Only admins can change the job folders base path';
+          return 'Only an admin can change where job files are kept.';
         }
         if (homeAccess.HOME_ACCESS_BODY_KEYS.some(k => req.body[k] !== undefined)) {
-          return 'Only admins can change home access settings';
+          return 'Only an admin can change home access settings.';
         }
       }
       return null;
@@ -132,7 +132,7 @@ router.put('/', requireManagement, async (req, res) => {
     // caller's role as it stands now, so a demotion or archive meanwhile applies here too.
     const roleNow = liveRole(req);
     if (!isManagement(roleNow)) {
-      return res.status(403).json({ error: 'Your account can no longer change settings' });
+      return res.status(403).json({ error: 'Your account can no longer change settings. Sign in again.' });
     }
     const refusedNow = refusalFor(roleNow);
     if (refusedNow) return res.status(403).json({ error: refusedNow });
@@ -146,16 +146,16 @@ router.put('/', requireManagement, async (req, res) => {
     // Validate job folders base path if provided
     if (jobFoldersBase !== undefined) {
       if (jobFoldersBase !== null && typeof jobFoldersBase !== 'string') {
-        return refuseField(res, 400, 'jobFoldersBase', 'Job folders base path must be text');
+        return refuseField(res, 400, 'jobFoldersBase', 'Enter the job folders location as text.');
       }
       if (jobFoldersBase && jobFoldersBase.trim()) {
         if (!fs.existsSync(jobFoldersBase)) {
-          return refuseField(res, 400, 'jobFoldersBase', 'Job folders base path does not exist');
+          return refuseField(res, 400, 'jobFoldersBase', 'That job folders location doesn\'t exist. Check the path and try again.');
         }
 
         const stats = fs.statSync(jobFoldersBase);
         if (!stats.isDirectory()) {
-          return refuseField(res, 400, 'jobFoldersBase', 'Job folders base path is not a directory');
+          return refuseField(res, 400, 'jobFoldersBase', 'That job folders location is a file, not a folder. Choose a folder.');
         }
         if (isDriveOrShareRoot(jobFoldersBase)) {
           return refuseField(res, 400, 'jobFoldersBase', JOB_FOLDERS_ROOT_MESSAGE);
@@ -168,7 +168,7 @@ router.put('/', requireManagement, async (req, res) => {
     if (inactivityTimeoutMinutes !== undefined) {
       if (!isInactivityMinutes(inactivityTimeoutMinutes)) {
         return refuseField(res, 400, 'inactivityTimeoutMinutes',
-          `Inactivity timeout must be between ${INACTIVITY_MINUTES.min} and ${INACTIVITY_MINUTES.max} minutes`);
+          `Enter a sign-out time between ${INACTIVITY_MINUTES.min} and ${INACTIVITY_MINUTES.max} minutes.`);
       }
       updates.inactivity_timeout_minutes = String(parseInt(inactivityTimeoutMinutes, 10));
     }
@@ -210,8 +210,8 @@ router.put('/', requireManagement, async (req, res) => {
         if (highest && newNum <= highest.num) {
           const paddedMax = db.formatJobNumber('', highest.num, effectiveNext.length);
           const error = highest.deleted
-            ? `Starting number must be greater than ${paddedMax} — job ${effectivePrefix}${paddedMax} was used by a job that has since been deleted`
-            : `Starting number must be greater than ${paddedMax} — job ${effectivePrefix}${paddedMax} already exists`;
+            ? `The starting number has to be higher than ${paddedMax}, because job ${effectivePrefix}${paddedMax} was used by a job that has since been deleted.`
+            : `The starting number has to be higher than ${paddedMax}, because job ${effectivePrefix}${paddedMax} already exists.`;
           return refuseField(res, 400, jobNumberNext !== undefined ? 'jobNumberNext' : 'jobNumberPrefix', error);
         }
       }
@@ -255,7 +255,7 @@ router.put('/', requireManagement, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, 'Error updating settings');
-    res.status(500).json({ error: 'Failed to update settings' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -267,7 +267,7 @@ router.get('/inactivity-timeout', (req, res) => {
     res.json({ inactivityTimeoutMinutes: timeoutMinutes });
   } catch (err) {
     logger.error({ err }, 'Error getting inactivity timeout');
-    res.status(500).json({ error: 'Failed to get inactivity timeout' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -288,7 +288,7 @@ function getTableColumns(table) {
 
 // Export full backup as ZIP (admin only)
 router.post('/export-backup', requirePermission('systemData'), [
-  requiredString('outputPath', 'Output path'),
+  requiredString('outputPath', 'Backup file location'),
   handleValidationErrors
 ], async (req, res) => {
   const { outputPath } = req.body;
@@ -306,7 +306,7 @@ router.post('/export-backup', requirePermission('systemData'), [
     // written, so a file already at that path is never touched.
     if (jobBase && isInsideFolder(outputPath, jobBase)) {
       return res.status(400).json({
-        error: 'A backup cannot be saved inside the job folders location, because restoring a backup replaces everything in there. Save it somewhere else.'
+        error: 'A backup can\'t be saved inside the job folders location, because restoring a backup replaces everything in there. Save it somewhere else.'
       });
     }
 
@@ -406,21 +406,21 @@ router.post('/export-backup', requirePermission('systemData'), [
     // may hold an earlier, good backup.
     try { if (fs.existsSync(partialPath)) fs.unlinkSync(partialPath); } catch (_) { /* ignore */ }
     logger.error({ err }, 'Error exporting backup');
-    res.status(500).json({ error: 'Failed to export backup: ' + err.message });
+    res.status(500).json({ error: 'The backup could not be saved. Check that the location can be written to and has enough space, then try again.' });
   }
 });
 
 // Import full backup from ZIP (admin only)
 let restoreRunning = false;
 router.post('/import-backup', requirePermission('systemData'), [
-  requiredString('inputPath', 'Input path'),
+  requiredString('inputPath', 'Backup file location'),
   handleValidationErrors
 ], async (req, res) => {
   // One restore at a time: a second one (a double-click, two admins) would wipe and
   // reload while the first is still running, and the first one finishing would lift
   // the maintenance block while the second is mid-way. Claimed before anything waits.
   if (restoreRunning) {
-    return res.status(409).json({ error: 'A backup restore is already running. Wait for it to finish, then try again if needed.' });
+    return res.status(409).json({ error: 'A backup is already being restored. Wait for it to finish, then try again if needed.' });
   }
   restoreRunning = true;
   try {
@@ -434,7 +434,7 @@ async function importBackup(req, res) {
   const { inputPath } = req.body;
 
   if (!fs.existsSync(inputPath)) {
-    return res.status(400).json({ error: 'Backup file not found' });
+    return res.status(400).json({ error: "That backup file couldn't be found. Check the location and try again." });
   }
 
   const currentSettings = db.getSettings();
@@ -446,7 +446,7 @@ async function importBackup(req, res) {
 
   if (!currentJobBase) {
     return res.status(400).json({
-      error: 'Please configure the Job Folders Base path in Settings before importing a backup'
+      error: 'Set the job folders location in Settings before restoring a backup.'
     });
   }
   // The swap below renames the whole location and builds its side folders beside
@@ -472,12 +472,12 @@ async function importBackup(req, res) {
       listFilesRecursive(currentJobBase, currentJobBase, [], backupsInside);
     } catch (err) {
       logger.error({ err }, 'Error checking job folders before restore');
-      return res.status(500).json({ error: 'Could not read the job folders location, so the restore was not started: ' + err.message });
+      return res.status(500).json({ error: 'The job folders location could not be read, so the restore was not started. Check the drive or network connection, then try again.' });
     }
   }
   if (backupsInside.length > 0) {
     return res.status(400).json({
-      error: `Restoring replaces everything in the job folders location, and ${backupsInside.length} earlier backup file(s) are kept in there, so they would be deleted. Move them somewhere else first, then import again: ${backupsInside.join(', ')}`
+      error: `Restoring replaces everything in the job folders location, and ${backupsInside.length} earlier backup file${backupsInside.length === 1 ? ' is' : 's are'} kept in there, so ${backupsInside.length === 1 ? 'it' : 'they'} would be deleted. Move ${backupsInside.length === 1 ? 'it' : 'them'} somewhere else first, then restore again: ${backupsInside.join(', ')}`
     });
   }
 
@@ -602,15 +602,14 @@ async function importBackup(req, res) {
     logger.error({ err }, 'Error importing backup');
     if (filesUnrecoverable) {
       res.status(500).json({
-        error: 'Failed to import backup, and the automatic undo could not put the original files back. '
-          + 'The files on disk and the database records may now be out of sync. '
-          + 'Check the server logs and the leftover restore folders, and review the data manually before continuing. '
-          + 'Details: ' + err.message
+        error: 'The restore failed, and the original files could not be put back. '
+          + 'The job files and the job records may no longer match. '
+          + 'Do not carry on working. Tell the office, and keep the leftover restore folders as they are.'
       });
     } else if (err.plainMessage) {
       res.status(err.status || 500).json({ error: err.message });
     } else {
-      res.status(500).json({ error: 'Failed to import backup: ' + err.message });
+      res.status(500).json({ error: 'The backup could not be restored. Try again, and if it keeps happening, tell the office.' });
     }
   } finally {
     if (maintenanceOn) setMaintenance(false);

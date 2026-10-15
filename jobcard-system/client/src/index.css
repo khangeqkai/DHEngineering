@@ -86,7 +86,7 @@
   --font-sans: 'Pragmatica', -apple-system, BlinkMacSystemFont, sans-serif;
 
   /* Font Sizes — slightly refined scale */
-  --text-2xs: 0.6875rem;
+  --text-2xs: 0.75rem;
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
   --text-base: 0.9375rem;
@@ -290,8 +290,8 @@
   --shadow: var(--shadow-sm);
 
   /* Focus ring — single source of truth */
-  --focus-ring: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
-  --focus-ring-sm: 0 0 0 2px rgba(var(--accent-rgb), 0.2);
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--border-focus);
+  --focus-ring-sm: 0 0 0 1px var(--surface), 0 0 0 3px var(--border-focus);
 
   /* Animation — spring easing */
   --ease-mechanical: cubic-bezier(0.16, 1, 0.3, 1);
@@ -359,19 +359,19 @@
 
   /* Parked — purchase order requested (lime, far from every other hue) */
   --status-po-requested-bg: rgba(132, 204, 22, 0.13);
-  --status-po-requested-text: #4d7c0f;
+  --status-po-requested-text: #3f6212;
   --status-po-requested-border: rgba(132, 204, 22, 0.32);
   --status-po-requested-dot: #84cc16;
 
   /* Active — being worked right now (amber, the one "live" colour) */
   --status-in-progress-bg: rgba(245, 158, 11, 0.14);
-  --status-in-progress-text: #b45309;
+  --status-in-progress-text: #9a3412;
   --status-in-progress-border: rgba(245, 158, 11, 0.34);
   --status-in-progress-dot: #f59e0b;
 
   /* Done */
   --status-done-bg: rgba(34, 197, 94, 0.12);
-  --status-done-text: #15803d;
+  --status-done-text: #166534;
   --status-done-border: rgba(34, 197, 94, 0.30);
   --status-done-dot: #22c55e;
 
@@ -480,6 +480,9 @@
      the dark field background --input-bg (#081530). */
   --border-input: #54709c;
   --border-focus: #3b82f6;
+  /* Re-stated here so the gap ring takes the DARK surface, not the one :root resolved. */
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--border-focus);
+  --focus-ring-sm: 0 0 0 1px var(--surface), 0 0 0 3px var(--border-focus);
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.15);

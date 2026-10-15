@@ -71,49 +71,21 @@
   --p-border: var(--border-color);
   --p-dot: var(--text-tertiary);
 }
-.jc-strip-priority-none {
-  --p-bg: var(--surface);
-  --p-color: var(--text-tertiary);
-  --p-border: var(--border-color);
-  --p-dot: var(--text-tertiary);
-}
-.jc-strip-priority-low {
-  --p-bg: rgba(59, 130, 246, 0.08);
-  --p-color: var(--badge-progress-text);
-  --p-border: #93c5fd;
-  --p-dot: var(--status-open-dot);
-}
-.jc-strip-priority-medium {
-  --p-bg: rgba(217, 119, 6, 0.10);
-  --p-color: var(--badge-pending-text);
-  --p-border: #fcd34d;
-  --p-dot: var(--warning-hover);
-}
+.jc-strip-priority-none,
+.jc-strip-priority-low,
+.jc-strip-priority-medium,
 .jc-strip-priority-high {
-  --p-bg: rgba(239, 68, 68, 0.10);
-  --p-color: var(--badge-cancelled-text);
-  --p-border: #fca5a5;
-  --p-dot: var(--danger-color);
+  --p-bg: var(--surface-inset);
+  --p-color: var(--text-secondary);
+  --p-border: var(--border-color);
 }
+.jc-strip-priority-none { --p-color: var(--text-tertiary); }
 .jc-strip-priority-same-day {
   --p-bg: var(--same-day-bg);
   --p-color: var(--same-day-text);
   --p-border: var(--same-day-border);
   --p-dot: var(--same-day-text);
 }
-.dark-mode .jc-strip-priority-low {
-  --p-bg: rgba(59, 130, 246, 0.18);
-  --p-border: rgba(96, 165, 250, 0.34);
-}
-.dark-mode .jc-strip-priority-medium {
-  --p-bg: rgba(217, 119, 6, 0.18);
-  --p-border: rgba(251, 191, 36, 0.34);
-}
-.dark-mode .jc-strip-priority-high {
-  --p-bg: rgba(239, 68, 68, 0.18);
-  --p-border: rgba(248, 113, 113, 0.34);
-}
-
 .jc-strip-priority-trigger,
 .jc-strip-priority-static {
   display: inline-flex;
@@ -144,7 +116,7 @@
 .jc-strip-priority-trigger:focus,
 .jc-strip-priority-trigger:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--p-bg);
+  box-shadow: var(--focus-ring);
 }
 
 .jc-strip-priority-dot {
@@ -213,10 +185,6 @@
   color: var(--text-primary);
 }
 
-.jc-strip-priority-menu-item-none .jc-strip-priority-dot { background: var(--text-tertiary); }
-.jc-strip-priority-menu-item-low .jc-strip-priority-dot { background: var(--status-open-dot); }
-.jc-strip-priority-menu-item-medium .jc-strip-priority-dot { background: var(--warning-hover); }
-.jc-strip-priority-menu-item-high .jc-strip-priority-dot { background: var(--danger-color); }
 .jc-strip-priority-menu-item-same-day .jc-strip-priority-dot { background: var(--same-day-bg); box-shadow: 0 0 0 2px var(--same-day-border); }
 
 /* Description — borderless inline input that flexes */
@@ -356,7 +324,7 @@
   box-shadow: none;
 }
 .jc-strip-status:focus-within {
-  box-shadow: 0 0 0 3px var(--s-bg, rgba(59, 130, 246, 0.18));
+  box-shadow: var(--focus-ring);
 }
 .jc-strip-status-select option {
   text-transform: none;
@@ -1101,6 +1069,7 @@
 .line-item-qty input:focus {
   outline: none;
   border-color: var(--primary-accent);
+  box-shadow: var(--focus-ring-sm);
 }
 
 .line-item-desc {
@@ -1123,6 +1092,7 @@
 .line-item-desc input:focus {
   outline: none;
   border-color: var(--primary-accent);
+  box-shadow: var(--focus-ring-sm);
 }
 
 .line-item-remove {
@@ -1997,28 +1967,110 @@
   font-size: var(--text-sm);
 }
 
+/* "+ Add time" — a small text button in the part's progress row (a .btn-secondary
+   .btn-sm; only the row spacing is set here). */
 .lip-add {
+  margin-left: var(--space-1);
+  flex-shrink: 0;
+}
+
+/* The new time-entry form opened from a part's "+ Add time" sits inside that part's
+   card, on its own line under the progress row. */
+.line-item-time-form {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+/* Admin Start Timer: one button made of the main "Start" and a narrow caret. */
+.lit-split {
+  display: inline-flex;
+}
+.lit-split-main {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.lit-split-caret {
+  padding-left: var(--space-1-5);
+  padding-right: var(--space-1-5);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: -1px;
+}
+
+/* A part whose write failed: stays until the retry lands. */
+.line-item-failed-chip {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  padding: 0;
-  margin-left: var(--space-1);
-  background: var(--surface);
-  border: 1px dashed var(--border-color);
-  border-radius: 50%;
-  color: var(--text-secondary);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: border-color var(--duration-fast) ease,
-              color var(--duration-fast) ease,
-              background var(--duration-fast) ease;
+  gap: var(--gap-inline);
+  padding: var(--space-0-5) var(--space-2);
+  border: 1px solid var(--danger-color);
+  border-radius: var(--radius-md);
+  background: rgba(var(--danger-rgb), 0.08);
+  color: var(--danger-ink);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
 }
-.lip-add:hover {
-  border-color: var(--primary-accent);
+.line-item-failed-retry {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--danger-ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Strip's second line: who the job is for, who is on it, and the Critical flag. */
+.jc-strip-context {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gap-tight) var(--gap-field);
+}
+.jc-strip-context-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-inline);
+  padding: 0;
+  border: none;
+  background: transparent;
   color: var(--primary-accent);
-  background: var(--surface-elevated);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  cursor: pointer;
+}
+.jc-strip-context-link:hover {
+  text-decoration: underline;
+}
+.jc-strip-critical {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-0-5) var(--space-2);
+  border: 1px solid var(--danger-color);
+  border-radius: var(--radius-md);
+  background: rgba(var(--danger-rgb), 0.1);
+  color: var(--danger-ink);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  white-space: nowrap;
+}
+.jc-strip-description-label {
+  flex-shrink: 0;
+  margin-right: var(--gap-inline);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.jc-strip-failed-retry {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .line-item-progress[open] > .te-list {
@@ -2442,7 +2494,7 @@
 
 .costing-sheet-title {
   margin: 0;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--font-bold);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wider);
@@ -2451,7 +2503,7 @@
 
 /* Save status — the sheet saves itself, so this just reports where that is up to. */
 .costing-save-status {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--font-regular);
   letter-spacing: var(--tracking-wide);
   color: var(--text-tertiary);
@@ -2892,9 +2944,7 @@
 }
 
 .ledger-field label {
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
+  font-size: var(--text-sm);
   font-weight: var(--font-regular);
   color: var(--text-tertiary);
 }
@@ -2930,9 +2980,7 @@
 }
 
 .ledger-note label {
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
+  font-size: var(--text-sm);
   font-weight: var(--font-regular);
   color: var(--text-tertiary);
 }
@@ -3034,7 +3082,7 @@
 }
 
 .labour-block-sub {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
 }
 
@@ -3046,9 +3094,7 @@
 }
 
 .labour-subtotal-label {
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
+  font-size: var(--text-sm);
   font-weight: var(--font-regular);
   color: var(--text-tertiary);
 }
@@ -3105,7 +3151,7 @@
 
 .labour-rate-hint {
   margin-left: auto;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
 }
 
@@ -3128,9 +3174,7 @@
 }
 
 .tier-head span {
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
+  font-size: var(--text-sm);
   font-weight: var(--font-regular);
   color: var(--text-tertiary);
 }
@@ -3182,7 +3226,7 @@
   gap: var(--space-0-5);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--font-regular);
   color: var(--text-tertiary);
   background: var(--surface);
@@ -3232,14 +3276,14 @@
   box-shadow: var(--focus-ring-sm);
 }
 
-/* A hand-overridden multiplier: same amber cue as an edited hours box */
+/* A hand-overridden multiplier: same amber tint as an edited hours box */
 .tier-mult-editable--edited .tier-mult-box {
   border-color: var(--warning-color);
-  box-shadow: inset 3px 0 0 var(--warning-color);
+  background: color-mix(in srgb, var(--warning-color) 14%, var(--surface));
 }
 
-.tier-mult-editable .tier-auto {
-  align-self: flex-end;
+.tier-mult-editable--edited .tier-mult-box input {
+  color: var(--text-primary);
 }
 
 .tier-hours-cell {
@@ -3268,36 +3312,39 @@
   box-shadow: var(--focus-ring-sm);
 }
 
-/* An edited (hand-overridden) tier: amber cue on the row's hours box */
+/* An edited (hand-overridden) tier: amber tint on the row's hours box */
 .tier-row--edited .tier-hours-cell input {
   border-color: var(--warning-color);
-  box-shadow: inset 3px 0 0 var(--warning-color);
+  background: color-mix(in srgb, var(--warning-color) 14%, var(--surface));
 }
 
-/* Under a hand-edited tier: what the hours would be from logged time — click to revert */
-.tier-auto {
-  align-self: flex-end;
-  border: none;
-  background: transparent;
-  padding: 0;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+/* The small "edited" tag beside a hand-edited row's label */
+.tier-edited-tag {
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning-color) 18%, var(--surface));
+  color: var(--warning-ink);
   font-size: var(--text-2xs);
+  font-weight: var(--font-bold);
+  line-height: 1.6;
+}
+
+/* Under a hand-edited row: the way back to the automatic figure, on its own full-width
+   line (the hours and multiplier columns are too narrow to hold the words). */
+.tier-fixes {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-0-5) var(--gap-field);
+  font-size: var(--text-sm);
+}
+
+.tier-help {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-2);
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
-  cursor: pointer;
-}
-
-.tier-auto:hover {
-  color: var(--primary-accent);
-  text-decoration: underline;
-}
-
-.tier-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--warning-color);
-  flex: none;
 }
 
 .tier-rate {
@@ -3324,15 +3371,14 @@
   gap: var(--gap-field);
   flex-wrap: wrap;
   padding: var(--space-3) var(--space-4);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
 }
 
 /* Both hints say the same thing in the same voice — a figure on this screen is not the
    one that was stored — so they share one rule rather than two copies of it. The only
-   difference is the dot: .tier-foot-edited carries it because a tier figure that differs
-   was hand-typed, while .ledger-field-opening offers a stored figure back, which the dot
-   would misdescribe. */
+   difference is only what they say: .tier-foot-edited reports hand-typed tier figures,
+   while .ledger-field-opening offers a stored figure back. */
 .tier-foot-edited,
 .ledger-field-opening {
   display: inline-flex;
@@ -3351,7 +3397,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 0;
-  font-size: var(--text-2xs);
+  font-size: var(--text-sm);
   line-height: 1.45;
 }
 
@@ -3384,6 +3430,55 @@
   cursor: pointer;
 }
 
+/* Notice at the top of a closed job's sheet — same tone as the comments window's */
+.costing-locked {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-color);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* The four lines the grand total adds up, closing the sheet */
+.costing-summary {
+  margin: 0;
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: 24rem;
+  margin-left: auto;
+}
+
+.costing-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gap-field);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.costing-summary-row dt,
+.costing-summary-row dd {
+  margin: 0;
+}
+
+.costing-summary-row dd {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.costing-summary-row--grand {
+  margin-top: var(--space-1);
+  padding-top: var(--space-1-5);
+  border-top: 1px solid var(--border-color);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+}
+
 /* Grand total — the hero figure, riding in the sticky header so it never scrolls away */
 .costing-grand {
   display: flex;
@@ -3397,7 +3492,7 @@
 }
 
 .costing-grand-label {
-  font-size: var(--text-2xs);
+  font-size: var(--text-sm);
   font-weight: var(--font-bold);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wider);

@@ -19,7 +19,8 @@ import { useLatestCallback } from '../hooks/useLatestCallback';
 import { changedFields } from '../utils/changedFields';
 import './TagManagement.css';
 
-const CATEGORIES = Object.keys(CATEGORY_INFO);
+// The option tabs, in order. Equipment is its own page, so it isn't one of them.
+const OPTION_CATEGORIES = Object.keys(CATEGORY_INFO).filter(cat => cat !== 'equipment');
 
 // A machine's boxes as the form opens on it — also what an edit is judged
 // against, so a box left alone is never sent.
@@ -28,9 +29,12 @@ const machineForm = (m) => ({ name: m.name || '', machineNumber: m.machineNumber
 // Which form value each box on the shared form shows.
 const BOX_VALUE = { machineNumber: 'machineNumber', machineName: 'name', machineDescription: 'description', tagName: 'name' };
 
-export default function TagManagement() {
-  const [selectedCategory, setSelectedCategory] = useState('treatment');
-  const isEquipment = selectedCategory === 'equipment';
+// One component, two pages: "options" is the Job Options page (a tab per dropdown),
+// "equipment" is the Equipment page (machines only). The route picks which.
+export default function TagManagement({ mode = 'options' }) {
+  const isEquipment = mode === 'equipment';
+  const CATEGORIES = isEquipment ? ['equipment'] : OPTION_CATEGORIES;
+  const [selectedCategory, setSelectedCategory] = useState(isEquipment ? 'equipment' : 'treatment');
 
   // Tag state
   const [tags, setTags] = useState([]);
@@ -48,7 +52,7 @@ export default function TagManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({ name: '', machineNumber: '', description: '' });
-  const [formCategory, setFormCategory] = useState('treatment');
+  const [formCategory, setFormCategory] = useState(isEquipment ? 'equipment' : 'treatment');
   const [saving, setSaving] = useState(false);
   // One trail for the whole page — options and machines are managed side by side here.
   const [showActivityLog, setShowActivityLog] = useState(false);
@@ -88,7 +92,7 @@ export default function TagManagement() {
       setTags(data);
     } catch (err) {
       if (requestId !== tagLoadRequestIdRef.current) return;
-      toast.error('Failed to load tags', { id: 'tag-list-load-failed' });
+      toast.error('Couldn\'t load the options. Try again in a moment.', { id: 'tag-list-load-failed' });
     } finally {
       if (requestId === tagLoadRequestIdRef.current) setTagLoading(false);
     }
@@ -106,7 +110,7 @@ export default function TagManagement() {
       setMachines(data);
     } catch (err) {
       if (requestId !== machineLoadRequestIdRef.current) return;
-      toast.error('Failed to load machines', { id: 'machine-list-load-failed' });
+      toast.error('Couldn\'t load the machines. Try again in a moment.', { id: 'machine-list-load-failed' });
     } finally {
       if (requestId === machineLoadRequestIdRef.current) setEquipLoading(false);
     }
@@ -153,7 +157,7 @@ export default function TagManagement() {
       return;
     }
     if (!isFormEquipment && !name) {
-      setFieldErrors({ tagName: 'Please enter the tag name' });
+      setFieldErrors({ tagName: 'Please enter the option name' });
       scrollFieldIntoView('tagName');
       return;
     }
@@ -165,7 +169,8 @@ export default function TagManagement() {
     setSaving(true);
     // Deliberate house wording: every save on this page — adding or editing, a
     // machine or an option — confirms with "… updated". Not a bug; don't change
-    // an add to "created"/"saved".
+    // an add to "created"/"saved". (The on-screen word elsewhere is "option", but
+    // this toast keeps its settled wording.)
     try {
       if (isFormEquipment) {
         if (!machineNumber) return;
@@ -199,7 +204,7 @@ export default function TagManagement() {
     } catch (err) {
       // A refusal naming one of the boxes (the server's comma refusal on the number,
       // say) marks that box; anything else is a pop-up.
-      showSaveRefusal(err, { boxFor: formBoxes, setFieldErrors, fallback: isFormEquipment ? 'Failed to save machine' : 'Failed to save tag' });
+      showSaveRefusal(err, { boxFor: formBoxes, setFieldErrors, fallback: isFormEquipment ? 'Couldn\'t save the machine. Check the connection and try again.' : 'Couldn\'t save the option. Check the connection and try again.' });
     } finally {
       setSaving(false);
     }
@@ -217,7 +222,7 @@ export default function TagManagement() {
   const handleArchiveTag = async (tag) => {
     if (pendingTagId !== null) return;
     const confirmed = await showConfirm({
-      title: 'Archive Option',
+      title: 'Archive option',
       message: `Archive "${tag.name}"? It will no longer appear in the picker for new jobs, but existing jobs keep it. You can restore it any time.`,
       confirmLabel: 'Archive',
       confirmVariant: 'warning'
@@ -225,7 +230,7 @@ export default function TagManagement() {
     if (!confirmed) return;
     setPendingTagId(tag.id);
     try { await tagActions.archive(tag); toast.success('Option archived'); bumpActivity(); await reloadTags(); }
-    catch (err) { toast.error(err.message || 'Failed to archive option'); }
+    catch (err) { toast.error(err.message || 'Couldn\'t archive the option. Check the connection and try again.'); }
     finally { setPendingTagId(null); }
   };
 
@@ -233,7 +238,7 @@ export default function TagManagement() {
     if (pendingTagId !== null) return;
     setPendingTagId(tag.id);
     try { await tagActions.restore(tag); toast.success('Option restored'); bumpActivity(); await reloadTags(); }
-    catch (err) { toast.error(err.message || 'Failed to restore option'); }
+    catch (err) { toast.error(err.message || 'Couldn\'t restore the option. Check the connection and try again.'); }
     finally { setPendingTagId(null); }
   };
 
@@ -250,7 +255,7 @@ export default function TagManagement() {
     if (pendingMachineId !== null) return;
     const displayName = m.name ? `${m.machineNumber} - ${m.name}` : m.machineNumber;
     const confirmed = await showConfirm({
-      title: 'Archive Machine',
+      title: 'Archive machine',
       message: `Archive "${displayName}"? It will no longer appear when logging time, but existing time records keep it. Its number becomes free to reuse, and you can restore it any time.`,
       confirmLabel: 'Archive',
       confirmVariant: 'warning'
@@ -258,7 +263,7 @@ export default function TagManagement() {
     if (!confirmed) return;
     setPendingMachineId(m.id);
     try { await api.archiveMachine(m.id); toast.success('Machine archived'); bumpActivity(); await reloadMachines(); }
-    catch (err) { toast.error(err.message || 'Failed to archive machine'); }
+    catch (err) { toast.error(err.message || 'Couldn\'t archive the machine. Check the connection and try again.'); }
     finally { setPendingMachineId(null); }
   };
 
@@ -266,20 +271,20 @@ export default function TagManagement() {
     if (pendingMachineId !== null) return;
     setPendingMachineId(m.id);
     try { await api.activateMachine(m.id); toast.success('Machine restored'); bumpActivity(); await reloadMachines(); }
-    catch (err) { toast.error(err.message || 'Failed to restore machine'); }
+    catch (err) { toast.error(err.message || 'Couldn\'t restore the machine. Check the connection and try again.'); }
     finally { setPendingMachineId(null); }
   };
 
   const formTitle = editingItem
-    ? (isFormEquipment ? 'Edit Machine' : 'Edit Tag')
-    : (isFormEquipment ? 'Add New Machine' : 'Add New Tag');
+    ? (isFormEquipment ? 'Edit machine' : 'Edit option')
+    : (isFormEquipment ? 'Add machine' : 'Add option');
   const saveLabel = editingItem
-    ? (isFormEquipment ? 'Update Machine' : 'Update Tag')
-    : (isFormEquipment ? 'Create Machine' : 'Create Tag');
+    ? (isFormEquipment ? 'Update machine' : 'Update option')
+    : (isFormEquipment ? 'Create machine' : 'Create option');
 
   return (
     <div className="tag-management page-scroll-layout page-enter">
-      <PageHeader title="Tags &amp; Equipment">
+      <PageHeader title={isEquipment ? 'Equipment' : 'Job Options'}>
         <label className="show-inactive-label">
           <input
             type="checkbox"
@@ -299,9 +304,12 @@ export default function TagManagement() {
           <History size={16} /> Activity Log
         </button>
         <button className="btn btn-primary" onClick={openAddForm}>
-          <Plus size={16} /> {isEquipment ? 'Add Machine' : 'Add Tag'}
+          <Plus size={16} /> {CATEGORY_INFO[selectedCategory].addLabel}
         </button>
       </PageHeader>
+      {!isEquipment && (
+        <p className="tag-page-subtitle">The choices that appear in a job card's dropdowns.</p>
+      )}
 
       {/* Unified BottomSheet — adapts fields based on category */}
       <BottomSheet isOpen={showForm} onClose={resetForm} title={formTitle} size="small">
@@ -309,7 +317,7 @@ export default function TagManagement() {
           <form id="tag-form" onSubmit={handleSubmit} noValidate>
             <div className="form-group">
               <label htmlFor="tagCategory">Category</label>
-              {editingItem ? (
+              {editingItem || isEquipment ? (
                 <input type="text" id="tagCategory" value={CATEGORY_INFO[formCategory]?.label} readOnly className="input-disabled" />
               ) : (
                 <select id="tagCategory" value={formCategory} onChange={(e) => setFormCategory(e.target.value)}>
@@ -328,7 +336,7 @@ export default function TagManagement() {
                   <input type="text" {...fieldProps('machineNumber')} value={formData.machineNumber}
                     onChange={(e) => setFormData(prev => ({ ...prev, machineNumber: e.target.value }))}
                     onBlur={(e) => { const f = e.target.value.toUpperCase().trim(); if (f !== e.target.value) setFormData(prev => ({ ...prev, machineNumber: f })); }}
-                    placeholder="e.g. M1, LATHE-01..." autoFocus />
+                    placeholder="e.g. M1, LATHE-01…" autoFocus />
                   <FieldError {...errorProps('machineNumber')} message={errorFor('machineNumber')} />
                 </div>
                 <div className={groupClass('machineName')}>
@@ -336,7 +344,7 @@ export default function TagManagement() {
                   <input type="text" {...fieldProps('machineName')} value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     onBlur={(e) => { const f = toTitleCase(e.target.value); if (f !== e.target.value) setFormData(prev => ({ ...prev, name: f })); }}
-                    placeholder="Machine name..." />
+                    placeholder="Machine name…" />
                   <FieldError {...errorProps('machineName')} message={errorFor('machineName')} />
                 </div>
               </div>
@@ -345,13 +353,13 @@ export default function TagManagement() {
                 <input type="text" {...fieldProps('machineDescription')} value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   onBlur={(e) => { const f = capitalizeFirst(e.target.value); if (f !== e.target.value) setFormData(prev => ({ ...prev, description: f })); }}
-                  placeholder="e.g. CNC vertical machining centre..." />
+                  placeholder="e.g. CNC vertical machining centre…" />
                 <FieldError {...errorProps('machineDescription')} message={errorFor('machineDescription')} />
               </div>
               </>
             ) : (
               <div className={groupClass('tagName')}>
-                <label htmlFor="tagName">Tag Name *</label>
+                <label htmlFor="tagName">Option Name *</label>
                 <input type="text" {...fieldProps('tagName')} value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   onBlur={(e) => { const f = toTitleCase(e.target.value); if (f !== e.target.value) setFormData(prev => ({ ...prev, name: f })); }}
@@ -363,19 +371,19 @@ export default function TagManagement() {
         </BottomSheet.Body>
         <BottomSheet.Footer>
           <button type="submit" form="tag-form" className="btn btn-primary" disabled={saving}>
-            <Save size={14} /> {saving ? 'Saving...' : saveLabel}
+            <Save size={14} /> {saving ? 'Saving…' : saveLabel}
           </button>
         </BottomSheet.Footer>
       </BottomSheet>
 
-      {/* Category tabs */}
-      <div className="tag-category-tabs">
+      {/* Category tabs — only the Job Options page has more than one. */}
+      {!isEquipment && <div className="tag-category-tabs">
         {CATEGORIES.map(cat => (
           <button key={cat} className={`tag-category-tab${selectedCategory === cat ? ' active' : ''}`} onClick={() => setSelectedCategory(cat)}>
             {CATEGORY_INFO[cat].label}
           </button>
         ))}
-      </div>
+      </div>}
 
       {/* Content card */}
       <div className="card">
@@ -388,9 +396,9 @@ export default function TagManagement() {
         <div className="card-body">
           {isEquipment ? (
             equipLoading ? (
-              <div className="loading">Loading machines...</div>
+              <div className="loading">Loading machines…</div>
             ) : machines.length === 0 ? (
-              <p className="tag-empty-text">No machines yet. Click "Add Machine" to create one.</p>
+              <p className="tag-empty-text">No machines yet. Click "Add machine" to create one.</p>
             ) : (
               <div className="tag-chips-grid">
                 {machines.map(m => (
@@ -402,11 +410,11 @@ export default function TagManagement() {
                     <div className="tag-chip-actions">
                       {m.active ? (
                         <>
-                          <button className="tag-action-btn" onClick={() => handleEditMachine(m)} title="Edit"><Edit2 size={14} /></button>
-                          <button className="tag-action-btn danger" disabled={pendingMachineId === m.id} onClick={() => handleArchiveMachine(m)} title="Archive"><Archive size={14} /></button>
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleEditMachine(m)}><Edit2 size={14} /> Edit</button>
+                          <button type="button" className="btn btn-warning btn-sm" disabled={pendingMachineId === m.id} onClick={() => handleArchiveMachine(m)}><Archive size={14} /> Archive</button>
                         </>
                       ) : (
-                        <button className="tag-action-btn restore" disabled={pendingMachineId === m.id} onClick={() => handleRestoreMachine(m)} title="Restore"><ArchiveRestore size={14} /></button>
+                        <button type="button" className="btn btn-success btn-sm" disabled={pendingMachineId === m.id} onClick={() => handleRestoreMachine(m)}><ArchiveRestore size={14} /> Restore</button>
                       )}
                     </div>
                   </div>
@@ -415,9 +423,9 @@ export default function TagManagement() {
             )
           ) : (
             tagLoading ? (
-              <div className="loading">Loading tags...</div>
+              <div className="loading">Loading options…</div>
             ) : tags.length === 0 ? (
-              <p className="tag-empty-text">No tags in this category yet. Click "Add Tag" to create one.</p>
+              <p className="tag-empty-text">No options in this category yet. Click "{CATEGORY_INFO[selectedCategory].addLabel}" to create one.</p>
             ) : (
               <div className="tag-chips-grid">
                 {tags.map(tag => (
@@ -428,11 +436,11 @@ export default function TagManagement() {
                     </span>
                     <div className="tag-chip-actions">
                       {tag.archived ? (
-                        <button className="tag-action-btn restore" disabled={pendingTagId === tag.id} onClick={() => handleRestoreTag(tag)} title="Restore"><ArchiveRestore size={14} /></button>
+                        <button type="button" className="btn btn-success btn-sm" disabled={pendingTagId === tag.id} onClick={() => handleRestoreTag(tag)}><ArchiveRestore size={14} /> Restore</button>
                       ) : (
                         <>
-                          <button className="tag-action-btn" onClick={() => handleEditTag(tag)} title="Edit"><Edit2 size={14} /></button>
-                          <button className="tag-action-btn danger" disabled={pendingTagId === tag.id} onClick={() => handleArchiveTag(tag)} title="Archive"><Archive size={14} /></button>
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleEditTag(tag)}><Edit2 size={14} /> Edit</button>
+                          <button type="button" className="btn btn-warning btn-sm" disabled={pendingTagId === tag.id} onClick={() => handleArchiveTag(tag)}><Archive size={14} /> Archive</button>
                         </>
                       )}
                     </div>
@@ -445,7 +453,7 @@ export default function TagManagement() {
       </div>
 
       <EntityActivityLog
-        entityType="tag,machine"
+        entityType={isEquipment ? 'machine' : 'tag'}
         isOpen={showActivityLog}
         onClose={() => setShowActivityLog(false)}
         refreshKey={activityRefreshKey}

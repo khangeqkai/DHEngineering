@@ -22,6 +22,7 @@ const jobsInFlight = new Set();
 export async function changeJobStatus({
   jobId,
   newStatus,
+  jobNumber = null,
   showConfirm,
   prepareInvoice,
   beforeSend,
@@ -35,13 +36,15 @@ export async function changeJobStatus({
     if (newStatus === 'INVOICED') {
       let total = null;
       let costingChangesSaved = false;
+      let namedJob = jobNumber;
       if (prepareInvoice) {
         const prepared = await prepareInvoice();
         if (!prepared) return;
         total = prepared.total ?? null;
         costingChangesSaved = Boolean(prepared.costingChangesSaved);
+        namedJob = prepared.jobNumber ?? namedJob;
       }
-      const proceed = await confirmMarkInvoiced(showConfirm, { total, costingChangesSaved });
+      const proceed = await confirmMarkInvoiced(showConfirm, { total, costingChangesSaved, jobNumber: namedJob });
       if (!proceed) return;
     }
 

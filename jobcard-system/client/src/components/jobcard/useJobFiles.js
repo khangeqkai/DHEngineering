@@ -32,6 +32,19 @@ function handledAsJobClosed(err, onJobClosed) {
   return true;
 }
 
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const MAX_UPLOAD_MB = Math.round(MAX_UPLOAD_BYTES / (1024 * 1024));
+
+// " · 2 skipped (a.pdf is over 30 MB; b.exe is the wrong type)" — every file that was
+// never tried, in one note, so a pick with several skips still ends in one message.
+function skippedNote(tooBig, badType) {
+  const reasons = [
+    ...tooBig.map(f => `${f.name} is over ${MAX_UPLOAD_MB} MB`),
+    ...badType.map(f => `${f.name} is the wrong type`)
+  ];
+  return reasons.length ? ` · ${reasons.length} skipped (${reasons.join('; ')})` : '';
+}
+
 // "2 of 3 saved — a.pdf wasn't: <reason>" — what an upload or photo save says
 // when it ended with some files saved and some not. `failed` is a list of
 // { name, message }.
@@ -138,7 +151,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
       // All three folders load at once when the Files panel opens, and they fail
       // together for the same reason (storage not set up, drive offline) — one
       // id per job so the three messages replace each other instead of stacking.
-      toast.error(err.message || 'Failed to load files', { id: `files-load-${jobcardId}` });
+      toast.error(err.message || 'Couldn\'t load the files. Try again in a moment.', { id: `files-load-${jobcardId}` });
       setFilesByCategory(prev => ({ ...prev, [category]: [] }));
     } finally {
       if (isCurrent()) setLoadingByCategory(prev => ({ ...prev, [category]: false }));
@@ -156,20 +169,28 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
     const badType = chosen.filter(f => !ACCEPTED_EXTENSIONS.includes(fileExtension(f.name)));
     const valid = chosen.filter(f => !tooBig.includes(f) && !badType.includes(f));
 
-    if (badType.length) toast.error(`Skipped (unsupported type): ${badType.map(f => f.name).join(', ')}`);
-    if (tooBig.length) toast.error(`Skipped (over 30 MB): ${tooBig.map(f => f.name).join(', ')}`);
     const skipped = tooBig.length + badType.length;
-    if (valid.length === 0) { if (onDone) onDone(); return { saved: 0, failed: skipped }; }
+    const note = skippedNote(tooBig, badType);
+    if (valid.length === 0) {
+      toast.error(`Nothing was saved${note}`);
+      if (onDone) onDone();
+      return { saved: 0, failed: skipped };
+    }
 
     setUploading(true);
     // A loading toast shows for the length of the upload, not just after it finishes.
-    const toastId = toast.loading(valid.length > 1 ? `Uploading ${valid.length} files…` : 'Uploading…');
+    const progressText = (file, index) => (valid.length > 1
+      ? `Uploading ${file.name} (${index + 1} of ${valid.length})…`
+      : `Uploading ${file.name}…`);
+    const toastId = toast.loading(progressText(valid[0], 0));
     try {
       let saved = 0;
       const failed = [];
       // Upload each file independently so one failure doesn't abandon the rest —
       // except the job being closed, which every remaining file would meet too.
-      for (const file of valid) {
+      for (let i = 0; i < valid.length; i++) {
+        const file = valid[i];
+        toast.loading(progressText(file, i), { id: toastId });
         try {
           const raw = await readFileAsBase64(file);
           await api.uploadToJobcardFiles(jobcardId, category, file.name, raw, itemId);
@@ -179,7 +200,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
             // The job's closed message has been shown; the rest were never tried.
             // Still say how many did go in before it closed.
             if (saved > 0) {
-              toast.error(partialSummary(saved, valid.length, [...failed, { name: file.name, message: err.message }]), { id: toastId });
+              toast.error(partialSummary(saved, valid.length, [...failed, { name: file.name, message: err.message }]) + note, { id: toastId });
             } else {
               toast.dismiss(toastId);
             }
@@ -192,13 +213,14 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
       // PDF", "that part was removed…") — the same as saving photos does — so
       // the user isn't left retrying something that can never work.
       if (failed.length === 0) {
-        toast.success(`${saved} file(s) saved to ${CATEGORY_LABELS[category]}`, { id: toastId });
+        const text = `${plural(saved, 'file')} saved to ${CATEGORY_LABELS[category]}${note}`;
+        // A skip means something wasn't saved, so it reads as a warning, not a plain success.
+        if (note) toast.error(text, { id: toastId }); else toast.success(text, { id: toastId });
       } else if (saved > 0) {
-        toast.error(partialSummary(saved, valid.length, failed), { id: toastId });
+        toast.error(partialSummary(saved, valid.length, failed) + note, { id: toastId });
       } else {
-        toast.dismiss(toastId);
         const lines = failed.map(f => `${f.name}: ${f.message || "couldn't be uploaded, try again in a moment."}`);
-        toast.error(`Failed to upload — ${lines.join('; ')}`);
+        toast.error(`Couldn't upload: ${lines.join('; ')}${note}`, { id: toastId });
       }
       return { saved, failed: failed.length + skipped };
     } finally {
@@ -220,7 +242,8 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
     setSavingPhotos(true);
     // Photos go up one at a time and can take a while on a phone. Say so while it
     // runs, the same as picking files from disk already does.
-    const toastId = toast.loading(photos.length > 1 ? `Saving ${photos.length} photos…` : 'Saving the photo…');
+    const photoProgress = (i) => (photos.length > 1 ? `Saving photo ${i + 1} of ${photos.length}…` : 'Saving the photo…');
+    const toastId = toast.loading(photoProgress(0));
     let saved = 0;
     const failed = [];
     try {
@@ -231,6 +254,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
       const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
       for (let i = 0; i < photos.length; i++) {
         const photo = photos[i];
+        toast.loading(photoProgress(i), { id: toastId });
         const suffix = photos.length > 1 ? `_${i + 1}` : '';
         const filename = `photo_${timestamp}${suffix}.jpg`;
         const raw = photo.data.replace(/^data:image\/\w+;base64,/, '');
@@ -251,13 +275,13 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
         }
       }
       if (failed.length === 0) {
-        toast.success(`${saved} photo(s) saved to ${CATEGORY_LABELS[category]}`, { id: toastId });
+        toast.success(`${plural(saved, 'photo')} saved to ${CATEGORY_LABELS[category]}`, { id: toastId });
       } else if (saved > 0) {
         toast.error(partialSummary(saved, photos.length, failed), { id: toastId });
       } else {
         // Keep the server's reason (e.g. "This file is too large") — a fixed
         // "try again" would send the user retrying something that can never work.
-        toast.error(failed[0].message || 'Could not save the photos — try again in a moment.', { id: toastId });
+        toast.error(failed[0].message || 'Couldn\'t save the photos. Try again in a moment.', { id: toastId });
       }
       return { saved, failed: failed.length };
     } finally {
@@ -279,7 +303,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
       await loadFiles(category);
       return updated?.name || filename;
     } catch (err) {
-      if (!handledAsJobClosed(err, onJobClosedRef.current)) toast.error(err.message || 'Could not change which part this file is for');
+      if (!handledAsJobClosed(err, onJobClosedRef.current)) toast.error(err.message || 'Couldn\'t change which part this file is for. Check the connection and try again.');
       return null;
     } finally {
       setAssigningKeys(prev => { const next = new Set(prev); next.delete(key); return next; });
@@ -299,7 +323,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
       toast.success('File deleted');
       return true;
     } catch (err) {
-      if (!handledAsJobClosed(err, onJobClosedRef.current)) toast.error(err.message || 'Could not delete the file');
+      if (!handledAsJobClosed(err, onJobClosedRef.current)) toast.error(err.message || 'Couldn\'t delete the file. Check the connection and try again.');
       return false;
     } finally {
       setDeletingKeys(prev => { const next = new Set(prev); next.delete(key); return next; });
@@ -317,7 +341,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
     try {
       const fileData = await api.getJobcardFile(jobcardId, category, file.name);
       if (!fileData?.data) {
-        toast.error('Failed to load file data');
+        toast.error('Couldn\'t load the file data. Try again in a moment.');
         return;
       }
       if (fileData.mimeType?.startsWith('image/')) {
@@ -330,7 +354,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
         setViewerUrl(url);
       }
     } catch (err) {
-      toast.error(err.message || 'Failed to view file');
+      toast.error(err.message || 'Couldn\'t open the file. Check the connection and try again.');
     } finally {
       setLoadingFiles(prev => { const next = new Set(prev); next.delete(loadingKey); return next; });
     }

@@ -92,18 +92,22 @@ export async function confirmInvoiceWithoutSignOff(warnings, showConfirm) {
 // can fetch one, since only it has costing access — the list passes nothing and gets
 // the plain message); `costingChangesSaved` swaps in the sentence noting unsaved
 // pricing was saved first. Returns true if the user chose to archive.
-export async function confirmMarkInvoiced(showConfirm, { total = null, costingChangesSaved = false } = {}) {
-  const baseMessage = costingChangesSaved
-    ? 'This will archive the job card. Your costing changes have been saved and will be billed. Continue?'
-    : 'This will archive the job card. Continue?';
-  const message = typeof total === 'number'
-    ? <>{baseMessage}<br />Total: {formatMoney(total)}</>
+export async function confirmMarkInvoiced(showConfirm, { total = null, costingChangesSaved = false, jobNumber = null } = {}) {
+  const baseMessage = 'It will be locked and moved to the archive. Unarchive it if it ever needs editing again.';
+  const message = (costingChangesSaved || typeof total === 'number')
+    ? (
+      <>
+        {baseMessage}
+        {costingChangesSaved && <><br />Your costing changes have been saved and will be billed.</>}
+        {typeof total === 'number' && <><br />Total: {formatMoney(total)}</>}
+      </>
+    )
     : baseMessage;
   return !!(await showConfirm?.({
-    title: 'Mark as Invoiced',
+    title: jobNumber ? `Invoice job ${jobNumber}?` : 'Invoice this job?',
     message,
-    confirmLabel: 'Archive',
-    cancelLabel: 'Cancel',
-    confirmVariant: 'danger'
+    confirmLabel: 'Invoice and lock',
+    cancelLabel: 'Go back',
+    confirmVariant: 'primary'
   }));
 }

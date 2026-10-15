@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { History, ChevronLeft, RefreshCw } from 'lucide-react';
+import { History, X, RefreshCw } from 'lucide-react';
 import { formatTime, toIsoDate } from '../../utils/formatters';
 import { describeEntry, dayHeading, KINDS } from '../../utils/historySentences';
 import './JobCommentsPanel.css';
@@ -120,6 +120,21 @@ export default function JobHistoryPanel({
     return next;
   });
 
+  // Shift+click shows only that kind. Clicking the one kind left showing brings them all
+  // back (hiding it would leave nothing at all).
+  const presentKinds = KINDS.filter((k) => counts[k.key]);
+  const shownKinds = presentKinds.filter((k) => !hidden.has(k.key));
+  const handleChip = (e, key) => {
+    const loneOn = presentKinds.length > 1 && shownKinds.length === 1 && shownKinds[0].key === key;
+    if (loneOn) {
+      setHidden(new Set());
+    } else if (e.shiftKey) {
+      setHidden(new Set(presentKinds.filter((k) => k.key !== key).map((k) => k.key)));
+    } else {
+      toggleKind(key);
+    }
+  };
+
   // Escape closes this window when focus is inside it; the job window behind stays.
   const handlePanelKeyDown = (e) => {
     if (e.key === 'Escape' && !e.defaultPrevented) {
@@ -129,6 +144,9 @@ export default function JobHistoryPanel({
   };
 
   const count = history.length;
+  // With any kind switched off, the count says how many of the whole are showing.
+  const shownCount = items.filter((it) => !hidden.has(it.described.kind)).length;
+  const filtered = hidden.size > 0;
 
   const renderBody = () => {
     // Only the first load blanks the window. A reload keeps the list on screen and swaps
@@ -174,6 +192,7 @@ export default function JobHistoryPanel({
           className="jc-bubble jc-bubble--history"
           onClick={() => changeOpen(true)}
           aria-label="Open job history"
+          title="Open job history"
           aria-controls="job-history-window"
           inert={open || otherOpen ? '' : undefined}
         >
@@ -193,7 +212,7 @@ export default function JobHistoryPanel({
             <div className="jc-chat-titles">
               <h2 className="jc-chat-title">History</h2>
               <div className="jc-chat-sub">
-                {jobNumber ? `${jobNumber}, ` : ''}{count} {count === 1 ? 'change' : 'changes'}
+                {jobNumber ? `${jobNumber}, ` : ''}{filtered ? `${shownCount} of ${count} changes` : `${count} ${count === 1 ? 'change' : 'changes'}`}
               </div>
             </div>
             <button
@@ -211,20 +230,21 @@ export default function JobHistoryPanel({
               className="jc-chat-close"
               onClick={() => changeOpen(false)}
               aria-label="Close history"
-              title="Close history"
+              title="Close"
             >
-              <ChevronLeft size={18} />
+              <X size={16} />
             </button>
           </div>
 
           <div className="history-filters">
-            {KINDS.filter((k) => counts[k.key]).map((k) => (
+            {presentKinds.map((k) => (
               <button
                 key={k.key}
                 type="button"
                 className="history-chip"
                 aria-pressed={!hidden.has(k.key)}
-                onClick={() => toggleKind(k.key)}
+                title="Click to hide or show · Shift+click to show only this kind"
+                onClick={(e) => handleChip(e, k.key)}
               >
                 <span className={`history-chip-dot history-dot-${k.key}${k.key === 'alert' ? ' history-dot-ring' : ''}`} aria-hidden="true" />
                 {k.label}

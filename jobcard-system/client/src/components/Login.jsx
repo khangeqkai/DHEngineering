@@ -10,6 +10,7 @@ import './Login.css';
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const pinRef = useRef(null);
   // Only asked for when the server says this visitor came in through the
   // home-access tunnel (the public address needs more than a 4-digit PIN).
   const [homeAccessCode, setHomeAccessCode] = useState('');
@@ -83,7 +84,7 @@ export default function Login() {
       // sign-in form while the session is still live.
       navigate('/', { replace: true });
     } catch (err) {
-      const message = err.message || 'Login failed';
+      const message = err.message || 'Couldn\'t sign in. Try again.';
       if (err.code === 'SERVER_UNREACHABLE') {
         // Say it in the waiting notice, not as a sign-in error — nothing the
         // person typed was wrong. Start watching for the server again.
@@ -94,11 +95,14 @@ export default function Login() {
       const match = message.match(/wait (\d+) seconds/);
       if (match) {
         const seconds = parseInt(match[1], 10);
-        setError(`Too many attempts. Please wait ${seconds} seconds before trying again.`);
+        setError(`Too many attempts. Please wait ${seconds} second${seconds === 1 ? '' : 's'} before trying again.`);
         startCountdown(seconds);
       } else {
         setError(message);
       }
+      // A wrong PIN: put the cursor back in the box with the digits selected, so the
+      // next attempt just types over them.
+      requestAnimationFrame(() => { pinRef.current?.focus(); pinRef.current?.select(); });
     } finally {
       setLoading(false);
     }
@@ -172,6 +176,7 @@ export default function Login() {
               <input
                 type="password"
                 id="password"
+                ref={pinRef}
                 inputMode="numeric"
                 maxLength={4}
                 value={password}
@@ -207,14 +212,14 @@ export default function Login() {
             disabled={loading || countdown > 0 || !serverReady}
           >
             {loading
-              ? 'Signing in...'
+              ? 'Signing in…'
               : serverReady === false
-                ? 'Waiting for the server...'
+                ? 'Waiting for the server…'
                 : serverReady === null
-                  ? 'Checking...'
+                  ? 'Checking…'
                 : countdown > 0
                   ? `Wait ${countdown}s`
-                  : 'Sign In'}
+                  : 'Sign in'}
           </button>
         </form>
 

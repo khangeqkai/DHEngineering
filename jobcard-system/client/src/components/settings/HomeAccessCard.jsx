@@ -15,7 +15,7 @@ export default function HomeAccessCard({ s }) {
   return (
     <div className="card full-width">
       <div className="card-header">
-        <h2>Home Access</h2>
+        <h2>Home access</h2>
       </div>
       <div className="card-body">
         <dl className="info-list">
@@ -47,6 +47,7 @@ export default function HomeAccessCard({ s }) {
 
         {s.canSeeSystemData && (
           <>
+            <div className="home-access-step">1. Save the address</div>
             <div className={addressError ? 'home-access-field field-error' : 'home-access-field'}>
               <div className="timeout-input-group">
                 <input
@@ -56,7 +57,7 @@ export default function HomeAccessCard({ s }) {
                   aria-label="Home address"
                   value={s.homeAddress}
                   onChange={(e) => s.setHomeAddress(e.target.value)}
-                  placeholder="e.g. https://jobs.93120050.online"
+                  placeholder="e.g. https://jobs.example.online"
                   autoComplete="off"
                 />
                 <button
@@ -65,12 +66,13 @@ export default function HomeAccessCard({ s }) {
                   onClick={s.handleSaveHomeAddress}
                   disabled={s.savingHomeAddress}
                 >
-                  {s.savingHomeAddress ? 'Saving...' : 'Save Address'}
+                  {s.savingHomeAddress ? 'Saving…' : 'Save address'}
                 </button>
               </div>
               <FieldError {...s.errorProps('homeAddress')} message={addressError} />
             </div>
 
+            <div className="home-access-step">2. Set a code</div>
             <div className={codeError ? 'home-access-field field-error' : 'home-access-field'}>
               <div className="timeout-input-group">
                 <input
@@ -89,11 +91,16 @@ export default function HomeAccessCard({ s }) {
                   onClick={s.handleSaveHomeAccessCode}
                   disabled={s.savingHomeAccess || (!s.homeAccessCode && !codeSet)}
                 >
-                  {s.savingHomeAccess ? 'Saving...' : s.homeAccessCode ? 'Save Code' : 'Switch Off'}
+                  {s.savingHomeAccess ? 'Saving…' : s.homeAccessCode ? 'Save code' : 'Switch off'}
                 </button>
               </div>
               <FieldError {...s.errorProps('homeAccessCode')} message={codeError} />
             </div>
+
+            <div className="home-access-step">3. Tell staff</div>
+            <p className="home-access-hint">
+              Give them the address and the code. If someone still can't sign in from home, type a new code above, press Save Code, and tell them the new one.
+            </p>
           </>
         )}
       </div>

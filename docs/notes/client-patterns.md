@@ -156,10 +156,36 @@ that still posted a whole-job payload on a timer would reproduce the same bug wi
   already carries the job number, priority pill, description box, status pill and due date, and a
   sixth item in it — a small `Saving… / Saved` that spent almost all its life saying nothing new —
   stopped being read. The amber/green window frame above says the same thing at a size that cannot
-  be missed, so `JobIdentityStrip.jsx` renders `instant-save-status` **only** for `failed` ("Not
-  saved"): the frame staying amber says *not there yet*, which on its own doesn't say anything went
-  wrong, and that is the one state worth words. The full wording is still announced from a
-  `sr-only` live region beside it, because a colour says nothing to a screen reader.
+  be missed, so `JobIdentityStrip.jsx` renders `instant-save-status` **only** for `failed`, and it
+  names the field ("Due date not saved", "Priority not saved", "Job description not saved") with a
+  **Retry** button that resends that one field's value (a person's own action, never automatic). The
+  mark stays until a retry lands or the field is edited again. The frame staying amber says *not
+  there yet*, which on its own doesn't say anything went wrong, and that is the one state worth
+  words. The full wording is still announced from a `sr-only` live region beside it, because a
+  colour says nothing to a screen reader.
+- **A part whose write failed carries a persistent "Not saved · Retry" chip on its card**, as well as
+  the toast. A saved part's failure is read from the save queue; a new part whose create failed is
+  tracked by `useInstantItems.js` (`createFailedIds`). Retry (`retryItem`) re-creates a still-local
+  part, or resends every box of a saved part that differs from what the job last confirmed storing.
+- **The strip has a second line** (only what has a value): "For <company>" (management only), the
+  assignee initials circles (names on hover), and a danger-tinted "Critical · inspection at stop"
+  pill when the quality level is Critical. The company and assignees are buttons that scroll the
+  Details tab to the Customer / Assignees sections (switching to Details first if needed).
+  The References card (PO/quote numbers, quality level, repeat job) was formerly "Customer Input".
+- **Removing a part that has anything filled in asks first** (`requestRemoveItem` in
+  `JobCardModal.jsx`): title names the part number and description; "Keep part" (focused) / "Remove
+  part" (danger). A blank part goes without asking. A part with logged time is still refused by the
+  server and that message still shows.
+- **Parts: required stars, Duplicate, and Add time in place.** Qty, Description, Job Type, Drawings
+  and Customer Property all carry the red star (the five boxes a part cannot be saved without). A
+  part card's "Duplicate part" copies everything except quantity and puts the cursor in the new
+  part's Qty box; the copy is an ordinary local part and is created through the same path as Add
+  part once complete. "+ Add time" in a part's progress row opens the New Time Entry form inside
+  that part's card (only one form open at a time); editing an existing entry still opens it at the
+  top of the Parts section.
+- **Start Timer is a split button for management**: the main part starts the timer for the
+  signed-in user at once; the caret ("Start for someone else") opens the people list. Workers keep
+  the plain button.
   `DetailsTab.jsx`'s copy of the line is unchanged — its grey section title bar has room for it.
 - **The parts list saves row by row, in `useInstantItems.js`.** A row added by "Add Part" stays
   purely local — every field on it just edits screen state — until its description is filled in and
@@ -209,9 +235,12 @@ that still posted a whole-job payload on a timer would reproduce the same bug wi
 
 Each of these was decided (2026-10-14); a review or bug hunt does not raise it.
 
+- **Start Timer stays where it is on the part card (an outlined button under the part's details), and a running clock is shown inside that part's card only — no running-clock band at the top of the job window and no filled Start button at the top of each card.** Decided 2026-10-15 when the UI review proposed both; the owner chose to leave the part card as it is.
 - **History may read twice in a row after a write that also reloads the job (e.g. invoicing).** The second read is queued behind the first, never concurrent, and is accepted. Do not raise "History loaded twice".
 - **`api.js` has two announcers on purpose:** `onDataWritten` (every accepted write, with its path, for screens holding cached lists) and `onJobChanged` (one job's trail may have a new entry). They are not one filtered over the other, because `noteJobChanged` announces changes that were *not* writes from this PC (an external clock stop, a reload that found the job closed), and those must not look like a data write to the list screens. Do not raise "merge the two announcers".
 
 - **History keeps sentences for event kinds that no longer happen.** `jobCardPreviewed`, `packetBuilt`, `photos` and `qaLevelId` are past events no route records any more; there is nothing current to convert them into, so their old entries keep their sentences rather than being rewritten.
 - **The older reload-on-change screens keep their own request counters.** The job list, statistics, search (`useSearch`), tags/equipment and the list pages (`useManagedListPage`'s `runLoad`) each guard "newest answer wins" with a hand-written counter. They work and are deliberately not moved onto `hooks/useLatestRequest.js`; only new screens take the hook.
 - **Searching logged time by part number matches that exact part only.** "3" finds part 3, never 13 or 30, so the total hours at the top are that part's; "03" or "part 3" find nothing by part number. Every other field in that box still matches partial text.
+- **The job list keeps the running-timer pin and labels it.** The job with the signed-in person's running clock sits at the top whatever the sort, under a thin band reading "Your timer is running on this job". It is always shown while the pin is active, even when the sort would have put the job there anyway.
+- **Unarchive is one click; delete is confirmed.** Restoring an archived job from the list needs no question (it is easily reversed by invoicing again); deleting still asks, because it cannot be taken back. There is no Undo on the restore, since no job-archive call exists apart from invoicing.

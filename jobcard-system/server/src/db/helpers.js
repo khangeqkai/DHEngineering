@@ -42,14 +42,14 @@ function peekNextJobNumber() {
   const nextStr = settings.job_number_next || '';
 
   if (!nextStr) {
-    return { jobNumber: null, error: 'Job number sequence not configured. Please set it in Settings.' };
+    return { jobNumber: null, error: 'The job numbering hasn\'t been set up. Ask an admin to set it in Settings.' };
   }
 
   // Preserve leading zeros: use the width of the stored string
   const width = nextStr.length;
   const nextNum = parseInt(nextStr, 10);
   if (isNaN(nextNum) || nextNum < 0) {
-    return { jobNumber: null, error: 'Invalid job number sequence value.' };
+    return { jobNumber: null, error: 'The next job number in Settings isn\'t a valid number. Ask an admin to fix it.' };
   }
 
   const jobNumber = formatJobNumber(prefix, nextNum, width);

@@ -1,12 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { ORDER, MAX_PACKET_FILES, keyOf } from './paperworkHubHelpers';
 
-// Which files (plus the pinned job card) are ticked for the combined packet, and
+// Which files (plus the pinned job card) are ticked for the combined printout, and
 // the per-section / per-part / whole-job pick-clear helpers the paperwork hub's
 // toolbar and "Select" menu use. Extracted out of JobPaperworkHub.jsx (a straight
 // lift, no behaviour change) because that file was getting long —
 // this hook only owns the selection bookkeeping; the hub still owns what a tick
-// means (print/save) and how it's drawn.
+// means (print/save) and how it's drawn. The ticks live as long as the job window:
+// closing the Files window (Escape or the X) keeps them, so reopening shows the same
+// ticks. Nothing resets them; they go when the job card itself closes.
 export function usePaperworkSelection(filesByCategory) {
   const [selected, setSelected] = useState(() => new Set());
   const [cardTicked, setCardTicked] = useState(true);
@@ -110,13 +112,6 @@ export function usePaperworkSelection(filesByCategory) {
     setSelected(new Set(partFileKeys(partId)));
   }, [partFileKeys]);
 
-  // Called when the hub closes — back to the starting state for next time it opens.
-  const resetSelection = useCallback(() => {
-    seenRef.current = new Set();
-    setSelected(new Set());
-    setCardTicked(true);
-  }, []);
-
   // Re-tagging a file renames it, so its old key's ticked/unticked state has to
   // carry over to the new name — otherwise the renamed file looks brand-new and
   // gets silently re-ticked, dragging a file the user deliberately excluded back
@@ -150,6 +145,6 @@ export function usePaperworkSelection(filesByCategory) {
     sectionFileKeys, sectionState, toggleSection, allFileKeys, selectedItems,
     totalFileCount, totalSelectable, tickedFileCount, tickedCount, overFileLimit, masterState,
     selectAll, clearAll, toggleMaster, partFileKeys, selectPart,
-    resetSelection, carryTickToRename, forgetFile
+    carryTickToRename, forgetFile
   };
 }

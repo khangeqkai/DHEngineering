@@ -7,7 +7,7 @@ export default function DefaultRateCard({ defaultRate, setDefaultRate, onSave, s
   return (
     <div className="card full-width">
       <div className="card-header">
-        <h2>Default Hourly Rate</h2>
+        <h2>Default hourly rate</h2>
       </div>
       <div className="card-body">
         <p className="setting-description">
@@ -40,7 +40,7 @@ export default function DefaultRateCard({ defaultRate, setDefaultRate, onSave, s
         </div>
         <div className="sched-save">
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save Default Rate'}
+            {saving ? 'Saving…' : 'Save default rate'}
           </button>
         </div>
       </div>

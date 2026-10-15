@@ -96,19 +96,19 @@ function validateItemTreatments(items, existingItems, getItemLabel = defaultItem
     const treatments = item.treatments;
     if (treatments === undefined || treatments === null) continue;
     if (!Array.isArray(treatments)) {
-      return `${label} treatments must be an array`;
+      return `${label}: the treatments could not be read. Reload the job and try again.`;
     }
     for (let t = 0; t < treatments.length; t++) {
       const tr = treatments[t];
       if (!tr || typeof tr !== 'object') {
-        return `${label} treatment ${t + 1} must be an object`;
+        return `${label}: treatment ${t + 1} could not be read. Reload the job and try again.`;
       }
       const value = tr.value ? String(tr.value).trim() : '';
       if (!value) {
-        return `${label} treatment ${t + 1} is missing a treatment value`;
+        return `${label}: pick a treatment for treatment ${t + 1}, or remove it.`;
       }
       if (allowedTreatments.length > 0 && !allowedTreatments.includes(value)) {
-        return `${label} treatment ${t + 1} has invalid value: ${value}`;
+        return `${label}: "${value}" is not one of the treatment options. Pick one from the list.`;
       }
       // Supplier is optional — a treatment can be saved with none. When one is
       // given, it just has to be a real, active supplier; it no longer has to be
@@ -119,10 +119,10 @@ function validateItemTreatments(items, existingItems, getItemLabel = defaultItem
         const supplier = getSupplierQueries().getById.get(supplierId);
         if (!isGrandfathered) {
           if (!supplier) {
-            return `${label} treatment ${t + 1}: selected supplier no longer exists`;
+            return `${label}: the supplier chosen for treatment ${t + 1} couldn't be found. Pick another supplier.`;
           }
           if (supplier.active !== 1) {
-            return `${label} treatment ${t + 1}: selected supplier is switched off`;
+            return `${label}: the supplier chosen for treatment ${t + 1} is switched off. Pick another supplier.`;
           }
         }
         // The part always stores the supplier's current name from the database,
@@ -173,7 +173,7 @@ function validateItemMaterials(items, existingItems, getItemLabel = defaultItemL
     if (item.material) {
       const value = String(item.material).trim();
       if (value && allowedMaterials.length > 0 && !allowedMaterials.includes(value) && !grandfathered.has(value)) {
-        return `${getItemLabel(item, i)} has invalid material value: ${value}`;
+        return `${getItemLabel(item, i)}: "${value}" is not one of the material options. Pick one from the list.`;
       }
     }
   }
@@ -196,10 +196,10 @@ function validateItemJobTypes(items, existingItems, getItemLabel = defaultItemLa
     const label = getItemLabel(item, i);
     const value = item.jobType ? String(item.jobType).trim() : '';
     if (!value) {
-      return `${label} is missing job type`;
+      return `${label}: pick a job type.`;
     }
     if (allowedJobTypes.length > 0 && !allowedJobTypes.includes(value) && !grandfathered.has(value)) {
-      return `${label} has invalid job type value: ${value}`;
+      return `${label}: "${value}" is not one of the job type options. Pick one from the list.`;
     }
   }
   return null;
@@ -229,17 +229,17 @@ function validateItemTagList(items, field, category, label, existingItems, colum
     const raw = item[field];
     const values = splitAnswer(raw);
     if (values.length === 0) {
-      return `${itemLabel} is missing ${label}`;
+      return `${itemLabel}: pick an answer for ${label}.`;
     }
     // "N/A" is the standalone "no drawing / nothing supplied" answer, so it can't
     // be combined with a real value for the same line.
     if (hasMixedNa(values)) {
-      return `${itemLabel} cannot combine "N/A" with other ${label} values`;
+      return `${itemLabel}: N/A can't be combined with other ${label} answers. Pick N/A on its own, or remove it.`;
     }
     if (allowed.length > 0) {
       const invalid = values.filter(v => !allowed.includes(v) && !grandfathered.has(v));
       if (invalid.length > 0) {
-        return `${itemLabel} has invalid ${label} values: ${invalid.join(', ')}`;
+        return `${itemLabel}: ${invalid.map(v => `"${v}"`).join(', ')} ${invalid.length === 1 ? 'is not an option' : 'are not options'} for ${label}. Pick from the list.`;
       }
     }
   }
@@ -270,10 +270,10 @@ function validateItemQuantities(items, getItemLabel = defaultItemLabel) {
     const raw = item.qty;
     const str = (raw === undefined || raw === null) ? '' : String(raw).trim();
     if (!str) {
-      return `${label} is missing a quantity`;
+      return `${label}: enter a quantity of 1 or more.`;
     }
     if (!/^\d+$/.test(str) || parseInt(str, 10) < 1) {
-      return `${label} quantity must be a whole number of 1 or more`;
+      return `${label}: enter a quantity of 1 or more, as a whole number.`;
     }
   }
   return null;
@@ -292,7 +292,7 @@ function validateItemDescriptions(items, getItemLabel = defaultItemLabel) {
     const item = items[i];
     const value = item.description ? String(item.description).trim() : '';
     if (!value) {
-      return `${getItemLabel(item, i)} is missing a description`;
+      return `${getItemLabel(item, i)}: enter a description.`;
     }
   }
   return null;

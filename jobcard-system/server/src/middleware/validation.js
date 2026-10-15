@@ -28,10 +28,13 @@ const FIELD_ALIASES = { mentionUserIds: 'text' };
 function handleValidationErrors(req, res, next) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    const errArray = errors.array();
+    // A check with no wording of its own comes back as "Invalid value"; say something a person can act on.
+    const errArray = errors.array().map(err => (err.msg === 'Invalid value'
+      ? { ...err, msg: 'Something in that isn\'t right. Reload the page and try again.' }
+      : err));
     const messages = errArray.map(err => err.msg);
     return res.status(400).json({
-      error: 'Validation failed',
+      error: 'Some details need fixing. Check the marked boxes and try again.',
       details: messages,
       // Which field each message belongs to, so a screen can mark the box itself
       // instead of only popping up the message. express-validator 7 names it
@@ -54,15 +57,20 @@ function handleValidationErrors(req, res, next) {
  * @param {string} field - Field name to validate
  * @param {string} label - Human-readable field label for error messages
  */
-function requiredString(field, label) {
+// What a person reads under a blank required box: "Enter the company name."
+function enterMessage(label, verb = 'Enter') {
+  return `${verb} the ${label.toLowerCase()}.`;
+}
+
+function requiredString(field, label, verb) {
   return body(field)
     .exists({ checkFalsy: true })
-    .withMessage(`${label} is required`)
+    .withMessage(enterMessage(label, verb))
     .isString()
-    .withMessage(`${label} must be a string`)
+    .withMessage(enterMessage(label, verb))
     .trim()
     .isLength({ min: 1 })
-    .withMessage(`${label} cannot be empty`);
+    .withMessage(enterMessage(label, verb));
 }
 
 /**
@@ -77,10 +85,10 @@ function requiredIfSent(field, label) {
   return body(field)
     .optional()
     .isString()
-    .withMessage(`${label} must be a string`)
+    .withMessage(enterMessage(label))
     .trim()
     .isLength({ min: 1 })
-    .withMessage(`${label} is required`);
+    .withMessage(enterMessage(label));
 }
 
 /**
@@ -99,7 +107,7 @@ function nameLength(field, label, storedNameOf) {
       const stored = storedNameOf ? storedNameOf(req) : undefined;
       return typeof stored === 'string' && stored.trim() === value.trim();
     })
-    .withMessage(`${label} cannot exceed ${NAME_MAX} characters`);
+    .withMessage(`The ${label.toLowerCase()} can be at most ${NAME_MAX} characters. Shorten it.`);
 }
 
 // Looked up lazily so this file doesn't load the database just by being required.
@@ -114,7 +122,7 @@ function optionalEmail(field = 'email') {
   return body(field)
     .optional({ checkFalsy: true })
     .isEmail()
-    .withMessage('Email must be a valid email address')
+    .withMessage('Enter an email address like name@example.com.')
     // Lowercase only. normalizeEmail() rewrites the address itself (it strips
     // dots and +tags from gmail.com), so jane.doe+dh@gmail.com was saved as
     // janedoe@gmail.com while the job card kept what was actually typed.
@@ -131,9 +139,9 @@ function optionalPhone(field = 'phone') {
   return body(field)
     .optional({ checkFalsy: true })
     .matches(/^(?=.*\d)[\d\s\-\(\)\+]+$/)
-    .withMessage('Phone number must contain at least one digit and can only contain digits, spaces, dashes, parentheses, and plus sign')
+    .withMessage('The phone number can only use digits, spaces, dashes, brackets and a plus sign.')
     .isLength({ min: 6, max: 20 })
-    .withMessage('Phone number must be between 6 and 20 characters');
+    .withMessage('The phone number needs to be between 6 and 20 characters long.');
 }
 
 /**
@@ -146,10 +154,10 @@ function optionalString(field, label, maxLength = 255) {
   return body(field)
     .optional({ checkFalsy: true })
     .isString()
-    .withMessage(`${label} must be a string`)
+    .withMessage(`Enter the ${label.toLowerCase()} as text.`)
     .trim()
     .isLength({ max: maxLength })
-    .withMessage(`${label} cannot exceed ${maxLength} characters`);
+    .withMessage(`The ${label.toLowerCase()} can be at most ${maxLength} characters. Shorten it.`);
 }
 
 /**
@@ -163,7 +171,7 @@ function optionalEnum(field, label, allowed) {
     .customSanitizer(value => (value === '' || value === null) ? undefined : value)
     .optional()
     .isIn(allowed)
-    .withMessage(`${label} must be one of: ${allowed.join(', ')}`);
+    .withMessage(`Pick the ${label.toLowerCase()} from the list.`);
 }
 
 // =============================================================================
@@ -209,13 +217,13 @@ const USERNAME_MAX_LENGTH = 100;
 // it can ever be (72 bytes, the most bcrypt reads — see settings-home-access.js).
 const validateLogin = [
   requiredString('username', 'Username')
-    .isLength({ max: USERNAME_MAX_LENGTH }).withMessage(`Username cannot exceed ${USERNAME_MAX_LENGTH} characters`),
+    .isLength({ max: USERNAME_MAX_LENGTH }).withMessage(`The username can be at most ${USERNAME_MAX_LENGTH} characters.`),
   requiredString('password', 'Password')
-    .isLength({ max: 64 }).withMessage('Password cannot exceed 64 characters'),
+    .isLength({ max: 64 }).withMessage('The PIN is too long.'),
   body('homeAccessCode')
     .optional()
-    .isString().withMessage('Home access code must be a string')
-    .isLength({ max: 72 }).withMessage('Home access code cannot exceed 72 characters'),
+    .isString().withMessage('Enter the home access code as text.')
+    .isLength({ max: 72 }).withMessage('The home access code is too long.'),
   handleValidationErrors
 ];
 
@@ -225,19 +233,19 @@ const validateLogin = [
  */
 const validateCreateUser = [
   requiredString('username', 'Username')
-    .isLength({ max: USERNAME_MAX_LENGTH }).withMessage(`Username cannot exceed ${USERNAME_MAX_LENGTH} characters`),
+    .isLength({ max: USERNAME_MAX_LENGTH }).withMessage(`The username can be at most ${USERNAME_MAX_LENGTH} characters.`),
   body('password')
     .exists({ checkFalsy: true })
-    .withMessage('PIN is required')
+    .withMessage('Enter a PIN.')
     .isString()
     .matches(PIN_REGEX)
     .withMessage(PIN_MESSAGE),
   optionalEmail('email'),
-  requiredString('name', 'Name').isLength({ max: 100 }).withMessage('Name cannot exceed 100 characters'),
+  requiredString('name', 'Name').isLength({ max: 100 }).withMessage('The name can be at most 100 characters. Shorten it.'),
   body('role')
     .optional()
     .isIn(ALL_ROLES)
-    .withMessage('Role must be "admin", "manager" or "user"'),
+    .withMessage('Pick a role: admin, manager or user.'),
   handleValidationErrors
 ];
 
@@ -270,7 +278,7 @@ const validateUpdateCompany = [
 
 // POST /contacts — a person always belongs to a company.
 const validateCreateContact = [
-  requiredString('companyId', 'Company'),
+  requiredString('companyId', 'Company', 'Pick'),
   optionalString('contactName', 'Contact name', 200),
   optionalEmail('email'),
   optionalPhone('phone'),
@@ -331,16 +339,16 @@ const validateUpdatePreferences = [
   body('jobcardColumnOrder')
     .optional()
     .isArray({ min: 1, max: JOBCARD_COLUMN_IDS.length })
-    .withMessage(`jobcardColumnOrder must be an array of 1-${JOBCARD_COLUMN_IDS.length} column IDs`)
+    .withMessage('The column order could not be saved. Reload the page and try again.')
     .bail()
     .custom((value) => {
       const seen = new Set();
       for (const id of value) {
         if (typeof id !== 'string' || !JOBCARD_COLUMN_IDS.includes(id)) {
-          throw new Error(`jobcardColumnOrder contains invalid column ID: ${id}`);
+          throw new Error('The column order could not be saved. Reload the page and try again.');
         }
         if (seen.has(id)) {
-          throw new Error(`jobcardColumnOrder contains duplicate column ID: ${id}`);
+          throw new Error('The column order could not be saved. Reload the page and try again.');
         }
         seen.add(id);
       }
@@ -349,16 +357,16 @@ const validateUpdatePreferences = [
   body('jobcardHiddenColumns')
     .optional()
     .isArray({ max: HIDEABLE_COLUMN_IDS.length })
-    .withMessage(`jobcardHiddenColumns must be an array of up to ${HIDEABLE_COLUMN_IDS.length} column IDs`)
+    .withMessage('The hidden columns could not be saved. Reload the page and try again.')
     .bail()
     .custom((value) => {
       const seen = new Set();
       for (const id of value) {
         if (typeof id !== 'string' || !HIDEABLE_COLUMN_IDS.includes(id)) {
-          throw new Error(`jobcardHiddenColumns contains invalid column ID: ${id}`);
+          throw new Error('The hidden columns could not be saved. Reload the page and try again.');
         }
         if (seen.has(id)) {
-          throw new Error(`jobcardHiddenColumns contains duplicate column ID: ${id}`);
+          throw new Error('The hidden columns could not be saved. Reload the page and try again.');
         }
         seen.add(id);
       }
@@ -378,11 +386,11 @@ const validateJobcardListQuery = [
       if (value === 'UNASSIGNED') return true;
       return /^user:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value);
     })
-    .withMessage('assigneeId must be "UNASSIGNED" or a valid user ID'),
+    .withMessage('Pick a person from the list, or Unassigned.'),
   query('status')
     .optional()
     .isString()
-    .withMessage('status must be a string'),
+    .withMessage('Pick a status from the list.'),
   handleValidationErrors
 ];
 
@@ -401,7 +409,7 @@ const validateSearchQuery = [
   query(SEARCH_QUERY_KEYS)
     .optional()
     .isString()
-    .withMessage('Search values must be plain text, given once'),
+    .withMessage('The search could not be read. Clear the filters and try again.'),
   handleValidationErrors
 ];
 
@@ -416,7 +424,7 @@ const validateAttachmentWarningsBody = [
   body('ids')
     .optional()
     .isArray({ max: ATTACHMENT_WARNINGS_MAX_IDS })
-    .withMessage(`ids must be a list of at most ${ATTACHMENT_WARNINGS_MAX_IDS} job ids`),
+    .withMessage(`Too many jobs were checked at once. Try again with a shorter list.`),
   handleValidationErrors
 ];
 
@@ -433,7 +441,7 @@ const validateAttachmentWarningsBody = [
 // rule used to live only on the screen, which is the weaker of the two places.
 const nonBlankDescription = (value) => {
   if (typeof value !== 'string' || !value.trim()) {
-    throw new Error('Job description is required');
+    throw new Error('Enter a job description.');
   }
   return true;
 };
@@ -461,7 +469,7 @@ const validateJobcardDueDate = body('dueDate')
   .custom(value => {
     if (value === undefined || value === null || value === '') return true;
     if (typeof value === 'string' && isCalendarDate(value)) return true;
-    throw new Error('Due date must be a real calendar day (YYYY-MM-DD)');
+    throw new Error('Enter a real due date.');
   });
 
 // POST /jobcards only — a new job may carry a typed-in contact name/phone/email
@@ -489,19 +497,19 @@ const validateJobcardContactFields = [
 const validateStartTimer = [
   body('itemId')
     .exists({ checkNull: true })
-    .withMessage('itemId is required')
+    .withMessage('Pick which part this time belongs to.')
     .bail()
     .isString()
-    .withMessage('itemId must be a string')
+    .withMessage('Pick which part this time belongs to.')
     .trim()
     .notEmpty()
-    .withMessage('itemId is required'),
+    .withMessage('Pick which part this time belongs to.'),
   // Optional: an admin may start the timer for another worker. Light guard only —
   // the route validates the worker exists and is active via resolveWorkerId.
   body('workerId')
     .optional({ checkFalsy: true })
     .isString()
-    .withMessage('workerId must be a string'),
+    .withMessage('Pick the worker from the list.'),
   handleValidationErrors
 ];
 
@@ -514,10 +522,10 @@ const validateConfirmFinish = [
     .withMessage('Enter the time you finished.')
     .bail()
     .custom(v => !isNaN(new Date(v).getTime()))
-    .withMessage('Finish time is not a valid date'),
+    .withMessage('Enter a real finish time.'),
   body('stillWorking')
     .isBoolean({ strict: true })
-    .withMessage('stillWorking must be true or false'),
+    .withMessage('Say whether you are still working on it: Yes or No.'),
   handleValidationErrors
 ];
 
@@ -533,7 +541,7 @@ const validateConfirmFinish = [
 const wholeNonNegative = (value) => {
   if (value === undefined || value === null || value === '') return true;
   if (!/^\d+$/.test(String(value).trim())) {
-    throw new Error('Must be a whole number, 0 or more');
+    throw new Error('Enter a whole number, 0 or more.');
   }
   return true;
 };
@@ -546,10 +554,10 @@ const manualTimeEntryRules = ({ startRequired }) => {
   const start = () => (startRequired ? body('startTime') : body('startTime').optional());
   return [
     (startRequired
-      ? body('startTime').exists({ checkNull: true }).withMessage('Start time is required').bail()
+      ? body('startTime').exists({ checkNull: true }).withMessage('Enter the time the work started.').bail()
       : start())
       .custom(v => v !== null && !isNaN(new Date(v).getTime()))
-      .withMessage('Start time is not a valid date'),
+      .withMessage('Enter a real start time.'),
     // The form fills its start box from the office PC's own clock, which can run
     // several minutes ahead of this one, so up to FUTURE_LEEWAY_MS (15 minutes) ahead is taken as
     // "now". Further than that is a mistyped hour or day, not clock drift. A Stop
@@ -557,34 +565,34 @@ const manualTimeEntryRules = ({ startRequired }) => {
     // startTimerUndo.js), so the leeway can never produce a negative block.
     start()
       .custom(v => new Date(v).getTime() <= Date.now() + FUTURE_LEEWAY_MS)
-      .withMessage('Start time cannot be in the future'),
+      .withMessage('The start time can\'t be in the future. Check the date and hour.'),
     body('endTime')
       .optional({ nullable: true, checkFalsy: true })
       .custom(v => !isNaN(new Date(v).getTime()))
-      .withMessage('Finish time is not a valid date'),
+      .withMessage('Enter a real finish time.'),
     body('endTime')
       .optional({ nullable: true, checkFalsy: true })
       .custom((v, { req }) => req.body.startTime === undefined ||
         new Date(v).getTime() > new Date(req.body.startTime).getTime())
-      .withMessage('Finish time must be after the start time'),
+      .withMessage('The finish time has to be after the start time.'),
     // Same leeway as the start: a finish further ahead than clock drift is a mistyped
     // hour or day, and would be billed and counted toward Done straight away. The
     // stop form never trips this — its finish is the real stop time the server stored.
     body('endTime')
       .optional({ nullable: true, checkFalsy: true })
       .custom(v => new Date(v).getTime() <= Date.now() + FUTURE_LEEWAY_MS)
-      .withMessage('Finish time cannot be in the future'),
+      .withMessage('The finish time can\'t be in the future. Check the date and hour.'),
     // Only an edit states what it does with the finish; adding a block has no stored finish to act on.
     ...(startRequired ? [] : [
       body('finishAction')
         .optional()
         .isIn(['confirm', 'correct', 'reopen'])
-        .withMessage('Unknown finish action'),
-      body('finishVersion').optional().isString().withMessage('Finish version must be text')
+        .withMessage('Choose what to do with the finish time.'),
+      body('finishVersion').optional().isString().withMessage('This finish time changed. Reload the job and try again.')
     ]),
-    body('qty').custom(wholeNonNegative).withMessage('Good pieces must be a whole number, 0 or more'),
-    body('scrapBinQty').custom(wholeNonNegative).withMessage('Scrap (bin) must be a whole number, 0 or more'),
-    body('scrapRecycleQty').custom(wholeNonNegative).withMessage('Scrap (recycle) must be a whole number, 0 or more'),
+    body('qty').custom(wholeNonNegative).withMessage('Enter a whole number of good pieces, 0 or more.'),
+    body('scrapBinQty').custom(wholeNonNegative).withMessage('Enter a whole number for scrap (bin), 0 or more.'),
+    body('scrapRecycleQty').custom(wholeNonNegative).withMessage('Enter a whole number for scrap (recycle), 0 or more.'),
     handleValidationErrors
   ];
 };
@@ -594,7 +602,7 @@ const manualTimeEntryRules = ({ startRequired }) => {
 // MAX compare moments as text, which only orders correctly when every value is written the
 // same way. One message for every way the value can be wrong, and bail() stops at the first
 // failure, so the refusal always carries it and the rewrite never sees a bad value.
-const SEEN_UP_TO_MESSAGE = 'seenUpTo must be an ISO timestamp';
+const SEEN_UP_TO_MESSAGE = 'The comments could not be marked as read. Reload the job and try again.';
 const validateMarkNotesRead = [
   body('seenUpTo')
     .isString().withMessage(SEEN_UP_TO_MESSAGE).bail()
@@ -608,7 +616,7 @@ const validateMarkNotesRead = [
 // active person is checked by the route (it needs the database); this only checks the shape.
 // A value that isn't a list at all, or holds something other than ids, gets the same
 // "pick them again" message: only a real list that is too long is told it asked too many.
-const MENTION_IDS_GARBLED = 'Couldn’t tell who was asked — pick them again from the @ list.';
+const MENTION_IDS_GARBLED = 'Couldn’t tell who was asked. Pick them again from the @ list.';
 const validateMentionUserIds = body('mentionUserIds')
   .optional({ nullable: true })
   .isArray().withMessage(MENTION_IDS_GARBLED).bail()

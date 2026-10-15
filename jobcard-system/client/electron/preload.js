@@ -17,6 +17,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showSaveDialog: (defaultName, filters) => ipcRenderer.invoke('show-save-dialog', { defaultName, filters }),
   selectFile: (title, filters) => ipcRenderer.invoke('select-file', { title, filters }),
 
+  // Name, size and last-modified moment of a file picked earlier
+  fileInfo: (filePath) => ipcRenderer.invoke('file-info', filePath),
+
   // Platform detection
   platform: process.platform
 });

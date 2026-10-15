@@ -91,19 +91,33 @@ export default function LineItemTimerButton({
     onStart(itemId, displayNumber, workerId, workerName);
   };
 
+  // A split button: the main part starts the timer for the signed-in admin at once;
+  // the narrow caret opens the list for starting it for someone else.
   return (
     <div className="lit-timer-picker" ref={rootRef}>
-      <button
-        type="button"
-        className="lit-btn lit-btn-start"
-        onClick={() => setOpen(o => !o)}
-        disabled={loading}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        title="Start timer for this part"
-      >
-        <Play size={14} /> Start Timer <ChevronDown size={14} />
-      </button>
+      <div className="lit-split">
+        <button
+          type="button"
+          className="lit-btn lit-btn-start lit-split-main"
+          onClick={() => startFor(currentUserId, (me && displayName(me)) || 'Myself')}
+          disabled={loading}
+          title="Start timer for this part"
+        >
+          <Play size={14} /> Start Timer
+        </button>
+        <button
+          type="button"
+          className="lit-btn lit-btn-start lit-split-caret"
+          onClick={() => setOpen(o => !o)}
+          disabled={loading}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label="Start for someone else"
+          title="Start for someone else"
+        >
+          <ChevronDown size={14} />
+        </button>
+      </div>
 
       {open && (
         <div className="lit-picker-panel" role="listbox">

@@ -21,8 +21,8 @@ const VALID_CATEGORIES = ['treatment', 'customer_property', 'drawings', 'job_typ
 // option that already holds the code, rather than silently handing that one back.
 function codeClashMessage(typedName, holder) {
   return holder.archived
-    ? `"${typedName}" would be stored the same as the retired option "${holder.name}". Use a name that differs in its letters or numbers, or turn on "Show archived" and restore that one.`
-    : `"${typedName}" would be stored the same as the existing option "${holder.name}". Use a name that differs in its letters or numbers.`;
+    ? `"${typedName}" is too close to the archived option "${holder.name}". Use a name that differs in its letters or numbers, or turn on "Show archived" and restore that one.`
+    : `"${typedName}" is too close to the existing option "${holder.name}". Use a name that differs in its letters or numbers.`;
 }
 
 function formatTag(t) {
@@ -90,7 +90,7 @@ router.get('/', (req, res) => {
     let tags;
     if (category) {
       if (!VALID_CATEGORIES.includes(category)) {
-        return res.status(400).json({ error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}` });
+        return res.status(400).json({ error: 'That list of options doesn\'t exist. Reload the page and try again.' });
       }
       tags = includeArchived
         ? tagQueries.getByCategoryIncludeArchived.all(category)
@@ -102,19 +102,19 @@ router.get('/', (req, res) => {
     res.json(tags.map(formatTag));
   } catch (err) {
     logger.error({ err }, 'Failed to get tags');
-    res.status(500).json({ error: 'Failed to get tags' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
 // GET /api/tags/:id - Get single tag
 router.get('/:id', requireManagement, (req, res) => {
   try {
-    const tag = findOr404(res, tagQueries.getById.get(req.params.id), 'Tag not found');
+    const tag = findOr404(res, tagQueries.getById.get(req.params.id), "That option couldn't be found. It may have been removed.");
     if (!tag) return;
     res.json(formatTag(tag));
   } catch (err) {
     logger.error({ err }, 'Failed to get tag');
-    res.status(500).json({ error: 'Failed to get tag' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -124,11 +124,11 @@ router.post('/', requireManagement, (req, res) => {
     const { category, name } = req.body;
 
     if (!category || !VALID_CATEGORIES.includes(category)) {
-      return res.status(400).json({ error: `Category is required and must be one of: ${VALID_CATEGORIES.join(', ')}` });
+      return res.status(400).json({ error: 'Pick which list this option belongs to.' });
     }
 
     if (typeof name !== 'string' || !name.trim()) {
-      return refuseField(res, 400, 'name', 'Tag name is required');
+      return refuseField(res, 400, 'name', 'Enter a name for this option.');
     }
 
     const trimmedName = name.trim();
@@ -137,7 +137,7 @@ router.post('/', requireManagement, (req, res) => {
     // Symbol/emoji-only names strip down to an empty internal key, which would
     // collide with any other empty-key tag and never match a job line. Reject up front.
     if (!value) {
-      return refuseField(res, 400, 'name', 'Tag name must include at least one letter or number');
+      return refuseField(res, 400, 'name', 'The name needs at least one letter or number.');
     }
 
     // Check if tag already exists in this category. Creating is idempotent: the same
@@ -187,7 +187,7 @@ router.post('/', requireManagement, (req, res) => {
     res.status(201).json(formatTag(tag));
   } catch (err) {
     logger.error({ err }, 'Failed to create tag');
-    res.status(500).json({ error: 'Failed to create tag' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -197,11 +197,11 @@ router.put('/:id', requireManagement, (req, res) => {
     const { id } = req.params;
     const { name } = req.body;
 
-    const existing = findOr404(res, tagQueries.getById.get(id), 'Tag not found');
+    const existing = findOr404(res, tagQueries.getById.get(id), "That option couldn't be found. It may have been removed.");
     if (!existing) return;
 
     if (typeof name !== 'string' || !name.trim()) {
-      return refuseField(res, 400, 'name', 'Tag name is required');
+      return refuseField(res, 400, 'name', 'Enter a name for this option.');
     }
 
     const trimmedName = name.trim();
@@ -210,7 +210,7 @@ router.put('/:id', requireManagement, (req, res) => {
     // Symbol/emoji-only names strip down to an empty internal key, which would
     // collide with any other empty-key tag and never match a job line. Reject up front.
     if (!value) {
-      return refuseField(res, 400, 'name', 'Tag name must include at least one letter or number');
+      return refuseField(res, 400, 'name', 'The name needs at least one letter or number.');
     }
 
     // Check for duplicate value in same category (different id). getByValue
@@ -224,9 +224,9 @@ router.put('/:id', requireManagement, (req, res) => {
       }
       if (duplicate.archived) {
         return refuseField(res, 400, 'name',
-          `A retired option named "${duplicate.name}" already uses this name. Turn on "Show archived" and restore it instead of renaming.`);
+          `An archived option called "${duplicate.name}" already has this name. Turn on "Show archived" and restore it, or choose a different name.`);
       }
-      return refuseField(res, 400, 'name', `Another option, "${duplicate.name}", already has this name in this category`);
+      return refuseField(res, 400, 'name', `Another option, "${duplicate.name}", already has this name in this list. Choose a different name.`);
     }
 
     // Jobs reference an option by its value, which is derived from the name.
@@ -239,7 +239,7 @@ router.put('/:id', requireManagement, (req, res) => {
       const usageCount = usageCounter ? usageCounter(existing.value) : 0;
       if (usageCount > 0) {
         return refuseField(res, 400, 'name',
-          `Cannot rename: ${usageCount} job part(s) still use the "${existing.name}" option`);
+          `This option can't be renamed because ${usageCount} job part${usageCount === 1 ? ' still uses' : 's still use'} "${existing.name}". Add a new option instead.`);
       }
     }
 
@@ -260,7 +260,7 @@ router.put('/:id', requireManagement, (req, res) => {
     res.json(formatTag(tagQueries.getById.get(id)));
   } catch (err) {
     logger.error({ err }, 'Failed to update tag');
-    res.status(500).json({ error: 'Failed to update tag' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -272,7 +272,7 @@ router.delete('/:id', requireManagement, (req, res) => {
   setArchived(req, res, {
     entityType: 'tag',
     load: () => tagQueries.getById.get(id),
-    notFound: 'Tag not found',
+    notFound: "That option couldn't be found. It may have been removed.",
     isArchived: (row) => Boolean(row.archived),
     archive: true,
     write: (row) => tagQueries.archive.run(row.id),
@@ -287,7 +287,7 @@ router.post('/:id/activate', requireManagement, (req, res) => {
   setArchived(req, res, {
     entityType: 'tag',
     load: () => tagQueries.getById.get(id),
-    notFound: 'Tag not found',
+    notFound: "That option couldn't be found. It may have been removed.",
     isArchived: (row) => Boolean(row.archived),
     archive: false,
     write: (row) => tagQueries.unarchive.run(row.id),

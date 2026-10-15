@@ -93,19 +93,19 @@ router.get('/', (req, res) => {
     res.json(result);
   } catch (err) {
     logger.error({ err }, 'Failed to get suppliers');
-    res.status(500).json({ error: 'Failed to get suppliers' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
 // GET /api/suppliers/:id - Get single supplier
 router.get('/:id', (req, res) => {
   try {
-    const supplier = findOr404(res, getSupplierWithTags(req.params.id, isManagement(req.user.role)), 'Supplier not found');
+    const supplier = findOr404(res, getSupplierWithTags(req.params.id, isManagement(req.user.role)), "That supplier couldn't be found. It may have been removed.");
     if (!supplier) return;
     res.json(supplier);
   } catch (err) {
     logger.error({ err }, 'Failed to get supplier');
-    res.status(500).json({ error: 'Failed to get supplier' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -161,7 +161,7 @@ router.post('/', requireManagement, validateCreateSupplier, (req, res) => {
     res.status(201).json(supplier);
   } catch (err) {
     logger.error({ err }, 'Failed to create supplier');
-    res.status(500).json({ error: 'Failed to create supplier' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -175,7 +175,7 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
     // meanwhile (the job screen links them in the background) would quietly undo it.
     const { addServiceTagIds, removeServiceTagIds } = req.body;
 
-    const existing = findOr404(res, supplierQueries.getById.get(id), 'Supplier not found');
+    const existing = findOr404(res, supplierQueries.getById.get(id), "That supplier couldn't be found. It may have been removed.");
     if (!existing) return;
 
     // The same goes for the supplier's own details: a field left out of the request
@@ -208,7 +208,7 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
     const dropIds = [...removeRequested].filter(tid => !addRequested.has(tid) && oldTagIds.has(tid));
     const allTags = tagQueries.getByCategoryIncludeArchived.all('treatment') || [];
     if (addIds.some(tid => !allTags.some(t => t.id === tid))) {
-      return res.status(404).json({ error: 'Service not found' });
+      return res.status(404).json({ error: "That service couldn't be found. It may have been removed." });
     }
 
     // Track changes for audit
@@ -269,7 +269,7 @@ router.put('/:id', requireManagement, validateUpdateSupplier, (req, res) => {
     res.json(supplier);
   } catch (err) {
     logger.error({ err }, 'Failed to update supplier');
-    res.status(500).json({ error: 'Failed to update supplier' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -284,11 +284,11 @@ router.post('/:id/service-tags', requireManagement, (req, res) => {
     const { id } = req.params;
     const { tagId } = req.body || {};
 
-    const existing = findOr404(res, supplierQueries.getById.get(id), 'Supplier not found');
+    const existing = findOr404(res, supplierQueries.getById.get(id), "That supplier couldn't be found. It may have been removed.");
     if (!existing) return;
     const tag = typeof tagId === 'string' ? tagQueries.getById.get(tagId) : null;
     if (!tag || tag.category !== 'treatment') {
-      return res.status(404).json({ error: 'Service not found' });
+      return res.status(404).json({ error: "That service couldn't be found. It may have been removed." });
     }
 
     const oldTags = tagQueries.getForSupplier.all(id) || [];
@@ -310,7 +310,7 @@ router.post('/:id/service-tags', requireManagement, (req, res) => {
     res.json(supplier);
   } catch (err) {
     logger.error({ err }, 'Failed to add service to supplier');
-    res.status(500).json({ error: 'Failed to add service to supplier' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
   }
 });
 
@@ -323,7 +323,7 @@ router.post('/:id/deactivate', requireManagement, (req, res) => {
   setArchived(req, res, {
     entityType: 'supplier',
     load: () => getSupplierWithTags(id),
-    notFound: 'Supplier not found',
+    notFound: "That supplier couldn't be found. It may have been removed.",
     isArchived: (row) => !row.active,
     archive: true,
     write: (row) => supplierQueries.deactivate.run(row.id),
@@ -338,7 +338,7 @@ router.post('/:id/activate', requireManagement, (req, res) => {
   setArchived(req, res, {
     entityType: 'supplier',
     load: () => getSupplierWithTags(id),
-    notFound: 'Supplier not found',
+    notFound: "That supplier couldn't be found. It may have been removed.",
     isArchived: (row) => !row.active,
     archive: false,
     write: (row) => supplierQueries.activate.run(row.id),

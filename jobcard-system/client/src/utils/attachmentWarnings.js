@@ -1,3 +1,4 @@
+import { pluralize } from './formatters';
 import { joinList } from './joinList';
 
 // Turn the server's attachment-warning data into short, plain phrases describing
@@ -31,7 +32,7 @@ function joinNames(names) {
 
 // Turn the server's delete-time work warning into plain sentences for the
 // "delete anyway?" confirm. Returns an array of lines to show before the final
-// "Deleting erases all of it..." line.
+// "Deleting erases all of it…" line.
 export function describeWorkWarning(warning) {
   if (!warning) return [];
   const lines = [];
@@ -42,7 +43,7 @@ export function describeWorkWarning(warning) {
   }
   if (warning.loggedHours > 0) {
     const by = warning.pastWorkers?.length ? ` by ${joinNames(warning.pastWorkers)}` : '';
-    lines.push(`This job has ${warning.loggedHours} hours of recorded work${by}.`);
+    lines.push(`This job has ${pluralize(warning.loggedHours, 'hour')} of recorded work${by}.`);
   }
   return lines;
 }

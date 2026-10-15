@@ -68,7 +68,7 @@ export default function LineItemSupplierPicker({
       if (onSuppliersChanged) onSuppliersChanged();
     } catch (err) {
       // A repeat of the same failure replaces the first rather than stacking under it.
-      toast.error(err.message || 'Could not link the treatment to that supplier', { id: 'supplier-link-failed' });
+      toast.error(err.message || 'Couldn\'t link the treatment to that supplier. Check the connection and try again.', { id: 'supplier-link-failed' });
     }
   };
 
@@ -89,7 +89,7 @@ export default function LineItemSupplierPicker({
     onRequestCreate(typed);
   };
 
-  const inputValue = focused ? query : (selectedRetired ? `${selectedName} (retired)` : selectedName);
+  const inputValue = focused ? query : (selectedRetired ? `${selectedName} (archived)` : selectedName);
 
   // One list for every row the dropdown can show — the suppliers, the "No supplier"
   // choice and the "create this one" row — so the arrow keys walk all of them in the

@@ -103,13 +103,13 @@ function fetchAll() {
     const mine = ++seq;
     const [suppliersRes, usersRes, machinesRes] = await Promise.all([
       // Include archived suppliers: the pickers filter to active themselves, but a job
-      // that already chose a since-archived supplier needs it here to show it "(retired)".
+      // that already chose a since-archived supplier needs it here to show it "(archived)".
       api.getSuppliers(true),
       api.getEmployees(),
       // Include archived machines too, for the same reason — the time-entry
       // Machines picker (TimeEntryForm.jsx) filters to active itself, but a
       // block already ticked against a since-archived machine needs it here
-      // to show it "(retired)" instead of silently hiding it.
+      // to show it "(archived)" instead of silently hiding it.
       api.getMachines(true)
     ]);
     if (mine > newestSeq.suppliers) {
@@ -192,7 +192,7 @@ export function useJobCardReferenceData({ isWindowUp }) {
       // the window has closed: the message tells the person to close this card.
       if (!isWindowUp()) return;
       toast.error(
-        'Could not load the suppliers, workers and machines. Close this job card and open it again to retry.',
+        'Couldn\'t load the suppliers, workers and machines. Close this job card and open it again to retry.',
         { id: 'jobcard-reference-load-failed' }
       );
     }

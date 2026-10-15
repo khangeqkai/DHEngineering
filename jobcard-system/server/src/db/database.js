@@ -34,6 +34,7 @@ const {
   getUnreadNoteCountsForJobcards,
   jobCostingQueries,
   HISTORY_JOB_NUMBER_SQL,
+  HISTORY_RECORD_NAME_SQL,
   historyQueries,
   settingsQueries,
   getAssigneesForJobcards
@@ -83,6 +84,7 @@ module.exports = {
   getUnreadNoteCountsForJobcards,
   jobCostingQueries,
   HISTORY_JOB_NUMBER_SQL,
+  HISTORY_RECORD_NAME_SQL,
   historyQueries,
   settingsQueries,
   getAssigneesForJobcards

@@ -21,3 +21,9 @@
 .home-access-field .form-control {
   max-width: 360px;
 }
+
+/* "1. Save the address" style step headings above each field. */
+.home-access-step {
+  margin-top: var(--gap-group);
+  font-weight: var(--font-bold);
+}

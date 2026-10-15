@@ -188,7 +188,54 @@
 }
 
 .sched-save {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-field);
   margin-top: var(--space-4);
+}
+
+/* Edits waiting on the card's Save button. Words take the ink token, the dot the fill. */
+.unsaved-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-inline);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--warning-color) 14%, var(--surface));
+  color: var(--warning-ink);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+}
+
+.unsaved-pill-dot {
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--fill-warning);
+}
+
+/* The worked example under a multiplier box: "= $75.00 per hour at the default $50.00 rate". */
+.mult-worked {
+  min-height: 1.4em;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+}
+
+/* The week in words, under the paint grid. */
+.sched-summary {
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.sched-summary strong {
+  color: var(--text-primary);
 }
 
 /* --- Public holidays --- */

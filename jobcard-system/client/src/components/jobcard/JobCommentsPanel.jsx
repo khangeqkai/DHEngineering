@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
-import { MessageCircle, ChevronLeft, Send, Trash2, Lock } from 'lucide-react';
+import { MessageCircle, X, Send, Trash2, Lock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Spinner from '../common/Spinner';
 import { useComboboxNav } from './useComboboxNav';
@@ -495,6 +495,7 @@ export default function JobCommentsPanel({
           className="jc-bubble"
           onClick={handleBubble}
           aria-label={unreadCount > 0 ? `Open comments (${unreadCount} new)` : 'Open comments'}
+          title={unreadCount > 0 ? `Open comments (${unreadCount} new)` : 'Open comments'}
           aria-controls="job-comments-window"
           inert={open || otherOpen ? '' : undefined}
         >
@@ -524,9 +525,9 @@ export default function JobCommentsPanel({
               className="jc-chat-close"
               onClick={() => changeOpen(false)}
               aria-label="Close comments"
-              title="Close comments"
+              title="Close"
             >
-              <ChevronLeft size={18} />
+              <X size={16} />
             </button>
           </div>
 
@@ -595,6 +596,7 @@ export default function JobCommentsPanel({
                   onClick={handleSend}
                   disabled={!canSend}
                   aria-label="Send comment"
+                  title="Send"
                 >
                   <Send size={16} />
                 </button>

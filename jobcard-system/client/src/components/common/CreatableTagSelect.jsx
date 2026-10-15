@@ -23,7 +23,7 @@ export default function CreatableTagSelect({ id, category, value, onChange, onCr
 
   const selectedLabel = value ? labelOf(value) : '';
   // A saved value that's no longer an active option was archived — show it tagged
-  // "(retired)" like the plain dropdowns do.
+  // "(archived)" like the plain dropdowns do.
   const isRetired = value && !tags.some(o => o.value === value);
 
   const typed = query.trim();
@@ -60,7 +60,7 @@ export default function CreatableTagSelect({ id, category, value, onChange, onCr
       setFocused(false);
     } catch (err) {
       // A repeat of the same failure replaces the first rather than stacking under it.
-      toast.error(err.message || 'Could not add that option', { id: `tag-create-failed-${category}` });
+      toast.error(err.message || 'Couldn\'t add that option. Check the connection and try again.', { id: `tag-create-failed-${category}` });
     } finally {
       setCreating(false);
     }

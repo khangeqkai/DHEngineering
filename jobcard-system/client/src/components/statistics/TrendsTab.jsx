@@ -1,6 +1,8 @@
 import { BarChart3 } from 'lucide-react';
+import { pluralize } from '../../utils/formatters';
 import DataTable from '../common/DataTable';
 import EmptyState from '../common/EmptyState';
+import { onTimeTone } from './thresholds';
 
 // Hours and job counts are different things measured in different units, so they
 // get one labelled row each rather than two bars sharing a picture. Every bar
@@ -15,7 +17,7 @@ function MeasureRows({ title, scaleNote, rows, tone }) {
       </div>
       {rows.map((r) => (
         <div className="trend-row" key={r.key}>
-          <span className="trend-row-label">{r.key}</span>
+          <span className="trend-row-label">{r.label}</span>
           <div className="trend-row-track">
             <div className={`trend-row-fill ${tone}`} style={{ width: `${r.percent}%` }} />
           </div>
@@ -26,7 +28,7 @@ function MeasureRows({ title, scaleNote, rows, tone }) {
   );
 }
 
-export default function TrendsTab({ periodTrends = [], groupBy = 'month', loading = false }) {
+export default function TrendsTab({ periodTrends = [], groupBy = 'month', selectedGroupBy = 'month', onGroupByChange, loading = false }) {
   const maxHours = periodTrends.reduce((max, t) => Math.max(max, t.totalHours || 0), 0);
   const maxFinished = periodTrends.reduce((max, t) => Math.max(max, t.jobsCompleted || 0), 0);
 
@@ -34,12 +36,14 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', loadin
 
   const hourRows = periodTrends.map((t) => ({
     key: t.period,
+    label: t.periodLabel,
     percent: pct(t.totalHours || 0, maxHours),
     display: `${t.totalHours || 0}h`
   }));
 
   const finishedRows = periodTrends.map((t) => ({
     key: t.period,
+    label: t.periodLabel,
     percent: pct(t.jobsCompleted || 0, maxFinished),
     display: `${t.jobsCompleted || 0}`
   }));
@@ -50,8 +54,19 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', loadin
         <div className="stats-card-header">
           <div className="stats-card-title">
             <BarChart3 size={18} />
-            <span>{groupBy === 'month' ? 'Month By Month' : 'Year By Year'}</span>
+            <span>{groupBy === 'month' ? 'Month by month' : 'Year by year'}</span>
           </div>
+          <label className="stats-group-by">
+            <span>Group by</span>
+            <select
+              className="form-control stats-group-by-select"
+              value={selectedGroupBy}
+              onChange={(e) => onGroupByChange?.(e.target.value)}
+            >
+              <option value="month">Month</option>
+              <option value="year">Year</option>
+            </select>
+          </label>
         </div>
 
         <div className="stats-card-body">
@@ -78,7 +93,7 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', loadin
               />
               <MeasureRows
                 title="Jobs Finished"
-                scaleNote={maxFinished > 0 ? `Longest bar = ${maxFinished} jobs` : 'No jobs finished'}
+                scaleNote={maxFinished > 0 ? `Longest bar = ${pluralize(maxFinished, 'job')}` : 'No jobs finished'}
                 rows={finishedRows}
                 tone="finished"
               />
@@ -101,7 +116,7 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', loadin
                 key: 'period',
                 label: groupBy === 'month' ? 'Month' : 'Year',
                 sortable: true,
-                render: (val) => <strong>{val}</strong>
+                render: (val, row) => <strong>{row.periodLabel}</strong>
               },
               {
                 key: 'jobsCreated',
@@ -123,7 +138,7 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', loadin
                 align: 'right',
                 sortable: true,
                 render: (val) => val !== null ? (
-                  <span className={`kpi-badge ${val >= 90 ? 'success' : val >= 75 ? 'warning' : 'danger'}`}>
+                  <span className={`kpi-badge ${onTimeTone(val)}`}>
                     {val}%
                   </span>
                 ) : (

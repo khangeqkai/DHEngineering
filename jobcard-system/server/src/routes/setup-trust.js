@@ -72,7 +72,7 @@ router.get('/rootca.crt', (req, res) => {
     .on('error', (err) => {
       logger.error({ err }, 'Failed to read the public trust file');
       if (!res.headersSent) {
-        res.status(500).type('text/plain').send('Could not read the setup file.');
+        res.status(500).type('text/plain').send('The setup file could not be read. Try again in a moment.');
       } else {
         res.destroy();
       }
