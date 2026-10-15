@@ -1,7 +1,6 @@
-import { Trash2, ArchiveRestore, Check, AlertTriangle, Paperclip, Printer, ChevronDown, Plus, Minus } from 'lucide-react';
+import { Trash2, ArchiveRestore, Check, AlertTriangle, Paperclip, Printer, ChevronDown } from 'lucide-react';
 import { displayName } from '../../../server/src/shared/names';
 import './common/CheckboxDropdown.css';
-import PriorityLevel from './common/PriorityLevel';
 import { getInitials, getAvatarColor } from '../utils/initials';
 import { describeAttachmentGaps, attachmentSeverity } from '../utils/attachmentWarnings';
 import {
@@ -36,7 +35,6 @@ export function getJobCardColumns({
   handleAssigneeToggle,
   openEditModal,
   handleQuickStatusChange,
-  handleSelfToggle,
   handleDelete,
   handleUnarchive
 }) {
@@ -148,7 +146,6 @@ export function getJobCardColumns({
       id: 'assignedTo',
       label: 'Assigned To',
       renderCell: (card) => {
-        const isAssigned = !!card.assignees?.some(a => a.userId === user?.id);
         const renderAvatars = () => card.assignees?.length ? (() => {
           const MAX_VISIBLE = 3;
           const visible = card.assignees.slice(0, MAX_VISIBLE);
@@ -274,17 +271,6 @@ export function getJobCardColumns({
                   {renderAvatars()}
                 </span>
               )}
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm assign-me-btn"
-                aria-label={isAssigned ? 'Take myself off this job' : 'Put myself on this job'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSelfToggle(card, isAssigned);
-                }}
-              >
-                {isAssigned ? <Minus size={12} /> : <Plus size={12} />} Me
-              </button>
             </div>
           </td>
         );
@@ -404,7 +390,6 @@ export function getJobCardColumns({
         return (
           <td key="priority">
             <span className={`badge priority-${priorityToken(priority)}`}>
-              <PriorityLevel priority={priority} />
               {PRIORITY_LABELS[card.priority] || 'None'}
             </span>
           </td>

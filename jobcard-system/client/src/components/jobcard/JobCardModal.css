@@ -71,20 +71,47 @@
   --p-border: var(--border-color);
   --p-dot: var(--text-tertiary);
 }
-.jc-strip-priority-none,
-.jc-strip-priority-low,
-.jc-strip-priority-medium,
-.jc-strip-priority-high {
-  --p-bg: var(--surface-inset);
-  --p-color: var(--text-secondary);
+.jc-strip-priority-none {
+  --p-bg: var(--surface);
+  --p-color: var(--text-tertiary);
   --p-border: var(--border-color);
+  --p-dot: var(--text-tertiary);
 }
-.jc-strip-priority-none { --p-color: var(--text-tertiary); }
+.jc-strip-priority-low {
+  --p-bg: rgba(59, 130, 246, 0.08);
+  --p-color: var(--badge-progress-text);
+  --p-border: #93c5fd;
+  --p-dot: var(--status-open-dot);
+}
+.jc-strip-priority-medium {
+  --p-bg: rgba(217, 119, 6, 0.10);
+  --p-color: var(--badge-pending-text);
+  --p-border: #fcd34d;
+  --p-dot: var(--warning-hover);
+}
+.jc-strip-priority-high {
+  --p-bg: rgba(239, 68, 68, 0.10);
+  --p-color: var(--badge-cancelled-text);
+  --p-border: #fca5a5;
+  --p-dot: var(--danger-color);
+}
 .jc-strip-priority-same-day {
   --p-bg: var(--same-day-bg);
   --p-color: var(--same-day-text);
   --p-border: var(--same-day-border);
   --p-dot: var(--same-day-text);
+}
+.dark-mode .jc-strip-priority-low {
+  --p-bg: rgba(59, 130, 246, 0.18);
+  --p-border: rgba(96, 165, 250, 0.34);
+}
+.dark-mode .jc-strip-priority-medium {
+  --p-bg: rgba(217, 119, 6, 0.18);
+  --p-border: rgba(251, 191, 36, 0.34);
+}
+.dark-mode .jc-strip-priority-high {
+  --p-bg: rgba(239, 68, 68, 0.18);
+  --p-border: rgba(248, 113, 113, 0.34);
 }
 .jc-strip-priority-trigger,
 .jc-strip-priority-static {
@@ -185,6 +212,10 @@
   color: var(--text-primary);
 }
 
+.jc-strip-priority-menu-item-none .jc-strip-priority-dot { background: var(--text-tertiary); }
+.jc-strip-priority-menu-item-low .jc-strip-priority-dot { background: var(--status-open-dot); }
+.jc-strip-priority-menu-item-medium .jc-strip-priority-dot { background: var(--warning-hover); }
+.jc-strip-priority-menu-item-high .jc-strip-priority-dot { background: var(--danger-color); }
 .jc-strip-priority-menu-item-same-day .jc-strip-priority-dot { background: var(--same-day-bg); box-shadow: 0 0 0 2px var(--same-day-border); }
 
 /* Description — borderless inline input that flexes */
@@ -247,7 +278,9 @@
   line-height: var(--strip-control-h);
 }
 
-/* Status — styled native select pill */
+/* Status — a pill that is a real button. Pressing it opens the same drop-down the
+   job list's status column uses (.status-popover in App.css), so the two never
+   look or behave differently. */
 .jc-strip-status {
   position: relative;
   display: inline-flex;
@@ -256,6 +289,8 @@
   padding: 0 var(--space-2) 0 var(--space-2-5);
   height: var(--strip-control-h);
   box-sizing: border-box;
+  appearance: none;
+  font-family: inherit;
   background: var(--s-bg, var(--surface));
   color: var(--s-color, var(--text-primary));
   border: 1px solid var(--s-border, var(--border-color));
@@ -264,6 +299,7 @@
   font-weight: var(--font-bold);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  white-space: nowrap;
   flex-shrink: 0;
   cursor: pointer;
   transition: transform var(--duration-fast) ease,
@@ -272,6 +308,11 @@
 .jc-strip-status:hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.15);
+}
+.jc-strip-status:focus,
+.jc-strip-status:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .jc-strip-status-dot {
@@ -282,56 +323,29 @@
   flex-shrink: 0;
 }
 
-.jc-strip-status-select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  border: none;
-  background: transparent;
-  outline: none;
-  padding: 0 var(--space-1);
-  margin: 0;
-  font: inherit;
-  color: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  cursor: pointer;
-  /* Hide the native arrow on Safari/Edge */
-  background-image: none;
-}
-.jc-strip-status-select::-ms-expand { display: none; }
 /* Held for the moment the billed total is being read back. Without this the pill looks
    and behaves exactly as it does when it is ready — same colour, same lifting hover,
    same pointer — so the one click that does nothing is the one that gives no sign why.
    The colour is kept (the status still reads at a glance) and the pill simply settles:
    it stops lifting, and the cursor says wait rather than click. */
-.jc-strip-status:has(.jc-strip-status-select:disabled) {
+.jc-strip-status.is-busy,
+.jc-strip-status:disabled {
   cursor: progress;
   opacity: 0.65;
 }
-.jc-strip-status:has(.jc-strip-status-select:disabled):hover {
+.jc-strip-status.is-busy:hover,
+.jc-strip-status:disabled:hover {
   transform: none;
   box-shadow: none;
 }
-.jc-strip-status-select:disabled {
-  cursor: progress;
-  color: inherit;
-  opacity: 1;
-}
-.jc-strip-status-select:focus,
-.jc-strip-status-select:focus-visible {
-  outline: none;
+
+/* Nothing to press: a worker on an office status, or an invoiced job. Same pill,
+   no lift, plain cursor — the title says why. */
+.jc-strip-status-static,
+.jc-strip-status-static:hover {
+  cursor: default;
+  transform: none;
   box-shadow: none;
-}
-.jc-strip-status:focus-within {
-  box-shadow: var(--focus-ring);
-}
-.jc-strip-status-select option {
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: var(--font-regular);
-  color: var(--text-primary);
-  background: var(--surface);
 }
 
 .jc-strip-status-caret {

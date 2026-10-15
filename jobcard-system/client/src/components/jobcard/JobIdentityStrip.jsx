@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { Calendar, ChevronDown } from 'lucide-react';
+import { Calendar, ChevronDown, Check } from 'lucide-react';
+import { useDismissableMenu } from '../../hooks/useDismissableMenu';
 import { getInitials, getAvatarColor } from '../../utils/initials';
 import { isCriticalLevel } from '../../../../server/src/shared/qualityLevels';
 import CalendarPicker from '../common/CalendarPicker';
@@ -12,13 +13,8 @@ import { changeJobStatus } from './changeJobStatus';
 import { summarizeFieldStates, INSTANT_SAVE_STATUS_TEXT } from './useInstantSave';
 import { jobFieldMessage } from './fieldRules.mjs';
 import FieldError from '../common/FieldError';
-import PriorityLevel from '../common/PriorityLevel';
 import { isJobClosed } from '../../utils/jobLock';
 
-// Same Day Service keeps its lime dot; every other priority carries the level bar.
-const levelMark = (value) => (value === 'SAME_DAY'
-  ? <span className="jc-strip-priority-dot" aria-hidden="true" />
-  : <PriorityLevel priority={value} />);
 const PRIORITY_VALUES = PRIORITY_OPTIONS.map(p => p.value);
 
 export default function JobIdentityStrip({
@@ -71,6 +67,14 @@ export default function JobIdentityStrip({
   // pick could land during it and start a second invoicing, with two questions stacked on
   // top of each other. The status control is disabled while this is true.
   const [statusBusy, setStatusBusy] = useState(false);
+  // The status drop-down is the job list's: same rows, same badges, same tick. It
+  // opens and closes through the same shared hook the list's does (press outside,
+  // Escape back to the pill, focus leaving it).
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const statusRef = useRef(null);
+  const statusTriggerRef = useRef(null);
+  const closeStatusMenu = useCallback(() => setShowStatusMenu(false), []);
+  useDismissableMenu({ open: showStatusMenu, onClose: closeStatusMenu, containerRef: statusRef });
   const priorityRef = useRef(null);
   const priorityTriggerRef = useRef(null);
   const priorityMenuRef = useRef(null);
@@ -188,17 +192,12 @@ export default function JobIdentityStrip({
   // which only happen on an existing job — offeredStatusValues never offers
   // it while creating a new job (and never to non-management).
   const offeredValues = new Set(offeredStatusValues(canManage, status, isEdit));
-  const baseStatusOptions = STATUS_OPTIONS.filter(opt => offeredValues.has(opt.value));
-  const statusOptions = baseStatusOptions.some(o => o.value === status)
-    ? baseStatusOptions
-    : [
-        ...baseStatusOptions,
-        {
-          ...(STATUS_OPTIONS.find(o => o.value === status) || { value: status, label: status }),
-          disabled: true
-        }
-      ];
+  // Same rows as the job list's status drop-down: only the statuses this person may
+  // set from here. The pill itself names the current one, so it needs no row.
+  const statusOptions = STATUS_OPTIONS.filter(opt => offeredValues.has(opt.value));
+  const statusLabel = STATUS_OPTIONS.find(o => o.value === status)?.label || status;
   const statusClass = `jc-strip-status status-${statusToken(status)}`;
+  const statusPickable = statusChangeable && !jobClosed;
 
   const setField = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
 
@@ -352,13 +351,13 @@ export default function JobIdentityStrip({
                 aria-expanded={showPriorityMenu}
                 aria-label={`Priority: ${priorityLabel}`}
               >
-                {levelMark(priority)}
+                <span className="jc-strip-priority-dot" aria-hidden="true" />
                 <span className="jc-strip-priority-label">{priorityLabel}</span>
                 <ChevronDown size={14} className="jc-strip-priority-caret" />
               </button>
             ) : (
               <span className="jc-strip-priority-static">
-                {levelMark(priority)}
+                <span className="jc-strip-priority-dot" aria-hidden="true" />
                 <span className="jc-strip-priority-label">{priorityLabel}</span>
               </span>
             )}
@@ -387,7 +386,7 @@ export default function JobIdentityStrip({
                           closePriorityMenu();
                         }}
                       >
-                        {levelMark(val)}
+                        <span className="jc-strip-priority-dot" aria-hidden="true" />
                         {opt?.label || val}
                       </button>
                     </li>
@@ -458,26 +457,53 @@ export default function JobIdentityStrip({
             <FieldError id="jc-description-error" message={descriptionError} />
           </div>
 
-          <div
-            className={statusClass}
-            title={jobClosed
-              ? 'This job is invoiced and closed. Unarchive it to change its status.'
-              : !statusChangeable ? 'Only management can change this status' : undefined}
-          >
-            <span className="jc-strip-status-dot" aria-hidden="true" />
-            <select
-              className="jc-strip-status-select"
-              value={status}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              disabled={statusBusy || !statusChangeable || jobClosed}
-              aria-label="Status"
+          {statusPickable ? (
+            <div className="status-popover-wrapper" ref={statusRef}>
+              <button
+                type="button"
+                ref={statusTriggerRef}
+                className={`${statusClass}${statusBusy ? ' is-busy' : ''}`}
+                aria-label={`Status: ${statusLabel}. Change status`}
+                aria-haspopup="true"
+                aria-expanded={showStatusMenu}
+                disabled={statusBusy}
+                onClick={() => setShowStatusMenu(open => !open)}
+              >
+                <span className="jc-strip-status-dot" aria-hidden="true" />
+                {statusLabel}
+                <ChevronDown size={14} className="jc-strip-status-caret" aria-hidden="true" />
+              </button>
+              {showStatusMenu && (
+                <div className="status-popover">
+                  {statusOptions.map(opt => (
+                    <button
+                      type="button"
+                      key={opt.value}
+                      className={`status-popover-item ${status === opt.value ? 'active' : ''}`}
+                      onClick={() => {
+                        closeStatusMenu();
+                        statusTriggerRef.current?.focus();
+                        if (status !== opt.value) handleStatusChange(opt.value);
+                      }}
+                    >
+                      <span className={`badge status-${statusToken(opt.value)}`}>{opt.label}</span>
+                      {status === opt.value && <span className="status-check"><Check size={14} /></span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <span
+              className={`${statusClass} jc-strip-status-static`}
+              title={jobClosed
+                ? 'This job is invoiced and closed. Unarchive it to change its status.'
+                : 'Only management can change this status'}
             >
-              {statusOptions.map(opt => (
-                <option key={opt.value} value={opt.value} disabled={opt.disabled}>{opt.label}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="jc-strip-status-caret" aria-hidden="true" />
-          </div>
+              <span className="jc-strip-status-dot" aria-hidden="true" />
+              {statusLabel}
+            </span>
+          )}
 
           <div className={`jc-strip-duedate${isOverdue ? ' is-overdue' : ''}`}>
             {editable ? (

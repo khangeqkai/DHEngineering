@@ -1067,38 +1067,90 @@ select.has-retired option.retired-option {
   --s-border: var(--status-invoiced-border); --s-dot: var(--status-invoiced-dot);
 }
 
-/* Priority pills — deliberately NOT the status palette. Status owns blue/amber/red;
-   priority is a neutral pill carrying a three-step level bar, so a scanned list never
-   mixes the two scales up. The bar replaces the status pills' glowing dot. */
-.priority-none,
-.priority-low,
-.priority-medium,
-.priority-high {
-  background: var(--surface-inset);
-  color: var(--text-secondary);
-  border-color: var(--border-color);
+/* The status picker's drop-down: one look for the job list's status column and the
+   job window's status pill, so picking a status reads the same from either place.
+   Each row is a real button carrying the status's own badge, with a tick on the
+   current one. The wrapper gives the drop-down something to hang under. */
+.status-popover-wrapper {
+  position: relative;
+  display: inline-block;
 }
-.priority-none { color: var(--text-tertiary); }
-.priority-none::before,
-.priority-low::before,
-.priority-medium::before,
-.priority-high::before { display: none; }
 
-/* Three tiny squares drawn in CSS: filled count is the level. */
-.level-bar {
+.status-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  min-width: 150px;
+  padding: var(--space-1) 0;
+  /* Never inherit a pill trigger's capitals or tracking. */
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.status-popover-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-1-5) var(--space-3);
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.status-popover-item:hover,
+.status-popover-item:focus-visible {
+  background: var(--surface-inset);
+}
+
+.status-popover-item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-sm);
+}
+
+.status-popover-item.active {
+  background: var(--surface-inset);
+}
+
+.status-check {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-0-5);
-  flex-shrink: 0;
+  margin-left: var(--space-2);
+  color: var(--success-ink);
 }
-.level-bar i {
-  width: 0.375rem;
-  height: 0.375rem;
-  border-radius: 1px;
-  background: var(--border-input);
-}
-.level-bar i.is-on { background: currentColor; }
 
+/* Priority badges — same soft-tinted pill treatment as the status badges, so
+   priority and status read as one system in the list. Dot follows currentColor
+   (via .badge::before). Colours reuse the badge palette so dark mode is covered. */
+.priority-none {
+  background: rgba(100, 116, 139, 0.10);
+  color: var(--text-tertiary);
+  border-color: rgba(100, 116, 139, 0.22);
+}
+.priority-low {
+  background: var(--badge-progress-bg);
+  color: var(--badge-progress-text);
+  border-color: rgba(var(--info-rgb), 0.2);
+}
+.priority-medium {
+  background: var(--badge-pending-bg);
+  color: var(--badge-pending-text);
+  border-color: rgba(var(--warning-rgb), 0.2);
+}
+.priority-high {
+  background: var(--badge-cancelled-bg);
+  color: var(--badge-cancelled-text);
+  border-color: rgba(var(--danger-rgb), 0.2);
+}
 /* Same-day sits above High, so it is the one filled pill in the set — it has to be
    spottable in a scanned list rather than blend into the other soft tints. Its colours
    are tokens, so light and dark each get the shade that stays legible. */

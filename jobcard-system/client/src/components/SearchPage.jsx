@@ -19,7 +19,6 @@ import { ACTION_NAMES } from '../utils/activityColors';
 import { JOB_DELETED_MESSAGE, JOB_DELETED_TOAST_ID } from '../utils/jobLock';
 import { QUALITY_LEVELS, QUALITY_LEVEL_LABELS } from '../../../server/src/shared/qualityLevels';
 import './SearchPage.css';
-import PriorityLevel from './common/PriorityLevel';
 
 // Both lists come from the job screen, so every chip can match and every stored value
 // has a chip — adding a status or priority there gives it a search chip for free.
@@ -117,7 +116,7 @@ function StatusBadge({ status }) {
 // Same soft-tinted pill as the job list, so status and priority read as one set here too.
 function PriorityBadge({ priority }) {
   const p = priority || 'NONE';
-  return <span className={`badge priority-${priorityToken(p)}`}><PriorityLevel priority={p} />{PRIORITY_LABELS[p] || fmt(p)}</span>;
+  return <span className={`badge priority-${priorityToken(p)}`}>{PRIORITY_LABELS[p] || fmt(p)}</span>;
 }
 
 function Pagination({ page, totalPages, total, onPageChange }) {

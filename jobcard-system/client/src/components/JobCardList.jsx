@@ -226,27 +226,6 @@ export default function JobCardList() {
   useDismissableMenu({ open: !!statusPopoverId, onClose: closeStatusPopover, containerRef: popoverRef });
   useDismissableMenu({ open: !!assignPopoverId, onClose: closeAssignPopover, containerRef: assignPopoverRef });
 
-  const handleSelfToggle = useCallback(async (card, isAssigned) => {
-    if (!user?.id) return;
-    setAssignPopoverId(null);
-    try {
-      const result = isAssigned
-        ? await api.selfUnassign(card.id)
-        : await api.selfAssign(card.id);
-      toast.success(isAssigned ? 'Removed yourself from job card' : 'Assigned yourself to job card');
-      setJobcards(prev => prev.map(c => c.id === card.id
-        ? { ...c, assignees: result.assignees }
-        : c
-      ));
-    } catch (err) {
-      // Stable id so a double-tap on the self-assign control replaces the
-      // first failure toast instead of stacking a second one on top of it.
-      toast.error(err.message || 'Couldn\'t update the assignment. Check the connection and try again.', { id: 'assignment-update-failed' });
-      // Refused (the job was invoiced or deleted elsewhere) — the row is stale.
-      await loadJobcards();
-    }
-  }, [user, loadJobcards]);
-
   // Management ticking one person on or off a job from the list's checklist.
   const handleAssigneeToggle = useCallback(async (card, userId, isAssigned) => {
     try {
@@ -435,7 +414,6 @@ export default function JobCardList() {
     handleAssigneeToggle,
     openEditModal,
     handleQuickStatusChange,
-    handleSelfToggle,
     handleDelete,
     handleUnarchive
   });
