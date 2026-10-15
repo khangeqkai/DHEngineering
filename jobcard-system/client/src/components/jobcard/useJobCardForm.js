@@ -6,6 +6,7 @@ import { lineItemHasContent } from './closeReasons';
 import { useSaveQueue } from './useSaveQueue';
 import { isJobClosed } from '../../utils/jobLock';
 import { useFieldErrors } from '../../hooks/useFieldErrors';
+import { displayName } from '../../../../server/src/shared/names';
 
 // A part not yet stored carries a TEXT placeholder id ("new:<unique>"), the same
 // shape as a stored part's "item:<uuid>" — every part id is a string, so
@@ -262,7 +263,7 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed, isWindow
     setAssignees(prev => {
       const exists = prev.some(a => a.userId === workerId);
       if (willAssign) {
-        return exists ? prev : [...prev, { userId: workerId, userName: employee.name || employee.username }];
+        return exists ? prev : [...prev, { userId: workerId, userName: displayName(employee) }];
       }
       return prev.filter(a => a.userId !== workerId);
     });
@@ -270,7 +271,7 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed, isWindow
     const forJobCardId = jobCardIdRef.current;
     if (!forJobCardId) return; // new job — local only
 
-    const label = `${employee.name || employee.username || 'that worker'}'s assignment`;
+    const label = `${displayName(employee) || 'that worker'}'s assignment`;
     saveQueue.enqueue(`assignee:${workerId}`, (isWindowUp) => (willAssign
       ? api.assignWorker(forJobCardId, workerId)
       : api.unassignWorker(forJobCardId, workerId))
@@ -350,7 +351,7 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed, isWindow
   const creditAssignee = useCallback((workerId, employees = []) => {
     if (!workerId || saveQueue.isPending(`assignee:${workerId}`)) return;
     setAssignees(prev => prev.some(a => a.userId === workerId) ? prev
-      : [...prev, { userId: workerId, userName: employees.find(e => e.id === workerId)?.name || '' }]);
+      : [...prev, { userId: workerId, userName: displayName(employees.find(e => e.id === workerId)) }]);
     setSaved(prev => ({ ...prev, assignees: snapshotAssignees([...JSON.parse(prev.assignees), workerId].map(id => ({ userId: id }))) }));
   }, [saveQueue]);
 
@@ -391,7 +392,7 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed, isWindow
     const apiAssignees = jobcardData.assignees || [];
     const loadedAssignees = apiAssignees.map(a => ({
       userId: a.userId,
-      userName: a.userName || a.username
+      userName: a.userName
     }));
     setAssignees(loadedAssignees);
 

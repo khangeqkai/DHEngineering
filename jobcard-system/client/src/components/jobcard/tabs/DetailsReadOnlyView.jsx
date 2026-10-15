@@ -46,7 +46,7 @@ export default function DetailsReadOnlyView({
             ariaLabel="Assignees"
             readOnly
             minTileWidth={130}
-            options={assignees.map(a => ({ value: a.userId, label: a.userName || a.username }))}
+            options={assignees.map(a => ({ value: a.userId, label: a.userName }))}
             selectedValues={assignees.map(a => a.userId)}
           />
         </div>

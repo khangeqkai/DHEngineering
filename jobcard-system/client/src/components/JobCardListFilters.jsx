@@ -1,5 +1,6 @@
 import { User } from 'lucide-react';
 import { ACTIVE_FILTER_OPTIONS } from './JobCardList.constants';
+import { displayName } from '../../../server/src/shared/names';
 
 export default function JobCardListFilters({
   canManage,
@@ -33,7 +34,7 @@ export default function JobCardListFilters({
           <option value="all">All Employees</option>
           <option value="UNASSIGNED">Unassigned</option>
           {employees.map(emp => (
-            <option key={emp.id} value={emp.id}>{emp.name || emp.username}</option>
+            <option key={emp.id} value={emp.id}>{displayName(emp)}</option>
           ))}
         </select>
       )}

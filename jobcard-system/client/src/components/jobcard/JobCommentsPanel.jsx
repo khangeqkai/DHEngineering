@@ -119,11 +119,16 @@ export default function JobCommentsPanel({
   employees = [],
   // An invoiced (closed) job: comments can be read but not added or deleted until it
   // is unarchived (the server refuses both).
-  locked = false
+  locked = false,
+  // Controlled by the job window, which owns which side window is open: `open` says whether
+  // this one is, onOpenChange(next) asks for it to open or close.
+  open,
+  onOpenChange,
+  // True while the History window is open: this bubble steps out of the way, and the
+  // automatic opening below waits.
+  otherOpen = false
 }) {
   const { user } = useAuth();
-  // Closed until the one decision below is made.
-  const [open, setOpen] = useState(false);
   // The first comment that was unread when this opening began; the "New" line sits above it.
   const [dividerNoteId, setDividerNoteId] = useState(null);
   const decidedRef = useRef(false);
@@ -159,13 +164,15 @@ export default function JobCommentsPanel({
   const changeOpen = useCallback((next) => {
     touchedRef.current = true;
     focusOnChangeRef.current = true;
-    setOpen(next);
-  }, []);
+    onOpenChange(next);
+  }, [onOpenChange]);
 
   // Decided once per opening of the job, as soon as both the job (how far this person has
   // read) and the first read of the thread are here: unread comments open the window,
   // otherwise it stays closed. Never decided again, so the window is not yanked open or
   // shut while they work; and if they already pressed the bubble, theirs stands.
+  // A "yes" made while the other side window is up waits for it to close, then opens.
+  const [autoOpenWanted, setAutoOpenWanted] = useState(false);
   useEffect(() => {
     if (decidedRef.current || seenUpTo === null || !notesLoaded) return;
     decidedRef.current = true;
@@ -175,8 +182,24 @@ export default function JobCommentsPanel({
       ? initialCommentNoteId
       : null;
     setTargetNoteId(target);
-    if ((firstUnread || target) && !touchedRef.current) setOpen(true);
+    if (firstUnread || target) setAutoOpenWanted(true);
   }, [seenUpTo, notesLoaded, thread, isUnread, initialCommentNoteId]);
+  // When the wait was for the other window and its own close button (or Escape) has just
+  // handed the keys back, focus is on that window's bubble or has dropped to the page; the
+  // bubble is about to go inert behind this window, so focus is taken into this one, where
+  // a normal opening puts it. Focus anywhere else (the person is working in the job) is left.
+  const waitedForHistoryRef = useRef(false);
+  useEffect(() => {
+    if (!autoOpenWanted) return;
+    if (otherOpen) { waitedForHistoryRef.current = true; return; }
+    setAutoOpenWanted(false);
+    if (touchedRef.current) return;
+    const active = document.activeElement;
+    const adrift = !active || active === document.body || !!active.closest?.('.jc-aside');
+    if (waitedForHistoryRef.current && adrift) focusOnChangeRef.current = true;
+    waitedForHistoryRef.current = false;
+    onOpenChange(true);
+  }, [autoOpenWanted, otherOpen, onOpenChange]);
 
   // Who answers to which @name: the staff list plus everyone the thread's comments mention
   // (someone since archived still reads whole), built once per thread or staff list. Sending
@@ -464,7 +487,7 @@ export default function JobCommentsPanel({
   };
 
   return (
-    <div className={`jc-aside${open ? ' jc-aside-open' : ''}`}>
+    <div className={`jc-aside${open ? ' jc-aside-open' : ''}${otherOpen ? ' jc-aside-other-open' : ''}`}>
       <div className="jc-bubble-gutter">
         <button
           ref={bubbleRef}
@@ -473,7 +496,7 @@ export default function JobCommentsPanel({
           onClick={handleBubble}
           aria-label={unreadCount > 0 ? `Open comments (${unreadCount} new)` : 'Open comments'}
           aria-controls="job-comments-window"
-          inert={open ? '' : undefined}
+          inert={open || otherOpen ? '' : undefined}
         >
           <MessageCircle size={24} />
           {unreadCount > 0 && <span className="jc-bubble-count">{unreadCount}</span>}

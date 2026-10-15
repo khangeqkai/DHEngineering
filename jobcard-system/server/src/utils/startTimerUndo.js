@@ -15,6 +15,8 @@ const {
 } = require('../db/database');
 const logger = require('./logger');
 const { assigneeNames } = require('./historyChanges');
+const { runContext } = require('./timeEntryHelpers');
+const { displayName } = require('../shared/names');
 
 // A timer that ran for less than this is treated as an accidental start/stop tap.
 const MIN_LOGGED_MS = 15 * 1000;
@@ -80,10 +82,10 @@ function discardIfAccidentalTap(jobcardId, entry, actor) {
       unassignedUserId = null;
     }
 
-    recordHistory('jobcard', jobcardId, 'discard_timer', actor.userId, actor.name || actor.username, {
+    recordHistory('jobcard', jobcardId, 'discard_timer', actor.userId, displayName(actor), {
       timer: { from: 'running', to: 'discarded (under 15s)' },
       ...changes
-    }, { timeEntryId: entry.id, startTime: entry.start_time });
+    }, { timeEntryId: entry.id, startTime: entry.start_time, ...runContext(entry) });
 
     return { discarded: true, unassignedUserId };
   })();

@@ -175,7 +175,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
             if (flagged.length === 0) {
               toast('Your timer was stopped from another screen', { icon: infoToastIcon });
             }
-            if (onExternalStopRef.current) onExternalStopRef.current();
+            if (onExternalStopRef.current) onExternalStopRef.current(activeTimer.jobcardId || jobcardId);
           }
           selfStoppedRef.current = false;
           setActiveTimer(null);
@@ -337,7 +337,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
         // rather than an error, and let the work list reload.
         setActiveTimer(null);
         refreshFinishQuestionRef.current?.();
-        if (onExternalStopRef.current) onExternalStopRef.current();
+        if (onExternalStopRef.current) onExternalStopRef.current(jobcardId);
       } else {
         toast.error(err.message || 'Failed to stop timer', { id: 'stop-timer-failed' });
       }
@@ -390,7 +390,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
           // Someone else's clock: the refusal carries the sentence to show.
           toast(err.message, { id: 'run-stopped-itself', icon: infoToastIcon });
         }
-        if (onExternalStopRef.current) onExternalStopRef.current();
+        if (onExternalStopRef.current) onExternalStopRef.current(entry.jobcardId || jobcardId);
       } else {
         toast.error(err.message || 'Failed to stop timer', { id: 'stop-timer-failed' });
       }

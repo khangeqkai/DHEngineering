@@ -16,6 +16,15 @@
 // 8 adds the job_note_reads table (who has read which job's comments) and stamps the
 // comments_read_from launch baseline.
 // 9 adds the job_note_mentions table (who was @mentioned in which comment, and whether they have answered).
-const DATA_VERSION = 9;
+// 10 reshapes old job trail entries once. The rules live in db/trailEntries.js (pure, tested without a database);
+// legacyMigrations.js only selects the rows and writes the results back. In order, per entry:
+//   1. rename the old "item" part keys to "part" keys;
+//   2. split an entry holding several part changes into one entry per part;
+//   3. fill the part on part add/remove/edit entries from their recorded summary;
+//   4. copy the recorded part name onto time block entries;
+//   5. copy the recorded worker change onto manual add/delete time block entries as the worker name;
+//   6. name the worker on auto-stop entries from the entry's own account;
+//   7. name the person on assign/unassign entries where the stored lists give one exact answer.
+const DATA_VERSION = 10;
 
 module.exports = { DATA_VERSION };

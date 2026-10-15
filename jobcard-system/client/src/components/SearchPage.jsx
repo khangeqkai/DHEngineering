@@ -100,17 +100,9 @@ function Pagination({ page, totalPages, total, onPageChange }) {
   );
 }
 
-// Map activity entity types + actions to a tab in JobCardModal
-const ACTION_TO_TAB = {
-  start_timer: 'details', stop_timer: 'details', discard_timer: 'details',
-  auto_stop_timer: 'details', confirm_finish: 'details',
-  add_time_entry: 'details', update_time_entry: 'details', delete_time_entry: 'details',
-  add_note: 'details',  delete_note: 'details',
-  update_costing: 'costing',
-  // Files now live in the header paperwork hub, not a tab — land on Details.
-  update_qa_form: 'details',
-  upload_file: 'details', delete_file: 'details', add_document: 'details',
-};
+// Which tab of the job an activity result lands on. Everything but pricing lands on
+// Details; History opens beside it for every activity result either way.
+const ACTION_TO_TAB = { update_costing: 'costing' };
 
 export default function SearchPage() {
   const { user } = useAuth();
@@ -154,9 +146,11 @@ export default function SearchPage() {
   const [modalJobId, setModalJobId] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTab, setModalTab] = useState(null);
+  const [modalHistoryOpen, setModalHistoryOpen] = useState(false);
 
-  const openJobModal = useCallback((jobId, tab = null) => {
+  const openJobModal = useCallback((jobId, tab = null, historyOpen = false) => {
     setModalTab(tab);
+    setModalHistoryOpen(historyOpen);
     setModalJobId(jobId);
     setModalOpen(true);
   }, []);
@@ -169,8 +163,7 @@ export default function SearchPage() {
         toast.error(JOB_DELETED_MESSAGE, { id: JOB_DELETED_TOAST_ID });
         return;
       }
-      const tab = ACTION_TO_TAB[row.action] || (row.action === 'create' || row.action === 'update' ? 'details' : 'activity');
-      openJobModal(row.entityId, canManage ? tab : null);
+      openJobModal(row.entityId, canManage ? (ACTION_TO_TAB[row.action] || 'details') : null, true);
     } else if (row.entityType === 'contact' || row.entityType === 'company') {
       navigate('/contacts');
     } else if (row.entityType === 'supplier') {
@@ -523,6 +516,7 @@ export default function SearchPage() {
         onClose={() => setModalOpen(false)}
         jobCardId={modalJobId}
         initialTab={modalTab}
+        initialHistoryOpen={modalHistoryOpen}
         onSuccess={refresh}
       />
     </div>

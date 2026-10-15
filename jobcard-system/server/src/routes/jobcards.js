@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { assigneeNames } = require('../utils/historyChanges');
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
+const { displayName } = require('../shared/names');
 const { isActiveRecord } = require('../shared/records');
 const { deleteJobCardFolders, isBaseReachable } = require('../utils/folderCreation');
 const { authenticate, requireManagement, requirePermission, canSetStatus } = require('../middleware/auth');
@@ -25,7 +26,7 @@ const {
 } = require('../db/database');
 const { db } = require('../db/connection');
 const { findOr404 } = require('../utils/findOr404');
-const { formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
+const { readEntries, formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
 const { roundTo } = require('../shared/round');
 const jobcardMutationsRoutes = require('./jobcard-mutations');
 const jobcardPrintoutRoutes = require('./jobcard-printout');
@@ -149,15 +150,16 @@ router.get('/:id/history', authenticate, requirePermission('activityTrail'), (re
   try {
     const history = historyQueries.getByEntity.all('jobcard', req.params.id);
 
-    res.json(history.map(h => sanitizeHistoryForRole({
+    const entries = readEntries(history, (h, read) => sanitizeHistoryForRole({
       id: h.id,
       action: h.action,
       userId: h.user_id,
       userName: h.user_name,
-      changes: h.changes ? JSON.parse(h.changes) : null,
-      snapshot: h.snapshot ? JSON.parse(h.snapshot) : null,
+      changes: read.changes,
+      snapshot: read.snapshot,
       createdAt: h.created_at
-    }, req.user.role)));
+    }, req.user.role), 'GET /jobcards/:id/history');
+    res.json(entries);
   } catch (err) {
     logger.error({ err }, 'Get jobcard history error');
     res.status(500).json({ error: 'Failed to get job card history' });
@@ -194,7 +196,7 @@ router.post('/:id/assignees/self', authenticate, (req, res) => {
         const toNames = assigneeNames(after);
         recordHistory('jobcard', id, 'self_assign', userId, actorName(req), {
           assignees: { from: fromNames, to: toNames }
-        });
+        }, { workerId: userId, workerName: actorName(req) });
       })();
     } catch (e) {
       if (e && e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -249,7 +251,7 @@ router.delete('/:id/assignees/self', authenticate, (req, res) => {
       const toNames = assigneeNames(after);
       recordHistory('jobcard', id, 'self_unassign', userId, actorName(req), {
         assignees: { from: fromNames, to: toNames }
-      });
+      }, { workerId: userId, workerName: actorName(req) });
     })();
 
     res.status(200).json({
@@ -287,7 +289,7 @@ router.put('/:id/assignees/:userId', authenticate, requireManagement, (req, res)
     // An archived account can't be newly put on a job — the same rule as creating one.
     // (Already on it is left alone: the reply below just reports the list.)
     if (!alreadyAssigned && !isActiveRecord(user)) {
-      return res.status(400).json({ error: `${user.name || user.username} can no longer be assigned` });
+      return res.status(400).json({ error: `${displayName(user)} can no longer be assigned` });
     }
 
     if (alreadyAssigned) {
@@ -310,7 +312,7 @@ router.put('/:id/assignees/:userId', authenticate, requireManagement, (req, res)
         const toNames = assigneeNames(after);
         recordHistory('jobcard', id, 'assign', req.user.userId, actorName(req), {
           assignees: { from: fromNames, to: toNames }
-        });
+        }, { workerId: user.id, workerName: displayName(user) });
       })();
     } catch (e) {
       if (e && e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -356,7 +358,7 @@ router.delete('/:id/assignees/:userId', authenticate, requireManagement, (req, r
       });
     }
     if (clockRunningOnJob(userId, id)) {
-      return res.status(409).json({ error: `${user.name || user.username}'s timer is running on this job. Stop it before taking them off.` });
+      return res.status(409).json({ error: `${displayName(user)}'s timer is running on this job. Stop it before taking them off.` });
     }
 
     // A worker taken off the job moves its "Last Edited", in the same write.
@@ -369,7 +371,7 @@ router.delete('/:id/assignees/:userId', authenticate, requireManagement, (req, r
       const toNames = assigneeNames(after);
       recordHistory('jobcard', id, 'unassign', req.user.userId, actorName(req), {
         assignees: { from: fromNames, to: toNames }
-      });
+      }, { workerId: user.id, workerName: displayName(user) });
     })();
 
     res.status(200).json({

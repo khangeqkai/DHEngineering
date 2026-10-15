@@ -1,4 +1,5 @@
 const { db } = require('../connection');
+const { DISPLAY_NAME_SQL } = require('../displayNameSql');
 
 // Time entry queries
 const timeEntryQueries = {
@@ -7,7 +8,7 @@ const timeEntryQueries = {
   // number keeps its gaps after a part is removed. The screen pairs these rows to
   // its parts by item_id and numbers them itself.
   getByJobcard: db.prepare(`
-    SELECT te.*, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name, ji.item_number as item_number
+    SELECT te.*, ${DISPLAY_NAME_SQL('u')} as user_name, ji.item_number as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
     LEFT JOIN job_items ji ON te.item_id = ji.id
@@ -16,7 +17,7 @@ const timeEntryQueries = {
   `),
 
   getById: db.prepare(`
-    SELECT te.*, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name, ji.item_number as item_number
+    SELECT te.*, ${DISPLAY_NAME_SQL('u')} as user_name, ji.item_number as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
     LEFT JOIN job_items ji ON te.item_id = ji.id
@@ -91,7 +92,7 @@ const timeEntryQueries = {
   // same way search.js does — the stored sort number keeps its gaps after a part is
   // removed) so the confirm can name each run without a second round trip.
   getMissingInspectionByJobcard: db.prepare(`
-    SELECT te.id, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name, te.start_time, te.end_time,
+    SELECT te.id, ${DISPLAY_NAME_SQL('u')} as user_name, te.start_time, te.end_time,
       (CASE WHEN ji.id IS NOT NULL THEN (SELECT COUNT(*) FROM job_items p WHERE p.jobcard_id = ji.jobcard_id AND p.item_number <= ji.item_number) END) as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
@@ -111,7 +112,7 @@ const timeEntryQueries = {
   // item_number is the part's CURRENT 1-based position (as above), because the
   // "timer running on job X, part N" message shows it as-is for another job.
   getActiveByUser: db.prepare(`
-    SELECT te.*, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name, j.job_number,
+    SELECT te.*, ${DISPLAY_NAME_SQL('u')} as user_name, j.job_number,
       (CASE WHEN ji.id IS NOT NULL THEN (SELECT COUNT(*) FROM job_items p WHERE p.jobcard_id = ji.jobcard_id AND p.item_number <= ji.item_number) END) as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
@@ -135,7 +136,7 @@ const timeEntryQueries = {
   // Every open block the roll may cut, with its worker's name — the forgotten-clock roll
   // (utils/timerPause.js) walks these. Hand-opened blocks (auto_stop_exempt) are left out. Oldest first so the work is deterministic.
   getAllOpen: db.prepare(`
-    SELECT te.*, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name
+    SELECT te.*, ${DISPLAY_NAME_SQL('u')} as user_name
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
     WHERE te.end_time IS NULL AND COALESCE(te.auto_stop_exempt, 0) = 0
@@ -162,7 +163,7 @@ const timeEntryQueries = {
   // A worker's automatically finished blocks still awaiting their answer, oldest first, with
   // the job number and the part's current 1-based position (the way getActiveByUser reports it).
   getUnconfirmedByUser: db.prepare(`
-    SELECT te.*, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name, j.job_number,
+    SELECT te.*, ${DISPLAY_NAME_SQL('u')} as user_name, j.job_number,
       (CASE WHEN ji.id IS NOT NULL THEN (SELECT COUNT(*) FROM job_items p WHERE p.jobcard_id = ji.jobcard_id AND p.item_number <= ji.item_number) END) as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
@@ -184,7 +185,7 @@ const timeEntryQueries = {
   // The first block on a job awaiting its worker's answer, with that worker's name —
   // invoicing waits on it.
   getFirstUnconfirmedByJobcard: db.prepare(`
-    SELECT te.id, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name
+    SELECT te.id, ${DISPLAY_NAME_SQL('u')} as user_name
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
     WHERE te.jobcard_id = ? AND te.finish_unconfirmed = 1 AND te.end_time IS NOT NULL
@@ -220,7 +221,7 @@ const timeEntryQueries = {
   // an old abandoned form never comes back. An archived job's are left out: its form could
   // never be saved, so it would be offered forever.
   getUnfilledStopFormsByUser: db.prepare(`
-    SELECT te.*, COALESCE(NULLIF(TRIM(u.name), ''), u.username) as user_name, j.job_number,
+    SELECT te.*, ${DISPLAY_NAME_SQL('u')} as user_name, j.job_number,
       (CASE WHEN ji.id IS NOT NULL THEN (SELECT COUNT(*) FROM job_items p WHERE p.jobcard_id = ji.jobcard_id AND p.item_number <= ji.item_number) END) as item_number
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
@@ -357,11 +358,24 @@ const jobNoteMentionQueries = {
 
   // One row per job with open mentions for this person, oldest waiting first. The oldest
   // open mention on each job (the one a row opens at) is picked by created_at, rowid breaking ties.
+  // askers_json: the distinct askers (by account, so two people sharing a name stay two) of
+  // those open mentions, by when each first asked, as [{ userId, name }] with the name
+  // their current display name (the comment's stored name if the account is gone).
   openForUserByJob: db.prepare(`
     SELECT j.id AS jobcard_id, j.job_number AS job_number, j.description AS description,
            g.count AS count, g.oldest_at AS oldest_at,
            first_m.note_id AS first_note_id,
-           fn.text AS first_text, fn.user_name AS first_by_name
+           fn.text AS first_text,
+           (SELECT json_group_array(json_object('userId', a.user_id, 'name', a.name)) FROM (
+              SELECT n3.user_id AS user_id,
+                     COALESCE(MAX(${DISPLAY_NAME_SQL('u3')}), MAX(n3.user_name)) AS name
+              FROM job_note_mentions m3
+              JOIN job_notes n3 ON n3.id = m3.note_id
+              LEFT JOIN users u3 ON u3.id = n3.user_id
+              WHERE m3.jobcard_id = g.jobcard_id AND m3.user_id = @userId AND m3.answered_at IS NULL
+              GROUP BY n3.user_id
+              ORDER BY MIN(m3.created_at) ASC, MIN(m3.rowid) ASC
+            ) a) AS askers_json
     FROM (
       SELECT jobcard_id, COUNT(*) AS count, MIN(created_at) AS oldest_at,
              (SELECT m2.id FROM job_note_mentions m2

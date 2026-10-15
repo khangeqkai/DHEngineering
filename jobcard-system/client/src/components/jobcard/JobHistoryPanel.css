@@ -1,0 +1,208 @@
+/* The job History window beside the job (same frame as the comments window, see
+   JobCommentsPanel.css) and its bubble, which sits directly under the comments bubble.
+   Dot colour = the kind of change (--history-dot-* in index.css). */
+
+.jc-bubble.jc-bubble--history {
+  top: calc(var(--space-2) + var(--bubble-size) + var(--gap-field));
+}
+
+/* Same as the comments bubble: inside the window's corner when the margin is too thin. */
+@media (max-width: 768px) {
+  .jc-bubble.jc-bubble--history {
+    left: var(--space-2);
+    top: calc(var(--space-2) + var(--bubble-size) + var(--gap-field));
+    z-index: 3;
+  }
+}
+
+.history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-tight);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.history-filters:empty {
+  display: none;
+}
+
+.history-body {
+  padding: var(--space-4) var(--space-4) var(--space-3);
+}
+
+.history-loading {
+  padding: var(--space-8) 0;
+}
+
+.history-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-inline);
+  padding: var(--space-1) var(--space-3);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--font-regular);
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+
+.history-chip[aria-pressed='true'] {
+  color: var(--text-primary);
+  background: var(--surface-inset);
+}
+
+/* A switched-off kind reads as off: struck through and dimmed. */
+.history-chip[aria-pressed='false'] {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.history-chip-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+
+.history-chip-dot,
+.history-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  box-sizing: border-box;
+}
+
+.history-dot-job { background: var(--history-dot-job); }
+.history-dot-status { background: var(--history-dot-status); }
+.history-dot-people { background: var(--history-dot-people); }
+.history-dot-work { background: var(--history-dot-work); }
+.history-dot-quality { background: var(--history-dot-quality); }
+.history-dot-price { background: var(--history-dot-price); }
+.history-dot-files { background: var(--history-dot-files); }
+.history-dot-comment { background: var(--history-dot-comment); }
+.history-dot-alert { background: var(--history-dot-alert); }
+
+/* "Needs a look" is a hollow ring so it stands out from the filled dots. */
+.history-dot-ring {
+  background: var(--surface);
+  border: 2px solid var(--history-dot-alert);
+}
+
+.history-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+}
+
+.history-day-heading {
+  margin: 0 0 var(--gap-tight);
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* The rail: one vertical line down the left of a day's entries. */
+.history-entries {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-entries::before {
+  content: '';
+  position: absolute;
+  top: var(--space-2);
+  bottom: var(--space-2);
+  left: 4px;
+  width: 2px;
+  background: var(--border-color);
+}
+
+.history-entry {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap-field);
+  padding: var(--space-1-5) 0;
+}
+
+.history-entry > .history-dot {
+  position: relative;
+  margin-top: var(--space-1-5);
+}
+
+.history-entry-body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The time stays at the right of the first line; a long sentence wraps beneath itself. */
+.history-entry-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap-tight);
+}
+
+.history-sentence {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.history-strong {
+  font-weight: var(--font-bold);
+}
+
+.history-was {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.history-time {
+  flex: none;
+  padding-top: var(--space-0-5);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.history-toggle {
+  margin-top: var(--space-0-5);
+  padding: var(--space-0-5) 0;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--accent-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.history-toggle:hover {
+  text-decoration: underline;
+}
+
+.history-details {
+  margin: var(--space-1) 0 0;
+  padding: 0 0 0 var(--space-4);
+  list-style: none;
+}
+
+.history-detail {
+  padding: var(--space-0-5) 0;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}

@@ -5,6 +5,7 @@ import FieldError from '../../common/FieldError';
 import { scrollFieldIntoView } from '../../../hooks/useFieldErrors';
 import { finishBoxShowsStored } from '../useTimeEntries';
 import { splitMachineCodes, joinMachineCodes } from '../../../../../server/src/shared/machineList';
+import { displayName } from '../../../../../server/src/shared/names';
 
 const INSPECTION_ITEMS = [
   { field: 'firstOffInspection', label: 'First-Off Inspection' },
@@ -155,7 +156,7 @@ export default function TimeEntryForm({
         >
           <option value="">Select worker...</option>
           {workerOptions.map(u => (
-            <option key={u.id} value={u.id}>{u.name || u.username}</option>
+            <option key={u.id} value={u.id}>{displayName(u)}</option>
           ))}
         </select>
         <FieldError id={errorIdFor('workerId')} message={errorFor('workerId')} />

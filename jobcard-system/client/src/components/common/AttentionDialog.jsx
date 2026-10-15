@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useModalLayer, isTopModal, useIsTopModal, PINNED_LAYERS } from './modalStack';
 import { handleDialogKey } from './dialogKeys';
 import { formatDate, formatTime, isToday } from '../../utils/formatters';
+import { getInitials, getAvatarColor } from '../../utils/initials';
 import './AttentionDialog.css';
 
 // The id the window holds on the shared modal stack, so the provider can tell "another
@@ -78,7 +79,9 @@ export default function AttentionDialog({ children, contentKey, onSignOut }) {
         <div className="attention-body" ref={bodyRef}>
           <AttentionRefocusContext.Provider value={refocus}>{children}</AttentionRefocusContext.Provider>
         </div>
+        {/* Said out loud so the lone button reads as the way out, not a stray control. */}
         <div className="attention-footer">
+          <span className="attention-footer-note">Can't deal with this now?</span>
           <button type="button" className="btn btn-secondary" onClick={onSignOut}>Sign out</button>
         </div>
       </div>
@@ -95,16 +98,35 @@ function askedAt(iso) {
     : formatDate(iso, { day: 'numeric', month: 'short' });
 }
 
+// The asker's initials circle, in the same colours the comments window gives them.
+function avatarStyle(name) {
+  const { bg, fg } = getAvatarColor(name);
+  return { background: bg, color: fg };
+}
+
 // The "Questions for you" section: one pressable row per job with open mentions. Rows
 // are pressable unless `waitReason` says why not ('clock' or 'checking'; null: pressable).
+// "Alice", "Alice and Bob", "Alice, Bob and 2 others" (the "+N" badge counts those past the first).
+function askersText(askers) {
+  if (askers.length <= 1) return askers[0]?.name || '';
+  if (askers.length === 2) return `${askers[0].name} and ${askers[1].name}`;
+  const others = askers.length - 2;
+  return `${askers[0].name}, ${askers[1].name} and ${others} ${others === 1 ? 'other' : 'others'}`;
+}
+
 const WAIT_NOTES = { clock: 'Answer your clock first.', checking: 'One moment…' };
 
 export function MentionsSection({ mentions, waitReason, onOpen }) {
   const disabled = !!waitReason;
+  // Counted in questions, not rows: one job can hold several, asked by different people.
+  const questions = mentions.reduce((sum, row) => sum + (row.count || 1), 0);
+  const title = questions === 1
+    ? 'Someone asked you a question'
+    : `You have ${questions} questions${mentions.length > 1 ? ` on ${mentions.length} jobs` : ''}`;
   return (
     <section className="attention-section" aria-labelledby="attention-mentions-title">
-      <h3 id="attention-mentions-title" className="attention-section-title">Questions for you</h3>
-      <p className="attention-note">Open each one and reply — any reply counts. This closes once they're all answered.</p>
+      <h3 id="attention-mentions-title" className="attention-section-title">{title}</h3>
+      <p className="attention-note">Open each one and reply. Any reply counts, and this window closes once they're all answered.</p>
       {waitReason && <p className="attention-note">{WAIT_NOTES[waitReason]}</p>}
       <ul className="attention-rows">
         {mentions.map(row => (
@@ -115,18 +137,28 @@ export function MentionsSection({ mentions, waitReason, onOpen }) {
               disabled={disabled}
               onClick={() => onOpen(row)}
             >
+              <span className="attention-row-avatar" style={avatarStyle(row.askers[0].name)} aria-hidden="true">
+                {getInitials(row.askers[0].name)}
+                {row.askers.length > 1 && (
+                  <span className="attention-row-avatar-more">+{row.askers.length - 1}</span>
+                )}
+              </span>
+              {/* Who asked and what, first: that is what the person has to answer. The job
+                  it belongs to is the small print underneath. */}
               <span className="attention-row-main">
-                <span className="attention-row-job">
-                  {row.jobNumber}
-                  {row.description && <span className="attention-row-desc">{` — ${row.description}`}</span>}
+                <span className="attention-row-who">
+                  <span className="attention-row-name">{askersText(row.askers)}</span>
+                  <span className="attention-row-when">
+                    {` asked you · ${askedAt(row.oldestAt)}`}
+                    {row.count > 1 && ` · ${row.count} questions`}
+                  </span>
                 </span>
-                <span className="attention-row-first">{row.firstByName}: “{row.firstText}”</span>
+                <span className="attention-row-question">{row.firstText}</span>
+                <span className="attention-row-job">
+                  {row.jobNumber}{row.description ? ` · ${row.description}` : ''}
+                </span>
               </span>
-              <span className="attention-row-meta">
-                <span>asked {askedAt(row.oldestAt)}</span>
-                {row.count > 1 && <span>{row.count} questions</span>}
-              </span>
-              <ChevronRight size={16} aria-hidden="true" />
+              <ChevronRight size={16} className="attention-row-arrow" aria-hidden="true" />
             </button>
           </li>
         ))}

@@ -225,6 +225,9 @@ export function FinishQuestionProvider({ children }) {
       : 'That clock no longer needs an answer — it was changed from another screen.',
     { id: 'finish-question-gone', icon: infoToastIcon });
     announceJobChanged(item.jobcardId);
+    // Changed from another screen, so no write of this PC's announced it: tell the job's
+    // History here. An accepted answer needs nothing more, its own save already did.
+    api.noteJobChanged(item.jobcardId);
     if (list && !list.some(f => f.id !== item.id)) offerUnfilledStopForm();
     return true;
   }, [readFlagged, announceJobChanged, offerUnfilledStopForm]);

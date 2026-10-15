@@ -22,8 +22,8 @@
   position: absolute;
   top: var(--space-2);
   left: calc(-1 * var(--bubble-gutter));
-  width: 52px;
-  height: 52px;
+  width: var(--bubble-size);
+  height: var(--bubble-size);
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -43,7 +43,8 @@
   transform: scale(1.06);
 }
 
-.jc-aside-open .jc-bubble {
+.jc-aside-open .jc-bubble,
+.jc-aside-other-open .jc-bubble {
   opacity: 0;
   transform: scale(0.6);
   pointer-events: none;

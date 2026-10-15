@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('./logger');
 const { assigneeNames } = require('./historyChanges');
 const { isActiveRecord } = require('../shared/records');
+const { displayName } = require('../shared/names');
 const { isCriticalLevel, INSPECTION_FIELDS, CRITICAL_INSPECTION_REFUSED } = require('../shared/qualityLevels');
 const { db, jobcardQueries, timeEntryQueries, jobItemQueries, jobAssigneeQueries, userQueries, recordHistory } = require('../db/database');
 
@@ -21,6 +22,34 @@ function normalizeTime(value) {
   return d.toISOString();
 }
 
+// Who a run belongs to and which part it was on, for the trail entry's snapshot: the job
+// History window reads these keys to write "<worker> on <part>" sentences. workerId (the
+// block's account) is what decides "their own clock" against the entry's acting user, so
+// two staff with the same name are never mixed up; workerName is only for display. Takes a
+// time_entries row as the time-entry queries return it (so it already carries user_name,
+// the trimmed name or the username when the name is blank, built once in SQL) and reads
+// the part as it is right now, so call it after a change for the saved state, or before a
+// delete. A caller already holding the part passes it, and it isn't read again. Each key
+// is null when it can't be found.
+function runContext(entryRow, knownPart) {
+  const row = entryRow || {};
+  const part = knownPart !== undefined
+    ? knownPart
+    : (row.item_id ? jobItemQueries.getById.get(row.item_id) : null);
+  return {
+    workerId: row.user_id ?? null,
+    workerName: row.user_name || null,
+    partDescription: part ? part.description : null,
+    partQty: part && part.qty != null ? part.qty : null
+  };
+}
+
+// One part, only if it belongs to this job (a part id alone could name another job's part).
+function ownPart(itemId, jobcardId) {
+  const part = itemId ? jobItemQueries.getById.get(itemId) : null;
+  return part && part.jobcard_id === jobcardId ? part : null;
+}
+
 // Confirm a line's permanent id actually belongs to this job card, so a manually
 // entered or edited time record links to the line itself, not to a position
 // number that can repeat, shift, or leave a gap. A part is required: the job screen
@@ -33,7 +62,7 @@ function resolveItemId(jobcardId, itemId, { blankAllowed = false } = {}) {
   if (itemId === null || itemId === undefined || itemId === '') {
     return blankAllowed ? { itemId: null } : { error: 'Please choose the part this work was on' };
   }
-  const match = jobItemQueries.getByJobcard.all(jobcardId).find(it => it.id === itemId);
+  const match = ownPart(itemId, jobcardId);
   if (!match) {
     return { error: 'That part does not exist on this job card' };
   }
@@ -73,9 +102,9 @@ function autoAssignWorker(jobcardId, workerId, actor, action = 'assign') {
       const after = jobAssigneeQueries.getByJobcard.all(jobcardId);
       const fromNames = assigneeNames(before);
       const toNames = assigneeNames(after);
-      recordHistory('jobcard', jobcardId, action, actor.userId, actor.name || actor.username, {
+      recordHistory('jobcard', jobcardId, action, actor.userId, displayName(actor), {
         assignees: { from: fromNames, to: toNames }
-      });
+      }, { workerId, workerName: (after.find(a => a.user_id === workerId) || {}).user_name || '' });
     })();
   } catch (e) {
     if (!e || e.code !== 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -311,8 +340,10 @@ function checkEntryDuration(startTime, endTime) {
 }
 
 module.exports = {
+  runContext,
   normalizeTime,
   checkEntryDuration,
+  ownPart,
   resolveItemId,
   resolveWorkerId,
   autoAssignWorker,

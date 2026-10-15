@@ -56,6 +56,7 @@ class ApiService {
     this.sessionInvalidated = false;
     this.signedOutListeners = new Set();
     this.dataWrittenListeners = new Set();
+    this.jobChangedListeners = new Set();
   }
 
   // Runs fn whenever the pass goes from a value to nothing (any sign-out path).
@@ -71,6 +72,25 @@ class ApiService {
   onDataWritten(fn) {
     this.dataWrittenListeners.add(fn);
     return () => { this.dataWrittenListeners.delete(fn); };
+  }
+
+  // Runs fn() after any write the server accepted whose path targets this job card
+  // (/jobcards/:id or anything under it). The one signal for "this job's trail may have a
+  // new entry": a screen showing that trail listens here instead of every feature
+  // remembering to tell it. Failed writes and reads never announce. Returns an
+  // unsubscribe function.
+  onJobChanged(jobId, fn) {
+    const entry = { jobId: String(jobId), fn };
+    this.jobChangedListeners.add(entry);
+    return () => { this.jobChangedListeners.delete(entry); };
+  }
+
+  // Announces a change to this job that did not come through this PC's own writes (an
+  // external clock stop, an answer to the finish-time question given elsewhere), so screens
+  // listening with onJobChanged catch up. Same signal, same listeners.
+  noteJobChanged(jobId) {
+    const changed = [...this.jobChangedListeners].filter(l => l.jobId === String(jobId)).map(l => l.fn);
+    notifyAll(changed);
   }
 
   setToken(token) {
@@ -174,6 +194,10 @@ class ApiService {
     const result = await response.json();
     if (isWriteRequest) {
       notifyAll(this.dataWrittenListeners, endpoint);
+      const match = /^\/jobcards\/([^/?]+)(?:[/?]|$)/.exec(endpoint);
+      if (match) {
+        this.noteJobChanged(match[1]);
+      }
     }
     return result;
   }

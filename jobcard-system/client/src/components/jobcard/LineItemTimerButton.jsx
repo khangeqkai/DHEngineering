@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Play, Square, ChevronDown } from 'lucide-react';
 import { workBelongsToItem } from './workMatch.mjs';
 import { formatElapsed } from '../../utils/formatters';
+import { displayName } from '../../../../server/src/shared/names';
 
 export default function LineItemTimerButton({
   itemId,
@@ -110,9 +111,9 @@ export default function LineItemTimerButton({
             type="button"
             className="lit-picker-option lit-picker-option--me"
             role="option"
-            onClick={() => startFor(currentUserId, me?.name || me?.username || 'Myself')}
+            onClick={() => startFor(currentUserId, (me && displayName(me)) || 'Myself')}
           >
-            Myself{me?.name ? ` (${me.name})` : ''}
+            Myself{me && displayName(me) ? ` (${displayName(me)})` : ''}
           </button>
           {others.map(emp => (
             <button
@@ -120,9 +121,9 @@ export default function LineItemTimerButton({
               key={emp.id}
               className="lit-picker-option"
               role="option"
-              onClick={() => startFor(emp.id, emp.name || emp.username)}
+              onClick={() => startFor(emp.id, displayName(emp))}
             >
-              {emp.name || emp.username}
+              {displayName(emp)}
             </button>
           ))}
         </div>

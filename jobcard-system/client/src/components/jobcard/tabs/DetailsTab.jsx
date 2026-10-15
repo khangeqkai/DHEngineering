@@ -8,6 +8,7 @@ import DetailsReadOnlyView from './DetailsReadOnlyView';
 import ToggleTiles from '../../common/ToggleTiles';
 import CustomerSection from './CustomerSection';
 import JobReferenceFields from './JobReferenceFields';
+import { displayName } from '../../../../../server/src/shared/names';
 
 export default function DetailsTab({
   isEdit,
@@ -300,7 +301,7 @@ export default function DetailsTab({
           // here, marked "(archived)"; an archived worker not on this job is
           // never shown.
           options={[
-            ...employees.map(emp => ({ value: emp.id, label: emp.name || emp.username })),
+            ...employees.map(emp => ({ value: emp.id, label: displayName(emp) })),
             ...assignees
               .filter(a => !employees.some(e => e.id === a.userId))
               .map(a => ({ value: a.userId, label: `${a.userName || 'Unknown'} (archived)` }))

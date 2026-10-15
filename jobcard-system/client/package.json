@@ -10,7 +10,8 @@
     "electron": "wait-on http://localhost:5173 && electron .",
     "build": "vite build",
     "build:electron": "vite build && electron-builder",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --import ./test/register.mjs --test \"test/*.test.js\""
   },
   "dependencies": {
     "lucide-react": "^0.564.0",

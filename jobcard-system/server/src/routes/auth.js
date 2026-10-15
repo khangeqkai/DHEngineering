@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 
 const config = require('../config');
 const logger = require('../utils/logger');
+const { displayName, cleanName } = require('../shared/names');
 const { authenticate, requireManagement, can, isManagement, liveRole, ALL_ROLES } = require('../middleware/auth');
 const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences, PIN_REGEX, PIN_MESSAGE } = require('../middleware/validation');
 const { db, userQueries, jobNoteQueries, jobNoteMentionQueries, timeEntryQueries, recordHistory, actorName, getSettings } = require('../db/database');
@@ -105,7 +106,7 @@ router.post('/login', validateLogin, async (req, res) => {
     loginAttempts.forgive(ip, loginTarget(username));
 
     // Record login in history
-    recordHistory('user', user.id, 'login', user.id, user.name, {
+    recordHistory('user', user.id, 'login', user.id, displayName(user), {
       username: { from: null, to: user.username }
     });
 
@@ -294,7 +295,8 @@ router.get('/users/:id', authenticate, requireManagement, (req, res) => {
 // Create user (admin or manager; only admins can create admins)
 router.post('/users', authenticate, requireManagement, userCreationLimiter, validateCreateUser, async (req, res) => {
   try {
-    const { username, password, role, name, email } = req.body;
+    const { username, password, role, email } = req.body;
+    const name = cleanName(req.body.name);
 
     // A manager can create accounts but never mint an admin — otherwise they
     // could grant themselves the costing access managers are barred from.
@@ -371,7 +373,9 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
 router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, async (req, res) => {
   try {
     const { id } = req.params;
-    const { password, role, name, email } = req.body;
+    const { password, role, email } = req.body;
+    // Stored clean; a name that is blank once cleaned counts as not sent (a name can't be cleared).
+    const name = cleanName(req.body.name);
 
     const isSelf = req.user.userId === id;
 

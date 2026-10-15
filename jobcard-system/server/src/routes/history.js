@@ -2,6 +2,7 @@ const express = require('express');
 const logger = require('../utils/logger');
 const { authenticate, requirePermission, requireManagement } = require('../middleware/auth');
 const { historyQueries, db } = require('../db/database');
+const { readEntries } = require('./jobcard-helpers');
 
 const router = express.Router();
 
@@ -34,7 +35,7 @@ router.get('/', authenticate, requirePermission('activityTrail'), (req, res) => 
       history = historyQueries.getRecent.all(limit, offset);
     }
 
-    res.json(history.map(h => ({
+    res.json(readEntries(history, (h, read) => ({
       id: h.id,
       entityType: h.entity_type,
       entityId: h.entity_id,
@@ -43,10 +44,10 @@ router.get('/', authenticate, requirePermission('activityTrail'), (req, res) => 
       action: h.action,
       userId: h.user_id,
       userName: h.user_name,
-      changes: h.changes ? JSON.parse(h.changes) : null,
-      snapshot: h.snapshot ? JSON.parse(h.snapshot) : null,
+      changes: read.changes,
+      snapshot: read.snapshot,
       createdAt: h.created_at
-    })));
+    }), '/'));
   } catch (err) {
     logger.error({ err }, 'Get history error');
     res.status(500).json({ error: 'Failed to get activity history' });
@@ -59,7 +60,7 @@ router.get('/user/:userId', authenticate, requirePermission('activityTrail'), (r
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
     const history = historyQueries.getByUser.all(req.params.userId, limit);
 
-    res.json(history.map(h => ({
+    res.json(readEntries(history, (h, read) => ({
       id: h.id,
       entityType: h.entity_type,
       entityId: h.entity_id,
@@ -68,10 +69,10 @@ router.get('/user/:userId', authenticate, requirePermission('activityTrail'), (r
       action: h.action,
       userId: h.user_id,
       userName: h.user_name,
-      changes: h.changes ? JSON.parse(h.changes) : null,
-      snapshot: h.snapshot ? JSON.parse(h.snapshot) : null,
+      changes: read.changes,
+      snapshot: read.snapshot,
       createdAt: h.created_at
-    })));
+    }), '/user/:userId'));
   } catch (err) {
     logger.error({ err }, 'Get user history error');
     res.status(500).json({ error: 'Failed to get user activity' });
@@ -104,17 +105,17 @@ router.get('/entity/:entityType', authenticate, requireManagement, (req, res) =>
       .all(...types, PAGE_SIZE, offset);
 
     res.json({
-      data: history.map(h => ({
+      data: readEntries(history, (h, read) => ({
         id: h.id,
         entityType: h.entity_type,
         entityId: h.entity_id,
         action: h.action,
         userId: h.user_id,
         userName: h.user_name,
-        changes: h.changes ? JSON.parse(h.changes) : null,
-        snapshot: h.snapshot ? JSON.parse(h.snapshot) : null,
+        changes: read.changes,
+        snapshot: read.snapshot,
         createdAt: h.created_at
-      })),
+      }), '/entity'),
       total,
       page,
       totalPages: Math.ceil(total / PAGE_SIZE)

@@ -34,7 +34,7 @@
 const logger = require('./logger');
 const { db, timeEntryQueries, recordHistory } = require('../db/database');
 const { readOpeningRules, windowAt, nextOpening, officeDayEndAfter } = require('./openingHours');
-const { criticalAtFinishForWrite } = require('./timeEntryHelpers');
+const { criticalAtFinishForWrite, runContext } = require('./timeEntryHelpers');
 const { syncStatusToWork } = require('./jobStatusAuto');
 
 // How long the company's rules are remembered between rolls before being read again.
@@ -93,7 +93,7 @@ function rollRow(row, cut, nowMs) {
       to: cut.zeroLength ? 'stopped at midnight — finish time not known' : 'stopped at the end of normal hours'
     },
     ...(statusChange ? { status: statusChange } : {})
-  }, { timeEntryId: row.id, startTime: row.start_time });
+  }, { timeEntryId: row.id, startTime: row.start_time, ...runContext(row) });
 }
 
 const rollRowInTransaction = db.transaction(rollRow);

@@ -5,8 +5,10 @@ const { getAssigneesForJobcards, HISTORY_JOB_NUMBER_SQL } = require('../db/datab
 const { officeTimeZone, officeDayStart, officeDayEnd } = require('../utils/officeTime');
 const { customerFields } = require('./jobcard-helpers');
 const { supplierContactFields } = require('./supplier-helpers');
+const { DISPLAY_NAME_SQL } = require('../db/displayNameSql');
 const { roundTo } = require('../shared/round');
 const logger = require('../utils/logger');
+const { readTrailEntry } = require('../db/trailEntries');
 const { validateSearchQuery } = require('../middleware/validation');
 
 const router = express.Router();
@@ -124,9 +126,11 @@ function formatSupplier(row, canManage) {
   };
 }
 
+// Returns null for a row whose stored details are damaged; formatActivities drops those.
 function formatActivity(row) {
-  let changes = null;
-  try { changes = row.changes ? JSON.parse(row.changes) : null; } catch { /* ignore */ }
+  const read = readTrailEntry(row);
+  if (!read) return null;
+  const changes = read.changes;
   return {
     id: row.id,
     userName: row.user_name,
@@ -137,6 +141,14 @@ function formatActivity(row) {
     changes,
     createdAt: row.created_at
   };
+}
+
+// A damaged trail row is skipped (never a failed search) and counted once per request.
+function formatActivities(rows) {
+  const formatted = rows.map(formatActivity);
+  const unreadable = formatted.filter((f) => f === null).length;
+  if (unreadable > 0) logger.warn({ unreadable }, 'Skipped trail entries whose stored details could not be read');
+  return formatted.filter((f) => f !== null);
 }
 
 function formatTimeEntry(row) {
@@ -239,7 +251,7 @@ function searchAll(req, res, canManage) {
     const { sql: hWhere, params: hParams } = activitySearchMatch(q);
     groups.activity = {
       count: db.prepare(`SELECT COUNT(*) as count FROM history h WHERE ${hWhere}`).get(...hParams).count,
-      results: db.prepare(`${ACTIVITY_SELECT} WHERE ${hWhere} ORDER BY h.created_at DESC, h.id DESC LIMIT ?`).all(...hParams, PREVIEW_LIMIT).map(formatActivity)
+      results: formatActivities(db.prepare(`${ACTIVITY_SELECT} WHERE ${hWhere} ORDER BY h.created_at DESC, h.id DESC LIMIT ?`).all(...hParams, PREVIEW_LIMIT))
     };
   }
 
@@ -409,7 +421,7 @@ function searchActivity(req, res) {
   const offset = (page - 1) * PAGE_SIZE;
   const rows = db.prepare(`${ACTIVITY_SELECT} ${where} ORDER BY h.created_at DESC, h.id DESC LIMIT ? OFFSET ?`).all(...params, PAGE_SIZE, offset);
 
-  res.json({ results: rows.map(formatActivity), total, page, totalPages: Math.ceil(total / PAGE_SIZE) });
+  res.json({ results: formatActivities(rows), total, page, totalPages: Math.ceil(total / PAGE_SIZE) });
 }
 
 function searchTime(req, res, canManage) {
@@ -429,7 +441,7 @@ function searchTime(req, res, canManage) {
   if (q) {
     const like = likeTerm(q.trim());
     // A part number matches only that exact part: "1" is part 1, never 10–19 or 21.
-    conditions.push(`(u.name LIKE ? ESCAPE '\\' OR te.description LIKE ? ESCAPE '\\' OR CAST(${partPosition} AS TEXT) = ? OR te.machine_number LIKE ? ESCAPE '\\')`);
+    conditions.push(`(${DISPLAY_NAME_SQL('u')} LIKE ? ESCAPE '\\' OR te.description LIKE ? ESCAPE '\\' OR CAST(${partPosition} AS TEXT) = ? OR te.machine_number LIKE ? ESCAPE '\\')`);
     params.push(like, like, q.trim(), like);
   }
   if (workerId) { conditions.push('te.user_id = ?'); params.push(workerId); }
@@ -456,7 +468,7 @@ function searchTime(req, res, canManage) {
 
   const offset = (page - 1) * PAGE_SIZE;
   const rows = db.prepare(
-    `SELECT te.*, u.name as user_name, j.job_number, ${partPosition} as part_position, CASE WHEN te.end_time IS NOT NULL THEN (julianday(te.end_time) - julianday(te.start_time)) * 24 ELSE NULL END as duration_hours ${from} ${where} ORDER BY te.start_time DESC, te.id DESC LIMIT ? OFFSET ?`
+    `SELECT te.*, ${DISPLAY_NAME_SQL('u')} as user_name, j.job_number, ${partPosition} as part_position, CASE WHEN te.end_time IS NOT NULL THEN (julianday(te.end_time) - julianday(te.start_time)) * 24 ELSE NULL END as duration_hours ${from} ${where} ORDER BY te.start_time DESC, te.id DESC LIMIT ? OFFSET ?`
   ).all(...params, PAGE_SIZE, offset);
 
   res.json({

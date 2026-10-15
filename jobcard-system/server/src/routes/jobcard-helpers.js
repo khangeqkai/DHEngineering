@@ -12,6 +12,8 @@ const {
   getSettings
 } = require('../db/database');
 const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
+const logger = require('../utils/logger');
+const { readTrailEntry } = require('../db/trailEntries');
 const { diffFields } = require('../utils/historyChanges');
 const { officeDateString } = require('../utils/officeTime');
 const { formatDayAu } = require('../shared/calendarDate');
@@ -533,4 +535,19 @@ function createRelatedRecords(jobcardId, data) {
   }
 }
 
-module.exports = { formatJobcard, customerFields, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, partQtyText, buildJobCardView, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive, tagName, friendlyTagList };
+// Reads every row's two JSON columns through readTrailEntry. `shape(h, read)` builds one
+// reply entry. A row whose stored JSON is damaged is left out (never a 500) and the
+// count is logged once per request, with the route's name.
+function readEntries(history, shape, route) {
+  let unreadable = 0;
+  const entries = [];
+  for (const h of history) {
+    const read = readTrailEntry(h);
+    if (!read) { unreadable++; continue; }
+    entries.push(shape(h, read));
+  }
+  if (unreadable > 0) logger.warn({ route, unreadable }, 'Skipped trail entries whose stored details could not be read');
+  return entries;
+}
+
+module.exports = { readEntries, formatJobcard, customerFields, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, partQtyText, buildJobCardView, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive, tagName, friendlyTagList };

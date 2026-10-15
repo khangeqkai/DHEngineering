@@ -1290,7 +1290,10 @@ select.has-retired option.retired-option {
     calc(var(--aside-w) + var(--aside-gap) + var(--screen-edge) - var(--side-margin)),
     calc(var(--side-margin) - var(--screen-edge))
   );
-  --bubble-gutter: calc(52px + var(--space-4));
+  /* The side-window bubbles (comments, History) are one size, and the History bubble sits
+     this far under the comments one — written once here, read by both stylesheets. */
+  --bubble-size: 52px;
+  --bubble-gutter: calc(var(--bubble-size) + var(--space-4));
   position: relative;
   display: flex;
   align-items: stretch;

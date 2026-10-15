@@ -1,3 +1,5 @@
+import { displayName } from '../../../../server/src/shared/names';
+
 // The first word of a name that has several ("Sam" for "Sam Smith"); null for a one-word
 // name. The one rule for the second thing a person answers to after @.
 function firstWordOf(name) {
@@ -180,6 +182,6 @@ function findUnmatchedMentions(text, names) {
 }
 
 // The name a person goes by in the @ list and in comments.
-const displayNameOf = (u) => u.name || u.username || '';
+const displayNameOf = displayName;
 
 export { findMentionSpans, findUnmatchedMentions, displayNameOf, buildNameLookup, resolveMentions, mentionedPeople, storedMentionsByName };

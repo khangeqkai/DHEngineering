@@ -5,15 +5,18 @@ const {
   db,
   settingsQueries,
   timeEntryQueries,
+  jobNoteQueries,
   recordHistory
 } = require('./database');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { DEFAULT_VIC_PUBLIC_HOLIDAYS_2026 } = require('../utils/defaultHolidays');
 const { scheduleToWholeHours } = require('../shared/overtimeSchedule');
 const { readOvertimeSettings } = require('../utils/overtimeSettings');
+const { cleanName, displayName } = require('../shared/names');
 const { isCalendarDate } = require('../shared/calendarDate');
 const { QUALITY_LEVELS, isCriticalLevel } = require('../shared/qualityLevels');
 const { officeDateString } = require('../utils/officeTime');
+const { readTrailEntry, convertTrailEntry } = require('./trailEntries');
 const { isBaseReachable, isWithinBase, idSlug, folderSlugOf, sanitizeFolderName } = require('../utils/folderCreation');
 
 // One-time conversions for databases (and restored backups) that predate a rule the
@@ -666,6 +669,32 @@ function trimJobFoldersBase() {
   }
 }
 
+// A person's name is cleaned when it is saved (cleanName), but names saved before that may
+// carry a tab, a non-breaking space or doubled spaces, or be blank. Both copies of the
+// display-name rule rely on every stored name being clean, so each is cleaned once here
+// (a blank one becomes NULL). Idempotent: a second run finds nothing that differs.
+// This mirrors the rename route (PUT /users/:id): a comment's author name is a snapshot
+// frozen at write time, so each cleaned user's past job notes are folded onto the new
+// display name (cleaned name, else username) in the same transaction as the user's own
+// write, using the same prepared statement the route uses.
+function cleanUserNames() {
+  const rows = db.prepare('SELECT id, username, name FROM users').all();
+  const write = db.prepare('UPDATE users SET name = ? WHERE id = ?');
+  const cleanOne = db.transaction((row, clean) => {
+    write.run(clean, row.id);
+    jobNoteQueries.updateAuthorNameByUserId.run(displayName({ name: clean, username: row.username }), row.id);
+  });
+  let cleaned = 0;
+  for (const row of rows) {
+    const clean = cleanName(row.name);
+    if (clean !== row.name) {
+      cleanOne(row, clean);
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) logger.info({ cleaned }, 'Migration: Cleaned stored user names');
+}
+
 // Comments written before unread tracking existed must not all arrive as unread. The
 // first boot with the feature stamps "now" as the launch baseline (see SEEN_UP_TO_SQL in
 // db/queries/operations.js); only comments newer than it can be unread. Stamped only when
@@ -674,6 +703,62 @@ function stampCommentsReadFrom() {
   if (settingsQueries.getByKey.get('comments_read_from')) return;
   settingsQueries.upsert.run('comments_read_from', new Date().toISOString());
   logger.info('Migration: Stamped the comments launch baseline');
+}
+
+// The trail conversion runs ONCE (guarded by a settings flag), and the flag is set only when
+// it finished without throwing, so a failure retries on the next boot. It only reshapes what
+// an entry already recorded (rename old part keys, split a multi-part entry, fold a part's
+// details into its snapshot, copy a recorded part name, copy a recorded worker name onto
+// manual-add/delete time entries, name an auto-stop's worker from the entry's own account,
+// name an assign entry's person when the stored lists give one exact answer). Nothing is
+// traced or guessed: an entry that never recorded its worker or part stays that way and the
+// History window words it neutrally. Done-once is right because the live routes only ever
+// write the new shape, so nothing can add an old-shape entry afterwards. A restored older
+// backup brings its own settings table without the flag, so it is converted again.
+//
+// The rules themselves live in trailEntries.js: pure functions on one row, tested without a
+// database (server/test/trailEntries.test.js). This function only selects the job entries,
+// writes back the rows that changed and inserts the extra entries a split produces. A row
+// whose stored JSON is damaged is skipped and counted; the count is logged once.
+const HISTORY_TRAILS_CONVERTED_KEY = 'history_trails_converted_at';
+const jsonOrNull = (value) => (value == null ? null : JSON.stringify(value));
+function convertHistoryTrails() {
+  if (settingsQueries.getByKey.get(HISTORY_TRAILS_CONVERTED_KEY)?.value) return;
+  try {
+    let unreadable = 0;
+    let converted = 0;
+    let split = 0;
+    db.transaction(() => {
+      const rows = db.prepare(
+        `SELECT id, entity_type, entity_id, action, user_id, user_name, changes, snapshot, created_at
+         FROM history WHERE entity_type = 'jobcard'`
+      ).all();
+      const update = db.prepare('UPDATE history SET changes = ?, snapshot = ? WHERE id = ?');
+      const insert = db.prepare(
+        `INSERT INTO history (entity_type, entity_id, action, user_id, user_name, changes, snapshot, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      );
+      for (const row of rows) {
+        if (readTrailEntry(row) === undefined) { unreadable++; continue; }
+        const result = convertTrailEntry(row);
+        if (!result) continue;
+        update.run(jsonOrNull(result.changes), jsonOrNull(result.snapshot), row.id);
+        converted++;
+        for (const extra of result.extras) {
+          insert.run(row.entity_type, row.entity_id, row.action, row.user_id, row.user_name,
+            jsonOrNull(extra.changes), jsonOrNull(extra.snapshot), row.created_at);
+          split++;
+        }
+      }
+    })();
+    if (converted > 0) logger.info({ converted, split }, 'Migration: Converted old job trail entries');
+    if (unreadable > 0) {
+      logger.warn({ unreadableTrailRows: unreadable }, 'Migration: Skipped trail entries whose stored details could not be read');
+    }
+    settingsQueries.upsert.run(HISTORY_TRAILS_CONVERTED_KEY, new Date().toISOString());
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to convert the old job trail entries');
+  }
 }
 
 function runLegacyMigrations() {
@@ -697,6 +782,12 @@ function runLegacyMigrations() {
     trimJobFoldersBase();
   } catch (err) {
     logger.error({ err }, 'Migration: Failed to trim the job folders location');
+  }
+
+  try {
+    cleanUserNames();
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to clean stored user names');
   }
 
   // One-shot wipe of legacy time_entries (Task 6 — per-item timer rewrite).
@@ -1007,6 +1098,8 @@ function runLegacyMigrations() {
   } catch (err) {
     logger.error({ err }, 'Migration: Failed to clear old abandoned stop-form marks');
   }
+
+  convertHistoryTrails();
 
   logger.info('Migrations complete');
 }

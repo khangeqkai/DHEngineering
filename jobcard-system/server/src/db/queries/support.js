@@ -25,7 +25,7 @@ const historyQueries = {
   getByEntity: db.prepare(`
     SELECT * FROM history
     WHERE entity_type = ? AND entity_id = ?
-    ORDER BY created_at DESC
+    ORDER BY created_at DESC, id DESC
   `),
 
   getRecent: db.prepare(`

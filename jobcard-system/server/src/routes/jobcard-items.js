@@ -15,7 +15,7 @@ const {
 const { jobcardQueries, jobItemQueries, timeEntryQueries, recordHistory, actorName } = require('../db/database');
 const { findOr404 } = require('../utils/findOr404');
 const { serializeTreatments, parseTreatments, partQtyText, computeAttachmentWarnings } = require('./jobcard-helpers');
-const { itemSummary, describePart } = require('./jobcard-audit-text');
+const { partSummary, itemPartSnapshot, describePart } = require('./jobcard-audit-text');
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
 const { db } = require('../db/connection');
 
@@ -125,11 +125,12 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
       // into this add's own history entry, the same way the time routes do.
       statusChange = syncStatusToWork(id, req.user);
 
-      const summary = itemSummary(item.qty, item.description, item.jobType, item.material, item.treatments, item.drawingsType, item.customerProperty);
+      const addedPart = itemPartSnapshot(item.qty, item.description, item.jobType, item.material, item.treatments, item.drawingsType, item.customerProperty);
+      const summary = partSummary(addedPart);
       recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
         [`part ${label} added`]: { from: null, to: summary },
         ...(statusChange ? { status: statusChange } : {})
-      });
+      }, { part: addedPart });
     });
     addItem();
 
@@ -162,6 +163,8 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
     if (!existing) return;
 
     const existingItems = jobItemQueries.getByJobcard.all(id);
+    // The job's own list is already loaded for the checks below, so the part comes from
+    // it — an id belonging to another job's part simply isn't in it.
     const stored = findOr404(res, existingItems.find(i => i.id === itemId), 'Part not found');
     if (!stored) return;
 
@@ -185,8 +188,10 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
       return res.status(400).json({ error: validationError });
     }
 
-    const beforeSummary = itemSummary(stored.qty, stored.description, stored.job_type, stored.material, stored.treatments, stored.drawings_type, stored.customer_property);
-    const afterSummary = itemSummary(merged.qty, merged.description, merged.jobType, merged.material, merged.treatments, merged.drawingsType, merged.customerProperty);
+    const partBefore = itemPartSnapshot(stored.qty, stored.description, stored.job_type, stored.material, stored.treatments, stored.drawings_type, stored.customer_property);
+    const partAfter = itemPartSnapshot(merged.qty, merged.description, merged.jobType, merged.material, merged.treatments, merged.drawingsType, merged.customerProperty);
+    const beforeSummary = partSummary(partBefore);
+    const afterSummary = partSummary(partAfter);
 
     // This route never moves a part — the stored position number is passed straight through.
     // The job's "Last Edited" moves only when the part actually changed.
@@ -211,7 +216,10 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
         recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
           ...(beforeSummary !== afterSummary ? { [`part ${label}`]: { from: beforeSummary, to: afterSummary } } : {}),
           ...(statusChange ? { status: statusChange } : {})
-        });
+        }, beforeSummary !== afterSummary ? {
+          partBefore,
+          part: partAfter
+        } : undefined);
       }
     })();
 
@@ -240,6 +248,8 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
     if (!existing) return;
 
     const existingItems = jobItemQueries.getByJobcard.all(id);
+    // The job's own list is already loaded for the checks below, so the part comes from
+    // it — an id belonging to another job's part simply isn't in it.
     const stored = findOr404(res, existingItems.find(i => i.id === itemId), 'Part not found');
     if (!stored) return;
 
@@ -259,7 +269,8 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
       return res.status(400).json({ error: 'A job must have at least one part.' });
     }
 
-    const summary = itemSummary(stored.qty, stored.description, stored.job_type, stored.material, stored.treatments, stored.drawings_type, stored.customer_property);
+    const removedPart = itemPartSnapshot(stored.qty, stored.description, stored.job_type, stored.material, stored.treatments, stored.drawings_type, stored.customer_property);
+    const summary = partSummary(removedPart);
 
     // item_number is a sort order the server owns — nothing renumbers the
     // survivors. Gaps are expected and fine; the number shown on screen is
@@ -278,7 +289,7 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
       recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
         [`part ${label} removed`]: { from: summary, to: null },
         ...(statusChange ? { status: statusChange } : {})
-      });
+      }, { part: removedPart });
     })();
 
     const items = formatItems(jobItemQueries.getByJobcard.all(id));

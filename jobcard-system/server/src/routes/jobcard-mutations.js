@@ -18,8 +18,9 @@ const {
 } = require('../db/database');
 const { formatJobcard, buildChanges, createRelatedRecords, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
 const { refuseField } = require('./name-conflict');
+const { displayName } = require('../shared/names');
 const { isActiveRecord } = require('../shared/records');
-const { itemSummary, describePart } = require('./jobcard-audit-text');
+const { partSummary, itemPartSnapshot, describePart } = require('./jobcard-audit-text');
 const { assigneeNames } = require('../utils/historyChanges');
 const { computeLiveCosting, persistCosting } = require('../utils/costingCompute');
 const { readOvertimeSettings } = require('../utils/overtimeSettings');
@@ -133,7 +134,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
         }
         const worker = userQueries.getById.get(workerId);
         if (!isActiveRecord(worker)) {
-          const who = worker ? (worker.name || worker.username) : 'A worker';
+          const who = worker ? displayName(worker) : 'A worker';
           return refuseField(res, 400, 'assigneeIds', `${who} can no longer be assigned — remove them and try again`);
         }
       }
@@ -201,6 +202,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
       // Audit log is part of the same all-or-nothing save: if it can't be
       // written, the whole creation rolls back rather than reporting failure
       // for a job that actually got saved.
+      const createParts = {};
       const createChanges = {
         jobNumber: { from: null, to: peek.jobNumber },
         status: { from: null, to: status },
@@ -219,10 +221,10 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
           // the first. A repeat takes its position as well, which is unique here.
           const label = describePart(i.description, String(i.itemNumber || idx + 1));
           const base = `part ${label} added`;
-          createChanges[base in createChanges ? `part ${idx + 1} ${label} added` : base] = {
-            from: null,
-            to: itemSummary(i.qty, i.description, i.jobType, i.material, i.treatments, i.drawingsType, i.customerProperty)
-          };
+          const key = base in createChanges ? `part ${idx + 1} ${label} added` : base;
+          const part = itemPartSnapshot(i.qty, i.description, i.jobType, i.material, i.treatments, i.drawingsType, i.customerProperty);
+          createChanges[key] = { from: null, to: partSummary(part) };
+          createParts[key] = part;
         });
       }
       // Record who was assigned at creation.
@@ -230,7 +232,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
         // Read back from the rows just written, worded like every later worker change.
         createChanges['assignees'] = { from: 'none', to: assigneeNames(jobAssigneeQueries.getByJobcard.all(id)) };
       }
-      recordHistory('jobcard', id, 'create', req.user.userId, actorName(req), createChanges);
+      recordHistory('jobcard', id, 'create', req.user.userId, actorName(req), createChanges, Object.keys(createParts).length ? { parts: createParts } : undefined);
 
       return peek.jobNumber;
     });

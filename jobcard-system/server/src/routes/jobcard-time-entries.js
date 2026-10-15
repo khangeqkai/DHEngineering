@@ -4,13 +4,15 @@ const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { authenticate, requireManagement, isManagement } = require('../middleware/auth');
 const { validateStartTimer, validateConfirmFinish, validateManualTimeEntry, validateTimeEntryEdit } = require('../middleware/validation');
-const { db, timeEntryQueries, jobcardQueries, jobItemQueries, userQueries, recordHistory, actorName } = require('../db/database');
+const { db, timeEntryQueries, jobcardQueries, userQueries, recordHistory, actorName } = require('../db/database');
+const { displayName } = require('../shared/names');
 const { blankEqual, diffFields } = require('../utils/historyChanges');
 const { syncStatusToWork } = require('../utils/jobStatusAuto');
 const { discardIfAccidentalTap } = require('../utils/startTimerUndo');
 const {
   normalizeTime,
   checkEntryDuration,
+  ownPart,
   resolveItemId,
   resolveWorkerId,
   autoAssignWorker,
@@ -18,6 +20,7 @@ const {
   sendOpenTimerConflict,
   toBoolFlag,
   wholeQty,
+  runContext,
   findEntryForJob,
   criticalAtFinishForWrite,
   checkCriticalInspection,
@@ -166,7 +169,7 @@ router.get('/unfilled-stop-forms', authenticate, (req, res) => {
 function unconfirmedRefusalFor(userId) {
   const owner = userQueries.getById.get(userId);
   return {
-    error: `${owner.name || owner.username} has to confirm when their last clock finished first.`,
+    error: `${displayName(owner)} has to confirm when their last clock finished first.`,
     code: FINISH_UNCONFIRMED
   };
 }
@@ -224,14 +227,16 @@ function afterClockStarted(jobcardId, workerId, item, startTime, req, isSelf, en
   // start); name the worker as well when it isn't the admin's own timer, so the
   // timeline reads "started for <worker>".
   const targetWorker = isSelf ? null : userQueries.getById.get(workerId);
+  // The snapshot's clock owner and part are built from what is in hand: the block was just
+  // created for workerId, so there is nothing to read back.
   recordHistory('jobcard', jobcardId, 'start_timer', req.user.userId, actorName(req), {
     timer: { from: null, to: startTime },
     // Named by description, not position — item_number is a sort order the
     // server owns and isn't stable enough to identify a part in the trail.
     item: { from: null, to: item.description },
-    ...(targetWorker ? { worker: { from: null, to: targetWorker.name || targetWorker.username } } : {}),
+    ...(targetWorker ? { worker: { from: null, to: displayName(targetWorker) } } : {}),
     ...(statusChange ? { status: statusChange } : {})
-  }, null);
+  }, { timeEntryId: entryId, startTime, ...runContext({ user_id: workerId, user_name: displayName(targetWorker || req.user) }, item) });
 
   // Auto-assign the worker to this job if they aren't already an assignee — recorded
   // as a self_assign when they started their own timer, otherwise as a management assign.
@@ -284,8 +289,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
     // stable id so it keeps pointing at the same line even if the lines are later
     // edited or reordered. The id is the part's identity — its item_number is only
     // a sort order the server owns, and gaps in it after a delete are expected.
-    const items = jobItemQueries.getByJobcard.all(id);
-    const targetItem = items.find(item => item.id === itemId);
+    const targetItem = ownPart(itemId, id);
     if (!targetItem) {
       return res.status(400).json({ error: 'That part does not exist on this job card' });
     }
@@ -370,7 +374,7 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
       recordHistory('jobcard', id, 'stop_timer', req.user.userId, actorName(req), {
         endTime: { from: null, to: endTime },
         ...(statusChange ? { status: statusChange } : {})
-      }, { timeEntryId: entryId, startTime: existing.start_time });
+      }, { timeEntryId: entryId, startTime: existing.start_time, ...runContext(existing) });
     })();
 
     const entry = timeEntryQueries.getById.get(entryId);
@@ -415,7 +419,7 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
     if (itemError) {
       return res.status(400).json({ error: itemError });
     }
-    const itemRecord = jobItemQueries.getByJobcard.all(id).find(it => it.id === itemId);
+    const itemRecord = ownPart(itemId, id);
 
     // Credit the block to the worker the admin picked, not the admin filling in the
     // form, so per-worker hours and labour reports are accurate.
@@ -489,14 +493,12 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
       const statusChange = syncStatusToWork(id, req.user);
 
       entry = timeEntryQueries.getById.get(entryId);
-      const workerRecord = userQueries.getById.get(workerId);
-      const workerName = workerRecord.name || workerRecord.username;
       recordHistory('jobcard', id, 'add_time_entry', req.user.userId, actorName(req), {
-        worker: { from: null, to: workerName },
+        worker: { from: null, to: entry.user_name },
         item: { from: null, to: itemRecord.description },
         ...runTrail(entry),
         ...(statusChange ? { status: statusChange } : {})
-      }, { timeEntryId: entryId });
+      }, { timeEntryId: entryId, ...runContext(entry, itemRecord) });
       })();
     } catch (e) {
       // A manual block with no finish time counts as an open timer; if the credited
@@ -817,6 +819,8 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
       });
     }
 
+    // The block as saved, read once after the edit: it feeds both the trail entry and the reply.
+    let savedEntry = null;
     try {
       db.transaction(() => {
         timeEntryQueries.update.run(
@@ -848,6 +852,8 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
           autoAssignWorker(id, workerId, req.user);
         }
 
+        savedEntry = timeEntryQueries.getById.get(entryId);
+
         // Build proper diff of changed fields — every recorded field, from the one list.
         const saved = {
           machine_number: machineNumber,
@@ -871,9 +877,8 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
         // isn't stable enough to identify a part in the trail (nothing renumbers on
         // delete, so two jobs' history could both say "part 2" about different parts).
         if (!blankEqual(itemId, existing.item_id)) {
-          const jobItems = jobItemQueries.getByJobcard.all(id);
-          const oldItem = jobItems.find(it => it.id === existing.item_id);
-          const newItem = itemId ? jobItems.find(it => it.id === itemId) : null;
+          const oldItem = ownPart(existing.item_id, id);
+          const newItem = ownPart(itemId, id);
           changes.item = { from: oldItem ? oldItem.description : null, to: newItem ? newItem.description : null };
         }
 
@@ -884,7 +889,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
         // Show who the block was re-credited to, by name, when an admin changed the owner.
         if (workerId !== existing.user_id) {
           const toWorker = userQueries.getById.get(workerId);
-          const toName = toWorker.name || toWorker.username;
+          const toName = displayName(toWorker);
           changes.worker = { from: existing.user_name, to: toName };
         }
 
@@ -897,8 +902,20 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
         }
 
         if (Object.keys(changes).length > 0) {
+          // Before-ids, so a move between two records with the same name (two staff called
+          // Ben, two parts called Plate) can still be told apart in the trail. Snapshot
+          // only: `changes` stays names, which every reader renders from -> to.
+          const beforeIds = {};
+          if (workerId !== existing.user_id) beforeIds.workerIdBefore = existing.user_id ?? null;
+          if (!blankEqual(itemId, existing.item_id)) {
+            beforeIds.itemIdBefore = existing.item_id ?? null;
+            beforeIds.itemId = itemId ?? null;
+          }
           recordHistory('jobcard', id, 'update_time_entry', req.user.userId, actorName(req), changes, {
-            timeEntryId: entryId
+            timeEntryId: entryId,
+            // The saved row, so a re-credited worker or a moved part reads as the new one.
+            ...runContext(savedEntry),
+            ...beforeIds
           });
         }
 
@@ -911,8 +928,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
       throw e;
     }
 
-    const entry = timeEntryQueries.getById.get(entryId);
-    res.json(toCamelCase(entry));
+    res.json(toCamelCase(savedEntry));
   } catch (err) {
     logger.error({ err }, 'Update time entry error');
     res.status(500).json({ error: 'Failed to update time entry' });
@@ -966,7 +982,7 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
     let partToRestart = null;
     if (stillWorking) {
       partToRestart = existing.item_id
-        ? jobItemQueries.getByJobcard.all(id).find(item => item.id === existing.item_id) || null
+        ? ownPart(existing.item_id, id)
         : null;
       // Another unanswered clock of theirs would have refused the ordinary Start too: the
       // questions are answered before any new clock runs.
@@ -1035,7 +1051,7 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
       if (statusChange) changes.status = statusChange;
 
       recordHistory('jobcard', id, 'confirm_finish', req.user.userId, actorName(req), changes,
-        { timeEntryId: entryId, startTime: existing.start_time });
+        { timeEntryId: entryId, startTime: existing.start_time, ...runContext(existing) });
 
       confirmed = toCamelCase(timeEntryQueries.getById.get(entryId));
       if (restarted) {
@@ -1073,10 +1089,14 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
       return res.status(400).json({ error: 'Stop the timer before deleting this entry' });
     }
 
-    // Named by description, not position — see the same note on the update route.
+    // Named by description, not position — see the same note on the update route. A part
+    // already removed comes back null (not undefined), so runContext doesn't read it again.
     const itemRecord = existing.item_id
-      ? jobItemQueries.getByJobcard.all(id).find(it => it.id === existing.item_id)
+      ? ownPart(existing.item_id, id)
       : null;
+
+    // Read before the delete so the worker and part are still there to name.
+    const deletedContext = runContext(existing, itemRecord);
 
     // The delete, the status follow-up and the trail entry commit together.
     db.transaction(() => {
@@ -1096,7 +1116,8 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
       };
       if (statusChange) changes.status = statusChange;
 
-      recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, actorName(req), changes);
+      recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, actorName(req), changes,
+        { timeEntryId: entryId, startTime: existing.start_time, ...deletedContext });
     })();
 
     res.json({ success: true });

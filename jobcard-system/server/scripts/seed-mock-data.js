@@ -15,6 +15,7 @@ const { settingsQueries } = require('../src/db/queries/support');
 const { normalizeStoredTimestamps } = require('../src/db/normalizeTimestamps');
 const { seedHistory } = require('./seed-history');
 const { buildScenarios } = require('./seed-scenarios');
+const { displayName, cleanName } = require('../src/shared/names');
 const refData = require('./seed-data');
 const { QUALITY_LEVELS, isCriticalLevel } = require('../src/shared/qualityLevels');
 
@@ -72,7 +73,7 @@ const hashedPin = bcrypt.hashSync('1234', 10);
 
 const insertUser = db.prepare('INSERT INTO users (id, username, password, role, name, email, phone, employee_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
 for (const u of users) {
-  insertUser.run(u.id, u.username, hashedPin, u.role, u.name, u.email, null, u.employeeId);
+  insertUser.run(u.id, u.username, hashedPin, u.role, cleanName(u.name), u.email, null, u.employeeId);
 }
 const adminId = users[0].id;
 console.log(`Created ${users.length} users.`);
@@ -378,7 +379,6 @@ const seedMentions = db.transaction(() => {
   if (liveJobs.length < 4 || workers.length < 2) return;
   const admin = users[0];
   const [w1, w2] = workers;
-  const displayName = (person) => person.name || person.username;
   const adminName = displayName(admin);
   const addNote = (job, author, text, daysAgo, hour, mentioned = []) => {
     const noteId = uid('note');

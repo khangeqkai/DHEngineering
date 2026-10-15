@@ -1,6 +1,7 @@
 const { db } = require('./connection');
 const { settingsQueries, historyQueries } = require('./queries/support');
 const { jobcardQueries } = require('./queries/jobcard');
+const { displayName } = require('../shared/names');
 
 // Helper to record history
 function recordHistory(entityType, entityId, action, userId, userName, changes, snapshot) {
@@ -16,10 +17,13 @@ function recordHistory(entityType, entityId, action, userId, userName, changes, 
 }
 
 // The display name every route passed as recordHistory's `userName` — every
-// call site worked it out by hand the same way (req.user.name || req.user.
-// username). Kept next to recordHistory since it exists only to feed it.
+// call site worked it out by hand the same way. Kept next to recordHistory since it
+// exists only to feed it. It is displayName (shared/names.js), the same rule as the
+// time-entry queries' user_name (DISPLAY_NAME_SQL) and runContext's workerName, so a
+// person is shown under one name everywhere. (Whether a clock is the actor's own is
+// decided by account id, never by comparing these names.)
 function actorName(req) {
-  return req.user.name || req.user.username;
+  return displayName(req.user);
 }
 
 // The one place a job number is built from its parts. Preserves leading zeros:

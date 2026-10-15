@@ -1,4 +1,5 @@
 const { db } = require('../connection');
+const { DISPLAY_NAME_SQL } = require('../displayNameSql');
 
 // Jobcard queries
 const jobcardQueries = {
@@ -132,6 +133,8 @@ const jobcardQueries = {
 
 // Job items queries
 const jobItemQueries = {
+  getById: db.prepare('SELECT * FROM job_items WHERE id = ?'),
+
   getByJobcard: db.prepare('SELECT * FROM job_items WHERE jobcard_id = ? ORDER BY item_number ASC'),
 
   // Parts whose treatments JSON mentions a supplier id — a substring pre-filter for
@@ -167,7 +170,7 @@ const jobItemQueries = {
 // Job assignees queries
 const jobAssigneeQueries = {
   getByJobcard: db.prepare(`
-    SELECT ja.*, u.name as user_name, u.username
+    SELECT ja.*, ${DISPLAY_NAME_SQL('u')} as user_name, u.username
     FROM job_assignees ja
     JOIN users u ON ja.user_id = u.id
     WHERE ja.jobcard_id = ?
@@ -188,7 +191,7 @@ function getAssigneesForJobcards(jobcardIds) {
   if (jobcardIds.length === 0) return {};
   const placeholders = jobcardIds.map(() => '?').join(',');
   const rows = db.prepare(`
-    SELECT ja.jobcard_id, ja.id, ja.user_id, u.name as user_name, u.username
+    SELECT ja.jobcard_id, ja.id, ja.user_id, ${DISPLAY_NAME_SQL('u')} as user_name, u.username
     FROM job_assignees ja
     JOIN users u ON ja.user_id = u.id
     WHERE ja.jobcard_id IN (${placeholders})

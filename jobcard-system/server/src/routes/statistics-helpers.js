@@ -1,6 +1,7 @@
 const { splitHours } = require('../utils/overtimeSplit');
 const { makeOfficeFormatter: makeDateFormatter, officeDateString } = require('../utils/officeTime');
 const { isCalendarDate } = require('../shared/calendarDate');
+const { DISPLAY_NAME_SQL } = require('../db/displayNameSql');
 const { roundTo } = require('../shared/round');
 const jobStatuses = require('../shared/jobStatuses.json');
 const logger = require('../utils/logger');
@@ -326,7 +327,7 @@ function fetchInRangeTimeEntries(bufferedStartIso, bufferedEndIso, startDate, en
            te.qty, te.scrap_bin_qty, te.scrap_recycle_qty,
            te.first_off_inspection, te.in_process_validation,
            te.measuring_equipment_verification, te.equipment_checks,
-           u.name AS user_name, u.username, u.employee_id, u.role, u.active AS user_active,
+           ${DISPLAY_NAME_SQL('u')} AS user_name, u.username, u.employee_id, u.role, u.active AS user_active,
            j.job_number, j.company_name AS j_company_name, j.company_id AS j_company_id, c.name AS j_resolved_company
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
@@ -531,7 +532,7 @@ function processTimeEntries(inRangeTimeEntries, jobCostingsMap, defaultRules, ac
     if (!workerEntriesMap.has(te.user_id)) {
       workerEntriesMap.set(te.user_id, {
         userId: te.user_id,
-        userName: te.user_name || te.username,
+        userName: te.user_name,
         employeeId: te.employee_id || '—',
         role: te.role,
         active: te.user_active === 1,

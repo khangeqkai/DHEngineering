@@ -28,13 +28,13 @@ import { useJobCardReferenceData } from './useJobCardReferenceData';
 import { useSavedFlash } from './useSavedFlash';
 import DetailsTab from './tabs/DetailsTab';
 import CostingTab from './tabs/CostingTab';
-import ActivityLogTab from './tabs/ActivityLogTab';
 import { useActivityLog } from './useActivityLog';
 import { useTimer } from './useTimer';
 import { useFinishQuestion } from '../../context/FinishQuestionContext';
 import { useMentions } from '../../context/MentionsContext';
 import { useJobNotes } from './useJobNotes';
 import JobCommentsPanel from './JobCommentsPanel';
+import JobHistoryPanel from './JobHistoryPanel';
 import StopTimerForm from './StopTimerForm';
 import JobPaperworkHub from './JobPaperworkHub';
 import JobIdentityStrip from './JobIdentityStrip';
@@ -58,27 +58,39 @@ export default function JobCardModal(props) {
 // either name its job (the callbacks into the list behind: onNotesChange, onCommentsRead)
 // or ask isWindowUp first — but only for screen changes, closing, and read-failure
 // messages. A failure of the person's own write is always told, window or not.
-function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onCommentsRead, onPrinted, initialTab = null, initialStopEntry = null, initialCommentNoteId = null, ownsStopForm = false }) {
+function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onCommentsRead, onPrinted, initialTab = null, initialHistoryOpen = false, initialStopEntry = null, initialCommentNoteId = null, ownsStopForm = false }) {
   const { user, logout } = useAuth();
   const isWindowUp = useStillMounted();
   const isEdit = Boolean(jobCardId);
   // Two permissions, both admin-only today: pricing gates the Costing tab and its
-  // countdown, activityTrail gates the Activity tab. Everything else managerial on
+  // countdown, activityTrail gates the History window. Everything else managerial on
   // this screen (editing, tabs, time-entry corrections) is admin-or-manager.
   const canSeePricing = can(user, 'pricing');
   const canSeeActivity = can(user, 'activityTrail');
   const canManage = isManagement(user);
-  // Only tabs this user can actually open are valid; anything else (a stale 'costing' or
-  // 'activity' for someone who can't see it) lands on Details.
+  // Which side window is open. History starts open when the job is opened from a search
+  // result for an activity entry (initialHistoryOpen), whatever tab that result lands on.
+  // Only one can be open at a time, so it is one value: null, 'comments' or 'history'.
+  const [sideWindow, setSideWindow] = useState(() => (initialHistoryOpen && canSeeActivity ? 'history' : null));
+  const historyOpen = sideWindow === 'history';
+  const setCommentsOpen = useCallback((next) => {
+    setSideWindow(prev => (next ? 'comments' : (prev === 'comments' ? null : prev)));
+  }, []);
+  const setHistoryOpen = useCallback((next) => {
+    setSideWindow(prev => (next ? 'history' : (prev === 'history' ? null : prev)));
+  }, []);
+  // Only tabs this user can actually open are valid; anything else (a stale 'costing'
+  // for someone who can't see it) lands on Details.
   const [activeTab, setActiveTab] = useState(() => {
-    const validTabs = ['details']
-      .concat(canSeePricing ? ['costing'] : [])
-      .concat(canSeeActivity ? ['activity'] : []);
+    const validTabs = ['details'].concat(canSeePricing ? ['costing'] : []);
     return validTabs.includes(initialTab) ? initialTab : 'details';
   });
   // An existing job starts out loading, so its first frame is the spinner and never the
   // empty form.
   const [loading, setLoading] = useState(isEdit);
+  // The job this window has finished loading once (null until then). Holding the id, not a
+  // flag, means the window opening on another job starts again from not-yet-loaded.
+  const [firstLoadDoneFor, setFirstLoadDoneFor] = useState(null);
   const [timeEntries, setTimeEntries] = useState([]);
   const [attachmentWarnings, setAttachmentWarnings] = useState(null);
   // An instant write never touches the list behind this modal — useJobCardCloseGuard.js.
@@ -106,7 +118,9 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   // that rule lives.
   const handleJobClosedWrite = useCallback(() => {
     toastJobWriteFailure({ jobNumber: jobNumberRef.current, jobCardId }, JOB_CLOSED_MESSAGE, 'job-closed');
-    if (isWindowUp()) reloadOnJobClosedRef.current?.();
+    if (isWindowUp()) {
+      reloadOnJobClosedRef.current?.();
+    }
   }, [isWindowUp, jobCardId]);
   // formHook also owns the one save queue for this open job card (Contract A) —
   // formHook.saveQueue — that every instant write (a field, a part, a worker)
@@ -123,12 +137,17 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
     onAttachmentWarnings: setAttachmentWarnings,
     onJobClosed: handleJobClosedWrite
   });
-  const activityLog = useActivityLog(jobCardId);
+  const activityLog = useActivityLog(jobCardId, isWindowUp);
   const reloadTimeEntriesRef = useRef(null);
   const hubRef = useRef(null);
-  const onExternalStop = useCallback(() => {
-    if (reloadTimeEntriesRef.current) reloadTimeEntriesRef.current();
-  }, []);
+  // `changedJobId` is the job whose clock actually changed — a refused stop can be for
+  // a clock on another job. This job's work list only reloads when it is this job's.
+  const onExternalStop = useCallback((changedJobId) => {
+    const changed = changedJobId || jobCardId;
+    if (String(changed) === String(jobCardId) && reloadTimeEntriesRef.current) reloadTimeEntriesRef.current();
+    // Work changed from outside this PC's own writes: announce it so History catches up.
+    api.noteJobChanged(changed);
+  }, [jobCardId]);
   // lineItems is handed in so the timer's own toasts and switch-timer prompts can
   // name a part by its position in this job's list, never by its stored number.
   const timer = useTimer(isEdit ? jobCardId : null, { onExternalStop, lineItems: formHook.lineItems, onJobClosed: handleJobClosedWrite });
@@ -182,6 +201,14 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   // How far this person has read the job's comments (null until the job has loaded). Only
   // ever moves forward: a late reply carrying an older value can't un-read anything.
   const [commentsSeenUpTo, setCommentsSeenUpTo] = useState(null);
+  // The same fact twice on purpose: the state drives the History effect below, the ref
+  // lets the loader itself read it without a stale closure. Only ever written here, so
+  // the two can't drift.
+  const firstLoadDoneRef = useRef(null);
+  const markFirstLoadDone = useCallback((id) => {
+    firstLoadDoneRef.current = id;
+    setFirstLoadDoneFor(id);
+  }, []);
   const loadJobCard = useCallback(async () => {
     if (!isEdit || !jobCardId) return;
 
@@ -205,6 +232,10 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
 
       loadNotes();
 
+      // Every full reload after the first brings an open History up to date, through the
+      // same signal a write uses.
+      if (firstLoadDoneRef.current === jobCardId) api.noteJobChanged(jobCardId);
+
       // Costing loads separately, in useJobCardCosting, and only once the pricing screen
       // has actually been opened — the fetch walks every logged minute, and most job
       // opens never touch pricing at all.
@@ -219,8 +250,9 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
       onClose();
     } finally {
       setLoading(false);
+      markFirstLoadDone(jobCardId);
     }
-  }, [isEdit, jobCardId, setFormDataFromJobCard, setContactFromJobCard, loadNotes, onClose, isWindowUp]);
+  }, [isEdit, jobCardId, setFormDataFromJobCard, setContactFromJobCard, loadNotes, onClose, isWindowUp, markFirstLoadDone]);
   reloadOnJobClosedRef.current = loadJobCard;
 
   // Re-read just the "declared but no file" flags after a file is added, so the
@@ -241,12 +273,6 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   const handleAttachItemFile = useCallback((itemId, itemNumber, category) => {
     hubRef.current?.openForPart(itemId, itemNumber, category);
   }, []);
-
-  useEffect(() => {
-    if (isEdit && activeTab === 'activity') {
-      loadHistory();
-    }
-  }, [isEdit, activeTab, loadHistory]);
 
   const reloadTimeEntries = useCallback(async () => {
     const res = await api.getTimeEntries(jobCardId);
@@ -335,8 +361,8 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   // this the body would draw nothing at all.
   useEffect(() => {
     if (activeTab === 'costing' && !canSeePricing) setActiveTab('details');
-    if (activeTab === 'activity' && !canSeeActivity) setActiveTab('details');
-  }, [canSeePricing, canSeeActivity, activeTab]);
+    if (!canSeeActivity) setHistoryOpen(false);
+  }, [canSeePricing, canSeeActivity, activeTab, setHistoryOpen]);
 
   // Once, as the window mounts: an existing job loads (the running clock is loaded by
   // useTimer's own effect), and a stop form this opening was handed (from the shell's
@@ -494,6 +520,22 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   // for this one's.
   const landedOnJob = formHook.saveQueue.landedCount + costingHook.costingLandedCount;
 
+  // History reads on exactly three occasions: (a) when it opens, once the job's FIRST load
+  // in this window is done (`firstLoadDoneFor`), so a window opened with History already
+  // open reads once, not once per piece of data arriving; (b) api.onJobChanged, the one
+  // signal every accepted write under this job announces; (c) after every full reload of
+  // the job once the first is done, which loadJobCard announces through that same signal.
+  // It must not wait on `loading` itself, which every reload flips. A second read right
+  // after a write is accepted: reads coalesce (useActivityLog), so one is queued behind
+  // the other, never concurrent, and the newest result wins. A trigger is never removed
+  // to avoid a second read.
+  const firstLoadDone = firstLoadDoneFor === jobCardId;
+  useEffect(() => {
+    if (!isEdit || !historyOpen || !firstLoadDone) return undefined;
+    loadHistory();
+    return api.onJobChanged(jobCardId, loadHistory);
+  }, [isEdit, historyOpen, firstLoadDone, loadHistory, jobCardId]);
+
   // The window frame is the whole answer to "did that save?" on an existing job —
   // amber while something on screen hasn't reached the job, green for a moment once
   // the last of it has landed. It replaces the small "Saving… / Saved" the header used
@@ -569,6 +611,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
         // The comments live in their own window to the left of the job, for every
         // role and on every tab; a job that does not exist yet has no thread.
         aside={isEdit && jobCardId ? (
+          <>
           <JobCommentsPanel
             jobNumber={formHook.jobNumber}
             notes={jobNotes.notes}
@@ -593,7 +636,24 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
             canManage={canManage}
             employees={employees || NO_EMPLOYEES}
             locked={jobClosed}
+            open={sideWindow === 'comments'}
+            onOpenChange={setCommentsOpen}
+            otherOpen={historyOpen}
           />
+          {canSeeActivity && (
+            <JobHistoryPanel
+              jobNumber={formHook.jobNumber}
+              history={activityLog.history}
+              loading={activityLog.loadingHistory}
+              loaded={activityLog.historyLoaded}
+              failed={activityLog.historyFailed}
+              onRefresh={loadHistory}
+              open={historyOpen}
+              onOpenChange={setHistoryOpen}
+              otherOpen={sideWindow === 'comments'}
+            />
+          )}
+          </>
         ) : null}
         headerActions={
           isEdit && jobCardId ? (
@@ -631,7 +691,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
                   {JOB_CLOSED_MESSAGE}
                 </div>
               )}
-              {isEdit && (canSeePricing || canSeeActivity) && (
+              {isEdit && canSeePricing && (
                 <div className="modal-tabs">
                   <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => handleTabChange('details')}>
                     Details
@@ -641,9 +701,6 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
                       tab content below already answers. */}
                   {canSeePricing && (
                     <button type="button" className={`tab ${activeTab === 'costing' ? 'active' : ''}`} onClick={() => handleTabChange('costing')}>Costing</button>
-                  )}
-                  {canSeeActivity && (
-                    <button type="button" className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => handleTabChange('activity')}>Activity</button>
                   )}
                 </div>
               )}
@@ -755,14 +812,6 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
                 />
               )}
 
-              {activeTab === 'activity' && isEdit && canSeeActivity && (
-                <ActivityLogTab
-                  history={activityLog.history}
-                  loading={activityLog.loadingHistory}
-                  failed={activityLog.historyFailed}
-                  onRefresh={loadHistory}
-                />
-              )}
               </div>
             </BottomSheet.Body>
 

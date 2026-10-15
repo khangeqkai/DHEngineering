@@ -6,6 +6,7 @@ const { authenticate, requireManagement } = require('../middleware/auth');
 const { requiredString, handleValidationErrors, validateMarkNotesRead, validateMentionUserIds, MENTION_IDS_GARBLED } = require('../middleware/validation');
 const { db, jobcardQueries, jobNoteQueries, jobNoteMentionQueries, userQueries, getLatestNotesForJobcards, getUnreadNoteCountsForJobcards, recordHistory, actorName } = require('../db/database');
 const { findOr404 } = require('../utils/findOr404');
+const { displayName } = require('../shared/names');
 const { isActiveRecord } = require('../shared/records');
 const { MENTION_INACTIVE } = require('../shared/mentions');
 
@@ -25,7 +26,7 @@ router.get('/open-mentions', authenticate, (req, res) => {
       firstNoteId: r.first_note_id,
       oldestAt: r.oldest_at,
       firstText: r.first_text,
-      firstByName: r.first_by_name
+      askers: JSON.parse(r.askers_json)
     })));
   } catch (err) {
     logger.error({ err }, 'Get open mentions error');
@@ -81,10 +82,10 @@ router.post('/:id/notes', authenticate, [
         return res.status(400).json({ error: MENTION_IDS_GARBLED, fields: [{ field: 'text', message: MENTION_IDS_GARBLED }] });
       }
       if (!isActiveRecord(person)) {
-        const message = `${person.name || person.username} can no longer be mentioned — their account is archived.`;
+        const message = `${displayName(person)} can no longer be mentioned — their account is archived.`;
         return res.status(400).json({ error: message, code: MENTION_INACTIVE, fields: [{ field: 'text', message }] });
       }
-      mentioned.push({ userId: person.id, name: person.name || person.username });
+      mentioned.push({ userId: person.id, name: displayName(person) });
     }
 
     const noteId = `note:${uuidv4()}`;

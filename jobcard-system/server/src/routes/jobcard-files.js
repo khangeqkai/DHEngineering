@@ -7,7 +7,6 @@ const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const {
   jobcardQueries,
-  jobItemQueries,
   companyQueries,
   getSettings,
   recordHistory,
@@ -18,6 +17,7 @@ const { sanitizeFolderName, isWithinBase, isBaseReachable, JOB_FOLDERS_UNREACHAB
 const { decodeBase64Strict, assertMatchesExtension, isPlainFileName } = require('../utils/fileValidation');
 const { handleValidationErrors } = require('../middleware/validation');
 const { describePart } = require('./jobcard-audit-text');
+const { ownPart } = require('../utils/timeEntryHelpers');
 const { body, param } = require('express-validator');
 const { ALLOWED_FILE_EXTENSIONS, MAX_UPLOAD_BYTES, CATEGORY_FOLDER } = require('../shared/jobFiles');
 const { partPositions } = require('../utils/partPositions');
@@ -437,9 +437,11 @@ function saveFile({ jobcardId, category, displayName, buffer, source, itemId, re
   // /assign route runs. Without it, a stale itemId from a screen that hasn't
   // refreshed since the part was removed would silently attach the file to a
   // part reference that matches nothing.
+  let partDescription = null;
   if (itemId) {
-    const parts = jobItemQueries.getByJobcard.all(jobcardId) || [];
-    if (!parts.some(it => it.id === itemId)) {
+    const part = ownPart(itemId, jobcardId);
+    if (part) partDescription = part.description ? String(part.description).trim() || null : null;
+    if (!part) {
       return res.status(409).json({ error: "That part was removed from the job, so the file wasn't attached." });
     }
   }
@@ -460,7 +462,11 @@ function saveFile({ jobcardId, category, displayName, buffer, source, itemId, re
     // The name actually kept (cleaned and length-capped), as the Files panel
     // shows it and the delete entry records it — not the raw name that was sent.
     { file: { from: null, to: stripStorageTag(storageFilename) } },
-    { destination: CATEGORY_FOLDER[category], source, itemId: itemId ?? null, storedName: storageFilename }
+    {
+      destination: CATEGORY_FOLDER[category], source, itemId: itemId ?? null, storedName: storageFilename,
+      // The part's name, for the job History window's sentence.
+      partDescription
+    }
   );
 
   const stat = fs.statSync(targetPath);

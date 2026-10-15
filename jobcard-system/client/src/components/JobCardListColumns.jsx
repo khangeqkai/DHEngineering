@@ -156,7 +156,7 @@ export function getJobCardColumns({
             <span className="assignee-preview">
               <span className="avatar-stack">
                 {visible.map(a => {
-                  const c = getAvatarColor(a.userName || a.username || a.userId);
+                  const c = getAvatarColor(a.userName || a.userId);
                   return (
                     <span
                       key={a.userId}
@@ -223,7 +223,7 @@ export function getJobCardColumns({
                     left: r.left,
                     names: card.assignees.map(a => ({
                       name: a.userName,
-                      color: getAvatarColor(a.userName || a.username || a.userId).bg
+                      color: getAvatarColor(a.userName || a.userId).bg
                     }))
                   });
                 }}
