@@ -35,7 +35,7 @@ export default function CustomerSection({
 }) {
   if (isEdit) {
     return (
-      <div className="form-section" id="jc-section-customer">
+      <div className="form-section">
         <h3 className="form-section-title">Customer</h3>
         <div className="customer-input-strip">
           <div className="cis-item">
@@ -66,7 +66,7 @@ export default function CustomerSection({
   }
 
   return (
-    <div className="form-section" id="jc-section-customer">
+    <div className="form-section">
       <h3 className="form-section-title">
         Customer <span className="required">*</span>
         {selectedCompany && <span className="contact-linked-badge">Linked</span>}

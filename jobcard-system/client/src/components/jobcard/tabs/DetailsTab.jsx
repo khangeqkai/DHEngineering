@@ -289,7 +289,7 @@ export default function DetailsTab({
       />
 
       {/* Assignees */}
-      <div className="form-section" id="jc-section-assignees">
+      <div className="form-section">
         <h3 className="form-section-title">Assignees</h3>
         {assigneesLocked && (
           <span className="field-hint">This job is invoiced and closed. Its workers can't be changed.</span>

@@ -494,17 +494,6 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
     }
     setActiveTab(tab);
   }, [activeTab, canSeePricing, costingHook, showConfirm, supplierDraftOpen]);
-  // The strip's "For <company>" and assignee buttons: bring the named section of the
-  // Details tab into view, switching to that tab first when the person is elsewhere.
-  const revealSection = useCallback(async (sectionId) => {
-    if (activeTab !== 'details') {
-      await handleTabChange('details');
-    }
-    requestAnimationFrame(() => {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }, [activeTab, handleTabChange]);
-
   // Removing a part that has anything filled in asks first — its answers are lost with
   // it. A blank part goes without a question. Time logged on a part is never lost by this
   // (the server refuses the removal while any is logged, and that message still shows).
@@ -637,9 +626,6 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
       whenPartSavesSettled={formHook.saveQueue.whenSettled}
       onJobClosed={handleJobClosedWrite}
       onReload={loadJobCard}
-      companyName={contactHook.contactFormData.companyName}
-      assignees={formHook.assignees}
-      revealSection={revealSection}
     />
   );
 

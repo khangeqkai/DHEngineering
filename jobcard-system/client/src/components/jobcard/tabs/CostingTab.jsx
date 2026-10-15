@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Info, Lock } from 'lucide-react';
+import { Info, Lock, RotateCcw } from 'lucide-react';
 import CostingBreakdown from './CostingBreakdown';
 import FieldError from '../../common/FieldError';
 import { formatMoney } from '../../../utils/formatters';
 
-// Format a multiplier for the read-only chips at at least two decimals, so the whole
+// Format a multiplier for the read-only figures at at least two decimals, so the whole
 // multiplier column lines up spreadsheet-style: 1 → "1.00", 2.5 → "2.50", 1.75 → "1.75".
 // Padding only ever adds digits — a finer figure shows in full (1.125 → "1.125"), since
 // that exact figure is what gets charged.
@@ -25,7 +25,7 @@ const REVERT_FORMAT = {
   subcontractorProfitPercent: (n) => `${Number(n) || 0}%`
 };
 
-// What the line beside the grand total says while the screen saves itself. There is no
+// What the line beside the title says while the screen saves itself. There is no
 // Save button: an edit saves on leaving the box or on Enter. 'invalid' overrides every
 // other state — see costingSaveState in useCosting.js — because there's nothing to
 // report about the rest of the sheet's save progress while one figure on it isn't even
@@ -103,24 +103,34 @@ export default function CostingTab({
   // 120100). Applies to every money/hours box below.
   const selectOnFocus = (e) => e.target.select();
 
-  // The "what this cost covers" note that sits under each manual cost line. Called as a
-  // plain function (not a component) so React keeps the input stable and typing never
-  // loses focus — same reason as the tier rows below. Its capitalise-on-leave tidy now
-  // runs in commitBox (useCosting.js) itself, the same moment it commits — no onBlur of
-  // its own, so it goes through the sheet's one bubbling blur handler like every other box.
+  // The "was X" hints on the manual cost lines read in this one voice. Both the tier rows
+  // and the cost rows put their way-back control in the last ("typed over") column.
+  const undoItem = (key, text, label, onClick) => (
+    <span className="ledger-undo-item" key={key}>
+      {text}
+      <button type="button" className="ledger-undo-btn" aria-label={label} title={label} onClick={onClick}>
+        <RotateCcw size={14} />
+      </button>
+    </span>
+  );
+
+  // The note that sits under each manual cost line's name. Called as a plain function
+  // (not a component) so React keeps the input stable and typing never loses focus — same
+  // reason as the tier rows below. Its capitalise-on-leave tidy runs in commitBox
+  // (useCosting.js) itself, the same moment it commits — no onBlur of its own, so it goes
+  // through the sheet's one bubbling blur handler like every other box.
   const costNote = (name, placeholder) => (
-    <div className="ledger-note">
-      <label htmlFor={name}>What this covers</label>
-      <input
-        id={name}
-        type="text"
-        name={name}
-        value={costingForm[name] || ''}
-        onChange={handleCostingChange}
-        placeholder={placeholder}
-        maxLength={300}
-      />
-    </div>
+    <input
+      id={name}
+      type="text"
+      className="ledger-note-input"
+      name={name}
+      value={costingForm[name] || ''}
+      onChange={handleCostingChange}
+      placeholder={placeholder}
+      aria-label="What this covers"
+      maxLength={300}
+    />
   );
 
   // The manual money lines (materials, subcontractor, special labour) have no
@@ -135,20 +145,63 @@ export default function CostingTab({
     const current = costingForm[name];
     const opened = openedAt[name];
     if (Number(current) === Number(opened)) return null;
-    return (
-      <span className="ledger-field-opening ledger-field-revert">
-        Was {REVERT_FORMAT[name](opened)} when you opened this job
-        {' · '}
-        <button
-          type="button"
-          className="btn-link"
-          onClick={() => onRevertField(name, String(opened))}
-        >
-          put it back
-        </button>
-      </span>
+    const was = REVERT_FORMAT[name](opened);
+    return undoItem(
+      name,
+      `was ${was}`,
+      `Was ${was} when you opened this job — put it back`,
+      () => onRevertField(name, String(opened))
     );
   };
+
+  // One figure box on a cost row: an input with a $, h or % mark, plus its own error.
+  // `mark` is { prefix: '$' } or { suffix: 'h' | '%' }.
+  const costBox = (name, mark) => {
+    const error = costingFieldError(name);
+    const input = (
+      <input
+        type="text"
+        inputMode="decimal"
+        name={name}
+        value={costingForm[name]}
+        onChange={handleCostingChange}
+        onFocus={selectOnFocus}
+        {...costingFieldProps(name)}
+      />
+    );
+    return (
+      <div className={`ledger-cell${error ? ' field-error' : ''}`}>
+        {mark.prefix ? (
+          <div className="ledger-affix ledger-affix--prefix">
+            <span className="ledger-affix-mark">{mark.prefix}</span>
+            {input}
+          </div>
+        ) : (
+          <div className="ledger-affix ledger-affix--suffix">
+            {input}
+            <span className="ledger-affix-mark">{mark.suffix}</span>
+          </div>
+        )}
+        <FieldError message={error} {...costingErrorProps(name)} />
+      </div>
+    );
+  };
+
+  // One manual cost row: name + note · first figure · operator · second figure · amount ·
+  // the way back for either figure typed over.
+  const costRow = ({ title, noteName, placeholder, first, firstMark, op, second, secondMark, total }) => (
+    <div className="ledger-row ledger-row--costs">
+      <div className="ledger-line-name">
+        <span>{title}</span>
+        {costNote(noteName, placeholder)}
+      </div>
+      {costBox(first, firstMark)}
+      <span className="ledger-op">{op}</span>
+      {costBox(second, secondMark)}
+      <span className={`ledger-amount${total === 0 ? ' ledger-amount--zero' : ''}`}>{formatMoney(total)}</span>
+      <span className="ledger-undo">{[revertControl(first), revertControl(second)]}</span>
+    </div>
+  );
 
   // A field still being typed in (or left typed-in and invalid — a red box KEEPS its
   // draft, see commitBox in useCosting.js) is always a string; a committed figure is
@@ -160,13 +213,13 @@ export default function CostingTab({
   // The four labour tiers, split by WHEN the work happened. The base rate is set
   // once (above the table) and each tier's rate derives from it via its multiplier.
   // A cleared multiplier box ('') means "follow the standard figure" — the same rule
-  // the totals use — so the chip and rate column never read ×0.00 while it sits blank.
+  // the totals use — so the multiplier and rate columns never read ×0.00 while it sits blank.
   const shownMult = (k) => costingForm[k] === '' ? costingForm[`${k}Calculated`] : costingForm[k];
   // The hours are editable on every tier; the two overtime rows also let the admin
   // type a job-specific multiplier over the company setting (multName set = editable).
   const tiers = [
     {
-      label: 'Normal', multiplier: 1, tierKey: '',
+      label: 'Normal hours', multiplier: 1, tierKey: '',
       hoursName: 'labourHours', hoursValue: costingForm.labourHours,
       calculated: costingForm.labourHoursCalculated, overridden: costingForm.labourHoursOverridden,
       total: totals.labourTotal
@@ -180,7 +233,7 @@ export default function CostingTab({
       total: totals.labourOt1Total
     },
     {
-      label: 'Overtime', multiplier: shownMult('labourOt2Multiplier'), tierKey: 'Ot2',
+      label: 'Overtime, second step', multiplier: shownMult('labourOt2Multiplier'), tierKey: 'Ot2',
       multName: 'labourOt2Multiplier', multCalculated: costingForm.labourOt2MultiplierCalculated,
       multOverridden: costingForm.labourOt2MultiplierOverridden,
       hoursName: 'labourOt2Hours', hoursValue: costingForm.labourOt2Hours,
@@ -198,6 +251,7 @@ export default function CostingTab({
   const labourSubtotal = totals.labourTotal + totals.labourOt1Total
     + totals.labourOt2Total + totals.labourHolidayTotal;
   const anyOverridden = tiers.some(t => t.overridden || t.multOverridden);
+  const otherSubtotal = totals.labourSpecialTotal + totals.materialsTotal + totals.subcontractorTotal;
 
   // Snap every tier's hours (and the two OT multipliers) back to their auto figures.
   // Resetting something that wasn't overridden is a harmless no-op, so one link covers all.
@@ -206,78 +260,71 @@ export default function CostingTab({
     ['Ot1', 'Ot2'].forEach(resetTierMultiplier);
   };
 
-  // One tier row: when-worked · multiplier (its own column) · hours (editable) ·
-  // derived rate · amount. Called as a plain function (not a component) so React keeps
-  // the input elements stable across renders and typing never loses focus.
+
+  // One tier row: when-worked · hours (editable) · multiplier · derived rate · amount ·
+  // the way back for anything typed over. Called as a plain function (not a component) so
+  // React keeps the input elements stable across renders and typing never loses focus.
   const tierRow = (t) => {
     const derivedRate = baseRate * (Number(t.multiplier) || 0);
-    const rowEdited = t.overridden || t.multOverridden;
     const multError = t.multName ? costingFieldError(t.multName) : null;
     const hoursError = costingFieldError(t.hoursName);
     return (
-      <div className={`tier-row${t.overridden ? ' tier-row--edited' : ''}`} key={t.hoursName}>
-        <span className="tier-when">
-          {t.label}
-          {rowEdited && <span className="tier-edited-tag">edited</span>}
-        </span>
-        <span className="tier-mult-cell">
-          {t.multName ? (
-            // Overtime rows: the multiplier is a job-editable box (typing overrides
-            // the company setting for this job only), with a snap-back link below.
-            <span className={`tier-mult-editable${t.multOverridden ? ' tier-mult-editable--edited' : ''}${multError ? ' field-error' : ''}`}>
-              <span className="tier-mult-box">
-                ×
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  name={t.multName}
-                  value={multDisplay(t)}
-                  onChange={handleCostingChange}
-                  onFocus={selectOnFocus}
-                  aria-label={`${t.label} multiplier`}
-                  {...costingFieldProps(t.multName)}
-                />
-              </span>
-              <FieldError message={multError} {...costingErrorProps(t.multName)} />
-            </span>
-          ) : (
-            // Fixed-multiplier rows (normal, public holiday): the same box shape as the
-            // editable overtime ones (just not typeable), so the whole column is one
-            // uniform-width, right-aligned ladder — ×1.00 / ×1.50 / ×2.00 / ×2.50.
-            <span className="tier-mult-box tier-mult-box--static">
-              ×<span className="tier-mult-static">{mult(t.multiplier)}</span>
-            </span>
-          )}
-        </span>
-        <span className={`tier-hours-cell${hoursError ? ' field-error' : ''}`}>
+      <div className="ledger-row" key={t.hoursName}>
+        <span className="ledger-tier-label">{t.label}</span>
+        <div className={`ledger-cell${hoursError ? ' field-error' : ''}`}>
           <input
             type="text"
             inputMode="decimal"
+            className={`ledger-input${t.overridden ? ' ledger-input--edited' : ''}`}
             name={t.hoursName}
             value={t.hoursValue}
             onChange={handleCostingChange}
             onFocus={selectOnFocus}
-            aria-label={`${t.label} hours`}
+            aria-label={`Hours: ${t.label}`}
             {...costingFieldProps(t.hoursName)}
           />
           <FieldError message={hoursError} {...costingErrorProps(t.hoursName)} />
-        </span>
-        <span className="tier-rate">{formatMoney(derivedRate)}</span>
-        <span className="tier-amount">{formatMoney(t.total)}</span>
-        {rowEdited && (
-          <span className="tier-fixes">
-            {t.overridden && (
-              <button type="button" className="btn-link" onClick={() => resetTierHours(t.tierKey)}>
-                Back to logged time ({Number(t.calculated) || 0} h)
-              </button>
-            )}
-            {t.multOverridden && (
-              <button type="button" className="btn-link" onClick={() => resetTierMultiplier(t.tierKey)}>
-                Back to the company multiplier (×{mult(t.multCalculated)})
-              </button>
-            )}
-          </span>
+        </div>
+        {t.multName ? (
+          // Overtime rows: the multiplier is a job-editable box (typing overrides the
+          // company setting for this job only).
+          <div className={`ledger-cell${multError ? ' field-error' : ''}`}>
+            <span className="ledger-mult">
+              <span className="ledger-mult-sign">×</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                className={`ledger-input ledger-input--mult${t.multOverridden ? ' ledger-input--edited' : ''}`}
+                name={t.multName}
+                value={multDisplay(t)}
+                onChange={handleCostingChange}
+                onFocus={selectOnFocus}
+                aria-label={`Multiplier: ${t.label}`}
+                {...costingFieldProps(t.multName)}
+              />
+            </span>
+            <FieldError message={multError} {...costingErrorProps(t.multName)} />
+          </div>
+        ) : (
+          // Fixed-multiplier rows (normal, public holiday): plain text, nothing to type.
+          <span className="ledger-mult-fixed">×{mult(t.multiplier)}</span>
         )}
+        <span className="ledger-rate">{formatMoney(derivedRate)}</span>
+        <span className={`ledger-amount${t.total === 0 ? ' ledger-amount--zero' : ''}`}>{formatMoney(t.total)}</span>
+        <span className="ledger-undo">
+          {t.overridden && undoItem(
+            'hours',
+            `logged ${Number(t.calculated) || 0} h`,
+            `Back to logged time (${Number(t.calculated) || 0} h)`,
+            () => resetTierHours(t.tierKey)
+          )}
+          {t.multOverridden && undoItem(
+            'mult',
+            `×${mult(t.multCalculated)} standard`,
+            `Back to the company multiplier (×${mult(t.multCalculated)})`,
+            () => resetTierMultiplier(t.tierKey)
+          )}
+        </span>
       </div>
     );
   };
@@ -306,10 +353,10 @@ export default function CostingTab({
     if (tag === 'INPUT' || tag === 'TEXTAREA') onBoxBlur?.(e.target.name);
   };
 
+
   return (
     <div className="modal-form-grid">
       <div className="costing-sheet" onKeyDown={saveOnEnter} onBlur={saveOnLeavingBox}>
-        {/* Sticky top bar: the grand total stays on screen while the sheet is scrolled */}
         <div className="costing-sheet-header">
           <h3 className="costing-sheet-title">Costing</h3>
           <button
@@ -317,15 +364,11 @@ export default function CostingTab({
             className={`costing-info-btn${showBreakdown ? ' costing-info-btn--on' : ''}`}
             onClick={() => setShowBreakdown(v => !v)}
             aria-expanded={showBreakdown}
-            aria-label={showBreakdown ? 'Hide what this job used' : 'Show what this job used'}
             title="What this job used — time per part and machine, material and treatment"
           >
-            <Info size={16} />
+            <Info size={14} />
+            What this job used
           </button>
-          <div className="costing-grand">
-            <span className="costing-grand-label">Grand total</span>
-            <span className="costing-grand-value">{formatMoney(totals.grandTotal)}</span>
-          </div>
           {status && (
             <span className={`costing-save-status ${status.className}`} role="status" aria-live="polite">
               {status.text}
@@ -355,165 +398,108 @@ export default function CostingTab({
             lock through every box. Nothing on it can be dirty or invalid on a closed
             job, so there's nothing for the tab-switch/close/invoice guards to catch. */}
         <fieldset className="jc-lock-fieldset" disabled={locked}>
-        {/* Labour — one panel: base rate up top, tiers as a rate ladder, subtotal in the header */}
-        <section className="labour-block">
-          <div className="labour-block-head">
-            <div className="labour-block-heading">
-              <span className="labour-block-title">Labour</span>
-              <span className="labour-block-sub">split by when it was worked</span>
-            </div>
-            <div className="labour-block-subtotal">
-              <span className="labour-subtotal-label">Labour subtotal</span>
-              <span className="labour-subtotal-value">{formatMoney(labourSubtotal)}</span>
-            </div>
-          </div>
-
-          <div className="labour-rate-row">
-            <label htmlFor="labourRate" className="labour-rate-label">Base rate</label>
-            <div className={`ledger-affix ledger-affix--prefix labour-rate-field${costingFieldError('labourRate') ? ' field-error' : ''}`}>
-              <span className="ledger-affix-mark">$</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                name="labourRate"
-                value={costingForm.labourRate}
-                onChange={handleCostingChange}
-                onFocus={selectOnFocus}
-                {...costingFieldProps('labourRate')}
-              />
-            </div>
-            <span className="labour-rate-unit">/ hr</span>
-            <span className="labour-rate-hint">
-              sets every tier below
+        {/* Labour — base rate in the heading, tiers as a rate ladder */}
+        <section className="costing-section">
+          <div className="costing-section-head">
+            <span className="costing-section-title">Labour</span>
+            <div className="costing-rate">
+              <label htmlFor="labourRate" className="labour-rate-label">Base rate</label>
+              <div className={`ledger-affix ledger-affix--prefix costing-rate-field${costingFieldError('labourRate') ? ' field-error' : ''}`}>
+                <span className="ledger-affix-mark">$</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  name="labourRate"
+                  value={costingForm.labourRate}
+                  onChange={handleCostingChange}
+                  onFocus={selectOnFocus}
+                  {...costingFieldProps('labourRate')}
+                />
+              </div>
+              <span className="costing-rate-unit">/ hr</span>
               {Number(costingForm.labourDefaultRate) > 0
                 && Number(costingForm.labourDefaultRate) !== baseRate && (
-                <>
-                  {' · '}
-                  <button type="button" className="btn-link" onClick={useDefaultRate}>
-                    use company default ({formatMoney(costingForm.labourDefaultRate)})
-                  </button>
-                </>
+                <button type="button" className="btn-link" onClick={useDefaultRate}>
+                  Use company default · {formatMoney(costingForm.labourDefaultRate)}
+                </button>
               )}
-            </span>
-            <FieldError message={costingFieldError('labourRate')} {...costingErrorProps('labourRate')} />
-          </div>
-
-          <div className="tier-table" role="table" aria-label="Labour by when it was worked">
-            <div className="tier-head" role="row">
-              <span role="columnheader">When worked</span>
-              <span role="columnheader">Multiplier</span>
-              <span role="columnheader">Hours</span>
-              <span role="columnheader">Rate / hr</span>
-              <span role="columnheader">Amount</span>
+              <FieldError message={costingFieldError('labourRate')} {...costingErrorProps('labourRate')} />
             </div>
-            {tiers.map(tierRow)}
+            <span className="costing-section-subtotal">
+              <span className="costing-subtotal-label">Subtotal</span>
+              <span className="costing-subtotal-value">{formatMoney(labourSubtotal)}</span>
+            </span>
           </div>
-          <p className="tier-help">
-            The multiplier is how many times the base rate an hour is charged at: normally ×1.00 for ordinary
-            hours, rising through the overtime steps to ×2.50 on a public holiday. The overtime ones can be changed for this job alone.
-          </p>
 
-          <div className="tier-foot">
-            <span>Hours are split from logged time.</span>
-            {anyOverridden && (
-              <span className="tier-foot-edited">
-                Some figures were edited by hand
-                {' · '}
-                <button type="button" className="btn-link" onClick={resetAllLabour}>Reset all to auto</button>
-              </span>
-            )}
+          <div className="ledger-head" aria-hidden="true">
+            <span>When worked</span>
+            <span>Hours</span>
+            <span>× base</span>
+            <span>Rate / hr</span>
+            <span>Amount</span>
+            <span>Typed over</span>
           </div>
+          {tiers.map(tierRow)}
+          <p className="ledger-foot">
+            Hours come from logged time. An amber box was typed over by hand.
+            {anyOverridden && (
+              <>
+                {' '}
+                <button type="button" className="btn-link" onClick={resetAllLabour}>Reset all to logged</button>
+              </>
+            )}
+          </p>
         </section>
 
-        {/* Manual cost lines — simple category · fields = total ledger rows */}
-        <div className="costing-ledger">
-          {/* Special labour — hours × rate, both entered by hand */}
-          <div className="ledger-line">
-            <span className="ledger-cat">Special labour</span>
-            <div className={costingFieldError('labourSpecialHours') ? 'ledger-field field-error' : 'ledger-field'}>
-              <label htmlFor="labourSpecialHours">Hours</label>
-              <input type="text" inputMode="decimal" name="labourSpecialHours" value={costingForm.labourSpecialHours} onChange={handleCostingChange} onFocus={selectOnFocus} {...costingFieldProps('labourSpecialHours')} />
-              {revertControl('labourSpecialHours')}
-              <FieldError message={costingFieldError('labourSpecialHours')} {...costingErrorProps('labourSpecialHours')} />
-            </div>
-            <span className="ledger-op">×</span>
-            <div className={costingFieldError('labourSpecialRate') ? 'ledger-field field-error' : 'ledger-field'}>
-              <label htmlFor="labourSpecialRate">Rate / hr</label>
-              <div className="ledger-affix ledger-affix--prefix">
-                <span className="ledger-affix-mark">$</span>
-                <input type="text" inputMode="decimal" name="labourSpecialRate" value={costingForm.labourSpecialRate} onChange={handleCostingChange} onFocus={selectOnFocus} {...costingFieldProps('labourSpecialRate')} />
-              </div>
-              {revertControl('labourSpecialRate')}
-              <FieldError message={costingFieldError('labourSpecialRate')} {...costingErrorProps('labourSpecialRate')} />
-            </div>
-            <span className="ledger-eq">=</span>
-            <span className="ledger-total">{formatMoney(totals.labourSpecialTotal)}</span>
-            {costNote('labourSpecialDescription', 'e.g. Weekend shift to hit the shutdown date')}
+        {/* Manual cost lines — name and note · figure × figure · amount */}
+        <section className="costing-section">
+          <div className="costing-section-head">
+            <span className="costing-section-title">Other costs</span>
+            <span className="costing-section-subtotal">
+              <span className="costing-subtotal-label">Subtotal</span>
+              <span className="costing-subtotal-value">{formatMoney(otherSubtotal)}</span>
+            </span>
           </div>
 
-          {/* Materials — cost + margin % */}
-          <div className="ledger-line">
-            <span className="ledger-cat">Materials</span>
-            <div className={costingFieldError('materialsCost') ? 'ledger-field field-error' : 'ledger-field'}>
-              <label htmlFor="materialsCost">Cost</label>
-              <div className="ledger-affix ledger-affix--prefix">
-                <span className="ledger-affix-mark">$</span>
-                <input type="text" inputMode="decimal" name="materialsCost" value={costingForm.materialsCost} onChange={handleCostingChange} onFocus={selectOnFocus} {...costingFieldProps('materialsCost')} />
-              </div>
-              {revertControl('materialsCost')}
-              <FieldError message={costingFieldError('materialsCost')} {...costingErrorProps('materialsCost')} />
-            </div>
-            <span className="ledger-op">+</span>
-            <div className={costingFieldError('materialsProfitPercent') ? 'ledger-field field-error' : 'ledger-field'}>
-              <label htmlFor="materialsProfitPercent">Margin</label>
-              <div className="ledger-affix ledger-affix--suffix">
-                <input type="text" inputMode="decimal" name="materialsProfitPercent" value={costingForm.materialsProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} {...costingFieldProps('materialsProfitPercent')} />
-                <span className="ledger-affix-mark">%</span>
-              </div>
-              {revertControl('materialsProfitPercent')}
-              <FieldError message={costingFieldError('materialsProfitPercent')} {...costingErrorProps('materialsProfitPercent')} />
-            </div>
-            <span className="ledger-eq">=</span>
-            <span className="ledger-total">{formatMoney(totals.materialsTotal)}</span>
-            {costNote('materialsDescription', 'e.g. 316 stainless bar supplied for 4 parts')}
+          <div className="ledger-head ledger-head--costs" aria-hidden="true">
+            <span>Line · what it covers</span>
+            <span>Cost or hours</span>
+            <span />
+            <span>Margin or rate</span>
+            <span>Amount</span>
+            <span>Typed over</span>
           </div>
+          {costRow({
+            title: 'Special labour', noteName: 'labourSpecialDescription',
+            placeholder: 'e.g. Weekend shift to hit the shutdown date',
+            first: 'labourSpecialHours', firstMark: { suffix: 'h' }, op: '×',
+            second: 'labourSpecialRate', secondMark: { prefix: '$' },
+            total: totals.labourSpecialTotal
+          })}
+          {costRow({
+            title: 'Materials', noteName: 'materialsDescription',
+            placeholder: 'e.g. 316 stainless bar supplied for 4 parts',
+            first: 'materialsCost', firstMark: { prefix: '$' }, op: '+',
+            second: 'materialsProfitPercent', secondMark: { suffix: '%' },
+            total: totals.materialsTotal
+          })}
+          {costRow({
+            title: 'Subcontractor', noteName: 'subcontractorDescription',
+            placeholder: 'e.g. Hard chrome plating and freight both ways',
+            first: 'subcontractorCost', firstMark: { prefix: '$' }, op: '+',
+            second: 'subcontractorProfitPercent', secondMark: { suffix: '%' },
+            total: totals.subcontractorTotal
+          })}
+        </section>
 
-          {/* Subcontractor — cost + margin % */}
-          <div className="ledger-line">
-            <span className="ledger-cat">Subcontractor</span>
-            <div className={costingFieldError('subcontractorCost') ? 'ledger-field field-error' : 'ledger-field'}>
-              <label htmlFor="subcontractorCost">Cost</label>
-              <div className="ledger-affix ledger-affix--prefix">
-                <span className="ledger-affix-mark">$</span>
-                <input type="text" inputMode="decimal" name="subcontractorCost" value={costingForm.subcontractorCost} onChange={handleCostingChange} onFocus={selectOnFocus} {...costingFieldProps('subcontractorCost')} />
-              </div>
-              {revertControl('subcontractorCost')}
-              <FieldError message={costingFieldError('subcontractorCost')} {...costingErrorProps('subcontractorCost')} />
-            </div>
-            <span className="ledger-op">+</span>
-            <div className={costingFieldError('subcontractorProfitPercent') ? 'ledger-field field-error' : 'ledger-field'}>
-              <label htmlFor="subcontractorProfitPercent">Margin</label>
-              <div className="ledger-affix ledger-affix--suffix">
-                <input type="text" inputMode="decimal" name="subcontractorProfitPercent" value={costingForm.subcontractorProfitPercent} onChange={handleCostingChange} onFocus={selectOnFocus} {...costingFieldProps('subcontractorProfitPercent')} />
-                <span className="ledger-affix-mark">%</span>
-              </div>
-              {revertControl('subcontractorProfitPercent')}
-              <FieldError message={costingFieldError('subcontractorProfitPercent')} {...costingErrorProps('subcontractorProfitPercent')} />
-            </div>
-            <span className="ledger-eq">=</span>
-            <span className="ledger-total">{formatMoney(totals.subcontractorTotal)}</span>
-            {costNote('subcontractorDescription', 'e.g. Hard chrome plating and freight both ways')}
-          </div>
+        {/* The one grand total on the sheet, in invoice order: labour, other costs, total */}
+        <div className="costing-total">
+          <span className="costing-total-parts">
+            Labour {formatMoney(labourSubtotal)} · Other costs {formatMoney(otherSubtotal)}
+          </span>
+          <span className="costing-total-label">Grand total</span>
+          <span className="costing-total-value">{formatMoney(totals.grandTotal)}</span>
         </div>
-
-        {/* What the grand total in the header adds up. Same figures as the lines above. */}
-        <dl className="costing-summary" aria-label="What the grand total adds up">
-          <div className="costing-summary-row"><dt>Labour</dt><dd>{formatMoney(labourSubtotal)}</dd></div>
-          <div className="costing-summary-row"><dt>Special labour</dt><dd>{formatMoney(totals.labourSpecialTotal)}</dd></div>
-          <div className="costing-summary-row"><dt>Materials</dt><dd>{formatMoney(totals.materialsTotal)}</dd></div>
-          <div className="costing-summary-row"><dt>Subcontractor</dt><dd>{formatMoney(totals.subcontractorTotal)}</dd></div>
-          <div className="costing-summary-row costing-summary-row--grand"><dt>Grand total</dt><dd>{formatMoney(totals.grandTotal)}</dd></div>
-        </dl>
         </fieldset>
       </div>
     </div>

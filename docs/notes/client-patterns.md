@@ -167,11 +167,10 @@ that still posted a whole-job payload on a timer would reproduce the same bug wi
   the toast. A saved part's failure is read from the save queue; a new part whose create failed is
   tracked by `useInstantItems.js` (`createFailedIds`). Retry (`retryItem`) re-creates a still-local
   part, or resends every box of a saved part that differs from what the job last confirmed storing.
-- **The strip has a second line** (only what has a value): "For <company>" (management only), the
-  assignee initials circles (names on hover), and a danger-tinted "Critical · inspection at stop"
-  pill when the quality level is Critical. The company and assignees are buttons that scroll the
-  Details tab to the Customer / Assignees sections (switching to Details first if needed).
-  The References card (PO/quote numbers, quality level, repeat job) was formerly "Customer Input".
+- The strip is one line — job number, priority, description, status, due date and the window
+  controls — so the Files and close buttons sit level with the rest of it. (A second line of
+  customer, assignee avatars and a Critical pill was tried and reverted: it pushed the right-hand
+  controls off the line.) The References card (PO/quote numbers, quality level, repeat job) was formerly "Customer Input".
 - **Removing a part that has anything filled in asks first** (`requestRemoveItem` in
   `JobCardModal.jsx`): title names the part number and description; "Keep part" (focused) / "Remove
   part" (danger). A blank part goes without asking. A part with logged time is still refused by the

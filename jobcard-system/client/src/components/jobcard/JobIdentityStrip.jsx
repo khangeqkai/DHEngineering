@@ -2,8 +2,6 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { Calendar, ChevronDown, Check } from 'lucide-react';
 import { useDismissableMenu } from '../../hooks/useDismissableMenu';
-import { getInitials, getAvatarColor } from '../../utils/initials';
-import { isCriticalLevel } from '../../../../server/src/shared/qualityLevels';
 import CalendarPicker from '../common/CalendarPicker';
 import { capitalizeFirst, formatDate } from '../../utils/formatters';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from './constants';
@@ -53,13 +51,7 @@ export default function JobIdentityStrip({
   onJobClosed,
   // Re-reads the whole job. A status change that closes the job (invoicing
   // archives it) calls this, so the screen picks up the archived flag and locks.
-  onReload,
-  // The strip's second line: who the job is for (management only — contact details are
-  // hidden from everyone else, so a worker's window is never handed a name) and who is
-  // on it. revealSection(id) brings that section of the Details tab into view.
-  companyName = '',
-  assignees = [],
-  revealSection
+  onReload
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
@@ -177,12 +169,6 @@ export default function JobIdentityStrip({
     ...(dueDateYear && dueDateYear !== currentYear ? { year: 'numeric' } : {})
   });
   const titleText = isEdit ? jobNumber : 'New job card';
-  // The second line shows only what has a value (a new job has none of it until
-  // someone picks a customer, ticks a worker or sets Critical).
-  const showCompany = canManage && Boolean((companyName || '').trim());
-  const assigneeList = assignees || [];
-  const assigneeNames = assigneeList.map(a => a.userName || 'Unknown').join(', ');
-  const critical = isCriticalLevel(formData.qualityLevel);
 
   // A non-management user only gets to pick among the statuses the server allows
   // them to set, plus whatever the job currently sits on. When the job has already
@@ -538,45 +524,6 @@ export default function JobIdentityStrip({
               allowClear
             />
       </div>
-
-      {(showCompany || assigneeList.length > 0 || critical) && (
-        <div className="jc-strip-context">
-          {showCompany && (
-            <button
-              type="button"
-              className="jc-strip-context-link"
-              onClick={() => revealSection?.('jc-section-customer')}
-              title="Go to the customer details"
-            >
-              For {companyName}
-            </button>
-          )}
-          {assigneeList.length > 0 && (
-            <button
-              type="button"
-              className="jc-strip-context-link"
-              onClick={() => revealSection?.('jc-section-assignees')}
-              title={assigneeNames}
-              aria-label={`On this job: ${assigneeNames}. Go to the assignees`}
-            >
-              <span className="avatar-stack">
-                {assigneeList.slice(0, 5).map(a => {
-                  const c = getAvatarColor(a.userName || a.userId);
-                  return (
-                    <span key={a.userId} className="avatar-chip" style={{ backgroundColor: c.bg, color: c.fg }}>
-                      {getInitials(a.userName)}
-                    </span>
-                  );
-                })}
-                {assigneeList.length > 5 && (
-                  <span className="avatar-chip avatar-overflow">+{assigneeList.length - 5}</span>
-                )}
-              </span>
-            </button>
-          )}
-          {critical && <span className="jc-strip-critical">Critical · inspection at stop</span>}
-        </div>
-      )}
 
       {/* Only a failure gets words here. "Saving…" and "Saved" are now the window
           frame's job (amber, then green — see .modal-unsaved / .modal-saved in

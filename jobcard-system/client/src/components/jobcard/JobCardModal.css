@@ -2034,41 +2034,6 @@
   cursor: pointer;
 }
 
-/* Strip's second line: who the job is for, who is on it, and the Critical flag. */
-.jc-strip-context {
-  flex-basis: 100%;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--gap-tight) var(--gap-field);
-}
-.jc-strip-context-link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gap-inline);
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--primary-accent);
-  font-size: var(--text-sm);
-  font-weight: var(--font-bold);
-  cursor: pointer;
-}
-.jc-strip-context-link:hover {
-  text-decoration: underline;
-}
-.jc-strip-critical {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-0-5) var(--space-2);
-  border: 1px solid var(--danger-color);
-  border-radius: var(--radius-md);
-  background: rgba(var(--danger-rgb), 0.1);
-  color: var(--danger-ink);
-  font-size: var(--text-sm);
-  font-weight: var(--font-bold);
-  white-space: nowrap;
-}
 .jc-strip-description-label {
   flex-shrink: 0;
   margin-right: var(--gap-inline);
@@ -2480,43 +2445,37 @@
   font-style: italic;
 }
 
-/* ── Costing sheet — a ledger that reads cost → total ── */
-/* No overflow clipping here: the header below pins itself to the top of the scrolling
-   panel, which a clipped ancestor would silently disable. */
+/* ── Costing sheet — one flat ledger that reads labour → other costs → grand total ── */
+/* One white card. Inside it nothing is boxed or banded: sections are separated by
+   whitespace and a single rule under each heading. Nothing sticks, so no overflow
+   clipping matters here either. */
 .costing-sheet {
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  padding-bottom: var(--pad-card);
 }
 
-/* Scrolls away with the sheet like any other row. It used to stay pinned to the top so
-   the grand total was readable at all times, but a dark filled pill hovering over the
-   figures it is the sum of read as a thing stuck to the glass rather than part of the
-   sheet — and the total is only a scroll away at the top where it belongs. */
+/* Title, the "what this job used" toggle, and the save status — nothing else. */
 .costing-sheet-header {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  background: var(--surface-elevated);
-  border-bottom: 1px solid var(--border-color);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  gap: var(--gap-group);
+  padding: var(--pad-card) var(--pad-card) var(--gap-field);
 }
 
 .costing-sheet-title {
   margin: 0;
-  font-size: var(--text-sm);
+  font-size: var(--text-lg);
   font-weight: var(--font-bold);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 /* Save status — the sheet saves itself, so this just reports where that is up to. */
 .costing-save-status {
+  margin-left: auto;
   font-size: var(--text-sm);
   font-weight: var(--font-regular);
   letter-spacing: var(--tracking-wide);
@@ -2545,9 +2504,9 @@
   color: var(--danger-ink);
 }
 
-/* The rate row is a wrapping flex row (label · box · unit · hint); its error message
-   needs to claim the whole row rather than squeeze in next to the hint. */
-.labour-rate-row .field-error-message {
+/* The base-rate group is a wrapping flex row (label · box · unit · default link); its
+   error message needs to claim the whole row rather than squeeze in beside them. */
+.costing-rate .field-error-message {
   flex-basis: 100%;
 }
 
@@ -2596,10 +2555,6 @@
   font-size: var(--text-sm);
 }
 
-.costing-ledger {
-  padding: var(--space-1) var(--space-4);
-}
-
 /* ── "What this job used" — the table that folds out under the costing header ──
    ONE table, read left to right: the part on the far left, then what has to be bought
    in for it, then who ran it on what, then the hours on the far right. A part's
@@ -2609,15 +2564,14 @@
 .costing-info-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 28px;
-  min-height: 28px;
-  margin-left: calc(var(--space-2) * -1);
-  padding: 0;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  color: var(--text-tertiary);
+  gap: var(--gap-inline);
+  height: 28px;
+  padding: 0 var(--space-2-5);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
   cursor: pointer;
   transition: color var(--duration-fast) var(--ease-smooth),
               border-color var(--duration-fast) var(--ease-smooth),
@@ -2626,7 +2580,7 @@
 
 .costing-info-btn:hover {
   color: var(--text-primary);
-  border-color: var(--border-color);
+  border-color: var(--border-input);
 }
 
 /* --primary-color is a fill here, not the text/border accent it is everywhere else in the
@@ -2928,102 +2882,289 @@
   }
 }
 
-/* One cost line: category · field × field = total, columns aligned across rows */
-.ledger-line {
-  display: grid;
-  grid-template-columns: 132px 92px 18px 116px 16px 1fr;
-  align-items: end;
-  column-gap: var(--gap-field);
-  padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-color);
+/* ── Ledger sections ── */
+.costing-section {
+  padding: 0 var(--pad-card);
 }
 
-.ledger-line:last-child {
-  border-bottom: none;
+.costing-section + .costing-section {
+  margin-top: var(--gap-section);
 }
 
-.ledger-cat {
-  font-size: var(--text-sm);
+.costing-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-group);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.costing-section-title {
+  font-size: var(--text-base);
   font-weight: var(--font-bold);
   color: var(--text-primary);
-  letter-spacing: var(--tracking-normal);
-  padding-bottom: var(--space-1-5);
 }
 
-.ledger-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
+.costing-section-subtotal {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--gap-inline);
+  margin-left: auto;
 }
 
-.ledger-field label {
-  font-size: var(--text-sm);
-  font-weight: var(--font-regular);
+.costing-subtotal-label {
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
-.ledger-field input {
+.costing-subtotal-value {
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* The base rate, inline in the Labour heading */
+.costing-rate {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gap-tight);
+}
+
+.labour-rate-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.costing-rate-field {
+  width: 92px;
+}
+
+.costing-rate-unit {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.costing-rate .btn-link {
+  font-size: var(--text-xs);
+}
+
+/* Column heads and rows share one grid, so every figure lines up down the sheet */
+.ledger-head,
+.ledger-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px 84px 100px 110px 150px;
+  column-gap: var(--gap-field);
+  align-items: center;
+}
+
+.ledger-head--costs,
+.ledger-row--costs {
+  grid-template-columns: minmax(0, 1fr) 118px 24px 118px 110px 150px;
+}
+
+.ledger-head {
+  padding-top: var(--gap-field);
+  padding-bottom: var(--space-1);
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--text-tertiary);
+}
+
+.ledger-head > span:not(:first-child) {
+  text-align: right;
+}
+
+.ledger-row {
+  min-height: 40px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: var(--text-sm);
+}
+
+.ledger-row--costs {
+  min-height: 56px;
+}
+
+.ledger-row:last-of-type {
+  border-bottom: none;
+}
+
+.ledger-tier-label {
+  color: var(--text-primary);
+}
+
+.ledger-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+
+/* Every figure on the sheet: house font, tabular figures — no mono */
+.ledger-input,
+.ledger-rate,
+.ledger-amount,
+.ledger-mult-fixed {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.ledger-input {
+  height: 28px;
+  box-sizing: border-box;
   width: 100%;
-  padding: var(--space-1-5) var(--space-2);
-  border: 1px solid var(--border-color);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-input);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
   text-align: right;
 }
 
-.ledger-field input:focus {
+.ledger-input:focus {
   outline: none;
   border-color: var(--border-focus);
   box-shadow: var(--focus-ring-sm);
 }
 
-/* "What this covers" note — drops onto its own row under the line's figures, running
-   from the first field across to the total so it reads as part of that cost line. */
-.ledger-note {
-  grid-column: 2 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin-top: var(--space-2);
-  min-width: 0;
+/* A hand-typed hours or multiplier box: amber tint */
+.ledger-input--edited {
+  border-color: var(--warning-color);
+  background: color-mix(in srgb, var(--warning-color) 14%, var(--surface));
 }
 
-.ledger-note label {
-  font-size: var(--text-sm);
-  font-weight: var(--font-regular);
+.ledger-mult {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-0-5);
+}
+
+.ledger-mult-sign {
   color: var(--text-tertiary);
 }
 
-.ledger-note input {
-  width: 100%;
-  padding: var(--space-1-5) var(--space-2);
-  border: 1px solid var(--border-color);
+.ledger-input--mult {
+  width: 52px;
+}
+
+.ledger-mult-fixed {
+  text-align: right;
+  color: var(--text-tertiary);
+}
+
+.ledger-rate {
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+.ledger-amount {
+  text-align: right;
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+}
+
+/* A quiet zero */
+.ledger-amount--zero {
+  color: var(--text-tertiary);
+}
+
+/* "Typed over" — what the figure was before it was typed over, and the way back to it.
+   Empty when nothing on the row is overridden. */
+.ledger-undo {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--gap-tight);
+  font-size: var(--text-xs);
+  color: var(--warning-ink);
+}
+
+.ledger-undo-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-inline);
+  white-space: nowrap;
+}
+
+.ledger-undo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  color: var(--text-primary);
-  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 
-.ledger-note input::placeholder {
+.ledger-undo-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-input);
+}
+
+.ledger-undo-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ledger-foot {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
-.ledger-note input:focus {
+/* A cost row's name, with its quiet note field under it */
+.ledger-line-name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  min-width: 0;
+  padding: var(--space-2) 0;
+  color: var(--text-primary);
+}
+
+.ledger-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-0-5) 0;
+  border: 0;
+  border-bottom: 1px dashed var(--border-input);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.ledger-note-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.ledger-note-input:focus {
   outline: none;
-  border-color: var(--border-focus);
-  box-shadow: var(--focus-ring-sm);
+  border-bottom-style: solid;
+  border-bottom-color: var(--border-focus);
+}
+
+.ledger-op {
+  text-align: center;
+  color: var(--text-tertiary);
 }
 
 /* Wrapper that pins a $ or % marker beside the input */
 .ledger-affix {
   display: flex;
   align-items: center;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-input);
+  height: 28px;
+  box-sizing: border-box;
   border-radius: var(--radius-sm);
   background: var(--surface);
   overflow: hidden;
@@ -3034,10 +3175,29 @@
   box-shadow: var(--focus-ring-sm);
 }
 
+/* The inner input has no border of its own, so the app-wide .field-error rule (which
+   only recolours an input's border) never shows on a $ / % / h box — the wrapper has
+   to go red instead. The base-rate box carries the class itself; a cost box's cell does. */
+.ledger-affix.field-error,
+.field-error > .ledger-affix {
+  border-color: var(--danger-color);
+}
+
 .ledger-affix input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0 var(--space-2);
   border: none;
   border-radius: 0;
   background: transparent;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  text-align: right;
 }
 
 /* The wrapper wears the focus ring for the pair, so the input inside must not draw one
@@ -3052,7 +3212,6 @@
 }
 
 .ledger-affix-mark {
-  font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--text-tertiary);
 }
@@ -3063,375 +3222,6 @@
 
 .ledger-affix--suffix .ledger-affix-mark {
   padding-right: var(--space-2);
-}
-
-/* ── Labour panel — base rate set once, tiers as a rate ladder ── */
-.labour-block {
-  margin: var(--space-4) var(--space-5) var(--space-3);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md, 8px);
-  background: var(--surface-elevated);
-  overflow: hidden;
-}
-
-.labour-block-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--space-4) var(--space-3);
-}
-
-.labour-block-heading {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-0-5);
-}
-
-.labour-block-title {
-  font-size: var(--text-base);
-  font-weight: var(--font-bold);
-  color: var(--text-primary);
-  letter-spacing: var(--tracking-tight);
-}
-
-.labour-block-sub {
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-
-.labour-block-subtotal {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-0-5);
-}
-
-.labour-subtotal-label {
-  font-size: var(--text-sm);
-  font-weight: var(--font-regular);
-  color: var(--text-tertiary);
-}
-
-.labour-subtotal-value {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-lg);
-  font-weight: var(--font-bold);
-  color: var(--text-primary);
-}
-
-/* The one rate knob that drives every tier below it */
-.labour-rate-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--gap-tight);
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
-  background: var(--surface);
-}
-
-.labour-rate-label {
-  font-size: var(--text-sm);
-  font-weight: var(--font-bold);
-  color: var(--text-primary);
-}
-
-.labour-rate-field {
-  width: 118px;
-}
-
-.labour-rate-field input {
-  /* Fill the affix instead of keeping the input's wide intrinsic size — without this the
-     input overflows the fixed-width affix and, since the value is right-aligned, the digits
-     spill past the clipped (overflow:hidden) right edge and the box looks empty. */
-  width: 100%;
-  min-width: 0;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-sm);
-  text-align: right;
-  padding: var(--space-1-5) var(--space-2);
-  color: var(--text-primary);
-}
-
-.labour-rate-unit {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-
-.labour-rate-hint {
-  margin-left: auto;
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-
-/* Rate ladder: when-worked · hours (editable) · derived rate · amount */
-.tier-table {
-  padding: var(--space-2) var(--space-4) 0;
-}
-
-.tier-head,
-.tier-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 84px 88px 92px 104px;
-  align-items: center;
-  column-gap: var(--gap-field);
-}
-
-.tier-head {
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.tier-head span {
-  font-size: var(--text-sm);
-  font-weight: var(--font-regular);
-  color: var(--text-tertiary);
-}
-
-.tier-head span:not(:first-child) {
-  text-align: right;
-}
-
-.tier-row {
-  padding: var(--space-1) 0;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.tier-row:last-child {
-  border-bottom: none;
-}
-
-.tier-when {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-inline);
-  font-size: var(--text-sm);
-  font-weight: var(--font-regular);
-  color: var(--text-primary);
-}
-
-/* The multiplier column: a right-aligned cell holding either a fixed ×N chip
-   (normal / public holiday) or the editable overtime box, so the factor reads as its
-   own spreadsheet column. */
-.tier-mult-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-0-5);
-}
-
-/* Editable overtime multiplier — the ×N chip becomes a small typeable box, with the
-   "standard ×N" snap-back link stacked under it when the job has its own figure. */
-.tier-mult-editable {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-0-5);
-}
-
-.tier-mult-box {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-0-5);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-sm);
-  font-weight: var(--font-regular);
-  color: var(--text-tertiary);
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: var(--space-0-5) var(--space-1) var(--space-0-5) var(--space-1-5);
-}
-
-/* The number inside every multiplier box — the live input and the read-only static
-   span share the exact width + right alignment, so all four rows line up as one column. */
-.tier-mult-box input,
-.tier-mult-static {
-  width: 3.2em;
-  border: none;
-  background: transparent;
-  padding: var(--space-0-5);
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-xs);
-  text-align: right;
-}
-
-.tier-mult-box input:focus {
-  outline: none;
-}
-
-/* A fixed (non-typeable) multiplier cell — same box shell, just no focus ring */
-.tier-mult-box--static {
-  cursor: default;
-}
-
-/* The box is too small for the browser's up/down steppers — type the number instead */
-.tier-mult-box input::-webkit-inner-spin-button,
-.tier-mult-box input::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.tier-mult-box input[type='number'] {
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-
-.tier-mult-box:focus-within {
-  border-color: var(--border-focus);
-  box-shadow: var(--focus-ring-sm);
-}
-
-/* A hand-overridden multiplier: same amber tint as an edited hours box */
-.tier-mult-editable--edited .tier-mult-box {
-  border-color: var(--warning-color);
-  background: color-mix(in srgb, var(--warning-color) 14%, var(--surface));
-}
-
-.tier-mult-editable--edited .tier-mult-box input {
-  color: var(--text-primary);
-}
-
-.tier-hours-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-0-5);
-}
-
-.tier-hours-cell input {
-  width: 100%;
-  padding: var(--space-1-5) var(--space-2);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-sm);
-  text-align: right;
-}
-
-.tier-hours-cell input:focus {
-  outline: none;
-  border-color: var(--border-focus);
-  box-shadow: var(--focus-ring-sm);
-}
-
-/* An edited (hand-overridden) tier: amber tint on the row's hours box */
-.tier-row--edited .tier-hours-cell input {
-  border-color: var(--warning-color);
-  background: color-mix(in srgb, var(--warning-color) 14%, var(--surface));
-}
-
-/* The small "edited" tag beside a hand-edited row's label */
-.tier-edited-tag {
-  padding: 0 var(--space-1-5);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--warning-color) 18%, var(--surface));
-  color: var(--warning-ink);
-  font-size: var(--text-2xs);
-  font-weight: var(--font-bold);
-  line-height: 1.6;
-}
-
-/* Under a hand-edited row: the way back to the automatic figure, on its own full-width
-   line (the hours and multiplier columns are too narrow to hold the words). */
-.tier-fixes {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--space-0-5) var(--gap-field);
-  font-size: var(--text-sm);
-}
-
-.tier-help {
-  margin: 0;
-  padding: 0 var(--space-4) var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-
-.tier-rate {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  text-align: right;
-}
-
-.tier-amount {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-sm);
-  font-weight: var(--font-bold);
-  color: var(--text-primary);
-  text-align: right;
-}
-
-.tier-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gap-field);
-  flex-wrap: wrap;
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-
-/* Both hints say the same thing in the same voice — a figure on this screen is not the
-   one that was stored — so they share one rule rather than two copies of it. The only
-   difference is only what they say: .tier-foot-edited reports hand-typed tier figures,
-   while .ledger-field-opening offers a stored figure back. */
-.tier-foot-edited,
-.ledger-field-opening {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gap-inline);
-  color: var(--warning-ink);
-  font-weight: var(--font-regular);
-}
-
-/* The same control reused under a ledger field. The column is only as wide as a money
-   box, so the figure and the link together overrun it at almost any amount — left to
-   wrap they broke at whatever point the number's length happened to fall, and the dot
-   that joined them could end up alone at the head of the second line. They now sit on
-   their own lines by design, and the dot is gone with the wrap it existed to survive. */
-.ledger-field-revert {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
-  font-size: var(--text-sm);
-  line-height: 1.45;
-}
-
-.ledger-op,
-.ledger-eq {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-  text-align: center;
-  padding-bottom: var(--space-1-5);
-}
-
-.ledger-total {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-base);
-  font-weight: var(--font-bold);
-  color: var(--text-primary);
-  text-align: right;
-  padding-bottom: var(--space-1-5);
 }
 
 .btn-link {
@@ -3455,121 +3245,38 @@
   color: var(--text-secondary);
 }
 
-/* The four lines the grand total adds up, closing the sheet */
-.costing-summary {
-  margin: 0;
-  padding: var(--space-3) var(--space-5) var(--space-4);
-  border-top: 1px solid var(--border-color);
+/* The sum line closing the sheet: labour + other costs = grand total, the only grand total */
+.costing-total {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  max-width: 24rem;
-  margin-left: auto;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--gap-group);
+  margin: var(--gap-section) var(--pad-card) 0;
+  padding-top: var(--space-4);
+  border-top: 2px solid var(--text-primary);
 }
 
-.costing-summary-row {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--gap-field);
+.costing-total-parts {
   font-size: var(--text-sm);
   color: var(--text-secondary);
-}
-
-.costing-summary-row dt,
-.costing-summary-row dd {
-  margin: 0;
-}
-
-.costing-summary-row dd {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
-.costing-summary-row--grand {
-  margin-top: var(--space-1);
-  padding-top: var(--space-1-5);
-  border-top: 1px solid var(--border-color);
+.costing-total-label {
+  font-size: var(--text-sm);
   font-weight: var(--font-bold);
   color: var(--text-primary);
 }
 
-/* Grand total — the hero figure, riding in the sticky header so it never scrolls away */
-.costing-grand {
-  display: flex;
-  align-items: baseline;
-  gap: var(--gap-field);
-  margin-left: auto;
-  padding: var(--space-1-5) var(--space-4);
-  background: var(--primary-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-}
-
-.costing-grand-label {
-  font-size: var(--text-sm);
-  font-weight: var(--font-bold);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
-  color: var(--text-inverse);
-  opacity: 0.85;
-  white-space: nowrap;
-}
-
-.costing-grand-value {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-xl);
+.costing-total-value {
+  font-size: var(--text-2xl);
   font-weight: var(--font-bold);
   letter-spacing: var(--tracking-tight);
-  color: var(--text-inverse);
+  color: var(--text-primary);
   white-space: nowrap;
-}
-
-/* Narrow widths: stack each line into two columns, drop the operators. Off the
-   canonical 768/1024 grid on purpose, and narrower than the ledger's own 700px
-   above: the tier ladder's rate column is the last thing this sheet can spare,
-   and it can't spare it until the row is already this tight. */
-@media (max-width: 600px) {
-  .ledger-line {
-    grid-template-columns: 1fr 1fr;
-    align-items: stretch;
-    gap: var(--space-2) var(--space-3);
-  }
-  .ledger-cat {
-    grid-column: 1 / -1;
-    padding-bottom: 0;
-  }
-  .ledger-op,
-  .ledger-eq {
-    display: none;
-  }
-  .ledger-total {
-    grid-column: 1 / -1;
-    padding-bottom: 0;
-  }
-  .ledger-note {
-    grid-column: 1 / -1;
-  }
-  /* The grand total takes its own line above the save status on a narrow screen */
-  .costing-grand {
-    margin-left: 0;
-    width: 100%;
-    justify-content: space-between;
-  }
-  .labour-block {
-    margin-left: var(--space-3);
-    margin-right: var(--space-3);
-  }
-  /* Tighten the rate ladder: rate column drops off, when + mult + hours + amount stay */
-  .tier-head,
-  .tier-row {
-    grid-template-columns: minmax(0, 1fr) 60px 72px 92px;
-    column-gap: var(--gap-tight);
-  }
-  .tier-head span:nth-child(4),
-  .tier-rate {
-    display: none;
-  }
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 /* The save lock is a disabled fieldset; strip the browser's fieldset chrome so it is invisible. */
