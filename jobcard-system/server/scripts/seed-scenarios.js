@@ -5,12 +5,12 @@
  * that walks coverage counters across every axis the app supports, so the demo
  * data exercises ALL of: each status, each job type, each
  * material, each treatment (incl. the free-text "Other"), each drawing type,
- * each customer-property value, the repeat-job flag, and every priority.
+ * each customer-property value, repeat jobs, and every priority.
  *
  * It is deterministic (no randomness) so re-seeding always yields the same set.
  *
  * Output shape per job (consumed by server/scripts/seed-mock-data.js):
- *   description, quoteReference, poNumber?, status, priority, isRepeat,
+ *   description, poNumber?, status, previousStatus?, requiresPo?, priority, repeatOf,
  *   contact, qualityLevel, daysAgoCreated, daysFromNowDue, invoicedDaysAgo?,
  *   costing?, items[], assignees[], notes[], timeEntries[]
  *   items[].treatment       — comma-separated treatment values, or null
@@ -19,18 +19,29 @@
 
 // ── Coverage axes (tag VALUES, matching seed-data tagValue output) ──
 const STATUS_PLAN = [
-  'QUOTE', 'QUOTE', 'QUOTE', 'QUOTE',
+  'TO_QUOTE', 'TO_QUOTE', 'TO_QUOTE', 'QUOTE_SENT',
   'OPEN', 'OPEN', 'OPEN', 'OPEN',
-  'AWAITING_MATERIAL', 'AWAITING_MATERIAL', 'AWAITING_MATERIAL', 'AWAITING_MATERIAL', 'AWAITING_MATERIAL',
+  'HOLD_MATERIAL', 'HOLD_SUBCONTRACT', 'HOLD_TOOLS', 'HOLD_CUSTOMER', 'HOLD_MATERIAL',
   'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS', 'IN_PROGRESS',
   'DONE', 'DONE', 'DONE', 'DONE',
-  'INVOICED', 'INVOICED', 'INVOICED', 'INVOICED',
+  'ARCHIVED', 'ARCHIVED', 'ARCHIVED', 'ARCHIVED',
   // Appended rather than interleaved, so every existing index above (including the
   // jobIdx-specific liveTimer/withOvertime picks below) keeps pointing at the same
   // job it always did.
-  'PO_REQUESTED', 'PO_REQUESTED',
-  'CUST_NOTIFIED', 'CUST_NOTIFIED',
+  'HOLD_PO', 'HOLD_PO',
+  'READY_TO_COLLECT', 'READY_TO_COLLECT',
+  'TO_COST', 'TO_INVOICE', 'CALL_FOR_PAYMENT', 'CALL_FOR_PAYMENT',
+  'ACTION_REQUIRED',
 ];
+
+// The two billing jobs whose customer needs a PO number for invoicing: the To be
+// Invoiced one has none yet (so the job card's red note and the "carry on?" question
+// both show), the first Call for Payment one has it.
+const PO_REQUIRED_PLAN = { TO_INVOICE: 'missing', CALL_FOR_PAYMENT: 'entered' };
+
+const QUOTING = new Set(['TO_QUOTE', 'QUOTE_SENT']);
+// The bill has gone out, so these carry an invoiced date.
+const BILLED = new Set(['CALL_FOR_PAYMENT', 'ARCHIVED']);
 
 const JOB_TYPES = ['MANUFACTURE', 'REPAIR', 'MODIFY', 'FABRICATE', 'SUPPLY', 'REVERSE_ENGINEER', 'INSPECTION', 'CAD_DRAWINGS', 'CONSULTATION', 'ONSITE'];
 const MATERIALS = ['STEEL', 'STAINLESS_STEEL', 'ALUMINIUM', 'BRASS', 'COPPER', 'BRONZE', 'CAST_IRON', 'TITANIUM', 'PLASTIC'];
@@ -66,31 +77,47 @@ const GRADE = {
 const NO_DIMS = new Set(['INSPECTION', 'CAD_DRAWINGS', 'CONSULTATION', 'SUPPLY']);
 
 const CONTEXT = {
-  QUOTE: 'quote pending customer approval',
+  TO_QUOTE: 'quote to be written',
+  QUOTE_SENT: 'quote sent, awaiting customer approval',
   OPEN: 'approved, scheduled to start',
-  AWAITING_MATERIAL: 'awaiting material from supplier',
-  PO_REQUESTED: 'purchase order requested from customer',
+  HOLD_PO: 'on hold for the customer\'s purchase order',
+  HOLD_MATERIAL: 'on hold for material from supplier',
+  HOLD_SUBCONTRACT: 'on hold while out at the subcontractor',
+  HOLD_TOOLS: 'on hold for tooling',
+  HOLD_CUSTOMER: 'on hold waiting on the customer',
   IN_PROGRESS: 'machining underway',
-  DONE: 'complete, awaiting collection',
-  CUST_NOTIFIED: 'customer notified, ready to invoice',
-  INVOICED: 'completed and invoiced',
+  DONE: 'complete, QC signed off',
+  READY_TO_COLLECT: 'ready for the customer to collect',
+  TO_COST: 'collected, to be costed',
+  TO_INVOICE: 'costed, to be invoiced',
+  CALL_FOR_PAYMENT: 'invoiced, payment being chased',
+  ACTION_REQUIRED: 'needs someone to look at it',
+  ARCHIVED: 'paid and archived',
 };
 const NOTES = {
+  QUOTE_SENT: ['Quote emailed to the customer.', 'Following up on the quote.'],
   OPEN: ['Drawing approved, tooling list prepared.', 'Scheduled to start next shift.'],
-  AWAITING_MATERIAL: ['Bar stock ordered — ETA 5 working days.', 'Waiting on casting from the foundry.'],
-  PO_REQUESTED: ['Quote confirmed — purchase order requested from customer.', 'Following up with customer for a PO number.'],
+  HOLD_PO: ['Quote confirmed — purchase order requested from customer.', 'Following up with customer for a PO number.'],
+  HOLD_MATERIAL: ['Bar stock ordered — ETA 5 working days.', 'Waiting on casting from the foundry.'],
+  HOLD_SUBCONTRACT: ['Sent out for heat treatment — back Thursday.', 'At the platers, chasing a return date.'],
+  HOLD_TOOLS: ['Waiting on a replacement insert holder.', 'Special reamer on order.'],
+  HOLD_CUSTOMER: ['Asked the customer to confirm the tolerance.', 'Waiting on the customer to drop off the sample.'],
   IN_PROGRESS: ['First item machined, first-off inspection passed.', 'Setup complete, running on the CNC now.'],
   DONE: ['All items complete, QC signed off.', 'Finished and ready for customer collection.'],
-  CUST_NOTIFIED: ['Customer notified that the job is complete.', 'Awaiting customer sign-off before invoicing.'],
-  INVOICED: ['Completed, collected, and invoiced.', 'Final inspection passed — invoiced.'],
+  READY_TO_COLLECT: ['Customer told the job is ready to collect.', 'Packed and waiting at the front counter.'],
+  TO_COST: ['Collected — over to the office for costing.', 'Customer picked it up this morning.'],
+  TO_INVOICE: ['Costing checked, ready to bill.', 'Hours and material totalled.'],
+  CALL_FOR_PAYMENT: ['Invoice sent — chasing payment.', 'Customer says payment is on its way.'],
+  ACTION_REQUIRED: ['Drawing and sample don\'t match — someone needs to call the customer.', 'Material arrived damaged.'],
+  ARCHIVED: ['Completed, collected, and paid.', 'Final inspection passed — paid.'],
 };
 
-const STARTED = new Set(['IN_PROGRESS', 'DONE', 'CUST_NOTIFIED', 'INVOICED']);
-const FULLY_MACHINED = new Set(['DONE', 'CUST_NOTIFIED', 'INVOICED']);
-const COSTED = new Set(['IN_PROGRESS', 'DONE', 'CUST_NOTIFIED', 'INVOICED']);
+const STARTED = new Set(['IN_PROGRESS', 'DONE', 'READY_TO_COLLECT', 'TO_COST', 'TO_INVOICE', 'CALL_FOR_PAYMENT', 'ACTION_REQUIRED', 'ARCHIVED']);
+const FULLY_MACHINED = new Set(['DONE', 'READY_TO_COLLECT', 'TO_COST', 'TO_INVOICE', 'CALL_FOR_PAYMENT', 'ARCHIVED']);
+const COSTED = new Set(['IN_PROGRESS', 'DONE', 'READY_TO_COLLECT', 'TO_COST', 'TO_INVOICE', 'CALL_FOR_PAYMENT', 'ACTION_REQUIRED', 'ARCHIVED']);
 // Base age (days ago created) per status — terminal jobs are older than fresh ones.
-const BASE_AGE = { QUOTE: 2, OPEN: 3, AWAITING_MATERIAL: 6, PO_REQUESTED: 7, IN_PROGRESS: 9, DONE: 22, CUST_NOTIFIED: 26, INVOICED: 32 };
-const BASE_DUE = { QUOTE: 21, OPEN: 14, AWAITING_MATERIAL: 18, PO_REQUESTED: 12, IN_PROGRESS: 8, DONE: 3, CUST_NOTIFIED: -3, INVOICED: -8 };
+const BASE_AGE = { TO_QUOTE: 2, QUOTE_SENT: 4, OPEN: 3, HOLD_PO: 7, HOLD_MATERIAL: 6, HOLD_SUBCONTRACT: 8, HOLD_TOOLS: 5, HOLD_CUSTOMER: 6, IN_PROGRESS: 9, ACTION_REQUIRED: 10, DONE: 22, READY_TO_COLLECT: 26, TO_COST: 28, TO_INVOICE: 29, CALL_FOR_PAYMENT: 31, ARCHIVED: 32 };
+const BASE_DUE = { TO_QUOTE: 21, QUOTE_SENT: 18, OPEN: 14, HOLD_PO: 12, HOLD_MATERIAL: 18, HOLD_SUBCONTRACT: 15, HOLD_TOOLS: 16, HOLD_CUSTOMER: 13, IN_PROGRESS: 8, ACTION_REQUIRED: 4, DONE: 3, READY_TO_COLLECT: -3, TO_COST: -4, TO_INVOICE: -5, CALL_FOR_PAYMENT: -6, ARCHIVED: -8 };
 
 function buildScenarios(contacts, qualityLevels, opts = {}) {
   const workerCount = opts.workerCount || 5;
@@ -103,12 +130,14 @@ function buildScenarios(contacts, qualityLevels, opts = {}) {
   const rot = (arr, key) => arr[c[key]++ % arr.length];
   const nextWorker = () => c.worker++ % workerCount;
 
-  let qtNum = 142;   // quote refs count DOWN from here as jobs get older
-  let poNum = 44950; // PO numbers likewise
+  let poNum = 44950; // PO numbers count DOWN from here as jobs get older
+  const poRequiredUsed = new Set();
 
   const jobs = [];
   STATUS_PLAN.forEach((status, jobIdx) => {
-    const itemCount = status === 'QUOTE' ? (1 + (jobIdx % 3)) : (1 + (jobIdx % 2)); // quotes 1-3 items, others 1-2
+    const poRequired = PO_REQUIRED_PLAN[status] && !poRequiredUsed.has(status) ? PO_REQUIRED_PLAN[status] : null;
+    if (poRequired) poRequiredUsed.add(status);
+    const itemCount = QUOTING.has(status) ? (1 + (jobIdx % 3)) : (1 + (jobIdx % 2)); // quotes 1-3 items, others 1-2
     const items = [];
     for (let n = 0; n < itemCount; n++) {
       const jobType = rot(JOB_TYPES, 'type');
@@ -132,14 +161,15 @@ function buildScenarios(contacts, qualityLevels, opts = {}) {
     const contact = contacts[c.contact++ % contacts.length];
     const qualityLevel = qualityLevels[c.qa++ % qualityLevels.length];
     const priority = rot(PRIORITIES, 'prio');
-    const isRepeat = jobIdx % 5 === 0;
+    // Every fifth job repeats the job listed just before it (repeatOf: its list position).
+    const repeatOf = jobIdx % 5 === 0 && jobIdx > 0 ? jobIdx - 1 : null;
     const daysAgoCreated = BASE_AGE[status] + (jobIdx % 4);
     const daysFromNowDue = BASE_DUE[status] - (jobIdx % 3);
     const hasTreatment = items.some(it => it.treatment);
 
-    // Assignees: 1-3 distinct workers (QUOTE jobs are unassigned).
+    // Assignees: 1-3 distinct workers (quoting jobs are unassigned).
     const assignees = [];
-    if (status !== 'QUOTE') {
+    if (!QUOTING.has(status)) {
       const count = 1 + (jobIdx % 3);
       for (let a = 0; a < count; a++) {
         const w = nextWorker();
@@ -149,7 +179,7 @@ function buildScenarios(contacts, qualityLevels, opts = {}) {
 
     // Notes: one or two, except fresh quotes which have none.
     const notes = [];
-    if (status !== 'QUOTE' && assignees.length) {
+    if (!QUOTING.has(status) && assignees.length) {
       const pool = NOTES[status] || [];
       const noteCount = Math.min(pool.length, 1 + (jobIdx % 2));
       for (let k = 0; k < noteCount; k++) {
@@ -157,8 +187,8 @@ function buildScenarios(contacts, qualityLevels, opts = {}) {
       }
     }
 
-    // One INVOICED job carries a manually-entered special-labour line (weekend overtime).
-    const withOvertime = status === 'INVOICED' && jobIdx === 27;
+    // One archived job carries a manually-entered special-labour line (weekend overtime).
+    const withOvertime = status === 'ARCHIVED' && jobIdx === 27;
 
     // Time entries, scaled to how far the job has progressed.
     const timeEntries = [];
@@ -212,16 +242,18 @@ function buildScenarios(contacts, qualityLevels, opts = {}) {
     const firstPart = items[0].desc.split(' — ')[0].toLowerCase();
     jobs.push({
       description: `${VERB[items[0].jobType]} ${firstPart} — ${CONTEXT[status]}`,
-      quoteReference: `QT-2026-${String(qtNum--).padStart(4, '0')}`,
-      poNumber: status === 'QUOTE' ? null : `PO-${poNum--}`,
+      poNumber: QUOTING.has(status) || poRequired === 'missing' ? null : `PO-${poNum--}`,
       status,
+      // Action Required remembers where the job was, so "Put back" has somewhere to go.
+      previousStatus: status === 'ACTION_REQUIRED' ? 'IN_PROGRESS' : null,
+      requiresPo: Boolean(poRequired),
       priority,
-      isRepeat,
+      repeatOf,
       contact,
       qualityLevel,
       daysAgoCreated,
       daysFromNowDue,
-      invoicedDaysAgo: status === 'INVOICED' ? Math.max(1, Math.floor(daysAgoCreated / 3)) : undefined,
+      invoicedDaysAgo: BILLED.has(status) ? Math.max(1, Math.floor(daysAgoCreated / 3)) : undefined,
       costing,
       items,
       assignees,

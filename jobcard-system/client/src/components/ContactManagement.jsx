@@ -21,7 +21,7 @@ import { changedFields } from '../utils/changedFields';
 import { NAME_MAX } from '../../../server/src/shared/names';
 import './ContactManagement.css';
 
-const blankCompany = () => ({ name: '', address: '', notes: '' });
+const blankCompany = () => ({ name: '', requiresPo: false, address: '', notes: '' });
 
 // Which box on the customer form each field named in a server refusal belongs to,
 // and which form value each box shows.
@@ -156,6 +156,7 @@ export default function ContactManagement() {
     resetFieldErrors();
     const opened = {
       name: company.name || '',
+      requiresPo: Boolean(company.requiresPo),
       address: company.address || '',
       notes: company.notes || ''
     };
@@ -344,6 +345,25 @@ export default function ContactManagement() {
                 placeholder="Company name…"
               />
               <FieldError {...errorProps('companyName')} message={errorFor('companyName')} />
+            </div>
+
+            {/* The customer's accounts won't take an invoice without their PO number:
+                the job card shows a red reminder and billing moves ask first. */}
+            <div className="form-group">
+              <label className="toggle-label" htmlFor="requiresPo">
+                <input
+                  id="requiresPo"
+                  className="toggle-input"
+                  type="checkbox"
+                  checked={formData.requiresPo}
+                  onChange={(e) => setFormData({ ...formData, requiresPo: e.target.checked })}
+                />
+                <span className="toggle-switch" aria-hidden="true" />
+                <span className="toggle-content">
+                  <span className="toggle-title">Customer requires PO#</span>
+                  <span className="toggle-desc">Their invoices need a purchase order number. Their job cards show a red reminder, and billing asks first when none is entered.</span>
+                </span>
+              </label>
             </div>
 
             <div className={groupClass('address')}>

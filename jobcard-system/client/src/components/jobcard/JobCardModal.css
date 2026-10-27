@@ -339,7 +339,7 @@
   box-shadow: none;
 }
 
-/* Nothing to press: a worker on an office status, or an invoiced job. Same pill,
+/* Nothing to press: a worker on an office status, or a paid and archived job. Same pill,
    no lift, plain cursor — the title says why. */
 .jc-strip-status-static,
 .jc-strip-status-static:hover {
@@ -617,6 +617,20 @@
   border-bottom: 1px solid var(--border-color);
 }
 
+/* The Customer Input heading's standing reminder: this customer's accounts won't take
+   an invoice without their PO number. Always red, in words (ink token), bold. It sits
+   right after the heading; the save status, if any, stays at the far end. */
+.po-required-note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-inline);
+  margin-left: var(--gap-group);
+  margin-right: auto;
+  color: var(--danger-ink);
+  font-weight: var(--font-bold);
+  font-size: var(--text-sm);
+}
+
 .form-section-header .form-section-title {
   flex: 1;
   margin-bottom: 0;
@@ -728,6 +742,43 @@
 .customer-option:hover,
 .customer-option.is-active {
   background: rgba(var(--accent-rgb), 0.08);
+}
+
+/* A two-line suggestion (previous job, customer): what you are choosing in bold with
+   a grey note beside it on the first line, a smaller grey detail under them. Each
+   piece stays on one line and is cut short with "…" — the row's own flex spread
+   would otherwise squeeze all of them side by side until a job number broke in two. */
+.customer-option.suggestion-two-line {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: var(--space-0-5);
+}
+.suggestion-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-tight);
+  min-width: 0;
+}
+.suggestion-main {
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: var(--font-bold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.suggestion-aside,
+.suggestion-sub {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+.suggestion-sub {
+  font-size: var(--text-xs);
 }
 
 /* The "create this one" row — a drawn icon sitting on the text baseline. */
@@ -1202,7 +1253,9 @@
    whole row of controls matches. It rotates while the list is open (input
    focused). Room is reserved on the right so typed text never runs under it. */
 .line-item-material .autocomplete-container input,
-.line-item-treatment-field .autocomplete-container input {
+.line-item-treatment-field .autocomplete-container input,
+#jc-repeat-job-reference,
+#jc-company-name {
   padding-right: var(--space-8);
 }
 
@@ -1218,29 +1271,6 @@
 
 .autocomplete-caret.is-open {
   transform: translateY(-50%) rotate(180deg);
-}
-
-/* Native single-selects in the modal (line-item Job Type, plus Quality Level /
-   Worker / Part in the forms) drop the operating system's arrow for the same
-   chevron the custom pickers draw, so open or closed they all match. The
-   qualified selectors outrank the base field rules so the chevron image sticks
-   even where a `background` shorthand would otherwise wipe it (notably dark
-   mode). */
-.jc-zoom-root .form-group select,
-.line-item-job-type select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  padding-right: var(--space-8);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%233b4563' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.6rem center;
-  background-size: 14px;
-}
-
-.dark-mode .jc-zoom-root .form-group select,
-.dark-mode .line-item-job-type select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3c0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
 }
 
 /* Open menus for the native selects need explicit option colours or they render
@@ -3357,8 +3387,8 @@
 }
 
 .readonly-badge.treatment {
-  background: var(--status-awaiting-material-bg);
-  color: var(--status-awaiting-material-text);
+  background: var(--status-hold-bg);
+  color: var(--status-hold-text);
 }
 
 /* =============================================

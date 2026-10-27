@@ -75,13 +75,13 @@ const companyQueries = {
   // their job folders ambiguous on disk. Archived customers count too.
 
   create: db.prepare(`
-    INSERT INTO companies (id, name, address, notes, created_at, updated_at)
-    VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    INSERT INTO companies (id, name, address, notes, requires_po, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare(`
     UPDATE companies
-    SET name = ?, address = ?, notes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    SET name = ?, address = ?, notes = ?, requires_po = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 

@@ -1,5 +1,6 @@
 import { User, X } from 'lucide-react';
 import { ACTIVE_FILTER_OPTIONS } from './JobCardList.constants';
+import { ALERT_STATUS } from './jobcard/constants';
 import { displayName } from '../../../server/src/shared/names';
 
 export default function JobCardListFilters({
@@ -14,6 +15,7 @@ export default function JobCardListFilters({
   onMyJobsOnlyChange,
   filter,
   onFilterChange,
+  actionRequiredCount,
   columnsMenu
 }) {
   return (
@@ -65,10 +67,12 @@ export default function JobCardListFilters({
             {ACTIVE_FILTER_OPTIONS.filter(opt => opt.value !== 'OVERDUE').map((opt) => (
               <button
                 key={opt.value}
-                className={`btn btn-sm ${filter === opt.value ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn btn-sm ${filter === opt.value ? 'btn-primary' : 'btn-secondary'}${opt.value === ALERT_STATUS ? ' filter-btn-alert' : ''}`}
                 onClick={() => onFilterChange(opt.value)}
               >
+                {opt.value === ALERT_STATUS && actionRequiredCount > 0 && <span className="filter-alert-dot" aria-hidden="true" />}
                 {opt.label}
+                {opt.value === ALERT_STATUS && <span className="filter-count">{actionRequiredCount}</span>}
               </button>
             ))}
           </div>

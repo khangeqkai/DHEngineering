@@ -1,7 +1,7 @@
 const { jobcardQueries } = require('../db/database');
 const { JOB_CLOSED, JOB_CLOSED_MESSAGE } = require('../shared/closedJob');
 
-// One lock for every write to an already-invoiced (archived) job: once a job
+// One lock for every write to an already-archived (Paid – Archived) job: once a job
 // is filed away, nothing on it changes until it is unarchived. Mounted once
 // in index.js ahead of every /api/jobcards/:id route (app.use('/api/jobcards/:id', ...)),
 // so a route added later is locked by default instead of needing its own

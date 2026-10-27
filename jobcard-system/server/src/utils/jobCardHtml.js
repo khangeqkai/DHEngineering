@@ -173,8 +173,7 @@ function renderJobCardHtml(view) {
     <div class="cell"><div class="lbl">Date created</div><div class="val">${esc(v.dateCreated)}</div></div>
     <div class="cell"><div class="lbl">Due date</div><div class="val">${esc(v.dueDate)}</div></div>
     <div class="cell span"><div class="lbl">Company</div><div class="val">${esc(v.company)}</div></div>
-    <div class="cell"><div class="lbl">Customer PO number</div><div class="val">${esc(v.poNumber) || '&mdash;'}</div></div>
-    <div class="cell"><div class="lbl">Quote reference</div><div class="val">${esc(v.quoteReference) || '&mdash;'}</div></div>
+    <div class="cell span"><div class="lbl">Customer PO number</div><div class="val">${esc(v.poNumber) || '&mdash;'}</div></div>
   </div>
   <div class="items-h"><h2>Parts</h2><span class="count">${items.length}</span></div>
   ${items.map(it => renderItem(it, it.position)).join('')}

@@ -1,17 +1,29 @@
-import { PRIORITY_OPTIONS, STATUS_OPTIONS as JOB_STATUS_OPTIONS, SETTLED_STATUSES } from './jobcard/constants';
+import { PRIORITY_OPTIONS, STATUS_OPTIONS as JOB_STATUS_OPTIONS, SETTLED_STATUSES, STATUS_GROUPS, STATUS_GROUP_OF, ALERT_STATUS } from './jobcard/constants';
+import { standingStatus } from '../../../server/src/shared/jobStatus';
 
-// All + the one shared status list (server/src/shared/jobStatuses.json, via
-// jobcard/constants.js) + the list-only Overdue filter, in that order.
-export const STATUS_OPTIONS = [
+// The job list's filter buttons (active view only — the archived view has none):
+// All, Action Required, one button per status group, then the list-only Overdue
+// filter. Sixteen single statuses don't fit on one row; the Search page still
+// filters by each one. The Closed group is left out — Paid – Archived always files
+// a job away, so that button could only ever show an empty list — and so is the
+// Alert group, which is the Action Required button itself.
+export const ACTIVE_FILTER_OPTIONS = [
   { value: 'all', label: 'All' },
-  ...JOB_STATUS_OPTIONS,
+  { value: ALERT_STATUS, label: JOB_STATUS_OPTIONS.find(s => s.value === ALERT_STATUS).label },
+  ...STATUS_GROUPS.filter(g => g.value !== 'closed' && g.value !== 'alert'),
   { value: 'OVERDUE', label: 'Overdue' }
 ];
 
-// The job list's filter buttons (active view only — the archived view has none).
-// Invoicing always archives a job, so no job in the active view can be Invoiced;
-// that button could only ever show an empty list.
-export const ACTIVE_FILTER_OPTIONS = STATUS_OPTIONS.filter(opt => opt.value !== 'INVOICED');
+// Whether one job card shows under the chosen filter button.
+export const matchesStatusFilter = (card, filter, today) => {
+  if (filter === 'all') return true;
+  if (filter === 'OVERDUE') return isJobOverdue(card.dueDate, card.status, card.previousStatus, today);
+  if (filter === ALERT_STATUS) return card.status === ALERT_STATUS;
+  return STATUS_GROUP_OF[card.status] === filter;
+};
+
+// What the empty-list message calls a filter button.
+export const FILTER_LABELS = Object.fromEntries(ACTIVE_FILTER_OPTIONS.map(o => [o.value, o.label]));
 
 export const STATUS_LABELS = Object.fromEntries(JOB_STATUS_OPTIONS.map(s => [s.value, s.label]));
 
@@ -96,8 +108,8 @@ export const mergeColumnOrder = (saved) => {
   return merged;
 };
 
-// Normalize a status value (e.g. 'AWAITING_MATERIAL') into its color-class token
-// (e.g. 'awaiting-material'). Shared by every screen that colors a job status.
+// Normalize a status value (e.g. 'HOLD_MATERIAL') into its color-class token
+// (e.g. 'hold-material'). Shared by every screen that colors a job status.
 export const statusToken = (status) => (status || '').toLowerCase().replace(/_/g, '-');
 
 // Same treatment for priority, so a multi-word value like SAME_DAY yields the class
@@ -107,12 +119,15 @@ export const priorityToken = (priority) => (priority || '').toLowerCase().replac
 export const getStatusBadgeClass = (status) => (status ? `status-${statusToken(status)}` : '');
 
 // A job past its due date is only late while there is still something to do. Once the
-// work is finished — done, the customer has been told to collect, or it is invoiced —
+// work is finished — done, ready to collect or deliver, or in costing and billing —
 // the date has been met as far as the shop is concerned and the row stops going red.
 // One rule, shared by the list, the table and the job screen, so the three can never
 // disagree about which jobs are late. Dates are plain YYYY-MM-DD, so a string compare
 // is the whole comparison. The settled statuses themselves come from the one shared
 // jobStatuses.json (also read by statistics-helpers.js's FINISHED_STATUSES).
 
-export const isJobOverdue = (dueDate, status, today) =>
-  Boolean(dueDate && String(dueDate).trim() && dueDate < today && !SETTLED_STATUSES.includes(status));
+// A job flagged Action Required is judged by the status it remembers (standingStatus),
+// so flagging a finished job never turns its row red.
+export const isJobOverdue = (dueDate, status, previousStatus, today) =>
+  Boolean(dueDate && String(dueDate).trim() && dueDate < today
+    && !SETTLED_STATUSES.includes(standingStatus(status, previousStatus)));

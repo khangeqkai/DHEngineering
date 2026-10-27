@@ -20,18 +20,19 @@ export function showFormErrors(errors) {
   );
 }
 
-// The "this job declared files it doesn't have — invoice anyway?" confirm. Shared by
-// the job card save (JobCardModal) and the header status dropdown (JobIdentityStrip)
-// so both speak the same words. Also asks, in its own words, when the job's files
-// couldn't be checked at all. Returns true if the user chose to invoice anyway.
-export async function confirmInvoiceAnyway(warnings, showConfirm) {
+// The "this job declared files it doesn't have — carry on anyway?" confirm, asked when
+// a job first reaches billing and again when it is archived, by the one status-change
+// flow (changeJobStatus.js), so the job screen and the job list speak the same words.
+// Also asks, in its own words, when the job's files couldn't be checked at all.
+// Returns true if the user chose to carry on.
+export async function confirmFilesAnyway(warnings, showConfirm) {
   // The storage location couldn't be reached, so nothing is known about the
   // job's files — say that, rather than showing an empty list of gaps.
   if (warnings?.filesUnreachable) {
     return !!(await showConfirm?.({
       title: 'Files not checked',
-      message: "This job's files couldn't be checked because the job folders location can't be reached right now. Invoice anyway?",
-      confirmLabel: 'Invoice anyway',
+      message: "This job's files couldn't be checked because the job folders location can't be reached right now. Carry on anyway?",
+      confirmLabel: 'Carry on',
       cancelLabel: 'Go back',
       confirmVariant: 'warning'
     }));
@@ -45,20 +46,20 @@ export async function confirmInvoiceAnyway(warnings, showConfirm) {
         <br />
         {gaps.map((g, i) => <span key={i}>• {g}<br /></span>)}
         <br />
-        Invoice anyway?
+        Carry on anyway?
       </span>
     ),
-    confirmLabel: 'Invoice anyway',
+    confirmLabel: 'Carry on',
     cancelLabel: 'Go back',
     confirmVariant: 'warning'
   }));
 }
 
 // The "this job has finished runs that needed the Critical sign-off but are still
-// missing an answer — invoice anyway?" confirm. Written like confirmInvoiceAnyway
-// above (same shape, same place in the invoicing flow, just the second checkpoint).
-// Returns true if the user chose to invoice anyway.
-export async function confirmInvoiceWithoutSignOff(warnings, showConfirm) {
+// missing an answer — carry on anyway?" confirm. Written like confirmFilesAnyway
+// above (same shape, same place in the flow, just the second checkpoint).
+// Returns true if the user chose to carry on.
+export async function confirmWithoutSignOff(warnings, showConfirm) {
   const list = warnings || [];
   return !!(await showConfirm?.({
     title: 'Inspection sign-off missing',
@@ -77,36 +78,68 @@ export async function confirmInvoiceWithoutSignOff(warnings, showConfirm) {
           </span>
         ))}
         <br />
-        Invoice anyway?
+        Carry on anyway?
       </span>
     ),
-    confirmLabel: 'Invoice anyway',
+    confirmLabel: 'Carry on',
     cancelLabel: 'Go back',
     confirmVariant: 'warning'
   }));
 }
 
-// The "mark as invoiced" confirm — archiving the job. Shared by the job screen's own
+// The "this customer needs a PO number for invoicing and the job has none" confirm —
+// the third checkpoint, asked on any billing move (To be Invoiced, Call for Payment,
+// Paid – Archived). A question, not a block: the PO may have come by phone or on paper.
+// Returns true if the user chose to carry on.
+export async function confirmWithoutPo(showConfirm) {
+  return !!(await showConfirm?.({
+    title: 'No PO number',
+    message: 'This customer needs a PO number for invoicing and none is entered. Carry on anyway?',
+    confirmLabel: 'Carry on',
+    cancelLabel: 'Go back',
+    confirmVariant: 'warning'
+  }));
+}
+
+// The "mark paid and archive" confirm. Shared by the job screen's own
 // status control (JobIdentityStrip) and the job list's status badge, so both speak the
 // same words. `total` is a fresh figure fetched from the server (only the job screen
 // can fetch one, since only it has costing access — the list passes nothing and gets
 // the plain message); `costingChangesSaved` swaps in the sentence noting unsaved
 // pricing was saved first. Returns true if the user chose to archive.
-export async function confirmMarkInvoiced(showConfirm, { total = null, costingChangesSaved = false, jobNumber = null } = {}) {
-  const baseMessage = 'It will be locked and moved to the archive. Unarchive it if it ever needs editing again.';
-  const message = (costingChangesSaved || typeof total === 'number')
-    ? (
-      <>
-        {baseMessage}
-        {costingChangesSaved && <><br />Your costing changes have been saved and will be billed.</>}
-        {typeof total === 'number' && <><br />Total: {formatMoney(total)}</>}
-      </>
-    )
-    : baseMessage;
+// The message under either billing question: what happens, then the saved-pricing
+// note and the fresh total when there are any.
+function billingMessage(baseMessage, { total, costingChangesSaved }) {
+  if (!costingChangesSaved && typeof total !== 'number') return baseMessage;
+  return (
+    <>
+      {baseMessage}
+      {costingChangesSaved && <><br />Your costing changes have been saved.</>}
+      {typeof total === 'number' && <><br />Total: {formatMoney(total)}</>}
+    </>
+  );
+}
+
+// The "send this job to billing" confirm, asked when a job first moves onto To be
+// Invoiced or Call for Payment — the moment the figure is about to be billed, so the
+// fresh total is shown here (same arguments as confirmMarkArchived below). Returns
+// true if the user chose to go ahead.
+export async function confirmStartBilling(showConfirm, { statusLabel, total = null, costingChangesSaved = false, jobNumber = null } = {}) {
   return !!(await showConfirm?.({
-    title: jobNumber ? `Invoice job ${jobNumber}?` : 'Invoice this job?',
+    title: jobNumber ? `Move job ${jobNumber} to ${statusLabel}?` : `Move this job to ${statusLabel}?`,
+    message: billingMessage('Check the total is what the customer will be billed.', { total, costingChangesSaved }),
+    confirmLabel: `Move to ${statusLabel}`,
+    cancelLabel: 'Go back',
+    confirmVariant: 'primary'
+  }));
+}
+
+export async function confirmMarkArchived(showConfirm, { total = null, costingChangesSaved = false, jobNumber = null } = {}) {
+  const message = billingMessage('It will be locked and moved to the archive. Unarchive it if it ever needs editing again.', { total, costingChangesSaved });
+  return !!(await showConfirm?.({
+    title: jobNumber ? `Mark job ${jobNumber} paid and archive it?` : 'Mark this job paid and archive it?',
     message,
-    confirmLabel: 'Invoice and lock',
+    confirmLabel: 'Archive and lock',
     cancelLabel: 'Go back',
     confirmVariant: 'primary'
   }));

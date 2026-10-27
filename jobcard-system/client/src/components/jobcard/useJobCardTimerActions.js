@@ -18,7 +18,6 @@ export function useJobCardTimerActions({
   isInvoiced = false,
   costingLoaded,
   refreshCosting,
-  refreshJobStatus,
   reloadTimeEntries,
   timer,
   showConfirm,
@@ -26,14 +25,13 @@ export function useJobCardTimerActions({
   dropAssignee,
   employees,
   currentUserId,
-  setFormData,
   onTimerChange,
-  // Raised after a hand-added, edited or deleted block: the server may have moved the
-  // job's status or put the worker on it, so the job list reloads when this job
+  // Raised after a hand-added, edited or deleted block: the server may have put the
+  // worker on the job, so the job list reloads when this job
   // closes — the same close-time flag the field, part and worker saves raise.
   onWorkSaved,
   // Whether the job window is still up (useStillMounted.js). A reply that lands after the
-  // window has closed must not go on to reload that job's lists, status or assignee
+  // window has closed must not go on to reload that job's lists or assignee
   // credit; the page-wide refreshes (onTimerChange) fire regardless, since the header
   // badge and job list aren't tied to the window.
   isWindowUp
@@ -49,9 +47,7 @@ export function useJobCardTimerActions({
     // failed isn't retried on every timer tick, and so this never writes hours onto a
     // still-default sheet ahead of the real figures landing.
     if (canSeePricing && costingLoaded) await refreshCosting();
-    if (!isWindowUp()) return;
-    await refreshJobStatus();
-  }, [isWindowUp, reloadTimeEntries, canSeePricing, costingLoaded, refreshCosting, refreshJobStatus]);
+  }, [isWindowUp, reloadTimeEntries, canSeePricing, costingLoaded, refreshCosting]);
 
   const handleSubmitEntryForm = useCallback(async () => {
     const result = await timer.submitEntryForm(reloadTimeEntriesAndCosting);
@@ -93,7 +89,7 @@ export function useJobCardTimerActions({
   };
 
   const handleStartItemTimer = useCallback(async (itemId, displayNumber, workerId, workerName) => {
-    // The server refuses this outright once a job is invoiced — reopening is
+    // The server refuses this outright once a job is archived — unarchiving is
     // the only way back in, so say that up front rather than let the attempt
     // fail silently against a job whose timer buttons are otherwise still live.
     if (isTimeLocked(isInvoiced)) {
@@ -109,18 +105,12 @@ export function useJobCardTimerActions({
     }
     await reloadTimeEntries();
     // Only when a timer actually started — the server may have auto-assigned that
-    // worker and nudged the status. A failed or cancelled attempt (including "stop &
+    // worker. A failed or cancelled attempt (including "stop &
     // start" queued behind the old run's fill-in form) credited nobody, so crediting
     // here would wrongly add the worker to the job for a timer that never ran.
     if (started) creditAssignee(workerId || currentUserId, employees);
-    try {
-      const fresh = await api.getJobcard(jobCardId);
-      if (isWindowUp() && fresh.status) setFormData(prev => ({ ...prev, status: fresh.status }));
-    } catch {
-      // Non-fatal — status will refresh next time the modal opens
-    }
     if (onTimerChange) onTimerChange();
-  }, [timer, showConfirm, reloadTimeEntries, onTimerChange, jobCardId, creditAssignee, employees, setFormData, currentUserId, isInvoiced, isWindowUp]);
+  }, [timer, showConfirm, reloadTimeEntries, onTimerChange, creditAssignee, employees, currentUserId, isInvoiced, isWindowUp]);
 
   // Both stop paths land here. A tap discarded as an accident is undone server-side,
   // so untick the worker it put on — a Save would otherwise put them straight back.
@@ -133,10 +123,9 @@ export function useJobCardTimerActions({
         dropAssignee(result.unassignedUserId);
       }
       await reloadTimeEntries();
-      if (isWindowUp()) await refreshJobStatus();
     }
     if (onTimerChange) onTimerChange();
-  }, [reloadTimeEntries, refreshJobStatus, onTimerChange, dropAssignee, isWindowUp]);
+  }, [reloadTimeEntries, onTimerChange, dropAssignee, isWindowUp]);
 
   const handleStopItemTimer = useCallback(
     () => timer.stopTimer().then(afterStop), [timer, afterStop]);

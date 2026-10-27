@@ -4,6 +4,7 @@
  */
 
 const path = require('path');
+const jobStatuses = require('../src/shared/jobStatuses.json');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 
@@ -155,10 +156,11 @@ const insertJobcard = db.prepare(`INSERT INTO jobcards (
   id, job_number, card_type, status, company_id, contact_id, contact_name, company_name,
   contact_phone, contact_email,
   quality_level, priority,
-  quote_reference, po_number,
-  description, due_date, is_repeat_job, created_by, updated_by, created_at,
-  archived, invoiced_date
+  po_number,
+  description, due_date, repeat_job_reference, created_by, updated_by, created_at,
+  archived, invoiced_date, previous_status
 ) VALUES (?, ?, 'JOB_CARD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+const markCompanyRequiresPo = db.prepare('UPDATE companies SET requires_po = 1 WHERE id = ?');
 
 const insertItem = db.prepare('INSERT INTO job_items (id, jobcard_id, item_number, qty, description, job_type, material, treatments, drawings_type, customer_property) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 const insertAssignee = db.prepare('INSERT INTO job_assignees (id, jobcard_id, user_id) VALUES (?, ?, ?)');
@@ -240,7 +242,7 @@ function buildTreatments(treatmentStr) {
 }
 
 // Generated job set covering every status, job type, material, treatment, drawing,
-// customer-property value, the repeat flag, and every priority — see seed-scenarios.js.
+// customer-property value, repeat jobs, and every priority — see seed-scenarios.js.
 const scenarios = SKIP_JOBS ? [] : buildScenarios(contacts, QUALITY_LEVELS, {
   workerCount: workers.length,
   machineNumbers: machines.map(m => m.number),
@@ -266,19 +268,21 @@ const createJobs = db.transaction(() => {
       const pad = (n) => String(n).padStart(2, '0');
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     })();
-    const archived = s.status === 'INVOICED' ? 1 : 0;
-    const invoicedDate = s.status === 'INVOICED'
+    const archived = s.status === jobStatuses.closedStatus ? 1 : 0;
+    const invoicedDate = s.invoicedDaysAgo !== undefined
       ? makeDate(s.invoicedDaysAgo, 16, 0).toISOString()
       : null;
+    if (s.requiresPo) markCompanyRequiresPo.run(s.contact.companyId);
 
     insertJobcard.run(
       jobId, jobNumber, s.status, s.contact.companyId, s.contact.id, s.contact.contactName, s.contact.companyName,
       s.contact.phone, s.contact.email,
       s.qualityLevel, s.priority,
-      s.quoteReference || null, s.poNumber || null,
-      s.description, dueDate, s.isRepeat ? 1 : 0,
+      s.poNumber || null,
+      // Job numbers run in list order from DH-00001, so list position n is DH-(n+1).
+      s.description, dueDate, s.repeatOf != null ? `DH-${String(s.repeatOf + 1).padStart(5, '0')}` : null,
       adminId, adminId, createdAt,
-      archived, invoicedDate
+      archived, invoicedDate, s.previousStatus || null
     );
 
     // Remember each line's id by its position number, so time entries can link to
@@ -373,9 +377,9 @@ createJobs();
 
 // A few @mentions so a fresh install has something waiting: the admin asked on two jobs (one
 // of them twice), one worker asked on a third, and a second worker who was asked and has
-// already replied (that mention is answered). Open ones sit only on jobs that aren't invoiced.
+// already replied (that mention is answered). Open ones sit only on jobs that aren't archived.
 const seedMentions = db.transaction(() => {
-  const liveJobs = jobsForHistory.filter(j => j.status !== 'INVOICED');
+  const liveJobs = jobsForHistory.filter(j => j.status !== jobStatuses.closedStatus);
   if (liveJobs.length < 4 || workers.length < 2) return;
   const admin = users[0];
   const [w1, w2] = workers;
@@ -467,10 +471,10 @@ if (SKIP_JOBS) {
   const lastJob = `DH-${String(scenarios.length).padStart(5, '0')}`;
   const nextJob = `DH-${String(scenarios.length + 1).padStart(5, '0')}`;
   console.log(`  - ${scenarios.length} job cards covering every status, job type, material, treatment, drawing, and customer-property value`);
-  console.log('  - Repeat-job flag, every priority (incl. None), and a free-text "Other" treatment all represented');
-  console.log('  - Quote references on all jobs; PO numbers on post-quote jobs');
+  console.log('  - Repeat jobs (naming the job they repeat), every priority (incl. None), and a free-text "Other" treatment all represented');
+  console.log('  - PO numbers on post-quote jobs; customers on two billing jobs need a PO for invoicing (one job still without)');
   console.log('  - Scrap pieces and a live running timer recorded');
-  console.log('  - Pricing on in-progress, treatment, done, and invoiced jobs');
+  console.log('  - Pricing on in-progress, on-hold, done, billing and archived jobs');
   console.log('  - Activity history backfilled for setup, jobs, notes, and timers');
   console.log(`  - Job numbering: DH-00001 to ${lastJob}, next: ${nextJob}`);
 }

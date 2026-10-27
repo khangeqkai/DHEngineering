@@ -1,3 +1,4 @@
+import { ChevronDown } from 'lucide-react';
 import { toTitleCase } from '../../../utils/formatters';
 import FieldError from '../../common/FieldError';
 
@@ -113,8 +114,10 @@ export default function CustomerSection({
                 aria-invalid={contactErrorFor('companyName') ? true : undefined}
                 aria-describedby={contactErrorFor('companyName') ? contactErrorProps('companyName').id : undefined}
                 autoComplete="off"
+                placeholder="Type or choose a customer…"
                 className={!contactFormData.companyName.trim() ? 'field-required' : ''}
               />
+              <ChevronDown size={14} className={`autocomplete-caret${companyListOpen ? ' is-open' : ''}`} aria-hidden="true" />
               {companyListOpen && (
                 <div className="customer-dropdown" id={companyNav.listId} role="listbox" aria-label="Matching customers">
                   {companyMatches.map((c, i) => (
@@ -123,13 +126,15 @@ export default function CustomerSection({
                       id={`${companyNav.listId}-${i}`}
                       role="option"
                       aria-selected={i === companyNav.activeIndex}
-                      className={`customer-option${i === companyNav.activeIndex ? ' is-active' : ''}`}
+                      className={`customer-option suggestion-two-line${i === companyNav.activeIndex ? ' is-active' : ''}`}
                       onMouseDown={() => companyNav.choose(i)}
                       onMouseEnter={() => companyNav.setActiveIndex(i)}
                     >
-                      <strong>{c.name}</strong>
-                      {(c.people || []).length > 0 && (
-                        <span className="contact-name"> ({(c.people || []).map(p => p.contactName).filter(Boolean).join(', ')})</span>
+                      {/* The customer in bold, its people under it — each cut short with
+                          "…" rather than wrapping. */}
+                      <span className="suggestion-main">{c.name}</span>
+                      {(c.people || []).some(p => p.contactName) && (
+                        <span className="suggestion-sub">{(c.people || []).map(p => p.contactName).filter(Boolean).join(', ')}</span>
                       )}
                     </div>
                   ))}

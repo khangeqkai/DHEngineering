@@ -14,23 +14,24 @@
  * not know into a stray "Field: value" line. Keep each block below in step with its
  * live writer, named in the comment above it.
  *
- * Status moves follow who really makes them. Logged work moves a job to In Progress
- * and then Done, and that move rides INSIDE the stop-timer entry (the first finished
- * run records Open -> In Progress, the run that completes the job records the move to
- * Done; a job with one run goes straight Open -> Done). Only moves a person makes by
- * hand (Material/Service, Cust. Notified, Invoiced) are separate admin update rows.
+ * Status is only ever set by hand, so every move is its own update row, written the
+ * way people really make them: the first worker moves the job to In Progress just
+ * before their first run, the worker who finishes the last run moves it to Done (when
+ * the job is at or past Done), and the office makes every move after that (an admin
+ * update row, with the filing-away keys on Paid – Archived).
  *
  * This is a deliberate, bounded reconstruction, not a perfect audit: one create per
  * entity, the status moves per job, plus note and timer rows.
  */
 
-// Statuses a job can be born at and keep with no work logged. Every other job is
-// born at OPEN (the app's default); logged work and manual moves take it from there.
-const BORN_AS = new Set(['QUOTE', 'OPEN', 'PO_REQUESTED']);
+const jobStatuses = require('../src/shared/jobStatuses.json');
 
-// Where logged work leaves a job (what syncStatusToWork would settle on): Done once
-// the job is at or past Done, otherwise In Progress. Mirrors jobStatusAuto.js.
-const AT_OR_PAST_DONE = new Set(['DONE', 'CUST_NOTIFIED', 'INVOICED']);
+// Statuses a job can be born at and keep with no work logged. Every other job is
+// born at OPEN (the app's default); the moves below take it from there.
+const BORN_AS = new Set(['TO_QUOTE', 'QUOTE_SENT', 'OPEN', 'HOLD_PO']);
+
+// A job at or past Done had its work finished by the shop.
+const AT_OR_PAST_DONE = new Set(jobStatuses.settledStatuses);
 
 function seedHistory({ db, adminId, adminName, users, companies, contacts, suppliers, machines, jobs, setupAt }) {
   // The live writers' own text helpers, so a seeded part reads exactly like a real one.
@@ -126,28 +127,26 @@ function seedHistory({ db, adminId, adminName, users, companies, contacts, suppl
       add('jobcard', job.id, 'create', adminId, adminName, createChanges, job.createdAt,
         Object.keys(createParts).length ? { parts: createParts } : null);
 
-      // The status the job's logged work leaves it at: nothing before any run is
-      // finished, then In Progress, or Done if the job is at or past Done.
+      // Live writer for every move below: PATCH /jobcards/:id/status (jobcards.js), with
+      // what rides along from applyStatusMove (jobcard-helpers.js).
       let current = bornAt;
-      const workTarget = AT_OR_PAST_DONE.has(job.status) ? 'DONE' : 'IN_PROGRESS';
-      // Each finished run's own status move, keyed by run id (see the stop block below).
-      const moveOnRun = new Map();
-      runs.forEach((r, idx) => {
-        const last = idx === runs.length - 1;
-        if (workTarget === 'DONE' && last) {
-          moveOnRun.set(r.id, { from: current, to: 'DONE' });
+      const shift = (iso, ms) => new Date(new Date(iso).getTime() + ms).toISOString();
+      if (runs.length) {
+        const first = runs[0];
+        add('jobcard', job.id, 'update', first.user_id, displayName(first),
+          { status: { from: current, to: 'IN_PROGRESS' } }, shift(first.start_time, -1000));
+        current = 'IN_PROGRESS';
+        if (AT_OR_PAST_DONE.has(job.status)) {
+          const last = runs[runs.length - 1];
+          add('jobcard', job.id, 'update', last.user_id, displayName(last),
+            { status: { from: current, to: 'DONE' } }, shift(last.end_time, 1000));
           current = 'DONE';
-        } else if (idx === 0) {
-          moveOnRun.set(r.id, { from: current, to: 'IN_PROGRESS' });
-          current = 'IN_PROGRESS';
         }
-      });
+      }
 
-      // A move the work did not make is a person's: an admin update row after the last
+      // The office's move to where the job sits now: an admin update row after the last
       // activity (or at the invoice time).
       if (current !== job.status) {
-        // Live writer: PATCH /jobcards/:id/status (jobcards.js); invoicing adds the
-        // filing-away keys from applyInvoicingArchive (jobcard-helpers.js).
         const stamps = [
           ...job.notes.map(n => n.at),
           ...job.timers.map(t => t.at),
@@ -156,10 +155,8 @@ function seedHistory({ db, adminId, adminName, users, companies, contacts, suppl
         const wanted = job.invoicedDate || lastActivity;
         const at = new Date(Math.max(new Date(wanted).getTime(), new Date(lastActivity).getTime() + 1000)).toISOString();
         const changes = { status: { from: current, to: job.status } };
-        if (job.status === 'INVOICED') {
-          changes.archived = { from: false, to: true };
-          changes.invoicedDate = { from: null, to: job.invoicedDate };
-        }
+        if (job.invoicedDate) changes.invoicedDate = { from: null, to: job.invoicedDate };
+        if (job.status === jobStatuses.closedStatus) changes.archived = { from: false, to: true };
         add('jobcard', job.id, 'update', adminId, adminName, changes, at);
       }
 
@@ -170,16 +167,13 @@ function seedHistory({ db, adminId, adminName, users, companies, contacts, suppl
         add('jobcard', job.id, 'add_note', n.workerId, n.workerName, changes, n.at);
       }
 
-      // Live writers: PUT .../time-entries/:entryId/stop (jobcard-time-entries.js) and
-      // the status follow-up it runs, syncStatusToWork (jobStatusAuto.js), which returns
-      // the move and the stop folds it into the same entry as a `status` key. The finish
-      // is in the changes; the start, the worker and the part in the snapshot.
+      // Live writer: POST .../time-entries/:entryId/stop (jobcard-time-entries.js). The
+      // finish is in the changes; the start, the worker and the part in the snapshot.
       for (const r of runs) {
         const worker = displayName(r);
         const partKnown = r.part_description === null && r.part_qty === null ? null : { description: r.part_description, qty: r.part_qty };
         add('jobcard', job.id, 'stop_timer', r.user_id, worker, {
-          endTime: { from: null, to: r.end_time },
-          ...(moveOnRun.has(r.id) ? { status: moveOnRun.get(r.id) } : {})
+          endTime: { from: null, to: r.end_time }
         }, r.end_time, {
           timeEntryId: r.id,
           startTime: r.start_time,

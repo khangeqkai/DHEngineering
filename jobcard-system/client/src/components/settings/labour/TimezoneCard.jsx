@@ -26,7 +26,7 @@ export default function TimezoneCard({ timezone, setTimezone, onSave, saving, er
         </p>
         <p className="setting-description">
           Applies to jobs created from now on. Jobs that already exist keep the time zone they
-          started with, including invoiced ones, so their figures never move. A change is
+          started with, including archived ones, so their figures never move. A change is
           asked about first.
         </p>
 

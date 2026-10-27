@@ -162,7 +162,7 @@ export function useSaveQueue(jobCardId, { onJobClosed, isWindowUp, jobNumber } =
           return result;
         },
         (err) => {
-          // The job was invoiced and archived from another PC while this screen
+          // The job was archived from another PC while this screen
           // still had it open — the write was already on its way when that
           // happened, so it reaches the server as any other write would and is
           // refused the same way (closedJobGuard). onJobClosed (JobCardModal.jsx)

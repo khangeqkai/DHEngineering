@@ -13,7 +13,7 @@ export function isJobClosed(job) {
 
 // True for the one shape every write refused by closedJobGuard takes: a 409 carrying
 // this code. A write can reach this — even from a screen that already renders the job
-// read-only — when the job was invoiced and archived from another PC while this one
+// read-only — when the job was archived from another PC while this one
 // still had it open; the write was sent before that screen's own copy of the job had
 // any way to know.
 export function isJobClosedError(err) {

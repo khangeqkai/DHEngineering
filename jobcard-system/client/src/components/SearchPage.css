@@ -5,7 +5,7 @@
    .search-input, and both stylesheets are now always loaded. */
 .search-page .search-input-wrapper { position: relative; margin-bottom: var(--space-4); }
 .search-page .search-input-icon { position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; }
-.search-page .search-input { width: 100%; padding: var(--space-3) var(--space-10) var(--space-3) var(--space-10); border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--surface); color: var(--text-primary); font-size: 1rem; }
+.search-page .search-input { width: 100%; padding: var(--space-3) var(--space-10) var(--space-3) var(--space-10); border: 1px solid var(--border-input); border-radius: 0.5rem; background: var(--surface); color: var(--text-primary); font-size: 1rem; }
 .search-page .search-input:focus { outline: none; border-color: var(--primary-accent); box-shadow: var(--focus-ring); }
 .search-page .search-input-clear { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: var(--space-1); border-radius: 0.25rem; }
 .search-page .search-input-clear:hover { color: var(--text-primary); background: var(--background); }
@@ -26,13 +26,13 @@
 .search-chip { padding: var(--space-1) var(--space-2-5); border: 1px solid var(--border-color); border-radius: 1rem; background: var(--surface); color: var(--text-secondary); font-size: 0.75rem; cursor: pointer; transition: all var(--duration-fast); white-space: nowrap; }
 .search-chip:hover { border-color: var(--primary-accent); color: var(--text-primary); }
 .search-chip.active { background: var(--primary-accent); color: white; border-color: var(--primary-accent); }
-.search-select { padding: var(--space-1-5) var(--space-2); border: 1px solid var(--border-color); border-radius: 0.375rem; background: var(--surface); color: var(--text-primary); font-size: 0.8125rem; min-width: 10rem; }
+.search-select { padding: var(--space-1-5) var(--space-2); border: 1px solid var(--border-input); border-radius: 0.375rem; background: var(--surface); color: var(--text-primary); font-size: 0.8125rem; min-width: 10rem; }
 .search-select-sm { min-width: 6rem; }
 .search-date-range { display: flex; align-items: center; gap: var(--gap-tight); flex-wrap: wrap; }
-.search-date { padding: var(--space-1-5) var(--space-2); border: 1px solid var(--border-color); border-radius: 0.375rem; background: var(--surface); color: var(--text-primary); font-size: 0.8125rem; }
+.search-date { padding: var(--space-1-5) var(--space-2); border: 1px solid var(--border-input); border-radius: 0.375rem; background: var(--surface); color: var(--text-primary); font-size: 0.8125rem; }
 .search-date-sep { color: var(--text-secondary); font-size: 0.8125rem; }
 .search-checkbox { display: flex; align-items: center; gap: var(--gap-tight); font-size: 0.8125rem; color: var(--text-secondary); cursor: pointer; }
-.search-field-input { padding: var(--space-1-5) var(--space-2); border: 1px solid var(--border-color); border-radius: 0.375rem; background: var(--surface); color: var(--text-primary); font-size: 0.8125rem; width: 100%; max-width: 20rem; }
+.search-field-input { padding: var(--space-1-5) var(--space-2); border: 1px solid var(--border-input); border-radius: 0.375rem; background: var(--surface); color: var(--text-primary); font-size: 0.8125rem; width: 100%; max-width: 20rem; }
 .search-loading { text-align: center; padding: var(--space-8); color: var(--text-secondary); }
 .search-empty { text-align: center; padding: var(--space-12) var(--space-4); color: var(--text-secondary); font-size: 0.9375rem; }
 .search-groups { display: flex; flex-direction: column; gap: var(--gap-field); }

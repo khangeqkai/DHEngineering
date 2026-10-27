@@ -62,7 +62,7 @@ function partialSummary(saved, total, failed) {
  * for one category at a time. Files are identified by filename on disk.
  *
  * onJobClosed (optional) is the job screen's shared closed-job handler: an upload,
- * re-tag or delete refused because the job was invoiced and closed from another PC
+ * re-tag or delete refused because the job was archived from another PC
  * calls it (one message, and a reload that locks the screen) instead of the
  * ordinary failure toast.
  */

@@ -8,6 +8,7 @@ const toCompanyApi = (c) => ({
   name: c.name,
   address: c.address,
   notes: c.notes,
+  requiresPo: c.requires_po === 1,
   archived: !!c.archived,
   createdAt: c.created_at,
   updatedAt: c.updated_at

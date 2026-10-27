@@ -21,7 +21,7 @@ import { TEXT_FIELDS } from './useCostingDrafts';
 // open boxes on the way out.
 //
 // onJobClosed is the job screen's shared closed-job handler (JobCardModal.jsx): a save
-// refused because the job was invoiced and closed from another PC calls it — one
+// refused because the job was archived from another PC calls it — one
 // message, and a reload that locks the sheet — instead of the ordinary failure toast.
 export function useCostingSave(jobCardId, {
   loadedCosting,
@@ -287,7 +287,7 @@ export function useCostingSave(jobCardId, {
       }
       return true;
     } catch (err) {
-      // The job was invoiced and closed elsewhere: these figures can never be stored,
+      // The job was archived elsewhere: these figures can never be stored,
       // so they're dropped (the sheet goes back to what the server holds, and closing
       // won't ask about them) and the screen reloads into its locked state.
       if (isJobClosedError(err)) {

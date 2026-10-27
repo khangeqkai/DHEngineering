@@ -16,7 +16,8 @@ const {
   recordHistory,
   actorName
 } = require('../db/database');
-const { formatJobcard, buildChanges, createRelatedRecords, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
+const { formatJobcard, buildChanges, createRelatedRecords, computeAttachmentWarnings, checkStatusMove, applyStatusMove } = require('./jobcard-helpers');
+const jobStatuses = require('../shared/jobStatuses.json');
 const { refuseField } = require('./name-conflict');
 const { displayName } = require('../shared/names');
 const { isActiveRecord } = require('../shared/records');
@@ -113,15 +114,19 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
     }
 
     const id = `jobcard:${uuidv4()}`;
-    const status = data.status || 'OPEN';
+    const status = data.status || jobStatuses.defaultStatus;
 
-    // A job is never born invoiced. Invoicing must file the job away (archive +
-    // invoiced date) and run the missing-files check, which only the update/status
-    // paths do — allowing it here would strand a job in the "invoiced but still
-    // open" limbo the status-lock exists to prevent.
-    if (status === 'INVOICED') {
-      return res.status(400).json({ error: 'A new job can\'t start as Invoiced. Save the job first, then invoice it.' });
+    // A job is never born on a billing status. Their checks (no running or unconfirmed
+    // clock, missing files and sign-offs, the PO question), the invoiced date and the
+    // archive lock all belong to moving an existing job — allowing it here would skip
+    // every one of them.
+    if (jobStatuses.billingStatuses.includes(status)) {
+      return res.status(400).json({ error: 'A new job can\'t start on a billing status. Save the job first, then move it on.' });
     }
+    // The same who-may-set-what rule as every later move: a manager can't create a
+    // job straight onto a billing status.
+    const createStatusRefusal = statusChangeRefusal(req.user.role, null, status);
+    if (createStatusRefusal) return res.status(403).json({ error: createStatusRefusal });
 
     // Every worker asked for must still be an active account. Checked before any
     // write, so a worker archived or removed since the form opened refuses the whole
@@ -178,12 +183,10 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
         qualityLevelName,
         data.priority || 'NONE',
         data.poNumber || null,
-        data.quoteReference || null,
         data.description || null,
         data.dueDate || null,
-        data.isRepeatJob ? 1 : 0,
-        // A previous-job reference only exists on a repeat job.
-        data.isRepeatJob ? (data.repeatJobReference || null) : null,
+        // Naming the previous job is what makes this a repeat job.
+        data.repeatJobReference || null,
         req.user.userId,
         req.user.userId
       );
@@ -295,52 +298,36 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     // keep the existing one when the field wasn't touched at all.
     const newQualityLevel = data.qualityLevel !== undefined ? data.qualityLevel : existing.quality_level;
 
-    // A previous-job reference only exists on a repeat job: when the job ends up
-    // not being one (unticked now, or already not one), the reference is cleared —
-    // set on `data` so the write below stores it and the trail records it.
-    const endsRepeatJob = data.isRepeatJob !== undefined ? !!data.isRepeatJob : existing.is_repeat_job === 1;
-    if (!endsRepeatJob) {
-      // A reference can't be honoured on a job that isn't (and this request isn't
-      // making) a repeat job — this is the single-field instant-save path, so the
-      // stored `is_repeat_job` may have just been unticked from another screen
-      // while this one still shows it ticked. Refuse rather than silently store
-      // null and answer success: the box would read "Saved" with nothing stored.
-      // A request that unticks Repeat Job in the same write (or sends no
-      // reference at all) still falls through to the silent clear below — that
-      // is the intended path.
-      if (data.isRepeatJob === undefined && data.repeatJobReference) {
-        return refuseField(res, 400, 'repeatJobReference', 'This job is no longer marked as a repeat job. Tick Repeat Job first.');
-      }
-      if (data.repeatJobReference !== undefined || existing.repeat_job_reference != null) {
-        data.repeatJobReference = null;
-      }
+    // Naming the previous job is what makes a repeat job; clearing the box makes it
+    // not one. A box holding only spaces is empty.
+    if (data.repeatJobReference !== undefined) {
+      data.repeatJobReference = String(data.repeatJobReference ?? '').trim() || null;
     }
     const changes = buildChanges(existing, data);
 
     const newStatus = data.status !== undefined ? data.status : existing.status;
 
-    // This route is management-only, but a manager still may not invoice.
-    const statusRefusal = statusChangeRefusal(req.user.role, existing.status, newStatus);
+    // This route is management-only, but a manager still may not make the billing moves.
+    const statusRefusal = statusChangeRefusal(req.user.role, existing.status, newStatus, existing.previous_status);
     if (statusRefusal) return res.status(403).json({ error: statusRefusal });
 
-    // Shared invoicing step (see jobcard-helpers.js) — the hard running-timer
-    // refusal and the soft missing-attachments checkpoint, both before any
-    // write. Parts and their attachments are never part of this route any more
-    // (see jobcard-items.js and the files routes), so the attachment check
-    // always reads the job's current, already-saved items.
-    const invoicing = checkInvoicing(existing, newStatus, data.confirmMissingAttachments, data.confirmMissingInspection);
-    if (invoicing.refusal) {
-      return res.status(invoicing.refusal.status).json(invoicing.refusal.body);
+    // Shared status-move step (see jobcard-helpers.js) — the hard running-timer
+    // refusal and the soft "carry on anyway?" checkpoints, all before any write.
+    // Parts and their attachments are never part of this route any more (see
+    // jobcard-items.js and the files routes), so the attachment check always reads
+    // the job's current, already-saved items. The PO number may change in this same
+    // save, so the PO question judges the value it will have.
+    const move = checkStatusMove(existing, newStatus, data, { poNumber: data.poNumber });
+    if (move.refusal) {
+      return res.status(move.refusal.status).json(move.refusal.body);
     }
-    const { shouldArchive, invoicedDate } = invoicing;
 
     // All database writes happen in one transaction: either the status/field
     // update lands, or none of it does.
-    let invoicingChanges = {};
     const applyUpdate = db.transaction(() => {
-      // Nothing changed and nothing is being invoiced: leave the job alone, so
-      // "Last edited" doesn't move on a save that changed nothing.
-      if (Object.keys(changes).length === 0 && !shouldArchive) return;
+      // Nothing changed: leave the job alone, so "Last edited" doesn't move on a
+      // save that changed nothing. (A status move is always a change.)
+      if (Object.keys(changes).length === 0) return;
       jobcardQueries.update.run(
         existing.card_type,
         data.status !== undefined ? data.status : existing.status,
@@ -355,26 +342,22 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
         newQualityLevel,
         data.priority !== undefined ? data.priority : existing.priority,
         data.poNumber !== undefined ? data.poNumber : existing.po_number,
-        data.quoteReference !== undefined ? data.quoteReference : existing.quote_reference,
         data.description !== undefined ? data.description : existing.description,
         data.dueDate !== undefined ? data.dueDate : existing.due_date,
-        data.isRepeatJob !== undefined ? (data.isRepeatJob ? 1 : 0) : existing.is_repeat_job,
         data.repeatJobReference !== undefined ? data.repeatJobReference : existing.repeat_job_reference,
         req.user.userId,
         id
       );
 
-      invoicingChanges = applyInvoicingArchive(shouldArchive, invoicedDate, req.user.userId, id, invoicing.inspectionConfirmedCount);
-
-      // The trail entry commits with the edit (and the invoicing it may carry), or neither does.
-      Object.assign(changes, invoicingChanges);
+      // The trail entry commits with the edit (and the status move it may carry), or neither does.
+      Object.assign(changes, applyStatusMove(move, req.user.userId, id));
       if (Object.keys(changes).length > 0) {
         recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), changes, null);
       }
     });
     applyUpdate();
 
-    // Invoicing just files the job away. No costing snapshot is taken: the job owns its
+    // Archiving just files the job away. No costing snapshot is taken: the job owns its
     // own overtime rules and rate, so recomputing its costing later always reproduces
     // the billed number — there is nothing a settings change could move.
 

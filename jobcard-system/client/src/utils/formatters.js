@@ -100,12 +100,12 @@ export function formatTime(value, options) {
 // flags. These read better as Yes/No in the change list. The four Critical-job
 // inspection answers are stored the same way (1 = yes, 0 = no).
 const YES_NO_FIELDS = new Set([
-  'isRepeatJob', 'is_repeat_job', 'repeatJob',
+  'isRepeatJob', 'is_repeat_job', 'repeatJob', 'requiresPo',
   'firstOffInspection', 'inProcessValidation', 'measuringEquipmentVerification', 'equipmentChecks'
 ]);
 
 // A job's status and priority are stored in the trail as their internal codes
-// (e.g. "AWAITING_MATERIAL", "SAME_DAY") — the same codes the job list's status
+// (e.g. "HOLD_MATERIAL", "SAME_DAY") — the same codes the job list's status
 // badge and priority chip translate through these two maps. The `status` field
 // name is also used for plain Active/Archived entries (archiving a customer,
 // supplier, machine, user, tag); those values simply aren't keys in

@@ -84,7 +84,7 @@ export default function DetailsTab({
   onStartTimer,
   onStopTimer,
   currentUserId,
-  // True once the job is invoiced and closed (jobLock.js's isJobClosed, worked
+  // True once the job is paid and archived (jobLock.js's isJobClosed, worked
   // out once in JobCardModal.jsx off the job's own archived flag — the one
   // shared "can this job still be changed?" test). Locks the whole of this
   // view below, for every role, including management.
@@ -118,7 +118,7 @@ export default function DetailsTab({
   // One combined status for the whole tab rather than one per field — see the
   // identical reasoning in JobIdentityStrip.jsx.
   const detailsStatus = summarizeFieldStates(fieldStates, [
-    'poNumber', 'quoteReference', 'repeatJobReference', 'qualityLevel', 'isRepeatJob'
+    'poNumber', 'repeatJobReference', 'qualityLevel'
   ]);
 
   const jobSearch = useJobSearch({ excludeJobNumber: jobNumber });
@@ -221,6 +221,25 @@ export default function DetailsTab({
         />
       )}
 
+      {/* Customer Input sits right under the customer it belongs to, above the parts. */}
+      <JobReferenceFields
+        formData={formData}
+        handleChange={handleChange}
+        commitFieldBlur={commitFieldBlur}
+        setFormData={setFormData}
+        canWriteInstantly={canWriteInstantly}
+        saveField={saveField}
+        detailsStatus={detailsStatus}
+        groupClass={detailGroupClass}
+        errorFor={detailErrorFor}
+        errorProps={detailErrorProps}
+        jobSearch={jobSearch}
+        jobRefListOpen={jobRefListOpen}
+        jobRefNav={jobRefNav}
+        // A saved job carries its customer's tick; a new one reads the customer being picked.
+        requiresPo={canManage && Boolean(isEdit ? formData.customerRequiresPo : selectedCompany?.requiresPo)}
+      />
+
       <ItemsTab
         jobCardId={jobCardId}
         lineItems={lineItems}
@@ -272,27 +291,11 @@ export default function DetailsTab({
       />
 
 
-      <JobReferenceFields
-        formData={formData}
-        handleChange={handleChange}
-        commitFieldBlur={commitFieldBlur}
-        setFormData={setFormData}
-        canWriteInstantly={canWriteInstantly}
-        saveField={saveField}
-        detailsStatus={detailsStatus}
-        groupClass={detailGroupClass}
-        errorFor={detailErrorFor}
-        errorProps={detailErrorProps}
-        jobSearch={jobSearch}
-        jobRefListOpen={jobRefListOpen}
-        jobRefNav={jobRefNav}
-      />
-
       {/* Assignees */}
       <div className="form-section">
         <h3 className="form-section-title">Assignees</h3>
         {assigneesLocked && (
-          <span className="field-hint">This job is invoiced and closed. Its workers can't be changed.</span>
+          <span className="field-hint">This job is paid and archived. Its workers can't be changed.</span>
         )}
         <ToggleTiles
           ariaLabel="Assignees"

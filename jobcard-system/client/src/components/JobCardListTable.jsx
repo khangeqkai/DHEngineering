@@ -76,7 +76,7 @@ export default function JobCardListTable({
         </thead>
         <tbody>
           {paginatedCards.map((card) => {
-            const isOverdue = isJobOverdue(card.dueDate, card.status, today);
+            const isOverdue = isJobOverdue(card.dueDate, card.status, card.previousStatus, today);
             const isPinnedTimer = card.id === activeTimerJobcardId;
             const rowClasses = [
               isOverdue ? 'overdue-row' : '',

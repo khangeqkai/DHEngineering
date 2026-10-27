@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const logger = require('../utils/logger');
 const { assigneeNames } = require('../utils/historyChanges');
-const { syncStatusToWork } = require('../utils/jobStatusAuto');
+const jobStatuses = require('../shared/jobStatuses.json');
 const { displayName } = require('../shared/names');
 const { isActiveRecord } = require('../shared/records');
 const { deleteJobCardFolders, isBaseReachable } = require('../utils/folderCreation');
@@ -26,7 +26,7 @@ const {
 } = require('../db/database');
 const { db } = require('../db/connection');
 const { findOr404 } = require('../utils/findOr404');
-const { readEntries, formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive } = require('./jobcard-helpers');
+const { readEntries, formatJobcard, sanitizeHistoryForRole, computeAttachmentWarnings, checkStatusMove, applyStatusMove } = require('./jobcard-helpers');
 const { roundTo } = require('../shared/round');
 const jobcardMutationsRoutes = require('./jobcard-mutations');
 const jobcardPrintoutRoutes = require('./jobcard-printout');
@@ -396,11 +396,11 @@ router.patch('/:id/status', authenticate, (req, res) => {
     const existing = findOr404(res, jobcardQueries.getById.get(id), "That job couldn't be found. It may have been removed.");
     if (!existing) return;
 
-    const refusal = statusChangeRefusal(req.user.role, existing.status, status);
+    const refusal = statusChangeRefusal(req.user.role, existing.status, status, existing.previous_status);
     if (refusal) return res.status(403).json({ error: refusal });
 
     // Picking the status the job already has (a list or screen showing an older
-    // status — a timer started on another PC moves it) is not a change: no write,
+    // status — someone on another PC moved it) is not a change: no write,
     // no "Last Edited" stamp and no from === to trail entry. The reply is the job
     // as it stands, so the caller just reflects the current status.
     const sendJob = () => {
@@ -414,26 +414,26 @@ router.patch('/:id/status', authenticate, (req, res) => {
     if (status === existing.status) return sendJob();
 
     // Re-opening goes through the management-only unarchive action, which un-files
-    // the job and lets the logged work decide its status again. An already-archived job never
+    // the job and puts it back where it was. An already-archived job never
     // reaches this line: closedJobGuard (mounted ahead of every /:id route) has
     // already refused any write to it except the allow-listed ones.
 
-    // Shared invoicing step (see jobcard-helpers.js) — the hard running-timer
-    // refusal and the soft missing-attachments checkpoint, both before any write.
-    const invoicing = checkInvoicing(existing, status, req.body.confirmMissingAttachments, req.body.confirmMissingInspection);
-    if (invoicing.refusal) {
-      return res.status(invoicing.refusal.status).json(invoicing.refusal.body);
+    // Shared status-move step (see jobcard-helpers.js) — the hard running-timer
+    // refusal and the soft "carry on anyway?" checkpoints, all before any write.
+    const move = checkStatusMove(existing, status, req.body);
+    if (move.refusal) {
+      return res.status(move.refusal.status).json(move.refusal.body);
     }
-    const { shouldArchive, invoicedDate } = invoicing;
 
     const changes = { status: { from: existing.status, to: status } };
 
-    // Status and the filing-away must land together (same as the PUT route): a failure
-    // between the two left a job reading INVOICED while still sitting in the open list.
+    // The status and everything riding along with it land together (same as the PUT
+    // route): a failure between them would leave a job reading Paid – Archived while
+    // still sitting in the open list.
     db.transaction(() => {
       jobcardQueries.updateStatus.run(status, req.user.userId, id);
-      Object.assign(changes, applyInvoicingArchive(shouldArchive, invoicedDate, req.user.userId, id, invoicing.inspectionConfirmedCount));
-      // Invoicing just files the job away — no costing snapshot needed. The job owns its
+      Object.assign(changes, applyStatusMove(move, req.user.userId, id));
+      // Archiving just files the job away — no costing snapshot needed. The job owns its
       // own overtime rules and rate, so its costing always recomputes to the billed
       // number; a later settings change can't move it.
       recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), changes, null);
@@ -458,17 +458,15 @@ router.post('/:id/unarchive', authenticate, requireManagement, (req, res) => {
       return res.status(400).json({ error: 'This job isn\'t archived, so there is nothing to restore.' });
     }
 
-    // Un-filing clears INVOICED (never a back-in-the-list-but-still-invoiced limbo) and
-    // then lets the logged work decide, like every other status move: finished work
-    // comes back Done, some work In Progress, none at all Open.
+    // Un-filing puts the job back where it was just before it was archived (never a
+    // back-in-the-list-but-still-archived limbo). A job archived before statuses were
+    // remembered goes back to Call for Payment: it had been billed. The invoiced date stays.
+    const backTo = existing.previous_status || jobStatuses.billedStatus;
     db.transaction(() => {
-      jobcardQueries.unarchive.run(req.user.userId, id);
-      // strict: a failure here fails the whole unarchive, rather than recording OPEN as if chosen.
-      const fromWork = syncStatusToWork(id, req.user, { strict: true });
+      jobcardQueries.unarchive.run(backTo, req.user.userId, id);
       recordHistory('jobcard', id, 'unarchive', req.user.userId, actorName(req), {
         archived: { from: true, to: false },
-        invoicedDate: { from: existing.invoiced_date, to: null },
-        status: { from: existing.status, to: fromWork ? fromWork.to : 'OPEN' }
+        status: { from: existing.status, to: backTo }
       }, { jobNumber: existing.job_number });
     })();
 

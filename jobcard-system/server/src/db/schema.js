@@ -33,6 +33,8 @@ db.exec(`
     name TEXT NOT NULL UNIQUE COLLATE NOCASE,
     address TEXT,
     notes TEXT,
+    -- The customer's accounts won't take an invoice without their PO number.
+    requires_po INTEGER DEFAULT 0,
     archived INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
@@ -113,7 +115,6 @@ db.exec(`
 
     -- References
     po_number TEXT,
-    quote_reference TEXT,
 
     -- Job Details
     description TEXT,
@@ -121,13 +122,17 @@ db.exec(`
     -- Dates
     due_date TEXT,
 
-    -- Repeat Job
-    is_repeat_job INTEGER DEFAULT 0,
+    -- Repeat job: the previous job this one repeats (none = not a repeat)
     repeat_job_reference TEXT,
 
-    -- Invoice tracking
+    -- Billing: the day the bill went out (first move to Call for Payment), and
+    -- whether the job is filed away (Paid – Archived)
     invoiced_date TEXT,
     archived INTEGER DEFAULT 0,
+
+    -- Where the job was before Action Required or Paid – Archived, so "Put back"
+    -- and unarchive can return it there. Null otherwise.
+    previous_status TEXT,
 
     -- Moment the job card was last actually printed (not saved, not previewed,
     -- not an attachments-only print). Null if never.
@@ -446,6 +451,11 @@ try {
   logger.error({ err }, 'Migration: Failed to enforce one-active-timer-per-user');
 }
 
+
+// A copy of the whole database before the status-list upgrade rewrites anything (only
+// while there is something left to upgrade) — see db/safetyCopy.js. Must run before
+// the column drops below, one of which moves quote references into comments.
+require('./safetyCopy').safetyCopyBeforeUpgrade();
 
 // Columns dropped from existing tables (moved elsewhere, or no longer tracked at
 // all) — the list lives in its own module, in the style of columnMigrations.js.

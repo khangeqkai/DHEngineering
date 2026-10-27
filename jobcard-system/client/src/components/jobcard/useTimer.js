@@ -414,7 +414,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     const jobClosed = isJobClosedError(err);
     if (jobClosed) {
       if (!handledAsJobClosed(err, entryJobcardId)) {
-        toast.error('That work block can no longer be changed — its job was invoiced from another screen.', { id: 'stopped-block-gone' });
+        toast.error('That work block can no longer be changed — its job was archived from another screen.', { id: 'stopped-block-gone' });
       }
     } else if (err?.status === 404) {
       toast.error('That work block can no longer be changed — it was deleted from another screen.', { id: 'stopped-block-gone' });

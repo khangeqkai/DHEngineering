@@ -97,7 +97,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   // An instant write never touches the list behind this modal — useJobCardCloseGuard.js.
   const { flagInstantSave, closeAndRefresh } = useJobCardListRefresh({ isEdit, onSuccess, onClose });
   const contactHook = useContactSearch();
-  // The job was invoiced and archived from another PC while this screen still had it
+  // The job was archived from another PC while this screen still had it
   // open: a write already on its way reaches the server after that and is refused
   // (closedJobGuard, server/src/middleware/closedJob.js) with a 409 carrying
   // code: 'JOB_CLOSED'. Every write path that can hit this — the save queue (fields,
@@ -195,7 +195,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   const costingHook = useJobCardCosting({ isEdit, canSeePricing, jobCardId, jobNumber: formHook.jobNumber, activeTab, onJobClosed: handleJobClosedWrite });
 
 
-  const { setFormDataFromJobCard, setFormData } = formHook;
+  const { setFormDataFromJobCard } = formHook;
   const { setContactFromJobCard } = contactHook;
   const { loadHistory } = activityLog;
   const { loadNotes } = jobNotes;
@@ -281,24 +281,9 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   }, [jobCardId]);
   reloadTimeEntriesRef.current = reloadTimeEntries;
 
-  // Logging work can auto-advance the job's status on the server (start a timer ->
-  // In Progress; finish the last part -> Done). Pull just the current status back so
-  // the on-screen status updates without disturbing any edits in the open form.
-  const refreshJobStatus = useCallback(async () => {
-    if (!isEdit || !jobCardId) return;
-    try {
-      const fresh = await api.getJobcard(jobCardId);
-      if (fresh && fresh.status) {
-        setFormData(prev => ({ ...prev, status: fresh.status }));
-      }
-    } catch {
-      // Non-fatal — the status will catch up next time the job is opened.
-    }
-  }, [isEdit, jobCardId, setFormData]);
-
   const { costingLoaded, refreshCosting } = costingHook;
   const { creditAssignee, dropAssignee } = formHook;
-  // A closed (invoiced) job's time is locked server-side; kept here (rather than
+  // A closed (Paid – Archived) job's time is locked server-side; kept here (rather than
   // reading formHook.formData inline below) so both the timer actions and the
   // manual add/edit form agree on exactly the same test — jobLock.js's
   // isJobClosed, the one shared "can this job still be changed?" test.
@@ -320,14 +305,14 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
     handleSubmitEntryForm,
     handleCancelEntryForm
   } = useJobCardTimerActions({
-    jobCardId, canSeePricing, isInvoiced, costingLoaded, refreshCosting, refreshJobStatus,
+    jobCardId, canSeePricing, isInvoiced, costingLoaded, refreshCosting,
     reloadTimeEntries, timer, showConfirm, creditAssignee, dropAssignee,
-    employees, currentUserId: user?.id, setFormData, onTimerChange, onWorkSaved: flagInstantSave,
+    employees, currentUserId: user?.id, onTimerChange, onWorkSaved: flagInstantSave,
     isWindowUp
   });
 
   // What the shell asks for after an answer: the running clock (a "still working" answer
-  // started one), then the work list, the pricing hours and the job's status. Only what
+  // started one), then the work list and the pricing hours. Only what
   // the answer can have moved — the form on screen, a stop form included, is left alone.
   const { loadActiveTimer } = timer;
   reloadAfterAnswerRef.current = () => {
@@ -597,7 +582,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   };
   // Same plain calendar-date comparison the job list uses, so the two never disagree.
   const today = todayIsoDate();
-  const isOverdue = isJobOverdue(formHook.formData.dueDate, formHook.formData.status, today);
+  const isOverdue = isJobOverdue(formHook.formData.dueDate, formHook.formData.status, formHook.formData.previousStatus, today);
 
   const headerStrip = (
     <JobIdentityStrip
@@ -623,9 +608,9 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
       saveCosting={costingHook.handleSaveCosting}
       descriptionError={formHook.descriptionError}
       markDescription={formHook.markDescription}
-      whenPartSavesSettled={formHook.saveQueue.whenSettled}
       onJobClosed={handleJobClosedWrite}
       onReload={loadJobCard}
+      whenSavesSettled={formHook.saveQueue.whenSettled}
     />
   );
 

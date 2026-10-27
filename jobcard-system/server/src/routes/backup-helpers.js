@@ -1,3 +1,4 @@
+const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
@@ -7,6 +8,9 @@ const db = require('../db/database');
 const { runStartupConversions } = require('../db/init');
 const { PRINT_NAMING_CUTOVER_KEY, QA_FORMS_MOVED_KEY } = require('../db/legacyMigrations');
 const { splitCustomersInBackup } = require('../db/splitCustomers');
+const { quoteReferenceNotes } = require('../db/quoteReferenceFold');
+const { repeatJobFold } = require('../db/repeatJobFold');
+const { liftHoldForRestore } = require('../db/safetyCopy');
 
 // The restore swaps the whole job-folders location out with renames and builds
 // its staging/old folders beside it, so the location must be an ordinary folder
@@ -444,6 +448,25 @@ async function stageBackupArchive(inputPath, tempDir, schemaVersion, dataVersion
       return { error: 'This file isn\'t a complete backup, so nothing was restored. Choose a backup made by this app.', status: 400 };
     }
   }
+  // A backup can still carry the removed Quote Reference box — any made before data
+  // version 11, and one made on a boot whose upgrade was held back (db/safetyCopy.js),
+  // which is stamped 11 all the same. So it is judged by what the rows hold, not by the
+  // version. What the box held becomes a comment on its job (db/quoteReferenceFold.js),
+  // exactly as the live database's own upgrade did, and is then taken off the row, so
+  // nothing restores it into a column a later upgrade would fold a second time.
+  data.job_notes.push(...quoteReferenceNotes(data.jobcards, () => `note:${uuidv4()}`));
+  for (const job of data.jobcards) delete job.quote_reference;
+  // Likewise the removed Repeat Job tick (db/repeatJobFold.js): a tick with no previous
+  // job named becomes a comment, a reference left on an unticked job is cleared, and the
+  // tick comes off the row. Only a backup that still carries the tick is folded.
+  const carriesTick = data.jobcards.filter((job) => 'is_repeat_job' in job);
+  const repeatFold = repeatJobFold(carriesTick, () => `note:${uuidv4()}`);
+  data.job_notes.push(...repeatFold.notes);
+  const clearRef = new Set(repeatFold.clearReferenceIds);
+  for (const job of carriesTick) {
+    if (clearRef.has(job.id)) job.repeat_job_reference = null;
+    delete job.is_repeat_job;
+  }
 
   return { data };
 }
@@ -592,6 +615,7 @@ function restoreTables({ data, tableOrder, tableColumns, currentJobBase, current
       // failure here must never throw away a restore whose records already loaded
       // correctly (the next boot runs the same pass again and retries).
       try {
+        liftHoldForRestore();
         runStartupConversions();
       } catch (convErr) {
         logger.error({ err: convErr }, 'Backup restore: startup conversion pass failed (records restored; next restart will retry)');

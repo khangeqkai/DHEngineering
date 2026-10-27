@@ -32,10 +32,11 @@ import JobCardListPagination from './JobCardListPagination';
 import { getJobCardColumns } from './JobCardListColumns';
 import {
   ACTIVE_FILTER_OPTIONS,
-  STATUS_LABELS,
+  FILTER_LABELS,
   PAGE_SIZE,
-  isJobOverdue
+  matchesStatusFilter
 } from './JobCardList.constants';
+import { ALERT_STATUS } from './jobcard/constants';
 import './JobCardList.css';
 
 export default function JobCardList() {
@@ -190,29 +191,30 @@ export default function JobCardList() {
   const handleQuickStatusChange = useCallback(async (cardId, newStatus) => {
     setStatusPopoverId(null);
     // The list has no costing access, so it never has a fresh total or unsaved
-    // pricing to mention — no prepareInvoice, just the plain invoicing question.
-    // A failure — including the job having been invoiced/archived elsewhere
-    // already (closedJobGuard's 409, which with no onJobClosed takes the failure
-    // path and shows its message) — can leave this row stale, most notably a
-    // stale "Invoiced" row that then errors ("un-file it first") when clicked, so
-    // it reloads rather than trying to patch the row in place.
+    // pricing to mention — no prepareArchive, just the plain archiving question.
+    // A failure — including the job having been archived elsewhere already
+    // (closedJobGuard's 409, which with no onJobClosed takes the failure path and
+    // shows its message) — can leave this row stale, so it reloads rather than
+    // trying to patch the row in place.
+    const card = jobcards.find(c => c.id === cardId);
     await changeJobStatus({
       jobId: cardId,
-      jobNumber: jobcards.find(c => c.id === cardId)?.jobNumber ?? null,
+      jobNumber: card?.jobNumber ?? null,
       newStatus,
       showConfirm,
       onApplied: async (updated) => {
-        // Invoicing files the job away, so it drops out of the active list —
+        // Archiving files the job away, so it drops out of the active list —
         // reload rather than leaving a stale row. Other status changes update
-        // in place for snappiness, taking the status and the Last Edited stamp
-        // from the job the server sent back — the same write moves both, and
-        // when the job already had that status the server's answer is the truth.
-        if (newStatus === 'INVOICED') {
+        // in place for snappiness, taking the status, the remembered status and
+        // the Last Edited stamp from the job the server sent back — the same write
+        // moves them all, and when the job already had that status the server's
+        // answer is the truth.
+        if (updated.archived) {
           await loadJobcards();
           return;
         }
         setJobcards(prev => prev.map(c => c.id === cardId
-          ? { ...c, status: updated.status, updatedAt: updated.updatedAt, updatedBy: updated.updatedBy }
+          ? { ...c, status: updated.status, previousStatus: updated.previousStatus, updatedAt: updated.updatedAt, updatedBy: updated.updatedBy }
           : c
         ));
         refreshMissingFiles([cardId]);
@@ -264,20 +266,11 @@ export default function JobCardList() {
     setJobcards(prev => prev.map(c => c.id === jobId ? { ...c, printedAt } : c));
   }, []);
 
-  const filteredCards = useMemo(() => {
+  // "My jobs" and the search box, before any status filter — what the list would show
+  // under All. The Action Required count is taken from this too, so the number on the
+  // button is always what pressing it shows.
+  const visibleCards = useMemo(() => {
     return jobcards.filter((card) => {
-      let matchesFilter;
-      // The status filter buttons aren't shown in the archived view (see
-      // JobCardListFilters), but the chosen filter value stays in state — without
-      // this, a filter picked before switching to Show Archived keeps applying
-      // invisibly and can filter the whole archived list down to nothing.
-      if (showArchived || filter === 'all') {
-        matchesFilter = true;
-      } else if (filter === 'OVERDUE') {
-        matchesFilter = isJobOverdue(card.dueDate, card.status, today);
-      } else {
-        matchesFilter = card.status === filter;
-      }
       const matchesMine = !myJobsOnly || showArchived || card.assignees?.some(a => a.userId === user?.id);
       // Spaces around the text are not part of what's being looked for, and a
       // box holding only spaces is empty — the same as every other list's box.
@@ -289,9 +282,26 @@ export default function JobCardList() {
         (canManage && card.companyName?.toLowerCase().includes(lowerSearch)) ||
         card.assignees?.some(a => a.userName?.toLowerCase().includes(lowerSearch)) ||
         card.description?.toLowerCase().includes(lowerSearch);
-      return matchesFilter && matchesMine && matchesSearch;
+      return matchesMine && matchesSearch;
     });
-  }, [jobcards, filter, myJobsOnly, showArchived, search, canManage, user?.id, today]);
+  }, [jobcards, myJobsOnly, showArchived, search, canManage, user?.id]);
+
+  // The status filter buttons aren't shown in the archived view (see
+  // JobCardListFilters), but the chosen filter value stays in state — without this, a
+  // filter picked before switching to Show Archived keeps applying invisibly and can
+  // filter the whole archived list down to nothing.
+  const filteredCards = useMemo(
+    () => (showArchived ? visibleCards : visibleCards.filter(card => matchesStatusFilter(card, filter, today))),
+    [visibleCards, showArchived, filter, today]
+  );
+
+  // How many jobs are waiting on someone — shown on the Action Required button so
+  // nobody has to hunt the list for them. Counted over what the list would show, so
+  // with "My jobs" ticked it is only this person's.
+  const actionRequiredCount = useMemo(
+    () => visibleCards.filter(c => c.status === ALERT_STATUS).length,
+    [visibleCards]
+  );
 
   const { sortBy, sortDir, handleSort, sortedCards } = useJobCardSort(filteredCards);
 
@@ -379,7 +389,7 @@ export default function JobCardList() {
   if (!showArchived) {
     if (myJobsOnly) activeFilterWords.push('My jobs');
     if (filter !== 'all') {
-      activeFilterWords.push(filter === 'OVERDUE' ? 'Overdue' : (STATUS_LABELS[filter] || filter));
+      activeFilterWords.push(FILTER_LABELS[filter] || filter);
     }
     if (canManage && assigneeFilter !== 'all') {
       const emp = employees.find(e => e.id === assigneeFilter);
@@ -483,6 +493,7 @@ export default function JobCardList() {
         onMyJobsOnlyChange={setMyJobsOnly}
         filter={filter}
         onFilterChange={setFilter}
+        actionRequiredCount={showArchived ? 0 : actionRequiredCount}
         columnsMenu={
           <JobCardColumnsMenu
             columns={toggleableColumns}

@@ -86,6 +86,8 @@ const migrations = [
   { table: 'tags', column: 'archived', type: 'INTEGER DEFAULT 0' },
   { table: 'users', column: 'jobcard_column_order', type: 'TEXT' },
   { table: 'users', column: 'jobcard_hidden_columns', type: 'TEXT' },
+  { table: 'jobcards', column: 'previous_status', type: 'TEXT' },
+  { table: 'companies', column: 'requires_po', type: 'INTEGER DEFAULT 0' },
 ];
 
 function addMissingColumns() {

@@ -292,6 +292,30 @@ test('a status change with no part keeps the "moved the job" wording', () => {
   assert.equal(head(e), 'Alice moved the job from Done to In Progress');
 });
 
+// ── New status list ──────────────────────────────────────────────────────────
+test('archiving reads as paid and archived, including old entries the rename turned into it', () => {
+  const e = { action: 'update', userId: 'a', userName: 'Alice',
+    changes: { status: { from: 'CALL_FOR_PAYMENT', to: 'ARCHIVED' }, archived: { from: false, to: true } } };
+  assert.equal(head(e), 'Alice marked the job paid and archived it');
+  assert.deepEqual(details(e), []);
+});
+test('a move to Call for Payment uses the new names and keeps the invoiced date quiet', () => {
+  const e = { action: 'update', userId: 'a', userName: 'Alice',
+    changes: { status: { from: 'TO_INVOICE', to: 'CALL_FOR_PAYMENT' }, invoicedDate: { from: null, to: '2026-10-27T01:00:00.000Z' } } };
+  assert.equal(head(e), 'Alice moved the job from To be Invoiced to Call for Payment');
+  assert.deepEqual(details(e), []);
+});
+test('carrying on without a PO number is said in plain words', () => {
+  const e = { action: 'update', userId: 'a', userName: 'Alice',
+    changes: { status: { from: 'TO_COST', to: 'TO_INVOICE' }, missingPo: { from: 'not entered', to: 'carried on anyway' } } };
+  assert.equal(head(e), 'Alice moved the job from To be Costed to To be Invoiced');
+  assert.deepEqual(details(e), ['No PO number was entered — carried on anyway']);
+});
+test('every on-hold reason reads by its name', () => {
+  const e = { action: 'update', userId: 'a', userName: 'Alice', changes: { status: { from: 'IN_PROGRESS', to: 'HOLD_SUBCONTRACT' } } };
+  assert.equal(head(e), 'Alice moved the job from In Progress to On Hold – Subcontract');
+});
+
 // ── Assign entries name the one person recorded ──────────────────────────────
 const assignEntry = (action, from, to, snapshot) => ({ action, userId: 'a', userName: 'Alice', changes: { assignees: { from, to } }, snapshot });
 test('assign and unassign name the recorded worker, never compare names', () => {

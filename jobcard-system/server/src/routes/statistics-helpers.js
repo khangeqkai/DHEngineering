@@ -181,21 +181,26 @@ function daysDiff(d1Str, d2Str) {
 }
 
 // The statuses that mean the shop has nothing left to do on a job: the work is done,
-// the customer has been told to collect, or it is invoiced. Anything else is still
-// live work. Used for the active/overdue counts and for deciding a job has a finish
+// it is ready to collect or deliver, or it is in the office's costing and billing
+// steps. Anything else is still live work. Used for the active/overdue counts and for deciding a job has a finish
 // date at all, so the two can never disagree about which jobs are still running.
 // From the one shared jobStatuses.json (also read by the client's SETTLED_STATUSES,
 // client/src/components/JobCardList.constants.js).
 const FINISHED_STATUSES = jobStatuses.settledStatuses;
+
+// A repeat job is one that names the previous job it repeats.
+const isRepeatJob = (job) => Boolean(String(job.repeat_job_reference || '').trim());
 
 function getJobFinishDate(job, maxTimeEntryEnd, fmt) {
   // The finish day is when the shop actually finished the work — the end of the
   // last logged time block — not when the office got around to invoicing it.
   // Using the invoice date flipped an on-time job to late the moment it was
   // invoiced days or weeks after the work was done. A job with no logged work
-  // is dated by the last time it moved from an unfinished status into a finished
-  // one (settled_history_at) — a later Done → Cust. Notified → Invoiced step is
-  // not a finish, so invoicing never moves the day — then by the invoice date,
+  // is dated by the FIRST time it moved from an unfinished status into a finished
+  // one (settled_history_at) — a later Done → Ready to Collect → … → Paid – Archived
+  // step is not a finish, and nor is coming back off an Action Required flag or a
+  // hold laid over a finished job, so billing or a flag never moves the day — then by
+  // the invoice date,
   // and by its last edit only when neither is on record. fetchStatsJobs's
   // pre-filter repeats this order and must change with it.
   let raw = null;
@@ -205,7 +210,7 @@ function getJobFinishDate(job, maxTimeEntryEnd, fmt) {
     raw = job.settled_history_at;
   } else if (job.invoiced_date) {
     raw = job.invoiced_date;
-  } else if (FINISHED_STATUSES.includes(job.status)) {
+  } else if (FINISHED_STATUSES.includes(job.standing_status)) {
     raw = job.updated_at;
   }
   if (!raw) return null;
@@ -279,7 +284,7 @@ function measureTimeEntry(te) {
 //   (b) created inside the (buffered) range — feeds totalJobsCreated, the QA/priority
 //       distributions, repeat-job count, and the "jobsCreated" trend/customer buckets;
 //   (c) possibly finished inside the (buffered) range — a job's finish date is
-//       COALESCE(last logged time-entry end, the last move into a finished
+//       COALESCE(last logged time-entry end, the first move into a finished
 //       status, invoiced_date, updated_at), the exact same fallback order getJobFinishDate uses
 //       (see getJobFinishDate above) — feeds completedJobsCount, on-time/late, and the
 //       "jobsCompleted"/customer buckets.
@@ -296,18 +301,20 @@ function fetchStatsJobs(startDate, endDate, bufferedStartIso, bufferedEndIso) {
         j.*,
         c.name AS resolved_company_name,
         (SELECT MAX(te.end_time) FROM time_entries te WHERE te.jobcard_id = j.id AND te.end_time IS NOT NULL) AS max_entry_end,
-        (SELECT MAX(h.created_at) FROM history h
+        (SELECT MIN(h.created_at) FROM history h
           WHERE h.entity_type = 'jobcard' AND h.entity_id = j.id
             AND json_extract(CASE WHEN json_valid(h.changes) THEN h.changes END, '$.status.to') IN (${settledPlaceholders})
             AND (json_extract(CASE WHEN json_valid(h.changes) THEN h.changes END, '$.status.from') IS NULL
               OR json_extract(CASE WHEN json_valid(h.changes) THEN h.changes END, '$.status.from') NOT IN (${settledPlaceholders}))
-        ) AS settled_history_at
+        ) AS settled_history_at,
+        (SELECT COUNT(*) FROM time_entries te WHERE te.jobcard_id = j.id AND te.end_time IS NULL) AS running_clocks,
+        CASE WHEN j.status = ? AND j.previous_status IS NOT NULL THEN j.previous_status ELSE j.status END AS standing_status
       FROM jobcards j
       LEFT JOIN companies c ON j.company_id = c.id
     )
     SELECT * FROM job_calc
   `;
-  const jobsParams = [...FINISHED_STATUSES, ...FINISHED_STATUSES];
+  const jobsParams = [...FINISHED_STATUSES, ...FINISHED_STATUSES, jobStatuses.alertStatus];
   if (startDate || endDate) {
     const createdCond = [];
     if (bufferedStartIso) { createdCond.push('created_at >= ?'); }
@@ -317,7 +324,7 @@ function fetchStatsJobs(startDate, endDate, bufferedStartIso, bufferedEndIso) {
     if (bufferedStartIso) { finishCond.push(`${finishExpr} >= ?`); }
     if (bufferedEndIso) { finishCond.push(`${finishExpr} <= ?`); }
     jobsSql += `
-      WHERE (archived = 0 AND status NOT IN (${settledPlaceholders}))
+      WHERE (archived = 0 AND standing_status NOT IN (${settledPlaceholders}))
          OR (${createdCond.join(' AND ')})
          OR (${finishCond.join(' AND ')})
     `;
@@ -442,7 +449,8 @@ function processJobMetrics(allJobs, fmt, todayStr, startDate, endDate) {
   for (const job of allJobs) {
     const createdLocalDate = job.created_at ? officeDateString(new Date(job.created_at), fmt) : null;
     const finishDate = getJobFinishDate(job, job.max_entry_end, fmt);
-    const isFinished = FINISHED_STATUSES.includes(job.status);
+    // A job flagged Action Required counts by the status it remembers (standing_status).
+    const isFinished = FINISHED_STATUSES.includes(job.standing_status);
 
     const isCreatedInRange = (!startDate || (createdLocalDate && createdLocalDate >= startDate)) &&
                              (!endDate || (createdLocalDate && createdLocalDate <= endDate));
@@ -461,12 +469,14 @@ function processJobMetrics(allJobs, fmt, todayStr, startDate, endDate) {
       const prio = job.priority || 'NONE';
       priorityDistribution[prio] = (priorityDistribution[prio] || 0) + 1;
 
-      if (job.is_repeat_job) repeatJobsCount++;
+      if (isRepeatJob(job)) repeatJobsCount++;
     }
 
-    if (job.archived === 0 && !FINISHED_STATUSES.includes(job.status)) {
+    if (job.archived === 0 && !isFinished) {
       activeJobsCount++;
-      if (job.status === 'IN_PROGRESS') inProgressJobsCount++;
+      // Being worked on: set to In Progress, or a clock running on it right now — status
+      // is set by hand, so a job being worked can still read Open.
+      if (job.standing_status === 'IN_PROGRESS' || job.running_clocks > 0) inProgressJobsCount++;
       if (job.due_date && job.due_date < todayStr) overdueActiveJobsCount++;
     }
 
@@ -860,11 +870,12 @@ function buildCustomerRankings(inRangeJobs, completedInRangeJobs, customerHoursM
   for (const j of inRangeJobs) {
     const c = getOrCreateJobCustomer(j);
     c.jobsCount++;
-    if (j.is_repeat_job) c.repeatCount++;
+    if (isRepeatJob(j)) c.repeatCount++;
   }
 
   const invoicedTotals = can(userRole, 'pricing')
-    ? invoicedTotalsByJob(completedInRangeJobs.filter(j => j.status === 'INVOICED').map(j => j.id), ot)
+    // Billed = the bill has gone out: Call for Payment or Paid – Archived.
+    ? invoicedTotalsByJob(completedInRangeJobs.filter(j => jobStatuses.billedStatuses.includes(j.standing_status)).map(j => j.id), ot)
     : new Map();
 
   for (const j of completedInRangeJobs) {

@@ -39,7 +39,7 @@ router.put('/:id/costing', authenticate, requirePermission('pricing'), (req, res
     if (!findOr404(res, jobcardQueries.getById.get(jobId), "That job couldn't be found. It may have been removed.")) return;
     const existing = jobCostingQueries.getByJobcard.get(jobId);
 
-    // An invoiced (archived) job never reaches here: closedJobGuard, mounted ahead of every
+    // An archived (Paid – Archived) job never reaches here: closedJobGuard, mounted ahead of every
     // /:id route, refuses the save until the job is unarchived.
     const computed = computeLiveCosting(jobId, req.body);
 

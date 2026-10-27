@@ -538,7 +538,7 @@ export default function JobCommentsPanel({
           {locked ? (
             <div className="jc-chat-locked">
               <Lock size={14} />
-              <span>This job is invoiced. Unarchive it to add comments.</span>
+              <span>This job is paid and archived. Unarchive it to add comments.</span>
             </div>
           ) : (
             <>

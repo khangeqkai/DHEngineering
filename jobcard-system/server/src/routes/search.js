@@ -1,4 +1,5 @@
 const express = require('express');
+const jobStatuses = require('../shared/jobStatuses.json');
 const { db } = require('../db/connection');
 const { authenticate, isManagement, can } = require('../middleware/auth');
 const { getAssigneesForJobcards, HISTORY_JOB_NUMBER_SQL, HISTORY_RECORD_NAME_SQL } = require('../db/database');
@@ -296,12 +297,16 @@ function searchJobs(req, res, canManage) {
   } else {
     pushMomentRange(conditions, params, 'j.created_at', dateFrom, dateTo);
   }
-  // Invoicing always files a job away, so an invoiced job is never unarchived —
-  // hiding archived jobs outright would make the Invoiced status filter a dead
-  // end. Asking for Invoiced brings the filed-away invoiced jobs in; every other
-  // status still leaves archived jobs out.
+  // Paid – Archived always files a job away — hiding archived jobs outright would
+  // make that status filter a dead end. Asking for it brings the filed-away jobs in;
+  // every other status still leaves archived jobs out.
   if (includeArchived !== 'true') {
-    conditions.push(statuses.includes('INVOICED') ? "(j.archived = 0 OR j.status = 'INVOICED')" : 'j.archived = 0');
+    if (statuses.includes(jobStatuses.closedStatus)) {
+      conditions.push('(j.archived = 0 OR j.status = ?)');
+      params.push(jobStatuses.closedStatus);
+    } else {
+      conditions.push('j.archived = 0');
+    }
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

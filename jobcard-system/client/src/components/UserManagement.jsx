@@ -303,7 +303,7 @@ export default function UserManagement() {
                       onChange={(e) => {
                         setFormData({ ...formData, password: e.target.value.replace(/\D/g, '').slice(0, 4) });
                       }}
-                      placeholder="····"
+                      placeholder="4 digits"
                     />
                     <p className="field-hint">4 digits, numbers only.</p>
                     <FieldError {...errorProps('password')} message={errorFor('password')} />

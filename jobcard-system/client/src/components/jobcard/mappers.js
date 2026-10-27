@@ -2,6 +2,7 @@
 // Consolidates API response to form state conversions
 
 import { isSavedLineItem } from './jobCardValidation.mjs';
+import { DEFAULT_STATUS } from './constants';
 
 export function mapTimeEntryFromApi(e) {
   return {
@@ -64,8 +65,14 @@ export function mapTreatmentFromApi(t) {
 export function getDefaultFormData() {
   return {
     jobNumber: '',
-    status: 'OPEN',
-    // Whether the job is invoiced and closed — the one flag jobLock.js's
+    status: DEFAULT_STATUS,
+    // Where the job was before Action Required / Paid – Archived (the server keeps it;
+    // the status drop-downs read it for their "Put back to …" row). Never typed.
+    previousStatus: null,
+    // Whether this job's customer needs a PO number for invoicing (the customer's own
+    // tick, sent with a saved job). A new job reads it from the customer being picked.
+    customerRequiresPo: false,
+    // Whether the job is paid, archived and closed — the one flag jobLock.js's
     // isJobClosed() reads, the same one the server's closedJobGuard keys on. A
     // brand-new job is never closed; setFormDataFromJobCard (useJobCardForm.js)
     // carries the loaded job's real value once one exists.
@@ -79,10 +86,8 @@ export function getDefaultFormData() {
     qualityLevel: 'STANDARD',
     priority: 'NONE',
     poNumber: '',
-    quoteReference: '',
     description: '',
     dueDate: '',
-    isRepeatJob: false,
     repeatJobReference: ''
   };
 }
@@ -238,13 +243,10 @@ export function buildJobcardPayload({
     qualityLevel: formData.qualityLevel,
     priority: formData.priority,
     poNumber: formData.poNumber,
-    quoteReference: formData.quoteReference,
     description: formData.description,
     dueDate: formData.dueDate,
-    isRepeatJob: formData.isRepeatJob,
-    // A previous-job reference only exists on a repeat job (the server holds the
-    // same rule), so a reference typed before unticking the box never travels.
-    repeatJobReference: formData.isRepeatJob ? formData.repeatJobReference : null,
+    // Naming the previous job is what makes a repeat job; an empty box is not one.
+    repeatJobReference: formData.repeatJobReference || null,
     // Assignees and parts are only sent here on a brand-new job — there's nobody to
     // write to yet, so both travel in the create payload as a one-shot. On an
     // existing job each tick and each row edit already wrote itself through the

@@ -9,9 +9,10 @@ const {
   jobAssigneeQueries,
   tagQueries,
   timeEntryQueries,
+  companyQueries,
   getSettings
 } = require('../db/database');
-const { invoiceBlockedByTime } = require('../utils/timeEntryHelpers');
+const { billingBlockedByTime } = require('../utils/timeEntryHelpers');
 const logger = require('../utils/logger');
 const { readTrailEntry } = require('../db/trailEntries');
 const { diffFields } = require('../utils/historyChanges');
@@ -172,95 +173,153 @@ function computeAttachmentWarnings(jobcardId, items = []) {
   return { items: flagged, hasAny: flagged.length > 0, attachedByItem };
 }
 
-// ─── Invoicing (shared by PUT /jobcards/:id and PATCH /jobcards/:id/status) ───
-// A job's status moving to INVOICED also files it away (archived + invoicedDate)
-// — see docs/notes/jobs-and-status.md. Both routes that can make this transition
-// run the exact same checks, in the same order, before any write; this is that
-// one shared step. Returns `refusal` (a `{ status, body }` to send as-is) when the
-// transition must be blocked, otherwise `shouldArchive`/`invoicedDate` for the
-// caller to act on inside its own write transaction via applyInvoicingArchive.
-function checkInvoicing(existing, newStatus, confirmMissingAttachments, confirmMissingInspection) {
-  const shouldArchive = newStatus === 'INVOICED' && existing.status !== 'INVOICED' && existing.archived === 0;
-  if (!shouldArchive) {
-    return { shouldArchive: false, invoicedDate: null, refusal: null };
+// ─── Status moves (shared by PUT /jobcards/:id and PATCH /jobcards/:id/status) ───
+// Everything that rides along with a status move, worked out once for both routes
+// that can move one, with the same checks in the same order before any write — see
+// docs/notes/jobs-and-status.md:
+//   - every billing move (To be Invoiced, Call for Payment, Paid – Archived) is refused
+//     while the job's time is still moving, and the close-out questions (missing files,
+//     missing sign-offs) are asked when the job first reaches billing and again when it
+//     is archived;
+//   - Paid – Archived (closedStatus) also files the job away (archived = 1) and locks it;
+//   - the first move to Call for Payment (or straight to Paid – Archived) stamps the
+//     invoiced date — the day the bill went out;
+//   - moving into Action Required or Paid – Archived remembers where the job was
+//     (previous_status), so "Put back" and unarchive can return it there;
+//   - a customer marked "requires PO#" is asked about before a billing move while
+//     the job has no PO number.
+// checkStatusMove returns `refusal` (a `{ status, body }` to send as-is) when the move
+// must stop, otherwise a plan for applyStatusMove to carry out inside the caller's own
+// write transaction. `confirms` holds the "are you sure" / "carry on anyway" flags the client resends
+// with; `after` is what the job's PO number and customer will be once this write lands
+// (PUT can change the PO number in the same save), defaulting to what is stored.
+function checkStatusMove(existing, newStatus, confirms = {}, after = {}) {
+  const none = { refusal: null, moved: false };
+  if (newStatus === existing.status) return none;
+
+  const shouldArchive = newStatus === jobStatuses.closedStatus && existing.archived === 0;
+  const billing = jobStatuses.billingStatuses;
+  const intoBilling = billing.includes(newStatus);
+  // The close-out questions are asked when the job first reaches billing (whichever
+  // billing status it jumps to) and again when it is archived — not on every step
+  // between, where nothing they check could have changed unseen.
+  const asksCloseOut = intoBilling && (!billing.includes(existing.status) || shouldArchive);
+
+  if (intoBilling) {
+    // Hard block: a running timer, a clock still awaiting its worker's answer, or a
+    // just-stopped one whose form isn't saved yet can't be confirmed away like a
+    // missing attachment can — refuse before any write, and before the soft
+    // checkpoints below.
+    const timeBlock = billingBlockedByTime(existing.id);
+    if (timeBlock) return { refusal: { status: 409, body: { error: timeBlock } } };
   }
 
-  // Hard block: a running timer, or a just-stopped one whose form isn't saved
-  // yet, can't be confirmed away like a missing attachment can — refuse before
-  // any write, and before the soft attachment checkpoint below.
-  const timeBlock = invoiceBlockedByTime(existing.id);
-  if (timeBlock) {
-    return { shouldArchive, invoicedDate: null, refusal: { status: 409, body: { error: timeBlock } } };
+  // The "are you sure?" question for the moments that bill or lock the job — first
+  // reaching billing, and archiving — asked only once the hard blocks above have
+  // passed, so nobody answers a question for a move that was going to be refused
+  // anyway. The client asks it (with a fresh total) and resends with confirmBilling.
+  if (asksCloseOut && confirms.confirmBilling !== true) {
+    return { refusal: { status: 409, body: { error: 'CONFIRM_BILLING', archiving: shouldArchive } } };
   }
 
-  // Soft close-out checkpoint: stop before any write and report the gaps
-  // instead of writing — unless the caller already confirmed "invoice anyway".
-  // When the job declared files but the storage location can't be reached,
-  // nothing is known either way, so it still stops and asks (FILES_UNREACHABLE)
-  // rather than letting an unchecked job be invoiced and archived silently.
-  if (confirmMissingAttachments !== true) {
+  // Soft close-out checkpoint: stop before any write and report the gaps instead of
+  // writing — unless the caller already confirmed "carry on anyway". When the job
+  // declared files but the storage location can't be reached, nothing is known
+  // either way, so it still stops and asks (FILES_UNREACHABLE) rather than letting an
+  // unchecked job be billed silently.
+  if (asksCloseOut && confirms.confirmMissingAttachments !== true) {
     const items = jobItemQueries.getByJobcard.all(existing.id);
     const warnings = computeAttachmentWarnings(existing.id, items);
     if (warnings.hasAny || warnings.filesUnreachable) {
       const error = warnings.filesUnreachable ? 'FILES_UNREACHABLE' : 'MISSING_ATTACHMENTS';
-      return {
-        shouldArchive,
-        invoicedDate: null,
-        refusal: { status: 409, body: { error, attachmentWarnings: warnings } }
-      };
+      return { refusal: { status: 409, body: { error, attachmentWarnings: warnings } } };
     }
   }
 
   // Second soft close-out checkpoint, same shape as the attachments one above:
   // finished runs that needed the Critical sign-off (critical_at_finish = 1) but
-  // are still missing one of the four inspection answers. This is a warning, not a
-  // hard block — only management can invoice, so this is the manager's own confirm.
-  const missingInspectionRows = timeEntryQueries.getMissingInspectionByJobcard.all(existing.id);
-  if (missingInspectionRows.length > 0 && confirmMissingInspection !== true) {
-    const inspectionWarnings = missingInspectionRows.map(row => ({
-      id: row.id,
-      workerName: row.user_name,
-      startTime: row.start_time,
-      endTime: row.end_time,
-      itemNumber: row.item_number
-    }));
-    return {
-      shouldArchive,
-      invoicedDate: null,
-      refusal: { status: 409, body: { error: 'MISSING_INSPECTION', inspectionWarnings } }
-    };
+  // are still missing one of the four inspection answers. A warning, not a hard
+  // block — only an admin can bill, so this is the admin's own confirm.
+  let inspectionConfirmedCount = 0;
+  if (asksCloseOut) {
+    const missingInspectionRows = timeEntryQueries.getMissingInspectionByJobcard.all(existing.id);
+    if (missingInspectionRows.length > 0 && confirms.confirmMissingInspection !== true) {
+      const inspectionWarnings = missingInspectionRows.map(row => ({
+        id: row.id,
+        workerName: row.user_name,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        itemNumber: row.item_number
+      }));
+      return { refusal: { status: 409, body: { error: 'MISSING_INSPECTION', inspectionWarnings } } };
+    }
+    inspectionConfirmedCount = missingInspectionRows.length;
   }
 
+  // Third soft checkpoint: a billing move for a customer whose accounts won't take an
+  // invoice without their purchase order number, while the job has none. Asked, never
+  // blocked — the PO may have come by phone or on paper.
+  const poNumber = after.poNumber !== undefined ? after.poNumber : existing.po_number;
+  const companyId = after.companyId !== undefined ? after.companyId : existing.company_id;
+  const poMissing = intoBilling
+    && !String(poNumber || '').trim()
+    && companyId != null
+    && companyQueries.getById.get(companyId)?.requires_po === 1;
+  if (poMissing && confirms.confirmMissingPo !== true) {
+    return { refusal: { status: 409, body: { error: 'MISSING_PO' } } };
+  }
+
+  // Where the job was is remembered on the way into Action Required or Paid – Archived,
+  // and forgotten on the way out of either. Action Required is a flag over the job's
+  // real status, so archiving a flagged job keeps the status from before the flag —
+  // unarchiving then returns it there, not to the flag.
+  const remembering = [jobStatuses.alertStatus, jobStatuses.closedStatus];
+  let previousStatus = existing.previous_status ?? null;
+  if (remembering.includes(newStatus)) {
+    const flagged = existing.status === jobStatuses.alertStatus && existing.previous_status;
+    previousStatus = flagged ? existing.previous_status : existing.status;
+  } else if (remembering.includes(existing.status)) {
+    previousStatus = null;
+  }
+
+  const stampsInvoicedDate = !existing.invoiced_date
+    && (newStatus === jobStatuses.billedStatus || newStatus === jobStatuses.closedStatus);
+
   return {
-    shouldArchive,
-    invoicedDate: new Date().toISOString(),
     refusal: null,
-    // 0 when nothing was missing (so applyInvoicingArchive knows not to note it);
-    // > 0 only when the manager just confirmed past runs that were missing answers.
-    inspectionConfirmedCount: missingInspectionRows.length
+    moved: true,
+    shouldArchive,
+    previousStatus,
+    invoicedDate: stampsInvoicedDate ? new Date().toISOString() : (existing.invoiced_date ?? null),
+    stampsInvoicedDate,
+    inspectionConfirmedCount,
+    carriedOnWithoutPo: poMissing
   };
 }
 
-// Writes the archive row — call from inside the caller's own write transaction,
-// in the same position the inline `if (shouldArchive) jobcardQueries.archive.run(...)`
-// used to sit — and returns the history change entries to fold into the
-// caller's own `changes` object. No-ops (and returns {}) when this update isn't
-// an invoicing transition. `inspectionConfirmedCount` (from checkInvoicing) folds an
-// extra change into the trail entry only when the job was invoiced anyway with
-// unanswered Critical sign-offs — the same idea as the missing-attachments confirm,
-// which isn't separately recorded anywhere so there is nothing to mirror there.
-function applyInvoicingArchive(shouldArchive, invoicedDate, userId, jobcardId, inspectionConfirmedCount = 0) {
-  if (!shouldArchive) return {};
-  jobcardQueries.archive.run(invoicedDate, userId, jobcardId);
-  const changes = {
-    archived: { from: false, to: true },
-    invoicedDate: { from: null, to: invoicedDate }
-  };
-  if (inspectionConfirmedCount > 0) {
+// Carries out checkStatusMove's plan — call from inside the caller's own write
+// transaction, after the status itself is written — and returns the history change
+// entries to fold into the caller's own `changes` object. No-ops (and returns {})
+// when the status didn't move. The remembered status is bookkeeping, not an edit,
+// so it is never put in the trail.
+function applyStatusMove(move, userId, jobcardId) {
+  if (!move.moved) return {};
+  jobcardQueries.setStatusBookkeeping.run(move.previousStatus, move.invoicedDate, jobcardId);
+  const changes = {};
+  if (move.stampsInvoicedDate) changes.invoicedDate = { from: null, to: move.invoicedDate };
+  if (move.shouldArchive) {
+    jobcardQueries.archive.run(userId, jobcardId);
+    changes.archived = { from: false, to: true };
+  }
+  if (move.inspectionConfirmedCount > 0) {
     changes.inspectionSignOff = {
-      from: `${inspectionConfirmedCount} run(s) unanswered`,
-      to: 'invoiced anyway'
+      from: `${move.inspectionConfirmedCount} run(s) unanswered`,
+      to: move.shouldArchive ? 'archived anyway' : 'billed anyway'
     };
+  }
+  if (move.carriedOnWithoutPo) {
+    // Its own key, not poNumber: a PUT can carry a real PO number change in the same entry.
+    changes.missingPo = { from: 'not entered', to: 'carried on anyway' };
   }
   return changes;
 }
@@ -281,6 +340,15 @@ function customerFields(row, canManage) {
   };
 }
 
+// Whether the job's customer needs a PO number for invoicing — read live from the
+// customer (a saved job's screen has no customer list loaded to look it up in), so
+// ticking or unticking the customer shows on every one of their jobs at once.
+// Management only, like the rest of the customer's details.
+function customerRequiresPo(row, canManage) {
+  if (!canManage || row.company_id == null) return false;
+  return companyQueries.getById.get(row.company_id)?.requires_po === 1;
+}
+
 function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
   const canManage = isManagement(userRole);
   return {
@@ -290,15 +358,15 @@ function formatJobcard(row, items = [], assignees = [], userRole = 'user') {
     cardType: row.card_type,
     status: row.status,
     ...customerFields(row, canManage),
+    customerRequiresPo: customerRequiresPo(row, canManage),
     qualityLevel: row.quality_level,
     priority: row.priority,
     poNumber: row.po_number,
-    quoteReference: row.quote_reference,
     description: row.description,
     dueDate: row.due_date,
-    isRepeatJob: row.is_repeat_job === 1,
     repeatJobReference: row.repeat_job_reference,
     invoicedDate: row.invoiced_date,
+    previousStatus: row.previous_status ?? null,
     printedAt: row.printed_at || null,
     archived: row.archived === 1,
     createdBy: row.created_by,
@@ -342,9 +410,7 @@ function buildChanges(existing, data) {
     ['contact_phone', 'contactPhone'],
     ['contact_email', 'contactEmail'],
     ['po_number', 'poNumber'],
-    ['quote_reference', 'quoteReference'],
     ['description', 'description'],
-    ['is_repeat_job', 'isRepeatJob'],
     ['repeat_job_reference', 'repeatJobReference'],
   ];
 
@@ -352,11 +418,7 @@ function buildChanges(existing, data) {
   // update, so a field left out of `data` means "don't touch it", not "clear it".
   const fieldsToTrack = fieldSpecs
     .filter(([, reqField]) => data[reqField] !== undefined)
-    .map(([dbField, reqField]) => [
-      dbField,
-      reqField,
-      dbField === 'is_repeat_job' ? (data[reqField] ? 1 : 0) : data[reqField]
-    ]);
+    .map(([dbField, reqField]) => [dbField, reqField, data[reqField]]);
 
   return diffFields(existing, fieldsToTrack);
 }
@@ -506,7 +568,6 @@ function buildJobCardView(jobcardId, jc, canManage = false) {
     // contact name / phone / email are never on the printout for anyone.
     company: customerFields(jc, canManage).companyName || '',
     poNumber: jc.po_number || '',
-    quoteReference: jc.quote_reference || '',
     printed: formatDayAu(officeDateString(new Date())),
     items
   };
@@ -550,4 +611,4 @@ function readEntries(history, shape, route) {
   return entries;
 }
 
-module.exports = { readEntries, formatJobcard, customerFields, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, partQtyText, buildJobCardView, computeAttachmentWarnings, checkInvoicing, applyInvoicingArchive, tagName, friendlyTagList };
+module.exports = { readEntries, formatJobcard, customerFields, buildChanges, sanitizeHistoryForRole, createRelatedRecords, parseTreatments, serializeTreatments, partQtyText, buildJobCardView, computeAttachmentWarnings, checkStatusMove, applyStatusMove, tagName, friendlyTagList };

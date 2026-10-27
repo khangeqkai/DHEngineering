@@ -84,7 +84,7 @@ const REFUSAL_MESSAGES = {
   systemData: 'Only an admin can change backups and where job files are kept.',
   adminAccounts: 'Only an admin can change admin accounts.',
   deleteJob: 'Only an admin can delete a job.',
-  invoiceJob: 'Only an admin can invoice a job.'
+  invoiceJob: 'Only an admin can move a job into or out of that status.'
 };
 
 function requirePermission(permission) {
@@ -120,15 +120,16 @@ function liveRole(req) {
 // Single source of truth for "may this role move this job from fromStatus to
 // toStatus?" — called by both status routes, PATCH /jobcards/:id/status and
 // PUT /jobcards/:id. Returns null when allowed, else the plain-words refusal. The
-// rule itself (which statuses a worker may move a job to/from, and that Invoiced
-// needs the invoiceJob permission) lives once in server/src/shared/jobStatus.js,
-// also read by the client; this is just the role-to-booleans seam.
-function statusChangeRefusal(role, fromStatus, toStatus) {
+// rule itself (who may put a job into, and take it out of, each status) lives once
+// in server/src/shared/jobStatus.js, also read by the client; this is just the
+// role-to-booleans seam. The refusal names who CAN make the move: if a manager
+// could, the person asking is a worker; otherwise it needs an admin.
+function statusChangeRefusal(role, fromStatus, toStatus, previousStatus = null) {
   const actor = { canManage: isManagement(role), canInvoice: can(role, 'invoiceJob') };
-  if (sharedCanSetStatus(actor, fromStatus, toStatus)) return null;
-  return toStatus === 'INVOICED'
-    ? REFUSAL_MESSAGES.invoiceJob
-    : 'Only an admin or manager can set that status.';
+  if (sharedCanSetStatus(actor, fromStatus, toStatus, previousStatus)) return null;
+  return sharedCanSetStatus({ canManage: true, canInvoice: false }, fromStatus, toStatus, previousStatus)
+    ? 'Only an admin or manager can set that status.'
+    : REFUSAL_MESSAGES.invoiceJob;
 }
 
 module.exports = {

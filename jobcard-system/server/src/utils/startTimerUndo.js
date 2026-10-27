@@ -1,17 +1,15 @@
 // Undo for an accidental Start/Stop tap.
 //
-// Pressing Start moves the job to In Progress and assigns the worker. If the timer is
-// stopped again within seconds the block is discarded as an accident — so those two
-// side effects have to go too, or an accidental tap silently changes the job's status
-// and its worker list with nothing left to explain it.
+// Pressing Start assigns the worker to the job. If the timer is stopped again within
+// seconds the block is discarded as an accident — so that side effect has to go too, or
+// an accidental tap silently changes the job's worker list with nothing left to explain it.
 //
-// Both facts are read back from what the Start already wrote down: the status move from
-// the Start's own trail entry, and the assignment from when the worker was put on the
-// job. Nothing is held in memory between the two taps, so a restart in between changes
-// nothing and there is no second copy of a fact the database already has.
+// The assignment is read back from when the worker was put on the job. Nothing is held
+// in memory between the two taps, so a restart in between changes nothing and there is
+// no second copy of a fact the database already has.
 
 const {
-  db, jobcardQueries, jobAssigneeQueries, timeEntryQueries, historyQueries, recordHistory
+  db, jobAssigneeQueries, timeEntryQueries, recordHistory
 } = require('../db/database');
 const logger = require('./logger');
 const { assigneeNames } = require('./historyChanges');
@@ -38,28 +36,12 @@ function discardIfAccidentalTap(jobcardId, entry, actor) {
 
     // Put back what the Start changed, in history's { field: { from, to } } shape so it
     // folds into the discard entry below. Never throws — a failed undo must not fail the
-    // discard. Deliberately does NOT recompute the automatic status: that would just
-    // re-assert In Progress, the very thing the accidental tap left behind.
+    // discard.
     const changes = {};
     let unassignedUserId = null;
     try {
-      // The undo is all-or-nothing within the discard (a savepoint): a failure partway
-      // never leaves the status put back but the worker still assigned, or the reverse.
+      // The undo is all-or-nothing within the discard (a savepoint).
       db.transaction(() => {
-        // The Start's own trail entry recorded the status move it made, if any.
-        const logged = historyQueries.getStartTimer.get(jobcardId, entry.start_time);
-        const status = logged && JSON.parse(logged.changes).status;
-        // Only put the status back if nothing else has moved it since the Start, and no
-        // OTHER timer is still running on this job (this block was already deleted above,
-        // so a count here is every timer besides it) — a colleague's still-running work
-        // earned that status honestly and an accidental tap from someone else must not
-        // undo it out from under them.
-        const otherTimerRunning = timeEntryQueries.countRunningByJobcard.get(jobcardId).count > 0;
-        if (status && !otherTimerRunning && jobcardQueries.getById.get(jobcardId)?.status === status.to) {
-          jobcardQueries.updateStatus.run(status.from, actor.userId, jobcardId);
-          changes.status = { from: status.to, to: status.from };
-        }
-
         // This Start put the worker on the job if their place on it is no older than the
         // block. Anyone assigned before that was already meant to be there.
         const before = jobAssigneeQueries.getByJobcard.all(jobcardId);

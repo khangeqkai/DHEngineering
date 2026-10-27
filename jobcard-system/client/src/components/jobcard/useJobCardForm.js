@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { api } from '../../services/api';
 import { getDefaultFormData, mapLineItemFromApi, buildItemPayload } from './mappers';
+import { DEFAULT_STATUS } from './constants';
 import { isSavedLineItem } from './jobCardValidation.mjs';
 import { lineItemHasContent } from './closeReasons';
 import { useSaveQueue } from './useSaveQueue';
@@ -33,12 +34,13 @@ const makeEmptyLineItem = (itemNumber = 1) => ({
 // there are edits still waiting on a Save.
 //
 // Status is deliberately left out: choosing a new status sends itself straight
-// away, and the server also nudges it on its own when work starts or finishes.
-// archived is left out for the same reason — it isn't a box anyone edits, it's
-// set by the server the moment a job is invoiced (and cleared by unarchiving),
-// so it must never make the amber "unsaved" ring light up on its own.
+// away. archived and previousStatus are left out for the same reason — nobody edits
+// them, the server sets them as the status moves (archived the moment a job is
+// archived, cleared by unarchiving), so they must never make the amber "unsaved"
+// ring light up on their own. customerRequiresPo is the customer's own setting,
+// only ever read here.
 const snapshotForm = (formData) => {
-  const { status, archived, ...rest } = formData;
+  const { status, archived, previousStatus, customerRequiresPo, ...rest } = formData;
   return JSON.stringify(rest);
 };
 const snapshotAssignees = (assignees) =>
@@ -383,7 +385,9 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed, isWindow
     setJobNumber(loadedJobNumber);
     const loadedForm = {
       jobNumber: loadedJobNumber,
-      status: jobcardData.status || 'OPEN',
+      status: jobcardData.status || DEFAULT_STATUS,
+      previousStatus: jobcardData.previousStatus ?? null,
+      customerRequiresPo: Boolean(jobcardData.customerRequiresPo),
       archived: Boolean(jobcardData.archived),
       companyId: jobcardData.companyId || '',
       contactId: jobcardData.contactId || '',
@@ -394,10 +398,8 @@ export function useJobCardForm(jobCardId, { onInstantSave, onJobClosed, isWindow
       qualityLevel: jobcardData.qualityLevel || 'STANDARD',
       priority: jobcardData.priority || 'NONE',
       poNumber: jobcardData.poNumber || '',
-      quoteReference: jobcardData.quoteReference || '',
       description: jobcardData.description || '',
       dueDate: jobcardData.dueDate || '',
-      isRepeatJob: jobcardData.isRepeatJob || false,
       repeatJobReference: jobcardData.repeatJobReference || ''
     };
     setFormData(loadedForm);

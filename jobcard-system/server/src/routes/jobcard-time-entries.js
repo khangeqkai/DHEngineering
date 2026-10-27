@@ -7,7 +7,6 @@ const { validateStartTimer, validateConfirmFinish, validateManualTimeEntry, vali
 const { db, timeEntryQueries, jobcardQueries, userQueries, recordHistory, actorName } = require('../db/database');
 const { displayName } = require('../shared/names');
 const { blankEqual, diffFields } = require('../utils/historyChanges');
-const { syncStatusToWork } = require('../utils/jobStatusAuto');
 const { discardIfAccidentalTap } = require('../utils/startTimerUndo');
 const {
   normalizeTime,
@@ -218,11 +217,6 @@ function insertOpenClock(jobcardId, workerId, item, continuesRun) {
 // Everything a start does once its row exists, and the shape it answers with. `req` carries
 // the actor (whoever pressed the button); isSelf is whether the clock is the actor's own.
 function afterClockStarted(jobcardId, workerId, item, startTime, req, isSelf, entryId) {
-  // Starting work puts the job "In Progress" (or back to Done if it's already
-  // fully counted). Fold any resulting status change into the start-timer entry so
-  // the timeline shows one event. Never blocks the timer if it can't.
-  const statusChange = syncStatusToWork(jobcardId, req.user);
-
   // The event is attributed to whoever pressed Start (the admin, for an on-behalf
   // start); name the worker as well when it isn't the admin's own timer, so the
   // timeline reads "started for <worker>".
@@ -234,8 +228,7 @@ function afterClockStarted(jobcardId, workerId, item, startTime, req, isSelf, en
     // Named by description, not position — item_number is a sort order the
     // server owns and isn't stable enough to identify a part in the trail.
     item: { from: null, to: item.description },
-    ...(targetWorker ? { worker: { from: null, to: displayName(targetWorker) } } : {}),
-    ...(statusChange ? { status: statusChange } : {})
+    ...(targetWorker ? { worker: { from: null, to: displayName(targetWorker) } } : {})
   }, { timeEntryId: entryId, startTime, ...runContext({ user_id: workerId, user_name: displayName(targetWorker || req.user) }, item) });
 
   // Auto-assign the worker to this job if they aren't already an assignee — recorded
@@ -296,7 +289,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
 
     let reply;
     try {
-      // The clock row, the status follow-up and the trail entries commit together.
+      // The clock row and the trail entries commit together.
       db.transaction(() => {
         const started = insertOpenClock(id, targetWorkerId, targetItem, false);
         reply = afterClockStarted(id, targetWorkerId, targetItem, started.startTime, req, isSelf, started.entryId);
@@ -345,7 +338,7 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
     // just said was still going, so a quick stop is a real (if short) stretch of work, and
     // discarding it would skip the stop form — and with it the Critical sign-off that
     // stretch of work always has to be asked for.
-    // A closed (archived) job is frozen, and the discard would put its status and worker
+    // A closed (archived) job is frozen, and the discard would put its worker
     // list back — so a stop there is recorded as a normal block, never discarded.
     // Time the office entered (or reopened) by hand is never touched either: its start is
     // a typed moment, not a tap, so a quick stop on it is a real finish.
@@ -363,17 +356,11 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
     // timer, and existing.end_time is checked null just above), so this is always
     // the fresh decision, never a kept one.
     const criticalAtFinish = criticalAtFinishForWrite(id, existing, true);
-    // The stop, the status follow-up and the trail entry commit together.
+    // The stop and its trail entry commit together.
     db.transaction(() => {
       timeEntryQueries.stop.run(endTime, criticalAtFinish, entryId);
-
-      // Recompute the job's status from the logged work (Done if fully counted), and
-      // fold any change into the stop-timer entry so it reads as one event.
-      const statusChange = syncStatusToWork(id, req.user);
-
       recordHistory('jobcard', id, 'stop_timer', req.user.userId, actorName(req), {
-        endTime: { from: null, to: endTime },
-        ...(statusChange ? { status: statusChange } : {})
+        endTime: { from: null, to: endTime }
       }, { timeEntryId: entryId, startTime: existing.start_time, ...runContext(existing) });
     })();
 
@@ -484,20 +471,15 @@ router.post('/:id/time-entries', authenticate, requireManagement, ...validateMan
       // A block the office adds with no finish is hand-entered open time: the roll never cuts it.
       if (endTime == null) timeEntryQueries.markAutoStopExempt.run(entryId);
 
-      // The worker assignment, status follow-up and trail entry commit with the block.
+      // The worker assignment and trail entry commit with the block.
       // Keep the job's assigned-people list accurate when crediting someone new.
       autoAssignWorker(id, workerId, req.user);
-
-      // Recompute the job's status from the logged work (Done if fully counted), and
-      // fold any change into the add-time-entry record so it reads as one event.
-      const statusChange = syncStatusToWork(id, req.user);
 
       entry = timeEntryQueries.getById.get(entryId);
       recordHistory('jobcard', id, 'add_time_entry', req.user.userId, actorName(req), {
         worker: { from: null, to: entry.user_name },
         item: { from: null, to: itemRecord.description },
-        ...runTrail(entry),
-        ...(statusChange ? { status: statusChange } : {})
+        ...runTrail(entry)
       }, { timeEntryId: entryId, ...runContext(entry, itemRecord) });
       })();
     } catch (e) {
@@ -845,7 +827,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
         if (clearsUnconfirmedFlag) timeEntryQueries.clearUnconfirmed.run(entryId);
         if (isResume) timeEntryQueries.clearFinishConfirmedAt.run(entryId);
         if (reopenedByHand) timeEntryQueries.markAutoStopExempt.run(entryId);
-        // The worker assignment, status follow-up and trail entry commit with the edit.
+        // The worker assignment and trail entry commit with the edit.
         // Keep the job's assigned-people list accurate when an admin re-credits a block
         // to someone not already on the job.
         if (workerId !== existing.user_id) {
@@ -891,14 +873,6 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
           const toWorker = userQueries.getById.get(workerId);
           const toName = displayName(toWorker);
           changes.worker = { from: existing.user_name, to: toName };
-        }
-
-        // Filling in / correcting the finished quantity changes completion — recompute
-        // the job's status (Done if every line is now counted, else In Progress) and fold
-        // any change into this edit's history so it reads as one event.
-        const statusChange = syncStatusToWork(id, req.user);
-        if (statusChange) {
-          changes.status = statusChange;
         }
 
         if (Object.keys(changes).length > 0) {
@@ -1032,8 +1006,7 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
         }
       }
 
-      // The trail entry, the status follow-up and the new clock's own entries commit with
-      // the answer.
+      // The trail entry and the new clock's own entries commit with the answer.
       const changes = storedEndMs === Date.parse(existing.end_time)
         ? { finish: { from: 'not confirmed', to: 'confirmed' } }
         : { endTime: { from: existing.end_time, to: storedEnd }, reportedBy: { from: null, to: 'worker' } };
@@ -1047,9 +1020,6 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
       if (existing.critical_at_finish === 1 && criticalAtFinish === 0) {
         changes.criticalSignOff = { from: 'needed', to: 'carried by the later run' };
       }
-      const statusChange = syncStatusToWork(id, req.user);
-      if (statusChange) changes.status = statusChange;
-
       recordHistory('jobcard', id, 'confirm_finish', req.user.userId, actorName(req), changes,
         { timeEntryId: entryId, startTime: existing.start_time, ...runContext(existing) });
 
@@ -1098,15 +1068,9 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
     // Read before the delete so the worker and part are still there to name.
     const deletedContext = runContext(existing, itemRecord);
 
-    // The delete, the status follow-up and the trail entry commit together.
+    // The delete and its trail entry commit together.
     db.transaction(() => {
       timeEntryQueries.delete.run(entryId);
-
-      // Removing finished pieces changes completion — recompute the job's status against the
-      // post-delete state and fold any change into this deletion's history so it reads as one
-      // event. Must run after the delete: isJobComplete sums the remaining blocks' pieces.
-      // workRemoved: deleting the last block must still undo the Done that block caused.
-      const statusChange = syncStatusToWork(id, req.user, { workRemoved: true });
 
       const changes = {
         timeEntryId: { from: entryId, to: null },
@@ -1114,7 +1078,6 @@ router.delete('/:id/time-entries/:entryId', authenticate, requireManagement, (re
         item: { from: itemRecord ? itemRecord.description : null, to: null },
         ...runTrail(existing, { deleted: true })
       };
-      if (statusChange) changes.status = statusChange;
 
       recordHistory('jobcard', id, 'delete_time_entry', req.user.userId, actorName(req), changes,
         { timeEntryId: entryId, startTime: existing.start_time, ...deletedContext });

@@ -14,7 +14,7 @@
 // With an all-normal grid and no holidays nothing ever closes, so the roll does nothing.
 //
 // Blocks the office opened by hand (auto_stop_exempt) are never cut: hand-entered time is
-// never touched. The cut also brings the job's status up to date, as an ordinary stop would.
+// never touched.
 //
 // Nothing runs on a timer of its own: the roll is called when the server boots, on every
 // API request (index.js, before any route runs, at most once a second — see
@@ -35,7 +35,6 @@ const logger = require('./logger');
 const { db, timeEntryQueries, recordHistory } = require('../db/database');
 const { readOpeningRules, windowAt, nextOpening, officeDayEndAfter } = require('./openingHours');
 const { criticalAtFinishForWrite, runContext } = require('./timeEntryHelpers');
-const { syncStatusToWork } = require('./jobStatusAuto');
 
 // How long the company's rules are remembered between rolls before being read again.
 const RULES_MEMORY_MS = 60 * 1000;
@@ -84,15 +83,11 @@ function rollRow(row, cut, nowMs) {
 
   const criticalAtFinish = criticalAtFinishForWrite(row.jobcard_id, row, true);
   timeEntryQueries.finishUnconfirmed.run(new Date(cut.finishMs).toISOString(), criticalAtFinish, row.id);
-  // Bring the job's status up to date the way an ordinary stop does (the block is the
-  // worker's own work), folded into the same trail entry. Archived/invoiced jobs return null.
-  const statusChange = syncStatusToWork(row.jobcard_id, { userId: row.user_id });
   recordHistory('jobcard', row.jobcard_id, 'auto_stop_timer', row.user_id, row.user_name, {
     timer: {
       from: 'running',
       to: cut.zeroLength ? 'stopped at midnight — finish time not known' : 'stopped at the end of normal hours'
-    },
-    ...(statusChange ? { status: statusChange } : {})
+    }
   }, { timeEntryId: row.id, startTime: row.start_time, ...runContext(row) });
 }
 

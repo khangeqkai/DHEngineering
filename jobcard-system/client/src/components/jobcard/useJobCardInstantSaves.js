@@ -29,15 +29,10 @@ export function useJobCardInstantSaves(formHook, isEdit, jobCardId, saveQueue, {
   // it in `fields` (useInstantSave.js's FIELD_BOXES, read by the shared
   // fieldErrorsFromRefusal) — same "a mark follows the exact text it was raised
   // against" rule as every other mark in the app (hooks/useFieldErrors.js).
-  // Today the only field this can happen to is the previous-job reference: this
-  // deliberately leaves formData (isRepeatJob, repeatJobReference) untouched when
-  // that refusal lands, rather than flipping the tick off itself — the mark's
-  // rule is "shows only while the box still holds the text it was raised
-  // against", so silently changing either box out from under the user would
-  // clear the very message meant to explain why nothing was saved. The user sees
-  // the mark, tries again (retyping re-raises it against the new text, or
-  // reopening the job picks up the true state from the server) — same recovery
-  // as every other field-level refusal in the app.
+  // It leaves formData untouched when that refusal lands: the mark's rule is "shows
+  // only while the box still holds the text it was raised against", so changing the
+  // box out from under the user would clear the very message meant to explain why
+  // nothing was saved.
   const detailFieldErrors = useFieldErrors((name) => formData[name]);
 
   const instantSave = useInstantSave(forJobCardId, saveQueue, {
@@ -45,22 +40,6 @@ export function useJobCardInstantSaves(formHook, isEdit, jobCardId, saveQueue, {
     onAttachmentWarnings,
     fieldErrors: detailFieldErrors
   });
-  // A part create/update/delete can auto-advance the job's status server-side, the
-  // same way starting/stopping a timer already does (JobCardModal.jsx's
-  // refreshJobStatus / useJobCardTimerActions.js) — folding the reply's own
-  // `jobStatus` straight into form state is the same "server-confirmed value,
-  // never an unsaved edit" route: `status` is stripped from the isDirty baseline
-  // (useJobCardForm.js), so this can never mark the card dirty or arm a save.
-  // `jobStatus` is only present on a reply when that write actually moved the
-  // status. A slow reply landing after the user has since picked their own status
-  // by hand could otherwise still stomp it back — that race is closed not here but
-  // in JobIdentityStrip.jsx, which waits for every part save already in flight to
-  // settle before it sends a hand-picked status change.
-  // setFormData is a raw useState setter (stable identity), so this callback never
-  // changes and doesn't churn applyItemReply/writeItemField/etc below it.
-  const onJobStatusChange = useCallback((status) => {
-    if (status) setFormData(prev => ({ ...prev, status }));
-  }, [setFormData]);
   const instantItems = useInstantItems({
     jobCardId: forJobCardId,
     lineItems: formHook.lineItems,
@@ -70,7 +49,6 @@ export function useJobCardInstantSaves(formHook, isEdit, jobCardId, saveQueue, {
     onItemSaved: markItemSaved,
     onItemRemoved: markItemRemoved,
     onAttachmentWarnings,
-    onJobStatusChange,
     onJobClosed,
     saveQueue
   });

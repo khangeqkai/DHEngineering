@@ -23,7 +23,7 @@ const NO_STAFF = [];
 // has closed meanwhile. The thread itself is re-read only while the window is still up.
 //
 // onJobClosed (optional) fires instead of the ordinary failure toast when a post
-// or delete is refused because the job was invoiced and archived from another PC
+// or delete is refused because the job was archived from another PC
 // while this screen still had it open (JobCardModal.jsx) — it shows the shared
 // sentence and reloads the job so the screen catches up.
 //

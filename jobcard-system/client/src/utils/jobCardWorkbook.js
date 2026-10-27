@@ -59,8 +59,7 @@ const JOBCARD_SUMMARY_COLS = [
   // Comments arrive newest-first (the on-screen thread reads that way), but an
   // exported record should read oldest-first like a diary, so flip them back.
   { label: 'Notes', value: r => (r._notes || []).slice().reverse().map(n => n.text).join(' | ') },
-  { label: 'Repeat Job', value: r => r.isRepeatJob ? 'Yes' : 'No' },
-  { label: 'Repeat Job Reference', value: r => r.repeatJobReference },
+  { label: 'Repeat of Job', value: r => r.repeatJobReference || '' },
   { label: 'Invoiced Date', value: r => fmtDate(r.invoicedDate) },
   { label: 'Created', value: r => fmtDateTime(r.createdAt) },
 ];

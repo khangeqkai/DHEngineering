@@ -330,63 +330,81 @@
   --badge-cancelled-text: #b91c1c;
 
   /* Job status colors — semantic lifecycle palette (Light mode).
-     Colour tracks the job's journey and its "temperature": cool while
-     planning, warm once work starts, green when done, grey once filed.
-       pink   = quote        (a fresh estimate, not committed yet)
-       blue   = open         (accepted, queued)
-       violet = material     (parked — out at a supplier for material/treatment)
-       amber  = in progress  (being worked right now)
-       green  = done
-       grey   = invoiced     (billed and filed away — the only grey) */
+     One colour family per group on the status list (jobStatuses.json),
+     so a glance at the list says which stage a job is in; the words say
+     which status inside the group.
+       pink    = quoting      (To be Quoted pink, Quote Sent fuchsia)
+       blue / amber / green = workshop (Open, In Progress, Done — kept
+                 apart because they are the shop floor's everyday three)
+       violet  = on hold      (all five reasons; the words name the reason)
+       cyan / teal = finishing (Ready to Collect cyan; the office's costing
+                 and billing steps teal)
+       grey    = Paid – Archived (filed away — the only grey)
+       Action Required has no fixed colour: it drifts (App.css). */
 
-  /* Fresh estimate (pink — the one warm-magenta, far from every other hue) */
+  /* Quoting — not started, waiting on a quote (pink) */
   --status-quote-bg: rgba(236, 72, 153, 0.11);
   --status-quote-text: #be185d;
   --status-quote-border: rgba(236, 72, 153, 0.30);
   --status-quote-dot: #ec4899;
 
-  /* Active — queued (blue) */
+  /* Quoting — quote sent, waiting on the customer (fuchsia) */
+  --status-quote-sent-bg: rgba(192, 38, 211, 0.10);
+  --status-quote-sent-text: #a21caf;
+  --status-quote-sent-border: rgba(192, 38, 211, 0.28);
+  --status-quote-sent-dot: #c026d3;
+
+  /* Workshop — accepted, queued (blue) */
   --status-open-bg: rgba(59, 130, 246, 0.10);
   --status-open-text: #1d4ed8;
   --status-open-border: rgba(59, 130, 246, 0.28);
   --status-open-dot: #3b82f6;
 
-  /* Parked — waiting on material or out at treatment (violet) */
-  --status-awaiting-material-bg: rgba(139, 92, 246, 0.12);
-  --status-awaiting-material-text: #6d28d9;
-  --status-awaiting-material-border: rgba(139, 92, 246, 0.32);
-  --status-awaiting-material-dot: #8b5cf6;
-
-  /* Parked — purchase order requested (lime, far from every other hue) */
-  --status-po-requested-bg: rgba(132, 204, 22, 0.13);
-  --status-po-requested-text: #3f6212;
-  --status-po-requested-border: rgba(132, 204, 22, 0.32);
-  --status-po-requested-dot: #84cc16;
-
-  /* Active — being worked right now (amber, the one "live" colour) */
+  /* Workshop — being worked right now (amber, the one "live" colour) */
   --status-in-progress-bg: rgba(245, 158, 11, 0.14);
   --status-in-progress-text: #9a3412;
   --status-in-progress-border: rgba(245, 158, 11, 0.34);
   --status-in-progress-dot: #f59e0b;
 
-  /* Done */
+  /* Workshop — done */
   --status-done-bg: rgba(34, 197, 94, 0.12);
   --status-done-text: #166534;
   --status-done-border: rgba(34, 197, 94, 0.30);
   --status-done-dot: #22c55e;
 
-  /* Finished — customer notified for collection (cyan) */
-  --status-cust-notified-bg: rgba(6, 182, 212, 0.12);
-  --status-cust-notified-text: #0e7490;
-  --status-cust-notified-border: rgba(6, 182, 212, 0.30);
-  --status-cust-notified-dot: #06b6d4;
+  /* On hold — PO, material, subcontract, tools or customer (violet) */
+  --status-hold-bg: rgba(139, 92, 246, 0.12);
+  --status-hold-text: #6d28d9;
+  --status-hold-border: rgba(139, 92, 246, 0.32);
+  --status-hold-dot: #8b5cf6;
 
-  /* Closed / invoiced (muted grey) */
-  --status-invoiced-bg: rgba(100, 116, 139, 0.06);
+  /* Finishing — ready to collect or deliver (cyan) */
+  --status-ready-bg: rgba(6, 182, 212, 0.12);
+  --status-ready-text: #0e7490;
+  --status-ready-border: rgba(6, 182, 212, 0.30);
+  --status-ready-dot: #06b6d4;
+
+  /* Finishing — the office's costing and billing steps (teal) */
+  --status-billing-bg: rgba(20, 184, 166, 0.12);
+  --status-billing-text: #0f766e;
+  --status-billing-border: rgba(20, 184, 166, 0.32);
+  --status-billing-dot: #14b8a6;
+
+  /* Closed — paid and archived (muted grey) */
+  --status-archived-bg: rgba(100, 116, 139, 0.06);
   /* Darkened from #64748b — was 4.42:1 on its own tint. */
-  --status-invoiced-text: #5b6878;
-  --status-invoiced-border: rgba(100, 116, 139, 0.20);
-  --status-invoiced-dot: #94a3b8;
+  --status-archived-text: #5b6878;
+  --status-archived-border: rgba(100, 116, 139, 0.20);
+  --status-archived-dot: #94a3b8;
+
+  /* Action Required — the rainbow that runs across its letters (App.css). Each stop is
+     an ink, dark enough to clear 4.5:1 on the light surfaces. */
+  --status-alert-1: #b91c1c;
+  --status-alert-2: #b45309;
+  --status-alert-3: #15803d;
+  --status-alert-4: #0e7490;
+  --status-alert-5: #1d4ed8;
+  --status-alert-6: #7e22ce;
 }
 
 :root.dark-mode {
@@ -519,56 +537,70 @@
   --badge-cancelled-text: #fca5a5;
 
   /* Job status colors — semantic lifecycle palette (Dark mode).
-     Same journey as light: pink quote, blue open, violet material,
-     amber in progress, green done, grey invoiced. */
+     Same families as light: pink quoting, blue/amber/green workshop,
+     violet on hold, cyan/teal finishing, grey archived. */
 
-  /* Fresh estimate (pink) */
+  /* Quoting — waiting on a quote (pink) */
   --status-quote-bg: rgba(236, 72, 153, 0.20);
   --status-quote-text: #f9a8d4;
   --status-quote-border: rgba(236, 72, 153, 0.34);
   --status-quote-dot: #f472b6;
 
-  /* Active — queued */
+  /* Quoting — quote sent (fuchsia) */
+  --status-quote-sent-bg: rgba(192, 38, 211, 0.20);
+  --status-quote-sent-text: #f0abfc;
+  --status-quote-sent-border: rgba(192, 38, 211, 0.36);
+  --status-quote-sent-dot: #e879f9;
+
+  /* Workshop — queued */
   --status-open-bg: rgba(59, 130, 246, 0.18);
   --status-open-text: #93c5fd;
   --status-open-border: rgba(59, 130, 246, 0.32);
   --status-open-dot: #60a5fa;
 
-  /* Parked — waiting on material or out at treatment (violet) */
-  --status-awaiting-material-bg: rgba(139, 92, 246, 0.22);
-  --status-awaiting-material-text: #c4b5fd;
-  --status-awaiting-material-border: rgba(139, 92, 246, 0.36);
-  --status-awaiting-material-dot: #a78bfa;
-
-  /* Parked — purchase order requested (lime) */
-  --status-po-requested-bg: rgba(132, 204, 22, 0.20);
-  --status-po-requested-text: #bef264;
-  --status-po-requested-border: rgba(132, 204, 22, 0.34);
-  --status-po-requested-dot: #a3e635;
-
-  /* Active — being worked right now (amber, the one "live" colour) */
+  /* Workshop — being worked right now (amber, the one "live" colour) */
   --status-in-progress-bg: rgba(245, 158, 11, 0.22);
   --status-in-progress-text: #fcd34d;
   --status-in-progress-border: rgba(245, 158, 11, 0.38);
   --status-in-progress-dot: #fbbf24;
 
-  /* Done */
+  /* Workshop — done */
   --status-done-bg: rgba(34, 197, 94, 0.22);
   --status-done-text: #86efac;
   --status-done-border: rgba(34, 197, 94, 0.35);
   --status-done-dot: #4ade80;
 
-  /* Finished — customer notified for collection (cyan) */
-  --status-cust-notified-bg: rgba(6, 182, 212, 0.20);
-  --status-cust-notified-text: #67e8f9;
-  --status-cust-notified-border: rgba(6, 182, 212, 0.34);
-  --status-cust-notified-dot: #22d3ee;
+  /* On hold (violet) */
+  --status-hold-bg: rgba(139, 92, 246, 0.22);
+  --status-hold-text: #c4b5fd;
+  --status-hold-border: rgba(139, 92, 246, 0.36);
+  --status-hold-dot: #a78bfa;
 
-  /* Closed / invoiced (muted grey) */
-  --status-invoiced-bg: rgba(100, 116, 139, 0.14);
-  --status-invoiced-text: #94a3b8;
-  --status-invoiced-border: rgba(100, 116, 139, 0.26);
-  --status-invoiced-dot: #64748b;
+  /* Finishing — ready to collect or deliver (cyan) */
+  --status-ready-bg: rgba(6, 182, 212, 0.20);
+  --status-ready-text: #67e8f9;
+  --status-ready-border: rgba(6, 182, 212, 0.34);
+  --status-ready-dot: #22d3ee;
+
+  /* Finishing — costing and billing (teal) */
+  --status-billing-bg: rgba(20, 184, 166, 0.20);
+  --status-billing-text: #5eead4;
+  --status-billing-border: rgba(20, 184, 166, 0.36);
+  --status-billing-dot: #2dd4bf;
+
+  /* Closed — paid and archived (muted grey) */
+  --status-archived-bg: rgba(100, 116, 139, 0.14);
+  --status-archived-text: #94a3b8;
+  --status-archived-border: rgba(100, 116, 139, 0.26);
+  --status-archived-dot: #64748b;
+
+  /* Action Required — the same rainbow in light inks for the dark surfaces. */
+  --status-alert-1: #f87171;
+  --status-alert-2: #fbbf24;
+  --status-alert-3: #4ade80;
+  --status-alert-4: #22d3ee;
+  --status-alert-5: #60a5fa;
+  --status-alert-6: #c084fc;
 }
 
 /* ── Dark mode enhancements ── */

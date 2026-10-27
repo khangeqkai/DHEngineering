@@ -79,21 +79,21 @@ const jobcardQueries = {
     INSERT INTO jobcards (
       id, job_number, card_type, status, company_id, contact_id,
       contact_name, company_name, contact_phone, contact_email,
-      quality_level, priority, po_number, quote_reference,
+      quality_level, priority, po_number,
       description, due_date,
-      is_repeat_job, repeat_job_reference,
+      repeat_job_reference,
       created_by, updated_by, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   `),
 
   update: db.prepare(`
     UPDATE jobcards SET
       card_type = ?, status = ?, company_id = ?, contact_id = ?,
       contact_name = ?, company_name = ?, contact_phone = ?, contact_email = ?,
-      quality_level = ?, priority = ?, po_number = ?, quote_reference = ?,
+      quality_level = ?, priority = ?, po_number = ?,
       description = ?, due_date = ?,
-      is_repeat_job = ?, repeat_job_reference = ?,
+      repeat_job_reference = ?,
       updated_by = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
@@ -111,16 +111,24 @@ const jobcardQueries = {
     WHERE id = ?
   `),
 
+  // Files a job away (Paid – Archived). The status, the invoiced date and the remembered
+  // status are written by updateStatus/setStatusBookkeeping in the same transaction.
   archive: db.prepare(`
-    UPDATE jobcards SET archived = 1, invoiced_date = ?, updated_by = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    UPDATE jobcards SET archived = 1, updated_by = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 
-  // The 'OPEN' written here is only the base the unarchive route settles from: it runs
-  // syncStatusToWork in the same transaction, so the logged work decides the final status
-  // and nobody ever sees the interim OPEN.
+  // What rides along with a status move (see checkStatusMove in jobcard-helpers.js):
+  // where the job was before Action Required / Paid – Archived, and the day the bill went out.
+  setStatusBookkeeping: db.prepare(`
+    UPDATE jobcards SET previous_status = ?, invoiced_date = ? WHERE id = ?
+  `),
+
+  // Un-filing returns the job to the status it had just before it was archived (the
+  // route picks it — the remembered one, or Call for Payment for a job archived before
+  // statuses were remembered). The invoiced date stays: the bill really went out.
   unarchive: db.prepare(`
-    UPDATE jobcards SET archived = 0, invoiced_date = NULL, status = 'OPEN', updated_by = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    UPDATE jobcards SET archived = 0, status = ?, previous_status = NULL, updated_by = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?
   `),
 

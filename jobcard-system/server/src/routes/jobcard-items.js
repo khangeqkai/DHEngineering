@@ -16,7 +16,6 @@ const { jobcardQueries, jobItemQueries, timeEntryQueries, recordHistory, actorNa
 const { findOr404 } = require('../utils/findOr404');
 const { serializeTreatments, parseTreatments, partQtyText, computeAttachmentWarnings } = require('./jobcard-helpers');
 const { partSummary, itemPartSnapshot, describePart } = require('./jobcard-audit-text');
-const { syncStatusToWork } = require('../utils/jobStatusAuto');
 const { db } = require('../db/connection');
 
 const router = express.Router();
@@ -106,8 +105,7 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
     // the same transaction as the insert, so it can never collide with a number
     // another write picks at the same moment, and it never falls for a gap a
     // deleted part left behind (nothing renumbers on delete any more).
-    // The status follow-up and the trail entry commit with the insert.
-    let statusChange;
+    // The trail entry commits with the insert.
     const addItem = db.transaction(() => {
       const { maxNumber } = jobItemQueries.getMaxItemNumber.get(id);
       const itemNumber = (maxNumber || 0) + 1;
@@ -120,16 +118,10 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
       );
       jobcardQueries.touch.run(req.user.userId, id);
 
-      // A new part changes what completion needs, so recompute the job's status
-      // (e.g. a job that read Done can drop back to In Progress) and fold any change
-      // into this add's own history entry, the same way the time routes do.
-      statusChange = syncStatusToWork(id, req.user);
-
       const addedPart = itemPartSnapshot(item.qty, item.description, item.jobType, item.material, item.treatments, item.drawingsType, item.customerProperty);
       const summary = partSummary(addedPart);
       recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
-        [`part ${label} added`]: { from: null, to: summary },
-        ...(statusChange ? { status: statusChange } : {})
+        [`part ${label} added`]: { from: null, to: summary }
       }, { part: addedPart });
     });
     addItem();
@@ -142,11 +134,7 @@ router.post('/:id/items', authenticate, requireManagement, (req, res) => {
     // never has to remember to go fetch them separately.
     const attachmentWarnings = computeAttachmentWarnings(id, items);
 
-    // jobStatus only when this write moved it — see docs/notes/jobs-and-status.md.
-    res.status(201).json({
-      ...created, item: created, items, attachmentWarnings,
-      ...(statusChange ? { jobStatus: statusChange.to } : {})
-    });
+    res.status(201).json({ ...created, item: created, items, attachmentWarnings });
   } catch (err) {
     logger.error({ err }, 'Add job item error');
     res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
@@ -195,7 +183,6 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
 
     // This route never moves a part — the stored position number is passed straight through.
     // The job's "Last Edited" moves only when the part actually changed.
-    let statusChange;
     db.transaction(() => {
       jobItemQueries.updateById.run(
         stored.item_number,
@@ -205,21 +192,11 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
         merged.drawingsType || null, merged.customerProperty || null,
         itemId
       );
-      if (beforeSummary !== afterSummary) jobcardQueries.touch.run(req.user.userId, id);
-
-      // A changed quantity (or a line no longer matching what's been made) changes
-      // completion, so recompute the job's status and fold any change into this
-      // edit's own history entry, the same way the time routes do.
-      statusChange = syncStatusToWork(id, req.user);
-
-      if (beforeSummary !== afterSummary || statusChange) {
+      if (beforeSummary !== afterSummary) {
+        jobcardQueries.touch.run(req.user.userId, id);
         recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
-          ...(beforeSummary !== afterSummary ? { [`part ${label}`]: { from: beforeSummary, to: afterSummary } } : {}),
-          ...(statusChange ? { status: statusChange } : {})
-        }, beforeSummary !== afterSummary ? {
-          partBefore,
-          part: partAfter
-        } : undefined);
+          [`part ${label}`]: { from: beforeSummary, to: afterSummary }
+        }, { partBefore, part: partAfter });
       }
     })();
 
@@ -228,11 +205,7 @@ router.patch('/:id/items/:itemId', authenticate, requireManagement, (req, res) =
     const updated = items.find(i => i.id === itemId);
     const attachmentWarnings = computeAttachmentWarnings(id, items);
 
-    // jobStatus only when this write moved it — see docs/notes/jobs-and-status.md.
-    res.json({
-      ...updated, item: updated, items, attachmentWarnings,
-      ...(statusChange ? { jobStatus: statusChange.to } : {})
-    });
+    res.json({ ...updated, item: updated, items, attachmentWarnings });
   } catch (err) {
     logger.error({ err }, 'Update job item error');
     res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
@@ -276,30 +249,18 @@ router.delete('/:id/items/:itemId', authenticate, requireManagement, (req, res) 
     // survivors. Gaps are expected and fine; the number shown on screen is
     // worked out by the client from a part's position in the ordered list it
     // draws, never predicted or recomputed here.
-    let statusChange;
     db.transaction(() => {
       jobItemQueries.deleteById.run(itemId);
       jobcardQueries.touch.run(req.user.userId, id);
-
-      // Removing a part changes what completion needs (one fewer line to satisfy),
-      // so recompute the job's status and fold any change into this delete's own
-      // history entry, the same way the time routes do.
-      statusChange = syncStatusToWork(id, req.user);
-
       recordHistory('jobcard', id, 'update', req.user.userId, actorName(req), {
-        [`part ${label} removed`]: { from: summary, to: null },
-        ...(statusChange ? { status: statusChange } : {})
+        [`part ${label} removed`]: { from: summary, to: null }
       }, { part: removedPart });
     })();
 
     const items = formatItems(jobItemQueries.getByJobcard.all(id));
     const attachmentWarnings = computeAttachmentWarnings(id, items);
 
-    // jobStatus only when this write moved it — see docs/notes/jobs-and-status.md.
-    res.json({
-      success: true, items, attachmentWarnings,
-      ...(statusChange ? { jobStatus: statusChange.to } : {})
-    });
+    res.json({ success: true, items, attachmentWarnings });
   } catch (err) {
     logger.error({ err }, 'Delete job item error');
     res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });

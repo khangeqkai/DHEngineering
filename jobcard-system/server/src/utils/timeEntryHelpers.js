@@ -162,34 +162,35 @@ function findEntryForJob(res, jobcardId, entryId) {
   return existing;
 }
 
-// How long after a stop invoicing waits for that block's fill-in form. Long enough
-// to count pieces and answer the inspection checks; short enough that a form the
-// worker walked away from never holds the job up for good.
+// How long after a stop a billing move waits for that block's fill-in form. Long
+// enough to count pieces and answer the inspection checks; short enough that a form
+// the worker walked away from never holds the job up for good.
 const AWAITING_DETAILS_WINDOW_MS = 30 * 60 * 1000;
 
-// Why a job can't be invoiced yet because of its time, or null when it can. A
-// running timer can't be confirmed away like a missing attachment can, and nor can
-// a clock that stopped itself and still awaits its worker's answer, or
-// a just-stopped block whose worker is still filling in their form — invoicing
-// files the job away, after which that form's save is refused.
-function invoiceBlockedByTime(jobcardId) {
+// Why a job can't move onto a billing status (To be Invoiced, Call for Payment, Paid –
+// Archived) yet because of its time, or null when it can. A bill made while a timer
+// still runs, a clock that stopped itself still awaits its worker's answer, or a worker
+// is still filling in their stop form is a bill on hours that are about to change — and
+// archiving files the job away, after which that form's save is refused. None of these
+// can be confirmed away like a missing attachment can.
+function billingBlockedByTime(jobcardId) {
   if (timeEntryQueries.countRunningByJobcard.get(jobcardId).count > 0) {
-    return 'This job can\'t be invoiced while a timer is running. Stop the timer first.';
+    return 'This job can\'t be billed or archived while a timer is running. Stop the timer first.';
   }
   const unconfirmed = timeEntryQueries.getFirstUnconfirmedByJobcard.get(jobcardId);
   if (unconfirmed) {
-    return `This job can't be invoiced yet because ${unconfirmed.user_name} hasn't confirmed when their clock finished. Ask them to sign in and answer, or correct the time yourself.`;
+    return `This job can't be billed or archived yet because ${unconfirmed.user_name} hasn't confirmed when their clock finished. Ask them to sign in and answer, or correct the time yourself.`;
   }
   // The wait is measured from the finish or from the worker's answer (a clock that stopped
   // itself is answered long after its finish), whichever is later — hence `since` twice.
   const since = new Date(Date.now() - AWAITING_DETAILS_WINDOW_MS).toISOString();
   if (timeEntryQueries.countAwaitingDetailsByJobcard.get(jobcardId, since, since).count > 0) {
-    return 'Someone has just stopped a timer on this job and is still filling in their pieces. Try invoicing again once they have saved.';
+    return 'Someone has just stopped a timer on this job and is still filling in their pieces. Try again once they have saved.';
   }
   return null;
 }
 
-// Good pieces are counted, not measured: every reader (auto-status, statistics, the
+// Good pieces are counted, not measured: every reader (statistics, the stop form, the
 // part's progress bar) must agree, so the stored value is a whole number or NULL.
 // Blank/garbage → NULL (nothing recorded), "2.5" → "2", negatives → "0".
 // Returned as text because the column is text: a JS number bound into it is written
@@ -352,7 +353,7 @@ module.exports = {
   toBoolFlag,
   wholeQty,
   findEntryForJob,
-  invoiceBlockedByTime,
+  billingBlockedByTime,
   flagToBool,
   isCriticalJob,
   criticalAtFinishForWrite,

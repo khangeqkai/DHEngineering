@@ -13,15 +13,14 @@ export const ACTIVITY_FIELDS = [
   { value: 'dueDate', label: 'Due Date' },
   { value: 'description', label: 'Description' },
   { value: 'poNumber', label: 'PO Number' },
-  { value: 'quoteReference', label: 'Quote Reference' },
-  { value: 'isRepeatJob', label: 'Repeat Job' },
-  { value: 'repeatJobReference', label: 'Repeat Job Reference' },
+  { value: 'repeatJobReference', label: 'Previous Job (repeat)' },
   { value: 'contactName', label: 'Contact Name' },
   { value: 'companyName', label: 'Company Name' },
   { value: 'jobNumber', label: 'Job Number' },
   { value: 'archived', label: 'Archived' },
   { value: 'invoicedDate', label: 'Invoiced Date' },
   { value: 'inspectionSignOff', label: 'Inspection Sign-off Skipped' },
+  { value: 'missingPo', label: 'PO Number Skipped' },
   { value: 'assignees', label: 'Assignees' },
   { value: 'labourHoursOverride', label: 'Normal Hours (override)' },
   { value: 'labourRate', label: 'Labour Rate' },
@@ -61,4 +60,8 @@ export const ACTIVITY_FIELDS = [
   { value: 'packetSaved', label: 'Print Packet Saved' },
   // Only ever written by the startup conversion (old entries), never by live code.
   { value: 'packetBuilt', label: 'Print Packet Built' },
+  // The Quote Reference box and the Repeat Job tick were removed (2026-10-27); only
+  // old entries carry them.
+  { value: 'quoteReference', label: 'Quote Reference' },
+  { value: 'isRepeatJob', label: 'Repeat Job (old tick box)' },
 ];

@@ -1,14 +1,30 @@
 {
-  "_about": "One shared source for a job card's status list, priority list, which statuses count as settled/finished, and the worker manual-status-change rule. The server reads this file directly; the client imports it too (see vite.config.js's server.fs.allow, and the re-exports in client/src/components/jobcard/constants.js and client/src/components/JobCardList.constants.js). JSON can't hold comments, so the reasoning for each list lives as a comment at each import site instead of here.",
+  "_about": "One shared source for a job card's status list, priority list, which statuses count as settled/finished, and who may put a job into or take it out of each status. The server reads this file directly; the client imports it too (see vite.config.js's server.fs.allow, and the re-exports in client/src/components/jobcard/constants.js and client/src/components/JobCardList.constants.js). JSON can't hold comments, so the reasoning for each list lives as a comment at each import site instead of here.",
+  "groups": [
+    { "value": "quoting", "label": "Quoting" },
+    { "value": "workshop", "label": "Workshop" },
+    { "value": "hold", "label": "On Hold" },
+    { "value": "finishing", "label": "Finishing" },
+    { "value": "closed", "label": "Closed" },
+    { "value": "alert", "label": "Alert" }
+  ],
   "statuses": [
-    { "value": "QUOTE", "label": "Quote" },
-    { "value": "OPEN", "label": "Open" },
-    { "value": "AWAITING_MATERIAL", "label": "Material/Service" },
-    { "value": "PO_REQUESTED", "label": "PO Requested" },
-    { "value": "IN_PROGRESS", "label": "In Progress" },
-    { "value": "DONE", "label": "Done" },
-    { "value": "CUST_NOTIFIED", "label": "Customer notified" },
-    { "value": "INVOICED", "label": "Invoiced" }
+    { "value": "TO_QUOTE", "label": "To be Quoted", "group": "quoting", "setBy": "management" },
+    { "value": "QUOTE_SENT", "label": "Quote Sent", "group": "quoting", "setBy": "management" },
+    { "value": "OPEN", "label": "Open", "group": "workshop", "setBy": "everyone" },
+    { "value": "IN_PROGRESS", "label": "In Progress", "group": "workshop", "setBy": "everyone" },
+    { "value": "DONE", "label": "Done", "group": "workshop", "setBy": "everyone" },
+    { "value": "HOLD_PO", "label": "On Hold – PO", "group": "hold", "setBy": "everyone" },
+    { "value": "HOLD_MATERIAL", "label": "On Hold – Material", "group": "hold", "setBy": "everyone" },
+    { "value": "HOLD_SUBCONTRACT", "label": "On Hold – Subcontract", "group": "hold", "setBy": "everyone" },
+    { "value": "HOLD_TOOLS", "label": "On Hold – Tools", "group": "hold", "setBy": "everyone" },
+    { "value": "HOLD_CUSTOMER", "label": "On Hold – Customer", "group": "hold", "setBy": "everyone" },
+    { "value": "READY_TO_COLLECT", "label": "Ready to Collect / Deliver", "group": "finishing", "setBy": "everyone" },
+    { "value": "TO_COST", "label": "To be Costed", "group": "finishing", "setBy": "management", "leaveBy": "admin" },
+    { "value": "TO_INVOICE", "label": "To be Invoiced", "group": "finishing", "setBy": "admin" },
+    { "value": "CALL_FOR_PAYMENT", "label": "Call for Payment", "group": "finishing", "setBy": "admin" },
+    { "value": "ARCHIVED", "label": "Paid – Archived", "group": "closed", "setBy": "admin" },
+    { "value": "ACTION_REQUIRED", "label": "Action Required", "group": "alert", "setBy": "everyone" }
   ],
   "priorities": [
     { "value": "NONE", "label": "None" },
@@ -17,7 +33,11 @@
     { "value": "HIGH", "label": "High" },
     { "value": "SAME_DAY", "label": "Same Day Service" }
   ],
-  "settledStatuses": ["DONE", "CUST_NOTIFIED", "INVOICED"],
-  "workerSettableStatuses": ["IN_PROGRESS", "AWAITING_MATERIAL"],
-  "workerStatusFrom": ["OPEN", "IN_PROGRESS", "AWAITING_MATERIAL"]
+  "defaultStatus": "OPEN",
+  "closedStatus": "ARCHIVED",
+  "alertStatus": "ACTION_REQUIRED",
+  "billedStatus": "CALL_FOR_PAYMENT",
+  "billedStatuses": ["CALL_FOR_PAYMENT", "ARCHIVED"],
+  "billingStatuses": ["TO_INVOICE", "CALL_FOR_PAYMENT", "ARCHIVED"],
+  "settledStatuses": ["DONE", "READY_TO_COLLECT", "TO_COST", "TO_INVOICE", "CALL_FOR_PAYMENT", "ARCHIVED"]
 }

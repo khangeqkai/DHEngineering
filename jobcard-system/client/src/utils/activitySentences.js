@@ -40,7 +40,8 @@ const FIELD_WORD = {
   machineNumber: 'number', description: 'description', category: 'type',
   timezone: 'time zone', jobFoldersBase: 'job folders location', homeAccessCode: 'home access code',
   inactivityTimeout: 'sign-out timeout', labourDefaultRate: 'default labour rate', labourSchedule: 'working hours',
-  labourPublicHolidays: 'public holidays', nextJobNumber: 'next job number'
+  labourPublicHolidays: 'public holidays', nextJobNumber: 'next job number',
+  requiresPo: 'PO requirement'
 };
 
 const ROLE_WORD = { admin: 'Admin', manager: 'Manager', user: 'Worker' };

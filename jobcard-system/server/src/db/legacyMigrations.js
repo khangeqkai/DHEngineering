@@ -17,6 +17,8 @@ const { isCalendarDate } = require('../shared/calendarDate');
 const { QUALITY_LEVELS, isCriticalLevel } = require('../shared/qualityLevels');
 const { officeDateString } = require('../utils/officeTime');
 const { readTrailEntry, convertTrailEntry } = require('./trailEntries');
+const { STATUS_RENAMES, renameStatusInChanges } = require('./statusRename');
+const { upgradeHeldBack } = require('./safetyCopy');
 const { isBaseReachable, isWithinBase, idSlug, folderSlugOf, sanitizeFolderName } = require('../utils/folderCreation');
 
 // One-time conversions for databases (and restored backups) that predate a rule the
@@ -761,6 +763,50 @@ function convertHistoryTrails() {
   }
 }
 
+// Moves every job still on an old status code onto the current list, and renames the old
+// codes in every job trail entry's status move, so past entries read in the current names
+// and Workshop Statistics (which date a finish by the move into a settled status) keep
+// counting them. The mapping lives in statusRename.js (pure, tested without a database).
+// No flag: no current code reuses an old one, so once a row is renamed nothing matches it
+// again, and a restored older backup is simply renamed in its turn. Held back for a boot
+// whose safety copy failed (db/safetyCopy.js). A trail row whose JSON is damaged is
+// skipped and counted, as convertHistoryTrails does.
+function renameOldStatuses() {
+  if (upgradeHeldBack()) return;
+  try {
+    let jobsMoved = 0;
+    let entriesRenamed = 0;
+    let unreadable = 0;
+    db.transaction(() => {
+      const moveJobs = db.prepare('UPDATE jobcards SET status = ? WHERE status = ?');
+      for (const [from, to] of Object.entries(STATUS_RENAMES)) {
+        jobsMoved += moveJobs.run(to, from).changes;
+      }
+      const rows = db.prepare(
+        `SELECT id, changes, snapshot FROM history
+         WHERE entity_type = 'jobcard' AND changes LIKE '%"status"%'`
+      ).all();
+      const update = db.prepare('UPDATE history SET changes = ? WHERE id = ?');
+      for (const row of rows) {
+        const read = readTrailEntry(row);
+        if (read === undefined) { unreadable++; continue; }
+        const renamed = renameStatusInChanges(read.changes);
+        if (!renamed) continue;
+        update.run(JSON.stringify(renamed), row.id);
+        entriesRenamed++;
+      }
+    })();
+    if (jobsMoved > 0 || entriesRenamed > 0) {
+      logger.info({ jobsMoved, entriesRenamed }, 'Migration: Moved jobs and their trail entries onto the new status list');
+    }
+    if (unreadable > 0) {
+      logger.warn({ unreadableTrailRows: unreadable }, 'Migration: Skipped trail entries whose stored details could not be read');
+    }
+  } catch (err) {
+    logger.error({ err }, 'Migration: Failed to move jobs onto the new status list');
+  }
+}
+
 function runLegacyMigrations() {
   logger.info('Running migrations...');
 
@@ -901,35 +947,10 @@ function runLegacyMigrations() {
     logger.error({ err }, 'Migration: Failed to clear stale labour-hours overrides');
   }
 
-  // A previous-job reference only exists on a repeat job. Unticking Repeat Job used
-  // to only hide the box, so the old reference stayed stored and still printed, exported
-  // and matched searches. Clear it on every job that isn't a
-  // repeat. Naturally idempotent (a second run finds none).
-  try {
-    const clearedRefs = db.prepare(
-      'UPDATE jobcards SET repeat_job_reference = NULL WHERE is_repeat_job = 0 AND repeat_job_reference IS NOT NULL'
-    ).run();
-    if (clearedRefs.changes > 0) {
-      logger.info({ cleared: clearedRefs.changes }, 'Migration: Cleared previous-job references on non-repeat jobs');
-    }
-  } catch (err) {
-    logger.error({ err }, 'Migration: Failed to clear previous-job references on non-repeat jobs');
-  }
-
-  // The 'TREATMENT' and 'ON_HOLD' statuses were removed and folded into
-  // 'AWAITING_MATERIAL' (relabelled "Material/Treatment"). Convert any job still
-  // parked on the old values so they display, sort, and save normally — otherwise
-  // editing such a job would fail status validation.
-  try {
-    const foldStatuses = db.prepare(
-      "UPDATE jobcards SET status = 'AWAITING_MATERIAL' WHERE status IN ('TREATMENT', 'ON_HOLD')"
-    ).run();
-    if (foldStatuses.changes > 0) {
-      logger.info({ moved: foldStatuses.changes }, "Migration: Folded TREATMENT/ON_HOLD jobs into AWAITING_MATERIAL");
-    }
-  } catch (err) {
-    logger.error({ err }, 'Migration: Failed to fold TREATMENT/ON_HOLD jobs into AWAITING_MATERIAL');
-  }
+  // The job status list was replaced (Quote → To be Quoted, Material/Service → On Hold –
+  // Material, PO Requested → On Hold – PO, Customer notified → Ready to Collect / Deliver,
+  // Invoiced → Paid – Archived; older Treatment / On Hold land on On Hold – Material too).
+  renameOldStatuses();
 
   // The weekly overtime schedule is now edited on an hour-by-hour paint grid. The old
   // editor allowed sub-hour block starts (e.g. 14:30), which the grid can't represent —

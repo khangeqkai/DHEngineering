@@ -590,6 +590,27 @@ select.has-retired option.retired-option {
   color: var(--text-tertiary);
 }
 
+/* Every single-choice drop-down in the app drops the operating system's arrow for
+   the same drawn chevron the type-to-search pickers show, so a drop-down looks the
+   same — and looks like a drop-down — on every screen and every PC. :root raises the
+   rule above any screen's own select styling, whose `background` shorthand would
+   otherwise wipe the chevron (notably in dark mode); a screen's own background colour
+   still shows through. */
+:root select:not([multiple]):not([size]) {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: var(--space-8);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%233b4563' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 14px;
+}
+
+:root.dark-mode select:not([multiple]):not([size]) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3c0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
 /* Toggle Switch */
 .toggle-label {
   display: flex !important;
@@ -659,6 +680,11 @@ select.has-retired option.retired-option {
 
 .toggle-input:checked + .toggle-switch::after {
   transform: translateX(18px);
+}
+
+/* The real tick box is hidden, so the switch shows where the keyboard is. */
+.toggle-input:focus-visible + .toggle-switch {
+  box-shadow: var(--focus-ring);
 }
 
 .toggle-content {
@@ -1016,39 +1042,44 @@ select.has-retired option.retired-option {
 
 /* ========================================
    JOB STATUS COLORS — single source of truth
-   One class per status, fed by the --status-* palette in index.css.
+   One class per status (named by statusToken in JobCardList.constants.js),
+   fed by the --status-* group palette in index.css.
    Sets the --s-* custom props (consumed by the job-card pill) and
    the direct paint props (consumed by .badge,
    whose dot follows currentColor). Used everywhere a job status shows.
    ======================================== */
-.status-quote,
+.status-to-quote,
+.status-quote-sent,
 .status-open,
-.status-awaiting-material,
-.status-po-requested,
 .status-in-progress,
 .status-done,
-.status-cust-notified,
-.status-invoiced {
+.status-hold-po,
+.status-hold-material,
+.status-hold-subcontract,
+.status-hold-tools,
+.status-hold-customer,
+.status-ready-to-collect,
+.status-to-cost,
+.status-to-invoice,
+.status-call-for-payment,
+.status-archived,
+.status-action-required {
   background: var(--s-bg);
   color: var(--s-color);
   border-color: var(--s-border);
 }
 
-.status-quote {
+.status-to-quote {
   --s-bg: var(--status-quote-bg); --s-color: var(--status-quote-text);
   --s-border: var(--status-quote-border); --s-dot: var(--status-quote-dot);
+}
+.status-quote-sent {
+  --s-bg: var(--status-quote-sent-bg); --s-color: var(--status-quote-sent-text);
+  --s-border: var(--status-quote-sent-border); --s-dot: var(--status-quote-sent-dot);
 }
 .status-open {
   --s-bg: var(--status-open-bg); --s-color: var(--status-open-text);
   --s-border: var(--status-open-border); --s-dot: var(--status-open-dot);
-}
-.status-awaiting-material {
-  --s-bg: var(--status-awaiting-material-bg); --s-color: var(--status-awaiting-material-text);
-  --s-border: var(--status-awaiting-material-border); --s-dot: var(--status-awaiting-material-dot);
-}
-.status-po-requested {
-  --s-bg: var(--status-po-requested-bg); --s-color: var(--status-po-requested-text);
-  --s-border: var(--status-po-requested-border); --s-dot: var(--status-po-requested-dot);
 }
 .status-in-progress {
   --s-bg: var(--status-in-progress-bg); --s-color: var(--status-in-progress-text);
@@ -1058,13 +1089,98 @@ select.has-retired option.retired-option {
   --s-bg: var(--status-done-bg); --s-color: var(--status-done-text);
   --s-border: var(--status-done-border); --s-dot: var(--status-done-dot);
 }
-.status-cust-notified {
-  --s-bg: var(--status-cust-notified-bg); --s-color: var(--status-cust-notified-text);
-  --s-border: var(--status-cust-notified-border); --s-dot: var(--status-cust-notified-dot);
+.status-hold-po {
+  --s-bg: var(--status-hold-bg); --s-color: var(--status-hold-text);
+  --s-border: var(--status-hold-border); --s-dot: var(--status-hold-dot);
 }
-.status-invoiced {
-  --s-bg: var(--status-invoiced-bg); --s-color: var(--status-invoiced-text);
-  --s-border: var(--status-invoiced-border); --s-dot: var(--status-invoiced-dot);
+.status-hold-material {
+  --s-bg: var(--status-hold-bg); --s-color: var(--status-hold-text);
+  --s-border: var(--status-hold-border); --s-dot: var(--status-hold-dot);
+}
+.status-hold-subcontract {
+  --s-bg: var(--status-hold-bg); --s-color: var(--status-hold-text);
+  --s-border: var(--status-hold-border); --s-dot: var(--status-hold-dot);
+}
+.status-hold-tools {
+  --s-bg: var(--status-hold-bg); --s-color: var(--status-hold-text);
+  --s-border: var(--status-hold-border); --s-dot: var(--status-hold-dot);
+}
+.status-hold-customer {
+  --s-bg: var(--status-hold-bg); --s-color: var(--status-hold-text);
+  --s-border: var(--status-hold-border); --s-dot: var(--status-hold-dot);
+}
+.status-ready-to-collect {
+  --s-bg: var(--status-ready-bg); --s-color: var(--status-ready-text);
+  --s-border: var(--status-ready-border); --s-dot: var(--status-ready-dot);
+}
+.status-to-cost {
+  --s-bg: var(--status-billing-bg); --s-color: var(--status-billing-text);
+  --s-border: var(--status-billing-border); --s-dot: var(--status-billing-dot);
+}
+.status-to-invoice {
+  --s-bg: var(--status-billing-bg); --s-color: var(--status-billing-text);
+  --s-border: var(--status-billing-border); --s-dot: var(--status-billing-dot);
+}
+.status-call-for-payment {
+  --s-bg: var(--status-billing-bg); --s-color: var(--status-billing-text);
+  --s-border: var(--status-billing-border); --s-dot: var(--status-billing-dot);
+}
+.status-archived {
+  --s-bg: var(--status-archived-bg); --s-color: var(--status-archived-text);
+  --s-border: var(--status-archived-border); --s-dot: var(--status-archived-dot);
+}
+
+/* Action Required: a rainbow runs across the letters themselves, a full sweep about
+   every two seconds, so the job can't be missed in a list. The pill itself is left
+   unfilled (just its outline), because the letters are the signal. Each colour is an
+   ink token (index.css, both themes), so the words stay readable on every surface.
+   Nothing blinks: the colours slide, they never switch on and off. The dot and the
+   job window's dot step through the same colours. Reduced motion slows the sweep
+   rather than stopping it, like the spinner: it is a status signal, not decoration
+   (see the media query below). Written as two classes so it outranks the job
+   window pill's own background (JobCardModal.css, which loads after this file). */
+:is(.badge, .jc-strip-status).status-action-required {
+  --s-dot: var(--status-alert-1);
+  border-color: var(--border-input);
+  background: repeating-linear-gradient(90deg,
+    var(--status-alert-1) 0, var(--status-alert-2) 1.5em, var(--status-alert-3) 3em,
+    var(--status-alert-4) 4.5em, var(--status-alert-5) 6em, var(--status-alert-6) 7.5em,
+    var(--status-alert-1) 9em);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: status-alert-run 2s linear infinite;
+}
+/* The pieces inside the pill that aren't letters keep a colour of their own. */
+:is(.badge, .jc-strip-status).status-action-required svg {
+  color: var(--text-secondary);
+}
+.badge.status-action-required::before,
+.jc-strip-status.status-action-required .jc-strip-status-dot {
+  background: var(--status-alert-1);
+  box-shadow: none;
+  animation: status-alert-dot 2s linear infinite;
+}
+@keyframes status-alert-run {
+  from { background-position: 0 0; }
+  to { background-position: 9em 0; }
+}
+@keyframes status-alert-dot {
+  0%, 100% { background-color: var(--status-alert-1); }
+  17% { background-color: var(--status-alert-2); }
+  33% { background-color: var(--status-alert-3); }
+  50% { background-color: var(--status-alert-4); }
+  67% { background-color: var(--status-alert-5); }
+  83% { background-color: var(--status-alert-6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* The app-wide rule (index.css) forces every animation to 0.01ms with !important. */
+  :is(.badge, .jc-strip-status).status-action-required,
+  .badge.status-action-required::before,
+  .jc-strip-status.status-action-required .jc-strip-status-dot {
+    animation-duration: 8s !important;
+  }
 }
 
 /* The status picker's drop-down: one look for the job list's status column and the
@@ -1093,6 +1209,36 @@ select.has-retired option.retired-option {
   letter-spacing: normal;
 }
 
+/* Sixteen statuses under their headings is taller than some rows have room for. */
+.status-popover {
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+}
+
+/* Not enough room below inside whatever cuts it off: open upward instead
+   (common/StatusPopover.jsx decides, and caps the height to the room it has). */
+.status-popover--up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.status-popover-group + .status-popover-group {
+  border-top: 1px solid var(--border-color);
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+}
+
+/* A heading names the group; it is a label, not a row — the arrow keys skip it
+   (common/StatusPopover.jsx walks only the .status-popover-item rows). */
+.status-popover-heading {
+  padding: var(--space-1) var(--space-3) var(--space-0-5);
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
 .status-popover-item {
   display: flex;
   align-items: center;
@@ -1119,6 +1265,30 @@ select.has-retired option.retired-option {
 
 .status-popover-item.active {
   background: var(--surface-inset);
+}
+
+/* "Put back to …" on a flagged job: the likely choice, so it is set apart on a tinted
+   band with a heavier divider below, and reads as words, then the status's own pill. */
+.status-popover-putback {
+  background: var(--badge-progress-bg);
+}
+.status-popover-putback + .status-popover-group {
+  border-top-width: 2px;
+}
+.status-popover-item--putback {
+  justify-content: flex-start;
+  gap: var(--gap-tight);
+}
+.status-putback-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-inline);
+  color: var(--text-primary);
+  font-weight: var(--font-bold);
+}
+.status-popover-item--putback:hover,
+.status-popover-item--putback:focus-visible {
+  background: var(--surface);
 }
 
 .status-check {

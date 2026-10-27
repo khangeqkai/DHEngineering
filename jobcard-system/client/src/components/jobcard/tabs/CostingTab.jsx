@@ -385,7 +385,7 @@ export default function CostingTab({
         {locked && (
           <div className="costing-locked">
             <Lock size={14} />
-            <span>This job is invoiced. Unarchive it to change the pricing.</span>
+            <span>This job is paid and archived. Unarchive it to change the pricing.</span>
           </div>
         )}
 

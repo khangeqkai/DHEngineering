@@ -1,11 +1,13 @@
 import { INSTANT_SAVE_STATUS_TEXT } from '../useInstantSave';
 import { QUALITY_LEVELS, QUALITY_LEVEL_LABELS } from '../../../../../server/src/shared/qualityLevels';
+import { AlertTriangle, ChevronDown } from 'lucide-react';
 import FieldError from '../../common/FieldError';
 
-// The References card: PO number, quote reference, quality level, repeat-job
-// toggle and (once that's ticked) the previous-job-reference combobox. Split out
-// of DetailsTab.jsx purely to keep that file from growing further — every prop
-// here is something DetailsTab already holds.
+// The Customer Input card: PO number, quality level and the previous-job combobox
+// (filled in only on a repeat job). Split out of DetailsTab.jsx
+// purely to keep that file from growing further — every prop here is something
+// DetailsTab already holds. requiresPo: the picked customer's accounts won't take an
+// invoice without their PO number, so the heading carries a standing red reminder.
 export default function JobReferenceFields({
   formData,
   handleChange,
@@ -19,12 +21,19 @@ export default function JobReferenceFields({
   errorProps = (name) => ({ id: `${name}-error` }),
   jobSearch,
   jobRefListOpen,
-  jobRefNav
+  jobRefNav,
+  requiresPo = false
 }) {
   return (
     <div className="form-section">
       <div className="form-section-header">
-        <h3 className="form-section-title">References</h3>
+        <h3 className="form-section-title">Customer Input</h3>
+        {requiresPo && (
+          <span className="po-required-note">
+            <AlertTriangle size={14} aria-hidden="true" />
+            Customer requires PO# for invoicing
+          </span>
+        )}
         {detailsStatus !== 'idle' && (
           <span
             className={`instant-save-status instant-save-status--${detailsStatus}`}
@@ -48,17 +57,6 @@ export default function JobReferenceFields({
           />
         </div>
         <div className="form-group">
-          <label htmlFor="jc-quote-reference">Quote Reference</label>
-          <input
-            id="jc-quote-reference"
-            type="text"
-            name="quoteReference"
-            value={formData.quoteReference}
-            onChange={handleChange}
-            onBlur={(e) => commitFieldBlur('quoteReference', e.target.value)}
-          />
-        </div>
-        <div className="form-group">
           <label htmlFor="jc-qa-level">Quality Level</label>
           <select
             id="jc-qa-level"
@@ -75,37 +73,10 @@ export default function JobReferenceFields({
             ))}
           </select>
         </div>
-        <div className="form-group">
-          <label htmlFor="jc-repeat-job">Repeat Job</label>
-          <label className="checkbox-inline">
-            <input
-              id="jc-repeat-job"
-              type="checkbox"
-              name="isRepeatJob"
-              checked={formData.isRepeatJob}
-              onChange={(e) => {
-                const isRepeatJob = e.target.checked;
-                if (isRepeatJob) {
-                  handleChange(e);
-                  if (canWriteInstantly) saveField('isRepeatJob', true);
-                  return;
-                }
-                // A previous-job reference only exists on a repeat job, so
-                // unticking clears it rather than just hiding the box (it used to
-                // stay stored and still print, export and match searches). The
-                // server clears its copy with the same write, so both baselines
-                // move together once it lands.
-                setFormData(prev => ({ ...prev, isRepeatJob: false, repeatJobReference: '' }));
-                if (canWriteInstantly) saveField('isRepeatJob', false, { alsoMarkSaved: { repeatJobReference: '' } });
-              }}
-            />
-            {formData.isRepeatJob ? 'Yes' : 'No'}
-          </label>
-        </div>
-      </div>
-      {formData.isRepeatJob && (
+        {/* Naming the previous job is what makes this a repeat job — there is no
+            separate tick. Leave it empty for a job that isn't one. */}
         <div className={groupClass('repeatJobReference')} ref={jobSearch.containerRef}>
-          <label htmlFor="jc-repeat-job-reference">Previous Job Reference</label>
+          <label htmlFor="jc-repeat-job-reference">Previous Job (if repeat)</label>
           <div className="autocomplete-container">
             <input
               id="jc-repeat-job-reference"
@@ -138,9 +109,12 @@ export default function JobReferenceFields({
               aria-activedescendant={jobRefNav.activeIndex >= 0 ? `${jobRefNav.listId}-${jobRefNav.activeIndex}` : undefined}
               aria-invalid={errorFor('repeatJobReference') ? true : undefined}
               aria-describedby={errorFor('repeatJobReference') ? errorProps('repeatJobReference').id : undefined}
-              placeholder="DH-00001"
+              // Says what to do, not a sample job number — a number here read as one
+              // already filled in.
+              placeholder="Type or choose a job…"
               autoComplete="off"
             />
+            <ChevronDown size={14} className={`autocomplete-caret${jobRefListOpen ? ' is-open' : ''}`} aria-hidden="true" />
             {jobRefListOpen && (
               <div className="customer-dropdown" id={jobRefNav.listId} role="listbox" aria-label="Matching jobs">
                 {jobSearch.matches.map((j, i) => (
@@ -149,13 +123,18 @@ export default function JobReferenceFields({
                     id={`${jobRefNav.listId}-${i}`}
                     role="option"
                     aria-selected={i === jobRefNav.activeIndex}
-                    className={`customer-option${i === jobRefNav.activeIndex ? ' is-active' : ''}`}
+                    className={`customer-option suggestion-two-line${i === jobRefNav.activeIndex ? ' is-active' : ''}`}
+                    title={j.description || undefined}
                     onMouseEnter={() => jobRefNav.setActiveIndex(i)}
                     onMouseDown={() => jobRefNav.choose(i)}
                   >
-                    <strong>{j.jobNumber}</strong>
-                    {j.companyName && <span className="contact-name"> — {j.companyName}</span>}
-                    {j.description && <span className="contact-name"> ({j.description})</span>}
+                    {/* Job number and customer on one line, the description under them,
+                        each cut short with "…" rather than wrapping. */}
+                    <span className="suggestion-line">
+                      <span className="suggestion-main">{j.jobNumber}</span>
+                      {j.companyName && <span className="suggestion-aside">{j.companyName}</span>}
+                    </span>
+                    {j.description && <span className="suggestion-sub">{j.description}</span>}
                   </div>
                 ))}
               </div>
@@ -163,7 +142,7 @@ export default function JobReferenceFields({
           </div>
           <FieldError {...errorProps('repeatJobReference')} message={errorFor('repeatJobReference')} />
         </div>
-      )}
+      </div>
     </div>
   );
 }

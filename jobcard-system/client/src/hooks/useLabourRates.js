@@ -302,7 +302,7 @@ export function useLabourRates({ showConfirm } = {}) {
     if (savedTimezone && timezone !== savedTimezone && showConfirm) {
       const ok = await showConfirm({
         title: 'Change the time zone?',
-        message: `From ${savedTimezone} to ${timezone}. Jobs created from now on use the new zone to sort work into normal hours and overtime. Jobs that already exist keep the zone they started with, including invoiced ones. Running clocks are cut at the end of normal hours in the new zone straight away.`,
+        message: `From ${savedTimezone} to ${timezone}. Jobs created from now on use the new zone to sort work into normal hours and overtime. Jobs that already exist keep the zone they started with, including archived ones. Running clocks are cut at the end of normal hours in the new zone straight away.`,
         confirmLabel: `Use ${timezone}`,
         cancelLabel: 'Go back',
         confirmVariant: 'warning'

@@ -25,6 +25,10 @@
 //   5. copy the recorded worker change onto manual add/delete time block entries as the worker name;
 //   6. name the worker on auto-stop entries from the entry's own account;
 //   7. name the person on assign/unassign entries where the stored lists give one exact answer.
-const DATA_VERSION = 10;
+// 11 replaces the job status list: every job and every job trail entry's status move is
+// renamed onto the new codes (db/statusRename.js), after a safety copy of the database file
+// (db/safetyCopy.js); adds jobcards.previous_status and companies.requires_po; drops
+// jobcards.quote_reference, whose values become job comments first (db/quoteReferenceFold.js).
+const DATA_VERSION = 11;
 
 module.exports = { DATA_VERSION };

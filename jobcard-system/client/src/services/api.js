@@ -329,10 +329,11 @@ class ApiService {
 
   createJobcard(jobcardData) { return this._post('/jobcards', jobcardData); }
   updateJobcard(id, jobcardData) { return this._put(`/jobcards/${id}`, jobcardData); }
-  updateJobcardStatus(id, status, confirmMissingAttachments = false, confirmMissingInspection = false) {
+  // confirms: the "carry on anyway" answers already given — confirmMissingAttachments,
+  // confirmMissingInspection, confirmMissingPo — each sent only when true.
+  updateJobcardStatus(id, status, confirms = {}) {
     const body = { status };
-    if (confirmMissingAttachments) body.confirmMissingAttachments = true;
-    if (confirmMissingInspection) body.confirmMissingInspection = true;
+    for (const [key, value] of Object.entries(confirms)) if (value) body[key] = true;
     return this._patch(`/jobcards/${id}/status`, body);
   }
   // Active jobs that declared a drawing / customer property but

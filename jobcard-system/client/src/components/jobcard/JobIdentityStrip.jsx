@@ -4,13 +4,14 @@ import { Calendar, ChevronDown, Check } from 'lucide-react';
 import { useDismissableMenu } from '../../hooks/useDismissableMenu';
 import CalendarPicker from '../common/CalendarPicker';
 import { capitalizeFirst, formatDate } from '../../utils/formatters';
-import { PRIORITY_OPTIONS, STATUS_OPTIONS } from './constants';
-import { canChangeStatus, offeredStatusValues } from '../../../../server/src/shared/jobStatus';
+import { PRIORITY_OPTIONS, STATUS_OPTIONS, DEFAULT_STATUS, statusMenuModel } from './constants';
+import { canChangeStatus } from '../../../../server/src/shared/jobStatus';
 import { statusToken, priorityToken } from '../JobCardList.constants';
 import { changeJobStatus } from './changeJobStatus';
 import { summarizeFieldStates, INSTANT_SAVE_STATUS_TEXT } from './useInstantSave';
 import { jobFieldMessage } from './fieldRules.mjs';
 import FieldError from '../common/FieldError';
+import StatusPopover from '../common/StatusPopover';
 import { isJobClosed } from '../../utils/jobLock';
 
 const PRIORITY_VALUES = PRIORITY_OPTIONS.map(p => p.value);
@@ -42,22 +43,23 @@ export default function JobIdentityStrip({
   fetchCurrentTotal,
   descriptionError = null,
   markDescription,
-  whenPartSavesSettled,
-  // The job was invoiced and archived from another PC while this screen still had
+  // The job was archived from another PC while this screen still had
   // it open — this status write reaches the server after that and is refused the
   // same way any other write against a closed job is (closedJobGuard). Fires
   // instead of the ordinary failure toast; shows the shared sentence and reloads
   // the job so the screen catches up.
   onJobClosed,
-  // Re-reads the whole job. A status change that closes the job (invoicing
-  // archives it) calls this, so the screen picks up the archived flag and locks.
-  onReload
+  // Re-reads the whole job. A status change that closes the job (Paid – Archived)
+  // calls this, so the screen picks up the archived flag and locks.
+  onReload,
+  // Resolves once every save this screen has on its way has landed (useSaveQueue.js).
+  whenSavesSettled
 }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
   // True for the whole of a status change, not just the total fetch in the middle of one.
   // Invoicing sends any unsaved pricing FIRST, and that send is slow enough that a second
-  // pick could land during it and start a second invoicing, with two questions stacked on
+  // pick could land during it and start a second archiving, with two questions stacked on
   // top of each other. The status control is disabled while this is true.
   const [statusBusy, setStatusBusy] = useState(false);
   // The status drop-down is the job list's: same rows, same badges, same tick. It
@@ -137,7 +139,7 @@ export default function JobIdentityStrip({
     items[next].focus();
   };
 
-  // A closed (invoiced, archived) job's header is plain text, like a worker's view:
+  // A closed (Paid – Archived) job's header is plain text, like a worker's view:
   // the strip sits outside the screen's lock fieldsets, so it checks for itself.
   const jobClosed = isJobClosed(formData);
   const editable = canManage && !jobClosed;
@@ -152,7 +154,7 @@ export default function JobIdentityStrip({
   // Lifted up into useJobCardForm.js (rather than local state here) so the close
   // question can name it — see the comment there.
   const dueDate = formData.dueDate;
-  const status = formData.status || 'OPEN';
+  const status = formData.status || DEFAULT_STATUS;
 
   const priorityLabel =
     PRIORITY_OPTIONS.find(p => p.value === priority)?.label || 'Priority';
@@ -170,18 +172,16 @@ export default function JobIdentityStrip({
   });
   const titleText = isEdit ? jobNumber : 'New job card';
 
-  // A non-management user only gets to pick among the statuses the server allows
-  // them to set, plus whatever the job currently sits on. When the job has already
-  // moved past the point where they may touch it at all, the control is locked —
-  // office statuses stay with management.
-  const statusChangeable = canChangeStatus(canManage, status);
-  // Invoicing files a job away and runs the missing-files check + auto-archive,
-  // which only happen on an existing job — offeredStatusValues never offers
-  // it while creating a new job (and never without the invoiceJob permission).
-  const offeredValues = new Set(offeredStatusValues({ canManage, canInvoice }, status, isEdit));
-  // Same rows as the job list's status drop-down: only the statuses this person may
-  // set from here. The pill itself names the current one, so it needs no row.
-  const statusOptions = STATUS_OPTIONS.filter(opt => offeredValues.has(opt.value));
+  // Each person only gets to pick among the statuses the server lets them move this
+  // job to, plus whatever it currently sits on. When the job sits somewhere they may
+  // not take it out of at all (an office or billing status), the control is locked.
+  const actor = { canManage, canInvoice };
+  const statusChangeable = canChangeStatus(actor, status, formData.previousStatus);
+  // Paid – Archived files a job away and runs the missing-files check, which only
+  // happen on an existing job — statusMenuModel never offers it while creating a
+  // new job (and never without the invoiceJob permission). Same rows and headings
+  // as the job list's status drop-down, with the same "Put back to …" row.
+  const statusMenu = statusMenuModel(actor, status, formData.previousStatus, isEdit);
   const statusLabel = STATUS_OPTIONS.find(o => o.value === status)?.label || status;
   const statusClass = `jc-strip-status status-${statusToken(status)}`;
   const statusPickable = statusChangeable && !jobClosed;
@@ -226,7 +226,7 @@ export default function JobIdentityStrip({
   // region announcing three separate lines for one tab-through would be unusable.
   const identityStatus = summarizeFieldStates(fieldStates, ['priority', 'dueDate', 'description']);
 
-  // A red pricing box is refused outright, before anything else about invoicing is
+  // A red pricing box is refused outright on any billing move, before anything else is
   // even asked — the job is never billed on a figure the admin didn't mean, and
   // there's no "discard" offered here the way closing the job offers one: the admin
   // has to actually fix it. By the time this click handler runs, whatever box the
@@ -234,28 +234,29 @@ export default function JobIdentityStrip({
   // the previously focused box first), so costingInvalid already reflects every box
   // on the sheet, typed-in or not.
   //
-  // Invoicing files the job away, so the figure in the confirm question has to be the
+  // A billing move bills the job, so the figure in the confirm question has to be the
   // figure that actually gets billed. Unsaved pricing edits are therefore sent FIRST,
   // before the question is asked, rather than after it is answered. The on-screen total
   // can't stand in for them: the server recalculates from the job's own rules and folds
   // in every minute logged since the pricing screen loaded, so what it stores is often a
   // different number from what the boxes add up to. Saving first means the total below
   // is read back from the server after the recalculation — the real one. Nothing is
-  // given away by saving first: this sheet has no Save button and files itself a second
-  // after the last keystroke anyway, so these edits were already on their way. Backing
-  // out of the question still leaves the job un-invoiced.
-  const prepareInvoice = async () => {
+  // given away by saving first: this sheet has no Save button and saves each box as it
+  // is left anyway, so these edits were already on their way. Backing out of the
+  // question still leaves the job where it was. wantsTotal: false is a move within
+  // billing that asks no question, so no total is fetched for it.
+  const prepareBilling = async ({ wantsTotal = true } = {}) => {
     if (costingInvalid) {
-      toast.error('Fix the red pricing figure before invoicing.', { id: 'invoice-costing-invalid' });
+      toast.error('Fix the red pricing figure before billing.', { id: 'invoice-costing-invalid' });
       revealCosting?.(invalidCostingField);
       return null;
     }
     if (costingDirty && saveCosting) {
       const saved = await saveCosting();
       if (!saved) {
-        // The save already said why it failed. Don't go on to ask about invoicing: the
-        // total would be wrong and the job would be filed away without these edits.
-        toast.error('Couldn\'t save the costing, so the job was not invoiced. Try again.');
+        // The save already said why it failed. Don't go on to ask about billing: the
+        // total would be wrong and the job would be billed without these edits.
+        toast.error('Couldn\'t save the costing, so the status was not changed. Try again.');
         return null;
       }
     }
@@ -266,7 +267,7 @@ export default function JobIdentityStrip({
     // line and no fetch. A failed fetch falls back to the plain message too: never show
     // a total that might be wrong.
     let freshTotal = null;
-    if (canSeeTotal && fetchCurrentTotal) {
+    if (wantsTotal && canSeeTotal && fetchCurrentTotal) {
       const toastId = toast.loading('Getting the current total…');
       try {
         const fetched = await fetchCurrentTotal();
@@ -277,7 +278,7 @@ export default function JobIdentityStrip({
         toast.dismiss(toastId);
       }
     }
-    // jobNumber rides along so the invoicing question can name the job.
+    // jobNumber rides along so the billing question can name the job.
     return { total: freshTotal, costingChangesSaved: costingDirty, jobNumber };
   };
 
@@ -297,29 +298,46 @@ export default function JobIdentityStrip({
         jobId: jobCardId,
         newStatus,
         showConfirm,
-        prepareInvoice,
-        // A part save already in flight (or queued behind one) must land BEFORE this
-        // status write is sent — its reply can carry its own jobStatus (see
-        // useInstantItems.js's applyItemReply) and, unguarded, a slow one of those could
-        // still arrive after this and stomp the status the user just picked by hand back
-        // to whatever the part write computed. Waiting here is what actually closes that
-        // race. Never rejects, so a part save failing doesn't block the status change —
-        // see useSaveQueue.js's whenSettled.
-        beforeSend: whenPartSavesSettled,
+        // Every save this screen still has on its way (a PO number typed a moment ago,
+        // a part, a worker) lands before the move is judged.
+        beforeSend: whenSavesSettled,
+        prepareBilling,
         onApplied: async (updated) => {
-          setField('status', updated?.status ?? newStatus);
+          setFormData(prev => ({
+            ...prev,
+            status: updated?.status ?? newStatus,
+            previousStatus: updated?.previousStatus ?? null
+          }));
           onSuccess?.();
-          // Invoicing archived the job — reload so every part of the screen locks.
+          // Paid – Archived filed the job away — reload so every part of the screen locks.
           if (isJobClosed(updated)) await onReload?.();
         },
-        // The job was invoiced and archived from another PC while this screen still
-        // had it open — this pick reached the server after that.
+        // The job was archived from another PC while this screen still had it
+        // open — this pick reached the server after that.
         onJobClosed
       });
     } finally {
       setStatusBusy(false);
     }
   };
+
+  // lead: what StatusPopover puts before the badge on its "Put back to …" row.
+  const renderStatusRow = (opt, lead = null) => (
+    <button
+      type="button"
+      key={opt.value}
+      className={`status-popover-item${status === opt.value ? ' active' : ''}${lead ? ' status-popover-item--putback' : ''}`}
+      onClick={() => {
+        closeStatusMenu();
+        statusTriggerRef.current?.focus();
+        if (status !== opt.value) handleStatusChange(opt.value);
+      }}
+    >
+      {lead}
+      <span className={`badge status-${statusToken(opt.value)}`}>{opt.label}</span>
+      {status === opt.value && <span className="status-check"><Check size={14} /></span>}
+    </button>
+  );
 
   return (
     <div className="jc-identity-strip" role="group" aria-label="Job card identity">
@@ -461,31 +479,15 @@ export default function JobIdentityStrip({
                 <ChevronDown size={14} className="jc-strip-status-caret" aria-hidden="true" />
               </button>
               {showStatusMenu && (
-                <div className="status-popover">
-                  {statusOptions.map(opt => (
-                    <button
-                      type="button"
-                      key={opt.value}
-                      className={`status-popover-item ${status === opt.value ? 'active' : ''}`}
-                      onClick={() => {
-                        closeStatusMenu();
-                        statusTriggerRef.current?.focus();
-                        if (status !== opt.value) handleStatusChange(opt.value);
-                      }}
-                    >
-                      <span className={`badge status-${statusToken(opt.value)}`}>{opt.label}</span>
-                      {status === opt.value && <span className="status-check"><Check size={14} /></span>}
-                    </button>
-                  ))}
-                </div>
+                <StatusPopover putBack={statusMenu.putBack} groups={statusMenu.groups} renderRow={renderStatusRow} />
               )}
             </div>
           ) : (
             <span
               className={`${statusClass} jc-strip-status-static`}
               title={jobClosed
-                ? 'This job is invoiced and closed. Unarchive it to change its status.'
-                : 'Only management can change this status'}
+                ? 'This job is paid and archived. Unarchive it to change its status.'
+                : 'You can\'t change this status'}
             >
               <span className="jc-strip-status-dot" aria-hidden="true" />
               {statusLabel}

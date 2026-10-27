@@ -264,6 +264,7 @@ const validateCreateCompany = [
   nameLength('name', 'Company name'),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
+  body('requiresPo').optional().isBoolean({ strict: true }).withMessage('Tick or untick "Customer requires PO#".'),
   handleValidationErrors
 ];
 
@@ -273,6 +274,7 @@ const validateUpdateCompany = [
   nameLength('name', 'Company name', storedCompanyName),
   optionalString('address', 'Address', 500),
   optionalString('notes', 'Notes', 1000),
+  body('requiresPo').optional().isBoolean({ strict: true }).withMessage('Tick or untick "Customer requires PO#".'),
   handleValidationErrors
 ];
 

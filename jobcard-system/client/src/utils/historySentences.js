@@ -10,6 +10,7 @@
 // can be checked on their own.
 import { formatHistoryValue, formatMoney, formatTime, toIsoDate } from './formatters';
 import { isCriticalLevel } from '../../../server/src/shared/qualityLevels';
+import jobStatuses from '../../../server/src/shared/jobStatuses.json';
 
 // The coloured groups the tab filters by, in the order the chips appear.
 export const KINDS = [
@@ -266,18 +267,20 @@ function describeCreate(x) {
 
 function describeUpdate(x) {
   const L = x.L;
-  const invoiced = L.status?.to === 'INVOICED' || (L.archived && truthy(L.archived.to));
+  // Old trail entries said Invoiced; the startup rename turned those into Paid – Archived.
+  const invoiced = L.status?.to === jobStatuses.closedStatus || (L.archived && truthy(L.archived.to));
   if (invoiced) {
-    add(x, 0, act(x, ['invoiced the job and it went to the archive']), 'status');
+    add(x, 0, act(x, ['marked the job paid and archived it']), 'status');
     use(x, 'status', 'archived', 'invoicedDate');
-    if (L.inspectionSignOff) {
-      const text = String(isEmpty(L.inspectionSignOff.from) ? L.inspectionSignOff.to : L.inspectionSignOff.from);
-      const n = Number((/(\d+)/.exec(text) || [])[1]);
-      add(x, 91, Number.isFinite(n) && n > 0
-        ? plain([`${plural(n, 'run', 'runs')} still had unanswered inspection questions`])
-        : genericLine('inspectionSignOff', L.inspectionSignOff), null, false);
-      use(x, 'inspectionSignOff');
-    }
+  }
+  // Carried on past unanswered sign-offs — on archiving, or on first reaching billing.
+  if (L.inspectionSignOff) {
+    const text = String(isEmpty(L.inspectionSignOff.from) ? L.inspectionSignOff.to : L.inspectionSignOff.from);
+    const n = Number((/(\d+)/.exec(text) || [])[1]);
+    add(x, 91, Number.isFinite(n) && n > 0
+      ? plain([`${plural(n, 'run', 'runs')} still had unanswered inspection questions`])
+      : genericLine('inspectionSignOff', L.inspectionSignOff), null, false);
+    use(x, 'inspectionSignOff');
   }
 
   // A part change that moves the status (Done -> In Progress) did it as a consequence:
@@ -290,7 +293,13 @@ function describeUpdate(x) {
     add(x, 1, act(x, from
       ? ['moved the job from ', from, ' to ', strong(label('status', L.status.to))]
       : ['set the job status to ', strong(label('status', L.status.to))]), 'status');
-    use(x, 'status');
+    // The first move to Call for Payment records the day the bill went out; the move says it.
+    use(x, 'status', 'invoicedDate');
+  }
+  // A billing move for a customer who needs a PO number, made with none entered.
+  if (L.missingPo) {
+    add(x, 92, plain(['No PO number was entered — carried on anyway']), null, false);
+    use(x, 'missingPo');
   }
 
   if (L.qualityLevel) {
@@ -312,6 +321,7 @@ function describeUpdate(x) {
       : act(x, ['set the due date to ', strong(shortDate(L.dueDate.to))], wasOf(L.dueDate, shortDate)), 'job');
     use(x, 'dueDate');
   }
+  // The quote reference box is gone, but older entries still record changes to it.
   for (const [key, name] of [['poNumber', 'PO number'], ['quoteReference', 'quote reference']]) {
     if (!L[key]) continue;
     add(x, 3, isEmpty(L[key].to)
@@ -325,6 +335,8 @@ function describeUpdate(x) {
       : act(x, ['changed the job description to “', cut(L.description.to, 80), '”']), 'job');
     use(x, 'description');
   }
+  // The Repeat Job tick box is gone (naming the previous job is what makes a repeat
+  // now), but older entries still record it.
   if (L.isRepeatJob) {
     add(x, 3, act(x, [truthy(L.isRepeatJob.to) ? 'marked this as a repeat job' : 'marked this as not a repeat job']), 'job');
     use(x, 'isRepeatJob');

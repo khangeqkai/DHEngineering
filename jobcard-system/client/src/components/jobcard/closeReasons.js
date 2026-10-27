@@ -33,10 +33,8 @@ export const JOB_FIELD_LABEL = {
   dueDate: 'the due date',
   description: 'the job description',
   poNumber: "the customer's PO number",
-  quoteReference: 'the quote reference',
-  repeatJobReference: 'the previous job reference',
-  qualityLevel: 'the quality level',
-  isRepeatJob: 'the repeat-job setting'
+  repeatJobReference: 'the previous job',
+  qualityLevel: 'the quality level'
 };
 
 // Every field useInstantSave.js can write — the generic "typed but not yet sent"

@@ -9,10 +9,13 @@ import {
   priorityToken,
   getStatusBadgeClass
 } from './JobCardList.constants';
-import { canChangeStatus, offeredStatusValues } from '../../../server/src/shared/jobStatus';
+import { canChangeStatus } from '../../../server/src/shared/jobStatus';
+import { statusMenuModel } from './jobcard/constants';
 import { isCriticalLevel } from '../../../server/src/shared/qualityLevels';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { isJobClosed } from '../utils/jobLock';
+import StatusPopover from './common/StatusPopover';
+import PlacedPopover from './common/PlacedPopover';
 import { can } from '../utils/roles';
 
 export function getJobCardColumns({
@@ -189,7 +192,7 @@ export function getJobCardColumns({
                 className="assignee-trigger assignee-trigger--readonly"
                 title={card.assignees?.length
                   ? card.assignees.map(a => a.userName).filter(Boolean).join(', ')
-                  : 'This job is invoiced and closed. Its workers can\'t be changed.'}
+                  : 'This job is paid and archived. Its workers can\'t be changed.'}
               >
                 {renderAvatars()}
               </span>
@@ -233,7 +236,7 @@ export function getJobCardColumns({
                     {renderAvatars()}
                   </button>
                   {assignPopoverId === card.id && (
-                    <div className="status-popover assignee-checklist">
+                    <PlacedPopover className="assignee-checklist">
                       {employees.length === 0 && (
                         <div className="checkbox-dropdown-empty">No people to choose from</div>
                       )}
@@ -260,7 +263,7 @@ export function getJobCardColumns({
                           </button>
                         );
                       })}
-                    </div>
+                    </PlacedPopover>
                   )}
                 </div>
               ) : (
@@ -288,20 +291,40 @@ export function getJobCardColumns({
         // archived flag (jobLock.js's isJobClosed) rather than the "Show Archived"
         // view toggle — see the assignee column's own comment above.
         const rowClosed = isJobClosed(card);
-        const changeable = !rowClosed && canChangeStatus(canManage, card.status);
+        const changeable = !rowClosed && canChangeStatus({ canManage, canInvoice }, card.status, card.previousStatus);
         if (!changeable) {
           return (
             <td key="status">
               <span
                 className={`badge ${getStatusBadgeClass(card.status)}`}
-                title={!rowClosed && !canManage ? 'Only management can change this status' : undefined}
+                title={!rowClosed ? 'You can\'t change this status' : undefined}
               >
                 {STATUS_LABELS[card.status] || card.status}
               </span>
             </td>
           );
         }
-        const offeredValues = new Set(offeredStatusValues({ canManage, canInvoice }, card.status));
+        const menu = statusMenuModel({ canManage, canInvoice }, card.status, card.previousStatus);
+        // lead: what StatusPopover puts before the badge on its "Put back to …" row.
+        const renderRow = ({ value, label }, lead = null) => (
+          <button
+            key={value}
+            type="button"
+            className={`status-popover-item${card.status === value ? ' active' : ''}${lead ? ' status-popover-item--putback' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (card.status !== value) {
+                handleQuickStatusChange(card.id, value);
+              } else {
+                setStatusPopoverId(null);
+              }
+            }}
+          >
+            {lead}
+            <span className={`badge ${getStatusBadgeClass(value)}`}>{label}</span>
+            {card.status === value && <span className="status-check"><Check size={14} /></span>}
+          </button>
+        );
         return (
           <td key="status">
             <div className="status-popover-wrapper" ref={statusPopoverId === card.id ? popoverRef : null}>
@@ -318,27 +341,7 @@ export function getJobCardColumns({
                 <ChevronDown size={12} aria-hidden="true" />
               </button>
               {statusPopoverId === card.id && (
-                <div className="status-popover">
-                  {Object.entries(STATUS_LABELS)
-                    .filter(([value]) => offeredValues.has(value))
-                    .map(([value, label]) => (
-                    <button
-                      key={value}
-                      className={`status-popover-item ${card.status === value ? 'active' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (card.status !== value) {
-                          handleQuickStatusChange(card.id, value);
-                        } else {
-                          setStatusPopoverId(null);
-                        }
-                      }}
-                    >
-                      <span className={`badge ${getStatusBadgeClass(value)}`}>{label}</span>
-                      {card.status === value && <span className="status-check"><Check size={14} /></span>}
-                    </button>
-                  ))}
-                </div>
+                <StatusPopover putBack={menu.putBack} groups={menu.groups} renderRow={renderRow} />
               )}
             </div>
           </td>
@@ -400,7 +403,7 @@ export function getJobCardColumns({
     {
       id: 'attachments',
       label: 'Attachments',
-      headerHint: 'Tick: all files attached. Warning triangle: drawings missing, the job can\'t be invoiced. Paperclip: files not attached yet.',
+      headerHint: 'Tick: all files attached. Warning triangle: drawings missing, asked about before the job is archived. Paperclip: files not attached yet.',
       align: 'center',
       renderCell: (card) => {
         // Until this row has actually been checked, show a faint loading hint
@@ -425,7 +428,7 @@ export function getJobCardColumns({
         }
         const blocking = severity === 'blocking';
         const gaps = describeAttachmentGaps(warning);
-        const title = blocking ? 'Drawings missing, can\'t invoice' : 'Files not attached yet';
+        const title = blocking ? 'Drawings missing, asked about before archiving' : 'Files not attached yet';
         return (
           <td key="attachments" className="attachment-cell">
             <span

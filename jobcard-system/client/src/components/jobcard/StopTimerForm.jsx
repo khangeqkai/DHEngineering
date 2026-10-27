@@ -58,7 +58,6 @@ function Counter({ value, onChange, inputRef, hero, ariaLabel }) {
         type="text"
         inputMode="numeric"
         className="stf-count-input"
-        placeholder="0"
         aria-label={ariaLabel}
         value={value || ''}
         onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))}

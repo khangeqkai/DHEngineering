@@ -49,6 +49,7 @@ router.get('/', requireManagement, (req, res) => {
 router.post('/', requireManagement, validateCreateCompany, (req, res) => {
   try {
     const { name, address, notes } = req.body;
+    const requiresPo = req.body.requiresPo === true;
 
     // Company names must be unique (capitals and repeated spaces ignored) so each
     // customer maps to exactly one folder on disk. An archived customer still owns
@@ -62,12 +63,13 @@ router.post('/', requireManagement, validateCreateCompany, (req, res) => {
     let company;
     // The new company and its trail entry commit together.
     db.transaction(() => {
-      companyQueries.create.run(id, name, address || null, notes || null);
+      companyQueries.create.run(id, name, address || null, notes || null, requiresPo ? 1 : 0);
       company = companyQueries.getById.get(id);
       recordHistory('company', id, 'create', req.user.userId, actorName(req), {
         name: { from: null, to: company.name },
         ...(company.address ? { address: { from: null, to: company.address } } : {}),
-        ...(company.notes ? { notes: { from: null, to: company.notes } } : {})
+        ...(company.notes ? { notes: { from: null, to: company.notes } } : {}),
+        ...(requiresPo ? { requiresPo: { from: false, to: true } } : {})
       });
     })();
 
@@ -97,6 +99,7 @@ router.put('/:id', requireManagement, validateUpdateCompany, (req, res) => {
     const name = req.body.name === undefined ? existing.name : req.body.name;
     const address = req.body.address === undefined ? existing.address : req.body.address;
     const notes = req.body.notes === undefined ? existing.notes : req.body.notes;
+    const requiresPo = req.body.requiresPo === undefined ? existing.requires_po === 1 : req.body.requiresPo;
 
     // Only checked when the name really changes: an older database may hold two
     // customers whose names differ only in spacing, and editing either one's
@@ -110,11 +113,14 @@ router.put('/:id', requireManagement, validateUpdateCompany, (req, res) => {
       ['name', 'name', name],
       ['address', 'address', address || null],
       ['notes', 'notes', notes || null],
+      ['requires_po', 'requiresPo', requiresPo ? 1 : 0, existing.requires_po === 1],
     ]);
+    // Said as a tick, not the stored 0/1.
+    if (changes.requiresPo) changes.requiresPo.to = requiresPo;
 
     let company;
     db.transaction(() => {
-      companyQueries.update.run(name, address || null, notes || null, id);
+      companyQueries.update.run(name, address || null, notes || null, requiresPo ? 1 : 0, id);
       company = companyQueries.getById.get(id);
       if (Object.keys(changes).length > 0) {
         recordHistory('company', id, 'update', req.user.userId, actorName(req), changes, toApiFormat(company));

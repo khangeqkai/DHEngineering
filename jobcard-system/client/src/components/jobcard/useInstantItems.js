@@ -55,7 +55,7 @@ const ITEM_FIELD_NOUN = {
  * locally and travels once in the create payload — every function below is then a
  * no-op, same as useInstantSave's saveField and toggleAssignee before a job exists.
  */
-export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLineItem, savedItemFields, onItemSaved, onItemRemoved, onAttachmentWarnings, onJobStatusChange, onJobClosed, saveQueue }) {
+export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLineItem, savedItemFields, onItemSaved, onItemRemoved, onAttachmentWarnings, onJobClosed, saveQueue }) {
   const jobCardIdRef = useRef(jobCardId);
   jobCardIdRef.current = jobCardId;
   // Read the live rows from a ref rather than closing over the lineItems argument,
@@ -132,12 +132,10 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
   }, []);
 
   // One landing point for every part write's reply (Contract B, tasks/instant-
-  // save-root-causes.md) — the screen rows, the saved baseline, the file notes and
-  // the job's own status all move together here, so no call site can forget one
-  // of the four. That gap was defect 1: only a file upload used to refresh the
-  // notes, so adding, removing or editing a part left every part showing another
-  // part's notes; a part change nudging the job's status (jobs-and-status.md) had
-  // the same gap until onJobStatusChange was added here.
+  // save-root-causes.md) — the screen rows, the saved baseline and the file notes
+  // all move together here, so no call site can forget one of the three. That gap
+  // was defect 1: only a file upload used to refresh the notes, so adding, removing
+  // or editing a part left every part showing another part's notes.
   //
   // The server's reply carries the job's full, ordered real-part list once
   // Contract B has landed on that route (`items`, plus `item` for the one just
@@ -242,16 +240,8 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
     }
 
     if (reply.attachmentWarnings !== undefined) onAttachmentWarnings?.(reply.attachmentWarnings);
-    // A part create/update can auto-advance the job's status the same way starting
-    // a timer does — the reply carries jobStatus top-level only when THIS write
-    // actually moved the status. A reply that lands after the user has since picked
-    // their own status is handled upstream, not here: JobIdentityStrip.jsx waits for
-    // every part save already in flight to settle before it sends a hand-picked
-    // status change, so that pick is never sent while one of these replies is still
-    // outstanding.
-    if (reply.jobStatus !== undefined) onJobStatusChange?.(reply.jobStatus);
     return bareSingle ? mapLineItemFromApi(bareSingle) : null;
-  }, [setLineItems, onItemSaved, onAttachmentWarnings, onJobStatusChange]);
+  }, [setLineItems, onItemSaved, onAttachmentWarnings]);
 
   // One field on an already-real row. Absent-means-unchanged on the server, so only
   // the one field travels, never the rest of the row. Declared ahead of
@@ -502,10 +492,6 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
           // ourselves. Nothing renumbers any more: the server owns item_number
           // as a sort key and gaps after a delete are expected and fine.
           setLineItems(prev => prev.filter(it => it.id !== item.id));
-          // applyItemReply isn't called on this branch, so jobStatus has to be
-          // picked up here too — the delete route carries it top-level on this
-          // shape as well, but only when this delete actually moved the status.
-          if (reply?.jobStatus !== undefined) onJobStatusChange?.(reply.jobStatus);
         }
         onItemRemoved?.(item.id);
         // Nothing left to mark on a row that no longer exists — valueOfItemField
@@ -530,7 +516,7 @@ export function useInstantItems({ jobCardId, lineItems, setLineItems, removeLine
         }
         return NOT_LANDED;
       }), { label });
-  }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, saveQueue, onJobStatusChange, onJobClosed, liveRowFor, markCreateFailed]);
+  }, [removeLineItem, setLineItems, onItemRemoved, applyItemReply, saveQueue, onJobClosed, liveRowFor, markCreateFailed]);
 
   // The "Retry" on a part card's "Not saved" chip — a person's own action, so it is
   // not an automatic resend. A local row whose create failed is created again; a
