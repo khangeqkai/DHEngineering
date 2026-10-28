@@ -58,7 +58,7 @@ export default function JobCardModal(props) {
 // either name its job (the callbacks into the list behind: onNotesChange, onCommentsRead)
 // or ask isWindowUp first — but only for screen changes, closing, and read-failure
 // messages. A failure of the person's own write is always told, window or not.
-function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, onNotesChange, onCommentsRead, onPrinted, initialTab = null, initialHistoryOpen = false, initialStopEntry = null, initialCommentNoteId = null, ownsStopForm = false }) {
+function JobCardWindow({ onClose, jobCardId = null, onSuccess, onCreated, onTimerChange, onNotesChange, onCommentsRead, onPrinted, initialTab = null, initialHistoryOpen = false, initialStopEntry = null, initialCommentNoteId = null, ownsStopForm = false }) {
   const { user, logout } = useAuth();
   const isWindowUp = useStillMounted();
   const isEdit = Boolean(jobCardId);
@@ -367,7 +367,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   const adoptExactCompany = (name) => contactHook.adoptExactCompany(name, formHook.setFormData);
 
   // Marks a contact box instead of a pop-up when Create (or the "Update contact" /
-  // "Add as new person" prompt it can run first) comes back with a 400 naming
+  // "Add as new contact" prompt it can run first) comes back with a 400 naming
   // companyName (the new-customer step)/contactName/contactPhone/contactEmail — see useJobCardSave.js's
   // fieldErrorsFromRefusal (hooks/useFieldErrors.js). Declared before useJobCardSave so its callback can
   // close over it.
@@ -410,7 +410,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   // Save to do; every field, row and worker writes itself the moment it changes.
   const { saving, handleSubmit } = useJobCardSave({
     canManage, isEdit, formHook, contactHook,
-    showConfirm, onSuccess, onClose, setAttachmentWarnings, isWindowUp,
+    showConfirm, onSuccess, onClose, onCreated, setAttachmentWarnings, isWindowUp,
     onContactFieldErrors: handleContactFieldErrors,
     onFormMarks: handleFormMarks
   });
@@ -575,7 +575,19 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
   // Enter in a box someone types into must not submit the form by accident. Only those
   // boxes: a button (a tab, a reset link, a part's buttons) keeps Enter's normal job of
   // pressing it. The comboboxes and the pricing sheet handle their own Enter first.
+  // Ctrl+Enter is the one deliberate keyboard way to press Create on a new job. The box
+  // the cursor is in is left first, so its own tidy-up (capitals, an exact customer
+  // name taken as that customer) lands before the form is judged, exactly as a click
+  // on Create would have done. An Enter a suggestion list already used to take its
+  // highlighted row (it cancels the key) stays just that pick.
   const blockEnterSubmit = (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !isEdit && !e.defaultPrevented) {
+      e.preventDefault();
+      const form = e.currentTarget;
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      setTimeout(() => { if (form.isConnected) form.requestSubmit(); }, 0);
+      return;
+    }
     if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return;
     if (['button', 'submit', 'reset'].includes(e.target.type)) return;
     e.preventDefault();
@@ -851,8 +863,8 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onTimerChange, on
                 card nobody has changed yet says nothing at all. */}
             {!isEdit ? (
               <BottomSheet.Footer>
-                <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Saving…' : 'Create'}
+                <button type="submit" className="btn btn-primary" disabled={saving} title="Create job card (Ctrl+Enter)">
+                  {saving ? 'Creating…' : 'Create job card'}
                 </button>
               </BottomSheet.Footer>
             ) : canManage && (

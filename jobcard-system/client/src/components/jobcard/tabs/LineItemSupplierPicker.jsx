@@ -68,7 +68,7 @@ export default function LineItemSupplierPicker({
       if (onSuppliersChanged) onSuppliersChanged();
     } catch (err) {
       // A repeat of the same failure replaces the first rather than stacking under it.
-      toast.error(err.message || 'Couldn\'t link the treatment to that supplier. Check the connection and try again.', { id: 'supplier-link-failed' });
+      toast.error(err.message || 'Couldn\'t link the service to that supplier. Check the connection and try again.', { id: 'supplier-link-failed' });
     }
   };
 

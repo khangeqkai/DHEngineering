@@ -405,7 +405,7 @@ export default function JobIdentityStrip({
             {editable && !isEdit && (
               // A new job's description has no label anywhere else, and it is required.
               <label className="jc-strip-description-label" htmlFor="jc-description">
-                Job description <span className="required">*</span>
+                Job Description <span className="required">*</span>
               </label>
             )}
             {editable ? (
@@ -447,7 +447,9 @@ export default function JobIdentityStrip({
                   // what's already stored, instead of only skipping the write.
                   saveField('description', formatted, { baseline: savedForm.description ?? '' });
                 }}
-                placeholder="Describe the work…"
+                // The job's short name on the list; each part's own box holds the
+                // detail of the work, so the two never read as the same question.
+                placeholder="Short name shown on the job list…"
                 aria-label="Job description"
                 title={description}
               />

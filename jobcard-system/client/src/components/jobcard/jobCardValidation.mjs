@@ -20,7 +20,7 @@ export const isSavedLineItem = (item) =>
 //  - marks.items — { [fieldErrorKey(item.id, field)]: message }: a part's own box, the
 //                  same keys its instant-save marks use (useInstantItems.js)
 //  - errors      — messages with no box to mark (no part at all, a supplier picked
-//                  with no treatment), for the caller to show as one pop-up
+//                  with no service), for the caller to show as one pop-up
 // A mark sits under its own box, so it carries the box's own wording, not a
 // "on part N" sentence.
 export function validateJobCardForm({ canManage, formData, contactFormData, lineItems }) {
@@ -44,11 +44,10 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
   // already-saved line the old silent drop made the server delete the part and its files
   // fell back to whole-job; on a fresh line it threw away a row the user had started.
   //
-  // The one case that names nothing is a card that has never had a part saved on it and
-  // still has none typed in: there is no particular row at fault, so it gets the single
-  // "add at least one part" message rather than that plus a blank-row mark on the same
-  // empty card. A job that DOES have a saved part is different — blanking its only part
-  // is a mistake about that part, so its box is marked.
+  // A card that has never had a part saved on it and still has none typed in marks
+  // only its first part's description, asking for at least one part — the other
+  // blank rows aren't each at fault. A job that DOES have a saved part is different —
+  // blanking its only part is a mistake about that part, so its box is marked.
   const validItems = lineItems.filter(item => !itemFieldMessage('description', item.description));
   const hasSavedPart = lineItems.some(isSavedLineItem);
   if (validItems.length > 0 || hasSavedPart) {
@@ -56,6 +55,8 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
       const message = itemFieldMessage('description', item.description);
       if (message) markItem(item, 'description', message);
     }
+  } else if (lineItems.length > 0) {
+    markItem(lineItems[0], 'description', 'Describe at least one part');
   } else {
     errors.push('Add at least one part');
   }
@@ -73,10 +74,10 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
       if (message) markItem(item, field, message);
     }
     if (naCombined(item.drawingsType)) {
-      markItem(item, 'drawingsType', 'Cannot combine "N/A" with other drawings values');
+      markItem(item, 'drawingsType', "N/A can't be picked with other drawings");
     }
     if (naCombined(item.customerProperty)) {
-      markItem(item, 'customerProperty', 'Cannot combine "N/A" with other customer property values');
+      markItem(item, 'customerProperty', "N/A can't be picked with other customer property");
     }
   }
 
@@ -91,7 +92,7 @@ export function validateJobCardForm({ canManage, formData, contactFormData, line
     for (const tr of treatments) {
       if (!tr.value && !tr.supplierId) continue; // nothing on this part — fine
       if (!tr.value) {
-        errors.push(`Part ${idx + 1}: pick a treatment for the chosen supplier`);
+        errors.push(`Part ${idx + 1}: pick a service for the chosen supplier`);
       }
     }
   });

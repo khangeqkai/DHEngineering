@@ -24,7 +24,7 @@ const ITEM_FIELD_NOUN = {
 /**
  * Instant save for the parts list on an existing job — the stage-4a companion to
  * useInstantSave.js (details fields) and toggleAssignee (people). A row added by
- * clicking "Add Part" (makeEmptyLineItem, useJobCardForm.js) stays purely local —
+ * clicking "Add part" (makeEmptyLineItem, useJobCardForm.js) stays purely local —
  * its fields just edit on-screen state, nothing is sent — until every field the
  * server requires (REQUIRED_ITEM_FIELDS / isItemRowComplete, from fieldRules.mjs)
  * is filled in, whichever one that turns out to be. That is the one moment it

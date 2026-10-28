@@ -21,7 +21,7 @@ test('a job entry is worded by the job History window and names the job', () => 
   assert.doesNotMatch(everything(entry), RAW);
 });
 
-test('ticking "Customer requires PO#" is said in words, as Yes/No', () => {
+test('ticking "Needs a PO number for invoicing" is said in words, as Yes/No', () => {
   const d = describeActivity({
     entityType: 'company', entityId: 'c1', action: 'update', userName: 'Bob', recordName: 'Acme Fasteners',
     changes: { requiresPo: { from: false, to: true } }

@@ -220,10 +220,17 @@ export default function ItemsTab({
           <h3 className="form-section-title"><span className="form-section-title-label">Parts <span className="required">*</span></span></h3>
           {!fieldsLocked && (
             <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddLineItem}>
-              <Plus size={14} /> Add Part
+              <Plus size={14} /> Add part
             </button>
           )}
         </div>
+
+        {/* A new job has no folder yet, so a part's files can't be attached until
+            Create — say so, rather than leave "Drawings: Customer CAD" with nowhere
+            to put the drawing. */}
+        {!jobCardId && !fieldsLocked && (
+          <span className="field-hint parts-files-hint">You can attach drawings and other files once the job card is created.</span>
+        )}
 
         {!timeFormInCard && timeEntryFormNode}
 
@@ -395,7 +402,6 @@ const LineItemCard = memo(function LineItemCard({
                 updateLineItem(item.id, 'qty', digits);
               }}
               onBlur={(e) => onFieldBlur?.(item, 'qty', e.target.value.replace(/[^\d]/g, ''))}
-              placeholder="Qty"
               aria-invalid={fieldError(item, 'qty') ? true : undefined}
               aria-describedby={fieldError(item, 'qty') ? fieldErrorMessageId(item.id, 'qty') : undefined}
             />
@@ -419,7 +425,7 @@ const LineItemCard = memo(function LineItemCard({
                 }
                 onFieldBlur?.(item, 'description', formatted);
               }}
-              placeholder="What needs to be done…"
+              placeholder="The work on this part…"
               aria-invalid={fieldError(item, 'description') ? true : undefined}
               aria-describedby={fieldError(item, 'description') ? fieldErrorMessageId(item.id, 'description') : undefined}
             />

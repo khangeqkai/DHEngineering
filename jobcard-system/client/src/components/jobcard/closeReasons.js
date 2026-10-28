@@ -53,7 +53,7 @@ const ITEM_FIELD_NAME = {
 };
 
 // A row nobody has typed anything into yet — the normal starting state for a
-// fresh "Add Part" row, not work that would be lost by closing. Exported so
+// fresh "Add part" row, not work that would be lost by closing. Exported so
 // useJobCardForm.js's own dirty check agrees with this one exactly (defect 5 —
 // see the comment on itemsDirty there for why the two must never disagree).
 export function lineItemHasContent(item) {

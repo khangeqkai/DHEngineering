@@ -65,7 +65,7 @@ export async function resolveJobContactId({ canManage, isEdit, contactHook, show
     const company = await api.createCompany({ name: typed });
     companyId = company.id;
     contactHook.registerCompany(company);
-    toast.success('Customer updated', { id: 'customer-updated' });
+    toast.success('Customer added', { id: 'customer-added' });
   }
 
   // Nobody picked, but a person's name was typed — add them at this company.
@@ -94,11 +94,11 @@ export async function resolveJobContactId({ canManage, isEdit, contactHook, show
           <br />
           {lines.map((l, i) => <span key={i}>• {l}<br /></span>)}
           <br />
-          Update them, or add this as a second person at {form.companyName}?
+          Update them, or add this as a second contact at {form.companyName}?
         </span>
       ),
       confirmLabel: 'Update contact',
-      altLabel: 'Add as new person',
+      altLabel: 'Add as new contact',
       cancelLabel: 'Just this job',
       confirmVariant: 'primary'
     });
@@ -111,7 +111,7 @@ export async function resolveJobContactId({ canManage, isEdit, contactHook, show
         email: form.email.trim() || null
       });
       contactHook.adoptPerson(person2);
-      toast.success('Person updated');
+      toast.success('Contact added');
       return { companyId, contactId: person2.id };
     }
 

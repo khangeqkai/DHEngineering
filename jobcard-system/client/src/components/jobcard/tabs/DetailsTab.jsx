@@ -221,7 +221,7 @@ export default function DetailsTab({
         />
       )}
 
-      {/* Customer Input sits right under the customer it belongs to, above the parts. */}
+      {/* Order Details sits right under the customer it belongs to, above the parts. */}
       <JobReferenceFields
         formData={formData}
         handleChange={handleChange}

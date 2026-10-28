@@ -52,9 +52,9 @@ export default function DetailsReadOnlyView({
         </div>
       )}
 
-      {/* Customer Input — inline strip */}
+      {/* Order Details — inline strip */}
       <div className="form-section">
-        <h3 className="form-section-title">Customer Input</h3>
+        <h3 className="form-section-title">Order Details</h3>
         <div className="customer-input-strip">
           <div className="cis-item">
             <span className="cis-label">Quality</span>
@@ -62,7 +62,7 @@ export default function DetailsReadOnlyView({
           </div>
           {formData.poNumber && (
             <div className="cis-item">
-              <span className="cis-label">PO#</span>
+              <span className="cis-label">PO Number</span>
               <span className="cis-value">{formData.poNumber}</span>
             </div>
           )}

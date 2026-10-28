@@ -186,7 +186,7 @@ function computeAttachmentWarnings(jobcardId, items = []) {
 //     invoiced date — the day the bill went out;
 //   - moving into Action Required or Paid – Archived remembers where the job was
 //     (previous_status), so "Put back" and unarchive can return it there;
-//   - a customer marked "requires PO#" is asked about before a billing move while
+//   - a customer marked as needing a PO number is asked about before a billing move while
 //     the job has no PO number.
 // checkStatusMove returns `refusal` (a `{ status, body }` to send as-is) when the move
 // must stop, otherwise a plan for applyStatusMove to carry out inside the caller's own

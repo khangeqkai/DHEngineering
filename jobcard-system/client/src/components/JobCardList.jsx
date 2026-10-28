@@ -608,6 +608,8 @@ export default function JobCardList() {
         }}
         jobCardId={editingCardId}
         onSuccess={handleModalSuccess}
+        // A job just created reopens as itself, ready for its files and printing.
+        onCreated={(id) => setEditingCardId(id)}
         onTimerChange={() => { refreshTimer(); loadJobcards(); }}
         onNotesChange={handleNotesChange}
         onCommentsRead={handleCommentsRead}

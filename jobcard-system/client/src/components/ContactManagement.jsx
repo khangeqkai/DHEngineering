@@ -360,8 +360,8 @@ export default function ContactManagement() {
                 />
                 <span className="toggle-switch" aria-hidden="true" />
                 <span className="toggle-content">
-                  <span className="toggle-title">Customer requires PO#</span>
-                  <span className="toggle-desc">Their invoices need a purchase order number. Their job cards show a red reminder, and billing asks first when none is entered.</span>
+                  <span className="toggle-title">Needs a PO number for invoicing</span>
+                  <span className="toggle-desc">Their job cards show a red reminder, and billing asks first when none is entered.</span>
                 </span>
               </label>
             </div>

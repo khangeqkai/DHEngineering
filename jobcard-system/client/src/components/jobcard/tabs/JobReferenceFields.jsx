@@ -3,7 +3,7 @@ import { QUALITY_LEVELS, QUALITY_LEVEL_LABELS } from '../../../../../server/src/
 import { AlertTriangle, ChevronDown } from 'lucide-react';
 import FieldError from '../../common/FieldError';
 
-// The Customer Input card: PO number, quality level and the previous-job combobox
+// The Order Details card: PO number, quality level and the previous-job combobox
 // (filled in only on a repeat job). Split out of DetailsTab.jsx
 // purely to keep that file from growing further — every prop here is something
 // DetailsTab already holds. requiresPo: the picked customer's accounts won't take an
@@ -27,11 +27,11 @@ export default function JobReferenceFields({
   return (
     <div className="form-section">
       <div className="form-section-header">
-        <h3 className="form-section-title">Customer Input</h3>
+        <h3 className="form-section-title">Order Details</h3>
         {requiresPo && (
           <span className="po-required-note">
             <AlertTriangle size={14} aria-hidden="true" />
-            Customer requires PO# for invoicing
+            This customer needs a PO number before invoicing
           </span>
         )}
         {detailsStatus !== 'idle' && (

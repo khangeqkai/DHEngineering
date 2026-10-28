@@ -10,7 +10,7 @@ import { fieldErrorsFromRefusal } from '../../hooks/useFieldErrors';
 // A 400's fields (validation.js's handleValidationErrors, S4) name whichever route
 // actually rejected the request — POST /jobcards itself (contactName / contactPhone /
 // contactEmail) or one of the contact routes resolveJobContactId calls first,
-// "Update contact" / "Add as new person" (contactName / phone / email). Both land on
+// "Update contact" / "Add as new contact" (contactName / phone / email). Both land on
 // the same three boxes in DetailsTab.jsx, so both spellings are normalised to the
 // box's own key here rather than the caller having to know which route it was.
 // `name` is the new-customer step's (POST /companies): an archived customer's name,
@@ -29,7 +29,9 @@ const CONTACT_FIELD_TO_BOX = {
  * the details fields, the parts list and the people list each write themselves the
  * moment they change (useInstantSave.js, useInstantItems.js, toggleAssignee in
  * useJobCardForm.js). This hook now only ever runs for a brand-new job — validate,
- * resolve/create the customer, send the one whole-payload POST, and close.
+ * resolve/create the customer, send the one whole-payload POST, then hand the new
+ * job to onCreated, which reopens the window as that job (so its files can be
+ * attached straight away). Without onCreated the window simply closes.
  */
 export function useJobCardSave({
   canManage,
@@ -39,6 +41,8 @@ export function useJobCardSave({
   showConfirm,
   onSuccess,
   onClose,
+  // Given the created job's id; the caller opens the window on it.
+  onCreated,
   setAttachmentWarnings,
   // Whether the job window is still up — see useStillMounted.js.
   isWindowUp,
@@ -102,10 +106,21 @@ export function useJobCardSave({
       const result = await api.createJobcard(jobcardData);
 
       onSuccess?.();
-      // The list is refreshed either way (the job really was created), but if the window
-      // has closed while this was saving, closing it again would close whichever job
-      // the person opened since.
+      // The list is refreshed and the number is told either way (the job really was
+      // created), but if the window has closed while this was saving, closing or
+      // reopening it would act on whichever job the person opened since.
+      const reopen = Boolean(onCreated) && isWindowUp();
+      toast.success(
+        reopen
+          ? `Job ${result.jobNumber} created. You can now attach its files.`
+          : `Job ${result.jobNumber} created.`,
+        { id: 'job-created' }
+      );
       if (!isWindowUp()) return;
+      if (reopen) {
+        onCreated(result.id);
+        return;
+      }
       setAttachmentWarnings(result?.attachmentWarnings || null);
       onClose();
     } catch (err) {
@@ -116,12 +131,12 @@ export function useJobCardSave({
         // has to be said, or it would vanish behind the marked boxes.
         if (others.length > 0) toast.error(others.join('. '), { id: 'job-create-failed' });
       } else {
-        toast.error(err.message || 'Couldn\'t save the job card. Check the connection and try again.');
+        toast.error(err.message || 'Couldn\'t create the job card. What you entered is still here — check the connection and try again.', { id: 'job-create-failed' });
       }
     } finally {
       setSaving(false);
     }
-  }, [canManage, isEdit, formHook, contactHook, showConfirm, onSuccess, onClose, setAttachmentWarnings, isWindowUp, onContactFieldErrors, onFormMarks]);
+  }, [canManage, isEdit, formHook, contactHook, showConfirm, onSuccess, onClose, onCreated, setAttachmentWarnings, isWindowUp, onContactFieldErrors, onFormMarks]);
 
   return { saving, handleSubmit };
 }

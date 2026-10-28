@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { toTitleCase } from '../../../utils/formatters';
 import FieldError from '../../common/FieldError';
@@ -13,6 +14,10 @@ const titleCaseBlur = (field, setter) => (e) => {
 // from growing further — every prop here is something DetailsTab already holds
 // (management-only; DetailsTab never renders this for the worker view, which has
 // its own read-only screen entirely).
+
+// The Contact drop-down's "Add someone new…" row. Not a real person's id, so it is
+// never handed on as one.
+const ADD_NEW_CONTACT = '__new__';
 export default function CustomerSection({
   isEdit,
   contactFormData,
@@ -34,6 +39,10 @@ export default function CustomerSection({
   contactErrorFor = () => null,
   contactErrorProps = (name) => ({ id: `${name}-error` })
 }) {
+  // Which customer "Add someone new…" was chosen for. Picking another customer
+  // starts that customer's Contact box fresh, back on "Choose a contact…".
+  const [addingNewFor, setAddingNewFor] = useState(null);
+
   if (isEdit) {
     return (
       <div className="form-section">
@@ -66,11 +75,18 @@ export default function CustomerSection({
     );
   }
 
+  const hasPeople = Boolean(selectedCompany) && people.length > 0;
+  const addingNew = hasPeople && addingNewFor === selectedCompany.id;
+  // A name already typed for nobody on the list (kept when a typed customer name was
+  // matched on leaving the box) keeps its box showing too, so it is never hidden.
+  const showNewContactName = hasPeople && !contactFormData.contactId
+    && (addingNew || Boolean(contactFormData.contactName.trim()) || Boolean(contactErrorFor('contactName')));
+
   return (
     <div className="form-section">
       <h3 className="form-section-title">
-        Customer <span className="required">*</span>
-        {selectedCompany && <span className="contact-linked-badge">Linked</span>}
+        Customer
+        {selectedCompany && <span className="existing-customer-badge">Existing customer</span>}
       </h3>
 
       <div className="contact-fields-inline" ref={contactSearchRef}>
@@ -153,18 +169,25 @@ export default function CustomerSection({
               <span className="field-hint">Not on the list — it will be added as a new customer.</span>
             )}
           </div>
-          <div className={selectedCompany && people.length > 0 ? 'form-group' : contactGroupClass('contactName')}>
+          <div className={hasPeople ? 'form-group' : contactGroupClass('contactName')}>
             <label htmlFor="jc-contact">Contact</label>
-            {selectedCompany && people.length > 0 ? (
+            {hasPeople ? (
               <select
                 id="jc-contact"
-                value={contactFormData.contactId}
-                onChange={(e) => selectPerson(e.target.value)}
+                value={contactFormData.contactId || (showNewContactName ? ADD_NEW_CONTACT : '')}
+                onChange={(e) => {
+                  const picked = e.target.value;
+                  // "Add someone new…" starts from empty boxes, the same as
+                  // "Choose a contact…"; only the new-name box below differs.
+                  setAddingNewFor(picked === ADD_NEW_CONTACT ? selectedCompany.id : null);
+                  selectPerson(picked === ADD_NEW_CONTACT ? '' : picked);
+                }}
               >
-                <option value="">Someone else…</option>
+                <option value="">Choose a contact…</option>
                 {people.map(p => (
                   <option key={p.id} value={p.id}>{p.contactName || 'Unnamed'}</option>
                 ))}
+                <option value={ADD_NEW_CONTACT}>Add someone new…</option>
               </select>
             ) : (
               <>
@@ -182,13 +205,16 @@ export default function CustomerSection({
             )}
           </div>
         </div>
-        {selectedCompany && people.length > 0 && !contactFormData.contactId && (
+        {showNewContactName && (
           <div className="form-row">
             <div className={contactGroupClass('contactName')}>
-              <label htmlFor="jc-new-contact-name">New contact name</label>
+              <label htmlFor="jc-new-contact-name">New Contact Name</label>
               <input
                 id="jc-new-contact-name"
                 type="text"
+                // Only ever appears because "Add someone new…" was just picked (or
+                // a name is already in it), so the cursor goes straight to it.
+                autoFocus={addingNew}
                 value={contactFormData.contactName}
                 onChange={(e) => handleContactFieldChange('contactName', e.target.value)}
                 onBlur={titleCaseBlur('contactName', handleContactFieldChange)}

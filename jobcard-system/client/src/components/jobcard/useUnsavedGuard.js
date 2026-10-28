@@ -63,7 +63,9 @@ export function useUnsavedGuard({ isDirty, saving = false, hasUnpostedNote, note
     if (saving) {
       const carryOn = await showConfirm({
         title: 'Still saving',
-        message: 'This job card is still being saved. Close it anyway? If the save fails there will be nothing left on screen to try again from.'
+        message: (isEdit
+          ? 'This job card is still being saved. Close it anyway? If the save fails there will be nothing left on screen to try again from.'
+          : 'This job card is still being created. Close it anyway? If that fails there will be nothing left on screen to try again from.')
           + (pricingPending ? ' Your pricing is still being saved too and may still go through.' : ''),
         confirmLabel: 'Close anyway',
         cancelLabel: 'Wait',
@@ -95,9 +97,9 @@ export function useUnsavedGuard({ isDirty, saving = false, hasUnpostedNote, note
     // exists for a field, a row or a worker to have been sent to.
     if (!isEdit) {
       const ok = await showConfirm({
-        title: 'Unsaved changes',
-        message: "This job card has changes that haven't been saved yet. Close it and lose them?",
-        confirmLabel: 'Discard changes',
+        title: 'Discard this new job card?',
+        message: "Nothing has been created yet. Closing now throws away what you've entered.",
+        confirmLabel: 'Discard job card',
         cancelLabel: 'Keep editing',
         confirmVariant: 'danger'
       });

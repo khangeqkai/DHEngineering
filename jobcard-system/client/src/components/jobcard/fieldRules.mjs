@@ -22,20 +22,16 @@ export const fieldErrorKey = (itemId, field) => `${itemId}|${field}`;
 // (validateOneItem, server/src/routes/jobcard-items.js).
 export const REQUIRED_ITEM_FIELDS = ['description', 'qty', 'jobType', 'drawingsType', 'customerProperty'];
 
-// Exported so the all-at-once check (jobCardValidation.mjs) can tell the two
-// qty failures apart without comparing against a copy of the wording. It needs
-// to, because the two sentences infix the part number differently ("Quantity is
-// required on part 3" vs "Quantity on part 3 must be a whole number of 1 or
-// more"), so neither is this message plus a suffix. Comparing against a string
-// literal there would fail silently the day the wording here changes.
-export const ITEM_QTY_REQUIRED = 'Quantity is required';
-export const ITEM_QTY_NOT_WHOLE = 'Quantity must be a whole number of 1 or more';
+// Each message sits under its own box, so it says what to do there — not which
+// part it is on, nor that the box is "required".
+const ITEM_QTY_REQUIRED = 'Enter a quantity';
+const ITEM_QTY_NOT_WHOLE = 'Enter a whole number, 1 or more';
 
 const ITEM_REQUIRED_MESSAGE = {
-  description: 'Description is required',
-  jobType: 'Job type is required',
-  drawingsType: 'Drawings is required',
-  customerProperty: 'Customer property is required'
+  description: 'Describe the work on this part',
+  jobType: 'Choose a job type',
+  drawingsType: 'Choose the drawings, or N/A',
+  customerProperty: 'Choose what the customer supplied, or N/A'
 };
 
 // qty carries one more rule than "present" — a whole number of 1 or more —
@@ -62,7 +58,7 @@ export function isItemRowComplete(row) {
 // Job-level (single-value) fields — currently just the description. Add a
 // new required job field here, not back at either call site.
 const JOB_REQUIRED_MESSAGE = {
-  description: 'Job description is required'
+  description: 'Describe the job'
 };
 
 export function jobFieldMessage(field, value) {
