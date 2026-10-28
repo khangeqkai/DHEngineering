@@ -116,8 +116,8 @@ const icons = {
 
 export default function EmptyState({
   icon = 'jobcards',
-  title = 'No data yet',
-  description = 'Get started by adding your first one.',
+  title,
+  description,
   actionLabel,
   onAction,
 }) {
@@ -126,8 +126,8 @@ export default function EmptyState({
       <div className="empty-state-icon" aria-hidden="true">
         {icons[icon] || icons.jobcards}
       </div>
-      <h3 className="empty-state-title">{title}</h3>
-      <p className="empty-state-description">{description}</p>
+      {title && <h3 className="empty-state-title">{title}</h3>}
+      {description && <p className="empty-state-description">{description}</p>}
       {actionLabel && onAction && (
         <button className="btn btn-primary empty-state-action" onClick={onAction}>
           {actionLabel}

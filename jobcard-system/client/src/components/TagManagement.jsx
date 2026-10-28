@@ -13,6 +13,7 @@ import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { tagActions } from '../hooks/useTags';
 import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
 import FieldError from './common/FieldError';
+import EmptyState from './common/EmptyState';
 import { hasMachineSeparator, MACHINE_SEPARATOR_MESSAGE } from '../../../server/src/shared/machineList';
 import { TAG_CATEGORY_INFO as CATEGORY_INFO } from '../utils/tagCategories';
 import { useLatestCallback } from '../hooks/useLatestCallback';
@@ -377,9 +378,9 @@ export default function TagManagement({ mode = 'options' }) {
       </BottomSheet>
 
       {/* Category tabs — only the Job Options page has more than one. */}
-      {!isEquipment && <div className="tag-category-tabs">
+      {!isEquipment && <div className="tab-bar tag-category-tabs">
         {CATEGORIES.map(cat => (
-          <button key={cat} className={`tag-category-tab${selectedCategory === cat ? ' active' : ''}`} onClick={() => setSelectedCategory(cat)}>
+          <button key={cat} type="button" className={`tab${selectedCategory === cat ? ' active' : ''}`} onClick={() => setSelectedCategory(cat)}>
             {CATEGORY_INFO[cat].label}
           </button>
         ))}
@@ -398,7 +399,7 @@ export default function TagManagement({ mode = 'options' }) {
             equipLoading ? (
               <div className="loading">Loading machines…</div>
             ) : machines.length === 0 ? (
-              <p className="tag-empty-text">No machines yet. Click "Add machine" to create one.</p>
+              <EmptyState icon="equipment" title="No machines yet" description='Click "Add machine" to create one.' />
             ) : (
               <div className="tag-chips-grid">
                 {machines.map(m => (
@@ -425,7 +426,7 @@ export default function TagManagement({ mode = 'options' }) {
             tagLoading ? (
               <div className="loading">Loading options…</div>
             ) : tags.length === 0 ? (
-              <p className="tag-empty-text">No options in this category yet. Click "{CATEGORY_INFO[selectedCategory].addLabel}" to create one.</p>
+              <EmptyState icon="jobcards" title="No options in this category yet" description={`Click "${CATEGORY_INFO[selectedCategory].addLabel}" to create one.`} />
             ) : (
               <div className="tag-chips-grid">
                 {tags.map(tag => (

@@ -35,3 +35,20 @@
 .empty-state-action {
   margin-top: var(--space-4);
 }
+
+/* The small version, for a side window (comments, job history) where the full
+   one's large icon and heading would crowd the panel. Used as a class on its
+   own: an optional small drawn icon, then the message and any button. */
+.empty-state--compact {
+  margin: auto;
+  max-width: 240px;
+  padding: var(--space-6);
+  gap: var(--gap-tight);
+  line-height: 1.5;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.empty-state--compact p {
+  margin: 0;
+}

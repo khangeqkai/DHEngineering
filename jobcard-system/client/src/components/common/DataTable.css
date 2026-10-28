@@ -26,7 +26,7 @@
 .data-table-search-input input {
   width: 100%;
   padding: var(--space-2) var(--space-3) var(--space-2) var(--space-8);
-  border: 1px solid var(--border-color);
+  border: 1.5px solid var(--border-input);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
   background: var(--surface);
@@ -90,7 +90,7 @@
 .data-table th.sorted-asc .data-table-sort-icon,
 .data-table th.sorted-desc .data-table-sort-icon {
   opacity: 1;
-  color: var(--primary-accent);
+  color: var(--accent-text);
 }
 
 /* Resize handle */
@@ -109,26 +109,6 @@
 }
 
 /* Empty state */
-.data-table-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-12) var(--space-8);
-  color: var(--text-tertiary);
-  text-align: center;
-}
-
-.data-table-empty-icon {
-  margin-bottom: var(--space-3);
-  opacity: 0.5;
-}
-
-.data-table-empty-text {
-  font-size: var(--text-sm);
-  font-style: italic;
-}
-
 /* Row variants */
 .data-table tbody tr.inactive-row {
   opacity: 0.6;

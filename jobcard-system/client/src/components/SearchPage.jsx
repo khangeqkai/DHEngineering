@@ -8,6 +8,7 @@ import { isManagement, can } from '../utils/roles';
 import useSearch from '../hooks/useSearch';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
+import EmptyState from './common/EmptyState';
 import JobCardModal from './jobcard/JobCardModal';
 import { prefetchJobCardReferenceData } from './jobcard/useJobCardReferenceData';
 import { ACTIVITY_FIELDS } from './searchFields';
@@ -312,9 +313,9 @@ export default function SearchPage() {
       </div>
 
       {/* Scope tabs */}
-      <div className="search-scope-tabs">
+      <div className="tab-bar search-scope-tabs">
         {SCOPES.filter(s => (!s.managementOnly || canManage) && (!s.permission || can(user, s.permission))).map(s => (
-          <button key={s.key} type="button" className={`search-scope-tab ${scope === s.key ? 'active' : ''}`}
+          <button key={s.key} type="button" className={`tab${scope === s.key ? ' active' : ''}`}
             onClick={() => changeScope(s.key)}>
             <s.icon size={16} /> {s.label}
           </button>
@@ -468,7 +469,7 @@ export default function SearchPage() {
       {!loading && scope === 'all' && results?.groups && (
         <div className="search-groups">
           {Object.entries(results.groups).every(([, g]) => g.count === 0) && q.trim() && (
-            <div className="search-empty">No results for &ldquo;{q.trim()}&rdquo;. Try fewer words, or tick Include archived.</div>
+            <EmptyState icon="search" title="No results" description={`No results for “${q.trim()}”. Try fewer words, or tick Include archived.`} />
           )}
           {Object.entries(results.groups).map(([key, group]) => group.count > 0 && (
             <div key={key} className="search-group card">
@@ -510,7 +511,7 @@ export default function SearchPage() {
               </div>
             </div>
           ))}
-          {!q.trim() && <div className="search-empty">Start typing to search across all data</div>}
+          {!q.trim() && <EmptyState icon="search" title="Search everything" description="Start typing to search across all data." />}
         </div>
       )}
 

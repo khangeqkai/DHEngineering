@@ -64,7 +64,7 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
             <div className="kpi-icon"><Zap size={16} /></div>
           </div>
           <div className="kpi-body">
-            <div className="kpi-value" style={{ fontSize: 'var(--text-xl)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+            <div className="kpi-value compact">
               {loading ? <span className="stat-dash">—</span> : (topMachine ? (topMachine.name || topMachine.machineNumber) : <span className="stat-dash">—</span>)}
             </div>
           </div>
@@ -104,18 +104,18 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
             <Activity size={18} />
             <span>How machine hours were shared</span>
           </div>
-          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+          <span className="stats-card-note">
             Each machine’s share of the hours logged in this period
           </span>
         </div>
 
         <div className="stats-card-body">
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', padding: 'var(--space-2) 0' }}>
-              <div className="skeleton-bar" style={{ width: '50%', height: '14px' }} />
-              <div className="skeleton-bar" style={{ width: '100%', height: '14px' }} />
-              <div className="skeleton-bar" style={{ width: '85%', height: '40px' }} />
-              <div className="skeleton-bar" style={{ width: '70%', height: '40px' }} />
+            <div className="stats-skeleton">
+              <div className="skeleton-bar w-50" />
+              <div className="skeleton-bar w-100" />
+              <div className="skeleton-bar block w-85" />
+              <div className="skeleton-bar block w-70" />
             </div>
           ) : machineUtilization.length === 0 ? (
             <EmptyState
@@ -124,34 +124,23 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
               description="Work logged against a machine shows up here."
             />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-group)' }}>
+            <div className="machine-share">
               {/* Proportional Fleet Distribution Multi-Segment Bar */}
               {activeMachinesCount > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-tight)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+                <div className="machine-fleet">
+                  <div className="machine-fleet-head">
                     <span>All machines together</span>
                     <span>{pluralize(totalMachineHours, 'hour')} in total</span>
                   </div>
-                  <div style={{
-                    width: '100%',
-                    height: '14px',
-                    borderRadius: 'var(--radius-sm)',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    background: 'var(--background)',
-                    border: '1px solid var(--border-color)'
-                  }}>
+                  <div className="machine-fleet-bar">
                     {usedMachines.map((m) => {
                       const sharePct = m.sharePercent;
                       const color = colourOf.get(m.machineNumber);
                       return (
                         <div
                           key={m.machineNumber}
-                          style={{
-                            width: `${sharePct}%`,
-                            background: color,
-                            transition: 'width 0.3s ease'
-                          }}
+                          className="machine-fleet-seg"
+                          style={{ '--bar-w': `${sharePct}%`, '--machine-colour': color }}
                           title={`Machine ${m.machineNumber} (${m.name}): ${m.totalHours}h (${sharePct.toFixed(1)}%)`}
                         />
                       );
@@ -161,7 +150,7 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
               )}
 
               {/* Individual Machine Horizontal Progress Bars */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              <div className="machine-list">
                 {machineUtilization.map((m) => {
                   const sharePct = m.sharePercent || 0;
                   const relativeBarPct = (m.totalHours / maxMachineHours) * 100;
@@ -174,71 +163,46 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
                   return (
                     <div
                       key={m.machineNumber}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 'var(--gap-inline)',
-                        padding: 'var(--space-2-5) var(--space-4)',
-                        background: 'var(--background)',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--border-color)'
-                      }}
+                      className="machine-row"
+                      style={{ '--machine-colour': color }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--gap-tight)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2-5)' }}>
-                          <span
-                            style={{
-                              width: '10px',
-                              height: '10px',
-                              borderRadius: '50%',
-                              background: color,
-                              flexShrink: 0
-                            }}
-                          />
-                          <code style={{
-                            fontWeight: 'bold',
-                            fontSize: 'var(--text-xs)',
-                            background: 'var(--surface)',
-                            border: '1px solid var(--border-color)',
-                            padding: 'var(--space-0-5) var(--gap-inline)',
-                            borderRadius: '4px'
-                          }}>
+                      <div className="machine-row-head">
+                        <div className="machine-row-name">
+                          <span className="machine-dot" />
+                          <code className="machine-code boxed">
                             #{m.machineNumber}
                           </code>
-                          <strong style={{ fontSize: 'var(--text-sm)' }}>{m.name}</strong>
+                          <strong className="machine-name">{m.name}</strong>
                           {m.description && (
-                            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-tertiary)' }}>
+                            <span className="machine-desc">
                               • {m.description}
                             </span>
                           )}
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-                          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+                        <div className="machine-row-stats">
+                          <span className="machine-parts">
                             {m.partsProduced?.toLocaleString() || 0} good parts
                             {m.scrapQty > 0 && (
-                              <span style={{ color: 'var(--accent-caution)', marginLeft: 'var(--gap-inline)' }}>
+                              <span className="machine-scrap is-bad">
                                 ({m.scrapQty} scrapped / {machineScrapPct}%)
                               </span>
                             )}
                           </span>
-                          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'bold', fontFamily: 'var(--font-mono)' }}>
+                          <span className="machine-hours">
                             {m.totalHours}h
                           </span>
-                          <span className="tier-tag normal" style={{ minWidth: '55px', justifyContent: 'center' }}>
+                          <span className="tier-tag normal machine-share-tag">
                             {sharePct.toFixed(1)}%
                           </span>
                         </div>
                       </div>
 
                       {/* Visual Bar */}
-                      <div className="distribution-bar-bg" style={{ height: '8px' }}>
+                      <div className="distribution-bar-bg">
                         <div
-                          className="distribution-bar-fill"
-                          style={{
-                            width: `${Math.max(2, relativeBarPct)}%`,
-                            background: color
-                          }}
+                          className="distribution-bar-fill machine"
+                          style={{ '--bar-w': `${Math.max(2, relativeBarPct)}%` }}
                         />
                       </div>
                     </div>
@@ -258,7 +222,7 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
             <span>Every machine in full</span>
           </div>
         </div>
-        <div className="stats-card-body" style={{ padding: 0 }}>
+        <div className="stats-card-body flush">
           <DataTable
             columns={[
               {
@@ -266,12 +230,7 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
                 label: 'Machine #',
                 sortable: true,
                 render: (val) => (
-                  <code style={{
-                    fontWeight: 'bold',
-                    background: 'var(--background)',
-                    padding: 'var(--space-0-5) var(--gap-inline)',
-                    borderRadius: '4px'
-                  }}>
+                  <code className="machine-code">
                     {val}
                   </code>
                 )
@@ -284,7 +243,7 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
                   <div>
                     <strong>{val}</strong>
                     {row.description && (
-                      <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-tertiary)' }}>
+                      <div className="stats-cell-sub">
                         {row.description}
                       </div>
                     )}
@@ -299,11 +258,11 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
                   const sharePct = row.sharePercent || 0;
                   const color = colourOf.get(row.machineNumber);
                   return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--gap-tight)', minWidth: '130px' }}>
-                      <div style={{ flex: 1, height: '6px', background: 'var(--background)', borderRadius: '9999px', overflow: 'hidden' }}>
-                        <div style={{ width: `${sharePct}%`, height: '100%', background: color }} />
+                    <div className="machine-share-cell">
+                      <div className="machine-share-track">
+                        <div className="machine-share-fill" style={{ '--bar-w': `${sharePct}%`, '--machine-colour': color }} />
                       </div>
-                      <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', minWidth: '40px' }}>
+                      <span className="machine-share-pct">
                         {sharePct.toFixed(1)}%
                       </span>
                     </div>
@@ -316,7 +275,7 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
                 align: 'right',
                 sortable: true,
                 render: (val) => (
-                  <strong style={{ fontFamily: 'var(--font-mono)', color: val > 0 ? 'var(--primary-accent)' : 'inherit' }}>
+                  <strong className={`stats-mono${val > 0 ? ' is-accent' : ''}`}>
                     {val}h
                   </strong>
                 )
@@ -344,7 +303,7 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
                   const total = (row.partsProduced || 0) + (val || 0);
                   const scrapPct = total > 0 ? roundTo((val / total) * 100, 1) : 0;
                   return (
-                    <span style={{ color: val > 0 ? 'var(--accent-caution)' : 'inherit' }}>
+                    <span className={val > 0 ? 'is-bad' : undefined}>
                       {val || 0} pieces {val > 0 ? `(${scrapPct}%)` : ''}
                     </span>
                   );

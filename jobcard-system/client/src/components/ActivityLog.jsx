@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Search } from 'lucide-react';
+import EmptyState from './common/EmptyState';
 import { api } from '../services/api';
 import { useLatestRequest } from '../hooks/useLatestRequest';
 import PageHeader from './common/PageHeader';
@@ -172,15 +173,13 @@ export default function ActivityLog() {
   const renderBody = () => {
     if (loading) return <div className="loading">Loading activity&hellip;</div>;
     if (failed && entries.length === 0) {
-      return <div className="empty-state">The activity couldn&rsquo;t be loaded. Change a filter to try again.</div>;
+      return <EmptyState icon="alert-triangle" title="The activity couldn’t be loaded" description="Change a filter to try again." />;
     }
     if (entries.length === 0) {
       return (
-        <div className="empty-state">
-          {total === 0 && (query || userId || entityType || range !== 'all')
-            ? 'Nothing matches those filters.'
-            : 'Activity will appear here as changes are made.'}
-        </div>
+        total === 0 && (query || userId || entityType || range !== 'all')
+          ? <EmptyState icon="search" title="Nothing matches those filters" description="Try a wider date range or clear a filter." />
+          : <EmptyState icon="activity" title="No activity yet" description="Activity will appear here as changes are made." />
       );
     }
     return (

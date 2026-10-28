@@ -32,7 +32,7 @@ export default function PublicHolidaysCard({ holidays, addHoliday, removeHoliday
         </button>
 
         {holidays.length === 0 ? (
-          <div className="empty-state holiday-empty">No public holidays added yet.</div>
+          <p className="empty-state empty-state--compact">No public holidays added yet.</p>
         ) : (
           <div className="holiday-chips">
             {holidays.map(date => (

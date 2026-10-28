@@ -159,15 +159,23 @@ export default function JobHistoryPanel({
     // expensive of the two to get wrong.
     if (count === 0) {
       return (
-        <div className="empty-state">
-          {failed
-            ? 'This job’s history couldn’t be loaded. Press Refresh to try again.'
-            : 'Nothing has happened on this job yet.'}
+        <div className="empty-state empty-state--compact">
+          {!failed && <History size={40} strokeWidth={1.5} />}
+          <p>
+            {failed
+              ? 'This job’s history couldn’t be loaded. Press Refresh to try again.'
+              : 'Nothing has happened on this job yet.'}
+          </p>
         </div>
       );
     }
     if (days.length === 0) {
-      return <div className="empty-state">Nothing of that kind has happened on this job.</div>;
+      return (
+        <div className="empty-state empty-state--compact">
+          <History size={40} strokeWidth={1.5} />
+          <p>Nothing of that kind has happened on this job.</p>
+        </div>
+      );
     }
     return (
       <div className="history-timeline">

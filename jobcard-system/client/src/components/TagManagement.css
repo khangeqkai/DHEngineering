@@ -1,19 +1,10 @@
 /* Styles for the Job Options and Equipment screens — category tabs, tag chip cards
    and the archived-tag styling for each chip. */
-.tag-category-tabs {
-  display: flex; gap: var(--space-1); margin-bottom: var(--space-4);
-  border-bottom: 2px solid var(--border-color); padding-bottom: 0; overflow-x: auto;
-}
-.tag-category-tab {
-  padding: var(--space-2) var(--space-4); border: none; background: transparent; color: var(--text-secondary);
-  font-size: var(--text-sm); font-weight: var(--font-regular); cursor: pointer;
-  border-top: 2px solid transparent; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all var(--duration-fast); white-space: nowrap;
-}
-.tag-category-tab:hover { color: var(--text-primary); }
-.tag-category-tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+.tag-category-tabs { margin-bottom: var(--space-4); }
 .tag-section-desc { margin: var(--space-1) 0 0; font-size: var(--text-sm); color: var(--text-secondary); font-weight: var(--font-regular); }
-.tag-empty-text { color: var(--text-secondary); font-size: var(--text-sm); margin: 0; }
 .tag-chips-grid { display: flex; flex-wrap: wrap; gap: var(--gap-tight); }
+/* A card, not a tag: it carries full-size Edit/Archive buttons, so it keeps the
+   button corner rather than the round tag shape (which would clip around them). */
 .tag-chip-card {
   display: inline-flex; align-items: center; gap: var(--gap-tight);
   padding: var(--space-1-5) var(--space-1-5) var(--space-1-5) var(--space-3);
@@ -25,7 +16,7 @@
 .tag-page-subtitle { margin: calc(-1 * var(--space-2)) 0 var(--gap-group); font-size: var(--text-sm); color: var(--text-secondary); }
 .tag-chip-card.archived { opacity: 0.65; border-style: dashed; }
 .tag-archived-badge {
-  margin-left: var(--space-2); padding: var(--space-0-5) var(--space-1-5); border-radius: 10px;
-  font-size: var(--text-xs); font-weight: var(--font-regular); text-transform: uppercase; letter-spacing: 0.02em;
+  margin-left: var(--space-2); padding: var(--space-0-5) var(--space-1-5); border-radius: var(--radius-full);
+  font-size: var(--text-xs); font-weight: var(--font-regular); text-transform: uppercase; letter-spacing: var(--tracking-wider);
   background: var(--surface-inset); color: var(--text-tertiary);
 }

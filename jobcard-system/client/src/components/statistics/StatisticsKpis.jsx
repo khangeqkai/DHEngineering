@@ -65,7 +65,7 @@ export default function StatisticsKpis({ summary = {}, activeWorkersCount = 0, r
           <div className="kpi-footer">
             <div className="kpi-stat-row">
               <span className="kpi-stat-label">Finished late</span>
-              <span className="kpi-stat-val" style={{ color: late > 0 ? 'var(--accent-caution)' : 'inherit' }}>
+              <span className={`kpi-stat-val ${late > 0 ? 'is-bad' : ''}`}>
                 {pluralize(late, 'job')}{late > 0 && summary.avgDaysLate > 0 ? `, ${pluralize(summary.avgDaysLate, 'day')} late on average` : ''}
               </span>
             </div>
@@ -126,7 +126,7 @@ export default function StatisticsKpis({ summary = {}, activeWorkersCount = 0, r
           <div className="kpi-footer">
             <div className="kpi-stat-row">
               <span className="kpi-stat-label">Scrapped</span>
-              <span className="kpi-stat-val" style={{ color: (summary.totalScrap ?? 0) > 0 ? 'var(--accent-caution)' : 'inherit' }}>
+              <span className={`kpi-stat-val ${(summary.totalScrap ?? 0) > 0 ? 'is-bad' : ''}`}>
                 {summary.totalScrap ?? 0} pieces ({summary.scrapRate ?? 0}%)
               </span>
             </div>

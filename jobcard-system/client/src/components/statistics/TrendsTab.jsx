@@ -19,7 +19,7 @@ function MeasureRows({ title, scaleNote, rows, tone }) {
         <div className="trend-row" key={r.key}>
           <span className="trend-row-label">{r.label}</span>
           <div className="trend-row-track">
-            <div className={`trend-row-fill ${tone}`} style={{ width: `${r.percent}%` }} />
+            <div className={`trend-row-fill ${tone}`} style={{ '--bar-w': `${r.percent}%` }} />
           </div>
           <span className="trend-row-value">{r.display}</span>
         </div>
@@ -71,11 +71,11 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', select
 
         <div className="stats-card-body">
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', padding: 'var(--space-2) 0' }}>
-              <div className="skeleton-bar" style={{ width: '60%', height: '14px' }} />
-              <div className="skeleton-bar" style={{ width: '80%', height: '18px' }} />
-              <div className="skeleton-bar" style={{ width: '45%', height: '18px' }} />
-              <div className="skeleton-bar" style={{ width: '70%', height: '18px' }} />
+            <div className="stats-skeleton">
+              <div className="skeleton-bar w-60" />
+              <div className="skeleton-bar row w-80" />
+              <div className="skeleton-bar row w-45" />
+              <div className="skeleton-bar row w-70" />
             </div>
           ) : periodTrends.length === 0 ? (
             <EmptyState
@@ -109,7 +109,7 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', select
             <span>Every {groupBy === 'month' ? 'Month' : 'Year'} In Full</span>
           </div>
         </div>
-        <div className="stats-card-body" style={{ padding: 0 }}>
+        <div className="stats-card-body flush">
           <DataTable
             columns={[
               {
@@ -142,7 +142,7 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', select
                     {val}%
                   </span>
                 ) : (
-                  <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+                  <span className="stat-dash">—</span>
                 )
               },
               {
@@ -150,7 +150,7 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', select
                 label: 'Hours Worked',
                 align: 'right',
                 sortable: true,
-                render: (val) => <span style={{ fontFamily: 'var(--font-mono)' }}>{val}h</span>
+                render: (val) => <span className="stats-mono">{val}h</span>
               },
               {
                 key: 'partsProduced',
@@ -165,7 +165,7 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', select
                 align: 'right',
                 sortable: true,
                 render: (val) => (
-                  <span style={{ color: val > 0 ? 'var(--accent-caution)' : 'inherit' }}>
+                  <span className={val > 0 ? 'is-bad' : undefined}>
                     {val || 0} pieces
                   </span>
                 )
@@ -174,6 +174,8 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', select
             data={periodTrends}
             loading={loading}
             searchable={false}
+            emptyIcon="bar-chart"
+            emptyMessage="No jobs were started or finished in this range"
           />
         </div>
       </div>

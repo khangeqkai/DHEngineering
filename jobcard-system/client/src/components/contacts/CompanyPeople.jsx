@@ -139,7 +139,7 @@ export default function CompanyPeople({ people, saving, pendingId, onCreate, onU
       {adding && editor}
 
       {people.length === 0 && !adding && (
-        <p className="company-people-empty">Nobody here yet. Add the person you deal with.</p>
+        <p className="empty-state empty-state--compact">Nobody here yet. Add the person you deal with.</p>
       )}
 
       <ul className="company-people-list">

@@ -18,7 +18,7 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
             <Users size={18} />
             <span>Hours by worker</span>
           </div>
-          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+          <span className="stats-card-note">
             Hours are sorted into normal and overtime using the weekly schedule and public holidays.
           </span>
         </div>
@@ -30,7 +30,7 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
             </span>
           ))}
         </div>
-        <div className="stats-card-body" style={{ padding: 0 }}>
+        <div className="stats-card-body flush">
           <DataTable
             columns={[
               {
@@ -41,7 +41,7 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
                   <div>
                     <strong>{val}</strong>
                     {row.employeeId && row.employeeId !== '—' && (
-                      <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-tertiary)' }}>
+                      <div className="stats-cell-sub">
                         ID: {row.employeeId}
                       </div>
                     )}
@@ -55,26 +55,26 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
                 sortable: true,
                 render: (val, row) => (
                   <div>
-                    <strong style={{ fontFamily: 'var(--font-mono)' }}>{val} h</strong>
+                    <strong className="stats-mono">{val} h</strong>
                     <div className="hours-progress-bar">
                       <div
                         className="hours-progress-segment normal"
-                        style={{ width: `${val > 0 ? (row.normalHours / val) * 100 : 100}%` }}
+                        style={{ '--bar-w': `${val > 0 ? (row.normalHours / val) * 100 : 100}%` }}
                         title={`Normal: ${row.normalHours} h`}
                       />
                       <div
                         className="hours-progress-segment ot1"
-                        style={{ width: `${val > 0 ? (row.ot1Hours / val) * 100 : 0}%` }}
+                        style={{ '--bar-w': `${val > 0 ? (row.ot1Hours / val) * 100 : 0}%` }}
                         title={`Overtime 1: ${row.ot1Hours} h`}
                       />
                       <div
                         className="hours-progress-segment ot2"
-                        style={{ width: `${val > 0 ? (row.ot2Hours / val) * 100 : 0}%` }}
+                        style={{ '--bar-w': `${val > 0 ? (row.ot2Hours / val) * 100 : 0}%` }}
                         title={`Overtime 2: ${row.ot2Hours} h`}
                       />
                       <div
                         className="hours-progress-segment holiday"
-                        style={{ width: `${val > 0 ? (row.holidayHours / val) * 100 : 0}%` }}
+                        style={{ '--bar-w': `${val > 0 ? (row.holidayHours / val) * 100 : 0}%` }}
                         title={`Holiday: ${row.holidayHours} h`}
                       />
                     </div>
@@ -94,7 +94,7 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
                 align: 'right',
                 sortable: true,
                 render: (val, row) => (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-1)', flexWrap: 'wrap' }}>
+                  <div className="tier-tag-group">
                     {val > 0 ? (
                       <>
                         {row.ot1Hours > 0 && <span className="tier-tag ot1">Overtime 1: {row.ot1Hours} h</span>}
@@ -102,7 +102,7 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
                         {row.holidayHours > 0 && <span className="tier-tag holiday">Holiday: {row.holidayHours} h</span>}
                       </>
                     ) : (
-                      <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-xs)' }}>0 h</span>
+                      <span className="tier-tag-none">0 h</span>
                     )}
                   </div>
                 )
@@ -127,7 +127,7 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
                 align: 'right',
                 sortable: true,
                 render: (val, row) => (
-                  <span style={{ color: val > 0 ? 'var(--accent-caution)' : 'inherit' }}>
+                  <span className={val > 0 ? 'is-bad' : undefined}>
                     {val} ({row.scrapBinQty}b / {row.scrapRecycleQty}r)
                   </span>
                 )

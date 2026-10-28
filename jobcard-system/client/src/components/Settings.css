@@ -54,7 +54,7 @@
 }
 
 .setting-description {
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
 }
 
@@ -81,7 +81,7 @@
 }
 
 .job-number-input-group .form-label {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
   margin-bottom: var(--space-1);
 }
@@ -100,7 +100,7 @@
 
 .timeout-label {
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
 }
 
 /* Dark Mode toggle row. .toggle-label in App.css adds a bordered/padded box
@@ -156,7 +156,7 @@
   position: fixed;
   inset: 0;
   /* No z-index: modalStack inlines this window's layer before first paint. */
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--scrim-strong);
   display: flex;
   flex-direction: column;
   align-items: center;

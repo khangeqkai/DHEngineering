@@ -365,7 +365,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
           </ul>
           {loading && <div className="hub-loading"><div className="hub-loading-bar" /></div>}
           {!loading && list.length === 0 && !isJobFiles && (
-            <p className="hub-empty">{locked ? 'Nothing here' : 'Nothing here yet — use Add or Photo above'}</p>
+            <p className="empty-state empty-state--compact">{locked ? 'Nothing here' : 'Nothing here yet — use Add or Photo above'}</p>
           )}
         </div>
       </div>

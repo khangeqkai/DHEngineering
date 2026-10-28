@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ChevronUp, ChevronDown, ChevronsUpDown, Search, Inbox } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react';
 import useTableSort from '../../hooks/useTableSort';
 import useTableFilter from '../../hooks/useTableFilter';
 import useTableResize from '../../hooks/useTableResize';
@@ -33,6 +33,7 @@ export default function DataTable({
   searchKeys = [],
   searchPlaceholder = 'Search…',
   emptyMessage = 'No data found',
+  emptyIcon,
   emptyState,
   defaultSortKey = null,
   defaultSortOrder = 'asc',
@@ -105,12 +106,7 @@ export default function DataTable({
           ) : emptyState ? (
             <EmptyState {...emptyState} />
           ) : (
-            <div className="data-table-empty">
-              <div className="data-table-empty-icon" aria-hidden="true">
-                <Inbox size={40} />
-              </div>
-              <div className="data-table-empty-text">{emptyMessage}</div>
-            </div>
+            <EmptyState icon={emptyIcon} title={emptyMessage} />
           )
         ) : (
           <table className="table data-table">

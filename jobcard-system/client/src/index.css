@@ -86,7 +86,6 @@
   --font-sans: 'Pragmatica', -apple-system, BlinkMacSystemFont, sans-serif;
 
   /* Font Sizes — slightly refined scale */
-  --text-2xs: 0.75rem;
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
   --text-base: 0.9375rem;
@@ -167,13 +166,25 @@
   --pad-page: var(--space-7);
   --pad-cell: var(--space-2) var(--space-4);
 
-  /* Border Radius — crisper, instrument-grade */
+  /* Border Radius — crisper, instrument-grade.
+     --radius-xs is only for tiny swatches and markers (8–10px squares), where
+     --radius-sm would already read as a circle. */
+  --radius-xs: 2px;
   --radius-sm: 5px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
   /* Fully round — pills, dots, icon-button hit areas */
   --radius-full: 999px;
+
+  /* Window backdrops — the dimmed page behind a pop-up. One navy tint, three
+     strengths: --scrim for a window opened from a page; --scrim-light for a
+     window opened on top of another window (the two layers add up, so the
+     page behind doesn't go near-black); --scrim-strong for covers that must
+     be answered before anything else (attention, inactivity, restore). */
+  --scrim: rgba(6, 14, 28, 0.65);
+  --scrim-light: rgba(6, 14, 28, 0.5);
+  --scrim-strong: rgba(6, 14, 28, 0.85);
 
   /* ── Navy-Blue Palette ── */
   /* Navy is the hero. Bright blue is the accent. */
@@ -481,7 +492,6 @@
 
   /* Input fields */
   --input-bg: #081530;
-  --input-border: #1a3a66;
 
   /* Text */
   --text-primary: #eaecf2;
@@ -630,16 +640,9 @@
 .dark-mode .form-group textarea,
 .dark-mode .form-group select,
 .dark-mode .form-control {
+  /* Background only: the edge stays --border-input and the focus ring stays
+     the shared one, the same as every other box in both themes. */
   background: var(--input-bg);
-  border-color: var(--input-border);
-}
-
-.dark-mode .form-group input:focus,
-.dark-mode .form-group textarea:focus,
-.dark-mode .form-group select:focus,
-.dark-mode .form-control:focus {
-  border-color: var(--primary-accent);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 /* Open dropdown menus need explicit option colours or they render

@@ -405,7 +405,7 @@ export default function JobCommentsPanel({
   const renderThread = () => {
     if (loadError) {
       return (
-        <div className="jc-chat-empty">
+        <div className="empty-state empty-state--compact">
           <p>Couldn't load comments.</p>
           {onRetry && (
             <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry} disabled={loading}>
@@ -417,14 +417,14 @@ export default function JobCommentsPanel({
     }
     if (loading && count === 0) {
       return (
-        <div className="jc-chat-empty" role="status">
+        <div className="empty-state empty-state--compact" role="status">
           <Spinner size={24} />
         </div>
       );
     }
     if (count === 0) {
       return (
-        <div className="jc-chat-empty">
+        <div className="empty-state empty-state--compact">
           <MessageCircle size={40} strokeWidth={1.5} />
           <p>
             {locked

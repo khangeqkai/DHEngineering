@@ -13,7 +13,7 @@
   gap: var(--space-0-5);
   min-height: 48px;
   padding: var(--space-2) var(--space-2-5);
-  border: 1.5px solid var(--border-color);
+  border: 1.5px solid var(--border-input);
   border-radius: var(--radius-md);
   background: var(--surface);
   color: var(--text-primary);

@@ -6,11 +6,12 @@ import { PRIORITY_LABELS } from '../JobCardList.constants';
 import { formatMoney, pluralize } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
 
-// Bar colour per priority — anything not listed reads as the muted default.
-const PRIORITY_BAR_COLORS = {
-  SAME_DAY: 'var(--same-day-bg)',
-  HIGH: 'var(--warning-color)',
-  MEDIUM: 'var(--primary-accent)'
+// Bar colour class per priority (see Statistics.css) — anything not listed
+// reads as the muted default.
+const PRIORITY_BAR_CLASS = {
+  SAME_DAY: 'prio-same-day',
+  HIGH: 'prio-high',
+  MEDIUM: 'prio-medium'
 };
 
 export default function CustomersTab({
@@ -37,10 +38,10 @@ export default function CustomersTab({
           <div className="stats-card-body">
             <div className="distribution-list">
               {loading && Object.keys(qualityLevelDistribution).length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-field)' }}>
-                  <div className="skeleton-bar" style={{ width: '80%', height: '14px' }} />
-                  <div className="skeleton-bar" style={{ width: '60%', height: '14px' }} />
-                  <div className="skeleton-bar" style={{ width: '70%', height: '14px' }} />
+                <div className="stats-skeleton tight">
+                  <div className="skeleton-bar w-80" />
+                  <div className="skeleton-bar w-60" />
+                  <div className="skeleton-bar w-70" />
                 </div>
               ) : (
                 Object.entries(qualityLevelDistribution).map(([level, count]) => {
@@ -54,7 +55,7 @@ export default function CustomersTab({
                         <span>{pluralize(count, 'job')} ({pct}%)</span>
                       </div>
                       <div className="distribution-bar-bg">
-                        <div className="distribution-bar-fill" style={{ width: `${pct}%` }} />
+                        <div className="distribution-bar-fill" style={{ '--bar-w': `${pct}%` }} />
                       </div>
                     </div>
                   );
@@ -75,10 +76,10 @@ export default function CustomersTab({
           <div className="stats-card-body">
             <div className="distribution-list">
               {loading && Object.keys(priorityDistribution).length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-field)' }}>
-                  <div className="skeleton-bar" style={{ width: '75%', height: '14px' }} />
-                  <div className="skeleton-bar" style={{ width: '85%', height: '14px' }} />
-                  <div className="skeleton-bar" style={{ width: '50%', height: '14px' }} />
+                <div className="stats-skeleton tight">
+                  <div className="skeleton-bar w-75" />
+                  <div className="skeleton-bar w-85" />
+                  <div className="skeleton-bar w-50" />
                 </div>
               ) : (
                 Object.entries(priorityDistribution).map(([prio, count]) => {
@@ -93,11 +94,8 @@ export default function CustomersTab({
                       </div>
                       <div className="distribution-bar-bg">
                         <div
-                          className="distribution-bar-fill"
-                          style={{
-                            width: `${pct}%`,
-                            background: PRIORITY_BAR_COLORS[prio] || 'var(--text-tertiary)'
-                          }}
+                          className={`distribution-bar-fill ${PRIORITY_BAR_CLASS[prio] || 'muted'}`}
+                          style={{ '--bar-w': `${pct}%` }}
                         />
                       </div>
                     </div>
@@ -117,7 +115,7 @@ export default function CustomersTab({
             <span>Customers by work done</span>
           </div>
         </div>
-        <div className="stats-card-body" style={{ padding: 0 }}>
+        <div className="stats-card-body flush">
           <DataTable
             columns={[
               {
@@ -150,7 +148,7 @@ export default function CustomersTab({
                     {val}%
                   </span>
                 ) : (
-                  <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+                  <span className="stat-dash">—</span>
                 )
               },
               {
@@ -167,7 +165,7 @@ export default function CustomersTab({
                 label: 'Hours Worked',
                 align: 'right',
                 sortable: true,
-                render: (val) => <span style={{ fontFamily: 'var(--font-mono)' }}>{val}h</span>
+                render: (val) => <span className="stats-mono">{val}h</span>
               },
               ...(canSeePricing ? [{
                 key: 'invoicedTotal',

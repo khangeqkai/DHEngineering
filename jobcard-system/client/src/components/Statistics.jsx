@@ -173,23 +173,26 @@ export default function Statistics() {
             loading={loading}
           />
 
-          <div className="stats-tabs">
+          <div className="tab-bar stats-tabs">
             <button
-              className={`stats-tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+              type="button"
+              className={`tab${activeTab === 'overview' ? ' active' : ''}`}
               onClick={() => setActiveTab('overview')}
             >
               <BarChart3 size={16} />
               <span>Overview</span>
             </button>
             <button
-              className={`stats-tab-btn ${activeTab === 'workers' ? 'active' : ''}`}
+              type="button"
+              className={`tab${activeTab === 'workers' ? ' active' : ''}`}
               onClick={() => setActiveTab('workers')}
             >
               <Users size={16} />
               <span>Workers</span>
             </button>
             <button
-              className={`stats-tab-btn ${activeTab === 'ontime' ? 'active' : ''}`}
+              type="button"
+              className={`tab${activeTab === 'ontime' ? ' active' : ''}`}
               onClick={() => setActiveTab('ontime')}
             >
               {(summary.overdueActiveJobsCount || 0) > 0 && <AlertTriangle size={14} />}
@@ -199,14 +202,16 @@ export default function Statistics() {
               </span>
             </button>
             <button
-              className={`stats-tab-btn ${activeTab === 'machines' ? 'active' : ''}`}
+              type="button"
+              className={`tab${activeTab === 'machines' ? ' active' : ''}`}
               onClick={() => setActiveTab('machines')}
             >
               <Cpu size={16} />
               <span>Machines</span>
             </button>
             <button
-              className={`stats-tab-btn ${activeTab === 'customers' ? 'active' : ''}`}
+              type="button"
+              className={`tab${activeTab === 'customers' ? ' active' : ''}`}
               onClick={() => setActiveTab('customers')}
             >
               <Building2 size={16} />

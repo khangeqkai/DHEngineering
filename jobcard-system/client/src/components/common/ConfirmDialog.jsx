@@ -1,6 +1,6 @@
-import { useEffect, useRef, useId } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useId } from 'react';
 import { createPortal } from 'react-dom';
-import { useModalLayer, isTopModal, useFocusWhenTop } from './modalStack';
+import { useModalLayer, isTopModal, useFocusWhenTop, anyModalOpenExcept } from './modalStack';
 import { handleDialogKey } from './dialogKeys';
 
 export default function ConfirmDialog({
@@ -23,6 +23,12 @@ export default function ConfirmDialog({
   const modalId = useId();
   // Registers as the (now) top-most dialog while open, and takes its drawing layer.
   const layer = useModalLayer(modalId, isOpen, { pinnedLayer });
+  // Opened over another window (the job window, the attention window): a lighter backdrop,
+  // since the two add up. Read once per opening, after the layer hook has joined the stack.
+  const [layered, setLayered] = useState(false);
+  useLayoutEffect(() => {
+    if (isOpen) setLayered(anyModalOpenExcept(modalId));
+  }, [isOpen, modalId]);
 
   // Focus the cancel button when modal opens (safer default) — once it is the top window.
   useFocusWhenTop(modalId, isOpen, () => cancelButtonRef.current?.focus());
@@ -55,7 +61,7 @@ export default function ConfirmDialog({
 
   return createPortal(
     <div
-      className="confirm-dialog-overlay"
+      className={`confirm-dialog-overlay${layered ? ' confirm-dialog-overlay--layered' : ''}`}
       style={{ zIndex: layer }}
       role="alertdialog"
       aria-modal="true"

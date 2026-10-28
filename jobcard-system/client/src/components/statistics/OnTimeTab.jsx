@@ -43,38 +43,35 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
             </div>
           </div>
           <div className="stats-card-body">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 'var(--text-sm)' }}>Finished on or before due date:</span>
-                <strong style={{ color: 'var(--accent-ready)' }}>
+            <div className="stats-rows">
+              <div className="stats-row">
+                <span className="stats-row-label">Finished on or before due date:</span>
+                <strong className="is-good">
                   {pluralize(summary.onTimeJobsCount ?? 0, 'job')} {hasOnTimeData ? `(${onTimeRate}%)` : ''}
                 </strong>
               </div>
               <div className="distribution-bar-bg">
                 <div
-                  className="distribution-bar-fill"
-                  style={{
-                    width: hasOnTimeData ? `${onTimeRate}%` : '100%',
-                    background: !hasOnTimeData ? 'var(--text-tertiary)' : `var(--${onTimeTone(onTimeRate)}-color)`
-                  }}
+                  className={`distribution-bar-fill ${hasOnTimeData ? onTimeTone(onTimeRate) : 'muted'}`}
+                  style={{ '--bar-w': hasOnTimeData ? `${onTimeRate}%` : '100%' }}
                 />
               </div>
               <p className="kpi-rule">{ON_TIME_RULE}</p>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: 'var(--space-3)' }}>
-                <span style={{ fontSize: 'var(--text-sm)' }}>Finished late:</span>
-                <strong style={{ color: summary.lateJobsCount > 0 ? 'var(--accent-caution)' : 'inherit' }}>
+              <div className="stats-row divided">
+                <span className="stats-row-label">Finished late:</span>
+                <strong className={summary.lateJobsCount > 0 ? 'is-bad' : undefined}>
                   {pluralize(summary.lateJobsCount ?? 0, 'job')}
                 </strong>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 'var(--text-sm)' }}>Average days late (jobs finished late):</span>
+              <div className="stats-row">
+                <span className="stats-row-label">Average days late (jobs finished late):</span>
                 <strong>{daysLate(summary.avgDaysLate ?? 0)}</strong>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 'var(--text-sm)' }}>Finished without due date:</span>
+              <div className="stats-row">
+                <span className="stats-row-label">Finished without due date:</span>
                 <span>{pluralize(summary.noDueDateJobsCount ?? 0, 'job')}</span>
               </div>
             </div>
@@ -90,19 +87,19 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
             </div>
           </div>
           <div className="stats-card-body">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 'var(--text-sm)' }}>Total live jobs:</span>
+            <div className="stats-rows">
+              <div className="stats-row">
+                <span className="stats-row-label">Total live jobs:</span>
                 <strong>{pluralize(summary.activeJobsCount ?? 0, 'job')} open</strong>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 'var(--text-sm)' }}>Jobs in active progress:</span>
-                <strong style={{ color: 'var(--primary-accent)' }}>{pluralize(summary.inProgressJobsCount ?? 0, 'job')}</strong>
+              <div className="stats-row">
+                <span className="stats-row-label">Jobs in active progress:</span>
+                <strong className="is-accent">{pluralize(summary.inProgressJobsCount ?? 0, 'job')}</strong>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: 'var(--space-3)' }}>
-                <span style={{ fontSize: 'var(--text-sm)' }}>Average job turnaround:</span>
+              <div className="stats-row divided">
+                <span className="stats-row-label">Average job turnaround:</span>
                 <strong>{pluralize(summary.avgTurnaroundDays ?? 0, 'day')} / job</strong>
               </div>
             </div>
@@ -114,14 +111,14 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
       <div className="stats-card">
         <div className="stats-card-header">
           <div className="stats-card-title">
-            <AlertTriangle size={18} style={{ color: 'var(--warning-color)' }} />
+            <AlertTriangle size={18} className="stats-title-icon warning" />
             <span>Jobs that finished late</span>
           </div>
-          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+          <span className="stats-card-note">
             Jobs delivered after their due date
           </span>
         </div>
-        <div className="stats-card-body" style={{ padding: 0 }}>
+        <div className="stats-card-body flush">
           <DataTable
             columns={[
               {

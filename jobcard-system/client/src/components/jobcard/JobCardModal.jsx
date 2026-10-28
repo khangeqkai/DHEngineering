@@ -729,7 +729,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onCreated, onTime
                 </div>
               )}
               {isEdit && canSeePricing && (
-                <div className="modal-tabs">
+                <div className="tab-bar modal-tabs">
                   <button type="button" className={`tab ${activeTab === 'details' ? 'active' : ''}`} onClick={() => handleTabChange('details')}>
                     Details
                   </button>
