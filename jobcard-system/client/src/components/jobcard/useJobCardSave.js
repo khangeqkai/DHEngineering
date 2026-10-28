@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { validateJobCardForm } from './jobCardValidation.mjs';
@@ -55,6 +55,14 @@ export function useJobCardSave({
   onFormMarks
 }) {
   const [saving, setSaving] = useState(false);
+  // The greyed-out Create button stops a second click, but not a second Ctrl+Enter
+  // (the form's requestSubmit ignores the button's state) — and `saving` is still
+  // false in a press that lands before the next draw. This ref is the one guard
+  // that sees the first create while it is still running. A create that succeeds never
+  // lowers it: the window then either closes or reopens as the new job, and every opening
+  // is a fresh window (JobCardModal.jsx), so a held-down Ctrl+Enter landing in between
+  // can't create a second one. Only a failed or backed-out create lowers it again.
+  const inFlight = useRef(false);
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
@@ -62,7 +70,7 @@ export function useJobCardSave({
     // fall through to api.createJobcard below. The form's own onKeyDown already
     // swallows a stray Enter in most fields, but a <select> can still submit
     // natively, so this guard is the one that actually matters.
-    if (isEdit) return;
+    if (isEdit || inFlight.current) return;
 
     // Validation
     const { marks, errors, validItems } = validateJobCardForm({
@@ -81,6 +89,8 @@ export function useJobCardSave({
       return;
     }
 
+    inFlight.current = true;
+    let created = false;
     setSaving(true);
     try {
       // Customer details are chosen once, at creation — resolve/create the contact.
@@ -88,7 +98,7 @@ export function useJobCardSave({
         canManage, isEdit, contactHook, showConfirm
       });
       // Backed out of adding a new customer — nothing has been saved yet.
-      if (!customer) { setSaving(false); return; }
+      if (!customer) return;
 
       const jobcardData = buildJobcardPayload({
         formData: formHook.formData,
@@ -104,6 +114,7 @@ export function useJobCardSave({
       });
 
       const result = await api.createJobcard(jobcardData);
+      created = true;
 
       onSuccess?.();
       // The list is refreshed and the number is told either way (the job really was
@@ -134,6 +145,7 @@ export function useJobCardSave({
         toast.error(err.message || 'Couldn\'t create the job card. What you entered is still here — check the connection and try again.', { id: 'job-create-failed' });
       }
     } finally {
+      if (!created) inFlight.current = false;
       setSaving(false);
     }
   }, [canManage, isEdit, formHook, contactHook, showConfirm, onSuccess, onClose, onCreated, setAttachmentWarnings, isWindowUp, onContactFieldErrors, onFormMarks]);

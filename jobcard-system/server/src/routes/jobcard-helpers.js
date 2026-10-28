@@ -3,6 +3,7 @@ const path = require('path');
 
 const { isManagement } = require('../middleware/auth');
 const jobStatuses = require('../shared/jobStatuses.json');
+const { standingStatus } = require('../shared/jobStatus');
 const {
   jobcardQueries,
   jobItemQueries,
@@ -202,8 +203,11 @@ function checkStatusMove(existing, newStatus, confirms = {}, after = {}) {
   const intoBilling = billing.includes(newStatus);
   // The close-out questions are asked when the job first reaches billing (whichever
   // billing status it jumps to) and again when it is archived — not on every step
-  // between, where nothing they check could have changed unseen.
-  const asksCloseOut = intoBilling && (!billing.includes(existing.status) || shouldArchive);
+  // between, where nothing they check could have changed unseen. A flagged job is where
+  // its flag remembers (standingStatus): putting a billed job back from Action Required
+  // is a step within billing, not a first arrival.
+  const wasBilling = billing.includes(standingStatus(existing.status, existing.previous_status));
+  const asksCloseOut = intoBilling && (!wasBilling || shouldArchive);
 
   if (intoBilling) {
     // Hard block: a running timer, a clock still awaiting its worker's answer, or a

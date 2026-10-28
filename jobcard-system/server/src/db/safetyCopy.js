@@ -15,9 +15,11 @@ const { OLD_STATUS_CODES } = require('./statusRename');
 // nothing. A backup restore never comes through here: the backup file it restores from
 // is already the copy, so it lifts any hold (liftHoldForRestore) before its own pass.
 //
-// If the copy can't be written, the upgrade is held back for this boot — both steps
-// check upgradeHeldBack() and skip — so nothing is ever moved without a copy. The
-// next start tries again.
+// If the copy can't be written, the upgrade is held back for this boot — the status
+// rename and the quote-reference move check upgradeHeldBack() and skip — so neither
+// moves anything without a copy. The next start tries again. The Repeat Job fold is the
+// one step that never waits (see its entry in columnDrops.js): held back, it would
+// clear the previous jobs typed in while it waited.
 
 let heldBack = false;
 
@@ -41,7 +43,7 @@ function safetyCopyBeforeUpgrade() {
     logger.info({ target }, 'Saved a safety copy of the database before the status-list upgrade');
   } catch (err) {
     heldBack = true;
-    logger.error({ err }, 'Could not save a safety copy of the database, so the status-list upgrade is held back until the next start. Nothing was changed.');
+    logger.error({ err }, 'Could not save a safety copy of the database, so the status rename and the quote-reference move are held back until the next start. The Repeat Job fold still runs (see columnDrops.js).');
   }
 }
 

@@ -291,7 +291,7 @@ export function getJobCardColumns({
         // archived flag (jobLock.js's isJobClosed) rather than the "Show Archived"
         // view toggle — see the assignee column's own comment above.
         const rowClosed = isJobClosed(card);
-        const changeable = !rowClosed && canChangeStatus({ canManage, canInvoice }, card.status, card.previousStatus);
+        const changeable = !rowClosed && canChangeStatus({ canManage, canInvoice }, card.status, true, card.previousStatus);
         if (!changeable) {
           return (
             <td key="status">

@@ -31,6 +31,12 @@ Checked and rejected (or accepted as-is). One line each; kept for good.
 - Users page (and every management page): adding says "… updated", not "created" — house wording chosen on purpose (see Tags decision).
 - Restore: an old backup with two running timers for one worker can't be restored — not reachable, the rule predates the live install.
 - Accepted leftover: typing a previous-job reference then instantly unticking Repeat Job can briefly show the reference until the job reloads; stored data is always right.
+- Status: putting a billed job back from Action Required doesn't ask the files/sign-off questions again (decided 2026-10-28, in the jobs note's intended list; the time checks and PO question still apply).
+- Start-up: the Repeat Job tick fold runs even when the safety copy fails (decided 2026-10-28 — held back, it would clear previous jobs typed in meanwhile).
+- Start-up: "the tick column's drop could fail and leave it behind" — nothing else refers to that column, so there are no steps to make the drop fail.
+- Stop form: a held "I'm done" answer the office already settled can't drop a queued Stop & Start — a worker with an unanswered clock can't start one.
+- Stop form: the office reopening the clock while the worker fills the form is met as "running again", not as "office settled, nothing kept".
+- New job: "Create stops working after a create whose follow-up fails" — nothing after a successful create can fail that way.
 
 ## This hunt
 _No hunt running._ While a hunt runs, each round adds a "Round N" list of what it fixed here, plus a row in the table below.

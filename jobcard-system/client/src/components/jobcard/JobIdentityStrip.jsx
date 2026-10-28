@@ -176,7 +176,7 @@ export default function JobIdentityStrip({
   // job to, plus whatever it currently sits on. When the job sits somewhere they may
   // not take it out of at all (an office or billing status), the control is locked.
   const actor = { canManage, canInvoice };
-  const statusChangeable = canChangeStatus(actor, status, formData.previousStatus);
+  const statusChangeable = canChangeStatus(actor, status, isEdit, formData.previousStatus);
   // Paid – Archived files a job away and runs the missing-files check, which only
   // happen on an existing job — statusMenuModel never offers it while creating a
   // new job (and never without the invoiceJob permission). Same rows and headings

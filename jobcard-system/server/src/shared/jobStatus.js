@@ -56,9 +56,12 @@ function canSetStatus(actor, fromStatus, toStatus, previousStatus = null) {
 }
 
 // Whether the actor may change the status at all, given where the job stands now.
-// A job with no status yet (a brand-new one being filled in) can always be picked for.
-function canChangeStatus(actor, currentStatus, previousStatus = null) {
-  if (!currentStatus) return true;
+// A job not created yet (isEdit false) can always be picked for: the status it shows
+// is only the form's starting pick (Open), not somewhere the job stands, so picking To
+// be Costed by mistake must not lock a manager out of picking again before Create.
+// Same argument order as offeredStatusValues below.
+function canChangeStatus(actor, currentStatus, isEdit = true, previousStatus = null) {
+  if (!currentStatus || !isEdit) return true;
   return canLeave(actor, currentStatus, previousStatus);
 }
 
@@ -67,15 +70,19 @@ function canChangeStatus(actor, currentStatus, previousStatus = null) {
 // plus every status the actor may move it to. The billing statuses are never
 // offered while creating a job (isEdit false): their checks (time, files, sign-off,
 // PO number) and the invoiced date belong to a move of an existing job, and the
-// server refuses a new job on one. isEdit defaults to true because a list of
-// existing jobs (the only other caller) never needs to say otherwise.
+// server refuses a new job on one. A job not created yet is judged as having no status
+// (only the target end, as the server judges its create), so the form's current pick
+// never limits the next one. isEdit defaults to true because a list of existing jobs
+// (the only other caller) never needs to say otherwise.
 function offeredStatusValues(actor, currentStatus, isEdit = true, previousStatus = null) {
   return jobStatuses.statuses
     .map((s) => s.value)
     .filter((value) => {
       if (value === currentStatus) return true;
       if (!isEdit && jobStatuses.billingStatuses.includes(value)) return false;
-      return canSetStatus(actor, currentStatus, value, previousStatus);
+      return isEdit
+        ? canSetStatus(actor, currentStatus, value, previousStatus)
+        : canSetStatus(actor, null, value);
     });
 }
 

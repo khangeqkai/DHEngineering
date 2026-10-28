@@ -221,7 +221,7 @@ export default function JobCardList() {
       },
       onFailed: loadJobcards
     });
-  }, [showConfirm, refreshMissingFiles, loadJobcards]);
+  }, [jobcards, showConfirm, refreshMissingFiles, loadJobcards]);
 
   const closeStatusPopover = useCallback(() => setStatusPopoverId(null), []);
   const closeAssignPopover = useCallback(() => setAssignPopoverId(null), []);

@@ -19,10 +19,13 @@ const day = (iso) => formatDate(iso, { weekday: 'long', day: 'numeric', month: '
 // The office gave a finish (or reopened the block) while the worker was answering: the
 // time they typed was not kept, so say so rather than pass it off as saved. Also used by
 // the stop form, which sends a held "done" answer with its Submit.
-export function toastOfficeSettled(data, stillWorking) {
+// fromForm: said by the stop form, whose own pieces and notes are judged separately, so
+// only the finish time given is said not to have been kept.
+export function toastOfficeSettled(data, stillWorking, fromForm = false) {
   const at = data.endTime ? ` at ${clock(data.endTime)} on ${day(data.endTime)}` : '';
   const notStarted = stillWorking ? ' Your clock was not started again — press Start on the job to carry on.' : '';
-  toast(`The office has already settled this clock${at}. Your time was not saved — ask them if it needs correcting.${notStarted}`,
+  const notKept = fromForm ? 'The finish time you gave was not kept' : 'Your time was not saved';
+  toast(`The office has already settled this clock${at}. ${notKept} — ask them if it needs correcting.${notStarted}`,
     { id: 'finish-question-settled', icon: infoToastIcon, duration: 8000 });
 }
 

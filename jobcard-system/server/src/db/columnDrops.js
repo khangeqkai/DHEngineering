@@ -64,7 +64,12 @@ const columnDrops = [
   // Held back (along with the status rename) when the boot's safety copy failed.
   { table: 'jobcards', column: 'quote_reference', foldFirst: foldQuoteReferences, upgrade: true },
   // The Repeat Job tick was removed: naming the previous job is what makes a repeat.
-  { table: 'jobcards', column: 'is_repeat_job', foldFirst: foldRepeatJobTicks, upgrade: true },
+  // Never held back: the fold reads "no tick but a previous job named" as a leftover the
+  // old screen hid, and nothing writes the tick any more — so a run with the column
+  // still there would leave every previous job typed in during it looking like a
+  // leftover, and the next start would clear them. It still gets the safety copy
+  // whenever one can be written (safetyCopy.js counts the column as an upgrade).
+  { table: 'jobcards', column: 'is_repeat_job', foldFirst: foldRepeatJobTicks },
 ];
 
 function dropDeadColumns() {

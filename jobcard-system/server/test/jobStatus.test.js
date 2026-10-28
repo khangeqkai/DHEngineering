@@ -94,7 +94,7 @@ test('a new job is never offered a billing status', () => {
 test('taking Action Required off needs what leaving the remembered status needs', () => {
   // The office flagged a billed job: a worker can't use the flag as a side door.
   assert.equal(canSetStatus(worker, 'ACTION_REQUIRED', 'OPEN', 'CALL_FOR_PAYMENT'), false);
-  assert.equal(canChangeStatus(worker, 'ACTION_REQUIRED', 'CALL_FOR_PAYMENT'), false);
+  assert.equal(canChangeStatus(worker, 'ACTION_REQUIRED', true, 'CALL_FOR_PAYMENT'), false);
   assert.equal(canSetStatus(manager, 'ACTION_REQUIRED', 'DONE', 'TO_COST'), false);
   assert.equal(canSetStatus(admin, 'ACTION_REQUIRED', 'CALL_FOR_PAYMENT', 'CALL_FOR_PAYMENT'), true);
   // Flagged from the shop floor, anyone takes it off.
@@ -107,4 +107,16 @@ test('a flagged job stands on the status it remembers', () => {
   assert.equal(standingStatus('ACTION_REQUIRED', 'TO_INVOICE'), 'TO_INVOICE');
   assert.equal(standingStatus('ACTION_REQUIRED', null), 'ACTION_REQUIRED');
   assert.equal(standingStatus('DONE', 'IN_PROGRESS'), 'DONE');
+});
+
+test('on a job not created yet, the form\'s current pick never locks the next one', () => {
+  // A manager who picks To be Costed by mistake can still pick again before Create.
+  assert.equal(canChangeStatus(manager, 'TO_COST', false), true);
+  const offered = offeredStatusValues(manager, 'TO_COST', false);
+  assert.ok(offered.includes('OPEN'));
+  assert.ok(offered.includes('TO_QUOTE'));
+  for (const s of MONEY) assert.ok(!offered.includes(s), s);
+  // Once the job exists, To be Costed is the admin's to move on, as before.
+  assert.equal(canChangeStatus(manager, 'TO_COST', true), false);
+  assert.deepEqual(offeredStatusValues(manager, 'TO_COST', true), ['TO_COST']);
 });

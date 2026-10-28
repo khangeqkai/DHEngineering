@@ -517,18 +517,27 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
   }, []);
 
   // A form opened from the question's "I'm done with it" carries that answer unsent
-  // (heldFinish). Submit sends it first; this does that. Resolves true when the answer is
-  // settled and the form's own save should follow, false when the form must not save.
+  // (heldFinish). Submit sends it first; this does that. Resolves the entry as it now stands
+  // when the answer is settled and the form's own save should follow, false when the form
+  // must not save.
   const sendHeldFinish = useCallback(async (entry) => {
     const entryJobcardId = entry.jobcardId || jobcardId;
+    let officeSettled = false;
     try {
       await api.confirmFinish(entryJobcardId, entry.id, { finishTime: entry.heldFinish, stillWorking: false });
     } catch (err) {
       if (err?.data?.code === FINISH_ALREADY_CONFIRMED) {
         // Settled already — by this same Submit whose reply was lost, or by the office
-        // meanwhile (then the time given here was not kept, and the worker is told). The
-        // form's own save goes ahead either way.
-        if (err.data.settledBy === 'office') toastOfficeSettled(err.data, false);
+        // meanwhile (then the time given here was not kept, and the worker is told now,
+        // whatever the save below meets). Either way the form's own save is tried next.
+        // The office's settling never made the run wait for a form (only the worker's own
+        // answer does), so a worker's save may then be refused as already filled in:
+        // officeSettled, kept on the entry so a retried Submit still knows, lets
+        // submitEntryForm say what was lost instead of "already saved".
+        if (err.data.settledBy === 'office') {
+          officeSettled = true;
+          toastOfficeSettled(err.data, false, true);
+        }
       } else if (err?.data?.fields) {
         // The time itself was refused; it is changed on the question, behind Back.
         toast.error(`${err.message} Press Back to change the time.`, { id: 'finish-question-failed' });
@@ -547,10 +556,10 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     heldAnswerSavedRef.current?.(entry.id, entryJobcardId);
     // Answered: from here the form is an ordinary owed form, so a failed save below is
     // retried without sending the answer again, and Back is gone.
-    const settled = { ...entry, heldFinish: null };
+    const settled = { ...entry, heldFinish: null, officeSettled };
     stoppedEntryRef.current = settled;
     setStoppedEntry(settled);
-    return true;
+    return settled;
   }, [jobcardId, clearStopForm]);
 
   // The form's Back, offered only while the question's answer is still held: nothing was
@@ -579,7 +588,11 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
 
     setLoading(true);
     try {
-      if (stoppedEntry.heldFinish && !(await sendHeldFinish(stoppedEntry))) return { startedNewTimer: false };
+      let entry = stoppedEntry;
+      if (entry.heldFinish) {
+        entry = await sendHeldFinish(entry);
+        if (!entry) return { startedNewTimer: false };
+      }
 
       // Set when the server says the run's details were already saved — this same
       // Save retried after its reply was lost, or the run saved from another screen.
@@ -612,6 +625,15 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
         });
       } catch (saveErr) {
         if (saveErr?.data?.code !== RUN_ALREADY_FILLED_IN) throw saveErr;
+        if (entry.officeSettled) {
+          // The office settled the clock while this form was being filled in, so the run
+          // never waited for it: nothing typed here was kept, and the worker is told so
+          // (not "already saved", which was never true).
+          toast('The pieces and notes on this form were not saved either — the office had settled this clock. Give them to the office.', { id: 'stopped-block-gone', icon: infoToastIcon, duration: 8000 });
+          clearStopForm();
+          if (reloadEntries) await reloadEntries();
+          return { startedNewTimer: false };
+        }
         alreadySaved = true;
       }
 
@@ -664,7 +686,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, stoppedEntry, entryForm, pendingStartItem, closeFormIfRunUnfillable, handledAsFinishUnconfirmed, sendHeldFinish]);
+  }, [jobcardId, stoppedEntry, entryForm, pendingStartItem, closeFormIfRunUnfillable, handledAsFinishUnconfirmed, sendHeldFinish, clearStopForm]);
 
   const cancelEntryForm = useCallback(async (reloadEntries) => {
     if (!stoppedEntry) return;

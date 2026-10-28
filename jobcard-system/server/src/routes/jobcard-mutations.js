@@ -31,6 +31,11 @@ const { findOr404 } = require('../utils/findOr404');
 
 const router = express.Router();
 
+// The "Previous Job (if repeat)" box as stored, the same on create and on edit: trimmed,
+// and a box holding only spaces is empty — otherwise the job would read as a repeat of
+// nothing, while Statistics (which trims) would not count it.
+const previousJobReference = (value) => String(value ?? '').trim() || null;
+
 router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequired, validateJobcardDueDate, ...validateJobcardEnums, ...validateJobcardContactFields, (req, res) => {
   try {
     const data = req.body;
@@ -186,7 +191,7 @@ router.post('/', authenticate, requireManagement, validateJobcardDescriptionRequ
         data.description || null,
         data.dueDate || null,
         // Naming the previous job is what makes this a repeat job.
-        data.repeatJobReference || null,
+        previousJobReference(data.repeatJobReference),
         req.user.userId,
         req.user.userId
       );
@@ -299,9 +304,9 @@ router.put('/:id', authenticate, requireManagement, validateJobcardDueDate, ...v
     const newQualityLevel = data.qualityLevel !== undefined ? data.qualityLevel : existing.quality_level;
 
     // Naming the previous job is what makes a repeat job; clearing the box makes it
-    // not one. A box holding only spaces is empty.
+    // not one.
     if (data.repeatJobReference !== undefined) {
-      data.repeatJobReference = String(data.repeatJobReference ?? '').trim() || null;
+      data.repeatJobReference = previousJobReference(data.repeatJobReference);
     }
     const changes = buildChanges(existing, data);
 
