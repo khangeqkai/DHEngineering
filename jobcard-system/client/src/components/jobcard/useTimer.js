@@ -4,11 +4,13 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useFinishQuestion } from '../../context/FinishQuestionContext';
 import { discardToastIcon, infoToastIcon } from '../common/toastIcons';
+import { toastOfficeSettled } from '../common/FinishQuestionDialog';
 import { describeItemPosition } from './workMatch.mjs';
 import { joinMachineCodes, splitMachineCodes } from '../../../../server/src/shared/machineList';
 import { CRITICAL_INSPECTION_REFUSED } from '../../../../server/src/shared/qualityLevels';
 import {
-  RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN, FINISH_UNCONFIRMED, RUN_STOPPED_ITSELF
+  RUN_NOT_YOURS, RUN_STILL_RUNNING, RUN_ALREADY_FILLED_IN, FINISH_UNCONFIRMED, RUN_STOPPED_ITSELF,
+  FINISH_ALREADY_CONFIRMED
 } from '../../../../server/src/shared/runRefusals';
 import { isJobClosedError } from '../../utils/jobLock';
 
@@ -59,6 +61,12 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
   refreshFinishQuestionRef.current = finishQuestion?.refresh;
   const stopFormDoneRef = useRef(finishQuestion?.stopFormDone);
   stopFormDoneRef.current = finishQuestion?.stopFormDone;
+  const returnToQuestionRef = useRef(finishQuestion?.returnToQuestion);
+  returnToQuestionRef.current = finishQuestion?.returnToQuestion;
+  const heldAnswerSavedRef = useRef(finishQuestion?.heldAnswerSaved);
+  heldAnswerSavedRef.current = finishQuestion?.heldAnswerSaved;
+  const recheckQuestionRef = useRef(finishQuestion?.recheckQuestion);
+  recheckQuestionRef.current = finishQuestion?.recheckQuestion;
   // Read the live parts list from a ref, not the argument closed over below — the
   // toasts and prompts below only need it at the moment they fire, and a ref keeps
   // this hook from re-creating its callbacks every time a keystroke changes a row.
@@ -499,6 +507,62 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     });
   }, []);
 
+  // Clears the stop form off this screen (and the Stop & Start queued behind it).
+  const clearStopForm = useCallback(() => {
+    setShowEntryForm(false);
+    setStoppedEntry(null);
+    setStoppedEntryJobCard(null);
+    setEntryForm(emptyEntryForm());
+    setPendingStartItem(null);
+  }, []);
+
+  // A form opened from the question's "I'm done with it" carries that answer unsent
+  // (heldFinish). Submit sends it first; this does that. Resolves true when the answer is
+  // settled and the form's own save should follow, false when the form must not save.
+  const sendHeldFinish = useCallback(async (entry) => {
+    const entryJobcardId = entry.jobcardId || jobcardId;
+    try {
+      await api.confirmFinish(entryJobcardId, entry.id, { finishTime: entry.heldFinish, stillWorking: false });
+    } catch (err) {
+      if (err?.data?.code === FINISH_ALREADY_CONFIRMED) {
+        // Settled already — by this same Submit whose reply was lost, or by the office
+        // meanwhile (then the time given here was not kept, and the worker is told). The
+        // form's own save goes ahead either way.
+        if (err.data.settledBy === 'office') toastOfficeSettled(err.data, false);
+      } else if (err?.data?.fields) {
+        // The time itself was refused; it is changed on the question, behind Back.
+        toast.error(`${err.message} Press Back to change the time.`, { id: 'finish-question-failed' });
+        return false;
+      } else {
+        // The clock may have been deleted or handed on from another screen: then the
+        // question goes, and so does its form, with nothing left to fill in.
+        if (await recheckQuestionRef.current?.({ id: entry.id, jobcardId: entryJobcardId }, err)) {
+          clearStopForm();
+          return false;
+        }
+        toast.error(err?.message || "Couldn't save your answer. Check the connection and try again.", { id: 'finish-question-failed' });
+        return false;
+      }
+    }
+    heldAnswerSavedRef.current?.(entry.id, entryJobcardId);
+    // Answered: from here the form is an ordinary owed form, so a failed save below is
+    // retried without sending the answer again, and Back is gone.
+    const settled = { ...entry, heldFinish: null };
+    stoppedEntryRef.current = settled;
+    setStoppedEntry(settled);
+    return true;
+  }, [jobcardId, clearStopForm]);
+
+  // The form's Back, offered only while the question's answer is still held: nothing was
+  // saved, so the form goes and the question shows again.
+  const backingOutRef = useRef(false);
+  const backToQuestion = useCallback(() => {
+    if (!stoppedEntryRef.current?.heldFinish) return;
+    backingOutRef.current = true;
+    stoppedEntryRef.current = null;
+    clearStopForm();
+  }, [clearStopForm]);
+
   const submitEntryForm = useCallback(async (reloadEntries) => {
     if (!stoppedEntry) return;
 
@@ -515,6 +579,8 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
 
     setLoading(true);
     try {
+      if (stoppedEntry.heldFinish && !(await sendHeldFinish(stoppedEntry))) return { startedNewTimer: false };
+
       // Set when the server says the run's details were already saved — this same
       // Save retried after its reply was lost, or the run saved from another screen.
       // The run is filled in either way, so carry on exactly as a successful save:
@@ -598,7 +664,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     } finally {
       setLoading(false);
     }
-  }, [jobcardId, stoppedEntry, entryForm, pendingStartItem, closeFormIfRunUnfillable, handledAsFinishUnconfirmed]);
+  }, [jobcardId, stoppedEntry, entryForm, pendingStartItem, closeFormIfRunUnfillable, handledAsFinishUnconfirmed, sendHeldFinish]);
 
   const cancelEntryForm = useCallback(async (reloadEntries) => {
     if (!stoppedEntry) return;
@@ -654,11 +720,16 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
   useEffect(() => { stoppedEntryRef.current = stoppedEntry; }, [stoppedEntry]);
 
   // The form from the question has gone away (saved, or closed as unfillable): tell the
-  // shell once, so it stops holding the next question back.
+  // shell once, so it stops holding the next question back. Gone by Back, it hands
+  // back to the question instead.
   const hadQuestionFormRef = useRef(false);
   useEffect(() => {
     const hasQuestionForm = !!stoppedEntry?.fromQuestion;
-    if (hadQuestionFormRef.current && !hasQuestionForm) stopFormDoneRef.current?.();
+    if (hadQuestionFormRef.current && !hasQuestionForm) {
+      if (backingOutRef.current) returnToQuestionRef.current?.();
+      else stopFormDoneRef.current?.();
+      backingOutRef.current = false;
+    }
     hadQuestionFormRef.current = hasQuestionForm;
   }, [stoppedEntry]);
 
@@ -698,6 +769,9 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     // True when the shown stop form is one the worker owes (from the question, or left
     // unfilled earlier): it has no close button and cannot be cancelled; the worker saves it or signs out.
     mustFillIn: !!stoppedEntry?.fromQuestion,
+    // True while the form holds the question's unsent "I'm done with it" answer.
+    canGoBackToQuestion: !!stoppedEntry?.heldFinish,
+    backToQuestion,
     entryForm,
     startTimerWithConflictCheck,
     stopTimer,

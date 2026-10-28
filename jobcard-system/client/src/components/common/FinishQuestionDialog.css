@@ -22,3 +22,34 @@
   flex-wrap: wrap;
   gap: var(--gap-tight);
 }
+
+/* The two answers are the whole point of the step, so they share the row equally; going
+   back to the time box is a quiet link above them, not a third button competing with them. */
+.fq-answers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap-tight);
+}
+
+.fq-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-inline);
+  margin: 0 0 var(--gap-group);
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--accent-text);
+  cursor: pointer;
+}
+
+.fq-back:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.fq-back:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

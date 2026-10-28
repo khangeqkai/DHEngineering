@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Minus, Plus, RotateCw, LogOut } from 'lucide-react';
+import { X, Minus, Plus, RotateCw, LogOut, ArrowLeft } from 'lucide-react';
 import { api } from '../../services/api';
 import { capitalizeFirst, formatTime } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
@@ -87,6 +87,7 @@ export default function StopTimerForm({
   onSubmit,
   onCancel,
   mustFillIn = false,
+  onBack,
   onSignOut,
   loading
 }) {
@@ -540,6 +541,18 @@ export default function StopTimerForm({
             </div>
 
             <div className="stop-timer-actions">
+              {/* Only while the "I'm done with it" answer is unsent: back to the question. */}
+              {onBack && (
+                <button
+                  type="button"
+                  className="btn btn-secondary stf-back"
+                  onClick={onBack}
+                  disabled={loading}
+                >
+                  <ArrowLeft size={16} />
+                  Back
+                </button>
+              )}
               {!canSubmit && !loading && jobReady && (
                 <span className="stop-timer-hint">
                   {!hasDescription

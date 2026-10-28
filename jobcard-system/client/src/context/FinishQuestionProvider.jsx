@@ -53,6 +53,10 @@ export function FinishQuestionProvider({ children }) {
   const [stopJob, setStopJob] = useState({ id: null, entry: null, open: false, external: false });
   const stopJobRef = useRef(stopJob);
   stopJobRef.current = stopJob;
+  // The "I'm done with it" answer held while its stop form is open ({ itemId, finishLocal }):
+  // nothing is saved until the form's Submit, so the form's Back shows the question again
+  // on its last step with the time the worker gave.
+  const [held, setHeld] = useState(null);
   const {
     mentions, rereadingMentions,
     mentionJob, openMentionJob, closeMentionJob, dropMentionJob
@@ -159,6 +163,7 @@ export function FinishQuestionProvider({ children }) {
       owedCheckTokenRef.current++;
       setCheckingOwed(false);
       setFlagged([]);
+      setHeld(null);
       return;
     }
     // At sign-in: with no question pending, offer any stop form still owed.
@@ -188,18 +193,12 @@ export function FinishQuestionProvider({ children }) {
     notifyJobChanged();
   }, [notifyJobChanged]);
 
-  // The answer is saved (and, for "still working", the new clock has been asked for). A
-  // worker who is done now fills in the usual stop form for that clock, on its own job's
-  // screen; one who is still working goes on to any other form they owe.
-  const handleAnswered = useCallback(async (entry, item) => {
+  // "Still working" is saved and the new clock started: the worker goes on to any stop form
+  // they owe (the "done" answer is held instead — holdDoneAnswer below).
+  const handleAnswered = useCallback(async (item) => {
     // The answered question goes at once, even if the re-read below fails.
     setFlagged(prev => prev.filter(f => f.id !== item.id));
-    if (entry) openStopForm(entry);
     announceJobChanged(item.jobcardId);
-    if (entry) {
-      await refresh();
-      return;
-    }
     const token = beginOwedCheck();
     try {
       const list = await refresh();
@@ -207,7 +206,7 @@ export function FinishQuestionProvider({ children }) {
     } finally {
       endOwedCheck(token);
     }
-  }, [refresh, offerUnfilledStopForm, openStopForm, announceJobChanged, beginOwedCheck, endOwedCheck]);
+  }, [refresh, offerUnfilledStopForm, announceJobChanged, beginOwedCheck, endOwedCheck]);
 
   // The answer was refused for a reason the dialog has no box for. The dialog has no other
   // way out, so the server's own list of what this worker owes decides whether there is
@@ -231,6 +230,42 @@ export function FinishQuestionProvider({ children }) {
     if (list && !list.some(f => f.id !== item.id)) offerUnfilledStopForm();
     return true;
   }, [readFlagged, announceJobChanged, offerUnfilledStopForm]);
+
+  // "I'm done with it": nothing is sent yet. The stop form opens on the run as it stands,
+  // with the time the worker gave as its finish, and its Submit sends the answer before
+  // the form (useTimer's submitEntryForm). Resolves true when the form opened or the
+  // question went away; false keeps the question up.
+  const holdDoneAnswer = useCallback(async (item, { finishTime, finishLocal }) => {
+    let rows;
+    try {
+      rows = await api.getTimeEntries(item.jobcardId);
+    } catch (err) {
+      if (await recheckQuestion(item, err)) return true;
+      toast.error(err?.message || "Couldn't open the form. Check the connection and try again.", { id: 'finish-question-failed' });
+      return false;
+    }
+    const row = Array.isArray(rows) ? rows.find(r => r.id === item.id) : null;
+    // Not on its job any more: deleted, or the job is gone.
+    if (!row) return recheckQuestion(item, { status: 404 });
+    setHeld({ itemId: item.id, finishLocal });
+    openStopForm({ ...row, jobNumber: item.jobNumber, endTime: finishTime, heldFinish: finishTime });
+    return true;
+  }, [recheckQuestion, openStopForm]);
+
+  // The stop form's Back: its form has gone with nothing saved, so the question shows
+  // again (held, on its last step). No owed form is offered — the question comes first.
+  const returnToQuestion = useCallback(() => {
+    setStopJob(prev => ({ ...prev, open: false }));
+  }, []);
+
+  // The stop form's Submit has sent the held answer: the question is answered. The form
+  // itself carries on saving, and closes (stopFormDone) once it has.
+  const heldAnswerSaved = useCallback((itemId, jobcardId) => {
+    setFlagged(prev => prev.filter(f => f.id !== itemId));
+    setHeld(null);
+    announceJobChanged(jobcardId);
+    refresh();
+  }, [announceJobChanged, refresh]);
 
   // Closing a saved form leads on to the next one owed, one after another.
   const closeStopJob = useCallback(() => {
@@ -309,8 +344,12 @@ export function FinishQuestionProvider({ children }) {
   }, [getUnsavedWorkLabel, showConfirm, logout]);
 
   const value = useMemo(
-    () => ({ refresh, registerJobScreen, stopFormDone, subscribeJobChanged, subscribeCommentsRead }),
-    [refresh, registerJobScreen, stopFormDone, subscribeJobChanged, subscribeCommentsRead]
+    () => ({
+      refresh, registerJobScreen, stopFormDone, subscribeJobChanged, subscribeCommentsRead,
+      returnToQuestion, heldAnswerSaved, recheckQuestion
+    }),
+    [refresh, registerJobScreen, stopFormDone, subscribeJobChanged, subscribeCommentsRead,
+      returnToQuestion, heldAnswerSaved, recheckQuestion]
   );
   // A comment posted on a job from any job window answers the person's open questions on
   // it, so dropMentionJob removes its row at once instead of waiting for the next read.
@@ -345,7 +384,9 @@ export function FinishQuestionProvider({ children }) {
             <FinishQuestionDialog
               key={first.id}
               item={first}
+              resume={held?.itemId === first.id ? held : null}
               onAnswered={handleAnswered}
+              onDone={holdDoneAnswer}
               onRecheck={recheckQuestion}
             />
           )}

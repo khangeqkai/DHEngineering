@@ -488,6 +488,12 @@
   color: var(--text-secondary);
 }
 
+/* Back (going backwards) sits at the left edge, with the hint beside it; with no hint
+   showing it keeps the left edge on its own. */
+.stop-timer-actions:not(:has(.stop-timer-hint)) .stf-back {
+  margin-right: auto;
+}
+
 /* Off the canonical 768/1024 grid on purpose: the two scrap cells stay side by
    side well below the app shell's own 768px phone boundary, and only give up
    and stack once the row itself is too narrow to hold them — folding this into

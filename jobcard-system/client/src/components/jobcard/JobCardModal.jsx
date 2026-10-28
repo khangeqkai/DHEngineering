@@ -889,6 +889,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onCreated, onTime
         onSubmit={handleSubmitEntryForm}
         onCancel={handleCancelEntryForm}
         mustFillIn={timer.mustFillIn}
+        onBack={timer.canGoBackToQuestion ? timer.backToQuestion : undefined}
         onSignOut={logout}
         loading={timer.loading}
       />

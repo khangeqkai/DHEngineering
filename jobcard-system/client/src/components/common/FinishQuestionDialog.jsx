@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { TriangleAlert } from 'lucide-react';
+import { ArrowLeft, TriangleAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAttentionRefocus } from './AttentionDialog';
 import { api } from '../../services/api';
@@ -13,24 +13,40 @@ import { FINISH_ALREADY_CONFIRMED, RESTART_REFUSED } from '../../../../server/sr
 import { checkFinishAnswer } from '../../../../server/src/shared/finishAnswer';
 import './FinishQuestionDialog.css';
 
-// A server refusal's field name -> the box on this form.
-const BOXES = { finishTime: 'finishTime' };
-
 const clock = (iso) => formatTime(iso, { hour: '2-digit', minute: '2-digit' });
 const day = (iso) => formatDate(iso, { weekday: 'long', day: 'numeric', month: 'long' });
+
+// The office gave a finish (or reopened the block) while the worker was answering: the
+// time they typed was not kept, so say so rather than pass it off as saved. Also used by
+// the stop form, which sends a held "done" answer with its Submit.
+export function toastOfficeSettled(data, stillWorking) {
+  const at = data.endTime ? ` at ${clock(data.endTime)} on ${day(data.endTime)}` : '';
+  const notStarted = stillWorking ? ' Your clock was not started again — press Start on the job to carry on.' : '';
+  toast(`The office has already settled this clock${at}. Your time was not saved — ask them if it needs correcting.${notStarted}`,
+    { id: 'finish-question-settled', icon: infoToastIcon, duration: 8000 });
+}
+
+// A server refusal's field name -> the box on this form.
+const BOXES = { finishTime: 'finishTime' };
 
 // The "your clock stopped by itself" question. One section of the shared "Needs your
 // attention" window (AttentionDialog), whose two steps swap in place (the time box, then
 // "still working?"); nothing is sent until the last step, and that one call carries every
-// answer. The time can be earlier or later than the stored finish. The window owns the
+// answer — except "I'm done with it", which is held, not sent: it opens the stop form, and
+// the answer goes with that form's Submit, so the form's Back can bring the worker here
+// again with nothing saved. The time can be earlier or later than the stored finish. The window owns the
 // overlay, the modal stack entry, the Escape/Tab rules and where focus goes; this section
 // only asks it to place focus again when its step changes. Answering is the way out of this
 // section — so a refusal this section has no answer for is handed to onRecheck, which takes
 // the question away when the server no longer lists it (its clock was deleted or changed).
-export default function FinishQuestionDialog({ item, onAnswered, onRecheck }) {
+export default function FinishQuestionDialog({ item, resume, onAnswered, onDone, onRecheck }) {
   const sectionRef = useRef(null);
-  const [step, setStep] = useState('B');
-  const [finishLocal, setFinishLocal] = useState(() => (item.finishKnown ? isoToLocalInput(item.endTime) : ''));
+  // `resume` is the held "done" answer the stop form's Back returned from: pick up where
+  // the worker left, on the last step with the time they gave.
+  const [step, setStep] = useState(resume ? 'C' : 'B');
+  const [finishLocal, setFinishLocal] = useState(() => (resume
+    ? resume.finishLocal
+    : item.finishKnown ? isoToLocalInput(item.endTime) : ''));
   const [sending, setSending] = useState(false);
   const { setFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(() => finishLocal);
 
@@ -61,13 +77,13 @@ export default function FinishQuestionDialog({ item, onAnswered, onRecheck }) {
     setStep('C');
   };
 
-  const send = async (stillWorking) => {
+  // "Still working" is sent at once: the server starts the new clock with the answer.
+  const sendStillWorking = async () => {
     if (sending) return;
     setSending(true);
-    const body = { finishTime: localInputToIso(finishLocal), stillWorking };
-    let entry;
+    const body = { finishTime: localInputToIso(finishLocal), stillWorking: true };
     try {
-      entry = await api.confirmFinish(item.jobcardId, item.id, body);
+      await api.confirmFinish(item.jobcardId, item.id, body);
     } catch (err) {
       if (err?.data?.code === RESTART_REFUSED) {
         // Nothing was saved: stay on this step so the worker can try again or choose otherwise.
@@ -93,22 +109,22 @@ export default function FinishQuestionDialog({ item, onAnswered, onRecheck }) {
       // Already settled. By the worker: the first press was saved but its reply was lost.
       // By the office: they saved or reopened the block while this question was showing,
       // so the time typed here was not kept — say so rather than pass it off as saved.
-      // A retried "still working" settled by the worker's own first press already had its
-      // clock started by the server; one settled by the office never did, so say that too.
-      // There is no entry here; the null answer re-reads the questions and offers any stop
-      // form still owed.
-      if (err.data.settledBy === 'office') {
-        const at = err.data.endTime ? ` at ${clock(err.data.endTime)} on ${day(err.data.endTime)}` : '';
-        const notStarted = stillWorking ? ' Your clock was not started again — press Start on the job to carry on.' : '';
-        toast(`The office has already settled this clock${at}. Your time was not saved — ask them if it needs correcting.${notStarted}`,
-          { id: 'finish-question-settled', icon: infoToastIcon, duration: 8000 });
-      }
-      entry = null;
+      // A retry settled by the worker's own first press already had its clock started by
+      // the server; one settled by the office never did, so say that too.
+      if (err.data.settledBy === 'office') toastOfficeSettled(err.data, true);
     }
-    // The answer is saved; for "still working" the server has already started the new clock.
-    // Buttons stay disabled: the answer is saved and the dialog is about to go away.
-    // A stop form is opened only when the server says one is owed.
-    onAnswered(!stillWorking && entry?.awaitingDetails ? entry : null, item);
+    // The answer is saved and the server has already started the new clock. Buttons stay
+    // disabled: the dialog is about to go away. A stop form still owed for the old stretch
+    // (an answer long after the cut) is offered by the provider's re-read.
+    onAnswered(item);
+  };
+
+  // "Done" is held: the stop form opens, and its Submit sends this answer with the form.
+  const holdDone = async () => {
+    if (sending) return;
+    setSending(true);
+    const opened = await onDone(item, { finishTime: localInputToIso(finishLocal), finishLocal });
+    if (!opened) setSending(false);
   };
 
   // A clock whose part has since been removed has no part number to name.
@@ -162,16 +178,19 @@ export default function FinishQuestionDialog({ item, onAnswered, onRecheck }) {
 
       {step === 'C' && (
         <>
-          <p className="attention-note attention-note--spaced">Are you still working on this job?</p>
-          <div className="fq-actions">
-            <button type="button" className="btn btn-secondary" disabled={sending} onClick={() => setStep('B')}>
-              Back
-            </button>
-            <button type="button" className="btn btn-secondary" disabled={sending} onClick={() => send(true)}>
+          <p className="attention-note">Are you still working on this job?</p>
+          {/* First in the step on purpose: the window focuses the first control, and Enter on
+              this one is harmless, where Enter on an answer would save it. */}
+          <button type="button" className="fq-back" disabled={sending} onClick={() => setStep('B')}>
+            <ArrowLeft size={14} />
+            Change the finish time
+          </button>
+          <div className="fq-answers">
+            <button type="button" className="btn btn-secondary" disabled={sending} onClick={sendStillWorking}>
               {sending && <Spinner size={16} />}
               Yes, start my clock again
             </button>
-            <button type="button" className="btn btn-primary" disabled={sending} onClick={() => send(false)}>
+            <button type="button" className="btn btn-primary" disabled={sending} onClick={holdDone}>
               {sending && <Spinner size={16} />}
               No, I'm done with it
             </button>
