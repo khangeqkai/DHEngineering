@@ -93,7 +93,7 @@ export default function ScheduleEditor({ schedule, paintHour, copyDayToAll, onSa
         <p className="setting-description">
           Pick a rate, then click or drag across the hours to paint each day. Every hour of
           the week is charged at the rate you paint it. Public holidays (below) override the
-          whole day. A clock still running at the end of normal hours stops there, and its
+          whole day. A timer still running at the end of normal hours stops there, and its
           worker is asked at their next sign-in whether they worked later.
         </p>
 

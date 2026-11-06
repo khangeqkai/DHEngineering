@@ -45,7 +45,7 @@ export function getJobCardColumns({
   return [
     {
       id: 'jobNumber',
-      label: 'Job #',
+      label: 'Job Number',
       renderCell: (card) => {
         // A Critical QA job wears its level on the number itself — red instead
         // of the usual link blue — so it reads from across the list without a
@@ -128,7 +128,7 @@ export function getJobCardColumns({
     },
     {
       id: 'customer',
-      label: 'Customer',
+      label: 'Contact',
       managementOnly: true,
       renderCell: (card) => (
         <td
@@ -138,7 +138,7 @@ export function getJobCardColumns({
             const el = e.currentTarget;
             if (!card.contactName || el.scrollWidth <= el.clientWidth) return;
             const r = el.getBoundingClientRect();
-            setHoverDesc({ top: r.bottom + 6, left: r.left, title: 'Customer', text: card.contactName });
+            setHoverDesc({ top: r.bottom + 6, left: r.left, title: 'Contact', text: card.contactName });
           }}
           onMouseLeave={() => setHoverDesc(null)}
         >
@@ -402,8 +402,8 @@ export function getJobCardColumns({
     },
     {
       id: 'attachments',
-      label: 'Attachments',
-      headerHint: 'Tick: all files attached. Warning triangle: drawings missing, asked about before the job is archived. Paperclip: files not attached yet.',
+      label: 'Files',
+      headerHint: 'Tick: all files added. Warning triangle: drawings missing — you will be asked about this before the job is archived. Paperclip: some files not added yet.',
       align: 'center',
       renderCell: (card) => {
         // Until this row has actually been checked, show a faint loading hint
@@ -420,7 +420,7 @@ export function getJobCardColumns({
         if (severity === 'ok') {
           return (
             <td key="attachments" className="attachment-cell">
-              <span className="attachment-ok" title="All files attached" aria-label="All files attached">
+              <span className="attachment-ok" title="All files added" aria-label="All files added">
                 <Check size={14} />
               </span>
             </td>
@@ -428,7 +428,7 @@ export function getJobCardColumns({
         }
         const blocking = severity === 'blocking';
         const gaps = describeAttachmentGaps(warning);
-        const title = blocking ? 'Drawings missing, asked about before archiving' : 'Files not attached yet';
+        const title = blocking ? 'Drawings missing — you will be asked about this before archiving' : 'Some files not added yet';
         return (
           <td key="attachments" className="attachment-cell">
             <span

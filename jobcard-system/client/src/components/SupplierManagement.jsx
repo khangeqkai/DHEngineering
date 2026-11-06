@@ -309,7 +309,7 @@ export default function SupplierManagement() {
           <form id="supplier-form" onSubmit={handleSubmit} noValidate>
             <div className="form-row">
               <div className={groupClass('name')}>
-                <label htmlFor="name">Company Name *</label>
+                <label htmlFor="name">Supplier Name *</label>
                 <input
                   type="text"
                   {...fieldProps('name')}
@@ -509,7 +509,7 @@ export default function SupplierManagement() {
             columns={[
               {
                 key: 'name',
-                label: 'Company Name',
+                label: 'Supplier Name',
                 sortable: true,
                 render: (val, row) => (
                   <button type="button" className="row-link-btn" onClick={(e) => { e.stopPropagation(); handleEdit(row); }} aria-label={`Edit supplier ${val}`}>

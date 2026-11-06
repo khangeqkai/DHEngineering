@@ -80,10 +80,10 @@ function finishRefusalHead(reason, current) {
   // Names nobody: the block may have been moved to another worker since the answer, and the
   // answer may itself have been corrected by the office. Nothing stored says who answered or
   // whose time the current finish is.
-  if (reason === 'workerAnswered') return `The forgotten-clock question was answered since you opened this. The stored finish is now ${finish} (the worker's answer, or a later office correction).`;
-  if (reason === 'clockStopped') return `This clock was stopped since you opened it. Its finish is now ${finish}.`;
-  if (reason === 'confirmed') return 'This finish was confirmed since you opened it.';
-  return `This finish was changed since you opened it. The stored finish is now ${finish}.`;
+  if (reason === 'workerAnswered') return `Someone answered the stopped-timer question while you had this open. The finish time is now ${finish} (the worker's answer, or a later fix by the office).`;
+  if (reason === 'clockStopped') return `This timer was stopped while you had it open. Its finish time is now ${finish}.`;
+  if (reason === 'confirmed') return 'Someone confirmed this finish time while you had it open.';
+  return `Someone changed this finish time while you had it open. It is now ${finish}.`;
 }
 
 export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, deleteTimeEntry, reloadTimeEntries, showConfirm, isInvoiced = false, onJobClosed }) {
@@ -281,8 +281,8 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
     const session = formSessionRef.current;
     // Names the block this save is about, for a refusal that arrives after the form moved on.
     const blockLabel = editingTimeEntryId
-      ? `${timeEntryForm.workerName || 'The worker'}'s block from ${formatDateTime(timeEntryForm.storedStartTime)}`
-      : 'New time entry';
+      ? `${timeEntryForm.workerName || 'The worker'}'s time from ${formatDateTime(timeEntryForm.storedStartTime)}`
+      : 'New logged time';
     try {
       // The stored* facts, the finish version, the worker's name, the moved flag and the tick
       // (confirmFinish, "this finish is right") are form-only and never sent as plain fields.
@@ -322,7 +322,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
         const refusedFinish = err?.status === 409 && err?.data?.code === FINISH_CHANGED;
         const message = refusedFinish && err.data.current
           ? `${blockLabel}: ${finishRefusalHead(err.data.reason, err.data.current)} Your change was not saved.`
-          : `${blockLabel}: ${err.message || 'Couldn\'t save the time entry. Check the connection and try again.'}`;
+          : `${blockLabel}: ${err.message || 'Couldn\'t save the time. Check the connection and try again.'}`;
         toast.error(message, { id: 'time-entry-save-refused' });
         if (refusedFinish) reloadTimeEntries?.()?.catch?.(() => {});
       }
@@ -341,7 +341,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
         const boxAfter = keepsTyped ? sentBox : currentBox;
         const moved = facts.storedEndTime !== openedFormRef.current.storedEndTime;
         let tail;
-        if (keepsTyped) tail = sentBox ? ' Save again to use your time instead.' : ' Save again to restart the clock anyway.';
+        if (keepsTyped) tail = sentBox ? ' Save again to use your time instead.' : ' Save again to start the timer again anyway.';
         else tail = reason === 'confirmed' ? ' Change it and save again if it is still wrong.' : ' The finish box now shows it.';
         setTimeEntryForm(prev => ({ ...prev, ...facts, endTime: boxAfter, confirmFinish: false, storedFinishMoved: prev.storedFinishMoved || moved }));
         // The baseline for "did the finish change" is now the stored finish, so a second Save
@@ -362,7 +362,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       }
       // Anything else the server refused on a named box (e.g. a start or finish that
       // this PC's clock thought was fine) marks that box; the rest is a pop-up.
-      else showSaveRefusal(err, { boxFor: FORM_BOXES, setFieldErrors, fallback: 'Couldn\'t save the time entry. Check the connection and try again.' });
+      else showSaveRefusal(err, { boxFor: FORM_BOXES, setFieldErrors, fallback: 'Couldn\'t save the time. Check the connection and try again.' });
     }
   }, [jobCardId, timeEntryForm, editingTimeEntryId, resetTimeEntryForm, addTimeEntry, updateTimeEntry, reloadTimeEntries, isInvoiced, setFieldErrors, onJobClosed]);
 
@@ -382,11 +382,11 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       : null;
     const day = entry?.startTime ? formatDate(entry.startTime) : null;
     const message = hours != null && day
-      ? `Delete ${who}'s ${hours} ${hours === 1 ? 'hour' : 'hours'} from ${day}? This removes the time from the job's total and can't be undone.`
-      : `Delete ${who}'s recorded time? This removes it from the job's total and can't be undone.`;
+      ? `Delete ${who}'s ${hours} ${hours === 1 ? 'hour' : 'hours'} from ${day}? This takes it off the job's total, and you can't get it back.`
+      : `Delete ${who}'s logged time? This takes it off the job's total, and you can't get it back.`;
 
     const confirmed = await showConfirm({
-      title: 'Delete recorded time',
+      title: 'Delete logged time',
       message,
       confirmLabel: 'Delete',
       confirmVariant: 'danger'
@@ -397,7 +397,7 @@ export function useTimeEntries(jobCardId, { addTimeEntry, updateTimeEntry, delet
       await deleteTimeEntry(entry.id);
     } catch (err) {
       if (isJobClosedError(err)) onJobClosed?.();
-      else toast.error(err.message || 'Couldn\'t delete the time entry. Check the connection and try again.');
+      else toast.error(err.message || 'Couldn\'t delete the time. Check the connection and try again.');
     }
   }, [jobCardId, deleteTimeEntry, showConfirm, isInvoiced, onJobClosed]);
 

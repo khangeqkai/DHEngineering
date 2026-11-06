@@ -19,7 +19,7 @@ const { liftHoldForRestore } = require('../db/safetyCopy');
 // every restore onto it would fail. Refused when the location is saved and again
 // when a restore starts.
 const JOB_FOLDERS_ROOT_MESSAGE =
-  'The job folders location cannot be the top of a drive or network share. Choose a folder inside it instead, for example D:\\Jobs.';
+  'The main job folder cannot be the top of a drive or network share. Choose a folder inside it instead, for example D:\\Jobs.';
 
 function isDriveOrShareRoot(dir) {
   const resolved = path.resolve(dir);
@@ -511,7 +511,7 @@ function swapJobFolders({ tempDir, currentJobBase, stagingDir, oldDir, fileManif
   } catch (err) {
     if (['EPERM', 'EBUSY', 'EACCES'].includes(err.code)) {
       logger.error({ err, from: currentJobBase, to: oldDir }, 'Backup restore: live job folders could not be moved aside');
-      const inUse = new Error('The job folders are in use. Close any files or folder windows open from them, then try again. Nothing was changed.');
+      const inUse = new Error('The main job folder is in use. Close any files or folder windows open from it, then try again. Nothing was changed.');
       inUse.plainMessage = true;
       inUse.status = 409;
       throw inUse;

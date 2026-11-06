@@ -38,7 +38,7 @@ const FIELD_WORD = {
   address: 'address', notes: 'notes', contactName: 'contact name', companyName: 'company',
   contactPhone: 'contact phone', contactEmail: 'contact email', serviceTags: 'services',
   machineNumber: 'number', description: 'description', category: 'type',
-  timezone: 'time zone', jobFoldersBase: 'job folders location', homeAccessCode: 'home access code',
+  timezone: 'time zone', jobFoldersBase: 'main job folder', homeAccessCode: 'home access code',
   inactivityTimeout: 'sign-out timeout', labourDefaultRate: 'default labour rate', labourSchedule: 'working hours',
   labourPublicHolidays: 'public holidays', nextJobNumber: 'next job number',
   requiresPo: 'PO requirement'

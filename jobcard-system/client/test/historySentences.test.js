@@ -70,11 +70,11 @@ const stop = (userId, snapshot) => ({
 });
 
 test('R2-6: someone else\'s clock is never credited to whoever pressed stop', () => {
-  assert.equal(head(stop('alice', { workerId: 'bob', workerName: 'Bob' })), "Alice stopped Bob's clock on Plate (2 h)");
+  assert.equal(head(stop('alice', { workerId: 'bob', workerName: 'Bob' })), "Alice stopped Bob's timer on Plate (2 h)");
 });
 
 test('R2-6: an unknown worker reads "a clock", never "their"', () => {
-  assert.equal(head(stop('alice', {})), 'Alice stopped a clock on Plate (2 h)');
+  assert.equal(head(stop('alice', {})), 'Alice stopped a timer on Plate (2 h)');
 });
 
 test('own clock reads as finishing work', () => {
@@ -84,7 +84,7 @@ test('own clock reads as finishing work', () => {
 // ── R4-4-style: two people with one name are two people ────────────────────────
 test('same name, different accounts: Ben stopping another Ben\'s clock is someone else\'s clock', () => {
   const entry = { ...stop('ben-1', { workerId: 'ben-2', workerName: 'Ben' }), userName: 'Ben' };
-  assert.equal(head(entry), "Ben stopped Ben's clock on Plate (2 h)");
+  assert.equal(head(entry), "Ben stopped Ben's timer on Plate (2 h)");
 });
 
 test('same name, same account: still their own clock', () => {
@@ -94,23 +94,23 @@ test('same name, same account: still their own clock', () => {
 
 test('a worker name with no account id is never taken as the actor\'s own', () => {
   const entry = { ...stop('ben-1', { workerName: 'Ben' }), userName: 'Ben' };
-  assert.equal(head(entry), "Ben stopped Ben's clock on Plate (2 h)");
+  assert.equal(head(entry), "Ben stopped Ben's timer on Plate (2 h)");
 });
 
 // ── R3-3: auto-stopped and thrown-away clocks ─────────────────────────────────
 test('R3-3: an auto-stop with no worker says "The clock", not the actor\'s', () => {
   const entry = { action: 'auto_stop_timer', userId: 'alice', userName: 'Alice', changes: { timer: { from: 'running', to: 'stopped at the end of normal hours' } }, snapshot: PLATE };
-  assert.equal(head(entry), 'The clock on Plate stopped by itself at the end of normal hours. The worker still needs to confirm the real finish time');
+  assert.equal(head(entry), 'The timer on Plate stopped by itself at the end of normal hours. The worker still needs to say when they really finished');
 });
 
 test('R3-3: an auto-stop names its worker', () => {
   const entry = { action: 'auto_stop_timer', userId: 'bob', userName: 'Bob', changes: { timer: { from: 'running', to: 'stopped at the end of normal hours' } }, snapshot: { ...PLATE, workerId: 'bob', workerName: 'Bob' } };
-  assert.equal(head(entry), "Bob's clock on Plate stopped by itself at the end of normal hours. Bob still needs to confirm the real finish time");
+  assert.equal(head(entry), "Bob's timer on Plate stopped by itself at the end of normal hours. Bob still needs to say when they really finished");
 });
 
 test('R3-3: a thrown-away clock with no worker says "The clock"', () => {
   const entry = { action: 'discard_timer', userId: 'alice', userName: 'Alice', changes: { timer: { from: 'running', to: 'discarded (under 15s)' } }, snapshot: PLATE };
-  assert.equal(head(entry), 'The clock on Plate was thrown away after under 15 seconds, so no time was kept');
+  assert.equal(head(entry), 'The timer on Plate was thrown away because it ran for less than 15 seconds, so no time was kept');
 });
 
 test('a thrown-away clock names the worker and who was taken off the job', () => {
@@ -119,7 +119,7 @@ test('a thrown-away clock names the worker and who was taken off the job', () =>
     changes: { timer: { from: 'running', to: 'discarded (under 15s)' }, assignees: { from: 'Bob, Cy', to: 'Cy' } },
     snapshot: { ...PLATE, workerId: 'bob', workerName: 'Bob' }
   };
-  assert.equal(head(entry), "Bob's clock on Plate was thrown away after under 15 seconds, so no time was kept");
+  assert.equal(head(entry), "Bob's timer on Plate was thrown away because it ran for less than 15 seconds, so no time was kept");
   assert.deepEqual(details(entry), ['Bob was taken back off the job']);
 });
 
@@ -131,16 +131,16 @@ const confirm = (userId, snapshot) => ({
 });
 
 test("R3-7: the office confirming someone's finish names that someone", () => {
-  assert.equal(head(confirm('olive', { workerId: 'bob', workerName: 'Bob' })), "Olive confirmed Bob's clock on Plate stopped at the right time");
+  assert.equal(head(confirm('olive', { workerId: 'bob', workerName: 'Bob' })), "Olive confirmed Bob's timer on Plate stopped at the right time");
 });
 
 test('R3-7: confirming your own clock reads "their"', () => {
   const entry = { ...confirm('bob', { workerId: 'bob', workerName: 'Bob' }), userName: 'Bob' };
-  assert.equal(head(entry), 'Bob confirmed their clock on Plate stopped at the right time');
+  assert.equal(head(entry), 'Bob confirmed their timer on Plate stopped at the right time');
 });
 
 test('R3-7: unknown worker is neutral', () => {
-  assert.equal(head(confirm('olive', {})), 'Olive confirmed the clock on Plate stopped at the right time');
+  assert.equal(head(confirm('olive', {})), 'Olive confirmed the timer on Plate stopped at the right time');
 });
 
 test('R3-7: confirming a real finish time with no worker is neutral', () => {
@@ -150,7 +150,7 @@ test('R3-7: confirming a real finish time with no worker is neutral', () => {
 
 test('same name, different accounts: a confirmation is for someone else', () => {
   const entry = { ...confirm('ben-1', { workerId: 'ben-2', workerName: 'Ben' }), userName: 'Ben' };
-  assert.equal(head(entry), "Ben confirmed Ben's clock on Plate stopped at the right time");
+  assert.equal(head(entry), "Ben confirmed Ben's timer on Plate stopped at the right time");
 });
 
 // ── deleting a block ──────────────────────────────────────────────────────────
@@ -185,7 +185,7 @@ test('an edit of a block with no worker says "the work", never "their"', () => {
 
 test('reopening a clock with no worker is neutral', () => {
   const entry = { action: 'update_time_entry', userId: 'alice', userName: 'Alice', changes: { endTime: { from: T2H, to: null } }, snapshot: PLATE };
-  assert.equal(head(entry), 'Alice reopened the clock on Plate');
+  assert.equal(head(entry), 'Alice reopened the timer on Plate');
 });
 
 test('moving work with no worker is neutral', () => {
@@ -209,12 +209,12 @@ test('same name, different accounts: an edit is of someone else\'s work', () => 
 // ── same-name moves are told apart by the recorded ids ────────────────────────
 test('re-crediting work to another staff member with the same name reads "the other Ben"', () => {
   const entry = { action: 'update_time_entry', userId: 'admin', userName: 'Admin', changes: { worker: { from: 'Ben', to: 'Ben' } }, snapshot: { ...PLATE, workerId: 'ben-2', workerName: 'Ben', workerIdBefore: 'ben-1' } };
-  assert.equal(head(entry), 'Admin credited the work on Plate to the other Ben');
+  assert.equal(head(entry), 'Admin gave the work on Plate to the other person called Ben');
 });
 
 test('re-crediting work to a differently named person reads as before', () => {
   const entry = { action: 'update_time_entry', userId: 'admin', userName: 'Admin', changes: { worker: { from: 'Ben', to: 'Bob' } }, snapshot: { ...PLATE, workerId: 'bob', workerName: 'Bob', workerIdBefore: 'ben-1' } };
-  assert.equal(head(entry), 'Admin credited the work on Plate to Bob');
+  assert.equal(head(entry), 'Admin gave the work on Plate to Bob');
 });
 
 test('moving work to another part with the same description reads "the other part called Plate"', () => {
@@ -331,7 +331,7 @@ test('legacy jobCardPreviewed reads as opening the preview', () => {
   assert.equal(head(old({ jobCardPreviewed: { from: null, to: '2026-10-14T13:12:55.000Z' } })), 'Alice opened the job card preview');
 });
 test('legacy packetBuilt reads as building a print packet', () => {
-  assert.equal(head(old({ packetBuilt: { from: null, to: '2026-10-14T13:12:55.000Z' } })), 'Alice built a print packet');
+  assert.equal(head(old({ packetBuilt: { from: null, to: '2026-10-14T13:12:55.000Z' } })), 'Alice put the job card and its files together for printing');
 });
 test('legacy whole-job-save assignees reads as a change with the new list', () => {
   const e = old({ assignees: { from: 'Ann', to: 'Ann, Bo' } });
@@ -345,7 +345,7 @@ test('legacy photos reads from the stored counts', () => {
   assert.equal(head(old({ photos: { from: 'x', to: 'y' } })), 'Alice changed the job photos');
 });
 test('legacy qaLevelId and customer ids never print raw ids', () => {
-  assert.equal(head(old({ qaLevelId: { from: 'a1', to: 'b2' } })), 'Alice changed the quality form level');
+  assert.equal(head(old({ qaLevelId: { from: 'a1', to: 'b2' } })), 'Alice changed the quality level');
   assert.equal(head(old({ contactId: { from: 'c1', to: 'c2' } })), 'Alice changed the customer on the job');
 });
 
@@ -361,6 +361,6 @@ test('manual time: own time says "their", another worker\'s still says "for <nam
   const other = head({ ...base, snapshot: { workerId: 'b', workerName: 'Bob', ...PLATE } });
   assert.match(other, /^Alice added 2 h of work for Bob on Plate/);
   const open = { action: 'add_time_entry', userId: 'a', userName: 'Alice', changes: { startTime: { from: null, to: T0 } } };
-  assert.match(head({ ...open, snapshot: { workerId: 'a', workerName: 'Alice', ...PLATE } }), /^Alice started their own open clock on Plate/);
-  assert.match(head({ ...open, snapshot: { workerId: 'b', workerName: 'Bob', ...PLATE } }), /^Alice started an open clock for Bob on Plate/);
+  assert.match(head({ ...open, snapshot: { workerId: 'a', workerName: 'Alice', ...PLATE } }), /^Alice started their own timer with no finish time on Plate/);
+  assert.match(head({ ...open, snapshot: { workerId: 'b', workerName: 'Bob', ...PLATE } }), /^Alice started a timer with no finish time for Bob on Plate/);
 });

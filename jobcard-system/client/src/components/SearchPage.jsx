@@ -262,7 +262,7 @@ export default function SearchPage() {
 
   // --- Column definitions ---
   const jobColumns = [
-    { key: 'jobNumber', label: 'Job #', render: (v) => <Highlight text={v} query={q} /> },
+    { key: 'jobNumber', label: 'Job Number', render: (v) => <Highlight text={v} query={q} /> },
     ...(canManage ? [{ key: 'companyName', label: 'Company', render: (v) => (v ? <Highlight text={v} query={q} /> : '-') }] : []),
     { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v} /> },
     { key: 'priority', label: 'Priority', render: (v) => <PriorityBadge priority={v} /> },
@@ -284,7 +284,7 @@ export default function SearchPage() {
   ];
 
   const timeColumns = [
-    { key: 'jobNumber', label: 'Job #', render: (v) => <Highlight text={v} query={q} /> },
+    { key: 'jobNumber', label: 'Job Number', render: (v) => <Highlight text={v} query={q} /> },
     { key: 'workerName', label: 'Worker', render: (v) => <Highlight text={v} query={q} /> },
     { key: 'machineNumber', label: 'Machine', render: (v) => v || '-' },
     { key: 'durationHours', label: 'Hours', render: (v) => v != null ? `${v.toFixed(2)}h` : 'Active' },
@@ -410,7 +410,7 @@ export default function SearchPage() {
               <FilterRow label="Action">
                 <Chips options={ACTION_NAMES} selected={filters.action} onToggle={(v) => toggleArrayFilter('action', v)} multi />
               </FilterRow>
-              <FilterRow label="Record Type">
+              <FilterRow label="What Was Changed">
                 <Chips options={ENTITY_TYPES} selected={filters.entityType} formatLabel={fmtEntityType}
                   onToggle={(v) => updateFilter('entityType', filters.entityType === v ? '' : v)} />
               </FilterRow>
@@ -421,10 +421,10 @@ export default function SearchPage() {
                   <input type="date" className="search-date" value={filters.dateTo} onChange={e => updateFilter('dateTo', e.target.value)} />
                 </div>
               </FilterRow>
-              <FilterRow label="Field Changed">
+              <FilterRow label="Detail Changed">
                 <select className="search-select" value={filters.field}
                   onChange={e => updateFilter('field', e.target.value)}>
-                  <option value="">Any field</option>
+                  <option value="">Any detail</option>
                   {ACTIVITY_FIELDS.map(f => (
                     <option key={f.value} value={f.value}>{f.label}</option>
                   ))}

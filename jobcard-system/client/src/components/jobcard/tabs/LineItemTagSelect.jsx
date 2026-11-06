@@ -46,8 +46,8 @@ export default function LineItemTagSelect({
   let warningPill = null;
   if (onAttach && isDeclared) {
     warningPill = warning ? (
-      <button type="button" className="lit-attach lit-attach--missing" onClick={onAttach} title="Attach a file for this part">
-        <AlertTriangle size={14} aria-hidden="true" /> Attach file
+      <button type="button" className="lit-attach lit-attach--missing" onClick={onAttach} title="Add a file for this part">
+        <AlertTriangle size={14} aria-hidden="true" /> Add file
       </button>
     ) : (
       <div className="lit-attach-done">
@@ -58,18 +58,18 @@ export default function LineItemTagSelect({
           : (
             <span
               className="lit-attach-unchecked"
-              title={filesUnchecked ? "The job folders location isn't set or can't be reached, so this part's files couldn't be checked" : "This part's files haven't been checked yet"}
+              title={filesUnchecked ? "The main job folder isn't set or can't be reached, so we can't tell if this part has its files" : "This part's files haven't been checked yet"}
             >
               Files not checked
             </span>
           )}
-        <button type="button" className="lit-attach lit-attach--add" onClick={onAttach} title="Attach another file">
+        <button type="button" className="lit-attach lit-attach--add" onClick={onAttach} title="Add another file">
           + Add
         </button>
       </div>
     );
   } else if (warning) {
-    warningPill = <span className="lit-missing-file" title="No file attached yet"><AlertTriangle size={14} aria-hidden="true" /> No file yet</span>;
+    warningPill = <span className="lit-missing-file" title="No file added yet"><AlertTriangle size={14} aria-hidden="true" /> No file yet</span>;
   }
   const [open, setOpen] = useState(false);
   const ref = useRef(null);

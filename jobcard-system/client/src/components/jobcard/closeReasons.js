@@ -210,8 +210,8 @@ export function describeSafe(safe) {
     };
   }
   return {
-    title: 'Some required boxes are empty',
-    message: `None of them have been saved, so the job keeps what it already has for each: ${joinList(safe.map(s => s.phrase))}.`
+    title: 'Some boxes that must be filled in are empty',
+    message: `These weren't saved, so the job keeps what it had before: ${joinList(safe.map(s => s.phrase))}.`
   };
 }
 

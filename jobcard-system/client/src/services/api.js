@@ -40,11 +40,11 @@ const wait = (ms) =>new Promise((resolve) => setTimeout(resolve, ms));
 // Every reason the server can tell us this person's sign-in is finished, with
 // the wording they see. Shared with AuthContext so both say the same thing.
 export const SIGNED_OUT_MESSAGES = {
-  SESSION_REPLACED: 'You have been signed out because your account was logged in from another device.',
-  SESSION_ENDED: 'You have been signed out. Your PIN or access may have been changed, or the data restored from a backup. Please sign in again.',
-  ACCOUNT_DEACTIVATED: 'You have been signed out because your account was turned off.',
-  TOKEN_EXPIRED: 'Your sign-in has expired. Please sign in again.',
-  TOKEN_INVALID: 'Your sign-in is no longer valid. Please sign in again.'
+  SESSION_REPLACED: 'You were signed out because someone signed in as you on another computer.',
+  SESSION_ENDED: 'You were signed out. Your PIN or what you can do may have changed, or a backup was restored. Please sign in again.',
+  ACCOUNT_DEACTIVATED: 'You were signed out because your account was switched off. Ask the office if you need it back.',
+  TOKEN_EXPIRED: 'You were signed out. Please sign in again.',
+  TOKEN_INVALID: 'You were signed out. Please sign in again.'
 };
 
 class ApiService {
@@ -155,7 +155,7 @@ class ApiService {
           !(response.headers.get('content-type') || '').includes('application/json')) {
         throw unreachableError(isWriteRequest);
       }
-      const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
+      const errorData = await response.json().catch(() => ({ error: 'Something went wrong. Try again.' }));
 
       // Handle a forced sign-out from the server: session replaced by a newer
       // login, the account was turned off / its PIN reset, or the pass itself
@@ -174,14 +174,14 @@ class ApiService {
       }
 
       const details = errorData.details?.join('. ') || '';
-      let message = details || errorData.error || 'Request failed';
+      let message = details || errorData.error || 'Something went wrong. Try again.';
       // Callers branch on error.status / error.data (e.g. a 409 close-out warning),
       // so the visible message must never be a raw machine code like
       // "MISSING_ATTACHMENTS" or "CONFIRM_DELETE". If the message looks like one of
       // those all-caps codes, swap in plain wording — the real handling still keys
       // off error.data.
       if (/^[A-Z][A-Z0-9_]*$/.test(message)) {
-        message = 'Something went wrong. Please try again.';
+        message = 'Something went wrong. Try again.';
       }
       // Carry the status and parsed body on the error so callers can react to
       // specific cases (e.g. a 409 close-out warning that includes the gaps).

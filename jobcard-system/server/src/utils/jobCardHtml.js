@@ -95,7 +95,7 @@ const CSS = `
 // "Missing" — unless no job-folders location is set or it couldn't be reached,
 // in which case nothing is known about the files and the card must not claim
 // they're missing.
-const NOT_CHECKED_REASON = { 'not set': 'no folders location set', unreachable: 'folders unreachable' };
+const NOT_CHECKED_REASON = { 'not set': 'no main job folder set', unreachable: 'main job folder can\'t be reached' };
 function noFileMark(it) {
   return it.filesNotChecked
     ? `<div class="file">Files not checked (${NOT_CHECKED_REASON[it.filesNotChecked]})</div>`

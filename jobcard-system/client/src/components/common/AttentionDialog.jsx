@@ -81,7 +81,7 @@ export default function AttentionDialog({ children, contentKey, onSignOut }) {
         </div>
         {/* Said out loud so the lone button reads as the way out, not a stray control. */}
         <div className="attention-footer">
-          <span className="attention-footer-note">Can't deal with this now?</span>
+          <span className="attention-footer-note">Not ready to answer?</span>
           <button type="button" className="btn btn-secondary" onClick={onSignOut}>Sign out</button>
         </div>
       </div>
@@ -114,7 +114,7 @@ function askersText(askers) {
   return `${askers[0].name}, ${askers[1].name} and ${others} ${others === 1 ? 'other' : 'others'}`;
 }
 
-const WAIT_NOTES = { clock: 'Answer your clock first.', checking: 'One moment…' };
+const WAIT_NOTES = { clock: 'Answer the timer question first.', checking: 'One moment…' };
 
 export function MentionsSection({ mentions, waitReason, onOpen }) {
   const disabled = !!waitReason;

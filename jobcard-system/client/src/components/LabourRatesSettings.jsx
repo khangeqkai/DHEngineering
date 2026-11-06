@@ -17,7 +17,9 @@ export default function LabourRatesSettings() {
   // window) with either would lose them, so it is asked about first.
   useLeaveGuard(lr.scheduleDirty || lr.holidaysDirty, showConfirm, {
     title: 'Leave without saving the schedule?',
-    message: 'Your repainted hours will be lost.',
+    message: lr.scheduleDirty && lr.holidaysDirty
+      ? 'Your changes to the hours and the holidays will be lost.'
+      : lr.scheduleDirty ? 'Your changes to the hours will be lost.' : 'Your changes to the holidays will be lost.',
     stayLabel: 'Stay',
     leaveLabel: 'Leave without saving'
   });

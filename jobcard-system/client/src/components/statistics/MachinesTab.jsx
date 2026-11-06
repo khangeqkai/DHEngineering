@@ -227,7 +227,7 @@ export default function MachinesTab({ machineUtilization = [], totalMachineHours
             columns={[
               {
                 key: 'machineNumber',
-                label: 'Machine #',
+                label: 'Machine Number',
                 sortable: true,
                 render: (val) => (
                   <code className="machine-code">

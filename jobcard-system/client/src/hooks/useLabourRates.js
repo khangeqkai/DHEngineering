@@ -195,7 +195,7 @@ export function useLabourRates({ showConfirm } = {}) {
       const seen = new Set();
       for (const b of day) {
         if (seen.has(b.start)) {
-          toast.error(`${d.label} has two blocks starting at ${b.start} — give each a different start time.`);
+          toast.error(`${d.label} has two time blocks that start at ${b.start}. Change one of the start times.`);
           return;
         }
         seen.add(b.start);
@@ -302,7 +302,7 @@ export function useLabourRates({ showConfirm } = {}) {
     if (savedTimezone && timezone !== savedTimezone && showConfirm) {
       const ok = await showConfirm({
         title: 'Change the time zone?',
-        message: `From ${savedTimezone} to ${timezone}. Jobs created from now on use the new zone to sort work into normal hours and overtime. Jobs that already exist keep the zone they started with, including archived ones. Running clocks are cut at the end of normal hours in the new zone straight away.`,
+        message: `From ${savedTimezone} to ${timezone}. New jobs will use the new zone to decide what is normal hours and what is overtime. Jobs that already exist keep their old zone. Timers that are running now will stop at the end of normal hours in the new zone.`,
         confirmLabel: `Use ${timezone}`,
         cancelLabel: 'Go back',
         confirmVariant: 'warning'

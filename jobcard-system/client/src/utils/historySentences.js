@@ -278,7 +278,7 @@ function describeUpdate(x) {
     const text = String(isEmpty(L.inspectionSignOff.from) ? L.inspectionSignOff.to : L.inspectionSignOff.from);
     const n = Number((/(\d+)/.exec(text) || [])[1]);
     add(x, 91, Number.isFinite(n) && n > 0
-      ? plain([`${plural(n, 'run', 'runs')} still had unanswered inspection questions`])
+      ? plain([`${plural(n, 'timer', 'timers')} still had unanswered inspection questions`])
       : genericLine('inspectionSignOff', L.inspectionSignOff), null, false);
     use(x, 'inspectionSignOff');
   }
@@ -352,7 +352,7 @@ function describeUpdate(x) {
   // Events no route records any more (no current key stands for them), so there is nothing to
   // convert them into; stored data, read as-is.
   if (L.jobCardPreviewed) { add(x, 3, act(x, ['opened the job card preview']), 'job'); use(x, 'jobCardPreviewed'); }
-  if (L.packetBuilt) { add(x, 3, act(x, ['built a print packet']), 'job'); use(x, 'packetBuilt'); }
+  if (L.packetBuilt) { add(x, 3, act(x, ['put the job card and its files together for printing']), 'job'); use(x, 'packetBuilt'); }
   if (L.assignees) {
     add(x, 3, act(x, ["changed who's on the job"]), 'people');
     add(x, 4, plain(['Now on the job: ', L.assignees.to]), null, false);
@@ -369,9 +369,9 @@ function describeUpdate(x) {
       : ['changed the job photos']), 'files');
     use(x, 'photos');
   }
-  if (L.qaLevelId) { add(x, 3, act(x, ['changed the quality form level']), 'job'); use(x, 'qaLevelId'); }
+  if (L.qaLevelId) { add(x, 3, act(x, ['changed the quality level']), 'job'); use(x, 'qaLevelId'); }
   if (L.companyId || L.contactId) { add(x, 3, act(x, ['changed the customer on the job']), 'job'); use(x, 'companyId', 'contactId'); }
-  if (L.packetSaved) { add(x, 3, act(x, ['saved the job packet as a file']), 'job'); use(x, 'packetSaved'); }
+  if (L.packetSaved) { add(x, 3, act(x, ['saved the job card and its files as one file']), 'job'); use(x, 'packetSaved'); }
 
   for (const [key, change] of Object.entries(L)) {
     if (x.used.has(key) || !/^part /.test(key)) continue;
@@ -420,7 +420,7 @@ function runFieldLines(x, { times }) {
   const Q = x.Q;
 
   if (times && L.endTime && isEmpty(L.endTime.to)) {
-    add(x, 0, act(x, ['reopened ', x.whose, 'clock on ', P]), 'work');
+    add(x, 0, act(x, ['reopened ', x.whose, 'timer on ', P]), 'work');
     use(x, 'endTime');
   }
   if (times && L.item) {
@@ -432,9 +432,9 @@ function runFieldLines(x, { times }) {
   }
   if (times && L.worker) {
     if (String(L.worker.from) === String(L.worker.to)) {
-      add(x, 2, act(x, ['credited the work on ', P, ' to the other ', strong(L.worker.to)]), 'work');
+      add(x, 2, act(x, ['gave the work on ', P, ' to the other person called ', strong(L.worker.to)]), 'work');
     } else {
-      add(x, 2, act(x, ['credited the work on ', P, ' to ', strong(L.worker.to || 'nobody')], wasOf(L.worker, String)), 'work');
+      add(x, 2, act(x, ['gave the work on ', P, ' to ', strong(L.worker.to || 'nobody')], wasOf(L.worker, String)), 'work');
     }
     use(x, 'worker');
   }
@@ -514,7 +514,7 @@ function runFieldLines(x, { times }) {
 function describeStartTimer(x) {
   const worker = x.L.worker?.to || x.W;
   add(x, 0, x.L.worker
-    ? act(x, ['started a clock for ', strong(worker), ' on ', x.part])
+    ? act(x, ['started a timer for ', strong(worker), ' on ', x.part])
     : act(x, ['started work on ', x.part]), 'work');
   use(x, 'worker', 'item', 'timer', 'startTime');
   statusDetail(x);
@@ -526,11 +526,11 @@ function describeStopTimer(x) {
   if (!x.W) {
     // The entry never recorded whose clock it was, so it is left unnamed rather than
     // credited to the person who pressed stop.
-    if (x.P) add(x, 0, act(x, ['stopped a clock on ', strong(x.P), tail]), 'work');
-    else add(x, 0, act(x, ['stopped a clock', tail]), 'work');
-  } else if (!x.P) add(x, 0, act(x, [x.own ? 'stopped their clock' : ['stopped ', strong(`${x.W}'s`), ' clock'], tail]), 'work');
+    if (x.P) add(x, 0, act(x, ['stopped a timer on ', strong(x.P), tail]), 'work');
+    else add(x, 0, act(x, ['stopped a timer', tail]), 'work');
+  } else if (!x.P) add(x, 0, act(x, [x.own ? 'stopped their timer' : ['stopped ', strong(`${x.W}'s`), ' timer'], tail]), 'work');
   else if (x.own) add(x, 0, act(x, ['finished work on ', strong(x.P), tail]), 'work');
-  else add(x, 0, act(x, ['stopped ', strong(`${x.W}'s`), ' clock on ', strong(x.P), tail]), 'work');
+  else add(x, 0, act(x, ['stopped ', strong(`${x.W}'s`), ' timer on ', strong(x.P), tail]), 'work');
   use(x, 'endTime');
   statusDetail(x);
 }
@@ -547,7 +547,7 @@ function describeAddTimeEntry(x) {
     const dur = duration(start, end);
     add(x, 0, act(x, ['added ', strong(dur), x.own ? ' of their work' : ' of work', forWhom, onPart, ` (${dayMonth(start)})`]), 'work');
   } else {
-    add(x, 0, act(x, [x.own ? 'started their own open clock' : 'started an open clock', forWhom, onPart]), 'work');
+    add(x, 0, act(x, [x.own ? 'started their own timer with no finish time' : 'started a timer with no finish time', forWhom, onPart]), 'work');
   }
   use(x, 'worker', 'item', 'startTime', 'endTime');
   runFieldLines(x, { times: false });
@@ -571,13 +571,13 @@ function describeConfirmFinish(x) {
     add(x, 0, act(x, line, wasOf(x.L.endTime, clock)), 'work');
   } else if (x.L.finish) {
     const line = !x.W
-      ? ['confirmed the clock on ', x.part, ' stopped at the right time']
-      : [own ? 'confirmed their clock on ' : ['confirmed ', strong(`${x.W}'s`), ' clock on '], x.part, ' stopped at the right time'];
+      ? ['confirmed the timer on ', x.part, ' stopped at the right time']
+      : [own ? 'confirmed their timer on ' : ['confirmed ', strong(`${x.W}'s`), ' timer on '], x.part, ' stopped at the right time'];
     add(x, 0, act(x, line), 'work');
   }
   use(x, 'endTime', 'finish', 'reportedBy');
   if (x.L.criticalSignOff) {
-    add(x, 91, plain(['The critical sign-off was carried by the later run']), null, false);
+    add(x, 91, plain(['The critical inspection sign-off moved to the later timer']), null, false);
     use(x, 'criticalSignOff');
   }
   if (x.L.description) {
@@ -620,8 +620,8 @@ function describeAutoStop(x) {
   const owner = who ? `${who}'s` : 'The';
   const part = x.part;
   add(x, 0, plain(midnight
-    ? [`${owner} clock on `, part, " stopped by itself at midnight. The finish time isn't known yet"]
-    : [`${owner} clock on `, part, ` stopped by itself at the end of normal hours. ${who || 'The worker'} still needs to confirm the real finish time`]), 'alert');
+    ? [`${owner} timer on `, part, ' stopped by itself at midnight. Nobody knows the real finish time yet']
+    : [`${owner} timer on `, part, ` stopped by itself at the end of normal hours. ${who || 'The worker'} still needs to say when they really finished`]), 'alert');
   use(x, 'timer');
   statusDetail(x);
 }
@@ -631,7 +631,7 @@ function describeDiscard(x) {
   // that does not name the worker leaves it unnamed.
   const who = x.W;
   const owner = who ? `${who}'s` : 'The';
-  add(x, 0, plain([`${owner} clock on `, x.part, ' was thrown away after under 15 seconds, so no time was kept']), 'alert');
+  add(x, 0, plain([`${owner} timer on `, x.part, ' was thrown away because it ran for less than 15 seconds, so no time was kept']), 'alert');
   use(x, 'timer');
   if (x.L.assignees) {
     // The only person a discard ever takes off the job is the worker whose clock it was.
@@ -650,8 +650,8 @@ const COSTING_LABELS = {
   labourHolidayOverride: 'Public holiday hours', labourHolidayTotal: 'Public holiday total',
   labourSpecialHours: 'Special labour hours', labourSpecialRate: 'Special labour rate',
   labourSpecialDescription: 'Special labour description',
-  materialsCost: 'Materials cost', materialsProfitPercent: 'Materials margin', materialsDescription: 'Materials description',
-  subcontractorCost: 'Subcontractor cost', subcontractorProfitPercent: 'Subcontractor margin',
+  materialsCost: 'Materials cost', materialsProfitPercent: 'Materials markup', materialsDescription: 'Materials description',
+  subcontractorCost: 'Subcontractor cost', subcontractorProfitPercent: 'Subcontractor markup',
   subcontractorDescription: 'Subcontractor description',
   grandTotal: 'Job total'
 };

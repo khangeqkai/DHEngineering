@@ -148,7 +148,7 @@ export default function WorkersTab({ workerLeaderboard = [], loading = false }) 
             emptyState={{
               icon: 'users',
               title: 'No worker time logged',
-              description: 'Logged time entries in this period will show here, worker by worker.'
+              description: 'Time logged in this period will show here, worker by worker.'
             }}
           />
         </div>

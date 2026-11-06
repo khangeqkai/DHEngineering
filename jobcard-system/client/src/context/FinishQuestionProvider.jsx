@@ -220,8 +220,8 @@ export function FinishQuestionProvider({ children }) {
     if (!gone) return false;
     setFlagged(prev => prev.filter(f => f.id !== item.id));
     toast(err?.status === 404
-      ? 'That clock no longer needs an answer — it was removed from another screen.'
-      : 'That clock no longer needs an answer — it was changed from another screen.',
+      ? 'That timer doesn\'t need an answer any more — someone deleted it.'
+      : 'That timer doesn\'t need an answer any more — someone already sorted it out.',
     { id: 'finish-question-gone', icon: infoToastIcon });
     announceJobChanged(item.jobcardId);
     // Changed from another screen, so no write of this PC's announced it: tell the job's

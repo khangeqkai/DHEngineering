@@ -320,7 +320,7 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
     // created meanwhile (two managers at once, or a double-click).
     const actorRole = liveRole(req);
     if (!isManagement(actorRole)) {
-      return res.status(403).json({ error: 'Your account can no longer manage users. Sign in again.' });
+      return res.status(403).json({ error: 'You are no longer allowed to manage people. Sign in again to see what you can do.' });
     }
     if (role === 'admin' && !can(actorRole, 'adminAccounts')) {
       return res.status(403).json({ error: 'Only an admin can create an admin account.' });
@@ -398,7 +398,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     // could overwrite a newer change. From the second judging onward the route runs
     // straight through to the commit.
     const refusalFor = (actorRole, target) => {
-      if (!isManagement(actorRole)) return { status: 403, error: 'Your account can no longer manage users. Sign in again.' };
+      if (!isManagement(actorRole)) return { status: 403, error: 'You are no longer allowed to manage people. Sign in again to see what you can do.' };
       const canManageAdmins = can(actorRole, 'adminAccounts');
       // A role must be a real one.
       if (role && !ALL_ROLES.includes(role)) return { status: 400, error: 'Pick a role: admin, manager or user.' };

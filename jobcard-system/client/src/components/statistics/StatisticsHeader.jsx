@@ -45,10 +45,10 @@ export default function StatisticsHeader({
             className="btn btn-primary"
             onClick={onExportExcel}
             disabled={exporting || !hasData}
-            title="Export full statistics to Excel"
+            title="Save all the statistics as an Excel file"
           >
             <Download size={16} />
-            <span>{exporting ? 'Exporting…' : 'Export Excel'}</span>
+            <span>{exporting ? 'Saving…' : 'Save to Excel'}</span>
           </button>
         </div>
       </PageHeader>

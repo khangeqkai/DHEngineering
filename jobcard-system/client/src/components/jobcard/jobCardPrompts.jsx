@@ -31,7 +31,7 @@ export async function confirmFilesAnyway(warnings, showConfirm) {
   if (warnings?.filesUnreachable) {
     return !!(await showConfirm?.({
       title: 'Files not checked',
-      message: "This job's files couldn't be checked because the job folders location can't be reached right now. Carry on anyway?",
+      message: "This job's files couldn't be checked because the main job folder can't be reached right now. Carry on anyway?",
       confirmLabel: 'Carry on',
       cancelLabel: 'Go back',
       confirmVariant: 'warning'
@@ -39,10 +39,10 @@ export async function confirmFilesAnyway(warnings, showConfirm) {
   }
   const gaps = describeAttachmentGaps(warnings);
   return !!(await showConfirm?.({
-    title: 'Files not attached',
+    title: 'Files missing',
     message: (
       <span>
-        This job was marked as having the following, but no file is attached yet:
+        These should have a file, but none has been added yet:
         <br />
         {gaps.map((g, i) => <span key={i}>• {g}<br /></span>)}
         <br />

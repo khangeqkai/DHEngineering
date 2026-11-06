@@ -63,7 +63,7 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      setFieldErrors({ [box.name]: 'Company name is required' });
+      setFieldErrors({ [box.name]: 'Enter the supplier name.' });
       scrollFieldIntoView(box.name);
       return;
     }
@@ -99,7 +99,7 @@ export default function InlineSupplierForm({ initialName = '', treatmentTagId, o
 
       <div className="inline-supplier-form-body">
         <div className={groupClass(box.name)}>
-          <label htmlFor={box.name}>Company Name <span className="required">*</span></label>
+          <label htmlFor={box.name}>Supplier Name <span className="required">*</span></label>
           <input
             type="text"
             {...fieldProps(box.name)}

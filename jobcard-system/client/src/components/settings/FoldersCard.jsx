@@ -11,9 +11,9 @@ export default function FoldersCard({ s }) {
       <div className="card-body">
         <div className="setting-item">
           <div className="setting-info">
-            <div className="setting-label">Job Folders Base Path</div>
+            <div className="setting-label">Main job folder</div>
             <div className="setting-description">
-              Set the base folder where company and job card folders are automatically created. When a contact is created, a company folder is created here. When a job card is created, subfolders for Job Files and Customer Property are created inside the company folder.
+              The folder that holds every customer's folder. Adding a customer makes their folder in here by itself. Adding a job card makes a Job Files folder and a Customer Property folder for it inside that customer's folder.
             </div>
           </div>
         </div>
@@ -25,10 +25,10 @@ export default function FoldersCard({ s }) {
             type="text"
             className="form-control"
             {...s.fieldProps('jobFoldersBase')}
-            aria-label="Job folders base path"
+            aria-label="Main job folder"
             value={s.jobFoldersBase}
             onChange={(e) => s.setJobFoldersBase(e.target.value)}
-            placeholder="Select or enter job folders base path…"
+            placeholder="Choose the main job folder…"
             readOnly={!!window.electronAPI?.selectFolder}
           />
           <button

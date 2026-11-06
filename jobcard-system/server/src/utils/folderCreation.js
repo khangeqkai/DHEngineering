@@ -75,7 +75,7 @@ function getWritableBasePath() {
 }
 
 // The plain message every file route gives when the base below can't be reached.
-const JOB_FOLDERS_UNREACHABLE = "The job folders location can't be reached right now. Check the drive or network connection, then try again.";
+const JOB_FOLDERS_UNREACHABLE = "The main job folder can't be reached right now. Check the drive or network connection, then try again.";
 
 /**
  * Whether the configured job-folders base can be reached right now. Settings

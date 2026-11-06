@@ -108,7 +108,7 @@ export default function Statistics() {
     if (!data) return;
     setExporting(true);
     // A loading toast shows for the length of the export, not just after it finishes.
-    const toastId = toast.loading('Exporting…');
+    const toastId = toast.loading('Saving Excel file…');
     try {
       const ok = await exportStatistics(data, canSeePricing);
       if (ok === 'canceled') {
@@ -116,12 +116,12 @@ export default function Statistics() {
         return;
       }
       if (ok) {
-        toast.success('Workshop statistics exported to Excel', { id: toastId });
+        toast.success('Workshop statistics saved as an Excel file', { id: toastId });
       } else {
         toast.dismiss(toastId);
       }
     } catch (err) {
-      toast.error(err.message || 'Export failed', { id: toastId });
+      toast.error(err.message || 'Couldn\'t save the Excel file. Try again.', { id: toastId });
     } finally {
       setExporting(false);
     }

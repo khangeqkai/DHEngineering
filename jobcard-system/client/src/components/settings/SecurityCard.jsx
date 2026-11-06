@@ -8,16 +8,16 @@ export default function SecurityCard({ s }) {
     <>
       <div className="card full-width">
         <div className="card-header">
-          <h2>Security settings</h2>
+          <h2>Automatic sign-out</h2>
         </div>
         <div className="card-body">
           <div className="setting-item">
             <div className="setting-info">
-              <label className="setting-label" htmlFor="inactivityTimeout">Inactivity Timeout</label>
+              <label className="setting-label" htmlFor="inactivityTimeout">Sign out after</label>
               <div className="setting-description">
-                Automatically log out users after this many minutes of inactivity.
-                A warning will appear 30 seconds before logout. (1-60 minutes)
-                Admin accounts are never logged out for inactivity.
+                Signs people out when nobody has used the app for this many minutes (1 to 60).
+                A warning shows 30 seconds before it happens.
+                Admins are never signed out this way.
               </div>
             </div>
           </div>
@@ -53,10 +53,10 @@ export default function SecurityCard({ s }) {
         <div className="card-body">
           <div className="setting-item">
             <div className="setting-info">
-              <div className="setting-label">Auto-Generated Job Numbers</div>
+              <div className="setting-label">Job numbers</div>
               <div className="setting-description">
-                Set a prefix and starting number for job cards. Numbers auto-increment with each new job card.
-                Leading zeros are preserved (e.g. 00001 → 00002). Preview: {s.jobNumberPrefix}{s.jobNumberNext || '—'}
+                Set the letters at the front and the starting number. Each new job card gets the next number by itself.
+                Zeros at the front are kept (00001 is followed by 00002). Next job number: {s.jobNumberPrefix}{s.jobNumberNext || '—'}
               </div>
             </div>
           </div>

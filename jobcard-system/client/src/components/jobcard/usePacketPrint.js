@@ -70,7 +70,7 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
   }, [jobcardId]);
 
   const printPacket = useCallback(async ({ items, includeJobCard }) => {
-    if (items.length === 0 && includeJobCard === false) { toast.error('Nothing to print'); return; }
+    if (items.length === 0 && includeJobCard === false) { toast.error('Tick something to print first.'); return; }
     // On the web build, open the viewer tab NOW, during the user's click, so the
     // browser treats it as user-initiated and doesn't block it. We point it at the
     // PDF once the packet is built (the build round-trip would otherwise lose the
@@ -148,7 +148,7 @@ export function usePacketPrint(jobcardId, jobNumber, onPrinted) {
   }, [build, jobcardId, jobNumber, onPrinted]);
 
   const savePacket = useCallback(async ({ items, includeJobCard }) => {
-    if (items.length === 0 && includeJobCard === false) { toast.error('Nothing to save'); return; }
+    if (items.length === 0 && includeJobCard === false) { toast.error('Tick something to save first.'); return; }
     setBuilding(true);
     const buildingToastId = toast.loading('Putting the PDF together…');
     try {

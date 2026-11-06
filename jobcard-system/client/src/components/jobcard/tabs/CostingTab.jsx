@@ -31,7 +31,7 @@ const REVERT_FORMAT = {
 // report about the rest of the sheet's save progress while one figure on it isn't even
 // a valid number yet.
 const SAVE_STATUS = {
-  pending: { text: 'Unsaved…', className: 'costing-save-status--pending' },
+  pending: { text: 'Not saved yet', className: 'costing-save-status--pending' },
   saving: { text: 'Saving…', className: 'costing-save-status--saving' },
   saved: { text: 'Saved', className: 'costing-save-status--saved' },
   error: { text: 'Not saved', className: 'costing-save-status--error' },
@@ -465,7 +465,7 @@ export default function CostingTab({
             <span>Line · what it covers</span>
             <span>Cost or hours</span>
             <span />
-            <span>Margin or rate</span>
+            <span>Markup or rate</span>
             <span>Amount</span>
             <span>Typed over</span>
           </div>

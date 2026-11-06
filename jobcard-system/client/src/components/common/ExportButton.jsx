@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import Spinner from './Spinner';
 import './ExportButton.css';
 
-export default function ExportButton({ onExportView, onExportAll, viewLabel = 'Export current view', allLabel = 'Export all' }) {
+export default function ExportButton({ onExportView, onExportAll, viewLabel = 'Save what is showing', allLabel = 'Save everything' }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const ref = useRef(null);
@@ -32,19 +32,19 @@ export default function ExportButton({ onExportView, onExportAll, viewLabel = 'E
     // and is then resolved into whichever outcome actually happened. Updated in place
     // (same id) as the export moves through its stages, rather than sitting on one
     // static "Exporting…" for however long it takes.
-    const toastId = toast.loading('Exporting…');
+    const toastId = toast.loading('Saving Excel file…');
     const onProgress = (message) => toast.loading(message, { id: toastId });
     try {
       const result = await exportFn(onProgress);
       if (result === false) {
-        toast.error('No data to export', { id: toastId });
+        toast.error('Nothing to save yet.', { id: toastId });
       } else if (result === 'canceled') {
         toast.dismiss(toastId);
       } else {
-        toast.success('Export complete', { id: toastId });
+        toast.success('Excel file saved', { id: toastId });
       }
     } catch (err) {
-      toast.error(err?.message || 'Something went wrong exporting this file', { id: toastId });
+      toast.error(err?.message || 'Couldn\'t save the Excel file. Try again.', { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -60,7 +60,7 @@ export default function ExportButton({ onExportView, onExportAll, viewLabel = 'E
         aria-expanded={open}
       >
         {loading ? <Spinner size={16} /> : <Download size={16} />}
-        {loading ? 'Exporting…' : 'Export'}
+        {loading ? 'Saving…' : 'Save to Excel'}
         <ChevronDown size={14} />
       </button>
       {open && (

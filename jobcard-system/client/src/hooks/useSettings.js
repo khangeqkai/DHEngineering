@@ -154,7 +154,7 @@ export function useSettings() {
       const folder = await window.electronAPI.selectFolder();
       if (folder) setJobFoldersBase(folder);
     } else {
-      const folder = prompt('Enter job folders base path:', jobFoldersBase);
+      const folder = prompt('Type the main job folder:', jobFoldersBase);
       if (folder !== null) setJobFoldersBase(folder);
     }
   }, [jobFoldersBase]);
@@ -170,11 +170,11 @@ export function useSettings() {
     const newBase = jobFoldersBase.trim();
     if (oldBase && newBase !== oldBase) {
       const ok = await showConfirm({
-        title: 'Change the job folders location?',
+        title: 'Change the main job folder?',
         message: newBase
           ? `From ${oldBase} to ${newBase}. Files already in ${oldBase} stay there and will not show on their jobs until they are moved.`
-          : `From ${oldBase} to nothing. Files already in ${oldBase} stay there, and jobs show no files until a location is set again.`,
-        confirmLabel: newBase ? `Use ${newBase}` : 'Clear the location',
+          : `From ${oldBase} to nothing. Files already in ${oldBase} stay there, and jobs show no files until a main job folder is set again.`,
+        confirmLabel: newBase ? `Use ${newBase}` : 'Clear it',
         cancelLabel: 'Go back',
         confirmVariant: 'warning'
       });
@@ -184,9 +184,9 @@ export function useSettings() {
     try {
       await api.updateSettings({ jobFoldersBase });
       setSettings(prev => (prev ? { ...prev, jobFoldersBase: newBase } : prev));
-      toast.success('Job folders base path updated');
+      toast.success('Main job folder saved');
     } catch (err) {
-      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Couldn\'t save the job folders location. Check the connection and try again.' });
+      showSaveRefusal(err, { boxFor: SETTINGS_BOXES, setFieldErrors, fallback: 'Couldn\'t save the main job folder. Check the connection and try again.' });
     } finally {
       setSavingJobFolders(false);
     }
@@ -325,7 +325,7 @@ export function useSettings() {
 
   const handleExportBackup = useCallback(async () => {
     if (!window.electronAPI?.showSaveDialog) {
-      toast.error('Full backup export requires the desktop app');
+      toast.error('Backups only work in the desktop app, not in a web browser.');
       return;
     }
 
@@ -338,7 +338,7 @@ export function useSettings() {
 
     setExporting(true);
     // A loading toast shows for the length of the export, not just after it finishes.
-    const toastId = toast.loading('Exporting backup…');
+    const toastId = toast.loading('Saving backup…');
     try {
       const result = await api.exportBackup(outputPath);
       const sizeMB = result?.size ? (result.size / 1024 / 1024).toFixed(1) : null;
@@ -350,14 +350,14 @@ export function useSettings() {
         // The job folders were never read, so this backup holds only the records.
         // Checked first: it matters more than any per-file note below.
         const where = result.filesLeftOutReason === 'not-set'
-          ? 'no job folders location is set'
-          : "the job folders location can't be reached";
+          ? 'no main job folder is set'
+          : "the main job folder can't be reached";
         const setNote = result.filesLeftOutReason === 'not-set'
-          ? 'Set it in Settings and export again.'
-          : 'Reconnect it and export again.';
+          ? 'Set it in Settings and save the backup again.'
+          : 'Reconnect it and save the backup again.';
         toast.dismiss(toastId);
         setBackupGaps({
-          intro: `The backup was saved, but it holds only the records, not the job files: ${where}. ${setNote}`,
+          intro: `The backup was saved, but it holds only the job details, not the job files: ${where}. ${setNote}`,
           items: unreadNote ? [unreadNote] : []
         });
       } else if (backupsLeftOut.length > 0) {
@@ -365,7 +365,7 @@ export function useSettings() {
         // restore replaces everything in there — the admin has to move them out.
         toast.dismiss(toastId);
         setBackupGaps({
-          intro: `The backup was saved, but ${backupsLeftOut.length} earlier backup file(s) kept inside the job folders were left out. Restoring a backup replaces everything in there, so move these somewhere else.${unreadNote ? ` Also, ${unreadNote}` : ''}`,
+          intro: `The backup was saved, but ${backupsLeftOut.length} earlier backup file(s) kept inside the main job folder were left out. Restoring a backup wipes that folder, so move these somewhere else.${unreadNote ? ` Also, ${unreadNote}` : ''}`,
           items: backupsLeftOut
         });
       } else if (result?.filesSkipped > 0) {
@@ -375,7 +375,7 @@ export function useSettings() {
           items: []
         });
       } else {
-        toast.success(sizeMB ? `Backup exported (${sizeMB} MB)` : 'Backup exported', { id: toastId });
+        toast.success(sizeMB ? `Backup saved (${sizeMB} MB)` : 'Backup saved', { id: toastId });
       }
     } catch (err) {
       toast.error(err.message || 'Couldn\'t save the backup. Try again in a moment.', { id: toastId });
@@ -386,12 +386,12 @@ export function useSettings() {
 
   const handleImportBackup = useCallback(async () => {
     if (!window.electronAPI?.selectFile) {
-      toast.error('Backup import requires the desktop app');
+      toast.error('Backups only work in the desktop app, not in a web browser.');
       return;
     }
 
     const inputPath = await window.electronAPI.selectFile(
-      'Select Backup File',
+      'Choose the backup file',
       [{ name: 'ZIP Archive', extensions: ['zip'] }]
     );
     if (!inputPath) return;
@@ -434,7 +434,7 @@ export function useSettings() {
       // already on disk as they are — say so rather than implying they were replaced.
       const filesKept = result?.filesReplaced === false;
       toast.success(filesKept
-        ? 'Restore complete. This backup does not say it holds the job files, so the files already in the job folders were left as they were. Returning to the sign-in screen…'
+        ? 'Restore complete. This backup does not say it holds the job files, so the files already in the main job folder were left as they were. Returning to the sign-in screen…'
         : 'Restore complete. Returning to the sign-in screen…', { id: toastId });
       // No saved login survives a reload, so this lands on the login screen —
       // exactly the intended end state after a full rewind. The longer message

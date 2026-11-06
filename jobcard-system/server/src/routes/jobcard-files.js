@@ -59,7 +59,7 @@ function resolveJobFolder(jobcardId) {
   if (!basePath) {
     // `notConfigured` lets callers that don't send the reply themselves tell
     // "nothing was looked at" apart from "looked, and the folder is empty".
-    return { error: 'The job folders location hasn\'t been set up. Ask an admin to set it in Settings.', status: 400, notConfigured: true };
+    return { error: 'The main job folder hasn\'t been set up. Ask an admin to set it in Settings.', status: 400, notConfigured: true };
   }
 
   const jobcard = jobcardQueries.getById.get(jobcardId);

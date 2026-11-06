@@ -132,7 +132,7 @@ router.put('/', requireManagement, async (req, res) => {
     // caller's role as it stands now, so a demotion or archive meanwhile applies here too.
     const roleNow = liveRole(req);
     if (!isManagement(roleNow)) {
-      return res.status(403).json({ error: 'Your account can no longer change settings. Sign in again.' });
+      return res.status(403).json({ error: 'You are no longer allowed to change settings. Sign in again to see what you can do.' });
     }
     const refusedNow = refusalFor(roleNow);
     if (refusedNow) return res.status(403).json({ error: refusedNow });
@@ -146,16 +146,16 @@ router.put('/', requireManagement, async (req, res) => {
     // Validate job folders base path if provided
     if (jobFoldersBase !== undefined) {
       if (jobFoldersBase !== null && typeof jobFoldersBase !== 'string') {
-        return refuseField(res, 400, 'jobFoldersBase', 'Enter the job folders location as text.');
+        return refuseField(res, 400, 'jobFoldersBase', 'Type the main job folder as a folder path, for example D:\\Jobs.');
       }
       if (jobFoldersBase && jobFoldersBase.trim()) {
         if (!fs.existsSync(jobFoldersBase)) {
-          return refuseField(res, 400, 'jobFoldersBase', 'That job folders location doesn\'t exist. Check the path and try again.');
+          return refuseField(res, 400, 'jobFoldersBase', 'That folder doesn\'t exist. Check the path and try again.');
         }
 
         const stats = fs.statSync(jobFoldersBase);
         if (!stats.isDirectory()) {
-          return refuseField(res, 400, 'jobFoldersBase', 'That job folders location is a file, not a folder. Choose a folder.');
+          return refuseField(res, 400, 'jobFoldersBase', 'That is a file, not a folder. Choose a folder.');
         }
         if (isDriveOrShareRoot(jobFoldersBase)) {
           return refuseField(res, 400, 'jobFoldersBase', JOB_FOLDERS_ROOT_MESSAGE);
@@ -306,7 +306,7 @@ router.post('/export-backup', requirePermission('systemData'), [
     // written, so a file already at that path is never touched.
     if (jobBase && isInsideFolder(outputPath, jobBase)) {
       return res.status(400).json({
-        error: 'A backup can\'t be saved inside the job folders location, because restoring a backup replaces everything in there. Save it somewhere else.'
+        error: 'Don\'t save a backup inside the main job folder. Restoring a backup wipes that folder, so the backup would be lost. Save it somewhere else.'
       });
     }
 
@@ -446,7 +446,7 @@ async function importBackup(req, res) {
 
   if (!currentJobBase) {
     return res.status(400).json({
-      error: 'Set the job folders location in Settings before restoring a backup.'
+      error: 'Set the main job folder in Settings before restoring a backup.'
     });
   }
   // The swap below renames the whole location and builds its side folders beside
@@ -459,7 +459,7 @@ async function importBackup(req, res) {
   // before, which would include the very zip being restored from.
   if (isInsideFolder(inputPath, currentJobBase)) {
     return res.status(400).json({
-      error: 'This backup is inside the job folders location, and restoring replaces everything in there, so the backup itself would be deleted. Move it somewhere else first, then import it from there.'
+      error: 'This backup is inside the main job folder. Restoring wipes that folder, so the backup would be deleted too. Move it somewhere else first, then restore it from there.'
     });
   }
 
@@ -472,12 +472,12 @@ async function importBackup(req, res) {
       listFilesRecursive(currentJobBase, currentJobBase, [], backupsInside);
     } catch (err) {
       logger.error({ err }, 'Error checking job folders before restore');
-      return res.status(500).json({ error: 'The job folders location could not be read, so the restore was not started. Check the drive or network connection, then try again.' });
+      return res.status(500).json({ error: 'The main job folder could not be read, so the restore was not started. Check the drive or network connection, then try again.' });
     }
   }
   if (backupsInside.length > 0) {
     return res.status(400).json({
-      error: `Restoring replaces everything in the job folders location, and ${backupsInside.length} earlier backup file${backupsInside.length === 1 ? ' is' : 's are'} kept in there, so ${backupsInside.length === 1 ? 'it' : 'they'} would be deleted. Move ${backupsInside.length === 1 ? 'it' : 'them'} somewhere else first, then restore again: ${backupsInside.join(', ')}`
+      error: `Restoring wipes the main job folder, and ${backupsInside.length === 1 ? 'an older backup is' : `${backupsInside.length} older backups are`} kept in there. ${backupsInside.length === 1 ? 'It' : 'They'} would be deleted. Move ${backupsInside.length === 1 ? 'it' : 'them'} somewhere else first, then try again: ${backupsInside.join(', ')}`
     });
   }
 
@@ -493,7 +493,7 @@ async function importBackup(req, res) {
   // it is never cleared automatically. The admin checks it and moves it by hand.
   if (fs.existsSync(oldDir)) {
     return res.status(409).json({
-      error: `An earlier restore did not finish, and this folder may hold the original job files: ${oldDir}. Check it, then move or delete it yourself before restoring again. Nothing was changed.`
+      error: `An earlier restore didn't finish. This folder may hold your original job files: ${oldDir}. Check it, then move it somewhere safe before restoring again. Nothing was changed.`
     });
   }
 
@@ -588,8 +588,8 @@ async function importBackup(req, res) {
       success: true,
       filesReplaced,
       message: filesReplaced
-        ? 'Backup imported successfully'
-        : 'Backup imported successfully. This backup does not say it holds the job files, so the files already in the job folders were left unchanged.'
+        ? 'Backup restored'
+        : 'Backup restored. This backup does not say it holds the job files, so the files already in the main job folder were left as they were.'
     });
   } catch (err) {
     try { db.db.pragma('foreign_keys = ON'); } catch (_) { /* ignore */ }
@@ -603,7 +603,7 @@ async function importBackup(req, res) {
     if (filesUnrecoverable) {
       res.status(500).json({
         error: 'The restore failed, and the original files could not be put back. '
-          + 'The job files and the job records may no longer match. '
+          + 'The job files and the saved job details may no longer match. '
           + 'Do not carry on working. Tell the office, and keep the leftover restore folders as they are.'
       });
     } else if (err.plainMessage) {

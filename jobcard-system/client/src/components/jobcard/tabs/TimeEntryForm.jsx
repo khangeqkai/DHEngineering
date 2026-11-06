@@ -137,7 +137,7 @@ export default function TimeEntryForm({
       <fieldset className="form-save-lock" disabled={lockedHere}>
       <div className="form-section-header">
         <h3 className="form-section-title">
-          {editingTimeEntryId ? 'Edit time entry' : 'New time entry'}
+          {editingTimeEntryId ? 'Change logged time' : 'Add logged time'}
         </h3>
         <button type="button" className="btn btn-secondary btn-sm" onClick={resetTimeEntryForm}>
           Cancel
@@ -314,12 +314,12 @@ export default function TimeEntryForm({
               here whenever the box differs from it: beside any mark on the box (a later
               mark may carry no time) and after the mark has gone. */}
           {timeEntryForm.storedFinishMoved && timeEntryForm.storedEndTime && !finishBoxShowsStored(timeEntryForm) && (
-            <span className="field-hint">Stored finish is now {formatDateTime(timeEntryForm.storedEndTime)}.</span>
+            <span className="field-hint">Someone changed the finish time. It is now {formatDateTime(timeEntryForm.storedEndTime)}.</span>
           )}
           {timeEntryForm.finishUnconfirmed && (
             <>
               <span className="field-hint">
-                {timeEntryForm.workerName || 'The worker'} hasn't confirmed this finish yet. Changing it here confirms it for them.
+                {timeEntryForm.workerName || 'The worker'} hasn't said when they really finished. Saving a finish time here answers for them.
               </span>
               {/* The tick confirms the STORED finish as it stands, so it is offered only while
                   the box still shows it. Not offered on a block STORED with finish == start (a
@@ -335,7 +335,7 @@ export default function TimeEntryForm({
                     checked={!!timeEntryForm.confirmFinish}
                     onChange={handleTimeEntryChange}
                   />
-                  This finish is right — confirm it for them
+                  This finish time is right — answer for them
                 </label>
               )}
             </>
@@ -344,7 +344,7 @@ export default function TimeEntryForm({
       </div>
 
       <button type="button" className="btn btn-primary" ref={saveButtonRef} onClick={handleSave} disabled={saving}>
-        {saving ? 'Saving…' : editingTimeEntryId ? 'Update entry' : 'Save entry'}
+        {saving ? 'Saving…' : editingTimeEntryId ? 'Save changes' : 'Add time'}
       </button>
       </fieldset>
     </div>

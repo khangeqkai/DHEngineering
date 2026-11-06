@@ -7,9 +7,9 @@ export default function DataBackupCard({ s }) {
       <div className="card-body">
         <div className="setting-item backup-export-row">
           <div className="setting-info">
-            <div className="setting-label">Export Full Backup</div>
+            <div className="setting-label">Save a backup</div>
             <div className="setting-description">
-              Save all data (database + job folder files) to a ZIP file. Use this before updating or reinstalling the application. Save it outside the job folders location — a backup saved in there is refused, because restoring replaces everything in that folder. Older backups already kept in there are left out and listed, so they can be moved.
+              Saves everything — every job and all their files — into one file. Do this before updating or reinstalling the app. Save it somewhere outside the main job folder, because restoring a backup wipes that folder. Older backups found in there are left out of the new one and listed, so you can move them.
             </div>
           </div>
           <button
@@ -18,14 +18,14 @@ export default function DataBackupCard({ s }) {
             onClick={s.handleExportBackup}
             disabled={s.exporting || s.importing || !window.electronAPI}
           >
-            {s.exporting ? 'Exporting…' : 'Export backup'}
+            {s.exporting ? 'Saving…' : 'Save backup'}
           </button>
         </div>
         <div className="setting-item">
           <div className="setting-info">
-            <div className="setting-label">Import Backup</div>
+            <div className="setting-label">Restore a backup</div>
             <div className="setting-description">
-              Restore all data from a previously exported backup. This will replace all current data and files. The backup must sit outside the job folders location, and no other backups may be kept in there, or the restore would delete them.
+              Puts everything back to how it was when the backup was saved. Anything added since then will be lost. The backup file must be outside the main job folder, and no other backups can be kept in there, or the restore would delete them.
             </div>
           </div>
           <button
@@ -34,12 +34,12 @@ export default function DataBackupCard({ s }) {
             onClick={s.handleImportBackup}
             disabled={s.exporting || s.importing || !window.electronAPI}
           >
-            {s.importing ? 'Importing…' : 'Import backup'}
+            {s.importing ? 'Restoring…' : 'Restore backup'}
           </button>
         </div>
         {!window.electronAPI && (
           <p className="setting-description setting-description--spaced">
-            Backup features require the desktop application.
+            Backups only work in the desktop app, not in a web browser.
           </p>
         )}
       </div>

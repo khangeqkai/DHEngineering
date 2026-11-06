@@ -163,7 +163,7 @@ export default function LineItemProgress({
             type="button"
             className="btn btn-secondary btn-sm lip-add"
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(); }}
-            title="Add a time entry to this part"
+            title="Add time worked on this part"
           >
             <Plus size={14} /> Add time
           </button>
@@ -173,7 +173,7 @@ export default function LineItemProgress({
       </summary>
 
       {entries.length === 0 ? (
-        <p className="empty-message">No time entries for this part</p>
+        <p className="empty-message">No time logged on this part yet</p>
       ) : (
         <div className="te-list">
           {activeEntries.length > 0 && (

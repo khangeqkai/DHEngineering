@@ -102,7 +102,7 @@ export async function changeJobStatus({
         // this write reached the server after that. A caller with no onJobClosed
         // gets the ordinary failure toast and onFailed instead.
         if (onJobClosed && isJobClosedError(err)) { await onJobClosed(); return; }
-        toast.error(err.message || 'Failed to update status', { id: 'status-update-failed' });
+        toast.error(err.message || 'Couldn\'t change the status. Try again.', { id: 'status-update-failed' });
         await onFailed?.();
       }
     };

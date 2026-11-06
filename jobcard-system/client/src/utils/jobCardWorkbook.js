@@ -31,7 +31,7 @@ function tagLabelMap(tags) {
 }
 
 const JOBCARD_SUMMARY_COLS = [
-  { label: 'Job #', value: r => r.jobNumber },
+  { label: 'Job Number', value: r => r.jobNumber },
   { label: 'Company', value: r => r.companyName },
   { label: 'Contact Name', value: r => r.contactName },
   { label: 'Contact Phone', value: r => r.contactPhone },
@@ -39,7 +39,7 @@ const JOBCARD_SUMMARY_COLS = [
   // Export the words people read on screen, not the stored codes.
   { label: 'Status', value: r => STATUS_LABELS[r.status] || r.status },
   { label: 'Priority', value: r => PRIORITY_LABELS[r.priority] || r.priority },
-  { label: 'QA Level', value: r => qualityLevelLabel(r.qualityLevel) },
+  { label: 'Quality Level', value: r => qualityLevelLabel(r.qualityLevel) },
   { label: 'Due Date', value: r => fmtDate(r.dueDate) },
   { label: 'Description', value: r => r.description },
   { label: 'Assigned To', value: r => (r.assignees || []).map(a => a.userName || a.name).join(', ') },
@@ -65,13 +65,13 @@ const JOBCARD_SUMMARY_COLS = [
 ];
 
 const TIME_ENTRY_COLS = [
-  { label: 'Job #', value: r => r._jobNumber },
+  { label: 'Job Number', value: r => r._jobNumber },
   { label: 'Worker', value: r => r.userName },
   // The part's position in the job's ordered list, not its stored item_number —
   // resolved in buildJobCardWorkbook from the part's permanent id, since a
   // deleted part's own stored number no longer means anything.
   { label: 'Part', value: r => r._displayItemNumber ?? '' },
-  { label: 'Machine #', value: r => r.machineNumber },
+  { label: 'Machine Number', value: r => r.machineNumber },
   { label: 'Qty', value: r => r.qty },
   { label: 'Description', value: r => r.description },
   { label: 'Start', value: r => fmtDateTime(r.startTime) },
@@ -80,7 +80,7 @@ const TIME_ENTRY_COLS = [
 ];
 
 const ITEM_COLS = [
-  { label: 'Job #', value: r => r._jobNumber },
+  { label: 'Job Number', value: r => r._jobNumber },
   // Position in the job's ordered list, not the stored item_number — see
   // buildJobCardWorkbook, which numbers each job's items as it flattens them.
   { label: 'Part', value: r => r._displayNumber },
@@ -90,31 +90,31 @@ const ITEM_COLS = [
 ];
 
 const COSTING_COLS = [
-  { label: 'Job #', value: r => r._jobNumber },
+  { label: 'Job Number', value: r => r._jobNumber },
   { label: 'Labour Hours', value: r => r.labourHours },
   { label: 'Labour Rate', value: r => r.labourRate },
   { label: 'Labour Total', value: r => r.labourTotal },
-  { label: 'Overtime 1 Hours', value: r => r.labourOt1Hours },
-  { label: 'Overtime 1 Multiplier', value: r => r.labourOt1Multiplier },
-  { label: 'Overtime 1 Total', value: r => r.labourOt1Total },
-  { label: 'Overtime 2 Hours', value: r => r.labourOt2Hours },
-  { label: 'Overtime 2 Multiplier', value: r => r.labourOt2Multiplier },
-  { label: 'Overtime 2 Total', value: r => r.labourOt2Total },
+  { label: 'Overtime Hours (First Rate)', value: r => r.labourOt1Hours },
+  { label: 'Overtime Multiplier (First Rate)', value: r => r.labourOt1Multiplier },
+  { label: 'Overtime Total (First Rate)', value: r => r.labourOt1Total },
+  { label: 'Overtime Hours (Second Rate)', value: r => r.labourOt2Hours },
+  { label: 'Overtime Multiplier (Second Rate)', value: r => r.labourOt2Multiplier },
+  { label: 'Overtime Total (Second Rate)', value: r => r.labourOt2Total },
   { label: 'Holiday Hours', value: r => r.labourHolidayHours },
   { label: 'Holiday Multiplier', value: r => r.labourHolidayMultiplier },
   { label: 'Holiday Total', value: r => r.labourHolidayTotal },
   { label: 'Special Hours', value: r => r.labourSpecialHours },
   { label: 'Special Rate', value: r => r.labourSpecialRate },
   { label: 'Special Total', value: r => r.labourSpecialTotal },
-  { label: 'Special Covers', value: r => r.labourSpecialDescription },
+  { label: 'Special Labour Description', value: r => r.labourSpecialDescription },
   { label: 'Materials Cost', value: r => r.materialsCost },
   { label: 'Materials Markup %', value: r => r.materialsProfitPercent },
   { label: 'Materials Total', value: r => r.materialsTotal },
-  { label: 'Materials Covers', value: r => r.materialsDescription },
+  { label: 'Materials Description', value: r => r.materialsDescription },
   { label: 'Subcontractor Cost', value: r => r.subcontractorCost },
   { label: 'Subcontractor Markup %', value: r => r.subcontractorProfitPercent },
   { label: 'Subcontractor Total', value: r => r.subcontractorTotal },
-  { label: 'Subcontractor Covers', value: r => r.subcontractorDescription },
+  { label: 'Subcontractor Description', value: r => r.subcontractorDescription },
   { label: 'Grand Total', value: r => r.grandTotal },
 ];
 
@@ -188,7 +188,7 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
     return parts.join(', ');
   }
 
-  onProgress?.('Fetching time entries…');
+  onProgress?.('Getting logged time…');
   const timeEntriesPerJob = await fetchInBatches(ids, id =>
     api.getTimeEntries(id).then(entries => ({ id, entries })).catch(() => {
       failedJobIds.add(id);
@@ -287,7 +287,7 @@ async function buildJobCardWorkbook(cards, onProgress, includeCosting = true) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, enrichedCards, JOBCARD_SUMMARY_COLS), 'Summary');
   XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allItems, ITEM_COLS), 'Parts');
-  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allTimeEntries, TIME_ENTRY_COLS), 'Time Entries');
+  XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allTimeEntries, TIME_ENTRY_COLS), 'Logged Time');
   if (includeCosting) {
     XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, allCosting, COSTING_COLS), 'Costing');
   }

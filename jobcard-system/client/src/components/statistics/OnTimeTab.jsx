@@ -89,17 +89,17 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
           <div className="stats-card-body">
             <div className="stats-rows">
               <div className="stats-row">
-                <span className="stats-row-label">Total live jobs:</span>
+                <span className="stats-row-label">Right now:</span>
                 <strong>{pluralize(summary.activeJobsCount ?? 0, 'job')} open</strong>
               </div>
 
               <div className="stats-row">
-                <span className="stats-row-label">Jobs in active progress:</span>
+                <span className="stats-row-label">Jobs being worked on:</span>
                 <strong className="is-accent">{pluralize(summary.inProgressJobsCount ?? 0, 'job')}</strong>
               </div>
 
               <div className="stats-row divided">
-                <span className="stats-row-label">Average job turnaround:</span>
+                <span className="stats-row-label">Average time from new job to finished:</span>
                 <strong>{pluralize(summary.avgTurnaroundDays ?? 0, 'day')} / job</strong>
               </div>
             </div>
@@ -123,7 +123,7 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
             columns={[
               {
                 key: 'jobNumber',
-                label: 'Job #',
+                label: 'Job Number',
                 sortable: true,
                 render: (val) => <strong>{val}</strong>
               },
@@ -157,7 +157,7 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
               },
               {
                 key: 'qualityLevel',
-                label: 'QA Level',
+                label: 'Quality Level',
                 sortable: true
               },
               {

@@ -117,7 +117,7 @@ export function formatChangesText(changes) {
 // ── Column definitions per entity ────────────────────────────────────────────
 
 const CONTACT_COLS = [
-  { label: 'Company', value: r => r.companyName },
+  { label: 'Customer', value: r => r.companyName },
   { label: 'Contact Name', value: r => r.contactName },
   { label: 'Phone', value: r => r.phone },
   { label: 'Email', value: r => r.email },
@@ -128,7 +128,7 @@ const CONTACT_COLS = [
 ];
 
 const SUPPLIER_COLS = [
-  { label: 'Company Name', value: r => r.name },
+  { label: 'Supplier Name', value: r => r.name },
   { label: 'Contact', value: r => r.contactName },
   { label: 'Phone', value: r => r.contactPhone },
   { label: 'Email', value: r => r.contactEmail },
@@ -163,8 +163,8 @@ const ACTIVITY_COLS = [
   { label: 'Time', value: r => fmtDateTime(r.createdAt) },
   { label: 'User', value: r => r.userName },
   { label: 'Action', value: r => r.action },
-  { label: 'Record type', value: r => r.entityType },
-  { label: 'Record', value: r => r.recordName || r.entityId },
+  { label: 'What it was about', value: r => r.entityType },
+  { label: 'Name', value: r => r.recordName || r.entityId },
   // A job's entries name the job; the trail itself stores only its internal id.
   { label: 'Job Number', value: r => r.jobNumber ?? '' },
   // The plain sentence the Activity screen shows, when the caller built one.
@@ -225,18 +225,18 @@ const STATS_WORKER_COLS = [
   { label: 'Role', value: r => r.role },
   { label: 'Total Hours', value: r => r.totalHours },
   { label: 'Normal Hours', value: r => r.normalHours },
-  { label: 'Overtime 1 hours', value: r => r.ot1Hours },
-  { label: 'Overtime 2 hours', value: r => r.ot2Hours },
+  { label: 'Overtime Hours (First Rate)', value: r => r.ot1Hours },
+  { label: 'Overtime Hours (Second Rate)', value: r => r.ot2Hours },
   { label: 'Holiday Hours', value: r => r.holidayHours },
-  { label: 'Total OT Hours', value: r => r.totalOtHours },
-  { label: 'Jobs Count', value: r => r.jobsCount },
-  { label: 'Sessions Count', value: r => r.sessionsCount },
+  { label: 'Total Overtime Hours', value: r => r.totalOtHours },
+  { label: 'Number of Jobs', value: r => r.jobsCount },
+  { label: 'Number of Logged Times', value: r => r.sessionsCount },
   { label: 'Parts Produced', value: r => r.partsProduced },
   { label: 'Scrap (Bin)', value: r => r.scrapBinQty },
   { label: 'Scrap (Recycle)', value: r => r.scrapRecycleQty },
   { label: 'Total Scrap', value: r => r.totalScrapQty },
   { label: 'Inspection Checks', value: r => r.qaChecks || 0 },
-  { label: 'Avg Session (hrs)', value: r => r.avgSessionHours },
+  { label: 'Average Logged Time (hrs)', value: r => r.avgSessionHours },
 ];
 
 // "Mar 2026" from the screen's own label when the row has one, otherwise from the
@@ -262,12 +262,12 @@ const STATS_TREND_COLS = [
 ];
 
 const STATS_MACHINE_COLS = [
-  { label: 'Machine #', value: r => r.machineNumber },
+  { label: 'Machine Number', value: r => r.machineNumber },
   { label: 'Name', value: r => r.name },
   { label: 'Description', value: r => r.description },
   { label: 'Status', value: r => r.active ? 'Active' : 'Archived' },
   { label: 'Operating Hours', value: r => r.totalHours },
-  { label: 'Time Sessions', value: r => r.sessionCount },
+  { label: 'Number of Logged Times', value: r => r.sessionCount },
   { label: 'Parts Produced', value: r => r.partsProduced },
   { label: 'Scrap Qty', value: r => r.scrapQty },
 ];
@@ -284,13 +284,13 @@ const getStatsCustomerCols = (hasMoney) => [
 ];
 
 const STATS_DELAYED_COLS = [
-  { label: 'Job #', value: r => r.jobNumber },
+  { label: 'Job Number', value: r => r.jobNumber },
   { label: 'Customer', value: r => r.companyName },
   { label: 'Due Date', value: r => fmtDate(r.dueDate) },
   { label: 'Finish Date', value: r => fmtDate(r.finishDate) },
   { label: 'Days Late', value: r => r.daysLate },
   { label: 'Status', value: r => STATUS_LABELS[r.status] || r.status },
-  { label: 'QA Level', value: r => r.qualityLevel },
+  { label: 'Quality Level', value: r => r.qualityLevel },
 ];
 
 // The invoiced-money column goes by the person's pricing access right now, not by

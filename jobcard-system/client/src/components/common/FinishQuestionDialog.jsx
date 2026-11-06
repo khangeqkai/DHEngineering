@@ -23,9 +23,9 @@ const day = (iso) => formatDate(iso, { weekday: 'long', day: 'numeric', month: '
 // only the finish time given is said not to have been kept.
 export function toastOfficeSettled(data, stillWorking, fromForm = false) {
   const at = data.endTime ? ` at ${clock(data.endTime)} on ${day(data.endTime)}` : '';
-  const notStarted = stillWorking ? ' Your clock was not started again — press Start on the job to carry on.' : '';
+  const notStarted = stillWorking ? ' Your timer was not started again — press Start on the job to carry on.' : '';
   const notKept = fromForm ? 'The finish time you gave was not kept' : 'Your time was not saved';
-  toast(`The office has already settled this clock${at}. ${notKept} — ask them if it needs correcting.${notStarted}`,
+  toast(`The office has already sorted out this timer${at}. ${notKept} — ask them if it needs fixing.${notStarted}`,
     { id: 'finish-question-settled', icon: infoToastIcon, duration: 8000 });
 }
 
@@ -144,19 +144,19 @@ export default function FinishQuestionDialog({ item, resume, onAnswered, onDone,
       <div className="fq-icon" aria-hidden="true">
         <TriangleAlert size={32} />
       </div>
-      <h3 id="fq-title" className="attention-title attention-title--tight">Your clock stopped by itself</h3>
+      <h3 id="fq-title" className="attention-title attention-title--tight">Your timer stopped by itself</h3>
 
       {step === 'B' && (
         <>
           {!item.finishKnown && (
             <p className="attention-note attention-note--spaced">
-              Your clock on {where} was started at {clock(item.startTime)} on {day(item.startTime)} and never stopped.
+              Your timer on {where} was started at {clock(item.startTime)} on {day(item.startTime)} and never stopped.
               What time did you finish?
             </p>
           )}
           {item.finishKnown && (
             <p className="attention-note attention-note--spaced">
-              Your clock on {where} stopped by itself at {clock(item.endTime)} on {day(item.endTime)} — the end of
+              Your timer on {where} stopped by itself at {clock(item.endTime)} on {day(item.endTime)} — the end of
               normal hours. When did you really finish? Change the time if you stopped earlier or kept working.
             </p>
           )}
@@ -191,7 +191,7 @@ export default function FinishQuestionDialog({ item, resume, onAnswered, onDone,
           <div className="fq-answers">
             <button type="button" className="btn btn-secondary" disabled={sending} onClick={sendStillWorking}>
               {sending && <Spinner size={16} />}
-              Yes, start my clock again
+              Yes, start my timer again
             </button>
             <button type="button" className="btn btn-primary" disabled={sending} onClick={holdDone}>
               {sending && <Spinner size={16} />}

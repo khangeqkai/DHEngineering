@@ -341,7 +341,7 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
     try {
       const fileData = await api.getJobcardFile(jobcardId, category, file.name);
       if (!fileData?.data) {
-        toast.error('Couldn\'t load the file data. Try again in a moment.');
+        toast.error('Couldn\'t open this file. Try again in a moment.');
         return;
       }
       if (fileData.mimeType?.startsWith('image/')) {

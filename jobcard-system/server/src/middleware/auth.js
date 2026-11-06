@@ -29,7 +29,7 @@ function authenticate(req, res, next) {
     // marker-less token simply fails the match and is rejected.
     const row = userQueries.getAuthState.get(decoded.userId);
     if (!row || row.active !== 1) {
-      return res.status(401).json({ error: 'Your account was turned off. Ask the office.', code: 'ACCOUNT_DEACTIVATED' });
+      return res.status(401).json({ error: 'Your account was switched off. Ask the office if you need it back.', code: 'ACCOUNT_DEACTIVATED' });
     }
     // An empty marker means the session was ended here (a PIN reset, archiving the
     // account, a backup restore, signing out) — not that someone signed in
@@ -59,7 +59,7 @@ function authenticate(req, res, next) {
     // action failing silently (an admin is exempt from the inactivity timeout,
     // so a session left open past its expiry hit exactly that).
     if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Your sign-in has expired. Sign in again.', code: 'TOKEN_EXPIRED' });
+      return res.status(401).json({ error: 'You were signed out. Please sign in again.', code: 'TOKEN_EXPIRED' });
     }
     return res.status(401).json({ error: 'You need to sign in to do that.', code: 'TOKEN_INVALID' });
   }

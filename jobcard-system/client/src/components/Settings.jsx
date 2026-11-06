@@ -158,7 +158,7 @@ export default function Settings() {
                   <p className="setting-description">Loading printers…</p>
                 ) : s.printers.length === 0 ? (
                   <p className="setting-description">
-                    No printers found. Make sure you're running in Electron and printers are connected.
+                    No printers found. Check a printer is connected and switched on. Printers only show in the desktop app.
                   </p>
                 ) : (
                   <table className="table">
@@ -219,7 +219,7 @@ export default function Settings() {
         {s.canManage && (
           <div className="card full-width">
             <div className="card-header">
-              <h2>Server connection</h2>
+              <h2>Using the app on other computers</h2>
             </div>
             <div className="card-body">
               <dl className="info-list">
@@ -286,7 +286,7 @@ export default function Settings() {
                   );
                 })()}
                 <div className="info-item">
-                  <dt>Records</dt>
+                  <dt>Job details</dt>
                   <dd>Kept safely on this computer</dd>
                 </div>
               </dl>
@@ -377,7 +377,7 @@ export default function Settings() {
       <BottomSheet
         isOpen={!!s.backupGaps}
         onClose={s.dismissBackupGaps}
-        title="Backup saved with gaps"
+        title="Backup saved, but some things were left out"
         size="small"
       >
         <BottomSheet.Body>

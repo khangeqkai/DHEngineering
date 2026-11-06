@@ -229,7 +229,7 @@ export default function ItemsTab({
             Create — say so, rather than leave "Drawings: Customer CAD" with nowhere
             to put the drawing. */}
         {!jobCardId && !fieldsLocked && (
-          <span className="field-hint parts-files-hint">You can attach drawings and other files once the job card is created.</span>
+          <span className="field-hint parts-files-hint">You can add drawings and other files once the job card is created.</span>
         )}
 
         {!timeFormInCard && timeEntryFormNode}

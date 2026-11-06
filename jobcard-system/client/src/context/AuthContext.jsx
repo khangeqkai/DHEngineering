@@ -86,7 +86,7 @@ export function AuthProvider({ children }) {
     const handleRestore = (event) => {
       if (!event.persisted) return;
       logout();
-      toast.error('You were signed out for safety. Please sign in again.');
+      toast.error('You were signed out to keep your account safe. Please sign in again.');
     };
     window.addEventListener('pageshow', handleRestore);
     return () => window.removeEventListener('pageshow', handleRestore);
@@ -99,7 +99,7 @@ export function AuthProvider({ children }) {
       api.setToken(null);
       setUser(null);
       setOpenMentionsMarker(null);
-      toast.error(SIGNED_OUT_MESSAGES[code] || 'You have been signed out. Please sign in again.');
+      toast.error(SIGNED_OUT_MESSAGES[code] || 'You were signed out. Please sign in again.');
     });
     return () => api.setOnSessionInvalidated(null);
   }, []);

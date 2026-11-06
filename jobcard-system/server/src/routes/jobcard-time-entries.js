@@ -87,7 +87,7 @@ function finishCeilingMs(row, rules) {
 // repeated press from an answer that was not kept.
 function alreadyConfirmedRefusal(row) {
   return {
-    error: 'That finish time has already been confirmed. Reload the job to see it.',
+    error: 'That finish time has already been answered. Reload the job to see it.',
     code: FINISH_ALREADY_CONFIRMED,
     settledBy: row.finish_confirmed_at ? 'worker' : 'office',
     endTime: row.end_time
@@ -168,7 +168,7 @@ router.get('/unfilled-stop-forms', authenticate, (req, res) => {
 function unconfirmedRefusalFor(userId) {
   const owner = userQueries.getById.get(userId);
   return {
-    error: `${displayName(owner)} needs to confirm when their last clock finished before starting another. Ask them to sign in and answer.`,
+    error: `${displayName(owner)} needs to say when their last timer really stopped before starting another. Ask them to sign in and answer.`,
     code: FINISH_UNCONFIRMED
   };
 }
@@ -274,7 +274,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
     // another until they give it. Refused before any write.
     if (timeEntryQueries.countUnconfirmedByUser.get(targetWorkerId).count > 0) {
       return res.status(409).json(isSelf
-        ? { error: 'Answer the question about your last clock first, then start this one.', code: FINISH_UNCONFIRMED }
+        ? { error: 'Answer the question about your last timer first, then start this one.', code: FINISH_UNCONFIRMED }
         : unconfirmedRefusalFor(targetWorkerId));
     }
 
@@ -284,7 +284,7 @@ router.post('/:id/time-entries/start', authenticate, ...validateStartTimer, (req
     // a sort order the server owns, and gaps in it after a delete are expected.
     const targetItem = ownPart(itemId, id);
     if (!targetItem) {
-      return res.status(400).json({ error: 'That part does not exist on this job card' });
+      return res.status(400).json({ error: 'That part isn\'t on this job any more. Pick another part.' });
     }
 
     let reply;
@@ -325,8 +325,8 @@ router.post('/:id/time-entries/:entryId/stop', authenticate, (req, res) => {
     if (existing.end_time) {
       if (existing.finish_unconfirmed === 1) {
         const error = existing.user_id === req.user.userId
-          ? 'Your clock had already stopped by itself. Check when you finished.'
-          : `That clock had already stopped by itself. ${existing.user_name} needs to confirm when they finished.`;
+          ? 'Your timer had already stopped by itself. Check when you finished.'
+          : `That timer had already stopped by itself. ${existing.user_name} needs to say when they really finished.`;
         return res.status(409).json({ error, code: RUN_STOPPED_ITSELF });
       }
       return res.status(400).json({ error: 'That timer has already stopped. Reload the job to see it.' });
@@ -514,7 +514,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
 
     // Only the owner or an admin/manager may edit a time entry
     if (existing.user_id !== req.user.userId && !isManagement(req.user.role)) {
-      return res.status(403).json({ error: 'You can only edit your own time entries. Ask an admin or manager.', code: RUN_NOT_YOURS });
+      return res.status(403).json({ error: 'You can only change your own logged time. Ask an admin or manager.', code: RUN_NOT_YOURS });
     }
 
     if (!existing.end_time) {
@@ -534,7 +534,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
     // never state an action; they carry their times as the run stopped and are handled below.
     const handEdit = data.detailsConfirmed !== true;
     const finishAction = handEdit ? data.finishAction : undefined;
-    const staleMessage = 'This time entry was changed by someone else. Reload the job and try again.';
+    const staleMessage = 'Someone else changed this time. Reload the job and try again.';
     const refuseEndTime = (message) =>
       res.status(400).json({ error: message, fields: [{ field: 'endTime', message }] });
     if (handEdit && data.endTime !== undefined && !finishAction) return refuseEndTime(staleMessage);
@@ -546,7 +546,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
     }
     if (finishAction && data.finishVersion !== finishVersionOf(existing)) {
       return res.status(409).json({
-        error: 'This finish time was changed after you opened it. Check the new time and try again.',
+        error: 'Someone changed this finish time while you had it open. Check the new time and try again.',
         code: FINISH_CHANGED,
         reason: finishChangeReason(existing, data.finishVersion),
         current: toCamelCase(existing)
@@ -609,7 +609,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
       // sending the save straight to the server, long after the fact.
       if (!isResuming && existing.awaiting_details !== 1) {
         return res.status(403).json({
-          error: 'Those details were already saved. Ask an admin or manager to correct them.',
+          error: 'The details for this time are already saved, so you can\'t change them here. Ask an admin or manager to fix them.',
           code: RUN_ALREADY_FILLED_IN
         });
       }
@@ -796,7 +796,7 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
     // instead of pretending to succeed; a hand reopen by the office is never cut, so is exempt.
     if (isResume && !reopenedByHand && cutIsDue(existing, Date.now())) {
       return res.status(409).json({
-        error: 'Normal hours have ended, so this timer can\'t be resumed. Save the form instead.',
+        error: 'Normal hours are over, so this timer can\'t start again. Press Submit instead.',
         code: RESUME_AFTER_HOURS
       });
     }
@@ -925,7 +925,7 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
       return res.status(409).json(alreadyConfirmedRefusal(existing));
     }
     if (existing.user_id !== req.user.userId) {
-      return res.status(403).json({ error: 'Only the worker whose clock it was can answer this. Ask them to sign in.' });
+      return res.status(403).json({ error: 'Only the worker whose timer it was can answer this. Ask them to sign in.' });
     }
 
     // Earlier or later than the stored finish are both fine. "Not in the future" is judged at
@@ -950,7 +950,7 @@ router.post('/:id/time-entries/:entryId/confirm-finish', authenticate, ...valida
     // new clock could not be started.
     const jobIsArchived = jobcardQueries.getById.get(id)?.archived === 1;
     const restartRefusal = {
-      error: 'Your clock can\'t be started again on this job. Choose "No, I\'m done with it" instead.',
+      error: 'Your timer can\'t be started again on this job. Choose "No, I\'m done with it" instead.',
       code: RESTART_REFUSED
     };
     let partToRestart = null;

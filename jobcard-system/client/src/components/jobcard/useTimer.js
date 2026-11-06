@@ -265,9 +265,9 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
               ? `Stop timer on part ${labelForRunningItem(currentTimer.jobcardId, currentTimer.itemId, currentTimer.itemNumber)} and start on part ${displayNumber}?`
               : `Stop timer on ${currentTimer.jobNumber || 'another job'} and start here?`;
             const shouldSwitch = await showConfirm({
-              title: 'Timer Running',
+              title: 'You already have a timer running',
               message,
-              confirmLabel: 'Stop & Start',
+              confirmLabel: 'Stop it and start this one',
               cancelLabel: 'Cancel',
               confirmVariant: 'primary'
             });
@@ -422,12 +422,12 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
     const jobClosed = isJobClosedError(err);
     if (jobClosed) {
       if (!handledAsJobClosed(err, entryJobcardId)) {
-        toast.error('That work block can no longer be changed — its job was archived from another screen.', { id: 'stopped-block-gone' });
+        toast.error('This time can\'t be changed any more — its job has been archived.', { id: 'stopped-block-gone' });
       }
     } else if (err?.status === 404) {
-      toast.error('That work block can no longer be changed — it was deleted from another screen.', { id: 'stopped-block-gone' });
+      toast.error('This time can\'t be changed any more — someone deleted it.', { id: 'stopped-block-gone' });
     } else if (code === RUN_NOT_YOURS) {
-      toast.error('That work block was handed to another worker from another screen, so it can no longer be filled in here.', { id: 'stopped-block-gone' });
+      toast.error('This time has been given to another worker, so you can\'t fill it in here.', { id: 'stopped-block-gone' });
     } else if (code === RUN_STILL_RUNNING) {
       // Already resumed — from another screen, or by a resume whose reply never came
       // back. When it is this person's own run on this job, pick the running timer back
@@ -438,7 +438,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
         setActiveTimer(current);
         toast('Your timer is already running again', { id: 'stopped-block-gone', icon: infoToastIcon });
       } else {
-        toast('That work block is running again — it was resumed from another screen.', { id: 'stopped-block-gone', icon: infoToastIcon });
+        toast('This timer is running again — it was started again on another screen.', { id: 'stopped-block-gone', icon: infoToastIcon });
       }
     } else {
       return false;
@@ -629,7 +629,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
           // The office settled the clock while this form was being filled in, so the run
           // never waited for it: nothing typed here was kept, and the worker is told so
           // (not "already saved", which was never true).
-          toast('The pieces and notes on this form were not saved either — the office had settled this clock. Give them to the office.', { id: 'stopped-block-gone', icon: infoToastIcon, duration: 8000 });
+          toast('The office has already sorted out this timer, so the pieces and notes on this form weren\'t saved. Tell the office what they were.', { id: 'stopped-block-gone', icon: infoToastIcon, duration: 8000 });
           clearStopForm();
           if (reloadEntries) await reloadEntries();
           return { startedNewTimer: false };
@@ -668,9 +668,9 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
           }
         }
       } else if (alreadySaved) {
-        toast('That work block\'s details were already saved.', { id: 'stopped-block-gone', icon: infoToastIcon });
+        toast('The details for this time were already saved.', { id: 'stopped-block-gone', icon: infoToastIcon });
       } else {
-        toast.success('Time entry updated');
+        toast.success('Time saved');
       }
 
       if (reloadEntries) await reloadEntries();
@@ -681,7 +681,7 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       // the form switches its checklist on and marks the unanswered checks, instead
       // of a pop-up that every retry would repeat.
       if (err?.data?.code === CRITICAL_INSPECTION_REFUSED) return { startedNewTimer: false, inspectionRefusal: err };
-      toast.error(err.message || 'Couldn\'t update the time entry. Check the connection and try again.', { id: 'update-time-entry-failed' });
+      toast.error(err.message || 'Couldn\'t save the time. Check the connection and try again.', { id: 'update-time-entry-failed' });
       return { startedNewTimer: false };
     } finally {
       setLoading(false);

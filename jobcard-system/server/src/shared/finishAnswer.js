@@ -12,9 +12,9 @@ const CARRIED_ON_GAP_MS = 30 * 60 * 1000;
 // All four are epoch ms; ceilingMs is null when there is no ceiling.
 function checkFinishAnswer({ finishMs, startMs, nowMs, ceilingMs }) {
   if (!Number.isFinite(finishMs)) return 'Enter the time you finished.';
-  if (finishMs <= startMs) return 'That is not after the time your clock started.';
+  if (finishMs <= startMs) return 'The finish time has to be after your timer started. Pick a later time.';
   if (finishMs > nowMs + FUTURE_LEEWAY_MS) return 'That time has not happened yet.';
-  if (ceilingMs !== null && finishMs > ceilingMs) return 'That is later than it could have been — check the day and time.';
+  if (ceilingMs !== null && finishMs > ceilingMs) return 'That is too late. Check the day and the time.';
   return null;
 }
 

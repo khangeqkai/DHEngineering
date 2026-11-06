@@ -152,11 +152,11 @@ function sendOpenTimerConflict(res, userId, knownActive) {
 function findEntryForJob(res, jobcardId, entryId) {
   const existing = timeEntryQueries.getById.get(entryId);
   if (!existing) {
-    res.status(404).json({ error: "That time entry couldn't be found. It may have been removed." });
+    res.status(404).json({ error: "That logged time couldn't be found. Someone may have deleted it." });
     return null;
   }
   if (existing.jobcard_id !== jobcardId) {
-    res.status(403).json({ error: "That time entry isn't on this job. Reload the job and try again." });
+    res.status(403).json({ error: "That logged time isn't on this job. Reload the job and try again." });
     return null;
   }
   return existing;
@@ -179,7 +179,7 @@ function billingBlockedByTime(jobcardId) {
   }
   const unconfirmed = timeEntryQueries.getFirstUnconfirmedByJobcard.get(jobcardId);
   if (unconfirmed) {
-    return `This job can't be billed or archived yet because ${unconfirmed.user_name} hasn't confirmed when their clock finished. Ask them to sign in and answer, or correct the time yourself.`;
+    return `This job can't be billed or archived yet because ${unconfirmed.user_name} hasn't said when their timer really stopped. Ask them to sign in and answer, or fix the time yourself.`;
   }
   // The wait is measured from the finish or from the worker's answer (a clock that stopped
   // itself is answered long after its finish), whichever is later — hence `since` twice.
@@ -335,7 +335,7 @@ function checkEntryDuration(startTime, endTime) {
   const finishMs = endTime ? new Date(endTime).getTime() : Date.now();
   const span = finishMs - new Date(startTime).getTime();
   if (Number.isFinite(span) && span > MAX_MANUAL_ENTRY_MS) {
-    return 'That work block is longer than a month — please check the start and finish dates.';
+    return 'That time is longer than a month. Check the start and finish dates.';
   }
   return null;
 }

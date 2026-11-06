@@ -16,7 +16,7 @@
 
 ## Home access card (Settings)
 
-The admin side of the card is numbered as three steps — 1. Save the address, 2. Set a code, 3. Tell staff — and ends with what to do when home sign-in fails (set a new code with Save Code and tell the person). The address box's example is deliberately fake (`jobs.example.online`). A backup export that is saved but leaves things out ("Backup saved with gaps") and the restore question (file name and folder; the picker returns only a path, so no date or size) are windows, not toasts; the Platform and Architecture rows of Application Info are admin-only.
+The admin side of the card is numbered as three steps — 1. Save the address, 2. Set a code, 3. Tell staff — and ends with what to do when home sign-in fails (set a new code with Save Code and tell the person). The address box's example is deliberately fake (`jobs.example.online`). A backup export that is saved but leaves things out ("Backup saved, but some things were left out") and the restore question (file name and folder; the picker returns only a path, so no date or size) are windows, not toasts; the Platform and Architecture rows of Application Info are admin-only.
 
 ## Desktop app lifecycle
 
