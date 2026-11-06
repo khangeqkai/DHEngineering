@@ -18,7 +18,7 @@
   font-size: var(--text-sm);
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
 }
 
 .checkbox-dropdown-toggle:hover {
@@ -49,7 +49,7 @@
 .checkbox-dropdown-caret {
   flex-shrink: 0;
   color: var(--text-secondary);
-  transition: transform 0.15s;
+  transition: transform var(--duration-fast);
 }
 
 .checkbox-dropdown-caret.is-open {
@@ -61,7 +61,7 @@
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  z-index: 60;
+  z-index: var(--layer-menu);
   max-height: 240px;
   overflow-y: auto;
   padding: var(--space-1);
@@ -105,7 +105,7 @@
   border: 1.5px solid var(--border-input);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  color: #fff;
+  color: var(--text-on-saturated);
 }
 
 .checkbox-dropdown-box.is-checked {
@@ -121,13 +121,13 @@
 }
 
 .checkbox-dropdown-label {
-  line-height: 1.2;
+  line-height: var(--leading-tight);
 }
 
 .checkbox-dropdown-sub {
   font-size: var(--text-xs);
   color: var(--text-secondary);
-  line-height: 1.2;
+  line-height: var(--leading-tight);
 }
 
 .checkbox-dropdown-empty {

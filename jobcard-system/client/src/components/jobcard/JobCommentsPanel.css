@@ -33,7 +33,7 @@
   color: var(--text-on-saturated);
   box-shadow: var(--shadow-lg);
   cursor: pointer;
-  transition: transform 220ms var(--ease-mechanical),
+  transition: transform var(--duration-normal) var(--ease-mechanical),
               opacity var(--duration-fast) ease,
               background var(--duration-fast) ease;
 }
@@ -91,8 +91,8 @@
   visibility: hidden;
   transform: translateX(var(--space-6));
   transition: opacity var(--duration-normal) ease,
-              transform 320ms var(--ease-mechanical),
-              visibility 0s linear 320ms;
+              transform var(--duration-slow) var(--ease-mechanical),
+              visibility 0s linear var(--duration-slow);
 }
 
 .jc-aside-open .jc-chat {
@@ -100,7 +100,7 @@
   visibility: visible;
   transform: none;
   transition: opacity var(--duration-normal) ease,
-              transform 320ms var(--ease-mechanical),
+              transform var(--duration-slow) var(--ease-mechanical),
               visibility 0s;
 }
 
@@ -270,7 +270,7 @@
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-xl);
   font-size: var(--text-sm);
-  line-height: 1.4;
+  line-height: var(--leading-snug);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -366,7 +366,7 @@
   color: var(--text-primary);
   font: inherit;
   font-size: var(--text-sm);
-  line-height: 1.35;
+  line-height: var(--leading-snug);
 }
 
 .jc-chat-input:focus {
@@ -510,7 +510,7 @@
 
 /* The comment a mention link landed on: a tint that fades out. */
 .jc-msg--target .jc-msg-bubble {
-  animation: jc-target-fade 2s ease-out;
+  animation: jc-target-fade 2s ease-out; /* token-exempt: how long the highlight lasts — a signal, not a transition */
 }
 
 @keyframes jc-target-fade {

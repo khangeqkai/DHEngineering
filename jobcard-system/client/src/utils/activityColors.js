@@ -8,20 +8,22 @@
 // is the order those chips appear in.
 //
 // The convention: green for something added, red for something taken away,
-// blue for something changed.
+// blue for something changed. These colour words, so they are the ink tokens
+// (dark enough to read on every surface in both themes), never the bright
+// signal fills — a bright green word on white reads at about 2:1.
 export const ACTION_COLORS = {
-  create: 'var(--accent-ready)', update: 'var(--primary-accent)', delete: 'var(--accent-caution)',
-  archive: 'var(--accent-safety)', unarchive: 'var(--primary-accent)',
-  assign: 'var(--accent-ready)', unassign: 'var(--accent-caution)', self_assign: 'var(--accent-ready)', self_unassign: 'var(--accent-caution)',
-  start_timer: 'var(--accent-ready)', stop_timer: 'var(--primary-accent)', discard_timer: 'var(--accent-caution)',
-  auto_stop_timer: 'var(--accent-caution)', confirm_finish: 'var(--primary-accent)',
-  add_time_entry: 'var(--accent-ready)', update_time_entry: 'var(--primary-accent)', delete_time_entry: 'var(--accent-caution)',
-  add_note: 'var(--accent-ready)', delete_note: 'var(--accent-caution)',
-  update_costing: 'var(--primary-accent)',
-  add_template: 'var(--accent-ready)', remove_template: 'var(--accent-caution)',
-  upload_file: 'var(--accent-ready)', reassign_file: 'var(--primary-accent)', delete_file: 'var(--accent-caution)',
-  login: 'var(--accent-info)', logout: 'var(--accent-info)', login_failed: 'var(--accent-caution)', pin_change_failed: 'var(--accent-caution)',
-  data_export: 'var(--accent-info)', data_import: 'var(--accent-info)',
+  create: 'var(--success-ink)', update: 'var(--accent-text)', delete: 'var(--danger-ink)',
+  archive: 'var(--accent-text)', unarchive: 'var(--accent-text)',
+  assign: 'var(--success-ink)', unassign: 'var(--danger-ink)', self_assign: 'var(--success-ink)', self_unassign: 'var(--danger-ink)',
+  start_timer: 'var(--success-ink)', stop_timer: 'var(--accent-text)', discard_timer: 'var(--danger-ink)',
+  auto_stop_timer: 'var(--danger-ink)', confirm_finish: 'var(--accent-text)',
+  add_time_entry: 'var(--success-ink)', update_time_entry: 'var(--accent-text)', delete_time_entry: 'var(--danger-ink)',
+  add_note: 'var(--success-ink)', delete_note: 'var(--danger-ink)',
+  update_costing: 'var(--accent-text)',
+  add_template: 'var(--success-ink)', remove_template: 'var(--danger-ink)',
+  upload_file: 'var(--success-ink)', reassign_file: 'var(--accent-text)', delete_file: 'var(--danger-ink)',
+  login: 'var(--accent-text)', logout: 'var(--accent-text)', login_failed: 'var(--danger-ink)', pin_change_failed: 'var(--danger-ink)',
+  data_export: 'var(--accent-text)', data_import: 'var(--accent-text)',
 };
 
 // Every action name the app knows about, in display order.

@@ -69,7 +69,7 @@ export default function SecurityCard({ s }) {
                 className="form-control job-prefix-input"
                 value={s.jobNumberPrefix}
                 onChange={(e) => s.setJobNumberPrefix(e.target.value)}
-                placeholder="e.g. DH-"
+                placeholder="Letters before the number"
                 aria-invalid={jobNumberPrefixError ? true : undefined}
                 aria-describedby={jobNumberPrefixError ? 'jobNumberPrefix-error' : undefined}
               />
@@ -83,7 +83,7 @@ export default function SecurityCard({ s }) {
                 className="form-control job-start-input"
                 value={s.jobNumberNext}
                 onChange={(e) => s.setJobNumberNext(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="e.g. 00001"
+                placeholder="Digits only"
                 aria-invalid={jobNumberNextError ? true : undefined}
                 aria-describedby={jobNumberNextError ? 'jobNumberNext-error' : undefined}
               />

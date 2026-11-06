@@ -135,7 +135,10 @@ export default function EntityActivityLog({ entityType, isOpen, onClose, refresh
         {loading ? (
           <div className="eal-status">Loading…</div>
         ) : history.length === 0 ? (
-          <div className="eal-status">No activity recorded.</div>
+          <div className="empty-state empty-state--compact">
+            <History size={40} strokeWidth={1.5} />
+            <p>No activity recorded yet.</p>
+          </div>
         ) : (
           <>
             <div className="eal-list">

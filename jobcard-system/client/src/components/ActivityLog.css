@@ -116,7 +116,7 @@
   min-width: 0;
   margin: 0;
   font-size: var(--text-sm);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   color: var(--text-primary);
   overflow-wrap: anywhere;
 }
@@ -167,7 +167,7 @@
 .activity-detail {
   padding: var(--space-0-5) 0;
   font-size: var(--text-xs);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   color: var(--text-secondary);
   overflow-wrap: anywhere;
 }

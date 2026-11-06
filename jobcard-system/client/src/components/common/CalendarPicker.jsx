@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useId } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useModalLayer, isTopModal, useFocusWhenTop } from './modalStack';
+import { useModalLayer, isTopModal, useFocusWhenTop, anyModalOpenExcept } from './modalStack';
 import { todayIsoDate, toIsoDate } from '../../utils/formatters';
 import './CalendarPicker.css';
 
@@ -25,10 +25,17 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose, allow
     setViewMonth(d.getMonth());
   }, [isOpen, value]);
 
-  // Join the shared modal stack while open. This calendar opens on top of the job
-  // card dialog; registering makes it the top-most layer so the card behind stops
+  // Join the shared modal stack while open. When this calendar opens on top of the job
+  // card dialog, registering makes it the top-most layer so the card behind stops
   // trapping Tab and stops closing on Escape meant for the calendar.
   const layer = useModalLayer(modalId, isOpen);
+  // Opened over another window (the job window) the backdrop is lighter, since the
+  // two add up; opened from a page (Settings' public holidays) it is the normal one.
+  // Read once per opening, after the layer hook has joined the stack.
+  const [layered, setLayered] = useState(false);
+  useLayoutEffect(() => {
+    if (isOpen) setLayered(anyModalOpenExcept(modalId));
+  }, [isOpen, modalId]);
 
   useFocusWhenTop(modalId, isOpen, () => calendarRef.current?.focus());
 
@@ -127,7 +134,7 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose, allow
   }
 
   return createPortal(
-    <div className="calendar-overlay" style={{ zIndex: layer }}>
+    <div className={`calendar-overlay${layered ? ' calendar-overlay--layered' : ''}`} style={{ zIndex: layer }}>
       <div
         className="calendar-modal"
         ref={calendarRef}

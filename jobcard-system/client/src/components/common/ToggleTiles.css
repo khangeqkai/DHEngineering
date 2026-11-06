@@ -21,7 +21,7 @@
   text-align: center;
   user-select: none;
   font-size: var(--text-sm);
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.1s;
+  transition: border-color var(--duration-fast), background var(--duration-fast), box-shadow var(--duration-fast), transform var(--duration-instant);
 }
 
 .toggle-tile:hover {
@@ -57,7 +57,7 @@
 .toggle-tile-label {
   font-size: var(--text-base);
   font-weight: var(--font-bold);
-  line-height: 1.2;
+  line-height: var(--leading-tight);
   color: var(--text-primary);
 }
 
@@ -68,7 +68,7 @@
 .toggle-tile-sub {
   font-size: var(--text-xs);
   color: var(--text-secondary);
-  line-height: 1.2;
+  line-height: var(--leading-tight);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;

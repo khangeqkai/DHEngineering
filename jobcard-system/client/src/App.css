@@ -28,7 +28,7 @@
 }
 
 .page-enter {
-  animation: pageEnter 250ms var(--ease-mechanical) both;
+  animation: pageEnter var(--duration-normal) var(--ease-mechanical) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -65,7 +65,7 @@
   border-bottom: 1px solid var(--sidebar-border);
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: var(--layer-sticky);
 }
 
 .hamburger-btn {
@@ -83,7 +83,7 @@
   height: 2px;
   background: var(--sidebar-text);
   border-radius: var(--radius-xs);
-  transition: transform 0.2s, opacity 0.2s;
+  transition: transform var(--duration-normal), opacity var(--duration-normal);
 }
 
 .mobile-logo {
@@ -114,8 +114,8 @@
   right: 0;
   bottom: 0;
   background: var(--scrim);
-  z-index: 90;
-  animation: fadeIn 0.2s ease-out;
+  z-index: var(--layer-nav-scrim);
+  animation: fadeIn var(--duration-normal) ease-out;
   /* It is a real <button> so the sidebar can be dismissed from the keyboard,
      not just by pointing at it. The chrome a button brings by default has no
      place on a full-screen scrim, so it is stripped here rather than inline. */
@@ -139,11 +139,11 @@
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
-  z-index: 100;
+  z-index: var(--layer-nav);
   transform: translateX(-100%);
-  transition: transform 0.3s var(--ease-mechanical),
-              width 0.3s var(--ease-mechanical),
-              padding 0.3s var(--ease-mechanical);
+  transition: transform var(--duration-slow) var(--ease-mechanical),
+              width var(--duration-slow) var(--ease-mechanical),
+              padding var(--duration-slow) var(--ease-mechanical);
   overflow: hidden auto;
   border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
 }
@@ -191,7 +191,7 @@
 .sidebar-header h1 {
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
-  color: #e8edf5;
+  color: var(--sidebar-text-strong);
   letter-spacing: var(--tracking-tight);
 }
 
@@ -232,7 +232,7 @@
 
 .sidebar-nav a:hover {
   background-color: var(--sidebar-hover-bg);
-  color: #e8edf5;
+  color: var(--sidebar-text-strong);
   text-decoration: none;
 }
 
@@ -241,7 +241,7 @@
   background-color: var(--sidebar-active-bg);
   color: var(--sidebar-active-text);
   font-weight: var(--font-bold);
-  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.3);
+  box-shadow: var(--glow-accent);
 }
 
 .nav-icon {
@@ -252,7 +252,7 @@
   justify-content: center;
   border-radius: var(--radius-md);
   color: var(--sidebar-text-muted);
-  background: rgba(148, 163, 192, 0.08);
+  background: var(--sidebar-hover-bg);
   transition: color var(--duration-fast) ease,
               background-color var(--duration-fast) ease;
 }
@@ -262,19 +262,19 @@
 }
 
 .sidebar-nav a:hover .nav-icon {
-  color: #e8edf5;
-  background: rgba(148, 163, 192, 0.12);
+  color: var(--sidebar-text-strong);
+  background: var(--sidebar-pressed-bg);
 }
 
 .sidebar-nav a.active .nav-icon {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--sidebar-active-icon-bg);
   color: var(--sidebar-active-text);
 }
 
 .nav-text {
   white-space: nowrap;
   overflow: hidden;
-  transition: opacity 0.2s ease, width 0.2s ease;
+  transition: opacity var(--duration-normal) ease, width var(--duration-normal) ease;
 }
 
 .signout-btn {
@@ -288,9 +288,9 @@
 }
 
 .signout-btn:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.12) !important;
-  color: #fca5a5 !important;
-  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.3) !important;
+  background: var(--sidebar-danger-bg) !important;
+  color: var(--sidebar-danger-ink) !important;
+  box-shadow: inset 0 0 0 1px var(--sidebar-danger-border) !important;
 }
 
 .signout-btn .nav-icon {
@@ -299,7 +299,7 @@
 }
 
 .signout-btn:hover .nav-icon {
-  color: #fca5a5;
+  color: var(--sidebar-danger-ink);
 }
 
 .sidebar-footer {
@@ -321,8 +321,8 @@
   width: 40px;
   height: 40px;
   border-radius: var(--radius-md);
-  background: var(--primary-accent);
-  color: #ffffff;
+  background: var(--fill-accent);
+  color: var(--text-on-saturated);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -338,7 +338,7 @@
 .user-name {
   font-weight: var(--font-bold);
   font-size: var(--text-sm);
-  color: #e8edf5;
+  color: var(--sidebar-text-strong);
 }
 
 .user-role {
@@ -428,7 +428,7 @@
 .btn:active {
   transform: translateY(1px) scale(0.98);
   box-shadow: none;
-  transition: transform 60ms ease;
+  transition: transform var(--duration-instant) ease;
 }
 
 .btn:disabled {
@@ -444,12 +444,12 @@
 /* Primary — Blue accent */
 .btn-primary {
   background: var(--fill-accent);
-  color: #ffffff;
+  color: var(--text-on-saturated);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--fill-accent-hover);
-  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.3);
+  box-shadow: var(--glow-accent);
   transform: translateY(-1px);
 }
 
@@ -468,7 +468,7 @@
 /* Danger */
 .btn-danger {
   background: var(--fill-danger);
-  color: #ffffff;
+  color: var(--text-on-saturated);
 }
 
 .btn-danger:hover:not(:disabled) {
@@ -488,7 +488,7 @@
 /* Success */
 .btn-success {
   background: var(--fill-success);
-  color: #ffffff;
+  color: var(--text-on-saturated);
 }
 
 .btn-success:hover:not(:disabled) {
@@ -675,7 +675,7 @@ select.has-retired option.retired-option {
   border: 1.5px solid var(--border-input);
   border-radius: var(--radius-md);
   background: var(--surface);
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color var(--duration-fast) ease, background var(--duration-fast) ease;
 }
 
 .toggle-label:hover {
@@ -707,7 +707,7 @@ select.has-retired option.retired-option {
   /* Off, the track is all there is of the switch, so it takes the box-edge colour. */
   background: var(--border-input);
   border-radius: var(--radius-md);
-  transition: background 0.2s ease;
+  transition: background var(--duration-normal) ease;
 }
 
 .toggle-switch::after {
@@ -719,8 +719,9 @@ select.has-retired option.retired-option {
   height: 20px;
   background: var(--surface);
   border-radius: 50%;
+  /* token-exempt: a firm fixed shadow keeps the white knob reading as raised on the pale off track */
   box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-  transition: transform 0.2s var(--ease-snap);
+  transition: transform var(--duration-normal) var(--ease-snap);
 }
 
 .toggle-input:checked + .toggle-switch {
@@ -771,13 +772,13 @@ select.has-retired option.retired-option {
 }
 
 .field-selected {
-  border-color: var(--accent-ready) !important;
-  background: rgba(34, 197, 94, 0.04) !important;
+  border-color: var(--success-color) !important;
+  background: rgba(var(--success-rgb), 0.04) !important;
 }
 
 .overdue {
-  border-color: var(--accent-caution) !important;
-  background: rgba(239, 68, 68, 0.04);
+  border-color: var(--danger-color) !important;
+  background: rgba(var(--danger-rgb), 0.04);
 }
 
 /* Form Row */
@@ -839,7 +840,7 @@ select.has-retired option.retired-option {
 
 /* Overdue Row/Date (tables) */
 .overdue-row {
-  background: rgba(239, 68, 68, 0.04);
+  background: rgba(var(--danger-rgb), 0.04);
 }
 
 .overdue-date {
@@ -1064,29 +1065,29 @@ select.has-retired option.retired-option {
 }
 
 .badge-in-progress::before {
-  background: var(--accent-info);
-  box-shadow: 0 0 6px var(--accent-info);
+  background: var(--info-color);
+  box-shadow: 0 0 6px var(--info-color);
 }
 
 .badge-completed {
   background: var(--badge-completed-bg);
   color: var(--badge-completed-text);
-  border-color: rgba(34, 197, 94, 0.2);
+  border-color: rgba(var(--success-rgb), 0.2);
 }
 
 .badge-completed::before {
-  background: var(--accent-ready);
-  box-shadow: 0 0 6px var(--accent-ready);
+  background: var(--success-color);
+  box-shadow: 0 0 6px var(--success-color);
 }
 
 .badge-cancelled {
   background: var(--badge-cancelled-bg);
   color: var(--badge-cancelled-text);
-  border-color: rgba(239, 68, 68, 0.2);
+  border-color: rgba(var(--danger-rgb), 0.2);
 }
 
 .badge-cancelled::before {
-  background: var(--accent-caution);
+  background: var(--danger-color);
 }
 
 /* ========================================
@@ -1249,8 +1250,8 @@ select.has-retired option.retired-option {
   background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 100;
+  box-shadow: var(--shadow-lg);
+  z-index: var(--layer-menu);
   min-width: 150px;
   padding: var(--space-1) 0;
   /* Never inherit a pill trigger's capitals or tracking. */
@@ -1351,9 +1352,9 @@ select.has-retired option.retired-option {
    priority and status read as one system in the list. Dot follows currentColor
    (via .badge::before). Colours reuse the badge palette so dark mode is covered. */
 .priority-none {
-  background: rgba(100, 116, 139, 0.10);
+  background: rgba(var(--neutral-rgb), 0.10);
   color: var(--text-tertiary);
-  border-color: rgba(100, 116, 139, 0.22);
+  border-color: rgba(var(--neutral-rgb), 0.22);
 }
 .priority-low {
   background: var(--badge-progress-bg);
@@ -1407,12 +1408,12 @@ select.has-retired option.retired-option {
 }
 
 .status-dot.online {
-  background: var(--accent-ready);
-  box-shadow: 0 0 6px var(--accent-ready);
+  background: var(--success-color);
+  box-shadow: 0 0 6px var(--success-color);
 }
 
 .status-dot.offline {
-  background: var(--accent-caution);
+  background: var(--danger-color);
 }
 
 .status-dot.syncing {
@@ -1429,8 +1430,8 @@ select.has-retired option.retired-option {
 .pending-badge {
   display: inline-flex;
   align-items: center;
-  background: var(--primary-accent);
-  color: #ffffff;
+  background: var(--fill-accent);
+  color: var(--text-on-saturated);
   padding: var(--space-0-5) var(--space-1-5);
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
@@ -1526,7 +1527,7 @@ select.has-retired option.retired-option {
   width: var(--row-w);
   height: 85vh;
   max-height: 950px;
-  transition: margin-left 320ms var(--ease-mechanical);
+  transition: margin-left var(--duration-slow) var(--ease-mechanical);
 }
 
 /* A left margin of twice the shift moves the centred row right by the shift. A margin,
@@ -1634,7 +1635,7 @@ select.has-retired option.retired-option {
   align-items: center;
   justify-content: center;
   transition: all var(--duration-fast) ease;
-  line-height: 1;
+  line-height: var(--leading-none);
   padding: 0;
 }
 
@@ -1817,7 +1818,7 @@ select.has-retired option.retired-option {
 .page-equipment > .page-header .btn-primary:hover:not(:disabled),
 .page-activity > .page-header .btn-primary:hover:not(:disabled) {
   background: var(--fill-accent-hover);
-  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.3);
+  box-shadow: var(--glow-accent);
 }
 
 /* Table row hover tint uses the same unified accent, at low alpha */
@@ -2002,22 +2003,22 @@ select.has-retired option.retired-option {
     font-size: var(--text-sm);
     font-weight: var(--font-regular);
     cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
     font-family: inherit;
   }
 
   .sidebar-toggle:hover {
     background-color: var(--sidebar-hover-bg);
-    color: #e8edf5;
+    color: var(--sidebar-text-strong);
   }
 
   .sidebar-toggle .nav-icon {
-    background: rgba(148, 163, 192, 0.08);
+    background: var(--sidebar-hover-bg);
   }
 
   .sidebar-toggle:hover .nav-icon {
-    color: #e8edf5;
-    background: rgba(148, 163, 192, 0.12);
+    color: var(--sidebar-text-strong);
+    background: var(--sidebar-pressed-bg);
   }
 
   /* ── Collapsed state (desktop only) ── */
@@ -2131,7 +2132,7 @@ select.has-retired option.retired-option {
 
 .inactivity-modal {
   background: var(--surface);
-  border: 2px solid var(--accent-caution);
+  border: 2px solid var(--danger-color);
   border-radius: var(--radius-xl);
   padding: var(--space-8) var(--space-12);
   text-align: center;
@@ -2158,7 +2159,7 @@ select.has-retired option.retired-option {
 .inactivity-modal h2 {
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
-  /* No --lead-heading here: this heading isn't starting a section, it's the
+  /* No space above: this heading isn't starting a section, it's the
      second half of the warning the triangle above it begins. The icon's own
      margin is the whole gap. */
   margin: 0 0 var(--gap-field) 0;
@@ -2193,7 +2194,7 @@ select.has-retired option.retired-option {
   background: rgba(var(--warning-rgb), 0.12);
   color: var(--warning-ink);
   font-size: var(--text-sm);
-  line-height: 1.45;
+  line-height: var(--leading-normal);
   text-wrap: balance;
 }
 
@@ -2203,7 +2204,7 @@ select.has-retired option.retired-option {
 
 /* Custom toast entrance: slide in from right */
 div[data-hot-toast] > div {
-  animation: toastSlideIn 300ms var(--ease-mechanical) both !important;
+  animation: toastSlideIn var(--duration-slow) var(--ease-mechanical) both !important;
 }
 
 @keyframes toastSlideIn {

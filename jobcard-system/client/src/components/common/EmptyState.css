@@ -29,7 +29,7 @@
   color: var(--text-secondary);
   max-width: 300px;
   margin: 0;
-  line-height: 1.5;
+  line-height: var(--leading-normal);
 }
 
 .empty-state-action {
@@ -44,7 +44,7 @@
   max-width: 240px;
   padding: var(--space-6);
   gap: var(--gap-tight);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   font-size: var(--text-sm);
   color: var(--text-tertiary);
 }

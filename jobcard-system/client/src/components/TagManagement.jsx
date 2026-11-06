@@ -337,7 +337,7 @@ export default function TagManagement({ mode = 'options' }) {
                   <input type="text" {...fieldProps('machineNumber')} value={formData.machineNumber}
                     onChange={(e) => setFormData(prev => ({ ...prev, machineNumber: e.target.value }))}
                     onBlur={(e) => { const f = e.target.value.toUpperCase().trim(); if (f !== e.target.value) setFormData(prev => ({ ...prev, machineNumber: f })); }}
-                    placeholder="e.g. M1, LATHE-01…" autoFocus />
+                    placeholder="The short code on the machine…" autoFocus />
                   <FieldError {...errorProps('machineNumber')} message={errorFor('machineNumber')} />
                 </div>
                 <div className={groupClass('machineName')}>
@@ -354,7 +354,7 @@ export default function TagManagement({ mode = 'options' }) {
                 <input type="text" {...fieldProps('machineDescription')} value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   onBlur={(e) => { const f = capitalizeFirst(e.target.value); if (f !== e.target.value) setFormData(prev => ({ ...prev, description: f })); }}
-                  placeholder="e.g. CNC vertical machining centre…" />
+                  placeholder="What kind of machine it is…" />
                 <FieldError {...errorProps('machineDescription')} message={errorFor('machineDescription')} />
               </div>
               </>

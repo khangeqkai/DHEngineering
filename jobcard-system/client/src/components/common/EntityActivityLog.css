@@ -21,7 +21,7 @@
 .eal-entry {
   padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--border-color);
-  transition: background 0.1s ease;
+  transition: background var(--duration-instant) ease;
 }
 
 .eal-entry:last-child {
@@ -69,7 +69,7 @@
 }
 
 .eal-change {
-  line-height: 1.6;
+  line-height: var(--leading-body);
   display: flex;
   align-items: baseline;
   gap: var(--space-1-5);

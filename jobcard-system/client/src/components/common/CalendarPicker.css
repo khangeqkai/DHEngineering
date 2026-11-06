@@ -1,7 +1,129 @@
-/* Calendar-picker-only rules. The picker's shared look (overlay, grid, cells) lives
-   in JobCardModal.css alongside the job card's other floating panels — this file
-   only holds what's specific to the optional "Clear date" action. */
+/* The date picker window. Its styles live here, beside it, because it opens from the
+   job window and from the Settings page alike. */
 
+.calendar-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* No z-index: modalStack inlines this window's layer before first paint. */
+}
+
+.calendar-overlay--layered {
+  /* Opened over another window (the job window): the two backdrops add up. */
+  background: var(--scrim-light);
+}
+
+.calendar-modal {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-lg);
+  /* A fixed min-width overflowed a 320px-wide phone before its own padding was even
+     counted. `.calendar-overlay` centers this with no side gutter, so 100% of it is
+     the full viewport width — the picker keeps its usual 360px on every viewport that
+     has room for it, and only yields below that, instead of forcing a scrollbar. */
+  width: min(360px, 100%);
+  outline: none;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.calendar-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+}
+
+.calendar-nav {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  width: 36px;
+  height: 36px;
+  font-size: var(--text-xl);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast) ease;
+  color: var(--text-primary);
+}
+
+.calendar-nav:hover {
+  border-color: var(--primary-accent);
+  background: rgba(var(--accent-rgb), 0.05);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-1);
+}
+
+.calendar-day-label {
+  text-align: center;
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  color: var(--text-tertiary);
+  padding: var(--space-2) 0;
+}
+
+.calendar-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+  color: var(--text-primary);
+}
+
+.calendar-cell.empty {
+  cursor: default;
+}
+
+.calendar-cell:not(.empty):hover {
+  border-color: var(--primary-accent);
+  background: rgba(var(--accent-rgb), 0.05);
+}
+
+.calendar-cell.today {
+  border: 2px solid var(--primary-accent);
+  font-weight: var(--font-bold);
+  color: var(--accent-text);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+.calendar-cell.today:hover {
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+.calendar-cell.selected {
+  background: var(--fill-accent);
+  border-color: var(--fill-accent);
+  color: var(--text-on-saturated);
+  font-weight: var(--font-bold);
+}
+
+.calendar-cell.today.selected {
+  background: var(--fill-accent);
+  border: 2px solid var(--fill-accent);
+  color: var(--text-on-saturated);
+}
+
+/* The optional "Clear date" action. */
 .calendar-footer {
   display: flex;
   justify-content: center;

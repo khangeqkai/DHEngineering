@@ -57,7 +57,7 @@
   font-size: var(--text-sm);
   font-weight: var(--font-regular);
   cursor: pointer;
-  transition: border-color .12s, background .12s, color .12s;
+  transition: border-color var(--duration-fast), background var(--duration-fast), color var(--duration-fast);
 }
 
 .paint-brush:hover {
@@ -142,8 +142,8 @@
   padding: 0;
   height: 100%;
   cursor: pointer;
-  border-right: 1px solid rgba(0, 0, 0, 0.14);
-  transition: filter .08s;
+  border-right: 1px solid rgba(0, 0, 0, 0.14); /* token-exempt: fixed dark line on a fill (see above) */
+  transition: filter var(--duration-instant);
 }
 
 .paint-cell:last-child {
@@ -152,7 +152,7 @@
 
 /* Stronger divider every 6 hours (quarter-day gridlines) */
 .paint-cell:nth-child(6n+1):not(:first-child) {
-  border-left: 1px solid rgba(0, 0, 0, 0.32);
+  border-left: 1px solid rgba(0, 0, 0, 0.32); /* token-exempt: fixed dark line on a fill */
 }
 
 .paint-cell:hover {

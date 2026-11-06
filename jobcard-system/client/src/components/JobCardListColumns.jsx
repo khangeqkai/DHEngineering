@@ -338,7 +338,7 @@ export function getJobCardColumns({
                 }}
               >
                 {STATUS_LABELS[card.status] || card.status}
-                <ChevronDown size={12} aria-hidden="true" />
+                <ChevronDown size={14} aria-hidden="true" />
               </button>
               {statusPopoverId === card.id && (
                 <StatusPopover putBack={menu.putBack} groups={menu.groups} renderRow={renderRow} />

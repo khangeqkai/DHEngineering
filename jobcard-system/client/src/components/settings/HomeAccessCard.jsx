@@ -57,7 +57,7 @@ export default function HomeAccessCard({ s }) {
                   aria-label="Home address"
                   value={s.homeAddress}
                   onChange={(e) => s.setHomeAddress(e.target.value)}
-                  placeholder="e.g. https://jobs.example.online"
+                  placeholder="Paste the web address staff use from home"
                   autoComplete="off"
                 />
                 <button

@@ -32,7 +32,7 @@
 .tag-chip.selected {
   background: var(--fill-accent);
   border-color: var(--fill-accent);
-  color: var(--text-inverse);
+  color: var(--text-on-saturated);
 }
 
 .tag-chip .check-mark {

@@ -63,7 +63,7 @@
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
   color: var(--text-primary);
-  line-height: 1.3;
+  line-height: var(--leading-snug);
 }
 
 .stf-head-sep {
@@ -227,7 +227,8 @@
 
 .stf-counter--hero .stf-count-input {
   /* The one figure that sits off the type scale: a big readout between
-     --text-3xl and --text-4xl, sized to fit the stepper it sits in. */
+     --text-3xl and the 3rem step above it, sized to fit the stepper it sits in.
+     token-exempt */
   font-size: 2.25rem;
   font-weight: var(--font-light);
   padding: var(--space-2);

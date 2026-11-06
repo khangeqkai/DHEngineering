@@ -54,7 +54,7 @@ export default function TimezoneCard({ timezone, setTimezone, onSave, saving, er
               aria-label="Workshop time zone"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
-              placeholder="e.g. Australia/Sydney"
+              placeholder="Type the region and city…"
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? 'timezone-error' : undefined}
             />

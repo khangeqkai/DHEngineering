@@ -10,8 +10,8 @@
   background: var(--surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  z-index: 100;
+  box-shadow: var(--shadow-lg);
+  z-index: var(--layer-menu);
   min-width: 180px;
   overflow: hidden;
 }
@@ -26,7 +26,7 @@
   font-size: var(--text-sm);
   color: var(--text-primary);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 }
 
 .export-dropdown-item:hover {

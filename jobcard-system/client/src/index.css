@@ -46,9 +46,9 @@
 /* =============================================
    Responsive breakpoints — the canonical set
    =============================================
-   This app runs on workshop desktops, tablets and phones on the same LAN, so
-   every stylesheet needs the same two numbers rather than each one guessing
-   its own. There is no build step that turns a custom property into a real
+   The app is used on desktop PCs; these widths only matter when a window is
+   made narrow, and every stylesheet needs the same two numbers for that rather
+   than each one guessing its own. There is no build step that turns a custom property into a real
    `@media` value (no PostCSS, plain CSS only), so these can't live as
    variables — they're written out at every call site — but every one of
    them means one of exactly these two widths, and nothing else:
@@ -93,7 +93,6 @@
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
   --text-3xl: 1.75rem;
-  --text-4xl: 3rem;
 
   /* Font Weights — only Light 300, Book 400 and Bold 700 are bundled;
      the browser already renders 500 as 400 and 600 as 700, so those
@@ -101,6 +100,21 @@
   --font-light: 300;
   --font-regular: 400;
   --font-bold: 700;
+
+  /* Line height — six steps, each with a job. Pick by what the text is, not by
+     eye: a figure or a one-line label inside a pill sits on --leading-none, a
+     big statistic on --leading-display, a two-line label or chip on
+     --leading-tight, a chat bubble or short note on --leading-snug, a
+     paragraph inside a card on --leading-normal, running page text on
+     --leading-body (the page default), and a list read line by line on
+     --leading-loose. */
+  --leading-none: 1;
+  --leading-display: 1.1;
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-body: 1.55;
+  --leading-loose: 1.8;
 
   /* Letter Spacing — tighter for modern feel */
   --tracking-tight: -0.02em;
@@ -152,8 +166,10 @@
 
   /* A heading belongs to what follows it, so it takes more room above than
      below — otherwise it floats equidistant between two groups and reads as
-     ending the last one. Pair --lead-heading with --gap-field beneath. */
-  --lead-heading: var(--space-6);  /* 24px */
+     ending the last one. The room above comes from where the heading sits: it
+     either opens its own card, window or section (whose padding is above it), or
+     it heads one of a run of groups set --gap-group or more apart. Beneath it:
+     --gap-field, or --gap-tight for a small all-caps day heading. */
 
   /* Container padding. One table density, app-wide — there is no compact
      variant to drift back to. The row padding sits deliberately between the
@@ -189,7 +205,6 @@
   /* ── Navy-Blue Palette ── */
   /* Navy is the hero. Bright blue is the accent. */
   --primary-color: #0f2645;
-  --primary-hover: #0a1e38;
   --primary-accent: #2563eb;
 
   /* The job History window's dots: one fill per kind of change. Fills only — the words
@@ -206,17 +221,13 @@
   --accent-text: #1d4ed8;
   --accent-text-hover: #1e40af;
 
-  /* Accents - Semantic */
-  --accent-safety: #2563eb;
-  --accent-action: #2563eb;
-  --accent-caution: #ef4444;
-  --accent-ready: #22c55e;
-  --accent-info: #3b82f6;
-
-  /* Legacy mappings */
+  /* Signal colours — for shapes (dots, edges, icons), never for words; words
+     take the matching ink below. The old --accent-safety/-action/-caution/-ready
+     names were the same values under a second name and are gone. */
   --success-color: #22c55e;
   --warning-color: #f59e0b;
   --danger-color: #ef4444;
+  --info-color: #3b82f6;
 
   /* Ink vs. fill: fills (below) are for shapes — buttons, filled pills —
      and stay dark enough to carry white text. Ink is for words — status
@@ -266,6 +277,14 @@
   --sidebar-active-bg: #2563eb;
   --sidebar-active-text: #ffffff;
   --sidebar-hover-bg: rgba(148, 163, 192, 0.08);
+  /* The sidebar is navy in both themes, so these are set once and not
+     overridden in dark mode. */
+  --sidebar-text-strong: #e8edf5;
+  --sidebar-pressed-bg: rgba(148, 163, 192, 0.12);
+  --sidebar-active-icon-bg: rgba(255, 255, 255, 0.2);
+  --sidebar-danger-bg: rgba(239, 68, 68, 0.12);
+  --sidebar-danger-ink: #fca5a5;
+  --sidebar-danger-border: rgba(239, 68, 68, 0.3);
 
   /* Surfaces — clean, barely warm whites */
   --background: #f4f6f9;
@@ -298,7 +317,13 @@
   --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
   --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
   --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
-  --shadow: var(--shadow-sm);
+  /* Which one: --shadow-sm lifts something a hair off its surface (a chip on
+     hover, a card); --shadow-md is a small floating hint; --shadow-lg is
+     anything that floats over the page — every drop-down menu, picker panel
+     and pop-up window. A black rgba() typed into a component never adapts to
+     dark mode, which is why menus used to lose their edge there. */
+  /* The blue lift under the main blue button and the active sidebar link. */
+  --glow-accent: 0 2px 12px rgba(37, 99, 235, 0.3);
 
   /* Focus ring — single source of truth */
   --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--border-focus);
@@ -308,13 +333,28 @@
   --ease-mechanical: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-snap: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+  /* Four durations. --duration-instant is press feedback (a button nudging
+     down); fast is colour and border changes; normal is things appearing;
+     slow is things sliding (sidebar, side windows). A repeating rhythm — a
+     pulsing timer dot, a shimmer, the spinner — is a signal, not a
+     transition, and keeps its own typed period. */
+  --duration-instant: 80ms;
   --duration-fast: 150ms;
   --duration-normal: 200ms;
   --duration-slow: 350ms;
 
-  /* Hover states */
-  --primary-light: #94a3c0;
-  --danger-hover: #dc2626;
+  /* Layers on the page — what floats over what. Windows are NOT on this list:
+     the modal stack (common/modalStack.js) hands each one a layer from 1100 up
+     as it opens, and pins the must-answer covers at 1900–2100, so a window is
+     always above everything here. A small number (1–30) that only orders
+     siblings inside one component stays typed in that component. */
+  --layer-sticky: 50;     /* a header that sticks while its page scrolls */
+  --layer-menu: 100;      /* drop-down menus, pickers, popovers */
+  --layer-nav-scrim: 190; /* the dimmed page behind the slide-out sidebar */
+  --layer-nav: 200;       /* the slide-out sidebar */
+  --layer-tooltip: 1000;  /* hover cards pinned to the screen, still under any window */
+
+  /* The medium-priority dot (a fill). */
   --warning-hover: #d97706;
 
   /* RGB variants (for rgba() usage) */
@@ -322,13 +362,10 @@
   --success-rgb: 34, 197, 94;
   --warning-rgb: 245, 158, 11;
   --accent-rgb: 37, 99, 235;
-  --primary-rgb: 15, 38, 69;
-  --text-inverse-rgb: 248, 249, 251;
   --info-rgb: 59, 130, 246;
-
-  /* Additional accents */
-  --accent-purple: #8b5cf6;
-  --accent-purple-hover: #7c3aed;
+  /* Slate, for a neutral tint (no-priority pill, neutral statistic). Same in
+     both themes. */
+  --neutral-rgb: 100, 116, 139;
 
   /* Badge colors - Light mode */
   --badge-pending-bg: rgba(245, 158, 11, 0.1);
@@ -429,7 +466,6 @@
 
   /* Primary */
   --primary-color: #94a3c0;
-  --primary-hover: #c7cdd9;
   --primary-accent: #3b82f6;
 
   /* The job History window's dots, dark-mode values (see :root). */
@@ -445,17 +481,11 @@
   --accent-text: #60a5fa;
   --accent-text-hover: #93bbfd;
 
-  /* Accents */
-  --accent-safety: #3b82f6;
-  --accent-action: #3b82f6;
-  --accent-caution: #f87171;
-  --accent-ready: #4ade80;
-  --accent-info: #60a5fa;
-
-  /* Semantic colors */
+  /* Signal colours */
   --success-color: #4ade80;
   --warning-color: #fbbf24;
   --danger-color: #f87171;
+  --info-color: #60a5fa;
 
   /* Ink vs. fill: fills are for shapes, ink is for words. See the :root
      block for the full explanation — same three hues, dark-mode values. */
@@ -469,13 +499,6 @@
   --same-day-text: #1a2e05;
   --same-day-border: #a3e635;
 
-  /* Saturated variants for button backgrounds */
-  --success-bg: #16a34a;
-  --warning-bg: #d97706;
-  --danger-bg: #dc2626;
-  --success-bg-hover: #22c55e;
-  --warning-bg-hover: #f59e0b;
-  --danger-bg-hover: #ef4444;
   --text-on-saturated: #fff;
 
   /* Sidebar */
@@ -516,11 +539,8 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.15);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3), 0 24px 48px rgba(0, 0, 0, 0.25);
-  --shadow: var(--shadow-sm);
 
-  /* Hover states */
-  --primary-light: #c7cdd9;
-  --danger-hover: #fca5a5;
+  /* The medium-priority dot. */
   --warning-hover: #fcd34d;
 
   /* RGB variants */
@@ -528,13 +548,7 @@
   --success-rgb: 74, 222, 128;
   --warning-rgb: 251, 191, 36;
   --accent-rgb: 59, 130, 246;
-  --primary-rgb: 148, 163, 192;
-  --text-inverse-rgb: 11, 30, 54;
   --info-rgb: 96, 165, 250;
-
-  /* Additional accents */
-  --accent-purple: #a78bfa;
-  --accent-purple-hover: #8b5cf6;
 
   /* Badge colors - Dark mode */
   --badge-pending-bg: rgba(251, 191, 36, 0.15);
@@ -684,7 +698,7 @@ body {
     radial-gradient(900px 600px at -5% 105%, rgba(15, 38, 69, 0.035), transparent 55%);
   background-attachment: fixed;
   color: var(--text-primary);
-  line-height: 1.55;
+  line-height: var(--leading-body);
   font-size: var(--text-base);
   letter-spacing: var(--tracking-normal);
   -webkit-font-smoothing: antialiased;
