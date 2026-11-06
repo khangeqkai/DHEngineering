@@ -85,7 +85,10 @@ cd client && npm run build:electron
 # Server with auto-reload
 cd server && npm run dev
 
-# Unit tests (Node's built-in runner; client tests cover the shared rule files and the History wording)
+# Unit tests (Node's built-in runner; client tests cover the shared rule files and the History wording,
+# and read every server/client/desktop source file for a name used but never defined; the server's
+# Files-window test boots the real server on a throwaway data folder — under WSL it re-runs itself
+# with Windows Node, because node_modules holds a Windows build of the database library)
 cd client && npm test
 cd server && npm test
 

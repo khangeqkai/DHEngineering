@@ -7,6 +7,7 @@ const logger = require('../utils/logger');
 const { authenticate, requireManagement } = require('../middleware/auth');
 const {
   jobcardQueries,
+  jobItemQueries,
   companyQueries,
   getSettings,
   recordHistory,
